@@ -673,6 +673,90 @@ export default function ClinicianPortal() {
                     </div>
                  </div>
 
+                 {/* Resource & Staff Booking (NEW) */}
+                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm mb-2">
+                    <div className="flex items-center justify-between mb-3">
+                       <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-purple-600" /> Resource & Staff Booking
+                       </h3>
+                       <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-slate-600 hover:text-purple-600 border-slate-200">
+                          View All Availability
+                       </Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-5 gap-3">
+                       {/* Pediatrician */}
+                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group">
+                          <CardContent className="p-3 text-center">
+                             <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-blue-100 transition-colors">
+                                <Baby className="w-4 h-4" />
+                             </div>
+                             <p className="text-xs font-bold text-slate-700 mb-0.5">Pediatrician</p>
+                             <p className="text-[10px] text-emerald-600 font-medium flex items-center justify-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Available
+                             </p>
+                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white border-none shadow-none">Book</Button>
+                          </CardContent>
+                       </Card>
+
+                       {/* Anesthetist */}
+                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group">
+                          <CardContent className="p-3 text-center">
+                             <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-purple-100 transition-colors">
+                                <Syringe className="w-4 h-4" />
+                             </div>
+                             <p className="text-xs font-bold text-slate-700 mb-0.5">Anesthetist</p>
+                             <p className="text-[10px] text-amber-600 font-medium flex items-center justify-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> Limited
+                             </p>
+                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-purple-600 hover:text-white border-none shadow-none">Request</Button>
+                          </CardContent>
+                       </Card>
+
+                       {/* Lactation */}
+                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group">
+                          <CardContent className="p-3 text-center">
+                             <div className="w-8 h-8 rounded-full bg-pink-50 text-pink-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-pink-100 transition-colors">
+                                <Heart className="w-4 h-4" />
+                             </div>
+                             <p className="text-xs font-bold text-slate-700 mb-0.5">Lactation</p>
+                             <p className="text-[10px] text-emerald-600 font-medium flex items-center justify-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Available
+                             </p>
+                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-pink-600 hover:text-white border-none shadow-none">Book</Button>
+                          </CardContent>
+                       </Card>
+
+                       {/* Assistant */}
+                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group">
+                          <CardContent className="p-3 text-center">
+                             <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-indigo-100 transition-colors">
+                                <Users className="w-4 h-4" />
+                             </div>
+                             <p className="text-xs font-bold text-slate-700 mb-0.5">Assistant</p>
+                             <p className="text-[10px] text-emerald-600 font-medium flex items-center justify-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> 3 on Duty
+                             </p>
+                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-indigo-600 hover:text-white border-none shadow-none">Assign</Button>
+                          </CardContent>
+                       </Card>
+
+                       {/* Nursing Home / Bed */}
+                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group">
+                          <CardContent className="p-3 text-center">
+                             <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-slate-200 transition-colors">
+                                <Briefcase className="w-4 h-4" />
+                             </div>
+                             <p className="text-xs font-bold text-slate-700 mb-0.5">Nursing Home</p>
+                             <p className="text-[10px] text-rose-600 font-medium flex items-center justify-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div> Full (Waitlist)
+                             </p>
+                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white border-none shadow-none">Waitlist</Button>
+                          </CardContent>
+                       </Card>
+                    </div>
+                 </div>
+
                  {/* Calendar Grid */}
                  <Card className="flex-1 shadow-sm border-slate-200 flex flex-col overflow-hidden">
                     {/* Days Header */}
