@@ -1,0 +1,268 @@
+Enhance Existing Clinician Dashboard into Full Women’s Health EMR (Fertility + Pregnancy + Postpartum)
+
+🎯 CONTEXT
+
+You are improving an existing clinician dashboard UI that already includes:
+
+Patient queue with risk flags
+
+Hormone & cycle intelligence graphs
+
+AI clinical insights
+
+Genomic risk panels
+
+Clinical timeline
+
+Quick action buttons (Add Note, Order Lab, Send Insight)
+
+This is currently a decision-support dashboard.
+
+Your task is to transform it into a complete clinician EMR workspace for Saivie Women’s Health Clinic, which supports:
+
+Fertility & hormone care
+
+Pregnancy care
+
+Postpartum recovery care
+
+⚠️ Do NOT remove or redesign the current UI style.
+ADD structured clinician workflow layers on top of the existing system.
+
+🩺 1️⃣ ADD “CURRENT VISIT” CLINICAL WORKSPACE (SOAP)
+
+Create a sticky card below patient header:
+
+TODAY’S VISIT
+
+S — Symptoms (auto-filled + editable)
+
+PMS severity score
+
+Sleep quality trend
+
+Pain, spotting, bloating
+
+Mood score
+
+O — Observations
+
+Cycle phase
+
+Luteal length
+
+Hormone trends
+
+BBT shift
+
+Genomic risk highlights
+
+A — AI-Assisted Assessment
+Auto-generate a concise clinical impression
+Example:
+
+“Recurrent short luteal phase with likely progesterone insufficiency and PMS exacerbated by sleep deficit.”
+
+P — Plan Builder (interactive checklist)
+☐ Start luteal progesterone
+☐ Order Day 21 progesterone lab
+☐ Begin sleep protocol
+☐ Start magnesium/B6
+☐ Follow-up in 6 weeks
+
+Buttons:
+
+💾 Save Visit Note
+
+📤 Send Summary to Patient
+
+➕ Add Custom Plan Item
+
+💊 2️⃣ ADD MEDICATION MANAGEMENT PANEL
+
+A right-side or tabbed card:
+
+ACTIVE MEDICATIONS
+Medication	Dose	Linked Phase	Start Date	Status
+
+Buttons:
+➕ Add Medication
+✏ Adjust Dose
+⏸ Pause
+🔄 Link to Cycle Phase
+
+Highlight hormone therapies separately.
+
+🧪 3️⃣ ADD LAB INTELLIGENCE PANEL
+
+Under clinical data:
+
+LAB HISTORY & TRENDS
+Test	Last Value	Trend	Status	Last Done
+
+Include:
+
+Progesterone (D21)
+
+TSH
+
+AMH
+
+Prolactin
+
+HbA1c
+
+Vitamin D
+
+Ferritin
+
+Features:
+📈 View Trend Graph
+🔁 Repeat Test
+⚠ AI highlight abnormal trends
+
+🤰 4️⃣ ADD “CARE MODE SWITCH”
+
+Near patient name:
+
+CARE MODE TOGGLE
+
+Fertility Care
+
+Pregnancy Care
+
+Postpartum Care
+
+UI dynamically changes based on selection.
+
+IF PREGNANCY MODE:
+
+Show:
+
+Pregnancy Tracker
+
+GA (Gestational Age)
+
+Trimester
+
+EDD
+
+Maternal Health
+
+BP trend
+
+Weight gain graph
+
+Supplements
+
+Upcoming Milestones
+
+NT scan
+
+Anomaly scan
+
+GDM screening
+
+IF POSTPARTUM MODE:
+
+Show:
+
+Postpartum Recovery
+
+Delivery type
+
+Weeks postpartum
+
+Lactation issues
+
+Mood screening (PPD score)
+
+Iron recovery
+
+Cycle return
+
+🧬 5️⃣ ADD SMART PROTOCOL ENGINE
+
+Add a panel called:
+
+SAIVIE CLINICAL PROTOCOLS
+
+Examples:
+
+LUTEAL SUPPORT PROTOCOL
+✔ Progesterone if luteal < 10 days
+✔ Magnesium + B6
+✔ Sleep correction
+✔ Reassess in 2 cycles
+
+Buttons:
+▶ Apply Protocol
+✏ Customize
+📊 Track Outcome
+
+Protocols for:
+
+PCOS metabolic care
+
+PMS regulation
+
+Early pregnancy support
+
+Postpartum recovery
+
+💬 6️⃣ ADD PATIENT COMMUNICATION LOG
+COMMUNICATION HISTORY
+Date	Type	Summary	Sent By
+
+Types:
+
+Insight shared
+
+Report sent
+
+Care plan assigned
+
+Message
+
+Buttons:
+📩 Send Message
+📎 Share Report
+📘 Assign Lifestyle Module
+
+📅 7️⃣ ADD FOLLOW-UP & CARE PLAN TRACKER
+CARE PLAN TIMELINE
+Intervention	Start	Review Date	Outcome
+
+Visual timeline showing protocol response.
+
+🎨 DESIGN INSTRUCTIONS
+
+Keep existing HelixCare/Saivie visual style
+
+Use card-based modular layout
+
+Maintain soft medical color palette
+
+Keep AI insights visually distinct from clinician-entered data
+
+Prioritize scannability and low cognitive load
+
+🧠 END GOAL
+
+The system should feel like:
+
+A complete AI-augmented EMR for women’s health clinicians, combining:
+
+Documentation
+
+Decision support
+
+Treatment protocols
+
+Pregnancy tracking
+
+Postpartum recovery
+
+Patient engagement
+
+NOT just a hormone analytics dashboard.

@@ -18,7 +18,13 @@ import {
   Heart,
   Brain,
   Stethoscope,
-  ClipboardList
+  ClipboardList,
+  Pill,
+  Syringe,
+  FlaskConical,
+  MessageSquare,
+  History,
+  PlayCircle
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,6 +34,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   AreaChart, 
   Area, 
@@ -39,13 +48,14 @@ import {
   Line
 } from "recharts";
 import medicalDashboardBg from "../assets/images/medical-dashboard-bg.png";
-import genomicHelix from "../assets/images/genomic-helix.png";
+import pregnancyGrowthBg from "../assets/images/pregnancy-growth-bg.png";
+import postpartumRecoveryBg from "../assets/images/postpartum-recovery-bg.png";
 
 // Mock Data
 const patients = [
-  { id: 1, name: "Ananya S.", age: 29, status: "High Risk", focus: "TTC 6mo", lastVisit: "2 days ago", cycleDay: 14, avatar: "AS" },
-  { id: 2, name: "Meera D.", age: 34, status: "Monitor", focus: "PMS Severe", lastVisit: "1 week ago", cycleDay: 21, avatar: "MD" },
-  { id: 3, name: "Sarah J.", age: 31, status: "Stable", focus: "General", lastVisit: "3 weeks ago", cycleDay: 5, avatar: "SJ" },
+  { id: 1, name: "Ananya S.", age: 29, status: "High Risk", focus: "TTC 6mo", lastVisit: "2 days ago", cycleDay: 14, avatar: "AS", mode: "fertility" },
+  { id: 2, name: "Meera D.", age: 34, status: "Monitor", focus: "Pregnancy Wk 24", lastVisit: "1 week ago", cycleDay: null, avatar: "MD", mode: "pregnancy" },
+  { id: 3, name: "Sarah J.", age: 31, status: "Stable", focus: "Postpartum Wk 6", lastVisit: "3 weeks ago", cycleDay: null, avatar: "SJ", mode: "postpartum" },
 ];
 
 const hormoneData = [
@@ -54,14 +64,28 @@ const hormoneData = [
   { day: 10, estrogen: 60, progesterone: 6, symptoms: 3 },
   { day: 14, estrogen: 90, progesterone: 8, symptoms: 2 },
   { day: 16, estrogen: 50, progesterone: 20, symptoms: 5 },
-  { day: 20, estrogen: 40, progesterone: 60, symptoms: 7 }, // Symptom spike
+  { day: 20, estrogen: 40, progesterone: 60, symptoms: 7 }, 
   { day: 25, estrogen: 30, progesterone: 40, symptoms: 8 },
   { day: 28, estrogen: 25, progesterone: 10, symptoms: 4 },
 ];
 
+const pregnancyData = [
+  { week: 12, weight: 60, expected: 61, bp: 110 },
+  { week: 16, weight: 62, expected: 63, bp: 112 },
+  { week: 20, weight: 65, expected: 65, bp: 115 },
+  { week: 24, weight: 68, expected: 68, bp: 118 }, // Current
+  { week: 28, weight: 71, expected: 71, bp: 120 }, // Projected
+  { week: 32, weight: 74, expected: 74, bp: 122 },
+];
+
 export default function ClinicianPortal() {
   const [selectedPatient, setSelectedPatient] = useState(patients[0]);
-  const [activeTab, setActiveTab] = useState("reproductive");
+  const [careMode, setCareMode] = useState("fertility"); // fertility, pregnancy, postpartum
+
+  // Sync care mode when patient changes
+  useEffect(() => {
+     setCareMode(selectedPatient.mode);
+  }, [selectedPatient]);
 
   // Set the theme attribute on mount
   useEffect(() => {
@@ -134,9 +158,25 @@ export default function ClinicianPortal() {
                    <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-slate-500">Age: {selectedPatient.age}</span>
                       <span className="text-slate-300">•</span>
-                      <Badge variant="outline" className="text-[10px] px-1.5 h-4 border-blue-200 text-blue-700 bg-blue-50">TTC</Badge>
+                      
+                      {/* 4. CARE MODE SWITCH */}
+                      <Select value={careMode} onValueChange={setCareMode}>
+                        <SelectTrigger className="h-6 text-[10px] bg-slate-50 border-slate-200 w-[130px]">
+                          <SelectValue placeholder="Select Mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="fertility">Fertility Care</SelectItem>
+                          <SelectItem value="pregnancy">Pregnancy Care</SelectItem>
+                          <SelectItem value="postpartum">Postpartum Care</SelectItem>
+                        </SelectContent>
+                      </Select>
+
                       <span className="text-slate-300">•</span>
-                      <span className="text-xs font-medium text-slate-700">Cycle Day 14</span>
+                      <span className="text-xs font-medium text-slate-700">
+                         {careMode === 'fertility' && 'Cycle Day 14'}
+                         {careMode === 'pregnancy' && 'Week 24'}
+                         {careMode === 'postpartum' && 'Week 6'}
+                      </span>
                    </div>
                 </div>
              </div>
@@ -202,220 +242,266 @@ export default function ClinicianPortal() {
           </div>
 
           {/* Detailed View (Right) - Intelligent Dashboard */}
-          <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
-            <div className="max-w-6xl mx-auto space-y-6">
+          <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
+            <div className="max-w-7xl mx-auto space-y-6">
                
-               {/* 3. CLINICAL SNAPSHOT SUMMARY */}
-               <div className="grid grid-cols-5 gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                  <div className="col-span-1 border-r border-slate-100 pr-4">
-                     <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Reproductive Status</p>
-                     <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-blue-100 rounded-md text-blue-600"><Baby className="w-4 h-4" /></div>
-                        <div>
-                           <p className="text-sm font-bold text-slate-900">TTC</p>
-                           <p className="text-[10px] text-slate-500">3 Months</p>
+               {/* 1. CURRENT VISIT CLINICAL WORKSPACE (SOAP) */}
+               <Card className="shadow-md border-blue-100 bg-white overflow-hidden">
+                  <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center">
+                     <h3 className="font-bold text-sm text-slate-700 flex items-center gap-2"><ClipboardList className="w-4 h-4 text-blue-600" /> Current Visit Workspace</h3>
+                     <span className="text-xs text-slate-400">Auto-save on</span>
+                  </div>
+                  <CardContent className="p-0">
+                     <div className="grid grid-cols-4 divide-x divide-slate-100">
+                        {/* Subjective */}
+                        <div className="p-4 space-y-3">
+                           <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">S (Symptoms)</span> <Button variant="ghost" size="icon" className="h-5 w-5"><Sparkles className="w-3 h-3 text-blue-400" /></Button></div>
+                           <div className="space-y-2">
+                              <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100">PMS severity score: 8/10</div>
+                              <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100">Sleep quality: Poor</div>
+                              <Textarea placeholder="Add notes..." className="text-xs min-h-[60px] bg-white" />
+                           </div>
+                        </div>
+                        {/* Objective */}
+                        <div className="p-4 space-y-3">
+                           <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">O (Observations)</span></div>
+                           <div className="space-y-2 text-xs text-slate-600">
+                              <div className="flex justify-between"><span>Cycle Phase:</span> <span className="font-medium">Luteal</span></div>
+                              <div className="flex justify-between"><span>Luteal Length:</span> <span className="font-medium text-rose-600">9 days</span></div>
+                              <div className="flex justify-between"><span>Genomic Risk:</span> <span className="font-medium text-amber-600">PCOS</span></div>
+                           </div>
+                        </div>
+                        {/* Assessment (AI) */}
+                        <div className="p-4 space-y-3 bg-blue-50/30">
+                           <div className="flex justify-between items-center"><span className="text-xs font-bold text-blue-600">A (Assessment)</span> <Sparkles className="w-3 h-3 text-blue-500" /></div>
+                           <p className="text-xs leading-relaxed text-slate-700">
+                              "Recurrent short luteal phase with likely progesterone insufficiency. PMS exacerbated by reported sleep deficit."
+                           </p>
+                           <Button size="sm" variant="outline" className="w-full h-6 text-[10px] bg-white">Edit</Button>
+                        </div>
+                        {/* Plan */}
+                        <div className="p-4 space-y-3">
+                           <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">P (Plan)</span> <Button variant="ghost" size="icon" className="h-5 w-5 text-blue-600">+</Button></div>
+                           <div className="space-y-2">
+                              <div className="flex items-center gap-2"><Checkbox id="p1" defaultChecked /> <label htmlFor="p1" className="text-xs text-slate-700">Start luteal progesterone</label></div>
+                              <div className="flex items-center gap-2"><Checkbox id="p2" /> <label htmlFor="p2" className="text-xs text-slate-700">Order Day 21 labs</label></div>
+                              <div className="flex items-center gap-2"><Checkbox id="p3" /> <label htmlFor="p3" className="text-xs text-slate-700">Begin sleep protocol</label></div>
+                           </div>
+                           <Button size="sm" className="w-full h-7 text-xs bg-blue-600 hover:bg-blue-700 mt-2">Save Visit Note</Button>
                         </div>
                      </div>
-                  </div>
-                  <div className="col-span-1 border-r border-slate-100 px-4">
-                     <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Avg Cycle</p>
-                     <p className="text-sm font-bold text-slate-900">28 Days</p>
-                     <p className="text-[10px] text-emerald-600 font-medium flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Ovulatory</p>
-                  </div>
-                  <div className="col-span-1 border-r border-slate-100 px-4">
-                     <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Luteal Phase</p>
-                     <p className="text-sm font-bold text-slate-900">9 Days</p>
-                     <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Borderline Short</p>
-                  </div>
-                   <div className="col-span-1 border-r border-slate-100 px-4">
-                     <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">PMS Severity</p>
-                     <p className="text-sm font-bold text-slate-900">Moderate</p>
-                     <p className="text-[10px] text-slate-500">Pain Score 6/10</p>
-                  </div>
-                  <div className="col-span-1 pl-4">
-                     <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Genomic Risk</p>
-                     <div className="flex flex-wrap gap-1 mt-1">
-                        <Badge variant="outline" className="text-[10px] h-4 bg-rose-50 text-rose-700 border-rose-200">PCOS ↑</Badge>
-                        <Badge variant="outline" className="text-[10px] h-4 bg-amber-50 text-amber-700 border-amber-200">Thyroid ↑</Badge>
-                     </div>
-                  </div>
-               </div>
+                  </CardContent>
+               </Card>
 
-               {/* 2. SMART COLLAPSIBLE CARDS - ALERTS */}
-               <div className="space-y-3">
-                  <Alert variant="destructive" className="bg-rose-50 border-rose-200 text-rose-900 py-3 flex items-center shadow-sm">
-                     <AlertCircle className="h-4 w-4 stroke-rose-600 mr-3" />
-                     <div className="flex-1 flex justify-between items-center">
-                        <span className="font-semibold text-sm">Luteal Phase &lt; 9 days detected in last 2 cycles</span>
-                        <Button size="sm" variant="outline" className="h-7 text-xs border-rose-200 text-rose-700 hover:bg-rose-100 bg-white/50">
-                           Review Protocol
-                        </Button>
-                     </div>
-                  </Alert>
-                  
-                  <Alert className="bg-amber-50 border-amber-200 text-amber-900 py-3 flex items-center shadow-sm">
-                     <Activity className="h-4 w-4 stroke-amber-600 mr-3" />
-                     <div className="flex-1 flex justify-between items-center">
-                        <span className="font-medium text-sm">Sleep deficit increasing PMS severity (+30% vs baseline)</span>
-                        <Button size="sm" variant="ghost" className="h-7 text-xs text-amber-700 hover:bg-amber-100 hover:text-amber-800">
-                           Dismiss
-                        </Button>
-                     </div>
-                  </Alert>
-               </div>
-
-               {/* MAIN DASHBOARD CONTENT */}
+               {/* MAIN DASHBOARD CONTENT GRID */}
                <div className="grid grid-cols-3 gap-6">
                   
-                  {/* LEFT COLUMN: Reproductive Intelligence */}
+                  {/* LEFT COLUMN: Clinical Intelligence (Dynamic based on Mode) */}
                   <div className="col-span-2 space-y-6">
-                     <Card className="shadow-sm border-slate-200">
-                        <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
-                           <div className="flex items-center gap-2">
+                     
+                     {careMode === 'fertility' && (
+                        <Card className="shadow-sm border-slate-200">
+                           <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
                               <CardTitle className="text-base font-bold text-slate-800">Reproductive Intelligence</CardTitle>
-                              <Badge variant="secondary" className="bg-slate-100 text-slate-600 text-[10px] font-normal">Last 30 Days</Badge>
-                           </div>
-                           <Tabs defaultValue="combined" className="w-[300px]">
-                              <TabsList className="h-8 w-full bg-slate-100/80 p-0.5">
-                                 <TabsTrigger value="hormones" className="text-xs h-7 px-3">Hormones</TabsTrigger>
-                                 <TabsTrigger value="symptoms" className="text-xs h-7 px-3">Symptoms</TabsTrigger>
-                                 <TabsTrigger value="combined" className="text-xs h-7 px-3">Combined</TabsTrigger>
-                              </TabsList>
-                           </Tabs>
-                        </CardHeader>
-                        <CardContent className="pt-6">
-                           <div className="h-[280px] w-full">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={hormoneData}>
-                                  <defs>
-                                    <linearGradient id="colorEstrogen" x1="0" y1="0" x2="0" y2="1">
-                                      <stop offset="5%" stopColor="#818cf8" stopOpacity={0.1}/>
-                                      <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
-                                    </linearGradient>
-                                    <linearGradient id="colorProg" x1="0" y1="0" x2="0" y2="1">
-                                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
-                                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                                    </linearGradient>
-                                  </defs>
-                                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
-                                  <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
-                                  <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
-                                  <Tooltip 
-                                    contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
-                                    labelStyle={{ fontWeight: 'bold', color: '#1e293b' }}
-                                  />
-                                  <ReferenceLine yAxisId="left" x={14} stroke="#cbd5e1" strokeDasharray="3 3" label={{ position: 'top', value: 'Ovulation', fontSize: 10, fill: '#64748b' }} />
-                                  
-                                  <Area yAxisId="left" type="monotone" dataKey="estrogen" stroke="#818cf8" strokeWidth={2} fillOpacity={1} fill="url(#colorEstrogen)" name="Estrogen" />
-                                  <Area yAxisId="left" type="monotone" dataKey="progesterone" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorProg)" name="Progesterone" />
-                                  <Line yAxisId="right" type="monotone" dataKey="symptoms" stroke="#f59e0b" strokeWidth={2} dot={{r: 4, fill: '#f59e0b'}} name="Pain Score" />
-                                </AreaChart>
-                              </ResponsiveContainer>
-                           </div>
-                           
-                           {/* AI Interpretation Box */}
-                           <div className="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-3 flex gap-3">
-                              <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                              <div className="text-sm text-indigo-900">
-                                 <span className="font-semibold">AI Insight:</span> Pain clusters in mid-luteal phase across 3 cycles. Pattern suggests progesterone sensitivity correlating with symptom spikes.
+                              <Tabs defaultValue="combined" className="w-[300px]">
+                                 <TabsList className="h-8 w-full bg-slate-100/80 p-0.5">
+                                    <TabsTrigger value="hormones" className="text-xs h-7 px-3">Hormones</TabsTrigger>
+                                    <TabsTrigger value="symptoms" className="text-xs h-7 px-3">Symptoms</TabsTrigger>
+                                    <TabsTrigger value="combined" className="text-xs h-7 px-3">Combined</TabsTrigger>
+                                 </TabsList>
+                              </Tabs>
+                           </CardHeader>
+                           <CardContent className="pt-6">
+                              <div className="h-[280px] w-full">
+                                 <ResponsiveContainer width="100%" height="100%">
+                                   <AreaChart data={hormoneData}>
+                                     <defs>
+                                       <linearGradient id="colorEstrogen" x1="0" y1="0" x2="0" y2="1">
+                                         <stop offset="5%" stopColor="#818cf8" stopOpacity={0.1}/>
+                                         <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
+                                       </linearGradient>
+                                     </defs>
+                                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
+                                     <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
+                                     <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
+                                     <Tooltip contentStyle={{ borderRadius: '8px' }} />
+                                     <ReferenceLine yAxisId="left" x={14} stroke="#cbd5e1" strokeDasharray="3 3" label={{ position: 'top', value: 'Ovulation', fontSize: 10, fill: '#64748b' }} />
+                                     <Area yAxisId="left" type="monotone" dataKey="estrogen" stroke="#818cf8" strokeWidth={2} fillOpacity={1} fill="url(#colorEstrogen)" />
+                                     <Line yAxisId="right" type="monotone" dataKey="symptoms" stroke="#f59e0b" strokeWidth={2} dot={{r: 4, fill: '#f59e0b'}} />
+                                   </AreaChart>
+                                 </ResponsiveContainer>
                               </div>
-                           </div>
-                        </CardContent>
-                     </Card>
+                           </CardContent>
+                        </Card>
+                     )}
 
-                     {/* EMR Timeline View */}
+                     {careMode === 'pregnancy' && (
+                        <Card className="shadow-sm border-slate-200 overflow-hidden">
+                           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `url(${pregnancyGrowthBg})`, backgroundSize: 'cover' }}></div>
+                           <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between relative z-10">
+                              <div className="flex items-center gap-2">
+                                 <CardTitle className="text-base font-bold text-slate-800">Maternal & Fetal Trends</CardTitle>
+                                 <Badge className="bg-pink-100 text-pink-700 hover:bg-pink-100 border-none">Week 24</Badge>
+                              </div>
+                           </CardHeader>
+                           <CardContent className="pt-6 relative z-10">
+                              <div className="h-[280px] w-full">
+                                 <ResponsiveContainer width="100%" height="100%">
+                                   <AreaChart data={pregnancyData}>
+                                     <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
+                                     <YAxis yAxisId="left" domain={[55, 80]} axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
+                                     <Tooltip contentStyle={{ borderRadius: '8px' }} />
+                                     <Area yAxisId="left" type="monotone" dataKey="weight" stroke="#ec4899" strokeWidth={3} fill="#fbcfe8" fillOpacity={0.2} name="Maternal Weight" />
+                                     <Line yAxisId="left" type="monotone" dataKey="expected" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} name="Expected Curve" />
+                                   </AreaChart>
+                                 </ResponsiveContainer>
+                              </div>
+                              <div className="flex gap-4 mt-2">
+                                 <div className="bg-white/80 p-3 rounded border border-slate-100 shadow-sm flex-1">
+                                    <div className="text-xs text-slate-500 uppercase font-bold">BP Trend</div>
+                                    <div className="text-lg font-bold text-slate-800">118/75 <span className="text-xs font-normal text-slate-400">Stable</span></div>
+                                 </div>
+                                 <div className="bg-white/80 p-3 rounded border border-slate-100 shadow-sm flex-1">
+                                    <div className="text-xs text-slate-500 uppercase font-bold">Fetal Movement</div>
+                                    <div className="text-lg font-bold text-slate-800">Active <span className="text-xs font-normal text-emerald-600">Normal</span></div>
+                                 </div>
+                              </div>
+                           </CardContent>
+                        </Card>
+                     )}
+
+                     {careMode === 'postpartum' && (
+                        <Card className="shadow-sm border-slate-200 overflow-hidden">
+                           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `url(${postpartumRecoveryBg})`, backgroundSize: 'cover' }}></div>
+                           <CardHeader className="py-4 border-b border-slate-100 relative z-10">
+                              <CardTitle className="text-base font-bold text-slate-800">Postpartum Recovery Tracker</CardTitle>
+                           </CardHeader>
+                           <CardContent className="pt-6 relative z-10 space-y-6">
+                              <div>
+                                 <div className="flex justify-between text-sm mb-2 font-medium"><span>Physical Recovery</span> <span>85%</span></div>
+                                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full w-[85%] bg-emerald-500 rounded-full"></div></div>
+                              </div>
+                              <div>
+                                 <div className="flex justify-between text-sm mb-2 font-medium"><span>Hormone Reset</span> <span>60%</span></div>
+                                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full w-[60%] bg-blue-500 rounded-full"></div></div>
+                              </div>
+                              <div>
+                                 <div className="flex justify-between text-sm mb-2 font-medium"><span>Mood Stability</span> <span className="text-amber-600">40% (Attention Needed)</span></div>
+                                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full w-[40%] bg-amber-500 rounded-full"></div></div>
+                              </div>
+                           </CardContent>
+                        </Card>
+                     )}
+
+                     {/* 3. LAB INTELLIGENCE PANEL */}
                      <Card className="shadow-sm border-slate-200">
                         <CardHeader className="py-3 border-b border-slate-100">
-                           <CardTitle className="text-base font-bold text-slate-800 flex items-center justify-between">
-                              <span>Clinical Timeline</span>
-                              <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50">
-                                 View Full EMR <ChevronRight className="w-3 h-3 ml-1" />
-                              </Button>
+                           <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                              <FlaskConical className="w-4 h-4 text-purple-600" /> Lab Intelligence
                            </CardTitle>
                         </CardHeader>
-                        <CardContent className="pt-4">
-                           <div className="relative border-l-2 border-slate-200 ml-2 space-y-6 pb-2">
-                              <div className="ml-6 relative">
-                                 <div className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-white"></div>
-                                 <p className="text-xs font-semibold text-slate-500 mb-0.5">Mar 01, 2024</p>
-                                 <p className="text-sm font-medium text-slate-900">Symptoms improved 40%</p>
-                                 <p className="text-xs text-slate-600 mt-1">Patient reports better sleep and reduced bloating after protocol adjustment.</p>
-                              </div>
-                              <div className="ml-6 relative">
-                                 <div className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-slate-300 ring-4 ring-white"></div>
-                                 <p className="text-xs font-semibold text-slate-500 mb-0.5">Feb 02, 2024</p>
-                                 <p className="text-sm font-medium text-slate-900">Progesterone started</p>
-                                 <p className="text-xs text-slate-600 mt-1">Prescribed bio-identical progesterone 200mg for luteal phase support.</p>
-                              </div>
-                              <div className="ml-6 relative">
-                                 <div className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-slate-300 ring-4 ring-white"></div>
-                                 <p className="text-xs font-semibold text-slate-500 mb-0.5">Jan 12, 2024</p>
-                                 <p className="text-sm font-medium text-slate-900">Severe PMS Reported</p>
-                              </div>
-                           </div>
+                        <CardContent className="p-0">
+                           <table className="w-full text-sm text-left">
+                              <thead className="text-xs text-slate-500 bg-slate-50 uppercase">
+                                 <tr>
+                                    <th className="px-4 py-2 font-medium">Test</th>
+                                    <th className="px-4 py-2 font-medium">Value</th>
+                                    <th className="px-4 py-2 font-medium">Trend</th>
+                                    <th className="px-4 py-2 font-medium">Status</th>
+                                 </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                 <tr>
+                                    <td className="px-4 py-3 font-medium text-slate-700">Progesterone (D21)</td>
+                                    <td className="px-4 py-3">8.2 ng/mL</td>
+                                    <td className="px-4 py-3 text-rose-500 flex items-center gap-1"><TrendingUp className="w-3 h-3 rotate-180" /> Dropping</td>
+                                    <td className="px-4 py-3"><Badge variant="outline" className="border-rose-200 text-rose-700 bg-rose-50">Low</Badge></td>
+                                 </tr>
+                                 <tr>
+                                    <td className="px-4 py-3 font-medium text-slate-700">TSH</td>
+                                    <td className="px-4 py-3">2.1 mIU/L</td>
+                                    <td className="px-4 py-3 text-slate-400">- Stable</td>
+                                    <td className="px-4 py-3"><Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50">Normal</Badge></td>
+                                 </tr>
+                              </tbody>
+                           </table>
                         </CardContent>
                      </Card>
+
                   </div>
 
-                  {/* RIGHT COLUMN: Genetics & Actions */}
+                  {/* RIGHT COLUMN: Protocols & Meds */}
                   <div className="space-y-6">
                      
-                     {/* Genomic Risk Panel - Actionable */}
-                     <Card className="shadow-sm border-slate-200 overflow-hidden">
-                        <div className="bg-slate-900 p-4 flex items-center justify-between relative overflow-hidden">
-                           <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
-                           <div className="relative z-10 flex items-center gap-2 text-white">
-                              <Dna className="w-4 h-4 text-blue-400" />
-                              <h3 className="font-bold text-sm">Genomic Intelligence</h3>
-                           </div>
-                        </div>
-                        <CardContent className="p-4 space-y-4">
-                           <div className="bg-rose-50 border border-rose-100 rounded-lg p-3">
-                              <div className="flex justify-between items-center mb-1">
-                                 <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">PCOS Predisposition</span>
-                                 <Badge variant="destructive" className="h-5 text-[10px]">High Risk</Badge>
+                     {/* 2. MEDICATION MANAGEMENT */}
+                     <Card className="shadow-sm border-slate-200">
+                        <CardHeader className="py-3 border-b border-slate-100 flex justify-between items-center flex-row">
+                           <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                              <Pill className="w-4 h-4 text-blue-600" /> Active Meds
+                           </CardTitle>
+                           <Button size="icon" variant="ghost" className="h-6 w-6"><ChevronRight className="w-4 h-4" /></Button>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                           <div className="p-3 border-b border-slate-50 flex justify-between items-center">
+                              <div>
+                                 <div className="font-medium text-sm text-slate-900">Progesterone</div>
+                                 <div className="text-xs text-slate-500">200mg • Luteal Phase</div>
                               </div>
-                              <p className="text-xs text-rose-700 leading-relaxed mb-3">
-                                 Higher likelihood of insulin resistance and ovulatory irregularity based on polygenic risk score.
-                              </p>
-                              <Button size="sm" className="w-full bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 text-xs h-7 shadow-sm">
-                                 See Cycle Impact
-                              </Button>
+                              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">Active</Badge>
                            </div>
-
-                           <div className="bg-amber-50 border border-amber-100 rounded-lg p-3">
-                              <div className="flex justify-between items-center mb-1">
-                                 <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Thyroid Function</span>
-                                 <Badge variant="outline" className="h-5 text-[10px] bg-white border-amber-300 text-amber-700">Moderate</Badge>
+                           <div className="p-3 flex justify-between items-center">
+                              <div>
+                                 <div className="font-medium text-sm text-slate-900">Magnesium Glycinate</div>
+                                 <div className="text-xs text-slate-500">400mg • Daily</div>
                               </div>
-                              <p className="text-xs text-amber-700 leading-relaxed">
-                                 Variants associated with slightly lower T4 to T3 conversion.
-                              </p>
+                              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">Active</Badge>
                            </div>
                         </CardContent>
                      </Card>
 
-                     {/* AI Action Box */}
-                     <Card className="shadow-md border-blue-100 bg-gradient-to-br from-white to-blue-50/50">
-                        <CardHeader className="pb-2">
+                     {/* 5. SMART PROTOCOL ENGINE */}
+                     <Card className="shadow-sm border-slate-200 bg-slate-50/50">
+                        <CardHeader className="py-3 border-b border-slate-100">
                            <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                              <Sparkles className="w-4 h-4 text-blue-600" /> Clinical Insight
+                              <ClipboardList className="w-4 h-4 text-indigo-600" /> Saivie Protocols
                            </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                           <div className="space-y-3">
-                              <div className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
-                                 <p className="text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide">Pattern Detected</p>
-                                 <p className="text-sm font-medium text-slate-900">Short luteal phase recurring</p>
+                        <CardContent className="p-4 space-y-3">
+                           <div className="bg-white border border-indigo-100 rounded-lg p-3 shadow-sm">
+                              <div className="flex justify-between items-center mb-2">
+                                 <h4 className="text-xs font-bold text-indigo-900">LUTEAL SUPPORT</h4>
+                                 <Button size="sm" className="h-6 text-[10px] bg-indigo-600 hover:bg-indigo-700">Apply</Button>
                               </div>
-                              <div className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
-                                 <p className="text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide">Why It Matters</p>
-                                 <p className="text-sm font-medium text-slate-900">May reduce implantation chances</p>
+                              <ul className="space-y-1.5">
+                                 <li className="text-xs text-slate-600 flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> Progesterone 200mg</li>
+                                 <li className="text-xs text-slate-600 flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> Mag + B6 Support</li>
+                                 <li className="text-xs text-slate-600 flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> Sleep Hygiene Module</li>
+                              </ul>
+                           </div>
+                        </CardContent>
+                     </Card>
+
+                     {/* 6. PATIENT COMMUNICATION LOG */}
+                     <Card className="shadow-sm border-slate-200">
+                        <CardHeader className="py-3 border-b border-slate-100">
+                           <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                              <MessageSquare className="w-4 h-4 text-slate-500" /> Recent Comms
+                           </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                           <div className="p-3 border-b border-slate-50">
+                              <div className="flex justify-between text-xs mb-1">
+                                 <span className="font-semibold text-slate-700">Insight Shared</span>
+                                 <span className="text-slate-400">Yesterday</span>
                               </div>
-                              
-                              <Button className="w-full bg-blue-600 hover:bg-blue-700 shadow-md transition-all mt-2">
-                                 Review Luteal Support Protocol <ArrowUpRight className="ml-2 w-4 h-4" />
-                              </Button>
+                              <p className="text-xs text-slate-500 truncate">"Progesterone support may help luteal..."</p>
+                           </div>
+                           <div className="p-3">
+                              <div className="flex justify-between text-xs mb-1">
+                                 <span className="font-semibold text-slate-700">Report Sent</span>
+                                 <span className="text-slate-400">3 days ago</span>
+                              </div>
+                              <p className="text-xs text-slate-500 truncate">Hormone Panel Results.pdf</p>
                            </div>
                         </CardContent>
                      </Card>
