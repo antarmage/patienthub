@@ -74,6 +74,16 @@ import follicleTrackingBg from "../assets/images/follicle-tracking-bg.png";
 import iuiTimelineBg from "../assets/images/iui-timeline-bg.png";
 import fetalBiometryBg from "../assets/images/fetal-biometry-bg.png";
 
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
 // Mock Data
 const patients = [
   { id: 1, name: "Ananya S.", age: 29, status: "High Risk", focus: "Natural Conception", lastVisit: "2 days ago", cycleDay: 14, avatar: "AS", mode: "natural_conception", referredBy: "Dr. Sharma (GP)", referredTo: "Nutritionist", vaccination: "Up to Date", insurance: "Private (Gold)", contraception: "None (TTC)" },
@@ -170,6 +180,7 @@ export default function ClinicianPortal() {
   const [showDocumentation, setShowDocumentation] = useState(false);
   const [scheduleViewMode, setScheduleViewMode] = useState("appointments"); // 'appointments' or 'occupancy'
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile"); // 'profile' or 'availability'
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
 
   // Sync care mode when patient changes
   useEffect(() => {
@@ -1752,9 +1763,68 @@ export default function ClinicianPortal() {
                                           <CardTitle className="text-base font-bold text-slate-800">My Care Network</CardTitle>
                                           <p className="text-xs text-slate-500 mt-1">Manage your team of specialists and referral network.</p>
                                       </div>
-                                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 h-8 text-xs gap-1.5">
-                                          <Plus className="w-3.5 h-3.5" /> Add Team Member
-                                      </Button>
+                                      <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 h-8 text-xs gap-1.5">
+                                                <Plus className="w-3.5 h-3.5" /> Add Team Member
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="sm:max-w-[425px]">
+                                            <DialogHeader>
+                                                <DialogTitle>Add Team Member</DialogTitle>
+                                                <DialogDescription>
+                                                    Add a specialist or facility to your care network.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="grid gap-4 py-4">
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <Label htmlFor="name" className="text-right text-xs">
+                                                        Name
+                                                    </Label>
+                                                    <Input id="name" placeholder="Dr. John Doe" className="col-span-3 h-8 text-xs" />
+                                                </div>
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <Label htmlFor="role" className="text-right text-xs">
+                                                        Role
+                                                    </Label>
+                                                    <Select>
+                                                        <SelectTrigger className="col-span-3 h-8 text-xs">
+                                                            <SelectValue placeholder="Select role" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="pediatrician">Pediatrician</SelectItem>
+                                                            <SelectItem value="anesthetist">Anesthetist</SelectItem>
+                                                            <SelectItem value="nursing_home">Nursing Home</SelectItem>
+                                                            <SelectItem value="nutritionist">Nutritionist</SelectItem>
+                                                            <SelectItem value="other">Other</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <Label htmlFor="affiliation" className="text-right text-xs">
+                                                        Clinic/Facility
+                                                    </Label>
+                                                    <Input id="affiliation" placeholder="City Hospital" className="col-span-3 h-8 text-xs" />
+                                                </div>
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <Label htmlFor="phone" className="text-right text-xs">
+                                                        Phone
+                                                    </Label>
+                                                    <Input id="phone" placeholder="+1 234 567 890" className="col-span-3 h-8 text-xs" />
+                                                </div>
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <Label htmlFor="email" className="text-right text-xs">
+                                                        Email
+                                                    </Label>
+                                                    <Input id="email" placeholder="doctor@example.com" className="col-span-3 h-8 text-xs" />
+                                                </div>
+                                            </div>
+                                            <DialogFooter>
+                                                <Button variant="outline" size="sm" onClick={() => setIsAddMemberOpen(false)}>Cancel</Button>
+                                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => setIsAddMemberOpen(false)}>Add Member</Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                      </Dialog>
                                   </CardHeader>
                                   <CardContent className="space-y-4">
                                       
