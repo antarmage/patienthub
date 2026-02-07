@@ -98,9 +98,11 @@ const follicleData = [
 ];
 
 const usgData = [
-  { week: 12, efw: 14, afi: 5 },
-  { week: 20, efw: 300, afi: 12 },
-  { week: 24, efw: 600, afi: 14 },
+  { week: 12, hc: 60, ac: 55, fl: 8 },
+  { week: 16, hc: 110, ac: 100, fl: 20 },
+  { week: 20, hc: 180, ac: 160, fl: 32 },
+  { week: 24, hc: 220, ac: 200, fl: 43 },
+  { week: 28, hc: 260, ac: 240, fl: 52 },
 ];
 
 export default function ClinicianPortal() {
@@ -412,6 +414,23 @@ export default function ClinicianPortal() {
                                     <div className="bg-white/80 p-3 rounded border border-slate-100 shadow-sm text-center">
                                        <div className="text-[10px] text-slate-500 uppercase font-bold">Placenta</div>
                                        <div className="text-lg font-bold text-slate-800">Posterior <span className="text-xs font-normal text-slate-400">Gr I</span></div>
+                                    </div>
+                                 </div>
+                                 
+                                 {/* NEW: Head Circumference Growth Chart */}
+                                 <div className="bg-white/60 rounded-lg p-2 border border-slate-100 mt-2">
+                                    <div className="text-xs font-semibold text-slate-600 mb-2 pl-2">Growth Trends (HC/AC/FL)</div>
+                                    <div className="h-[180px] w-full">
+                                       <ResponsiveContainer width="100%" height="100%">
+                                          <LineChart data={usgData}>
+                                             <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
+                                             <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
+                                             <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                                             <Line type="monotone" dataKey="hc" stroke="#3b82f6" strokeWidth={2} name="Head Circ (mm)" dot={{r: 3}} />
+                                             <Line type="monotone" dataKey="ac" stroke="#10b981" strokeWidth={2} name="Abd Circ (mm)" dot={{r: 3}} />
+                                             <Line type="monotone" dataKey="fl" stroke="#f59e0b" strokeWidth={2} name="Femur Len (mm)" dot={{r: 3}} />
+                                          </LineChart>
+                                       </ResponsiveContainer>
                                     </div>
                                  </div>
                               </CardContent>
