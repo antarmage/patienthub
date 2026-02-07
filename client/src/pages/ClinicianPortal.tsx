@@ -170,7 +170,11 @@ export default function ClinicianPortal() {
           >
             <Users className="mr-3 h-4 w-4" /> Patients
           </Button>
-          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800/50">
+          <Button 
+            variant={activeView === 'schedule' ? 'secondary' : 'ghost'} 
+            className={`w-full justify-start ${activeView === 'schedule' ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20' : 'text-slate-300 hover:text-white hover:bg-slate-800/50'}`}
+            onClick={() => setActiveView('schedule')}
+          >
             <CalendarIcon className="mr-3 h-4 w-4" /> Schedule
           </Button>
           <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800/50">
@@ -592,6 +596,123 @@ export default function ClinicianPortal() {
 
              </div>
           </div>
+        )}
+
+        {/* SCHEDULE VIEW (NEW) */}
+        {activeView === 'schedule' && (
+           <div className="flex-1 overflow-y-auto p-6 flex flex-col h-full">
+              <div className="max-w-7xl mx-auto w-full h-full flex flex-col space-y-6">
+                 
+                 {/* Header & Sync Control */}
+                 <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-4 shadow-sm shrink-0">
+                    <div>
+                       <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                          <CalendarIcon className="w-5 h-5 text-blue-600" /> Clinical Schedule
+                       </h2>
+                       <p className="text-xs text-slate-500 mt-1">Manage appointments, procedures, and on-call shifts.</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                       <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-200">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                          <span className="text-xs font-medium text-slate-600">Google Calendar Synced</span>
+                       </div>
+                       <div className="h-6 w-px bg-slate-200"></div>
+                       <div className="flex bg-slate-100 p-1 rounded-lg">
+                          <Button variant="ghost" size="sm" className="h-7 text-xs bg-white text-slate-900 shadow-sm">Month</Button>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-slate-500 hover:text-slate-900">Week</Button>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-slate-500 hover:text-slate-900">Day</Button>
+                       </div>
+                       <Button className="bg-blue-600 hover:bg-blue-700 h-9 text-xs">
+                          <Plus className="w-4 h-4 mr-2" /> New Event
+                       </Button>
+                    </div>
+                 </div>
+
+                 {/* Calendar Grid */}
+                 <Card className="flex-1 shadow-sm border-slate-200 flex flex-col overflow-hidden">
+                    {/* Days Header */}
+                    <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+                       {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                          <div key={day} className="py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+                             {day}
+                          </div>
+                       ))}
+                    </div>
+                    
+                    {/* Calendar Cells */}
+                    <div className="grid grid-cols-7 flex-1 auto-rows-fr divide-x divide-slate-100 divide-y">
+                       {/* Previous Month Days */}
+                       {[29, 30].map(day => (
+                          <div key={`prev-${day}`} className="min-h-[100px] bg-slate-50/50 p-2 opacity-50">
+                             <span className="text-xs font-medium text-slate-400">{day}</span>
+                          </div>
+                       ))}
+
+                       {/* Current Month Days (October) */}
+                       {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                          <div key={day} className={`min-h-[100px] p-2 hover:bg-slate-50 transition-colors relative group ${day === 24 ? 'bg-blue-50/30' : ''}`}>
+                             <div className="flex justify-between items-start mb-1">
+                                <span className={`text-xs font-medium h-6 w-6 flex items-center justify-center rounded-full ${day === 24 ? 'bg-blue-600 text-white' : 'text-slate-700'}`}>
+                                   {day}
+                                </span>
+                                {day === 24 && <span className="text-[10px] font-bold text-blue-600">Today</span>}
+                             </div>
+                             
+                             {/* Mock Events */}
+                             <div className="space-y-1">
+                                {day === 2 && (
+                                   <div className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 truncate font-medium">
+                                      09:00 AM • IUI Proc
+                                   </div>
+                                )}
+                                {day === 8 && (
+                                   <div className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200 truncate font-medium">
+                                      11:30 AM • Conf
+                                   </div>
+                                )}
+                                {day === 12 && (
+                                   <div className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 truncate font-medium">
+                                      On-Call Shift
+                                   </div>
+                                )}
+                                {day === 24 && (
+                                   <>
+                                      <div className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 truncate font-medium flex items-center gap-1">
+                                         <div className="w-1 h-1 rounded-full bg-blue-500"></div> 9:00 • Ananya S.
+                                      </div>
+                                      <div className="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 border border-pink-200 truncate font-medium flex items-center gap-1">
+                                         <div className="w-1 h-1 rounded-full bg-pink-500"></div> 9:30 • Meera D.
+                                      </div>
+                                      <div className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 truncate font-medium opacity-70">
+                                         +4 more...
+                                      </div>
+                                   </>
+                                )}
+                                {day === 25 && (
+                                   <div className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 truncate font-medium flex items-center gap-1">
+                                      <div className="w-1 h-1 rounded-full bg-blue-500"></div> 10:00 • Priya K.
+                                   </div>
+                                )}
+                                {day === 28 && (
+                                   <div className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200 truncate font-medium">
+                                      Dept Meeting
+                                   </div>
+                                )}
+                             </div>
+                          </div>
+                       ))}
+
+                       {/* Next Month Days */}
+                       {[1, 2].map(day => (
+                          <div key={`next-${day}`} className="min-h-[100px] bg-slate-50/50 p-2 opacity-50">
+                             <span className="text-xs font-medium text-slate-400">{day}</span>
+                          </div>
+                       ))}
+                    </div>
+                 </Card>
+              </div>
+           </div>
         )}
 
         {/* PATIENT DETAIL VIEW (Previous Implementation) */}
