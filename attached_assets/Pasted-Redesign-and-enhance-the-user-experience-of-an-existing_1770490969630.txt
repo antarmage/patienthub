@@ -1,0 +1,227 @@
+Redesign and enhance the user experience of an existing clinician dashboard for Saivie Women’s Health Clinic. The platform already includes EMR, cycle intelligence, pregnancy monitoring, postpartum tracking, genomic risk data, and AI-based insights. Your goal is to make the UX faster, clearer, and more clinically actionable while keeping a calm, premium medical aesthetic.
+
+🎯 UX GOALS
+
+Reduce cognitive overload for doctors
+
+Surface critical insights within 5 seconds
+
+Make clinical decisions easier, not data heavier
+
+Maintain emotional softness (this is women’s health, not ICU software)
+
+🧭 GLOBAL UX IMPROVEMENTS
+1️⃣ Sticky Patient Context Header
+
+When a clinician opens a patient, a fixed header should always remain visible:
+
+Contains:
+
+Patient Name | Age
+
+Life Stage Tag (Cycle / TTC / Pregnant / Postpartum)
+
+Risk Badge (Low / Moderate / High)
+
+Cycle Day OR Gestational Week OR Postpartum Week
+
+Last Visit Date
+
+Right side quick buttons:
+[ Add Note ] [ Order Lab ] [ Send Insight to Patient ]
+
+This prevents doctors from losing context while scrolling.
+
+2️⃣ Convert Long Pages into Smart Collapsible Cards
+
+Each major section should be a card with visual priority levels
+
+Card types:
+
+🔴 Critical Alert Card
+
+🟠 Needs Attention Card
+
+🟢 Stable Info Card
+
+Example:
+🔴 “Luteal Phase < 9 days detected”
+🟠 “Sleep deficit increasing PMS severity”
+🟢 “Cycle length stable for 3 months”
+
+Doctors should immediately see what needs action vs what is informational.
+
+3️⃣ Add a “Clinical Snapshot” Summary at Top
+
+Before graphs and data, show a one-glance medical summary:
+
+Reproductive Snapshot
+
+Avg Cycle: 28d | Ovulatory: Yes
+
+Luteal Length: 9d (borderline short)
+
+PMS Severity: Moderate
+
+TTC: Yes (3 months)
+
+Genomic Risks: PCOS ↑, Thyroid ↑
+
+This saves doctors from reading the whole chart.
+
+🧠 REPRODUCTIVE INTELLIGENCE PANEL UX
+Make Graphs Clinician-Readable, Not Decorative
+
+Use clean medical-style line graphs
+
+Toggle buttons: Hormones | Symptoms | Combined
+
+Hovering over a day shows:
+“Cycle Day 21 – Progesterone peak expected, pain score 6/10 logged”
+
+Add AI Interpretation Box under each graph:
+
+“Pain clusters in mid-luteal phase across 3 cycles. Pattern suggests progesterone sensitivity.”
+
+This turns visuals into clinical reasoning, not just charts.
+
+🧬 GENOMIC PANEL UX IMPROVEMENT
+
+Instead of listing risks, use tiered cards:
+
+PCOS Predisposition
+Risk Level: High
+Clinical Meaning: Higher likelihood of insulin resistance and ovulatory irregularity
+
+Button:
+[ See How This Affects Current Cycle ]
+
+This connects static genetics → active physiology.
+
+🤰 PREGNANCY PANEL UX
+Replace scattered data with Trimester-Based Layout
+
+Header:
+Week 24 • Second Trimester
+
+Below in 3 columns:
+
+Maternal Trends
+
+Weight vs expected
+
+BP trend
+
+Fatigue score
+
+Fetal Indicators
+
+Movement logs
+
+Growth scan summary
+
+Risk Watch
+
+GDM risk
+
+Pre-eclampsia risk
+
+Anemia likelihood
+
+AI Insight should always be in a highlighted soft panel:
+
+“BP rising faster than baseline. Monitor weekly.”
+
+🤱 POSTPARTUM PANEL UX
+
+This should feel like recovery tracking, not pregnancy leftover.
+
+Top recovery score bar:
+Physical Recovery | Hormone Reset | Mood Stability | Lactation
+
+Color coded bars show progress.
+
+Below that:
+
+Flag Cards
+🟠 Sleep deficit worsening mood trend
+🔴 Thyroid risk markers + fatigue
+🟢 Pelvic recovery progressing well
+
+📝 EMR UX IMPROVEMENT
+Convert EMR tabs into timeline view
+
+Instead of only folders, add:
+
+Clinical Timeline
+
+Jan 12: Severe PMS reported
+
+Feb 02: Progesterone started
+
+Mar 01: Symptoms improved 40%
+
+Doctors understand progression instantly.
+
+SOAP notes should have AI Assist button:
+“Summarize last 3 months of cycle data for assessment”
+
+🤖 AI INSIGHT UX
+
+AI should never look like a chatbot.
+
+Use:
+
+Clinical Insight Box
+Soft shaded panel with:
+
+Pattern Detected
+Why It Matters
+Suggested Saivie Pathway
+
+Example:
+
+Pattern: Short luteal phase recurring
+Why it matters: May reduce implantation chances
+Suggested Pathway: Saivie Luteal Support Program
+
+💬 PATIENT COMMUNICATION UX
+
+When doctor clicks Send Insight to Patient, show preview:
+
+Doctor View:
+“Progesterone support may help luteal stability.”
+
+Patient View Preview:
+“Your body may benefit from extra hormone support after ovulation. Your Saivie doctor will guide you.”
+
+This prevents doctors from worrying about tone.
+
+🎨 VISUAL DESIGN RULES
+
+Rounded cards, soft shadows
+
+No harsh red — use muted coral for alerts
+
+Plenty of white space
+
+Calm, premium, intelligent
+
+Dashboard should feel like a women’s health command center, not hospital software
+
+⚡ PERFORMANCE UX
+
+Dashboard must load key summary within 2 seconds
+
+Lazy-load heavy charts
+
+Mobile-friendly tablet mode for clinic use
+
+FINAL DESIGN INTENT
+
+This clinician platform should feel like:
+
+“I understand this patient’s biology in 30 seconds, and I know exactly what to do next.”
+
+Not cluttered. Not generic EMR.
+This is Saivie’s intelligent women’s health operating system 🌸🧠
