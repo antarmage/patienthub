@@ -76,11 +76,11 @@ import fetalBiometryBg from "../assets/images/fetal-biometry-bg.png";
 
 // Mock Data
 const patients = [
-  { id: 1, name: "Ananya S.", age: 29, status: "High Risk", focus: "Natural Conception", lastVisit: "2 days ago", cycleDay: 14, avatar: "AS", mode: "natural_conception", referredBy: "Dr. Sharma (GP)", referredTo: "Nutritionist" },
-  { id: 2, name: "Meera D.", age: 34, status: "Monitor", focus: "Pregnancy Wk 24", lastVisit: "1 week ago", cycleDay: null, avatar: "MD", mode: "pregnancy", referredBy: "Self", referredTo: "Fetal Medicine" },
-  { id: 3, name: "Sarah J.", age: 31, status: "Stable", focus: "Postpartum Wk 6", lastVisit: "3 weeks ago", cycleDay: null, avatar: "SJ", mode: "postpartum", referredBy: "Dr. Khan (OBGYN)", referredTo: "Psychologist" },
-  { id: 4, name: "Elena R.", age: 36, status: "Active Cycle", focus: "IUI Cycle #2", lastVisit: "Yesterday", cycleDay: 11, avatar: "ER", mode: "iui", referredBy: "Dr. Patel (Endo)", referredTo: "-" },
-  { id: 5, name: "Priya K.", age: 28, status: "Assessment", focus: "PCOS Mgmt", lastVisit: "Today", cycleDay: 21, avatar: "PK", mode: "hormone_care", referredBy: "Dr. Lee (Derm)", referredTo: "Dietitian" },
+  { id: 1, name: "Ananya S.", age: 29, status: "High Risk", focus: "Natural Conception", lastVisit: "2 days ago", cycleDay: 14, avatar: "AS", mode: "natural_conception", referredBy: "Dr. Sharma (GP)", referredTo: "Nutritionist", vaccination: "Up to Date", insurance: "Private (Gold)", contraception: "None (TTC)" },
+  { id: 2, name: "Meera D.", age: 34, status: "Monitor", focus: "Pregnancy Wk 24", lastVisit: "1 week ago", cycleDay: null, avatar: "MD", mode: "pregnancy", referredBy: "Self", referredTo: "Fetal Medicine", vaccination: "Flu Shot Due", insurance: "Corporate", contraception: "N/A" },
+  { id: 3, name: "Sarah J.", age: 31, status: "Stable", focus: "Postpartum Wk 6", lastVisit: "3 weeks ago", cycleDay: null, avatar: "SJ", mode: "postpartum", referredBy: "Dr. Khan (OBGYN)", referredTo: "Psychologist", vaccination: "Completed", insurance: "Self-Pay", contraception: "Discussing (IUD)" },
+  { id: 4, name: "Elena R.", age: 36, status: "Active Cycle", focus: "IUI Cycle #2", lastVisit: "Yesterday", cycleDay: 11, avatar: "ER", mode: "iui", referredBy: "Dr. Patel (Endo)", referredTo: "-", vaccination: "Up to Date", insurance: "Private", contraception: "None (TTC)" },
+  { id: 5, name: "Priya K.", age: 28, status: "Assessment", focus: "PCOS Mgmt", lastVisit: "Today", cycleDay: 21, avatar: "PK", mode: "hormone_care", referredBy: "Dr. Lee (Derm)", referredTo: "Dietitian", vaccination: "HPV Due", insurance: "Corporate", contraception: "Oral Pill" },
 ];
 
 const hormoneData = [
@@ -1680,12 +1680,32 @@ export default function ClinicianPortal() {
                  </div>
                  
                  {/* Risk Badge */}
-                 {selectedPatient.status === "High Risk" && (
-                    <div className="px-3 py-1 bg-rose-50 border border-rose-100 rounded-full flex items-center gap-1.5">
-                       <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                       <span className="text-xs font-semibold text-rose-700">High Risk</span>
+                 <div className="flex items-center gap-3">
+                    {/* NEW: Vaccination, Insurance, Contraception Flags */}
+                    <div className="hidden md:flex items-center gap-3 mr-4 border-r border-slate-200 pr-4">
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Vaccination</span>
+                            <Badge variant="outline" className={`text-[10px] h-5 border-slate-200 ${selectedPatient.vaccination === 'Up to Date' || selectedPatient.vaccination === 'Completed' ? 'text-emerald-600 bg-emerald-50' : 'text-amber-600 bg-amber-50'}`}>
+                                {selectedPatient.vaccination}
+                            </Badge>
+                        </div>
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Insurance</span>
+                            <span className="text-xs font-medium text-slate-700">{selectedPatient.insurance}</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Contraception</span>
+                            <span className="text-xs font-medium text-slate-700">{selectedPatient.contraception}</span>
+                        </div>
                     </div>
-                 )}
+
+                    {selectedPatient.status === "High Risk" && (
+                        <div className="px-3 py-1 bg-rose-50 border border-rose-100 rounded-full flex items-center gap-1.5">
+                           <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                           <span className="text-xs font-semibold text-rose-700">High Risk</span>
+                        </div>
+                    )}
+                 </div>
               </div>
 
               {/* Quick Actions */}
