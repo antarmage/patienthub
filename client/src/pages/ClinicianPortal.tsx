@@ -227,6 +227,14 @@ export default function ClinicianPortal() {
                       </div>
                       <div className="h-8 w-px bg-slate-100"></div>
                       <div className="flex items-center gap-3">
+                         <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><FileText className="w-5 h-5" /></div>
+                         <div>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Referrals In/Out</p>
+                            <p className="text-xl font-bold text-slate-900">4 <span className="text-sm text-slate-400 font-normal">/ 2</span></p>
+                         </div>
+                      </div>
+                      <div className="h-8 w-px bg-slate-100"></div>
+                      <div className="flex items-center gap-3">
                          <div className="p-2 bg-rose-50 rounded-lg text-rose-600"><AlertTriangle className="w-5 h-5" /></div>
                          <div>
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">High Risk Alerts</p>
@@ -508,6 +516,40 @@ export default function ClinicianPortal() {
                               <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
                                  <span className="text-xs font-medium text-slate-600">Contraception</span>
                                  <Badge className="bg-slate-100 text-slate-700 border-none">3 Due</Badge>
+                              </div>
+                           </div>
+                        </CardContent>
+                     </Card>
+
+                     {/* SECTION - USG REFERRALS */}
+                     <Card className="shadow-sm border-slate-200 overflow-hidden">
+                        <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
+                           <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                              <Activity className="w-4 h-4 text-blue-600" /> USG Referrals
+                           </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                           <div className="divide-y divide-slate-100">
+                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
+                                 <div>
+                                    <p className="text-xs font-medium text-slate-800">Ananya S.</p>
+                                    <p className="text-[10px] text-slate-500">Follicular Study (Day 12)</p>
+                                 </div>
+                                 <Badge variant="outline" className="text-slate-500 border-slate-200">Scheduled</Badge>
+                              </div>
+                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
+                                 <div>
+                                    <p className="text-xs font-medium text-slate-800">Meera D.</p>
+                                    <p className="text-[10px] text-slate-500">Anomaly Scan (Week 20)</p>
+                                 </div>
+                                 <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none">Completed</Badge>
+                              </div>
+                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
+                                 <div>
+                                    <p className="text-xs font-medium text-slate-800">Elena R.</p>
+                                    <p className="text-[10px] text-slate-500">Early Pregnancy Scan</p>
+                                 </div>
+                                 <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">Pending</Badge>
                               </div>
                            </div>
                         </CardContent>
