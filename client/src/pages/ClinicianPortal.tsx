@@ -578,7 +578,30 @@ export default function ClinicianPortal() {
                           <span className="text-slate-300">•</span>
                           <span className="text-xs text-slate-500">Ref By: {selectedPatient.referredBy}</span>
                           <span className="text-slate-300">•</span>
-                          <span className="text-xs text-slate-500">Ref To: {selectedPatient.referredTo}</span>
+                          
+                          <div className="flex items-center gap-2">
+                             <div className="flex items-center gap-1">
+                                <span className="text-xs text-slate-500 whitespace-nowrap">Ref To:</span>
+                                <Select defaultValue={selectedPatient.referredTo !== "-" ? selectedPatient.referredTo : undefined}>
+                                  <SelectTrigger className="h-6 text-[10px] bg-slate-50 border-slate-200 w-[110px] min-w-[110px]">
+                                    <SelectValue placeholder="None" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Fetal Medicine">Fetal Medicine</SelectItem>
+                                    <SelectItem value="Nutritionist">Nutritionist</SelectItem>
+                                    <SelectItem value="Psychologist">Psychologist</SelectItem>
+                                    <SelectItem value="Endocrinologist">Endocrinologist</SelectItem>
+                                    <SelectItem value="Dietitian">Dietitian</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                             </div>
+
+                             <div className="flex items-center gap-1 ml-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
+                                <Checkbox id="lifestyle-mod" className="h-3 w-3 rounded-full data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500" />
+                                <label htmlFor="lifestyle-mod" className="text-[10px] font-medium text-slate-600 cursor-pointer select-none">Lifestyle Mod</label>
+                             </div>
+                          </div>
+
                           <span className="text-slate-300">•</span>
                           
                           {/* 4. CARE PATHWAY SWITCH */}
