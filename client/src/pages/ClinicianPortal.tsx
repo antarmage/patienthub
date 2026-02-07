@@ -121,6 +121,7 @@ export default function ClinicianPortal() {
   const [selectedPatient, setSelectedPatient] = useState(patients[0]);
   const [careMode, setCareMode] = useState("natural_conception"); 
   const [showDocumentation, setShowDocumentation] = useState(false);
+  const [scheduleViewMode, setScheduleViewMode] = useState("appointments"); // 'appointments' or 'occupancy'
 
   // Sync care mode when patient changes
   useEffect(() => {
@@ -618,6 +619,27 @@ export default function ClinicianPortal() {
                           <span className="text-xs font-medium text-slate-600">Google Calendar Synced</span>
                        </div>
                        <div className="h-6 w-px bg-slate-200"></div>
+                       
+                       <div className="flex items-center bg-slate-100 p-1 rounded-lg">
+                          <Button 
+                             variant="ghost" 
+                             size="sm" 
+                             className={`h-7 text-xs ${scheduleViewMode === 'appointments' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                             onClick={() => setScheduleViewMode('appointments')}
+                          >
+                             Appointments
+                          </Button>
+                          <Button 
+                             variant="ghost" 
+                             size="sm" 
+                             className={`h-7 text-xs ${scheduleViewMode === 'occupancy' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                             onClick={() => setScheduleViewMode('occupancy')}
+                          >
+                             Occupancy
+                          </Button>
+                       </div>
+
+                       <div className="h-6 w-px bg-slate-200"></div>
                        <div className="flex bg-slate-100 p-1 rounded-lg">
                           <Button variant="ghost" size="sm" className="h-7 text-xs bg-white text-slate-900 shadow-sm">Month</Button>
                           <Button variant="ghost" size="sm" className="h-7 text-xs text-slate-500 hover:text-slate-900">Week</Button>
@@ -803,43 +825,70 @@ export default function ClinicianPortal() {
                              
                              {/* Mock Events */}
                              <div className="space-y-1">
-                                {day === 2 && (
-                                   <div className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 truncate font-medium">
-                                      09:00 AM • IUI Proc
+                                {scheduleViewMode === 'occupancy' ? (
+                                   // OCCUPANCY VIEW
+                                   <div className="space-y-1.5 mt-2">
+                                      <div className="space-y-0.5">
+                                         <div className="flex justify-between text-[10px] text-slate-500 font-medium"><span>OT-1</span> <span>80%</span></div>
+                                         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-full bg-rose-500 w-[80%] rounded-full"></div>
+                                         </div>
+                                      </div>
+                                      <div className="space-y-0.5">
+                                         <div className="flex justify-between text-[10px] text-slate-500 font-medium"><span>OT-2</span> <span>40%</span></div>
+                                         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-full bg-emerald-500 w-[40%] rounded-full"></div>
+                                         </div>
+                                      </div>
+                                      <div className="space-y-0.5">
+                                         <div className="flex justify-between text-[10px] text-slate-500 font-medium"><span>Beds</span> <span>90%</span></div>
+                                         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-full bg-amber-500 w-[90%] rounded-full"></div>
+                                         </div>
+                                      </div>
                                    </div>
-                                )}
-                                {day === 8 && (
-                                   <div className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200 truncate font-medium">
-                                      11:30 AM • Conf
-                                   </div>
-                                )}
-                                {day === 12 && (
-                                   <div className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 truncate font-medium">
-                                      On-Call Shift
-                                   </div>
-                                )}
-                                {day === 24 && (
+                                ) : (
+                                   // APPOINTMENTS VIEW (Default)
                                    <>
-                                      <div className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 truncate font-medium flex items-center gap-1">
-                                         <div className="w-1 h-1 rounded-full bg-blue-500"></div> 9:00 • Ananya S.
-                                      </div>
-                                      <div className="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 border border-pink-200 truncate font-medium flex items-center gap-1">
-                                         <div className="w-1 h-1 rounded-full bg-pink-500"></div> 9:30 • Meera D.
-                                      </div>
-                                      <div className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 truncate font-medium opacity-70">
-                                         +4 more...
-                                      </div>
+                                      {day === 2 && (
+                                         <div className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 truncate font-medium">
+                                            09:00 AM • IUI Proc
+                                         </div>
+                                      )}
+                                      {day === 8 && (
+                                         <div className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200 truncate font-medium">
+                                            11:30 AM • Conf
+                                         </div>
+                                      )}
+                                      {day === 12 && (
+                                         <div className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 truncate font-medium">
+                                            On-Call Shift
+                                         </div>
+                                      )}
+                                      {day === 24 && (
+                                         <>
+                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 truncate font-medium flex items-center gap-1">
+                                               <div className="w-1 h-1 rounded-full bg-blue-500"></div> 9:00 • Ananya S.
+                                            </div>
+                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 border border-pink-200 truncate font-medium flex items-center gap-1">
+                                               <div className="w-1 h-1 rounded-full bg-pink-500"></div> 9:30 • Meera D.
+                                            </div>
+                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 truncate font-medium opacity-70">
+                                               +4 more...
+                                            </div>
+                                         </>
+                                      )}
+                                      {day === 25 && (
+                                         <div className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 truncate font-medium flex items-center gap-1">
+                                            <div className="w-1 h-1 rounded-full bg-blue-500"></div> 10:00 • Priya K.
+                                         </div>
+                                      )}
+                                      {day === 28 && (
+                                         <div className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200 truncate font-medium">
+                                            Dept Meeting
+                                         </div>
+                                      )}
                                    </>
-                                )}
-                                {day === 25 && (
-                                   <div className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 truncate font-medium flex items-center gap-1">
-                                      <div className="w-1 h-1 rounded-full bg-blue-500"></div> 10:00 • Priya K.
-                                   </div>
-                                )}
-                                {day === 28 && (
-                                   <div className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200 truncate font-medium">
-                                      Dept Meeting
-                                   </div>
                                 )}
                              </div>
                           </div>
