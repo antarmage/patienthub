@@ -74,11 +74,11 @@ import fetalBiometryBg from "../assets/images/fetal-biometry-bg.png";
 
 // Mock Data
 const patients = [
-  { id: 1, name: "Ananya S.", age: 29, status: "High Risk", focus: "Natural Conception", lastVisit: "2 days ago", cycleDay: 14, avatar: "AS", mode: "natural_conception" },
-  { id: 2, name: "Meera D.", age: 34, status: "Monitor", focus: "Pregnancy Wk 24", lastVisit: "1 week ago", cycleDay: null, avatar: "MD", mode: "pregnancy" },
-  { id: 3, name: "Sarah J.", age: 31, status: "Stable", focus: "Postpartum Wk 6", lastVisit: "3 weeks ago", cycleDay: null, avatar: "SJ", mode: "postpartum" },
-  { id: 4, name: "Elena R.", age: 36, status: "Active Cycle", focus: "IUI Cycle #2", lastVisit: "Yesterday", cycleDay: 11, avatar: "ER", mode: "iui" },
-  { id: 5, name: "Priya K.", age: 28, status: "Assessment", focus: "PCOS Mgmt", lastVisit: "Today", cycleDay: 21, avatar: "PK", mode: "hormone_care" },
+  { id: 1, name: "Ananya S.", age: 29, status: "High Risk", focus: "Natural Conception", lastVisit: "2 days ago", cycleDay: 14, avatar: "AS", mode: "natural_conception", referredBy: "Dr. Sharma (GP)", referredTo: "Nutritionist" },
+  { id: 2, name: "Meera D.", age: 34, status: "Monitor", focus: "Pregnancy Wk 24", lastVisit: "1 week ago", cycleDay: null, avatar: "MD", mode: "pregnancy", referredBy: "Self", referredTo: "Fetal Medicine" },
+  { id: 3, name: "Sarah J.", age: 31, status: "Stable", focus: "Postpartum Wk 6", lastVisit: "3 weeks ago", cycleDay: null, avatar: "SJ", mode: "postpartum", referredBy: "Dr. Khan (OBGYN)", referredTo: "Psychologist" },
+  { id: 4, name: "Elena R.", age: 36, status: "Active Cycle", focus: "IUI Cycle #2", lastVisit: "Yesterday", cycleDay: 11, avatar: "ER", mode: "iui", referredBy: "Dr. Patel (Endo)", referredTo: "-" },
+  { id: 5, name: "Priya K.", age: 28, status: "Assessment", focus: "PCOS Mgmt", lastVisit: "Today", cycleDay: 21, avatar: "PK", mode: "hormone_care", referredBy: "Dr. Lee (Derm)", referredTo: "Dietitian" },
 ];
 
 const hormoneData = [
@@ -575,6 +575,10 @@ export default function ClinicianPortal() {
                        <h2 className="text-lg font-bold text-slate-900 leading-none">{selectedPatient.name}</h2>
                        <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-slate-500">Age: {selectedPatient.age}</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="text-xs text-slate-500">Ref By: {selectedPatient.referredBy}</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="text-xs text-slate-500">Ref To: {selectedPatient.referredTo}</span>
                           <span className="text-slate-300">•</span>
                           
                           {/* 4. CARE PATHWAY SWITCH */}
