@@ -169,6 +169,7 @@ export default function ClinicianPortal() {
   const [careMode, setCareMode] = useState("natural_conception"); 
   const [showDocumentation, setShowDocumentation] = useState(false);
   const [scheduleViewMode, setScheduleViewMode] = useState("appointments"); // 'appointments' or 'occupancy'
+  const [activeSettingsTab, setActiveSettingsTab] = useState("profile"); // 'profile' or 'availability'
 
   // Sync care mode when patient changes
   useEffect(() => {
@@ -1523,13 +1524,21 @@ export default function ClinicianPortal() {
                    <Card className="h-fit shadow-sm border-slate-200">
                       <CardContent className="p-2">
                          <nav className="space-y-1">
-                            <Button variant="ghost" className="w-full justify-start bg-slate-100 text-slate-900 font-medium">
+                            <Button 
+                               variant="ghost" 
+                               className={`w-full justify-start font-medium ${activeSettingsTab === 'profile' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                               onClick={() => setActiveSettingsTab('profile')}
+                            >
                                <Users className="w-4 h-4 mr-3" /> Profile Details
                             </Button>
                             <Button variant="ghost" className="w-full justify-start text-slate-500 hover:text-slate-900">
                                <Bell className="w-4 h-4 mr-3" /> Notifications
                             </Button>
-                            <Button variant="ghost" className="w-full justify-start text-slate-500 hover:text-slate-900">
+                            <Button 
+                               variant="ghost" 
+                               className={`w-full justify-start font-medium ${activeSettingsTab === 'availability' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                               onClick={() => setActiveSettingsTab('availability')}
+                            >
                                <Briefcase className="w-4 h-4 mr-3" /> Clinic Availability
                             </Button>
                             <Button variant="ghost" className="w-full justify-start text-slate-500 hover:text-slate-900">
@@ -1542,82 +1551,191 @@ export default function ClinicianPortal() {
                    {/* Settings Content */}
                    <div className="md:col-span-2 space-y-6">
                       
-                      {/* Personal Info Card */}
-                      <Card className="shadow-sm border-slate-200">
-                         <CardHeader>
-                            <CardTitle className="text-base font-bold text-slate-800">Personal Information</CardTitle>
-                         </CardHeader>
-                         <CardContent className="space-y-4">
-                            <div className="flex items-center gap-4 mb-4">
-                               <Avatar className="h-16 w-16 border-2 border-white shadow-md">
-                                  <AvatarFallback className="bg-slate-800 text-white text-xl">DR</AvatarFallback>
-                               </Avatar>
-                               <div>
-                                  <Button variant="outline" size="sm" className="text-xs">Change Photo</Button>
-                               </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                               <div className="space-y-2">
-                                  <Label htmlFor="firstName">First Name</Label>
-                                  <Input id="firstName" defaultValue="David" />
-                               </div>
-                               <div className="space-y-2">
-                                  <Label htmlFor="lastName">Last Name</Label>
-                                  <Input id="lastName" defaultValue="Reynolds" />
-                               </div>
-                            </div>
+                      {activeSettingsTab === 'profile' && (
+                          <>
+                            {/* Personal Info Card */}
+                            <Card className="shadow-sm border-slate-200">
+                                <CardHeader>
+                                    <CardTitle className="text-base font-bold text-slate-800">Personal Information</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-center gap-4 mb-4">
+                                    <Avatar className="h-16 w-16 border-2 border-white shadow-md">
+                                        <AvatarFallback className="bg-slate-800 text-white text-xl">DR</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <Button variant="outline" size="sm" className="text-xs">Change Photo</Button>
+                                    </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="firstName">First Name</Label>
+                                        <Input id="firstName" defaultValue="David" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="lastName">Last Name</Label>
+                                        <Input id="lastName" defaultValue="Reynolds" />
+                                    </div>
+                                    </div>
 
-                            <div className="space-y-2">
-                               <Label htmlFor="specialty">Specialty</Label>
-                               <Input id="specialty" defaultValue="Reproductive Endocrinology" />
-                            </div>
+                                    <div className="space-y-2">
+                                    <Label htmlFor="specialty">Specialty</Label>
+                                    <Input id="specialty" defaultValue="Reproductive Endocrinology" />
+                                    </div>
 
-                            <div className="space-y-2">
-                               <Label htmlFor="email">Email Address</Label>
-                               <Input id="email" type="email" defaultValue="d.reynolds@helixcare.com" />
-                            </div>
+                                    <div className="space-y-2">
+                                    <Label htmlFor="email">Email Address</Label>
+                                    <Input id="email" type="email" defaultValue="d.reynolds@helixcare.com" />
+                                    </div>
 
-                            <div className="pt-4 flex justify-end">
-                               <Button className="bg-blue-600 hover:bg-blue-700">Save Changes</Button>
-                            </div>
-                         </CardContent>
-                      </Card>
+                                    <div className="pt-4 flex justify-end">
+                                    <Button className="bg-blue-600 hover:bg-blue-700">Save Changes</Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                      {/* Security Card */}
-                      <Card className="shadow-sm border-slate-200">
-                         <CardHeader>
-                            <CardTitle className="text-base font-bold text-slate-800">Security & Access</CardTitle>
-                         </CardHeader>
-                         <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
-                               <div>
-                                  <p className="text-sm font-medium text-slate-900">Two-Factor Authentication</p>
-                                  <p className="text-xs text-slate-500">Secure your account with 2FA.</p>
-                               </div>
-                               <Button variant="outline" size="sm" className="text-xs">Enable</Button>
-                            </div>
-                            
-                            <div className="space-y-2">
-                               <Label htmlFor="currentPass">Current Password</Label>
-                               <Input id="currentPass" type="password" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                               <div className="space-y-2">
-                                  <Label htmlFor="newPass">New Password</Label>
-                                  <Input id="newPass" type="password" />
-                               </div>
-                               <div className="space-y-2">
-                                  <Label htmlFor="confirmPass">Confirm Password</Label>
-                                  <Input id="confirmPass" type="password" />
-                               </div>
-                            </div>
-                            
-                            <div className="pt-4 flex justify-end">
-                               <Button variant="outline" className="text-slate-600 border-slate-300">Update Password</Button>
-                            </div>
-                         </CardContent>
-                      </Card>
+                            {/* Security Card */}
+                            <Card className="shadow-sm border-slate-200">
+                                <CardHeader>
+                                    <CardTitle className="text-base font-bold text-slate-800">Security & Access</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                    <div>
+                                        <p className="text-sm font-medium text-slate-900">Two-Factor Authentication</p>
+                                        <p className="text-xs text-slate-500">Secure your account with 2FA.</p>
+                                    </div>
+                                    <Button variant="outline" size="sm" className="text-xs">Enable</Button>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                    <Label htmlFor="currentPass">Current Password</Label>
+                                    <Input id="currentPass" type="password" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="newPass">New Password</Label>
+                                        <Input id="newPass" type="password" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="confirmPass">Confirm Password</Label>
+                                        <Input id="confirmPass" type="password" />
+                                    </div>
+                                    </div>
+                                    
+                                    <div className="pt-4 flex justify-end">
+                                    <Button variant="outline" className="text-slate-600 border-slate-300">Update Password</Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                          </>
+                      )}
+
+                      {activeSettingsTab === 'availability' && (
+                          <div className="space-y-6">
+                              <Card className="shadow-sm border-slate-200">
+                                  <CardHeader className="flex flex-row items-center justify-between">
+                                      <div>
+                                          <CardTitle className="text-base font-bold text-slate-800">Clinics & Locations</CardTitle>
+                                          <p className="text-xs text-slate-500 mt-1">Manage practicing locations and operating hours.</p>
+                                      </div>
+                                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 h-8 text-xs gap-1.5">
+                                          <Plus className="w-3.5 h-3.5" /> Add Clinic
+                                      </Button>
+                                  </CardHeader>
+                                  <CardContent className="space-y-4">
+                                      {/* Clinic 1 */}
+                                      <div className="bg-white border border-slate-200 rounded-lg p-4">
+                                          <div className="flex justify-between items-start mb-4">
+                                              <div className="flex items-center gap-3">
+                                                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                                                      <Briefcase className="w-5 h-5" />
+                                                  </div>
+                                                  <div>
+                                                      <h3 className="font-bold text-slate-900 text-sm">HelixCare Main Center</h3>
+                                                      <p className="text-xs text-slate-500">Koramangala, Bangalore</p>
+                                                  </div>
+                                              </div>
+                                              <div className="flex gap-2">
+                                                  <Button variant="outline" size="sm" className="h-7 text-xs">Edit</Button>
+                                                  <Button variant="outline" size="sm" className="h-7 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-100">Remove</Button>
+                                              </div>
+                                          </div>
+                                          
+                                          <div className="space-y-3">
+                                              <div className="grid grid-cols-7 gap-2">
+                                                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
+                                                      <div key={day} className={`text-center p-2 rounded border ${i < 5 ? 'bg-blue-50/50 border-blue-100' : 'bg-slate-50 border-slate-100 opacity-50'}`}>
+                                                          <p className="text-[10px] font-bold text-slate-600 mb-1">{day}</p>
+                                                          {i < 5 ? (
+                                                              <p className="text-[10px] text-blue-700 font-medium">09:00 - 17:00</p>
+                                                          ) : (
+                                                              <p className="text-[10px] text-slate-400">Closed</p>
+                                                          )}
+                                                      </div>
+                                                  ))}
+                                              </div>
+                                          </div>
+                                      </div>
+
+                                      {/* Clinic 2 */}
+                                      <div className="bg-white border border-slate-200 rounded-lg p-4">
+                                          <div className="flex justify-between items-start mb-4">
+                                              <div className="flex items-center gap-3">
+                                                  <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600">
+                                                      <Briefcase className="w-5 h-5" />
+                                                  </div>
+                                                  <div>
+                                                      <h3 className="font-bold text-slate-900 text-sm">City Hospital (OPD)</h3>
+                                                      <p className="text-xs text-slate-500">Indiranagar, Bangalore</p>
+                                                  </div>
+                                              </div>
+                                              <div className="flex gap-2">
+                                                  <Button variant="outline" size="sm" className="h-7 text-xs">Edit</Button>
+                                                  <Button variant="outline" size="sm" className="h-7 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-100">Remove</Button>
+                                              </div>
+                                          </div>
+                                          
+                                          <div className="space-y-3">
+                                              <div className="grid grid-cols-7 gap-2">
+                                                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
+                                                      <div key={day} className={`text-center p-2 rounded border ${day === 'Sat' ? 'bg-purple-50/50 border-purple-100' : 'bg-slate-50 border-slate-100 opacity-50'}`}>
+                                                          <p className="text-[10px] font-bold text-slate-600 mb-1">{day}</p>
+                                                          {day === 'Sat' ? (
+                                                              <p className="text-[10px] text-purple-700 font-medium">10:00 - 14:00</p>
+                                                          ) : (
+                                                              <p className="text-[10px] text-slate-400">Closed</p>
+                                                          )}
+                                                      </div>
+                                                  ))}
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </CardContent>
+                              </Card>
+
+                              <Card className="shadow-sm border-slate-200">
+                                  <CardHeader>
+                                      <CardTitle className="text-base font-bold text-slate-800">Time Off & Exceptions</CardTitle>
+                                  </CardHeader>
+                                  <CardContent>
+                                      <div className="border border-slate-200 rounded-lg p-4 flex items-center justify-between">
+                                          <div className="flex items-center gap-3">
+                                              <div className="p-2 bg-amber-50 rounded text-amber-600">
+                                                  <CalendarIcon className="w-4 h-4" />
+                                              </div>
+                                              <div>
+                                                  <p className="text-sm font-bold text-slate-800">Upcoming Leave</p>
+                                                  <p className="text-xs text-slate-500">Nov 12 - Nov 15 • Personal Leave</p>
+                                              </div>
+                                          </div>
+                                          <Button variant="outline" size="sm" className="text-xs h-7">Manage</Button>
+                                      </div>
+                                  </CardContent>
+                              </Card>
+                          </div>
+                      )}
                    </div>
                 </div>
              </div>
