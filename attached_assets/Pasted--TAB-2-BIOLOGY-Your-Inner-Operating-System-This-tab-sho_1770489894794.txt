@@ -1,0 +1,129 @@
+🧬 TAB 2: BIOLOGY (Your Inner Operating System)
+
+This tab should feel like:
+
+“Let me understand why I feel this way.”
+
+Less motivational. More explanatory. Still soft.
+
+🌸 1️⃣ TOP HERO — “Your Body Today”
+
+A calm, minimal summary bar at the top:
+
+Today Your Biology Is In:
+🟣 Ovulatory Hormone Rise
+🔥 High Metabolic Flexibility
+🧠 Social & Cognitive Peak
+
+This connects directly to the home screen but explains the mechanism behind it.
+
+🧠 2️⃣ HORMONE RHYTHM SECTION
+Title: Hormone Landscape
+
+A horizontal graph (smooth curves, pastel lines) showing:
+
+Estrogen
+
+Progesterone
+
+LH
+
+FSH
+
+📍 A glowing dot on Today (Day 14)
+
+When tapped:
+
+“Estrogen surge supports confidence, verbal fluency, and recovery.”
+
+This helps users trust the app scientifically.
+
+🔥 3️⃣ METABOLIC MODE
+
+Card style, similar softness as home but more data-like:
+
+Your Current Metabolic State:
+✨ Carb Tolerant Phase
+🧬 Insulin sensitivity is higher
+💪 Muscles recover faster
+
+Mini trend graph: last 5 days → next 5 predicted
+
+🧬 4️⃣ YOUR BIOLOGICAL PATTERN (PERSONALIZATION ZONE)
+
+This is where AI intelligence shines.
+
+Title: Your Cycle Signature
+
+A monthly wave graph showing:
+
+Energy pattern
+
+Mood stability
+
+Sleep depth
+
+Workout response
+
+User sees:
+“Your energy tends to peak 1–2 days before ovulation.”
+
+This makes the app feel person-specific, not generic.
+
+🧬 5️⃣ GENETIC TENDENCIES (Future-Ready Section)
+
+Even if genomics isn’t live yet, design the space now.
+
+Title: Your Biological Blueprint
+
+Subtitle: “How your genetics may shape your cycle experience”
+
+Example traits:
+
+🧬 Estrogen metabolism: Slightly slower
+🌙 Progesterone sensitivity: High
+🔥 Inflammation response: Elevated late cycle
+
+Each expands to:
+“What this means for you” (plain language)
+
+This makes your app feel 5 years ahead of competitors.
+
+🌙 6️⃣ NERVOUS SYSTEM & MOOD BIOLOGY
+
+Title: Mind & Nervous System
+
+Today:
+🧠 Social confidence ↑
+💬 Verbal fluency ↑
+😴 Sleep depth slightly lighter
+
+This connects biology to daily life decisions.
+
+💡 7️⃣ SMART INSIGHT STRIP (BOTTOM)
+
+Rotating science-backed nudges:
+
+“Your body may respond well to strength training today”
+
+“High estrogen can improve pain tolerance”
+
+“Good day for social visibility”
+
+Less emotional than Home, more explanatory.
+
+🧭 NAVIGATION DIFFERENCE (IMPORTANT)
+HOME	BIOLOGY
+What should I do today?	Why is my body like this today?
+Guidance	Explanation
+Emotional	Scientific
+Short cards	Expandable modules
+
+They should feel like left brain vs right brain of the same system
+
+🎨 Visual Tone Difference
+Home	Biology
+Warmer glow	Cooler soft tones
+Motivational	Informational
+Big statements	Structured modules
+Daily focused	Pattern focused

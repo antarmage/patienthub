@@ -23,6 +23,8 @@ import { CycleWheel } from "@/components/CycleWheel";
 import calmGradient from "../assets/images/calm-gradient.png";
 import softCardBg from "../assets/images/soft-card-bg.png";
 
+import BiologyTab from "@/components/BiologyTab";
+
 export default function PatientPortal() {
   const [activeTab, setActiveTab] = useState("home");
   const [mode, setMode] = useState("general"); // general, ttc, ivf
@@ -181,12 +183,8 @@ export default function PatientPortal() {
             </div>
           </TabsContent>
 
-          <TabsContent value="biology" className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-             {/* Reused existing content but styled */}
-             <div className="p-6 text-center">
-                <h2 className="text-2xl font-serif">Biology Deep Dive</h2>
-                <p className="text-muted-foreground mt-2">Explore your genomic blueprint.</p>
-             </div>
+          <TabsContent value="biology" className="animate-in slide-in-from-bottom-4 duration-500">
+             <BiologyTab />
           </TabsContent>
 
           <TabsContent value="insights" className="animate-in slide-in-from-bottom-4 duration-500">
