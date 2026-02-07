@@ -52,7 +52,8 @@ import {
   Line,
   BarChart,
   Bar,
-  ComposedChart
+  ComposedChart,
+  LineChart
 } from "recharts";
 import medicalDashboardBg from "../assets/images/medical-dashboard-bg.png";
 import pregnancyGrowthBg from "../assets/images/pregnancy-growth-bg.png";
