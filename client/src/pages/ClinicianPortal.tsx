@@ -28,7 +28,12 @@ import {
   Timer,
   Microscope,
   CalendarCheck,
-  Scale
+  Scale,
+  Thermometer,
+  Printer,
+  Download,
+  Send,
+  Plus
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,6 +45,8 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   AreaChart, 
@@ -109,6 +116,7 @@ const usgData = [
 export default function ClinicianPortal() {
   const [selectedPatient, setSelectedPatient] = useState(patients[0]);
   const [careMode, setCareMode] = useState("natural_conception"); 
+  const [showDocumentation, setShowDocumentation] = useState(false);
 
   // Sync care mode when patient changes
   useEffect(() => {
@@ -280,6 +288,222 @@ export default function ClinicianPortal() {
           <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
             <div className="max-w-7xl mx-auto space-y-6">
                
+               {/* 1. CURRENT VISIT CLINICAL WORKSPACE (SOAP) - EXPANDED */}
+               <Card className="shadow-md border-blue-100 bg-white overflow-hidden">
+                  <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center cursor-pointer" onClick={() => setShowDocumentation(!showDocumentation)}>
+                     <h3 className="font-bold text-sm text-slate-700 flex items-center gap-2">
+                        <ClipboardList className="w-4 h-4 text-blue-600" /> 
+                        Current Visit Workspace
+                        {!showDocumentation && <span className="text-xs font-normal text-slate-400 ml-2">(Click to expand documentation)</span>}
+                     </h3>
+                     <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400">Auto-save on</span>
+                        <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${showDocumentation ? 'rotate-90' : ''}`} />
+                     </div>
+                  </div>
+                  
+                  {showDocumentation && (
+                     <CardContent className="p-0">
+                        <div className="flex flex-col divide-y divide-slate-100">
+                           
+                           {/* 1. Chief Complaints */}
+                           <div className="p-4 bg-slate-50/30">
+                              <div className="flex items-center gap-2 mb-2">
+                                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Chief Complaints</span>
+                                 <div className="flex gap-2 ml-2">
+                                    <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-slate-100 font-normal">Unable to conceive</Badge>
+                                    <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-slate-100 font-normal">Irregular ovulation</Badge>
+                                    <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-slate-100 font-normal">Pain</Badge>
+                                 </div>
+                              </div>
+                              <Textarea placeholder="Patient's primary concerns..." className="min-h-[60px] text-sm" />
+                           </div>
+
+                           {/* 2. O/E - Vitals & Examination */}
+                           <div className="p-4 grid grid-cols-4 gap-6">
+                              <div className="col-span-1 space-y-3">
+                                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Vitals</span>
+                                 <div className="space-y-2">
+                                    <div className="grid grid-cols-2 gap-2">
+                                       <div>
+                                          <Label className="text-[10px] text-slate-500">BP</Label>
+                                          <div className="relative">
+                                             <Input className="h-7 text-xs pr-6" placeholder="120/80" />
+                                             <Activity className="w-3 h-3 absolute right-2 top-2 text-slate-400" />
+                                          </div>
+                                       </div>
+                                       <div>
+                                          <Label className="text-[10px] text-slate-500">Pulse</Label>
+                                          <div className="relative">
+                                             <Input className="h-7 text-xs pr-6" placeholder="72" />
+                                             <Heart className="w-3 h-3 absolute right-2 top-2 text-slate-400" />
+                                          </div>
+                                       </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                       <div>
+                                          <Label className="text-[10px] text-slate-500">Weight</Label>
+                                          <div className="relative">
+                                             <Input className="h-7 text-xs pr-6" placeholder="kg" />
+                                             <Scale className="w-3 h-3 absolute right-2 top-2 text-slate-400" />
+                                          </div>
+                                       </div>
+                                       <div>
+                                          <Label className="text-[10px] text-slate-500">BMI</Label>
+                                          <Input className="h-7 text-xs bg-slate-50" readOnly placeholder="--" />
+                                       </div>
+                                    </div>
+                                 </div>
+                              </div>
+                              
+                              <div className="col-span-3">
+                                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Clinical Examination</span>
+                                 <div className="grid grid-cols-3 gap-3">
+                                    <div className="border border-slate-200 rounded p-2">
+                                       <div className="flex items-center justify-between mb-1">
+                                          <span className="text-xs font-medium">Thyroid</span>
+                                          <Checkbox className="h-3 w-3" />
+                                       </div>
+                                       <Input className="h-6 text-[10px] border-none bg-slate-50 px-2" placeholder="Notes..." />
+                                    </div>
+                                    <div className="border border-slate-200 rounded p-2">
+                                       <div className="flex items-center justify-between mb-1">
+                                          <span className="text-xs font-medium">Hirsutism</span>
+                                          <Checkbox className="h-3 w-3" />
+                                       </div>
+                                       <Input className="h-6 text-[10px] border-none bg-slate-50 px-2" placeholder="Score..." />
+                                    </div>
+                                    <div className="border border-slate-200 rounded p-2">
+                                       <div className="flex items-center justify-between mb-1">
+                                          <span className="text-xs font-medium">Pelvic Tenderness</span>
+                                          <Checkbox className="h-3 w-3" />
+                                       </div>
+                                       <Input className="h-6 text-[10px] border-none bg-slate-50 px-2" placeholder="Notes..." />
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* 3. Medicines & Treatment Plan */}
+                           <div className="p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Rx / Treatment Plan</span>
+                                 <div className="flex gap-2">
+                                    <Badge variant="outline" className="text-[10px] cursor-pointer bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"><Plus className="w-3 h-3 mr-1" /> Letrozole</Badge>
+                                    <Badge variant="outline" className="text-[10px] cursor-pointer bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"><Plus className="w-3 h-3 mr-1" /> Progesterone</Badge>
+                                 </div>
+                              </div>
+                              <div className="border border-slate-200 rounded-md overflow-hidden">
+                                 <table className="w-full text-xs text-left">
+                                    <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                                       <tr>
+                                          <th className="px-3 py-2 font-medium w-1/3">Drug Name</th>
+                                          <th className="px-3 py-2 font-medium">Dose</th>
+                                          <th className="px-3 py-2 font-medium">Freq</th>
+                                          <th className="px-3 py-2 font-medium">Duration</th>
+                                          <th className="px-3 py-2 font-medium">Instruction</th>
+                                       </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                       <tr>
+                                          <td className="p-2"><Input className="h-7 text-xs border-none focus-visible:ring-0 px-1" placeholder="Search drug..." /></td>
+                                          <td className="p-2"><Input className="h-7 text-xs border-none focus-visible:ring-0 px-1" placeholder="e.g. 5mg" /></td>
+                                          <td className="p-2"><Input className="h-7 text-xs border-none focus-visible:ring-0 px-1" placeholder="OD/BD" /></td>
+                                          <td className="p-2"><Input className="h-7 text-xs border-none focus-visible:ring-0 px-1" placeholder="5 days" /></td>
+                                          <td className="p-2"><Input className="h-7 text-xs border-none focus-visible:ring-0 px-1" placeholder="CD 3-7" /></td>
+                                       </tr>
+                                    </tbody>
+                                 </table>
+                                 <Button variant="ghost" className="w-full text-xs text-slate-400 h-8 hover:text-slate-600">+ Add Medication</Button>
+                              </div>
+                           </div>
+
+                           {/* 4. Investigation Suggestions */}
+                           <div className="p-4 bg-slate-50/30">
+                              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-3">Order Investigations</span>
+                              <Tabs defaultValue="hormones" className="w-full">
+                                 <TabsList className="h-7 bg-slate-200/50 mb-3">
+                                    <TabsTrigger value="hormones" className="text-[10px] h-6 px-3">Hormones</TabsTrigger>
+                                    <TabsTrigger value="blood" className="text-[10px] h-6 px-3">Routine Bloods</TabsTrigger>
+                                    <TabsTrigger value="fertility" className="text-[10px] h-6 px-3">Fertility</TabsTrigger>
+                                    <TabsTrigger value="imaging" className="text-[10px] h-6 px-3">Imaging</TabsTrigger>
+                                 </TabsList>
+                                 <TabsContent value="hormones" className="mt-0">
+                                    <div className="flex flex-wrap gap-2">
+                                       {['AMH', 'TSH', 'Prolactin', 'FSH/LH', 'Progesterone', 'Estradiol', 'Testosterone'].map(test => (
+                                          <div key={test} className="flex items-center space-x-2 bg-white border border-slate-200 rounded px-2 py-1.5">
+                                             <Checkbox id={test} className="h-3.5 w-3.5" />
+                                             <label htmlFor={test} className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                                                {test}
+                                             </label>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 </TabsContent>
+                              </Tabs>
+                           </div>
+
+                           {/* 5. Prescription Generator */}
+                           <div className="p-4 bg-slate-100 flex items-center justify-between">
+                              <div className="text-xs text-slate-500">
+                                 <span className="font-semibold text-slate-700">Dr. Reynolds</span> • Reproductive Endocrinology
+                              </div>
+                              <div className="flex gap-2">
+                                 <Button variant="outline" size="sm" className="h-8 gap-2 bg-white text-xs border-slate-300">
+                                    <Printer className="w-3.5 h-3.5" /> Print
+                                 </Button>
+                                 <Button size="sm" className="h-8 gap-2 bg-indigo-600 hover:bg-indigo-700 text-xs shadow-sm">
+                                    <FileText className="w-3.5 h-3.5" /> Generate Prescription
+                                 </Button>
+                              </div>
+                           </div>
+
+                        </div>
+                     </CardContent>
+                  )}
+                  
+                  {/* Collapsed Summary View (Always Visible if Collapsed) */}
+                  {!showDocumentation && (
+                     <CardContent className="p-0">
+                        <div className="grid grid-cols-4 divide-x divide-slate-100">
+                           {/* Subjective */}
+                           <div className="p-4 space-y-3">
+                              <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">S (Symptoms)</span> <Button variant="ghost" size="icon" className="h-5 w-5"><Sparkles className="w-3 h-3 text-blue-400" /></Button></div>
+                              <div className="space-y-2">
+                                 <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100">PMS severity score: 8/10</div>
+                                 <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100">Sleep quality: Poor</div>
+                              </div>
+                           </div>
+                           {/* Objective */}
+                           <div className="p-4 space-y-3">
+                              <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">O (Observations)</span></div>
+                              <div className="space-y-2 text-xs text-slate-600">
+                                 <div className="flex justify-between"><span>Cycle Phase:</span> <span className="font-medium">Luteal</span></div>
+                                 <div className="flex justify-between"><span>Luteal Length:</span> <span className="font-medium text-rose-600">9 days</span></div>
+                                 <div className="flex justify-between"><span>Genomic Risk:</span> <span className="font-medium text-amber-600">PCOS</span></div>
+                              </div>
+                           </div>
+                           {/* Assessment (AI) */}
+                           <div className="p-4 space-y-3 bg-blue-50/30">
+                              <div className="flex justify-between items-center"><span className="text-xs font-bold text-blue-600">A (Assessment)</span> <Sparkles className="w-3 h-3 text-blue-500" /></div>
+                              <p className="text-xs leading-relaxed text-slate-700">
+                                 "Recurrent short luteal phase with likely progesterone insufficiency. PMS exacerbated by reported sleep deficit."
+                              </p>
+                           </div>
+                           {/* Plan */}
+                           <div className="p-4 space-y-3">
+                              <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">P (Plan)</span></div>
+                              <div className="space-y-2">
+                                 <div className="flex items-center gap-2"><Checkbox id="p1" defaultChecked /> <label htmlFor="p1" className="text-xs text-slate-700">Start luteal progesterone</label></div>
+                                 <div className="flex items-center gap-2"><Checkbox id="p2" /> <label htmlFor="p2" className="text-xs text-slate-700">Order Day 21 labs</label></div>
+                              </div>
+                              <Button size="sm" className="w-full h-7 text-xs bg-blue-600 hover:bg-blue-700 mt-2" onClick={() => setShowDocumentation(true)}>Full Note & Rx</Button>
+                           </div>
+                        </div>
+                     </CardContent>
+                  )}
+               </Card>
+
                {/* 1. DYNAMIC SUMMARY BAR BASED ON PATHWAY */}
                {careMode === 'natural_conception' && (
                   <div className="grid grid-cols-4 gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
