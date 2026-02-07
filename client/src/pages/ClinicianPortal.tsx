@@ -135,7 +135,7 @@ export default function ClinicianPortal() {
     };
   }, []);
 
-  const navigateToPatient = (patient) => {
+  const navigateToPatient = (patient: typeof patients[0]) => {
     setSelectedPatient(patient);
     setActiveView("patient_detail");
   };
@@ -554,7 +554,7 @@ export default function ClinicianPortal() {
 
         {/* PATIENT DETAIL VIEW (Previous Implementation) */}
         {activeView === 'patient_detail' && (
-          <div className="flex-1 flex overflow-hidden z-0">
+          <div className="flex-1 flex flex-col overflow-hidden z-0 relative">
             {/* Background for Detail View */}
             <div 
               className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none"
