@@ -50,16 +50,23 @@
   --color-sidebar-ring: hsl(var(--sidebar-ring));
 
   --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-slow: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  
   @keyframes float {
     0% { transform: translateY(0px); }
     50% { transform: translateY(-10px); }
     100% { transform: translateY(0px); }
   }
+
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
 }
 
 /* BASE THEME (Patient Portal Default - Calm, Reassuring) */
 :root {
-  /* Soft Pink/Lavender Base */
+  /* Soft Pink/Lavender Base - even softer now */
   --background: 330 30% 98%; 
   --foreground: 260 10% 20%; 
 
@@ -74,23 +81,23 @@
   --primary-foreground: 0 0% 100%;
 
   /* Soft Lavender Secondary */
-  --secondary: 260 30% 94%;
+  --secondary: 260 30% 96%;
   --secondary-foreground: 260 20% 30%;
 
   --muted: 260 10% 96%;
   --muted-foreground: 260 10% 50%;
 
-  --accent: 340 40% 96%;
+  --accent: 340 40% 97%;
   --accent-foreground: 340 60% 40%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 260 10% 90%;
-  --input: 260 10% 90%;
+  --border: 260 10% 92%;
+  --input: 260 10% 92%;
   --ring: 340 60% 65%;
 
-  --radius: 1rem; /* Soft rounded corners */
+  --radius: 1.5rem; /* Generous rounded corners */
 
   --sidebar: 330 30% 98%;
   --sidebar-foreground: 260 10% 20%;
@@ -101,6 +108,23 @@
   --sidebar-border: 260 10% 90%;
   --sidebar-ring: 340 60% 65%;
 }
+
+/* MODE AWARENESS THEMES */
+
+/* TTC Mode - Warmer, Nurturing (Peach/Rose) */
+[data-mode="ttc"] {
+  --primary: 10 70% 65%; /* Warmer peach/coral */
+  --ring: 10 70% 65%;
+  --background: 20 30% 98%; 
+}
+
+/* IVF Mode - Clinical but Soft (Lavender/Periwinkle) */
+[data-mode="ivf"] {
+  --primary: 250 60% 65%; /* Soft purple */
+  --ring: 250 60% 65%;
+  --background: 250 20% 98%; 
+}
+
 
 /* CLINICIAN THEME (Professional, Structured) */
 [data-theme="clinician"] {
@@ -140,7 +164,7 @@
     @apply border-border;
   }
   body {
-    @apply font-sans antialiased bg-background text-foreground transition-colors duration-500;
+    @apply font-sans antialiased bg-background text-foreground transition-colors duration-700;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -150,9 +174,18 @@
 
 /* Utilities for glassmorphism and depth */
 .glass-panel {
-  @apply bg-white/70 backdrop-blur-md border border-white/50 shadow-sm;
+  @apply bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)];
 }
 
+.glass-panel-dark {
+   @apply bg-white/90 backdrop-blur-xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.06)];
+}
+
+
 .card-hover {
-  @apply transition-all duration-300 hover:shadow-md hover:-translate-y-0.5;
+  @apply transition-all duration-500 hover:shadow-lg hover:-translate-y-1;
+}
+
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400;
 }
