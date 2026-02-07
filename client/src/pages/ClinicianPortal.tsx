@@ -684,9 +684,23 @@ export default function ClinicianPortal() {
                        </Button>
                     </div>
                     
-                    <div className="grid grid-cols-5 gap-3">
+                    <div className="grid grid-cols-6 gap-3">
+                       {/* Operation Theater Booking (NEW) */}
+                       <Card className="border-slate-200 shadow-sm bg-white hover:border-red-200 transition-colors cursor-pointer group col-span-1">
+                          <CardContent className="p-3 text-center">
+                             <div className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-red-100 transition-colors">
+                                <Activity className="w-4 h-4" />
+                             </div>
+                             <p className="text-xs font-bold text-slate-700 mb-0.5">Schedule OT</p>
+                             <p className="text-[10px] text-emerald-600 font-medium flex items-center justify-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> OT-1 Free
+                             </p>
+                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-red-600 hover:text-white border-none shadow-none">Book Slot</Button>
+                          </CardContent>
+                       </Card>
+
                        {/* Pediatrician */}
-                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group">
+                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group col-span-1">
                           <CardContent className="p-3 text-center">
                              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-blue-100 transition-colors">
                                 <Baby className="w-4 h-4" />
@@ -700,7 +714,7 @@ export default function ClinicianPortal() {
                        </Card>
 
                        {/* Anesthetist */}
-                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group">
+                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group col-span-1">
                           <CardContent className="p-3 text-center">
                              <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-purple-100 transition-colors">
                                 <Syringe className="w-4 h-4" />
@@ -714,7 +728,7 @@ export default function ClinicianPortal() {
                        </Card>
 
                        {/* Lactation */}
-                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group">
+                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group col-span-1">
                           <CardContent className="p-3 text-center">
                              <div className="w-8 h-8 rounded-full bg-pink-50 text-pink-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-pink-100 transition-colors">
                                 <Heart className="w-4 h-4" />
@@ -728,7 +742,7 @@ export default function ClinicianPortal() {
                        </Card>
 
                        {/* Assistant */}
-                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group">
+                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group col-span-1">
                           <CardContent className="p-3 text-center">
                              <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-indigo-100 transition-colors">
                                 <Users className="w-4 h-4" />
@@ -742,7 +756,7 @@ export default function ClinicianPortal() {
                        </Card>
 
                        {/* Nursing Home / Bed */}
-                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group">
+                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group col-span-1">
                           <CardContent className="p-3 text-center">
                              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-slate-200 transition-colors">
                                 <Briefcase className="w-4 h-4" />
