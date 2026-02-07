@@ -116,6 +116,51 @@ const usgData = [
   { week: 28, hc: 260, ac: 240, fl: 52 },
 ];
 
+// --- ANALYTICS MOCK DATA ---
+const fertilityAnalyticsData = [
+  { month: 'Jan', active: 45, ovulationRate: 78, pregnancies: 4 },
+  { month: 'Feb', active: 48, ovulationRate: 82, pregnancies: 5 },
+  { month: 'Mar', active: 52, ovulationRate: 80, pregnancies: 6 },
+  { month: 'Apr', active: 50, ovulationRate: 85, pregnancies: 4 },
+  { month: 'May', active: 55, ovulationRate: 88, pregnancies: 7 },
+  { month: 'Jun', active: 58, ovulationRate: 87, pregnancies: 8 },
+];
+
+const follicleSizeDistribution = [
+  { size: '14-16mm', count: 12 },
+  { size: '16-18mm', count: 28 },
+  { size: '18-20mm', count: 45 },
+  { size: '20-22mm', count: 30 },
+  { size: '&gt;22mm', count: 15 },
+];
+
+const pregnancyRiskData = [
+  { month: 'Jan', anemia: 12, gdm: 5, hypertension: 8 },
+  { month: 'Feb', anemia: 10, gdm: 6, hypertension: 7 },
+  { month: 'Mar', anemia: 8, gdm: 4, hypertension: 9 },
+  { month: 'Apr', anemia: 9, gdm: 5, hypertension: 6 },
+  { month: 'May', anemia: 7, gdm: 4, hypertension: 5 },
+  { month: 'Jun', anemia: 6, gdm: 3, hypertension: 4 },
+];
+
+const postpartumScoreData = [
+  { week: 1, epds: 12, physical: 40 },
+  { week: 2, epds: 10, physical: 55 },
+  { week: 4, epds: 8, physical: 70 },
+  { week: 6, epds: 6, physical: 85 },
+  { week: 8, epds: 4, physical: 92 },
+  { week: 12, epds: 3, physical: 98 },
+];
+
+const pcosSymptomData = [
+  { month: 'Jan', acne: 8, hirsutism: 7, weight: 75 },
+  { month: 'Feb', acne: 7, hirsutism: 7, weight: 74 },
+  { month: 'Mar', acne: 6, hirsutism: 6, weight: 73 },
+  { month: 'Apr', acne: 5, hirsutism: 6, weight: 72 },
+  { month: 'May', acne: 4, hirsutism: 5, weight: 71 },
+  { month: 'Jun', acne: 3, hirsutism: 5, weight: 70 },
+];
+
 export default function ClinicianPortal() {
   const [activeView, setActiveView] = useState("dashboard"); // 'dashboard' or 'patient_detail'
   const [selectedPatient, setSelectedPatient] = useState(patients[0]);
@@ -178,7 +223,11 @@ export default function ClinicianPortal() {
           >
             <CalendarIcon className="mr-3 h-4 w-4" /> Schedule
           </Button>
-          <Button variant="ghost" className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800/50">
+          <Button 
+            variant={activeView === 'analytics' ? 'secondary' : 'ghost'} 
+            className={`w-full justify-start ${activeView === 'analytics' ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20' : 'text-slate-300 hover:text-white hover:bg-slate-800/50'}`}
+            onClick={() => setActiveView('analytics')}
+          >
             <Activity className="mr-3 h-4 w-4" /> Analytics
           </Button>
         </nav>
@@ -904,6 +953,394 @@ export default function ClinicianPortal() {
                  </Card>
               </div>
            </div>
+        )}
+
+        {/* ANALYTICS VIEW (NEW) */}
+        {activeView === 'analytics' && (
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+             <div className="max-w-7xl mx-auto space-y-6">
+                
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                   <div>
+                      <h2 className="text-2xl font-bold text-slate-900 font-serif">Analytics Intelligence</h2>
+                      <p className="text-slate-500 mt-1">Improving women's health outcomes at scale through data.</p>
+                   </div>
+                   <div className="flex items-center gap-3">
+                      <Select defaultValue="3m">
+                         <SelectTrigger className="w-[140px] bg-white border-slate-200">
+                            <SelectValue placeholder="Time Range" />
+                         </SelectTrigger>
+                         <SelectContent>
+                            <SelectItem value="1m">This Month</SelectItem>
+                            <SelectItem value="3m">Last 3 Months</SelectItem>
+                            <SelectItem value="1y">Last Year</SelectItem>
+                         </SelectContent>
+                      </Select>
+                      <Button variant="outline" className="bg-white border-slate-200 text-slate-700">
+                         <Download className="w-4 h-4 mr-2" /> Export Report
+                      </Button>
+                   </div>
+                </div>
+
+                {/* Tabs */}
+                <Tabs defaultValue="fertility" className="w-full space-y-6">
+                   <TabsList className="bg-white border border-slate-200 p-1 h-12 rounded-xl w-full justify-start gap-2 shadow-sm">
+                      <TabsTrigger value="fertility" className="data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 rounded-lg h-9 px-4 text-slate-600">
+                         🧬 Fertility
+                      </TabsTrigger>
+                      <TabsTrigger value="pregnancy" className="data-[state=active]:bg-pink-50 data-[state=active]:text-pink-700 rounded-lg h-9 px-4 text-slate-600">
+                         🤰 Pregnancy Care
+                      </TabsTrigger>
+                      <TabsTrigger value="postpartum" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 rounded-lg h-9 px-4 text-slate-600">
+                         🧑‍🍼 Postpartum
+                      </TabsTrigger>
+                      <TabsTrigger value="pcos" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 rounded-lg h-9 px-4 text-slate-600">
+                         🌿 PCOS & Hormone
+                      </TabsTrigger>
+                      <TabsTrigger value="clinic" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-lg h-9 px-4 text-slate-600">
+                         👩‍⚕️ Clinic Performance
+                      </TabsTrigger>
+                   </TabsList>
+
+                   {/* 1. FERTILITY ANALYTICS */}
+                   <TabsContent value="fertility" className="space-y-6">
+                      {/* Key Metrics Row */}
+                      <div className="grid grid-cols-4 gap-4">
+                         <Card className="shadow-sm border-slate-200">
+                            <CardContent className="p-4">
+                               <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Active Patients</p>
+                               <p className="text-2xl font-bold text-slate-900">58</p>
+                               <div className="flex items-center gap-1 mt-2 text-xs font-medium text-emerald-600">
+                                  <TrendingUp className="w-3 h-3" /> +12% this month
+                               </div>
+                            </CardContent>
+                         </Card>
+                         <Card className="shadow-sm border-slate-200">
+                            <CardContent className="p-4">
+                               <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Ovulation Success</p>
+                               <p className="text-2xl font-bold text-slate-900">87%</p>
+                               <div className="flex items-center gap-1 mt-2 text-xs font-medium text-emerald-600">
+                                  <CheckCircle2 className="w-3 h-3" /> Target Met (&gt;85%)
+                               </div>
+                            </CardContent>
+                         </Card>
+                         <Card className="shadow-sm border-slate-200">
+                            <CardContent className="p-4">
+                               <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Avg Follicle Size</p>
+                               <p className="text-2xl font-bold text-slate-900">19.2 mm</p>
+                               <div className="flex items-center gap-1 mt-2 text-xs font-medium text-slate-500">
+                                  At trigger time
+                               </div>
+                            </CardContent>
+                         </Card>
+                         <Card className="shadow-sm border-slate-200">
+                            <CardContent className="p-4">
+                               <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Pregnancy Rate / Cycle</p>
+                               <p className="text-2xl font-bold text-slate-900">24%</p>
+                               <div className="flex items-center gap-1 mt-2 text-xs font-medium text-emerald-600">
+                                  <TrendingUp className="w-3 h-3" /> Top 10% benchmark
+                               </div>
+                            </CardContent>
+                         </Card>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6">
+                         <Card className="shadow-sm border-slate-200">
+                            <CardHeader>
+                               <CardTitle className="text-base font-bold text-slate-800">Conception Trends</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                               <div className="h-[300px] w-full">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                     <AreaChart data={fertilityAnalyticsData}>
+                                        <defs>
+                                           <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
+                                              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                                              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                                           </linearGradient>
+                                           <linearGradient id="colorPreg" x1="0" y1="0" x2="0" y2="1">
+                                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                                              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                           </linearGradient>
+                                        </defs>
+                                        <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                        <Tooltip />
+                                        <Area type="monotone" dataKey="active" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorActive)" name="Active Cycles" />
+                                        <Area type="monotone" dataKey="pregnancies" stroke="#10b981" fillOpacity={1} fill="url(#colorPreg)" name="Pregnancies" />
+                                     </AreaChart>
+                                  </ResponsiveContainer>
+                               </div>
+                            </CardContent>
+                         </Card>
+
+                         <Card className="shadow-sm border-slate-200">
+                            <CardHeader>
+                               <CardTitle className="text-base font-bold text-slate-800">Follicle Size at Trigger</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                               <div className="h-[300px] w-full">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                     <BarChart data={follicleSizeDistribution}>
+                                        <XAxis dataKey="size" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                        <Tooltip cursor={{fill: '#f1f5f9'}} />
+                                        <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} name="Patients" />
+                                     </BarChart>
+                                  </ResponsiveContainer>
+                               </div>
+                            </CardContent>
+                         </Card>
+                      </div>
+
+                      {/* Probability Intelligence */}
+                      <Card className="bg-slate-900 text-white border-none shadow-md overflow-hidden relative">
+                         <div className="absolute top-0 right-0 p-32 bg-purple-600/20 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                         <CardHeader>
+                            <CardTitle className="text-base font-bold flex items-center gap-2">
+                               <Sparkles className="w-4 h-4 text-yellow-400" /> Probability Intelligence
+                            </CardTitle>
+                         </CardHeader>
+                         <CardContent>
+                            <div className="grid grid-cols-3 gap-8">
+                               <div>
+                                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Cycle Timing Misses</p>
+                                  <p className="text-3xl font-bold text-white">12%</p>
+                                  <p className="text-slate-400 text-xs mt-1">Patients missed ovulation window</p>
+                                  <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                                     <div className="bg-rose-500 h-full w-[12%] rounded-full"></div>
+                                  </div>
+                               </div>
+                               <div>
+                                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Low Probability Cohort</p>
+                                  <p className="text-3xl font-bold text-white">8</p>
+                                  <p className="text-slate-400 text-xs mt-1">Patients &lt;15% prob for 3+ cycles</p>
+                                  <Button size="sm" variant="secondary" className="mt-3 h-7 text-xs w-full">Review Protocols</Button>
+                               </div>
+                               <div>
+                                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Success Prediction</p>
+                                  <p className="text-3xl font-bold text-emerald-400">92%</p>
+                                  <p className="text-slate-400 text-xs mt-1">Accuracy of outcome models</p>
+                               </div>
+                            </div>
+                         </CardContent>
+                      </Card>
+                   </TabsContent>
+
+                   {/* 2. PREGNANCY ANALYTICS */}
+                   <TabsContent value="pregnancy" className="space-y-6">
+                      <div className="grid grid-cols-3 gap-6">
+                         <Card className="shadow-sm border-slate-200 col-span-2">
+                            <CardHeader>
+                               <CardTitle className="text-base font-bold text-slate-800">Risk Monitoring Trends</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                               <div className="h-[300px] w-full">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                     <LineChart data={pregnancyRiskData}>
+                                        <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                        <Tooltip />
+                                        <Line type="monotone" dataKey="anemia" stroke="#f43f5e" strokeWidth={2} dot={{r: 4}} name="Anemia Cases" />
+                                        <Line type="monotone" dataKey="gdm" stroke="#f59e0b" strokeWidth={2} dot={{r: 4}} name="GDM Cases" />
+                                        <Line type="monotone" dataKey="hypertension" stroke="#6366f1" strokeWidth={2} dot={{r: 4}} name="High BP" />
+                                     </LineChart>
+                                  </ResponsiveContainer>
+                               </div>
+                            </CardContent>
+                         </Card>
+                         
+                         <Card className="shadow-sm border-slate-200 col-span-1">
+                            <CardHeader>
+                               <CardTitle className="text-base font-bold text-slate-800">Compliance & Outcomes</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                               <div>
+                                  <div className="flex justify-between text-sm mb-1">
+                                     <span className="text-slate-600">Scan Completion Rate</span>
+                                     <span className="font-bold text-slate-900">94%</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                     <div className="bg-emerald-500 h-full w-[94%] rounded-full"></div>
+                                  </div>
+                               </div>
+                               <div>
+                                  <div className="flex justify-between text-sm mb-1">
+                                     <span className="text-slate-600">Lab Completion Rate</span>
+                                     <span className="font-bold text-slate-900">88%</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                     <div className="bg-blue-500 h-full w-[88%] rounded-full"></div>
+                                  </div>
+                               </div>
+                               <div>
+                                  <div className="flex justify-between text-sm mb-1">
+                                     <span className="text-slate-600">Follow-up Adherence</span>
+                                     <span className="font-bold text-slate-900">91%</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                     <div className="bg-purple-500 h-full w-[91%] rounded-full"></div>
+                                  </div>
+                               </div>
+                               
+                               <div className="pt-4 border-t border-slate-100">
+                                  <p className="text-xs font-bold text-slate-800 mb-2">Outcome Metrics (YTD)</p>
+                                  <div className="grid grid-cols-2 gap-4">
+                                     <div className="bg-slate-50 p-2 rounded border border-slate-100">
+                                        <p className="text-[10px] text-slate-500">C-Section Rate</p>
+                                        <p className="text-lg font-bold text-slate-800">28%</p>
+                                     </div>
+                                     <div className="bg-slate-50 p-2 rounded border border-slate-100">
+                                        <p className="text-[10px] text-slate-500">Avg Birth Weight</p>
+                                        <p className="text-lg font-bold text-slate-800">3.1kg</p>
+                                     </div>
+                                  </div>
+                               </div>
+                            </CardContent>
+                         </Card>
+                      </div>
+                   </TabsContent>
+
+                   {/* 3. POSTPARTUM ANALYTICS */}
+                   <TabsContent value="postpartum" className="space-y-6">
+                      <div className="grid grid-cols-3 gap-6">
+                          <Card className="shadow-sm border-slate-200 col-span-2">
+                            <CardHeader>
+                               <CardTitle className="text-base font-bold text-slate-800">Mental & Physical Recovery</CardTitle>
+                               <p className="text-xs text-slate-500">Tracking EPDS scores and physical recovery index over 12 weeks</p>
+                            </CardHeader>
+                            <CardContent>
+                               <div className="h-[300px] w-full">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                     <ComposedChart data={postpartumScoreData}>
+                                        <XAxis dataKey="week" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} label={{ value: 'Weeks Postpartum', position: 'insideBottom', offset: -5, fontSize: 10 }} />
+                                        <YAxis yAxisId="left" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} label={{ value: 'Physical Score', angle: -90, position: 'insideLeft', fontSize: 10 }} />
+                                        <YAxis yAxisId="right" orientation="right" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} label={{ value: 'EPDS Score', angle: 90, position: 'insideRight', fontSize: 10 }} />
+                                        <Tooltip />
+                                        <Area yAxisId="left" type="monotone" dataKey="physical" fill="#e0e7ff" stroke="#6366f1" name="Physical Recovery" />
+                                        <Line yAxisId="right" type="monotone" dataKey="epds" stroke="#ec4899" strokeWidth={2} name="EPDS (Depression)" />
+                                        <ReferenceLine yAxisId="right" y={10} stroke="red" strokeDasharray="3 3" label={{ value: "Risk Threshold", position: 'insideTopRight', fontSize: 10, fill: 'red' }} />
+                                     </ComposedChart>
+                                  </ResponsiveContainer>
+                               </div>
+                            </CardContent>
+                         </Card>
+
+                         <Card className="shadow-sm border-slate-200 bg-indigo-50 border-indigo-100">
+                            <CardContent className="p-6 space-y-6">
+                               <div className="flex items-center gap-3 mb-4">
+                                  <div className="p-3 bg-white rounded-full shadow-sm">
+                                     <Heart className="w-6 h-6 text-pink-500" />
+                                  </div>
+                                  <div>
+                                     <h3 className="font-bold text-indigo-900">Lactation Success</h3>
+                                     <p className="text-xs text-indigo-700">Feeding difficulty resolution</p>
+                                  </div>
+                               </div>
+
+                               <div className="space-y-4">
+                                  <div>
+                                     <p className="text-xs font-medium text-indigo-800 mb-1">Difficulty at Week 2</p>
+                                     <p className="text-3xl font-bold text-indigo-900">32%</p>
+                                     <p className="text-xs text-indigo-600">Of mothers reported issues</p>
+                                  </div>
+                                  <div>
+                                     <p className="text-xs font-medium text-indigo-800 mb-1">Resolved after Consult</p>
+                                     <p className="text-3xl font-bold text-emerald-600">85%</p>
+                                     <p className="text-xs text-indigo-600">Improvement rate</p>
+                                  </div>
+                               </div>
+                               
+                               <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm mt-4">
+                                  View Lactation Logs
+                               </Button>
+                            </CardContent>
+                         </Card>
+                      </div>
+                   </TabsContent>
+
+                   {/* 4. PCOS & HORMONE HEALTH */}
+                   <TabsContent value="pcos" className="space-y-6">
+                      <div className="grid grid-cols-2 gap-6">
+                         <Card className="shadow-sm border-slate-200">
+                            <CardHeader>
+                               <CardTitle className="text-base font-bold text-slate-800">Symptom Reduction Trends</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                               <div className="h-[300px] w-full">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                     <BarChart data={pcosSymptomData}>
+                                        <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                        <Tooltip cursor={{fill: '#f1f5f9'}} />
+                                        <Bar dataKey="acne" stackId="a" fill="#f472b6" name="Acne Score" />
+                                        <Bar dataKey="hirsutism" stackId="a" fill="#c084fc" name="Hirsutism Score" />
+                                     </BarChart>
+                                  </ResponsiveContainer>
+                               </div>
+                            </CardContent>
+                         </Card>
+
+                         <Card className="shadow-sm border-slate-200">
+                            <CardHeader>
+                               <CardTitle className="text-base font-bold text-slate-800">Metabolic Health Impact</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                               <div className="h-[300px] w-full">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                     <LineChart data={pcosSymptomData}>
+                                        <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis domain={[65, 80]} stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                        <Tooltip />
+                                        <Line type="monotone" dataKey="weight" stroke="#10b981" strokeWidth={3} name="Avg Weight (kg)" />
+                                     </LineChart>
+                                  </ResponsiveContainer>
+                               </div>
+                            </CardContent>
+                         </Card>
+                      </div>
+                   </TabsContent>
+                   
+                   {/* 5. CLINIC PERFORMANCE */}
+                   <TabsContent value="clinic" className="space-y-6">
+                       <Card className="shadow-sm border-slate-200">
+                          <CardHeader>
+                             <CardTitle className="text-base font-bold text-slate-800">Multidisciplinary Care Impact</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                             <div className="grid grid-cols-3 gap-6 text-center">
+                                <div className="p-4 bg-slate-50 rounded-xl">
+                                   <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3 text-emerald-600">
+                                      <Users className="w-6 h-6" />
+                                   </div>
+                                   <p className="text-sm font-bold text-slate-700">Nutrition Consults</p>
+                                   <p className="text-2xl font-bold text-emerald-600 mt-1">+22%</p>
+                                   <p className="text-xs text-slate-500 mt-1">Pregnancy rate improvement</p>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-xl">
+                                   <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-3 text-purple-600">
+                                      <Brain className="w-6 h-6" />
+                                   </div>
+                                   <p className="text-sm font-bold text-slate-700">Psych Support</p>
+                                   <p className="text-2xl font-bold text-purple-600 mt-1">4.5/5</p>
+                                   <p className="text-xs text-slate-500 mt-1">Mood improvement score</p>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-xl">
+                                   <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-3 text-blue-600">
+                                      <Activity className="w-6 h-6" />
+                                   </div>
+                                   <p className="text-sm font-bold text-slate-700">Trainer Involvement</p>
+                                   <p className="text-2xl font-bold text-blue-600 mt-1">-3.5kg</p>
+                                   <p className="text-xs text-slate-500 mt-1">Better weight outcomes</p>
+                                </div>
+                             </div>
+                          </CardContent>
+                       </Card>
+                   </TabsContent>
+                </Tabs>
+             </div>
+          </div>
         )}
 
         {/* PATIENT DETAIL VIEW (Previous Implementation) */}
