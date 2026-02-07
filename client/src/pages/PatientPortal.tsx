@@ -24,6 +24,7 @@ import calmGradient from "../assets/images/calm-gradient.png";
 import softCardBg from "../assets/images/soft-card-bg.png";
 
 import BiologyTab from "@/components/BiologyTab";
+import InsightsTab from "@/components/InsightsTab";
 
 export default function PatientPortal() {
   const [activeTab, setActiveTab] = useState("home");
@@ -188,11 +189,7 @@ export default function PatientPortal() {
           </TabsContent>
 
           <TabsContent value="insights" className="animate-in slide-in-from-bottom-4 duration-500">
-             <div className="glass-panel p-8 rounded-3xl text-center py-20">
-               <Sparkles className="w-12 h-12 text-primary mx-auto mb-6 opacity-40" />
-               <h3 className="text-2xl font-serif mb-3">Pattern Discovery</h3>
-               <p className="text-muted-foreground max-w-xs mx-auto leading-relaxed">We're gathering data to find your unique biological rhythms. Check back in 2 weeks.</p>
-             </div>
+             <InsightsTab />
           </TabsContent>
 
         </Tabs>
