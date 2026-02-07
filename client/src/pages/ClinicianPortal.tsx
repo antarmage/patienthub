@@ -579,31 +579,6 @@ export default function ClinicianPortal() {
                           <span className="text-xs text-slate-500">Ref By: {selectedPatient.referredBy}</span>
                           <span className="text-slate-300">•</span>
                           
-                          <div className="flex items-center gap-2">
-                             <div className="flex items-center gap-1">
-                                <span className="text-xs text-slate-500 whitespace-nowrap">Ref To:</span>
-                                <Select defaultValue={selectedPatient.referredTo !== "-" ? selectedPatient.referredTo : undefined}>
-                                  <SelectTrigger className="h-6 text-[10px] bg-slate-50 border-slate-200 w-[110px] min-w-[110px]">
-                                    <SelectValue placeholder="None" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Fetal Medicine">Fetal Medicine</SelectItem>
-                                    <SelectItem value="Nutritionist">Nutritionist</SelectItem>
-                                    <SelectItem value="Psychologist">Psychologist</SelectItem>
-                                    <SelectItem value="Endocrinologist">Endocrinologist</SelectItem>
-                                    <SelectItem value="Dietitian">Dietitian</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                             </div>
-
-                             <div className="flex items-center gap-1 ml-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
-                                <Checkbox id="lifestyle-mod" className="h-3 w-3 rounded-full data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500" />
-                                <label htmlFor="lifestyle-mod" className="text-[10px] font-medium text-slate-600 cursor-pointer select-none">Lifestyle Mod</label>
-                             </div>
-                          </div>
-
-                          <span className="text-slate-300">•</span>
-                          
                           {/* 4. CARE PATHWAY SWITCH */}
                           <Select value={careMode} onValueChange={setCareMode}>
                             <SelectTrigger className="h-6 text-[10px] bg-slate-50 border-slate-200 w-[180px] font-semibold text-blue-700">
@@ -826,6 +801,35 @@ export default function ClinicianPortal() {
                                      <Button variant="ghost" className="w-full text-xs text-slate-400 h-8 hover:text-slate-600">+ Add Medication</Button>
                                   </div>
                                </div>
+
+                              {/* 4. Referrals & Lifestyle (NEW) */}
+                              <div className="p-4 bg-slate-50/30">
+                                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-3">Referrals & Recommendations</span>
+                                 <div className="flex items-center gap-4">
+                                    <div className="flex-1">
+                                       <Label className="text-[10px] text-slate-500 mb-1.5 block">Internal/External Referral</Label>
+                                       <Select defaultValue={selectedPatient.referredTo !== "-" ? selectedPatient.referredTo : undefined}>
+                                          <SelectTrigger className="h-8 text-xs bg-white border-slate-200 w-full">
+                                             <SelectValue placeholder="Select Specialty..." />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                             <SelectItem value="Fetal Medicine">Fetal Medicine</SelectItem>
+                                             <SelectItem value="Nutritionist">Nutritionist</SelectItem>
+                                             <SelectItem value="Psychologist">Psychologist</SelectItem>
+                                             <SelectItem value="Endocrinologist">Endocrinologist</SelectItem>
+                                             <SelectItem value="Dietitian">Dietitian</SelectItem>
+                                          </SelectContent>
+                                       </Select>
+                                    </div>
+                                    <div className="flex-1">
+                                       <Label className="text-[10px] text-slate-500 mb-1.5 block">Lifestyle Intervention</Label>
+                                       <div className="flex items-center gap-2 h-8 px-3 bg-white border border-slate-200 rounded-md">
+                                          <Checkbox id="lifestyle-mod-plan" className="h-4 w-4 rounded-full data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500" />
+                                          <label htmlFor="lifestyle-mod-plan" className="text-xs font-medium text-slate-700 cursor-pointer select-none">Prescribe Lifestyle Modification</label>
+                                       </div>
+                                    </div>
+                                 </div>
+                              </div>
 
                                {/* 4. Investigation Suggestions */}
                                <div className="p-4 bg-slate-50/30">
