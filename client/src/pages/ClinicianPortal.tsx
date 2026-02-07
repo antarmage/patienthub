@@ -24,7 +24,10 @@ import {
   FlaskConical,
   MessageSquare,
   History,
-  PlayCircle
+  PlayCircle,
+  Timer,
+  Microscope,
+  CalendarCheck
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -45,17 +48,23 @@ import {
   Tooltip, 
   ResponsiveContainer,
   ReferenceLine,
-  Line
+  Line,
+  BarChart,
+  Bar
 } from "recharts";
 import medicalDashboardBg from "../assets/images/medical-dashboard-bg.png";
 import pregnancyGrowthBg from "../assets/images/pregnancy-growth-bg.png";
 import postpartumRecoveryBg from "../assets/images/postpartum-recovery-bg.png";
+import follicleTrackingBg from "../assets/images/follicle-tracking-bg.png";
+import iuiTimelineBg from "../assets/images/iui-timeline-bg.png";
 
 // Mock Data
 const patients = [
-  { id: 1, name: "Ananya S.", age: 29, status: "High Risk", focus: "TTC 6mo", lastVisit: "2 days ago", cycleDay: 14, avatar: "AS", mode: "fertility" },
+  { id: 1, name: "Ananya S.", age: 29, status: "High Risk", focus: "Natural Conception", lastVisit: "2 days ago", cycleDay: 14, avatar: "AS", mode: "natural_conception" },
   { id: 2, name: "Meera D.", age: 34, status: "Monitor", focus: "Pregnancy Wk 24", lastVisit: "1 week ago", cycleDay: null, avatar: "MD", mode: "pregnancy" },
   { id: 3, name: "Sarah J.", age: 31, status: "Stable", focus: "Postpartum Wk 6", lastVisit: "3 weeks ago", cycleDay: null, avatar: "SJ", mode: "postpartum" },
+  { id: 4, name: "Elena R.", age: 36, status: "Active Cycle", focus: "IUI Cycle #2", lastVisit: "Yesterday", cycleDay: 11, avatar: "ER", mode: "iui" },
+  { id: 5, name: "Priya K.", age: 28, status: "Assessment", focus: "PCOS Mgmt", lastVisit: "Today", cycleDay: 21, avatar: "PK", mode: "hormone_care" },
 ];
 
 const hormoneData = [
@@ -78,9 +87,16 @@ const pregnancyData = [
   { week: 32, weight: 74, expected: 74, bp: 122 },
 ];
 
+const follicleData = [
+  { day: 3, left: 5, right: 4, endometrium: 4 },
+  { day: 7, left: 8, right: 6, endometrium: 5.5 },
+  { day: 10, left: 14, right: 9, endometrium: 7.2 },
+  { day: 12, left: 18, right: 11, endometrium: 9.1 }, // Trigger ready
+];
+
 export default function ClinicianPortal() {
   const [selectedPatient, setSelectedPatient] = useState(patients[0]);
-  const [careMode, setCareMode] = useState("fertility"); // fertility, pregnancy, postpartum
+  const [careMode, setCareMode] = useState("natural_conception"); 
 
   // Sync care mode when patient changes
   useEffect(() => {
@@ -159,13 +175,16 @@ export default function ClinicianPortal() {
                       <span className="text-xs text-slate-500">Age: {selectedPatient.age}</span>
                       <span className="text-slate-300">•</span>
                       
-                      {/* 4. CARE MODE SWITCH */}
+                      {/* 4. CARE PATHWAY SWITCH */}
                       <Select value={careMode} onValueChange={setCareMode}>
-                        <SelectTrigger className="h-6 text-[10px] bg-slate-50 border-slate-200 w-[130px]">
-                          <SelectValue placeholder="Select Mode" />
+                        <SelectTrigger className="h-6 text-[10px] bg-slate-50 border-slate-200 w-[180px] font-semibold text-blue-700">
+                          <SelectValue placeholder="Select Pathway" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="fertility">Fertility Care</SelectItem>
+                          <SelectItem value="hormone_care">Hormone & Cycle Care</SelectItem>
+                          <SelectItem value="natural_conception">Natural Conception</SelectItem>
+                          <SelectItem value="induction">Ovulation Induction</SelectItem>
+                          <SelectItem value="iui">IUI Procedure Cycle</SelectItem>
                           <SelectItem value="pregnancy">Pregnancy Care</SelectItem>
                           <SelectItem value="postpartum">Postpartum Care</SelectItem>
                         </SelectContent>
@@ -173,9 +192,12 @@ export default function ClinicianPortal() {
 
                       <span className="text-slate-300">•</span>
                       <span className="text-xs font-medium text-slate-700">
-                         {careMode === 'fertility' && 'Cycle Day 14'}
-                         {careMode === 'pregnancy' && 'Week 24'}
-                         {careMode === 'postpartum' && 'Week 6'}
+                         {careMode === 'hormone_care' && 'Cycle Day 21 (Luteal)'}
+                         {careMode === 'natural_conception' && 'Cycle Day 14 (Ovulatory)'}
+                         {careMode === 'induction' && 'Cycle Day 10 (Follicular)'}
+                         {careMode === 'iui' && 'Cycle Day 11 (Trigger Ready)'}
+                         {careMode === 'pregnancy' && 'Week 24 (Trimester 2)'}
+                         {careMode === 'postpartum' && 'Week 6 (Recovery)'}
                       </span>
                    </div>
                 </div>
@@ -193,13 +215,13 @@ export default function ClinicianPortal() {
           {/* Quick Actions */}
           <div className="flex items-center gap-3">
              <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 border-slate-300 text-slate-600">
-                <FileText className="w-3.5 h-3.5" /> Add Note
+                <FileText className="w-3.5 h-3.5" /> Note
              </Button>
              <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 border-slate-300 text-slate-600">
-                <Activity className="w-3.5 h-3.5" /> Order Lab
+                <Activity className="w-3.5 h-3.5" /> Lab
              </Button>
              <Button size="sm" className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 shadow-sm">
-                <ArrowUpRight className="w-3.5 h-3.5" /> Send Insight
+                <ArrowUpRight className="w-3.5 h-3.5" /> Insight
              </Button>
              <Separator orientation="vertical" className="h-8 mx-2" />
              <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400">
@@ -234,6 +256,7 @@ export default function ClinicianPortal() {
                      <div className="flex items-center gap-2">
                         {patient.status === 'High Risk' && <div className="w-2 h-2 rounded-full bg-rose-500"></div>}
                         {patient.status === 'Monitor' && <div className="w-2 h-2 rounded-full bg-amber-500"></div>}
+                        {patient.status === 'Active Cycle' && <div className="w-2 h-2 rounded-full bg-emerald-500"></div>}
                         <span className="text-[10px] font-medium text-slate-400">{patient.status}</span>
                      </div>
                   </div>
@@ -245,53 +268,51 @@ export default function ClinicianPortal() {
           <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
             <div className="max-w-7xl mx-auto space-y-6">
                
-               {/* 1. CURRENT VISIT CLINICAL WORKSPACE (SOAP) */}
-               <Card className="shadow-md border-blue-100 bg-white overflow-hidden">
-                  <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center">
-                     <h3 className="font-bold text-sm text-slate-700 flex items-center gap-2"><ClipboardList className="w-4 h-4 text-blue-600" /> Current Visit Workspace</h3>
-                     <span className="text-xs text-slate-400">Auto-save on</span>
+               {/* 1. DYNAMIC SUMMARY BAR BASED ON PATHWAY */}
+               {careMode === 'natural_conception' && (
+                  <div className="grid grid-cols-4 gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                     <div className="border-r border-slate-100 px-4">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Trying Duration</p>
+                        <p className="text-sm font-bold text-slate-900">6 Months</p>
+                     </div>
+                     <div className="border-r border-slate-100 px-4">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Ovulatory Status</p>
+                        <p className="text-sm font-bold text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Confirmed</p>
+                     </div>
+                     <div className="border-r border-slate-100 px-4">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Luteal Adequacy</p>
+                        <p className="text-sm font-bold text-amber-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Borderline (9d)</p>
+                     </div>
+                     <div className="px-4">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Partner Status</p>
+                        <p className="text-sm font-bold text-slate-900">Normal</p>
+                     </div>
                   </div>
-                  <CardContent className="p-0">
-                     <div className="grid grid-cols-4 divide-x divide-slate-100">
-                        {/* Subjective */}
-                        <div className="p-4 space-y-3">
-                           <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">S (Symptoms)</span> <Button variant="ghost" size="icon" className="h-5 w-5"><Sparkles className="w-3 h-3 text-blue-400" /></Button></div>
-                           <div className="space-y-2">
-                              <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100">PMS severity score: 8/10</div>
-                              <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100">Sleep quality: Poor</div>
-                              <Textarea placeholder="Add notes..." className="text-xs min-h-[60px] bg-white" />
-                           </div>
+               )}
+
+               {careMode === 'iui' && (
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex justify-between items-center relative overflow-hidden">
+                     <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `url(${iuiTimelineBg})`, backgroundSize: 'cover' }}></div>
+                     <div className="relative z-10 flex gap-8 items-center">
+                        <div>
+                           <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Current Cycle</p>
+                           <p className="text-lg font-bold text-blue-900">IUI Cycle #2</p>
                         </div>
-                        {/* Objective */}
-                        <div className="p-4 space-y-3">
-                           <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">O (Observations)</span></div>
-                           <div className="space-y-2 text-xs text-slate-600">
-                              <div className="flex justify-between"><span>Cycle Phase:</span> <span className="font-medium">Luteal</span></div>
-                              <div className="flex justify-between"><span>Luteal Length:</span> <span className="font-medium text-rose-600">9 days</span></div>
-                              <div className="flex justify-between"><span>Genomic Risk:</span> <span className="font-medium text-amber-600">PCOS</span></div>
-                           </div>
+                        <div>
+                           <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Cycle Day</p>
+                           <p className="text-lg font-bold text-slate-900">Day 11</p>
                         </div>
-                        {/* Assessment (AI) */}
-                        <div className="p-4 space-y-3 bg-blue-50/30">
-                           <div className="flex justify-between items-center"><span className="text-xs font-bold text-blue-600">A (Assessment)</span> <Sparkles className="w-3 h-3 text-blue-500" /></div>
-                           <p className="text-xs leading-relaxed text-slate-700">
-                              "Recurrent short luteal phase with likely progesterone insufficiency. PMS exacerbated by reported sleep deficit."
-                           </p>
-                           <Button size="sm" variant="outline" className="w-full h-6 text-[10px] bg-white">Edit</Button>
+                        <div>
+                           <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Leading Follicle</p>
+                           <p className="text-lg font-bold text-emerald-600">18mm (Left)</p>
                         </div>
-                        {/* Plan */}
-                        <div className="p-4 space-y-3">
-                           <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">P (Plan)</span> <Button variant="ghost" size="icon" className="h-5 w-5 text-blue-600">+</Button></div>
-                           <div className="space-y-2">
-                              <div className="flex items-center gap-2"><Checkbox id="p1" defaultChecked /> <label htmlFor="p1" className="text-xs text-slate-700">Start luteal progesterone</label></div>
-                              <div className="flex items-center gap-2"><Checkbox id="p2" /> <label htmlFor="p2" className="text-xs text-slate-700">Order Day 21 labs</label></div>
-                              <div className="flex items-center gap-2"><Checkbox id="p3" /> <label htmlFor="p3" className="text-xs text-slate-700">Begin sleep protocol</label></div>
-                           </div>
-                           <Button size="sm" className="w-full h-7 text-xs bg-blue-600 hover:bg-blue-700 mt-2">Save Visit Note</Button>
+                        <div>
+                           <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Plan</p>
+                           <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">Trigger Planned</Badge>
                         </div>
                      </div>
-                  </CardContent>
-               </Card>
+                  </div>
+               )}
 
                {/* MAIN DASHBOARD CONTENT GRID */}
                <div className="grid grid-cols-3 gap-6">
@@ -299,17 +320,15 @@ export default function ClinicianPortal() {
                   {/* LEFT COLUMN: Clinical Intelligence (Dynamic based on Mode) */}
                   <div className="col-span-2 space-y-6">
                      
-                     {careMode === 'fertility' && (
+                     {/* 1. HORMONE CARE / NATURAL CONCEPTION DASHBOARD */}
+                     {(careMode === 'hormone_care' || careMode === 'natural_conception') && (
                         <Card className="shadow-sm border-slate-200">
                            <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
-                              <CardTitle className="text-base font-bold text-slate-800">Reproductive Intelligence</CardTitle>
-                              <Tabs defaultValue="combined" className="w-[300px]">
-                                 <TabsList className="h-8 w-full bg-slate-100/80 p-0.5">
-                                    <TabsTrigger value="hormones" className="text-xs h-7 px-3">Hormones</TabsTrigger>
-                                    <TabsTrigger value="symptoms" className="text-xs h-7 px-3">Symptoms</TabsTrigger>
-                                    <TabsTrigger value="combined" className="text-xs h-7 px-3">Combined</TabsTrigger>
-                                 </TabsList>
-                              </Tabs>
+                              <CardTitle className="text-base font-bold text-slate-800">Ovulation Intelligence</CardTitle>
+                              <div className="flex gap-2">
+                                 <Badge variant="outline" className="font-normal text-xs text-slate-500">BBT Confirmed</Badge>
+                                 <Badge variant="outline" className="font-normal text-xs text-slate-500">LH Surge Detected</Badge>
+                              </div>
                            </CardHeader>
                            <CardContent className="pt-6">
                               <div className="h-[280px] w-full">
@@ -331,10 +350,61 @@ export default function ClinicianPortal() {
                                    </AreaChart>
                                  </ResponsiveContainer>
                               </div>
+                              <div className="mt-4 bg-amber-50 border border-amber-100 rounded-lg p-3 flex gap-3">
+                                 <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                 <div className="text-sm text-amber-900">
+                                    <span className="font-semibold">AI Insight:</span> Ovulation confirmed, but luteal phase is borderline (9 days). Consider luteal progesterone support to optimize implantation window.
+                                 </div>
+                              </div>
                            </CardContent>
                         </Card>
                      )}
 
+                     {/* 2. IUI / INDUCTION WORKSPACE */}
+                     {(careMode === 'iui' || careMode === 'induction') && (
+                        <Card className="shadow-sm border-slate-200 overflow-hidden">
+                           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `url(${follicleTrackingBg})`, backgroundSize: 'cover' }}></div>
+                           <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between relative z-10">
+                              <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+                                 <Microscope className="w-4 h-4 text-purple-600" /> Follicle Monitoring
+                              </CardTitle>
+                              <Button size="sm" variant="outline" className="h-7 text-xs">Add Scan Data</Button>
+                           </CardHeader>
+                           <CardContent className="pt-6 relative z-10">
+                              <div className="h-[280px] w-full">
+                                 <ResponsiveContainer width="100%" height="100%">
+                                   <BarChart data={follicleData}>
+                                     <XAxis dataKey="day" tickFormatter={(val) => `CD ${val}`} axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
+                                     <YAxis yAxisId="left" label={{ value: 'Size (mm)', angle: -90, position: 'insideLeft', fontSize: 10 }} axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
+                                     <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px' }} />
+                                     <ReferenceLine yAxisId="left" y={18} stroke="#10b981" strokeDasharray="3 3" label={{ position: 'right', value: 'Trigger Size', fontSize: 10, fill: '#10b981' }} />
+                                     <Bar yAxisId="left" dataKey="left" fill="#818cf8" radius={[4, 4, 0, 0]} name="Left Ovary" barSize={20} />
+                                     <Bar yAxisId="left" dataKey="right" fill="#cbd5e1" radius={[4, 4, 0, 0]} name="Right Ovary" barSize={20} />
+                                     <Line yAxisId="left" type="monotone" dataKey="endometrium" stroke="#f43f5e" strokeWidth={2} dot={{r: 4, fill: '#f43f5e'}} name="Endo Thickness" />
+                                   </BarChart>
+                                 </ResponsiveContainer>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 mt-4">
+                                 <div className="bg-white/80 p-3 rounded border border-slate-100 shadow-sm">
+                                    <div className="text-xs text-slate-500 uppercase font-bold mb-1">Stimulation Log</div>
+                                    <div className="flex justify-between items-center">
+                                       <span className="text-sm font-medium text-slate-800">Letrozole 5mg</span>
+                                       <span className="text-xs text-slate-500">CD 3-7</span>
+                                    </div>
+                                 </div>
+                                 <div className="bg-white/80 p-3 rounded border border-slate-100 shadow-sm">
+                                    <div className="text-xs text-slate-500 uppercase font-bold mb-1">Trigger Decision</div>
+                                    <div className="flex justify-between items-center">
+                                       <span className="text-sm font-bold text-emerald-600">Ready for Trigger</span>
+                                       <Button size="sm" className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-700">Order Ovidrel</Button>
+                                    </div>
+                                 </div>
+                              </div>
+                           </CardContent>
+                        </Card>
+                     )}
+
+                     {/* 3. PREGNANCY WORKSPACE */}
                      {careMode === 'pregnancy' && (
                         <Card className="shadow-sm border-slate-200 overflow-hidden">
                            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `url(${pregnancyGrowthBg})`, backgroundSize: 'cover' }}></div>
@@ -356,20 +426,11 @@ export default function ClinicianPortal() {
                                    </AreaChart>
                                  </ResponsiveContainer>
                               </div>
-                              <div className="flex gap-4 mt-2">
-                                 <div className="bg-white/80 p-3 rounded border border-slate-100 shadow-sm flex-1">
-                                    <div className="text-xs text-slate-500 uppercase font-bold">BP Trend</div>
-                                    <div className="text-lg font-bold text-slate-800">118/75 <span className="text-xs font-normal text-slate-400">Stable</span></div>
-                                 </div>
-                                 <div className="bg-white/80 p-3 rounded border border-slate-100 shadow-sm flex-1">
-                                    <div className="text-xs text-slate-500 uppercase font-bold">Fetal Movement</div>
-                                    <div className="text-lg font-bold text-slate-800">Active <span className="text-xs font-normal text-emerald-600">Normal</span></div>
-                                 </div>
-                              </div>
                            </CardContent>
                         </Card>
                      )}
 
+                     {/* 4. POSTPARTUM WORKSPACE */}
                      {careMode === 'postpartum' && (
                         <Card className="shadow-sm border-slate-200 overflow-hidden">
                            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `url(${postpartumRecoveryBg})`, backgroundSize: 'cover' }}></div>
@@ -386,14 +447,14 @@ export default function ClinicianPortal() {
                                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full w-[60%] bg-blue-500 rounded-full"></div></div>
                               </div>
                               <div>
-                                 <div className="flex justify-between text-sm mb-2 font-medium"><span>Mood Stability</span> <span className="text-amber-600">40% (Attention Needed)</span></div>
+                                 <div className="flex justify-between text-sm mb-2 font-medium"><span>Mood Stability (EPDS)</span> <span className="text-amber-600">Score 12 (Attention Needed)</span></div>
                                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full w-[40%] bg-amber-500 rounded-full"></div></div>
                               </div>
                            </CardContent>
                         </Card>
                      )}
 
-                     {/* 3. LAB INTELLIGENCE PANEL */}
+                     {/* SHARED: LAB INTELLIGENCE PANEL */}
                      <Card className="shadow-sm border-slate-200">
                         <CardHeader className="py-3 border-b border-slate-100">
                            <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -418,8 +479,8 @@ export default function ClinicianPortal() {
                                     <td className="px-4 py-3"><Badge variant="outline" className="border-rose-200 text-rose-700 bg-rose-50">Low</Badge></td>
                                  </tr>
                                  <tr>
-                                    <td className="px-4 py-3 font-medium text-slate-700">TSH</td>
-                                    <td className="px-4 py-3">2.1 mIU/L</td>
+                                    <td className="px-4 py-3 font-medium text-slate-700">AMH</td>
+                                    <td className="px-4 py-3">2.1 ng/mL</td>
                                     <td className="px-4 py-3 text-slate-400">- Stable</td>
                                     <td className="px-4 py-3"><Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50">Normal</Badge></td>
                                  </tr>
@@ -430,10 +491,55 @@ export default function ClinicianPortal() {
 
                   </div>
 
-                  {/* RIGHT COLUMN: Protocols & Meds */}
+                  {/* RIGHT COLUMN: Protocols & Meds (Dynamic) */}
                   <div className="space-y-6">
                      
-                     {/* 2. MEDICATION MANAGEMENT */}
+                     {/* PROTOCOL PLANNER */}
+                     <Card className="shadow-sm border-slate-200 bg-slate-50/50">
+                        <CardHeader className="py-3 border-b border-slate-100">
+                           <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                              <ClipboardList className="w-4 h-4 text-indigo-600" /> Care Protocols
+                           </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 space-y-3">
+                           {/* DYNAMIC PROTOCOL SUGGESTIONS */}
+                           {careMode === 'natural_conception' && (
+                              <div className="bg-white border border-indigo-100 rounded-lg p-3 shadow-sm">
+                                 <div className="flex justify-between items-center mb-2">
+                                    <h4 className="text-xs font-bold text-indigo-900">TIMED INTERCOURSE</h4>
+                                    <Badge className="text-[10px] bg-indigo-100 text-indigo-700 border-none">Active</Badge>
+                                 </div>
+                                 <ul className="space-y-2">
+                                    <li className="text-xs text-slate-600 flex items-center gap-2"><CalendarCheck className="w-3 h-3 text-emerald-500" /> Fertile Window: CD 12-16</li>
+                                    <li className="text-xs text-slate-600 flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> LH Surge Monitored</li>
+                                 </ul>
+                              </div>
+                           )}
+
+                           {careMode === 'iui' && (
+                              <div className="bg-white border border-purple-100 rounded-lg p-3 shadow-sm">
+                                 <div className="flex justify-between items-center mb-2">
+                                    <h4 className="text-xs font-bold text-purple-900">IUI PROTOCOL</h4>
+                                    <Badge className="text-[10px] bg-purple-100 text-purple-700 border-none">Stimulation</Badge>
+                                 </div>
+                                 <ul className="space-y-2">
+                                    <li className="text-xs text-slate-600 flex items-center gap-2"><Syringe className="w-3 h-3 text-purple-500" /> Trigger: Ovidrel 250mcg</li>
+                                    <li className="text-xs text-slate-600 flex items-center gap-2"><Timer className="w-3 h-3 text-purple-500" /> IUI Timing: 36h post-trigger</li>
+                                 </ul>
+                              </div>
+                           )}
+
+                           <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm opacity-70">
+                              <div className="flex justify-between items-center mb-2">
+                                 <h4 className="text-xs font-bold text-slate-700">LUTEAL SUPPORT</h4>
+                                 <Button size="sm" variant="ghost" className="h-5 text-[10px] text-slate-400">Add</Button>
+                              </div>
+                              <p className="text-[10px] text-slate-500">Progesterone + Magnesium protocol not yet started.</p>
+                           </div>
+                        </CardContent>
+                     </Card>
+                     
+                     {/* MEDICATION MANAGEMENT */}
                      <Card className="shadow-sm border-slate-200">
                         <CardHeader className="py-3 border-b border-slate-100 flex justify-between items-center flex-row">
                            <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -442,46 +548,27 @@ export default function ClinicianPortal() {
                            <Button size="icon" variant="ghost" className="h-6 w-6"><ChevronRight className="w-4 h-4" /></Button>
                         </CardHeader>
                         <CardContent className="p-0">
-                           <div className="p-3 border-b border-slate-50 flex justify-between items-center">
-                              <div>
-                                 <div className="font-medium text-sm text-slate-900">Progesterone</div>
-                                 <div className="text-xs text-slate-500">200mg • Luteal Phase</div>
+                           {(careMode === 'iui' || careMode === 'induction') ? (
+                              <div className="p-3 border-b border-slate-50 flex justify-between items-center">
+                                 <div>
+                                    <div className="font-medium text-sm text-slate-900">Letrozole</div>
+                                    <div className="text-xs text-slate-500">5mg • CD 3-7</div>
+                                 </div>
+                                 <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">Completed</Badge>
                               </div>
-                              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">Active</Badge>
-                           </div>
-                           <div className="p-3 flex justify-between items-center">
-                              <div>
-                                 <div className="font-medium text-sm text-slate-900">Magnesium Glycinate</div>
-                                 <div className="text-xs text-slate-500">400mg • Daily</div>
+                           ) : (
+                              <div className="p-3 border-b border-slate-50 flex justify-between items-center">
+                                 <div>
+                                    <div className="font-medium text-sm text-slate-900">Prenatal Multi</div>
+                                    <div className="text-xs text-slate-500">Daily</div>
+                                 </div>
+                                 <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">Active</Badge>
                               </div>
-                              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">Active</Badge>
-                           </div>
+                           )}
                         </CardContent>
                      </Card>
 
-                     {/* 5. SMART PROTOCOL ENGINE */}
-                     <Card className="shadow-sm border-slate-200 bg-slate-50/50">
-                        <CardHeader className="py-3 border-b border-slate-100">
-                           <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                              <ClipboardList className="w-4 h-4 text-indigo-600" /> Saivie Protocols
-                           </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-4 space-y-3">
-                           <div className="bg-white border border-indigo-100 rounded-lg p-3 shadow-sm">
-                              <div className="flex justify-between items-center mb-2">
-                                 <h4 className="text-xs font-bold text-indigo-900">LUTEAL SUPPORT</h4>
-                                 <Button size="sm" className="h-6 text-[10px] bg-indigo-600 hover:bg-indigo-700">Apply</Button>
-                              </div>
-                              <ul className="space-y-1.5">
-                                 <li className="text-xs text-slate-600 flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> Progesterone 200mg</li>
-                                 <li className="text-xs text-slate-600 flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> Mag + B6 Support</li>
-                                 <li className="text-xs text-slate-600 flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> Sleep Hygiene Module</li>
-                              </ul>
-                           </div>
-                        </CardContent>
-                     </Card>
-
-                     {/* 6. PATIENT COMMUNICATION LOG */}
+                     {/* PATIENT COMMUNICATION LOG */}
                      <Card className="shadow-sm border-slate-200">
                         <CardHeader className="py-3 border-b border-slate-100">
                            <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -491,17 +578,10 @@ export default function ClinicianPortal() {
                         <CardContent className="p-0">
                            <div className="p-3 border-b border-slate-50">
                               <div className="flex justify-between text-xs mb-1">
-                                 <span className="font-semibold text-slate-700">Insight Shared</span>
-                                 <span className="text-slate-400">Yesterday</span>
+                                 <span className="font-semibold text-slate-700">Plan Updated</span>
+                                 <span className="text-slate-400">Today</span>
                               </div>
-                              <p className="text-xs text-slate-500 truncate">"Progesterone support may help luteal..."</p>
-                           </div>
-                           <div className="p-3">
-                              <div className="flex justify-between text-xs mb-1">
-                                 <span className="font-semibold text-slate-700">Report Sent</span>
-                                 <span className="text-slate-400">3 days ago</span>
-                              </div>
-                              <p className="text-xs text-slate-500 truncate">Hormone Panel Results.pdf</p>
+                              <p className="text-xs text-slate-500 truncate">IUI scheduled for Friday at 10am.</p>
                            </div>
                         </CardContent>
                      </Card>

@@ -1,0 +1,194 @@
+When a patient is created or first evaluated, you assign a:
+
+🔹 CARE PATHWAY
+
+This determines the entire layout of the clinician screen
+
+🌸 1️⃣ HORMONE & CYCLE CARE PATIENT
+
+(PMS, PCOS, irregular cycles, pain, mood)
+
+Dashboard shows:
+
+Cycle timeline
+
+Hormone pattern graph
+
+PMS severity tracking
+
+Luteal phase length
+
+AI hormone insights
+
+Nutrition + psychology + lifestyle layers
+
+This is what your current screen already reflects ✔
+
+🌿 2️⃣ NATURAL CONCEPTION PATIENT
+
+Now the screen changes to:
+
+🩺 FERTILITY OPTIMIZATION DASHBOARD
+
+Top Summary Bar
+
+Trying for: 6 months
+
+Ovulatory status
+
+Luteal adequacy
+
+Partner semen status
+
+Main Panels
+1️⃣ Ovulation Intelligence
+
+Follicular growth history
+
+LH surge tracking
+
+BBT confirmation
+
+2️⃣ Implantation Readiness
+
+Luteal length trend
+
+Progesterone levels
+
+Endometrial thickness history
+
+3️⃣ Timed Intercourse Planner
+
+Fertile window guidance
+
+AI suggestions based on past cycles
+
+4️⃣ Correctable Factors Panel
+
+Thyroid
+
+Prolactin
+
+Insulin resistance
+
+BMI risk
+
+AI Insight Example:
+
+“Ovulation confirmed, but luteal phase borderline. Consider luteal progesterone support.”
+
+💊 3️⃣ OVULATION INDUCTION PATIENT
+
+For patients on Letrozole / Clomiphene cycles.
+
+🩺 INDUCTION CYCLE WORKSPACE
+
+Cycle Day Tracker (big visual timeline)
+
+| CD2 | Baseline scan |
+| CD3–7 | Letrozole |
+| CD10 | Follicle scan |
+| CD12 | Repeat scan |
+| Trigger | hCG |
+| TIC | Timed intercourse |
+
+Panels
+✔ Follicle growth chart
+✔ Endometrium thickness
+✔ Estradiol levels
+✔ Trigger timing decision
+
+AI alerts:
+⚠ Risk of hyper-response
+⚠ Thin lining
+⚠ Delayed follicular growth
+
+🧪 4️⃣ IUI PATIENT WORKSPACE
+
+This becomes a procedure cycle dashboard
+
+IUI CYCLE BOARD
+
+Top Bar
+IUI Cycle #2 • CD 11 • Follicle 18mm • Trigger Planned
+
+Panels
+
+1️⃣ Stimulation Log
+
+Drugs given
+
+Dose changes
+
+2️⃣ Follicle Monitoring
+
+Left / Right ovary follicle sizes
+
+Endometrium trend
+
+3️⃣ Trigger & IUI Timing
+
+Trigger date/time
+
+IUI scheduled
+
+Sperm wash report upload
+
+4️⃣ Luteal Support
+
+Progesterone start date
+
+Compliance
+
+5️⃣ Outcome Tracker
+
+Beta hCG date
+
+Result
+
+🤰 5️⃣ PREGNANCY PATIENT WORKSPACE
+
+Different world entirely.
+
+Shows
+
+GA (Gestational age)
+
+Trimester tracker
+
+Scan timeline
+
+BP / sugar / weight
+
+Risk flags (GDM, PIH, thyroid)
+
+No cycle charts here.
+
+🤱 6️⃣ POSTPARTUM PATIENT WORKSPACE
+
+Focus shifts to:
+
+Delivery details
+
+Lactation tracker
+
+Mood screening (PPD)
+
+Cycle return monitoring
+
+Contraception counseling
+
+🧠 IMPORTANT: SAME PATIENT CAN TRANSITION
+
+A woman may go:
+
+Cycle Care → Natural Conception → IUI → Pregnancy → Postpartum
+
+System should allow:
+👉 Change Care Pathway
+👉 Old data archived but visible
+
+🏗️ WHAT YOU TELL YOUR DEVELOPER
+
+“Saivie EMR must be care-pathway driven, not one fixed dashboard.
+Each pathway loads a different clinical workspace UI.”
