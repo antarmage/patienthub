@@ -36,7 +36,9 @@ import {
   Plus,
   AlertTriangle,
   Clock,
-  Briefcase
+  Briefcase,
+  Settings,
+  CreditCard
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -229,6 +231,20 @@ export default function ClinicianPortal() {
             onClick={() => setActiveView('analytics')}
           >
             <Activity className="mr-3 h-4 w-4" /> Analytics
+          </Button>
+          <Button 
+            variant={activeView === 'revenue' ? 'secondary' : 'ghost'} 
+            className={`w-full justify-start ${activeView === 'revenue' ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20' : 'text-slate-300 hover:text-white hover:bg-slate-800/50'}`}
+            onClick={() => setActiveView('revenue')}
+          >
+            <Briefcase className="mr-3 h-4 w-4" /> Revenue
+          </Button>
+          <Button 
+            variant={activeView === 'settings' ? 'secondary' : 'ghost'} 
+            className={`w-full justify-start ${activeView === 'settings' ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20' : 'text-slate-300 hover:text-white hover:bg-slate-800/50'}`}
+            onClick={() => setActiveView('settings')}
+          >
+            <Settings className="mr-3 h-4 w-4" /> Profile & Settings
           </Button>
         </nav>
 
@@ -1339,6 +1355,271 @@ export default function ClinicianPortal() {
                        </Card>
                    </TabsContent>
                 </Tabs>
+             </div>
+          </div>
+        )}
+
+        {/* REVENUE VIEW (NEW) */}
+        {activeView === 'revenue' && (
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+             <div className="max-w-7xl mx-auto space-y-6">
+                
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                   <div>
+                      <h2 className="text-2xl font-bold text-slate-900 font-serif">Financial Overview</h2>
+                      <p className="text-slate-500 mt-1">Track clinic revenue, consultation fees, and procedure billing.</p>
+                   </div>
+                   <div className="flex items-center gap-3">
+                      <Select defaultValue="this_month">
+                         <SelectTrigger className="w-[180px] bg-white border-slate-200">
+                            <SelectValue placeholder="Period" />
+                         </SelectTrigger>
+                         <SelectContent>
+                            <SelectItem value="this_month">This Month</SelectItem>
+                            <SelectItem value="last_month">Last Month</SelectItem>
+                            <SelectItem value="ytd">Year to Date</SelectItem>
+                         </SelectContent>
+                      </Select>
+                      <Button variant="outline" className="bg-white border-slate-200 text-slate-700">
+                         <Download className="w-4 h-4 mr-2" /> Download Report
+                      </Button>
+                   </div>
+                </div>
+
+                {/* Key Metrics */}
+                <div className="grid grid-cols-4 gap-4">
+                   <Card className="shadow-sm border-slate-200">
+                      <CardContent className="p-4">
+                         <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Total Revenue</p>
+                            <div className="p-1.5 bg-green-50 rounded-md text-green-600">
+                               <CreditCard className="w-4 h-4" />
+                            </div>
+                         </div>
+                         <p className="text-2xl font-bold text-slate-900">$124,500</p>
+                         <div className="flex items-center gap-1 mt-2 text-xs font-medium text-emerald-600">
+                            <TrendingUp className="w-3 h-3" /> +8.2% vs last month
+                         </div>
+                      </CardContent>
+                   </Card>
+                   
+                   <Card className="shadow-sm border-slate-200">
+                      <CardContent className="p-4">
+                         <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Consultations</p>
+                            <div className="p-1.5 bg-blue-50 rounded-md text-blue-600">
+                               <Users className="w-4 h-4" />
+                            </div>
+                         </div>
+                         <p className="text-2xl font-bold text-slate-900">$42,300</p>
+                         <p className="text-xs text-slate-500 mt-2">320 appointments</p>
+                      </CardContent>
+                   </Card>
+
+                   <Card className="shadow-sm border-slate-200">
+                      <CardContent className="p-4">
+                         <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Procedures (IVF/IUI)</p>
+                            <div className="p-1.5 bg-purple-50 rounded-md text-purple-600">
+                               <Dna className="w-4 h-4" />
+                            </div>
+                         </div>
+                         <p className="text-2xl font-bold text-slate-900">$68,100</p>
+                         <p className="text-xs text-slate-500 mt-2">18 procedures</p>
+                      </CardContent>
+                   </Card>
+
+                   <Card className="shadow-sm border-slate-200">
+                      <CardContent className="p-4">
+                         <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Pending Claims</p>
+                            <div className="p-1.5 bg-amber-50 rounded-md text-amber-600">
+                               <AlertCircle className="w-4 h-4" />
+                            </div>
+                         </div>
+                         <p className="text-2xl font-bold text-slate-900">$14,100</p>
+                         <p className="text-xs text-slate-500 mt-2">5 claims requiring action</p>
+                      </CardContent>
+                   </Card>
+                </div>
+
+                <div className="grid grid-cols-3 gap-6">
+                   {/* Revenue Breakdown Chart */}
+                   <Card className="col-span-2 shadow-sm border-slate-200">
+                      <CardHeader>
+                         <CardTitle className="text-base font-bold text-slate-800">Revenue Trend (6 Months)</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                         <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                               <BarChart data={[
+                                  { month: 'May', total: 98000 },
+                                  { month: 'Jun', total: 105000 },
+                                  { month: 'Jul', total: 110000 },
+                                  { month: 'Aug', total: 102000 },
+                                  { month: 'Sep', total: 118000 },
+                                  { month: 'Oct', total: 124500 },
+                               ]}>
+                                  <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                  <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value/1000}k`} />
+                                  <Tooltip cursor={{fill: '#f1f5f9'}} formatter={(value) => [`$${value}`, 'Revenue']} />
+                                  <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Revenue" />
+                               </BarChart>
+                            </ResponsiveContainer>
+                         </div>
+                      </CardContent>
+                   </Card>
+
+                   {/* Recent Transactions */}
+                   <Card className="col-span-1 shadow-sm border-slate-200">
+                      <CardHeader className="flex flex-row items-center justify-between">
+                         <CardTitle className="text-base font-bold text-slate-800">Recent Transactions</CardTitle>
+                         <Button variant="ghost" size="sm" className="h-8 text-xs text-blue-600">View All</Button>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                         <div className="divide-y divide-slate-100">
+                            {[
+                               { patient: "Ananya S.", service: "IVF Cycle Package", amount: "$12,500", status: "Paid", date: "Today" },
+                               { patient: "Meera D.", service: "Fetal Scan (20w)", amount: "$350", status: "Paid", date: "Today" },
+                               { patient: "Elena R.", service: "Consultation", amount: "$150", status: "Pending", date: "Yesterday" },
+                               { patient: "Sarah J.", service: "Postpartum Care", amount: "$200", status: "Paid", date: "Yesterday" },
+                               { patient: "Priya K.", service: "Hormone Panel", amount: "$450", status: "Paid", date: "Oct 22" },
+                            ].map((tx, i) => (
+                               <div key={i} className="p-4 hover:bg-slate-50 transition-colors">
+                                  <div className="flex justify-between items-start mb-1">
+                                     <p className="text-sm font-bold text-slate-900">{tx.patient}</p>
+                                     <p className="text-sm font-bold text-slate-900">{tx.amount}</p>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                     <p className="text-xs text-slate-500">{tx.service}</p>
+                                     <Badge variant="outline" className={`text-[10px] ${tx.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                        {tx.status}
+                                     </Badge>
+                                  </div>
+                               </div>
+                            ))}
+                         </div>
+                      </CardContent>
+                   </Card>
+                </div>
+             </div>
+          </div>
+        )}
+
+        {/* SETTINGS VIEW (NEW) */}
+        {activeView === 'settings' && (
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+             <div className="max-w-4xl mx-auto space-y-6">
+                
+                {/* Header */}
+                <div>
+                   <h2 className="text-2xl font-bold text-slate-900 font-serif">Profile & Settings</h2>
+                   <p className="text-slate-500 mt-1">Manage your account preferences and clinic configuration.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                   {/* Sidebar Settings Nav */}
+                   <Card className="h-fit shadow-sm border-slate-200">
+                      <CardContent className="p-2">
+                         <nav className="space-y-1">
+                            <Button variant="ghost" className="w-full justify-start bg-slate-100 text-slate-900 font-medium">
+                               <Users className="w-4 h-4 mr-3" /> Profile Details
+                            </Button>
+                            <Button variant="ghost" className="w-full justify-start text-slate-500 hover:text-slate-900">
+                               <Bell className="w-4 h-4 mr-3" /> Notifications
+                            </Button>
+                            <Button variant="ghost" className="w-full justify-start text-slate-500 hover:text-slate-900">
+                               <Briefcase className="w-4 h-4 mr-3" /> Clinic Availability
+                            </Button>
+                            <Button variant="ghost" className="w-full justify-start text-slate-500 hover:text-slate-900">
+                               <Settings className="w-4 h-4 mr-3" /> System Preferences
+                            </Button>
+                         </nav>
+                      </CardContent>
+                   </Card>
+
+                   {/* Settings Content */}
+                   <div className="md:col-span-2 space-y-6">
+                      
+                      {/* Personal Info Card */}
+                      <Card className="shadow-sm border-slate-200">
+                         <CardHeader>
+                            <CardTitle className="text-base font-bold text-slate-800">Personal Information</CardTitle>
+                         </CardHeader>
+                         <CardContent className="space-y-4">
+                            <div className="flex items-center gap-4 mb-4">
+                               <Avatar className="h-16 w-16 border-2 border-white shadow-md">
+                                  <AvatarFallback className="bg-slate-800 text-white text-xl">DR</AvatarFallback>
+                               </Avatar>
+                               <div>
+                                  <Button variant="outline" size="sm" className="text-xs">Change Photo</Button>
+                               </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                               <div className="space-y-2">
+                                  <Label htmlFor="firstName">First Name</Label>
+                                  <Input id="firstName" defaultValue="David" />
+                               </div>
+                               <div className="space-y-2">
+                                  <Label htmlFor="lastName">Last Name</Label>
+                                  <Input id="lastName" defaultValue="Reynolds" />
+                               </div>
+                            </div>
+
+                            <div className="space-y-2">
+                               <Label htmlFor="specialty">Specialty</Label>
+                               <Input id="specialty" defaultValue="Reproductive Endocrinology" />
+                            </div>
+
+                            <div className="space-y-2">
+                               <Label htmlFor="email">Email Address</Label>
+                               <Input id="email" type="email" defaultValue="d.reynolds@helixcare.com" />
+                            </div>
+
+                            <div className="pt-4 flex justify-end">
+                               <Button className="bg-blue-600 hover:bg-blue-700">Save Changes</Button>
+                            </div>
+                         </CardContent>
+                      </Card>
+
+                      {/* Security Card */}
+                      <Card className="shadow-sm border-slate-200">
+                         <CardHeader>
+                            <CardTitle className="text-base font-bold text-slate-800">Security & Access</CardTitle>
+                         </CardHeader>
+                         <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                               <div>
+                                  <p className="text-sm font-medium text-slate-900">Two-Factor Authentication</p>
+                                  <p className="text-xs text-slate-500">Secure your account with 2FA.</p>
+                               </div>
+                               <Button variant="outline" size="sm" className="text-xs">Enable</Button>
+                            </div>
+                            
+                            <div className="space-y-2">
+                               <Label htmlFor="currentPass">Current Password</Label>
+                               <Input id="currentPass" type="password" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                               <div className="space-y-2">
+                                  <Label htmlFor="newPass">New Password</Label>
+                                  <Input id="newPass" type="password" />
+                               </div>
+                               <div className="space-y-2">
+                                  <Label htmlFor="confirmPass">Confirm Password</Label>
+                                  <Input id="confirmPass" type="password" />
+                               </div>
+                            </div>
+                            
+                            <div className="pt-4 flex justify-end">
+                               <Button variant="outline" className="text-slate-600 border-slate-300">Update Password</Button>
+                            </div>
+                         </CardContent>
+                      </Card>
+                   </div>
+                </div>
              </div>
           </div>
         )}
