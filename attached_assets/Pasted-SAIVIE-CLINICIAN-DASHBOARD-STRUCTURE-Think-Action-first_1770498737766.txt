@@ -1,0 +1,108 @@
+SAIVIE CLINICIAN DASHBOARD STRUCTURE
+
+Think: Action-first, insight-driven
+
+🔝 TOP BAR — Today at a Glance
+
+A horizontal summary strip:
+
+👩‍⚕️ Today’s Appointments: 18
+🧬 Fertility Cycles Active: 9
+🤰 Pregnancy Follow-ups: 6
+🧑‍🍼 Postpartum Care: 3
+🚨 High-Risk Alerts: 2
+
+This gives instant mental context before even opening a patient.
+
+🚨 SECTION 1 — Priority Attention Panel
+
+This is the most important block on the dashboard.
+
+Title: Needs Doctor Attention
+
+Cards appear automatically based on system triggers.
+
+Examples:
+
+🔴 Ananya S. – TTC 6 mo
+• Follicle ready (20mm)
+• Trigger due today
+
+🟠 Meera D. – Pregnancy 24w
+• OGTT pending
+• Weight gain high this month
+
+🟡 Sarah J. – Postpartum 6w
+• EPDS mood score high
+• Needs psychological consult
+
+This replaces memory-based practice with AI-assisted care prompts.
+
+📅 SECTION 2 — Today’s Patient Flow
+
+A smart schedule list, not just time slots.
+
+Each patient row shows:
+
+Name	Type	Stage	Flag
+Ananya S	Fertility	Day 12 Scan	🟢 Ovulation Window
+Meera D	Pregnancy	Week 24	🟡 Routine Follow-up
+Sarah J	Postpartum	Week 6	🟠 Mood Check
+
+Doctor sees context before opening file.
+
+🧬 SECTION 3 — Fertility Intelligence Snapshot
+
+Because fertility is dynamic and time-sensitive.
+
+Small panel showing:
+
+• Cycles in Ovulation Window: 3
+• IUIs Planned This Week: 2
+• Low Probability Cycles Needing Optimization: 2
+
+Click → opens those specific patients
+
+🤰 SECTION 4 — Pregnancy Monitoring Snapshot
+
+• High BP Alerts: 1
+• Low Hb Cases: 2
+• Next Scan Due This Week: 4
+
+Prevents missed follow-ups.
+
+🧑‍🍼 SECTION 5 — Postpartum Watch
+
+• High Depression Risk: 1
+• Lactation Issues Logged: 2
+• Contraception Counseling Due: 3
+
+👩‍⚕️ SECTION 6 — Care Team Activity
+
+Shows contributions from Saivie’s multi-specialist model.
+
+🧠 Psychologist notes added today: 2
+🥗 Nutrition plans updated: 3
+🏋️ Trainer compliance reports: 4
+🩸 Labs uploaded by phlebo: 6
+
+This makes care feel collaborative, not doctor-only.
+
+📊 SECTION 7 — Clinic Insights (Bottom Panel)
+
+Long-term performance metrics:
+
+• This Month Pregnancies Achieved: 5
+• Average Cycle Conception Probability: 24%
+• PCOS Symptom Improvement Trend: ↑
+• Postpartum Recovery Score Avg: 8.2/10
+
+This is Saivie’s success dashboard, not just patient tracking.
+
+🎯 DESIGN PRINCIPLES
+
+✔ No clutter
+✔ Card-based layout
+✔ Color coded by patient type
+✔ Every section should answer:
+“Who needs me right now?”
