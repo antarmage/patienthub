@@ -629,6 +629,50 @@ export default function ClinicianPortal() {
                     </div>
                  </div>
 
+                 {/* Capacity / Slot View Overlay */}
+                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm mb-2">
+                    <div className="flex items-center justify-between mb-4">
+                       <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                          <Users className="w-4 h-4 text-blue-600" /> Slot Capacity & Planning
+                       </h3>
+                       <div className="flex gap-2">
+                          <Badge variant="outline" className="bg-slate-50 text-slate-600">Total Planned: 24</Badge>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-600">Utilization: 85%</Badge>
+                       </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-6 gap-2 text-center text-xs">
+                       <div className="col-span-1 bg-slate-50 p-2 rounded font-medium text-slate-500 flex items-center justify-center">Time Slot</div>
+                       <div className="col-span-1 bg-blue-50/50 p-2 rounded font-bold text-slate-700">Main Clinic</div>
+                       <div className="col-span-1 bg-purple-50/50 p-2 rounded font-bold text-slate-700">North Wing</div>
+                       <div className="col-span-1 bg-emerald-50/50 p-2 rounded font-bold text-slate-700">South Center</div>
+                       <div className="col-span-1 bg-amber-50/50 p-2 rounded font-bold text-slate-700">East Side</div>
+                       <div className="col-span-1 bg-slate-100 p-2 rounded font-bold text-slate-900">Total</div>
+
+                       {/* Slot Rows */}
+                       <div className="col-span-1 p-2 text-slate-500 font-medium">09:00 - 10:00</div>
+                       <div className="col-span-1 p-2 bg-blue-50/20 text-blue-700 font-bold">5</div>
+                       <div className="col-span-1 p-2 bg-purple-50/20 text-purple-700 font-bold">2</div>
+                       <div className="col-span-1 p-2 bg-emerald-50/20 text-emerald-700 font-bold">3</div>
+                       <div className="col-span-1 p-2 bg-amber-50/20 text-amber-700 font-bold">1</div>
+                       <div className="col-span-1 p-2 font-bold bg-slate-50">11</div>
+
+                       <div className="col-span-1 p-2 text-slate-500 font-medium">10:00 - 11:00</div>
+                       <div className="col-span-1 p-2 bg-blue-50/20 text-blue-700 font-bold">4</div>
+                       <div className="col-span-1 p-2 bg-purple-50/20 text-purple-700 font-bold">3</div>
+                       <div className="col-span-1 p-2 bg-emerald-50/20 text-emerald-700 font-bold">2</div>
+                       <div className="col-span-1 p-2 bg-amber-50/20 text-amber-700 font-bold">0</div>
+                       <div className="col-span-1 p-2 font-bold bg-slate-50">9</div>
+
+                       <div className="col-span-1 p-2 text-slate-500 font-medium">11:00 - 12:00</div>
+                       <div className="col-span-1 p-2 bg-blue-50/20 text-blue-700 font-bold">3</div>
+                       <div className="col-span-1 p-2 bg-purple-50/20 text-purple-700 font-bold">0</div>
+                       <div className="col-span-1 p-2 bg-emerald-50/20 text-emerald-700 font-bold">1</div>
+                       <div className="col-span-1 p-2 bg-amber-50/20 text-amber-700 font-bold">0</div>
+                       <div className="col-span-1 p-2 font-bold bg-slate-50">4</div>
+                    </div>
+                 </div>
+
                  {/* Calendar Grid */}
                  <Card className="flex-1 shadow-sm border-slate-200 flex flex-col overflow-hidden">
                     {/* Days Header */}
