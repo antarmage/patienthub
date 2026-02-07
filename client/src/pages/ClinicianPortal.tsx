@@ -1541,6 +1541,13 @@ export default function ClinicianPortal() {
                             >
                                <Briefcase className="w-4 h-4 mr-3" /> Clinic Availability
                             </Button>
+                            <Button 
+                               variant="ghost" 
+                               className={`w-full justify-start font-medium ${activeSettingsTab === 'network' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                               onClick={() => setActiveSettingsTab('network')}
+                            >
+                               <Users className="w-4 h-4 mr-3" /> My Care Network
+                            </Button>
                             <Button variant="ghost" className="w-full justify-start text-slate-500 hover:text-slate-900">
                                <Settings className="w-4 h-4 mr-3" /> System Preferences
                             </Button>
@@ -1732,6 +1739,97 @@ export default function ClinicianPortal() {
                                           </div>
                                           <Button variant="outline" size="sm" className="text-xs h-7">Manage</Button>
                                       </div>
+                                  </CardContent>
+                              </Card>
+                          </div>
+                      )}
+
+                      {activeSettingsTab === 'network' && (
+                          <div className="space-y-6">
+                              <Card className="shadow-sm border-slate-200">
+                                  <CardHeader className="flex flex-row items-center justify-between">
+                                      <div>
+                                          <CardTitle className="text-base font-bold text-slate-800">My Care Network</CardTitle>
+                                          <p className="text-xs text-slate-500 mt-1">Manage your team of specialists and referral network.</p>
+                                      </div>
+                                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 h-8 text-xs gap-1.5">
+                                          <Plus className="w-3.5 h-3.5" /> Add Team Member
+                                      </Button>
+                                  </CardHeader>
+                                  <CardContent className="space-y-4">
+                                      
+                                      {/* Pediatrician */}
+                                      <div className="bg-white border border-slate-200 rounded-lg p-4 flex items-center justify-between group hover:border-blue-200 transition-colors">
+                                          <div className="flex items-center gap-4">
+                                              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                                                  <Baby className="w-6 h-6" />
+                                              </div>
+                                              <div>
+                                                  <h3 className="font-bold text-slate-900 text-sm">Dr. Sarah Miller</h3>
+                                                  <p className="text-xs text-slate-500 font-medium">Pediatrician</p>
+                                                  <p className="text-[10px] text-slate-400 mt-0.5">Children's Health Clinic</p>
+                                              </div>
+                                          </div>
+                                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <Button variant="outline" size="sm" className="h-7 text-xs">Edit</Button>
+                                              <Button variant="outline" size="sm" className="h-7 text-xs text-rose-600 hover:bg-rose-50 border-rose-100">Remove</Button>
+                                          </div>
+                                      </div>
+
+                                      {/* Anesthetist */}
+                                      <div className="bg-white border border-slate-200 rounded-lg p-4 flex items-center justify-between group hover:border-purple-200 transition-colors">
+                                          <div className="flex items-center gap-4">
+                                              <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
+                                                  <Syringe className="w-6 h-6" />
+                                              </div>
+                                              <div>
+                                                  <h3 className="font-bold text-slate-900 text-sm">Dr. James Wilson</h3>
+                                                  <p className="text-xs text-slate-500 font-medium">Anesthetist</p>
+                                                  <p className="text-[10px] text-slate-400 mt-0.5">On-Call Associate</p>
+                                              </div>
+                                          </div>
+                                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <Button variant="outline" size="sm" className="h-7 text-xs">Edit</Button>
+                                              <Button variant="outline" size="sm" className="h-7 text-xs text-rose-600 hover:bg-rose-50 border-rose-100">Remove</Button>
+                                          </div>
+                                      </div>
+
+                                      {/* Nursing Home */}
+                                      <div className="bg-white border border-slate-200 rounded-lg p-4 flex items-center justify-between group hover:border-emerald-200 transition-colors">
+                                          <div className="flex items-center gap-4">
+                                              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                                  <Briefcase className="w-6 h-6" />
+                                              </div>
+                                              <div>
+                                                  <h3 className="font-bold text-slate-900 text-sm">Sunrise Nursing Home</h3>
+                                                  <p className="text-xs text-slate-500 font-medium">Inpatient Care Facility</p>
+                                                  <p className="text-[10px] text-slate-400 mt-0.5">24/7 Service</p>
+                                              </div>
+                                          </div>
+                                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <Button variant="outline" size="sm" className="h-7 text-xs">Edit</Button>
+                                              <Button variant="outline" size="sm" className="h-7 text-xs text-rose-600 hover:bg-rose-50 border-rose-100">Remove</Button>
+                                          </div>
+                                      </div>
+
+                                      {/* Nutritionist */}
+                                      <div className="bg-white border border-slate-200 rounded-lg p-4 flex items-center justify-between group hover:border-amber-200 transition-colors">
+                                          <div className="flex items-center gap-4">
+                                              <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+                                                  <Heart className="w-6 h-6" />
+                                              </div>
+                                              <div>
+                                                  <h3 className="font-bold text-slate-900 text-sm">Lisa Chen, RD</h3>
+                                                  <p className="text-xs text-slate-500 font-medium">Clinical Nutritionist</p>
+                                                  <p className="text-[10px] text-slate-400 mt-0.5">Wellness Partner</p>
+                                              </div>
+                                          </div>
+                                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <Button variant="outline" size="sm" className="h-7 text-xs">Edit</Button>
+                                              <Button variant="outline" size="sm" className="h-7 text-xs text-rose-600 hover:bg-rose-50 border-rose-100">Remove</Button>
+                                          </div>
+                                      </div>
+
                                   </CardContent>
                               </Card>
                           </div>
