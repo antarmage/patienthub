@@ -304,7 +304,7 @@ export default function ClinicianPortal() {
                                     contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
                                     labelStyle={{ fontWeight: 'bold', color: '#1e293b' }}
                                   />
-                                  <ReferenceLine x={14} stroke="#cbd5e1" strokeDasharray="3 3" label={{ position: 'top', value: 'Ovulation', fontSize: 10, fill: '#64748b' }} />
+                                  <ReferenceLine yAxisId="left" x={14} stroke="#cbd5e1" strokeDasharray="3 3" label={{ position: 'top', value: 'Ovulation', fontSize: 10, fill: '#64748b' }} />
                                   
                                   <Area yAxisId="left" type="monotone" dataKey="estrogen" stroke="#818cf8" strokeWidth={2} fillOpacity={1} fill="url(#colorEstrogen)" name="Estrogen" />
                                   <Area yAxisId="left" type="monotone" dataKey="progesterone" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorProg)" name="Progesterone" />
