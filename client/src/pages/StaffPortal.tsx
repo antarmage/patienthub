@@ -149,6 +149,8 @@ export default function StaffPortal() {
   const [activeView, setActiveView] = useState("dashboard"); // 'dashboard', 'patients', 'schedule', 'reports'
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isAdjustProtocolOpen, setIsAdjustProtocolOpen] = useState(false);
+  const [selectedPatientForAdjust, setSelectedPatientForAdjust] = useState<any>(null);
   const [isCreatePlanOpen, setIsCreatePlanOpen] = useState(false);
 
   const roles = [
@@ -572,6 +574,99 @@ export default function StaffPortal() {
                                     </DialogFooter>
                                 </DialogContent>
                              </Dialog>
+
+                             {/* ADJUST PROTOCOL DIALOG */}
+                             <Dialog open={isAdjustProtocolOpen} onOpenChange={setIsAdjustProtocolOpen}>
+                                <DialogContent className="sm:max-w-[600px]">
+                                    <DialogHeader>
+                                        <DialogTitle>Adjust Active Protocol</DialogTitle>
+                                        <DialogDescription>
+                                            Modify the current intervention plan for {selectedPatientForAdjust?.name}.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    
+                                    {selectedPatientForAdjust && (
+                                        <div className="grid gap-6 py-4">
+                                            
+                                            {/* Current Focus */}
+                                            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex justify-between items-center">
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Current Goal</p>
+                                                    <p className="font-bold text-slate-900">{selectedPatientForAdjust.functional.hormone.focus}</p>
+                                                </div>
+                                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Active</Badge>
+                                            </div>
+
+                                            {/* Modify Diet Phase */}
+                                            <div className="space-y-3">
+                                                <div className="flex justify-between items-center">
+                                                    <Label>Dietary Phase</Label>
+                                                    <span className="text-xs text-slate-500">Current: {selectedPatientForAdjust.plan}</span>
+                                                </div>
+                                                <Select defaultValue="elimination">
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="elimination">Elimination Phase (Strict)</SelectItem>
+                                                        <SelectItem value="reintroduction">Reintroduction Phase</SelectItem>
+                                                        <SelectItem value="maintenance">Maintenance & Diversity</SelectItem>
+                                                        <SelectItem value="keto">Therapeutic Ketogenic</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* Supplement Tweak */}
+                                            <div className="space-y-3">
+                                                <Label>Active Supplements</Label>
+                                                <div className="border border-slate-200 rounded-md divide-y divide-slate-100">
+                                                    <div className="p-3 flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <Checkbox id="supp1" defaultChecked />
+                                                            <div>
+                                                                <p className="text-sm font-medium">Magnesium Glycinate</p>
+                                                                <p className="text-xs text-slate-500">400mg • Bedtime</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <Button variant="ghost" size="sm" className="h-6 text-xs text-slate-400">Edit</Button>
+                                                            <Button variant="ghost" size="sm" className="h-6 text-xs text-rose-500">Stop</Button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="p-3 flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <Checkbox id="supp2" defaultChecked />
+                                                            <div>
+                                                                <p className="text-sm font-medium">Omega-3 (EPA/DHA)</p>
+                                                                <p className="text-xs text-slate-500">2g • With Lunch</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <Button variant="ghost" size="sm" className="h-6 text-xs text-slate-400">Edit</Button>
+                                                            <Button variant="ghost" size="sm" className="h-6 text-xs text-rose-500">Stop</Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <Button variant="outline" size="sm" className="w-full text-xs bg-slate-50 hover:bg-slate-100 border-dashed border-slate-300 text-slate-500">
+                                                    + Add New Supplement
+                                                </Button>
+                                            </div>
+
+                                            {/* Notes */}
+                                            <div className="space-y-2">
+                                                <Label>Clinical Adjustment Note</Label>
+                                                <Textarea placeholder="Reason for adjustment (e.g. reported bloating, improved symptoms)..." />
+                                            </div>
+
+                                        </div>
+                                    )}
+
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setIsAdjustProtocolOpen(false)}>Cancel</Button>
+                                        <Button className="bg-slate-900 text-white hover:bg-slate-800" onClick={() => setIsAdjustProtocolOpen(false)}>Save Changes</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                             </Dialog>
                         </div>
                     </div>
 
@@ -698,7 +793,16 @@ export default function StaffPortal() {
                                                 <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Primary Focus</p>
                                                 <p className="text-sm font-medium text-slate-800">{patient.functional.hormone.focus}</p>
                                             </div>
-                                            <Button size="sm" className="w-full bg-slate-900 text-white hover:bg-slate-800 h-8 text-xs mt-2">Adjust Protocol</Button>
+                                            <Button 
+                                                size="sm" 
+                                                className="w-full bg-slate-900 text-white hover:bg-slate-800 h-8 text-xs mt-2"
+                                                onClick={() => {
+                                                    setSelectedPatientForAdjust(patient);
+                                                    setIsAdjustProtocolOpen(true);
+                                                }}
+                                            >
+                                                Adjust Protocol
+                                            </Button>
                                         </div>
                                     </div>
 
