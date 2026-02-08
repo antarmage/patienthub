@@ -22,7 +22,8 @@ import {
   X,
   Clock,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  ClipboardList
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,12 @@ const patients = [
         hba1c: { value: 5.7, status: "Borderline", range: "< 5.7", name: "HbA1c" },
         vitd: { value: 22, status: "Low", range: "30-100", name: "Vitamin D" }
     },
+    history: {
+      medical: ["PCOS (diagnosed 2018)", "Hypothyroidism", "Mild Asthma"],
+      surgical: ["Appendectomy (2015)"],
+      drug: ["Metformin 500mg", "Levothyroxine 50mcg", "Multivitamin"],
+      allergies: ["Penicillin", "Peanuts"]
+    },
     clinicianNote: "Referral: Dr. Reynolds. Patient struggles with insulin resistance. Focus on fiber intake and low glycemic load."
   },
    { 
@@ -107,6 +114,12 @@ const patients = [
         hscrp: { value: 5.8, status: "Critical", range: "< 1.0", name: "hs-CRP" },
         ca125: { value: 45, status: "High", range: "< 35", name: "CA-125" },
         estradiol: { value: 180, status: "Normal", range: "30-400", name: "Estradiol" }
+    },
+    history: {
+      medical: ["Endometriosis (diagnosed 2021)", "Dysmenorrhea"],
+      surgical: ["Laparoscopy (2021)"],
+      drug: ["Ibuprofen (PRN)", "Omega-3 Supplements"],
+      allergies: ["Sulfa Drugs"]
     },
     clinicianNote: "Referral: Dr. Reynolds. Confirmed Endo Stage II. Avoid inflammatory foods. Prioritize omega-3s for pain management."
   }
@@ -317,6 +330,46 @@ export default function StaffPatientProtocol() {
             </div>
 
             <TabsContent value="protocol" className="space-y-6">
+
+            {/* Patient History Section */}
+            <Card className="shadow-sm border-slate-200">
+                <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                        <ClipboardList className="w-4 h-4 text-slate-600" />
+                        <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-wide">Patient History</CardTitle>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-4">
+                    <div className="grid grid-cols-4 gap-6">
+                        <div>
+                            <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Past Medical History</h4>
+                            <ul className="list-disc list-inside text-sm text-slate-700 space-y-1">
+                                {patient.history?.medical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic text-xs">None recorded</li>}
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Past Surgical History</h4>
+                            <ul className="list-disc list-inside text-sm text-slate-700 space-y-1">
+                                {patient.history?.surgical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic text-xs">None recorded</li>}
+                            </ul>
+                        </div>
+                        <div>
+                             <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Drug History</h4>
+                             <ul className="list-disc list-inside text-sm text-slate-700 space-y-1">
+                                {patient.history?.drug?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic text-xs">None recorded</li>}
+                            </ul>
+                        </div>
+                         <div>
+                             <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 text-rose-600 border-b border-rose-100 pb-1">Allergies</h4>
+                             <div className="flex flex-wrap gap-2 pt-1">
+                                {patient.history?.allergies?.map((item: string, i: number) => (
+                                    <Badge key={i} variant="outline" className="bg-rose-50 text-rose-700 border-rose-200">{item}</Badge>
+                                )) || <span className="text-sm text-slate-400 italic">No known allergies</span>}
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         
         {/* TOP ROW: Metabolic Context & Doctor's Note */}
         <div className="grid grid-cols-12 gap-6">
