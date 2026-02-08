@@ -246,6 +246,9 @@ export default function ClinicianPortal() {
   const [calendarViewMode, setCalendarViewMode] = useState("month"); // 'month', 'week', 'day'
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile"); // 'profile' or 'availability'
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [bookingType, setBookingType] = useState("surgery"); // 'surgery', 'c_section', 'consultation'
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
 
   // Sync care mode when patient changes
   useEffect(() => {
@@ -871,18 +874,118 @@ export default function ClinicianPortal() {
                     
                     <div className="grid grid-cols-6 gap-3">
                        {/* Operation Theater Booking (NEW) */}
-                       <Card className="border-slate-200 shadow-sm bg-white hover:border-red-200 transition-colors cursor-pointer group col-span-1">
-                          <CardContent className="p-3 text-center">
-                             <div className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-red-100 transition-colors">
-                                <Activity className="w-4 h-4" />
+                       <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
+                          <DialogTrigger asChild>
+                             <Card className="border-slate-200 shadow-sm bg-white hover:border-red-200 transition-colors cursor-pointer group col-span-1" onClick={() => setBookingType('surgery')}>
+                                <CardContent className="p-3 text-center">
+                                   <div className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-red-100 transition-colors">
+                                      <Activity className="w-4 h-4" />
+                                   </div>
+                                   <p className="text-xs font-bold text-slate-700 mb-0.5">Schedule OT</p>
+                                   <p className="text-[10px] text-emerald-600 font-medium flex items-center justify-center gap-1">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> OT-1 Free
+                                   </p>
+                                   <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-red-600 hover:text-white border-none shadow-none">Book Slot</Button>
+                                </CardContent>
+                             </Card>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[425px]">
+                             <DialogHeader>
+                                <DialogTitle>Book Operation Theater</DialogTitle>
+                                <DialogDescription>
+                                   Schedule a Surgery or C-Section procedure.
+                                </DialogDescription>
+                             </DialogHeader>
+                             <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                   <Label htmlFor="procedure-type" className="text-right text-xs">
+                                      Procedure
+                                   </Label>
+                                   <Select defaultValue="c_section">
+                                      <SelectTrigger className="col-span-3 h-8 text-xs">
+                                         <SelectValue placeholder="Select type" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                         <SelectItem value="c_section">C-Section (Elective)</SelectItem>
+                                         <SelectItem value="surgery">Laparoscopy</SelectItem>
+                                         <SelectItem value="hysteroscopy">Hysteroscopy</SelectItem>
+                                         <SelectItem value="erpc">ERPC</SelectItem>
+                                      </SelectContent>
+                                   </Select>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                   <Label htmlFor="patient-select" className="text-right text-xs">
+                                      Patient
+                                   </Label>
+                                   <Select>
+                                      <SelectTrigger className="col-span-3 h-8 text-xs">
+                                         <SelectValue placeholder="Select patient" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                         {patients.map(p => (
+                                            <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+                                         ))}
+                                      </SelectContent>
+                                   </Select>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                   <Label htmlFor="date-time" className="text-right text-xs">
+                                      Date & Time
+                                   </Label>
+                                   <div className="col-span-3 flex gap-2">
+                                      <Input type="date" className="h-8 text-xs flex-1" />
+                                      <Select>
+                                         <SelectTrigger className="w-[100px] h-8 text-xs">
+                                            <SelectValue placeholder="Time" />
+                                         </SelectTrigger>
+                                         <SelectContent>
+                                            <SelectItem value="08:00">08:00 AM</SelectItem>
+                                            <SelectItem value="09:00">09:00 AM</SelectItem>
+                                            <SelectItem value="10:00">10:00 AM</SelectItem>
+                                            <SelectItem value="11:00">11:00 AM</SelectItem>
+                                            <SelectItem value="13:00">01:00 PM</SelectItem>
+                                         </SelectContent>
+                                      </Select>
+                                   </div>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                   <Label className="text-right text-xs">
+                                      Team
+                                   </Label>
+                                   <div className="col-span-3 space-y-2">
+                                      <div className="flex items-center space-x-2">
+                                         <Checkbox id="anesthetist" defaultChecked />
+                                         <label htmlFor="anesthetist" className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            Anesthetist Required
+                                         </label>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                         <Checkbox id="pediatrician" />
+                                         <label htmlFor="pediatrician" className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            Pediatrician (for C-Sec)
+                                         </label>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                         <Checkbox id="assistant" defaultChecked />
+                                         <label htmlFor="assistant" className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            Surgical Assistant
+                                         </label>
+                                      </div>
+                                   </div>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                   <Label htmlFor="notes" className="text-right text-xs">
+                                      Notes
+                                   </Label>
+                                   <Input id="notes" placeholder="Special requirements..." className="col-span-3 h-8 text-xs" />
+                                </div>
                              </div>
-                             <p className="text-xs font-bold text-slate-700 mb-0.5">Schedule OT</p>
-                             <p className="text-[10px] text-emerald-600 font-medium flex items-center justify-center gap-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> OT-1 Free
-                             </p>
-                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-red-600 hover:text-white border-none shadow-none">Book Slot</Button>
-                          </CardContent>
-                       </Card>
+                             <DialogFooter>
+                                <Button size="sm" variant="outline" onClick={() => setIsBookingOpen(false)}>Cancel</Button>
+                                <Button size="sm" type="submit" onClick={() => { setIsBookingOpen(false); }}>Confirm Booking</Button>
+                             </DialogFooter>
+                          </DialogContent>
+                       </Dialog>
 
                        {/* Pediatrician */}
                        <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group col-span-1">
