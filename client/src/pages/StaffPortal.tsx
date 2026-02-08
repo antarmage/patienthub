@@ -34,7 +34,18 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 
 // --- MOCK DATA ---
 const patients = [
@@ -138,6 +149,7 @@ export default function StaffPortal() {
   const [activeView, setActiveView] = useState("dashboard"); // 'dashboard', 'patients', 'schedule', 'reports'
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isCreatePlanOpen, setIsCreatePlanOpen] = useState(false);
 
   const roles = [
     { id: "nutritionist", label: "Nutritionist", icon: Apple, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -422,9 +434,144 @@ export default function StaffPortal() {
                              <Button variant="outline" className="bg-white border-slate-200">
                                 <FlaskConical className="w-4 h-4 mr-2" /> Request Lab Panel
                              </Button>
-                             <Button className="bg-emerald-600 hover:bg-emerald-700">
-                                <Plus className="w-4 h-4 mr-2" /> New Care Plan
-                             </Button>
+                             
+                             <Dialog open={isCreatePlanOpen} onOpenChange={setIsCreatePlanOpen}>
+                                <DialogTrigger asChild>
+                                    <Button className="bg-emerald-600 hover:bg-emerald-700">
+                                        <Plus className="w-4 h-4 mr-2" /> New Care Plan
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+                                    <DialogHeader>
+                                        <DialogTitle>Create Personalized Nutrition Plan</DialogTitle>
+                                        <DialogDescription>
+                                            Design a functional nutrition protocol based on patient's genomic and metabolic profile.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    
+                                    <div className="grid gap-6 py-4">
+                                        
+                                        {/* 1. Patient & Goal Selection */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>Select Patient</Label>
+                                                <Select>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Search patient..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {functionalMedicinePatients.map(p => (
+                                                            <SelectItem key={p.id} value={p.id.toString()}>{p.name} ({p.condition})</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Plan Goal</Label>
+                                                <Select>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Primary Outcome..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="inflammation">Reduce Inflammation (hs-CRP)</SelectItem>
+                                                        <SelectItem value="fertility">Boost Egg Quality</SelectItem>
+                                                        <SelectItem value="gut">Gut Repair (4R Protocol)</SelectItem>
+                                                        <SelectItem value="bloodsugar">Insulin Sensitivity</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+
+                                        {/* 2. Genomic Modifiers */}
+                                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Dna className="w-4 h-4 text-purple-600" />
+                                                <h4 className="text-sm font-bold text-purple-900">Genomic Adjustments</h4>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-3">
+                                                <div className="flex items-start space-x-2">
+                                                    <Checkbox id="mthfr" />
+                                                    <div className="grid gap-0.5 leading-none">
+                                                        <label htmlFor="mthfr" className="text-xs font-medium text-slate-700 cursor-pointer">Methylation Support</label>
+                                                        <p className="text-[10px] text-slate-500">For MTHFR variants</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-start space-x-2">
+                                                    <Checkbox id="caffeine" />
+                                                    <div className="grid gap-0.5 leading-none">
+                                                        <label htmlFor="caffeine" className="text-xs font-medium text-slate-700 cursor-pointer">Caffeine Protocol</label>
+                                                        <p className="text-[10px] text-slate-500">Slow metabolizer limit</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-start space-x-2">
+                                                    <Checkbox id="gluten" />
+                                                    <div className="grid gap-0.5 leading-none">
+                                                        <label htmlFor="gluten" className="text-xs font-medium text-slate-700 cursor-pointer">Gluten Elimination</label>
+                                                        <p className="text-[10px] text-slate-500">HLA-DQ2/DQ8</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 3. Macronutrient Targets */}
+                                        <div className="space-y-3">
+                                            <h4 className="text-sm font-bold text-slate-800">Macronutrient Distribution</h4>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div className="bg-slate-50 p-3 rounded border border-slate-200 text-center">
+                                                    <p className="text-xs text-slate-500 mb-1">Protein</p>
+                                                    <p className="font-bold text-slate-900 text-lg">30%</p>
+                                                    <div className="w-full bg-slate-200 h-1 mt-2 rounded-full overflow-hidden">
+                                                        <div className="bg-emerald-500 h-full w-[30%]"></div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-slate-50 p-3 rounded border border-slate-200 text-center">
+                                                    <p className="text-xs text-slate-500 mb-1">Fats</p>
+                                                    <p className="font-bold text-slate-900 text-lg">40%</p>
+                                                    <div className="w-full bg-slate-200 h-1 mt-2 rounded-full overflow-hidden">
+                                                        <div className="bg-amber-500 h-full w-[40%]"></div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-slate-50 p-3 rounded border border-slate-200 text-center">
+                                                    <p className="text-xs text-slate-500 mb-1">Carbs</p>
+                                                    <p className="font-bold text-slate-900 text-lg">30%</p>
+                                                    <div className="w-full bg-slate-200 h-1 mt-2 rounded-full overflow-hidden">
+                                                        <div className="bg-blue-500 h-full w-[30%]"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 4. Meal Protocol */}
+                                        <div className="space-y-2">
+                                            <Label>Meal Protocol & Timing</Label>
+                                            <Textarea placeholder="E.g., Intermittent Fasting 16:8. Start with warm lemon water. Breakfast: High protein..." className="min-h-[100px]" />
+                                        </div>
+
+                                        {/* 5. Supplement Stack */}
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <Label>Functional Supplements</Label>
+                                                <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-600">+ Add Item</Button>
+                                            </div>
+                                            <div className="border border-slate-200 rounded-md divide-y divide-slate-100">
+                                                <div className="p-2 flex items-center justify-between bg-slate-50">
+                                                    <span className="text-sm font-medium">Magnesium Glycinate</span>
+                                                    <span className="text-xs text-slate-500">400mg • Bedtime</span>
+                                                </div>
+                                                <div className="p-2 flex items-center justify-between bg-slate-50">
+                                                    <span className="text-sm font-medium">Omega-3 (EPA/DHA)</span>
+                                                    <span className="text-xs text-slate-500">2g • With Lunch</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setIsCreatePlanOpen(false)}>Cancel</Button>
+                                        <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => setIsCreatePlanOpen(false)}>Create & Assign Plan</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                             </Dialog>
                         </div>
                     </div>
 
