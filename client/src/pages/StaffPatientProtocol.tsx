@@ -19,7 +19,8 @@ import {
   Sparkles,
   ListPlus,
   Plus,
-  X
+  X,
+  Clock
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
