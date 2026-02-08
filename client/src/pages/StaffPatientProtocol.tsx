@@ -17,7 +17,9 @@ import {
   Share2,
   Trash2,
   Sparkles,
-  Clock
+  ListPlus,
+  Plus,
+  X
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -119,6 +121,53 @@ export default function StaffPatientProtocol() {
     setWeeklyPlan(prev => ({
         ...prev,
         [day]: prev[day]?.map(item => item.id === id ? { ...item, [field]: value } : item) || []
+    }));
+  };
+
+  // --- COMPONENT HANDLERS ---
+  const addComponentToMeal = (day: string, mealId: number) => {
+    setWeeklyPlan(prev => ({
+        ...prev,
+        [day]: prev[day]?.map(item => {
+            if (item.id === mealId) {
+                const currentComponents = item.components || [];
+                return { 
+                    ...item, 
+                    components: [...currentComponents, { id: Date.now(), name: "", qty: "" }]
+                };
+            }
+            return item;
+        }) || []
+    }));
+  };
+
+  const updateComponent = (day: string, mealId: number, compId: number, field: string, value: string) => {
+    setWeeklyPlan(prev => ({
+        ...prev,
+        [day]: prev[day]?.map(item => {
+            if (item.id === mealId && item.components) {
+                return {
+                    ...item,
+                    components: item.components.map((c: any) => c.id === compId ? { ...c, [field]: value } : c)
+                };
+            }
+            return item;
+        }) || []
+    }));
+  };
+
+  const removeComponent = (day: string, mealId: number, compId: number) => {
+    setWeeklyPlan(prev => ({
+        ...prev,
+        [day]: prev[day]?.map(item => {
+            if (item.id === mealId && item.components) {
+                return {
+                    ...item,
+                    components: item.components.filter((c: any) => c.id !== compId)
+                };
+            }
+            return item;
+        }) || []
     }));
   };
 
@@ -412,6 +461,36 @@ export default function StaffPatientProtocol() {
                                         className="h-9 bg-white border-slate-200 focus:border-indigo-500 text-sm font-medium" 
                                         placeholder="Enter meal description..."
                                     />
+                                    
+                                    {/* Components List (If Active) */}
+                                    {meal.components && meal.components.length > 0 && (
+                                        <div className="mt-2 space-y-2 pl-2 border-l-2 border-slate-100">
+                                            {meal.components.map((comp: any) => (
+                                                <div key={comp.id} className="flex gap-2 items-center">
+                                                    <Input 
+                                                        value={comp.name}
+                                                        onChange={(e) => updateComponent(selectedDay, meal.id, comp.id, "name", e.target.value)}
+                                                        className="h-7 text-xs bg-slate-50 border-slate-200 w-2/3"
+                                                        placeholder="Item (e.g. Rice)"
+                                                    />
+                                                    <Input 
+                                                        value={comp.qty}
+                                                        onChange={(e) => updateComponent(selectedDay, meal.id, comp.id, "qty", e.target.value)}
+                                                        className="h-7 text-xs bg-slate-50 border-slate-200 w-1/3"
+                                                        placeholder="Qty"
+                                                    />
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-6 w-6 text-slate-400 hover:text-rose-500"
+                                                        onClick={() => removeComponent(selectedDay, meal.id, comp.id)}
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="col-span-3">
                                     <Input 
@@ -429,7 +508,16 @@ export default function StaffPatientProtocol() {
                                         placeholder="Macros"
                                     />
                                 </div>
-                                <div className="col-span-1 flex justify-end">
+                                <div className="col-span-1 flex justify-end gap-1">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-9 w-9 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50"
+                                        title="Compose Meal"
+                                        onClick={() => addComponentToMeal(selectedDay, meal.id)}
+                                    >
+                                        <ListPlus className="w-4 h-4" />
+                                    </Button>
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
