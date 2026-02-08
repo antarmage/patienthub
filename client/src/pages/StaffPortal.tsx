@@ -222,6 +222,8 @@ export default function StaffPortal() {
 
   const [isVitalsOpen, setIsVitalsOpen] = useState(false);
   const [selectedPatientForVitals, setSelectedPatientForVitals] = useState<any>(null);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [selectedPatientForUpload, setSelectedPatientForUpload] = useState<any>(null);
   const [vitalsData, setVitalsData] = useState({
       systolic: '',
       diastolic: '',
@@ -1625,7 +1627,15 @@ export default function StaffPortal() {
                                                         </Button>
                                                     )}
                                                     {p.action === "Upload Records" && (
-                                                        <Button size="sm" variant="outline" className="border-slate-200 text-slate-700 h-8 text-xs">
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant="outline" 
+                                                            className="border-slate-200 text-slate-700 h-8 text-xs hover:bg-slate-50"
+                                                            onClick={() => {
+                                                                setSelectedPatientForUpload(p);
+                                                                setIsUploadOpen(true);
+                                                            }}
+                                                        >
                                                             <FileText className="w-3 h-3 mr-1" /> Upload Records
                                                         </Button>
                                                     )}
@@ -1882,6 +1892,63 @@ export default function StaffPortal() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsVitalsOpen(false)}>Cancel</Button>
                         <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setIsVitalsOpen(false)}>Save Vitals</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Upload Records Dialog */}
+            <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-indigo-600" /> 
+                            Upload Patient Records
+                        </DialogTitle>
+                        <DialogDescription>
+                            Attach external medical documents for <span className="font-bold text-slate-900">{selectedPatientForUpload?.name}</span>
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <Tabs defaultValue="prescription" className="w-full">
+                        <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="prescription">Prescriptions</TabsTrigger>
+                            <TabsTrigger value="blood">Blood Reports</TabsTrigger>
+                            <TabsTrigger value="usg">USG / Scans</TabsTrigger>
+                        </TabsList>
+                        
+                        <div className="mt-4 p-8 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
+                             <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-3">
+                                <Sparkles className="w-6 h-6 text-indigo-500" />
+                             </div>
+                             <p className="text-sm font-medium text-slate-900">Click to upload or drag and drop</p>
+                             <p className="text-xs text-slate-500 mt-1">PDF, JPG, or PNG (max 10MB)</p>
+                        </div>
+
+                        <div className="mt-4 space-y-2">
+                            <Label className="text-xs font-bold text-slate-500 uppercase">Uploaded Files</Label>
+                            <div className="bg-white border border-slate-200 rounded-lg divide-y divide-slate-100">
+                                <div className="p-3 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 bg-red-50 rounded flex items-center justify-center text-red-600 font-bold text-xs">PDF</div>
+                                        <div>
+                                            <p className="text-sm font-medium text-slate-800">Previous_Prescription.pdf</p>
+                                            <p className="text-[10px] text-slate-400">2.4 MB • Uploading...</p>
+                                        </div>
+                                    </div>
+                                    <Progress value={65} className="w-20 h-1.5" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-4">
+                            <Label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Notes / Description</Label>
+                            <Textarea placeholder="Add any relevant details about these documents..." className="h-20" />
+                        </div>
+                    </Tabs>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Cancel</Button>
+                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setIsUploadOpen(false)}>Upload Documents</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
