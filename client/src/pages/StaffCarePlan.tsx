@@ -1,0 +1,392 @@
+import React, { useState } from "react";
+import { Link, useRoute } from "wouter";
+import { 
+  ArrowLeft,
+  Info,
+  Dna,
+  Clock,
+  Plus,
+  Minus,
+  Save,
+  FlaskConical,
+  Users,
+  Activity,
+  Brain,
+  Dumbbell,
+  Sparkles
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+// --- MOCK DATA (Should match StaffPortal for consistency) ---
+const functionalMedicinePatients = [
+  {
+    id: 101,
+    name: "Ananya S.",
+    age: 29,
+    condition: "PCOS (Insulin Resistant)",
+    genomics: {
+      mthfr: { status: "Heterozygous", risk: "Medium" },
+      caffeine: { status: "Slow Metabolizer", risk: "High" },
+      gluten: { status: "HLA-DQ2 Positive", risk: "High" },
+      comt: { status: "Met/Met (Worrier)", risk: "Medium" }
+    },
+    functional: {
+      gut: { status: "Dysbiosis", score: 45 },
+      inflammation: { marker: "hs-CRP", value: "3.2", status: "Elevated" },
+      nutrient: { deficiency: "Vitamin D, Magnesium", status: "Critical" },
+      hormone: { focus: "Estrogen Dominance", status: "Imbalanced" }
+    },
+    plan: "Anti-inflammatory, Gluten-Free",
+    nextReview: "2 days",
+    clinicianNote: "Referral: Dr. Reynolds. Patient struggles with insulin resistance. Focus on fiber intake and low glycemic load."
+  },
+  {
+    id: 102,
+    name: "Priya K.",
+    age: 28,
+    condition: "Endometriosis Stage II",
+    genomics: {
+      mthfr: { status: "Normal", risk: "Low" },
+      caffeine: { status: "Fast Metabolizer", risk: "Low" },
+      gluten: { status: "Negative", risk: "Low" },
+      estrogen: { status: "CYP1A1 Slow", risk: "High" }
+    },
+    functional: {
+      gut: { status: "Leaky Gut", score: 60 },
+      inflammation: { marker: "Homocysteine", value: "12", status: "Borderline" },
+      nutrient: { deficiency: "Omega-3", status: "Moderate" },
+      hormone: { focus: "Progesterone Support", status: "Low" }
+    },
+    plan: "Low Histamine, High Omega-3",
+    nextReview: "1 week",
+    clinicianNote: "Referral: Dr. Reynolds. Confirmed Endo Stage II. Avoid inflammatory foods. Prioritize omega-3s for pain management."
+  },
+  {
+    id: 103,
+    name: "Meera D.",
+    age: 34,
+    condition: "Gestational Diabetes Risk",
+    genomics: {
+      mthfr: { status: "Homozygous", risk: "High" },
+      caffeine: { status: "Slow Metabolizer", risk: "High" },
+      carbs: { status: "TCF7L2 Variant", risk: "High" },
+      comt: { status: "Val/Val (Warrior)", risk: "Low" }
+    },
+    functional: {
+      gut: { status: "Stable", score: 85 },
+      inflammation: { marker: "Insulin", value: "18", status: "High" },
+      nutrient: { deficiency: "Chromium", status: "Moderate" },
+      hormone: { focus: "Insulin Sensitivity", status: "Resistant" }
+    },
+    plan: "Low Glycemic Index, Methylated Folate",
+    nextReview: "Tomorrow",
+    clinicianNote: "Referral: Dr. Reynolds. GDM risk high. Strict sugar control needed. Monitor post-prandial spikes."
+  }
+];
+
+export default function StaffCarePlan() {
+  const [match, params] = useRoute("/staff/create-plan/:id?");
+  const patientId = params?.id ? parseInt(params.id) : null;
+  const initialPatient = patientId ? functionalMedicinePatients.find(p => p.id === patientId) : null;
+  
+  const [selectedPatient, setSelectedPatient] = useState<any>(initialPatient);
+  
+  const [mealPlanItems, setMealPlanItems] = useState([
+    { id: 1, time: "08:00", name: "Breakfast", item: "", qty: "", macros: "" },
+    { id: 2, time: "11:00", name: "Morning Snack", item: "", qty: "", macros: "" },
+    { id: 3, time: "13:00", name: "Lunch", item: "", qty: "", macros: "" },
+    { id: 4, time: "16:00", name: "Afternoon Snack", item: "", qty: "", macros: "" },
+    { id: 5, time: "19:30", name: "Dinner", item: "", qty: "", macros: "" }
+  ]);
+
+  const addMealItem = () => {
+    const newItem = { 
+        id: Date.now(), 
+        time: "00:00", 
+        name: "Meal/Snack", 
+        item: "", 
+        qty: "", 
+        macros: "" 
+    };
+    setMealPlanItems([...mealPlanItems, newItem]);
+  };
+
+  const removeMealItem = (id: number) => {
+    setMealPlanItems(mealPlanItems.filter(item => item.id !== id));
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+      
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center gap-4">
+            <Link href="/staff">
+                <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2 text-slate-500 hover:text-slate-900">
+                    <ArrowLeft className="w-5 h-5" />
+                </Button>
+            </Link>
+            <div>
+                <h1 className="text-lg font-bold text-slate-900">Create Personalized Nutrition Plan</h1>
+                <p className="text-xs text-slate-500">Design a functional nutrition protocol based on patient's genomic and metabolic profile.</p>
+            </div>
+        </div>
+        <div className="flex gap-2">
+             <Link href="/staff">
+                <Button variant="outline" size="sm" className="bg-white border-slate-200">
+                    Cancel
+                </Button>
+             </Link>
+             <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" size="sm">
+                <Save className="w-4 h-4 mr-2" /> Create & Assign Plan
+             </Button>
+        </div>
+      </header>
+
+      <main className="flex-1 p-6 max-w-5xl mx-auto w-full space-y-6">
+        
+        {/* 1. Patient & Goal Selection */}
+        <Card className="shadow-sm border-slate-200">
+            <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                <CardTitle className="text-base font-bold text-slate-900">Patient Context</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Label>Select Patient</Label>
+                        <Select 
+                            value={selectedPatient?.id.toString()} 
+                            onValueChange={(val) => {
+                                const p = functionalMedicinePatients.find(pat => pat.id.toString() === val);
+                                setSelectedPatient(p);
+                            }}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Search patient..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {functionalMedicinePatients.map(p => (
+                                    <SelectItem key={p.id} value={p.id.toString()}>{p.name} ({p.condition})</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Plan Goal</Label>
+                        <Select>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Primary Outcome..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="inflammation">Reduce Inflammation (hs-CRP)</SelectItem>
+                                <SelectItem value="fertility">Boost Egg Quality</SelectItem>
+                                <SelectItem value="gut">Gut Repair (4R Protocol)</SelectItem>
+                                <SelectItem value="bloodsugar">Insulin Sensitivity</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                {/* Clinician Instructions (Dynamic) */}
+                {selectedPatient && selectedPatient.clinicianNote && (
+                    <div className="mt-4 bg-blue-50 border border-blue-100 p-3 rounded-lg flex gap-3 items-start">
+                        <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                        <div>
+                            <p className="text-xs font-bold text-blue-800 uppercase mb-0.5">Clinician Instruction</p>
+                            <p className="text-sm text-blue-700 leading-snug">{selectedPatient.clinicianNote}</p>
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+
+        {/* 2. Genomic Modifiers */}
+        <Card className="shadow-sm border-slate-200 bg-purple-50/30">
+            <CardHeader className="py-4 border-b border-purple-100 bg-purple-50">
+                <div className="flex items-center gap-2">
+                    <Dna className="w-4 h-4 text-purple-600" />
+                    <CardTitle className="text-base font-bold text-purple-900">Genomic Adjustments</CardTitle>
+                </div>
+            </CardHeader>
+            <CardContent className="p-6">
+                <div className="grid grid-cols-3 gap-6">
+                    <div className="flex items-start space-x-2">
+                        <Checkbox id="mthfr" />
+                        <div className="grid gap-0.5 leading-none">
+                            <label htmlFor="mthfr" className="text-sm font-medium text-slate-700 cursor-pointer">Methylation Support</label>
+                            <p className="text-xs text-slate-500">For MTHFR variants</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                        <Checkbox id="caffeine" />
+                        <div className="grid gap-0.5 leading-none">
+                            <label htmlFor="caffeine" className="text-sm font-medium text-slate-700 cursor-pointer">Caffeine Protocol</label>
+                            <p className="text-xs text-slate-500">Slow metabolizer limit</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                        <Checkbox id="gluten" />
+                        <div className="grid gap-0.5 leading-none">
+                            <label htmlFor="gluten" className="text-sm font-medium text-slate-700 cursor-pointer">Gluten Elimination</label>
+                            <p className="text-xs text-slate-500">HLA-DQ2/DQ8</p>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* 3. Macronutrient Targets */}
+        <Card className="shadow-sm border-slate-200">
+            <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                <CardTitle className="text-base font-bold text-slate-900">Macronutrient Distribution</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+                <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-slate-50 p-4 rounded border border-slate-200 text-center">
+                        <p className="text-xs text-slate-500 mb-1 font-bold uppercase">Protein</p>
+                        <p className="font-bold text-slate-900 text-2xl">30%</p>
+                        <div className="w-full bg-slate-200 h-1.5 mt-3 rounded-full overflow-hidden">
+                            <div className="bg-emerald-500 h-full w-[30%]"></div>
+                        </div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded border border-slate-200 text-center">
+                        <p className="text-xs text-slate-500 mb-1 font-bold uppercase">Fats</p>
+                        <p className="font-bold text-slate-900 text-2xl">40%</p>
+                        <div className="w-full bg-slate-200 h-1.5 mt-3 rounded-full overflow-hidden">
+                            <div className="bg-amber-500 h-full w-[40%]"></div>
+                        </div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded border border-slate-200 text-center">
+                        <p className="text-xs text-slate-500 mb-1 font-bold uppercase">Carbs</p>
+                        <p className="font-bold text-slate-900 text-2xl">30%</p>
+                        <div className="w-full bg-slate-200 h-1.5 mt-3 rounded-full overflow-hidden">
+                            <div className="bg-blue-500 h-full w-[30%]"></div>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* 4. Daily Schedule */}
+        <div className="grid grid-cols-2 gap-6">
+            <Card className="shadow-sm border-slate-200">
+                <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                    <CardTitle className="text-sm font-bold text-slate-900 uppercase">Sleep Schedule</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                     <div className="grid gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-500 uppercase">Wake Up Time</Label>
+                            <div className="relative">
+                                <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                                <Input type="time" className="pl-9 bg-white" defaultValue="07:00" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-500 uppercase">Bedtime</Label>
+                            <div className="relative">
+                                <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                                <Input type="time" className="pl-9 bg-white" defaultValue="22:30" />
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-slate-200">
+                 <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                    <div className="flex justify-between items-center">
+                         <CardTitle className="text-sm font-bold text-slate-900 uppercase">Functional Supplements</CardTitle>
+                         <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-600">+ Add Item</Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <div className="border border-slate-200 rounded-md divide-y divide-slate-100">
+                        <div className="p-3 flex items-center justify-between bg-slate-50">
+                            <span className="text-sm font-medium">Magnesium Glycinate</span>
+                            <span className="text-xs text-slate-500">400mg • Bedtime</span>
+                        </div>
+                        <div className="p-3 flex items-center justify-between bg-slate-50">
+                            <span className="text-sm font-medium">Omega-3 (EPA/DHA)</span>
+                            <span className="text-xs text-slate-500">2g • With Lunch</span>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+
+        <Card className="shadow-sm border-slate-200">
+            <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                 <div className="flex justify-between items-center">
+                    <CardTitle className="text-base font-bold text-slate-900">Structured Meal Plan</CardTitle>
+                    <div className="flex gap-2">
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 cursor-pointer">Training Day</Badge>
+                        <Badge variant="outline" className="text-slate-500 cursor-pointer hover:bg-slate-50">Rest Day</Badge>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="p-6">
+                <div className="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+                    {mealPlanItems.map((meal, index) => (
+                        <div key={meal.id} className={`space-y-2 ${index !== 0 ? 'pt-2 border-t border-slate-200' : ''}`}>
+                            <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${index % 3 === 0 ? 'bg-amber-400' : index % 3 === 1 ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
+                                <Input 
+                                    defaultValue={meal.name} 
+                                    className="h-6 w-32 text-xs font-bold text-slate-800 border-none bg-transparent p-0 focus-visible:ring-0" 
+                                />
+                                <div className="relative ml-auto">
+                                    <Clock className="absolute left-2 top-1.5 h-3 w-3 text-slate-400" />
+                                    <Input 
+                                        type="time" 
+                                        defaultValue={meal.time} 
+                                        className="h-6 w-24 text-xs bg-white pl-6 border-slate-200" 
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-12 gap-2">
+                                <div className="col-span-5">
+                                    <Input placeholder="E.g., Oatmeal with Berries" className="h-8 text-xs bg-white" defaultValue={meal.item} />
+                                </div>
+                                <div className="col-span-3">
+                                    <Input placeholder="Qty" className="h-8 text-xs bg-white" defaultValue={meal.qty} />
+                                </div>
+                                <div className="col-span-3">
+                                    <Input placeholder="Macros" className="h-8 text-xs bg-white" defaultValue={meal.macros} />
+                                </div>
+                                <div className="col-span-1">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 text-slate-400 hover:text-red-500"
+                                        onClick={() => removeMealItem(meal.id)}
+                                    >
+                                        <Minus className="w-3 h-3" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full text-xs border-dashed border-slate-300 text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                        onClick={addMealItem}
+                    >
+                        <Plus className="w-3 h-3 mr-1" /> Add Meal Time
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+      </main>
+    </div>
+  );
+}

@@ -9,6 +9,7 @@ import PatientPortal from "@/pages/PatientPortal";
 import ClinicianPortal from "@/pages/ClinicianPortal";
 import StaffPortal from "@/pages/StaffPortal";
 import StaffPatientProtocol from "@/pages/StaffPatientProtocol";
+import StaffCarePlan from "@/pages/StaffCarePlan";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/clinician" component={ClinicianPortal} />
       <Route path="/staff" component={StaffPortal} />
       <Route path="/staff/protocol/:id" component={StaffPatientProtocol} />
+      <Route path="/staff/create-plan/:id?" component={StaffCarePlan} />
       <Route component={NotFound} />
     </Switch>
   );
