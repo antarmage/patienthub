@@ -66,6 +66,7 @@ const appointments = [
 
 export default function StaffPortal() {
   const [activeRole, setActiveRole] = useState("nutritionist");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const roles = [
@@ -79,10 +80,45 @@ export default function StaffPortal() {
 
   const currentRole = roles.find(r => r.id === activeRole);
 
+  const handleLogin = (roleId: string) => {
+    setActiveRole(roleId);
+    setIsLoggedIn(true);
+  };
+
+  if (!isLoggedIn) {
+    return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+            <Card className="max-w-md w-full shadow-lg border-slate-200">
+                <CardHeader className="text-center pb-2">
+                    <div className="mx-auto w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-serif font-bold text-2xl mb-4">H</div>
+                    <CardTitle className="text-2xl font-serif text-slate-900">HelixCare Staff Portal</CardTitle>
+                    <p className="text-slate-500 text-sm">Select your role to access the care workspace.</p>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-4">
+                    <div className="grid grid-cols-2 gap-3">
+                        {roles.map(role => (
+                            <button
+                                key={role.id}
+                                onClick={() => handleLogin(role.id)}
+                                className="flex flex-col items-center justify-center p-4 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all bg-white group"
+                            >
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 group-hover:bg-white transition-colors ${role.bg}`}>
+                                    <role.icon className={`w-5 h-5 ${role.color}`} />
+                                </div>
+                                <span className="text-xs font-bold text-slate-700 group-hover:text-blue-700">{role.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 overflow-hidden">
       
-      {/* Sidebar Role Switcher */}
+      {/* Sidebar - Logged In State */}
       <aside className={`bg-white border-r border-slate-200 flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           {sidebarOpen ? (
@@ -99,25 +135,23 @@ export default function StaffPortal() {
         </div>
 
         <div className="p-4">
-            {sidebarOpen && <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Select Persona</p>}
-            <div className="space-y-2">
-                {roles.map(role => (
-                    <button
-                        key={role.id}
-                        onClick={() => setActiveRole(role.id)}
-                        className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${activeRole === role.id ? 'bg-slate-100 ring-1 ring-slate-200 shadow-sm' : 'hover:bg-slate-50'}`}
-                    >
-                        <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${activeRole === role.id ? 'bg-white shadow-sm' : 'bg-slate-100'} ${role.color}`}>
-                            <role.icon className="w-4 h-4" />
-                        </div>
-                        {sidebarOpen && (
-                            <div className="text-left overflow-hidden">
-                                <p className={`text-sm font-medium ${activeRole === role.id ? 'text-slate-900' : 'text-slate-600'}`}>{role.label}</p>
-                            </div>
-                        )}
-                        {sidebarOpen && activeRole === role.id && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500"></div>}
-                    </button>
-                ))}
+            <div className="space-y-1">
+                 <Button variant="secondary" className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} bg-slate-100 text-slate-900`}>
+                    <Activity className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
+                    {sidebarOpen && "Dashboard"}
+                 </Button>
+                 <Button variant="ghost" className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} text-slate-500 hover:text-slate-900`}>
+                    <Users className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
+                    {sidebarOpen && "My Patients"}
+                 </Button>
+                 <Button variant="ghost" className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} text-slate-500 hover:text-slate-900`}>
+                    <CalendarCheck className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
+                    {sidebarOpen && "Schedule"}
+                 </Button>
+                 <Button variant="ghost" className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} text-slate-500 hover:text-slate-900`}>
+                    <FileText className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
+                    {sidebarOpen && "Notes & Reports"}
+                 </Button>
             </div>
         </div>
 
@@ -129,7 +163,7 @@ export default function StaffPortal() {
                 {sidebarOpen && (
                     <div className="overflow-hidden">
                         <p className="text-sm font-medium text-slate-900 truncate">Staff Portal</p>
-                        <p className="text-xs text-slate-500 truncate">Logged in</p>
+                        <button onClick={() => setIsLoggedIn(false)} className="text-xs text-rose-500 hover:text-rose-700 truncate text-left block w-full">Sign Out</button>
                     </div>
                 )}
              </div>
