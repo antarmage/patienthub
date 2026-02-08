@@ -185,6 +185,29 @@ const appointments = [
   { time: "11:00", patient: "Priya K.", type: "Diet Consult", doctor: "Ms. Gupta" },
 ];
 
+const receptionistTasks = [
+  { id: 1, type: "lab", patient: "Meera D.", title: "Book OGTT", urgency: "High", status: "Pending" },
+  { id: 2, type: "usg", patient: "Zara M.", title: "Schedule T2 Anomaly Scan", urgency: "Medium", status: "Pending" },
+  { id: 3, type: "onboard", patient: "New Patient (Walk-in)", title: "Complete Registration", urgency: "Immediate", status: "Waiting" },
+];
+
+const patientQueue = [
+    { id: 1, name: "Priya K.", time: "10:50 AM", status: "Waiting", action: "Take Vitals" },
+    { id: 2, name: "Zara M.", time: "11:15 AM", status: "Check-in", action: "Upload Records" },
+    { id: 3, name: "Sarah J.", time: "11:30 AM", status: "Arriving", action: "Onboard" },
+];
+
+const crossSellOpportunities = [
+    { id: 1, patient: "Ananya S.", service: "Nutrigenomics Panel", reason: "Requested personalized diet" },
+    { id: 2, patient: "Meera D.", service: "Prenatal Yoga Class", reason: "Mentioned back pain" },
+    { id: 3, patient: "Priya K.", service: "Gut Microbiome Test", reason: "Persistent bloating symptoms" },
+];
+
+const followUpList = [
+    { id: 1, patient: "Sarah J.", type: "Missed Appointment", daysAgo: 2, action: "Call to Reschedule" },
+    { id: 2, patient: "Elena R.", type: "Payment Pending", amount: "$150", action: "Send Reminder" },
+];
+
 import { Link, useLocation } from "wouter";
 
 export default function StaffPortal() {
@@ -1508,6 +1531,7 @@ export default function StaffPortal() {
             {/* 6. RECEPTIONIST VIEW */}
             {activeRole === 'receptionist' && (
                 <div className="max-w-6xl mx-auto space-y-6">
+                    {/* Top Stats */}
                     <div className="grid grid-cols-4 gap-4">
                         <Card className="shadow-sm border-slate-200">
                             <CardContent className="p-4">
@@ -1535,45 +1559,223 @@ export default function StaffPortal() {
                         </Card>
                     </div>
 
-                    <Card className="shadow-sm border-slate-200">
-                        <CardHeader className="py-4 border-b border-slate-100 flex justify-between items-center">
-                            <CardTitle className="text-base font-bold text-slate-800">Appointment Flow</CardTitle>
-                            <Button size="sm" className="bg-slate-900 text-white hover:bg-slate-800 text-xs">
-                                + New Booking
-                            </Button>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                             <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50 text-slate-500 uppercase text-xs border-b border-slate-100">
-                                    <tr>
-                                        <th className="px-4 py-3 font-medium">Time</th>
-                                        <th className="px-4 py-3 font-medium">Patient</th>
-                                        <th className="px-4 py-3 font-medium">Type</th>
-                                        <th className="px-4 py-3 font-medium">Doctor/Staff</th>
-                                        <th className="px-4 py-3 font-medium">Status</th>
-                                        <th className="px-4 py-3 font-medium">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {appointments.map((apt, i) => (
-                                        <tr key={i} className="hover:bg-slate-50/50">
-                                            <td className="px-4 py-3 font-medium text-slate-500">{apt.time}</td>
-                                            <td className="px-4 py-3 font-semibold text-slate-900">{apt.patient}</td>
-                                            <td className="px-4 py-3 text-slate-600">{apt.type}</td>
-                                            <td className="px-4 py-3 text-slate-500">{apt.doctor}</td>
-                                            <td className="px-4 py-3">
-                                                <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200">Scheduled</Badge>
-                                            </td>
-                                            <td className="px-4 py-3 flex gap-2">
-                                                <Button size="sm" variant="outline" className="h-7 text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100">Check In</Button>
-                                                <Button size="sm" variant="ghost" className="h-7 text-xs text-slate-400 hover:text-rose-600">Cancel</Button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                             </table>
-                        </CardContent>
-                    </Card>
+                    <div className="grid grid-cols-12 gap-6">
+                        {/* LEFT COLUMN: Action Items */}
+                        <div className="col-span-8 space-y-6">
+                            
+                            {/* Patient Queue */}
+                            <Card className="shadow-sm border-slate-200">
+                                <CardHeader className="py-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50/30">
+                                    <div className="flex items-center gap-2">
+                                        <Users className="w-5 h-5 text-indigo-600" />
+                                        <CardTitle className="text-base font-bold text-slate-800">Patient Queue (Onboarding/Vitals)</CardTitle>
+                                    </div>
+                                    <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">{patientQueue.length} Waiting</Badge>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="divide-y divide-slate-100">
+                                        {patientQueue.map(p => (
+                                            <div key={p.id} className="p-4 flex items-center justify-between hover:bg-slate-50">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="bg-indigo-100 w-10 h-10 rounded-full flex items-center justify-center text-indigo-700 font-bold text-xs">
+                                                        {p.name.split(' ').map(n => n[0]).join('')}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-slate-900 text-sm">{p.name}</p>
+                                                        <p className="text-xs text-slate-500 flex items-center gap-1">
+                                                            <Clock className="w-3 h-3" /> Arrived at {p.time}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <Badge variant="outline" className={`
+                                                        ${p.status === 'Waiting' ? 'bg-amber-50 text-amber-700 border-amber-200' : 
+                                                          p.status === 'Check-in' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
+                                                          'bg-slate-100 text-slate-600 border-slate-200'}
+                                                    `}>
+                                                        {p.status}
+                                                    </Badge>
+                                                    
+                                                    {p.action === "Onboard" && (
+                                                        <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs">
+                                                            Start Onboarding
+                                                        </Button>
+                                                    )}
+                                                    {p.action === "Take Vitals" && (
+                                                        <Button size="sm" variant="outline" className="border-indigo-200 text-indigo-700 bg-indigo-50 h-8 text-xs hover:bg-indigo-100">
+                                                            <Activity className="w-3 h-3 mr-1" /> Take Vitals
+                                                        </Button>
+                                                    )}
+                                                    {p.action === "Upload Records" && (
+                                                        <Button size="sm" variant="outline" className="border-slate-200 text-slate-700 h-8 text-xs">
+                                                            <FileText className="w-3 h-3 mr-1" /> Upload Records
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Clinical Action Items */}
+                            <Card className="shadow-sm border-slate-200">
+                                <CardHeader className="py-4 border-b border-slate-100 flex justify-between items-center bg-amber-50/30">
+                                    <div className="flex items-center gap-2">
+                                        <AlertCircle className="w-5 h-5 text-amber-600" />
+                                        <CardTitle className="text-base font-bold text-slate-800">Pending Clinical Actions</CardTitle>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="divide-y divide-slate-100">
+                                        {receptionistTasks.map(task => (
+                                            <div key={task.id} className="p-4 flex items-center justify-between hover:bg-slate-50">
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Badge variant="outline" className={`text-[10px] uppercase ${
+                                                            task.type === 'lab' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                                            task.type === 'usg' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                                            'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                        }`}>
+                                                            {task.type === 'lab' ? 'Blood Test' : task.type === 'usg' ? 'USG Appointment' : 'Registration'}
+                                                        </Badge>
+                                                        <span className="text-xs font-medium text-slate-500">for {task.patient}</span>
+                                                    </div>
+                                                    <p className="text-sm font-bold text-slate-800">{task.title}</p>
+                                                </div>
+                                                <Button size="sm" variant="outline" className="text-xs h-8">
+                                                    Action
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                             {/* Appointment Flow (Existing) */}
+                             <Card className="shadow-sm border-slate-200">
+                                <CardHeader className="py-4 border-b border-slate-100 flex justify-between items-center">
+                                    <CardTitle className="text-base font-bold text-slate-800">Appointment Schedule</CardTitle>
+                                    <Button size="sm" className="bg-slate-900 text-white hover:bg-slate-800 text-xs">
+                                        + New Booking
+                                    </Button>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                     <table className="w-full text-sm text-left">
+                                        <thead className="bg-slate-50 text-slate-500 uppercase text-xs border-b border-slate-100">
+                                            <tr>
+                                                <th className="px-4 py-3 font-medium">Time</th>
+                                                <th className="px-4 py-3 font-medium">Patient</th>
+                                                <th className="px-4 py-3 font-medium">Type</th>
+                                                <th className="px-4 py-3 font-medium">Doctor/Staff</th>
+                                                <th className="px-4 py-3 font-medium">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {appointments.map((apt, i) => (
+                                                <tr key={i} className="hover:bg-slate-50/50">
+                                                    <td className="px-4 py-3 font-medium text-slate-500">{apt.time}</td>
+                                                    <td className="px-4 py-3 font-semibold text-slate-900">{apt.patient}</td>
+                                                    <td className="px-4 py-3 text-slate-600">{apt.type}</td>
+                                                    <td className="px-4 py-3 text-slate-500">{apt.doctor}</td>
+                                                    <td className="px-4 py-3 flex gap-2">
+                                                        <Button size="sm" variant="outline" className="h-7 text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100">Check In</Button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                     </table>
+                                </CardContent>
+                            </Card>
+
+                        </div>
+
+                        {/* RIGHT COLUMN: Growth & Follow-up */}
+                        <div className="col-span-4 space-y-6">
+                            
+                            {/* Follow-up Indicators */}
+                            <Card className="shadow-sm border-slate-200 bg-rose-50/30">
+                                <CardHeader className="py-3 border-b border-rose-100 bg-rose-50/50">
+                                    <div className="flex items-center gap-2">
+                                        <CalendarCheck className="w-4 h-4 text-rose-600" />
+                                        <CardTitle className="text-sm font-bold text-rose-900 uppercase tracking-wide">Follow-up Needed</CardTitle>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="divide-y divide-rose-100">
+                                        {followUpList.map(item => (
+                                            <div key={item.id} className="p-3 hover:bg-rose-50/50">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className="text-sm font-bold text-slate-800">{item.patient}</span>
+                                                    <Badge variant="outline" className="text-[10px] bg-white border-rose-200 text-rose-600">{item.type}</Badge>
+                                                </div>
+                                                <p className="text-xs text-slate-500 mb-2">{item.action} • {item.daysAgo ? `${item.daysAgo} days ago` : item.amount}</p>
+                                                <Button size="sm" variant="ghost" className="w-full h-7 text-xs bg-white border border-rose-200 text-rose-700 hover:bg-rose-100">
+                                                    Take Action
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Cross-sell Opportunities */}
+                            <Card className="shadow-sm border-slate-200 bg-emerald-50/30">
+                                <CardHeader className="py-3 border-b border-emerald-100 bg-emerald-50/50">
+                                    <div className="flex items-center gap-2">
+                                        <Sparkles className="w-4 h-4 text-emerald-600" />
+                                        <CardTitle className="text-sm font-bold text-emerald-900 uppercase tracking-wide">Growth Opportunities</CardTitle>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="divide-y divide-emerald-100">
+                                        {crossSellOpportunities.map(opp => (
+                                            <div key={opp.id} className="p-3 hover:bg-emerald-50/50">
+                                                <div className="mb-2">
+                                                    <span className="text-xs font-medium text-slate-500 block mb-0.5">Recommend for {opp.patient}</span>
+                                                    <span className="text-sm font-bold text-emerald-800 flex items-center gap-1">
+                                                        {opp.service}
+                                                    </span>
+                                                </div>
+                                                <div className="bg-white/60 p-2 rounded text-[10px] text-slate-600 italic mb-2">
+                                                    "{opp.reason}"
+                                                </div>
+                                                <Button size="sm" className="w-full h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-sm">
+                                                    Suggest Service
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                             {/* Quick Actions */}
+                             <Card className="shadow-sm border-slate-200">
+                                <CardHeader className="py-3 border-b border-slate-100">
+                                    <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-wide">Quick Tools</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-3 grid grid-cols-2 gap-2">
+                                    <Button variant="outline" className="h-20 flex flex-col gap-1 hover:border-indigo-300 hover:bg-indigo-50 border-slate-200">
+                                        <Users className="w-5 h-5 text-indigo-500" />
+                                        <span className="text-xs font-medium text-slate-600">New Patient</span>
+                                    </Button>
+                                    <Button variant="outline" className="h-20 flex flex-col gap-1 hover:border-blue-300 hover:bg-blue-50 border-slate-200">
+                                        <CalendarCheck className="w-5 h-5 text-blue-500" />
+                                        <span className="text-xs font-medium text-slate-600">Schedule</span>
+                                    </Button>
+                                    <Button variant="outline" className="h-20 flex flex-col gap-1 hover:border-emerald-300 hover:bg-emerald-50 border-slate-200">
+                                        <Activity className="w-5 h-5 text-emerald-500" />
+                                        <span className="text-xs font-medium text-slate-600">Log Vitals</span>
+                                    </Button>
+                                    <Button variant="outline" className="h-20 flex flex-col gap-1 hover:border-purple-300 hover:bg-purple-50 border-slate-200">
+                                        <FileText className="w-5 h-5 text-purple-500" />
+                                        <span className="text-xs font-medium text-slate-600">Uploads</span>
+                                    </Button>
+                                </CardContent>
+                            </Card>
+
+                        </div>
+                    </div>
                 </div>
             )}
 
