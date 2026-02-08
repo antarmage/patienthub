@@ -31,7 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ListPlus, Trash2 } from "lucide-react";
+import { ListPlus, Trash2, Sparkles } from "lucide-react";
 
 // --- MOCK DATA (Should match StaffPortal for consistency) ---
 const functionalMedicinePatients = [
@@ -125,6 +125,8 @@ export default function StaffCarePlan() {
   
   const [selectedPatient, setSelectedPatient] = useState<any>(initialPatient);
   
+    const [viewMode, setViewMode] = useState<"intake" | "planning">("intake");
+  
   const [mealPlanItems, setMealPlanItems] = useState([
     { id: 1, time: "08:00", name: "Breakfast", item: "", qty: "", macros: "" },
     { id: 2, time: "11:00", name: "Morning Snack", item: "", qty: "", macros: "" },
@@ -171,15 +173,23 @@ export default function StaffCarePlan() {
                     Cancel
                 </Button>
              </Link>
-             <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" size="sm">
-                <Save className="w-4 h-4 mr-2" /> Create & Assign Plan
-             </Button>
+             {viewMode === "intake" ? (
+                 <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" size="sm" onClick={() => setViewMode("planning")}>
+                    Proceed to Planning
+                 </Button>
+             ) : (
+                 <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" size="sm">
+                    <Save className="w-4 h-4 mr-2" /> Save & Assign Plan
+                 </Button>
+             )}
         </div>
       </header>
 
       <main className="flex-1 p-6 max-w-5xl mx-auto w-full space-y-6">
         
-        {/* 1. Patient & Goal Selection */}
+        {viewMode === "intake" ? (
+            <>
+                {/* 1. Patient & Goal Selection */}
         <Card className="shadow-sm border-slate-200">
             <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
                 <CardTitle className="text-base font-bold text-slate-900">Patient Context</CardTitle>
@@ -486,12 +496,156 @@ export default function StaffCarePlan() {
                 </div>
                 
                 <div className="mt-6 flex justify-end border-t border-slate-100 pt-4">
-                    <Button className="bg-slate-900 text-white hover:bg-slate-800">
+                    <Button className="bg-slate-900 text-white hover:bg-slate-800" onClick={() => setViewMode("planning")}>
                         <Save className="w-4 h-4 mr-2" /> Save Intake & Proceed to Planning
                     </Button>
                 </div>
             </CardContent>
         </Card>
+        </>
+        ) : (
+        <>
+        {/* PLANNING PHASE DASHBOARD */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card className="col-span-1 shadow-sm border-blue-200 bg-blue-50">
+                 <CardContent className="p-4">
+                     <h3 className="text-xs font-bold text-blue-800 uppercase mb-2 flex items-center gap-2">
+                         <Info className="w-3.5 h-3.5" /> Clinician Instructions
+                     </h3>
+                     <p className="text-sm text-blue-700 leading-snug">
+                         {selectedPatient?.clinicianNote || "No specific instructions provided."}
+                     </p>
+                 </CardContent>
+            </Card>
+
+            <div className="col-span-3 grid grid-cols-4 gap-4">
+                 <Card className="shadow-sm border-slate-200 p-4 flex flex-col justify-center">
+                     <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Current Phase</p>
+                     <div className="flex items-center gap-2 text-purple-600">
+                         <Activity className="w-4 h-4" />
+                         <span className="font-bold text-lg">Luteal</span>
+                     </div>
+                     <p className="text-xs text-slate-400">Day 22</p>
+                 </Card>
+                 <Card className="shadow-sm border-slate-200 p-4 flex flex-col justify-center">
+                     <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Energy Exp (TDEE)</p>
+                     <div className="flex items-center gap-2 text-amber-600">
+                         <span className="font-bold text-lg">1850</span> <span className="text-xs text-slate-500">kcal</span>
+                     </div>
+                     <p className="text-xs text-slate-400">Activity: Moderate</p>
+                 </Card>
+                 <Card className="shadow-sm border-slate-200 p-4 flex flex-col justify-center">
+                     <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Target Intake</p>
+                     <div className="flex items-center gap-2 text-emerald-600">
+                         <span className="font-bold text-lg">1550</span> <span className="text-xs text-slate-500">kcal</span>
+                     </div>
+                     <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-200 bg-emerald-50 w-fit mt-1">-300 deficit</Badge>
+                 </Card>
+                 <Card className="shadow-sm border-slate-200 p-4 flex flex-col justify-center">
+                     <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Biometrics</p>
+                     <div className="flex justify-between items-end">
+                         <div>
+                             <span className="font-bold text-lg text-slate-900">68.2</span> <span className="text-xs text-slate-500">kg</span>
+                             <p className="text-[10px] text-slate-400">Weight</p>
+                         </div>
+                         <div className="text-right">
+                             <span className="font-bold text-lg text-slate-900">25.0</span>
+                             <p className="text-[10px] text-slate-400">BMI</p>
+                         </div>
+                     </div>
+                 </Card>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <Card className="shadow-sm border-slate-200">
+                 <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50 flex flex-row justify-between items-center">
+                     <CardTitle className="text-base font-bold text-slate-900">Recent Lab Biomarkers</CardTitle>
+                     <div className="flex gap-2">
+                         <Button variant="outline" size="sm" className="h-7 text-xs bg-white">+ Request Labs</Button>
+                         <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-600">View Full Report</Button>
+                     </div>
+                 </CardHeader>
+                 <CardContent className="p-6">
+                     <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                         <div className="flex justify-between items-center">
+                             <div>
+                                 <p className="text-xs font-bold text-slate-500 uppercase">HS-CRP</p>
+                                 <div className="flex items-baseline gap-1">
+                                     <span className="text-lg font-bold text-rose-600">3.2</span>
+                                     <span className="text-[10px] text-slate-400">Ref: &lt; 1.0</span>
+                                 </div>
+                             </div>
+                             <Badge variant="secondary" className="bg-rose-100 text-rose-700 hover:bg-rose-100">High</Badge>
+                         </div>
+                         <div className="flex justify-between items-center">
+                             <div>
+                                 <p className="text-xs font-bold text-slate-500 uppercase">Fasting Insulin</p>
+                                 <div className="flex items-baseline gap-1">
+                                     <span className="text-lg font-bold text-slate-900">12.5</span>
+                                     <span className="text-[10px] text-slate-400">Ref: &lt; 10.0</span>
+                                 </div>
+                             </div>
+                             <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-100">Elevated</Badge>
+                         </div>
+                         <div className="flex justify-between items-center">
+                             <div>
+                                 <p className="text-xs font-bold text-slate-500 uppercase">HbA1c</p>
+                                 <div className="flex items-baseline gap-1">
+                                     <span className="text-lg font-bold text-slate-900">5.7</span>
+                                     <span className="text-[10px] text-slate-400">Ref: &lt; 5.7</span>
+                                 </div>
+                             </div>
+                             <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-100">Borderline</Badge>
+                         </div>
+                         <div className="flex justify-between items-center">
+                             <div>
+                                 <p className="text-xs font-bold text-slate-500 uppercase">Vitamin D</p>
+                                 <div className="flex items-baseline gap-1">
+                                     <span className="text-lg font-bold text-rose-600">22</span>
+                                     <span className="text-[10px] text-slate-400">Ref: 30-100</span>
+                                 </div>
+                             </div>
+                             <Badge variant="secondary" className="bg-rose-100 text-rose-700 hover:bg-rose-100">Low</Badge>
+                         </div>
+                     </div>
+                 </CardContent>
+             </Card>
+
+             <Card className="shadow-sm border-slate-200">
+                 <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                     <CardTitle className="text-base font-bold text-slate-900">Protocol Focus</CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-6 space-y-4">
+                     <div className="space-y-2">
+                         <Label className="text-xs font-bold text-slate-500 uppercase">Primary Goal</Label>
+                         <Select defaultValue="inflammation">
+                             <SelectTrigger className="bg-white">
+                                 <SelectValue placeholder="Select primary goal..." />
+                             </SelectTrigger>
+                             <SelectContent>
+                                 <SelectItem value="inflammation">Reduce Inflammation (hs-CRP)</SelectItem>
+                                 <SelectItem value="insulin">Improve Insulin Sensitivity</SelectItem>
+                                 <SelectItem value="fertility">Enhance Fertility</SelectItem>
+                             </SelectContent>
+                         </Select>
+                     </div>
+                     <div className="space-y-2">
+                         <Label className="text-xs font-bold text-slate-500 uppercase">Dietary Strategy</Label>
+                         <Select defaultValue="anti-inflammatory">
+                             <SelectTrigger className="bg-white">
+                                 <SelectValue placeholder="Select dietary strategy..." />
+                             </SelectTrigger>
+                             <SelectContent>
+                                 <SelectItem value="anti-inflammatory">Anti-Inflammatory & Low GI</SelectItem>
+                                 <SelectItem value="mediterranean">Mediterranean Diet</SelectItem>
+                                 <SelectItem value="keto">Ketogenic Diet</SelectItem>
+                             </SelectContent>
+                         </Select>
+                     </div>
+                 </CardContent>
+             </Card>
+        </div>
 
         {/* 5. Genomic Modifiers */}
         <Card className="shadow-sm border-slate-200 bg-purple-50/30">
@@ -590,6 +744,15 @@ export default function StaffCarePlan() {
                 <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
                      <div className="flex justify-between items-center">
                         <CardTitle className="text-base font-bold text-slate-900">Daily Meal Structure</CardTitle>
+                        <div className="flex items-center gap-4">
+                            <div className="text-right">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase block">Planned</span>
+                                <span className="text-sm font-bold text-slate-900">1320 / 1550 kcal</span>
+                            </div>
+                            <Button variant="outline" size="sm" className="bg-white text-slate-600 border-slate-200">
+                                <FileText className="w-3.5 h-3.5 mr-2" /> Copy Monday to All
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
@@ -653,9 +816,13 @@ export default function StaffCarePlan() {
                         </div>
                     </Tabs>
                     
-                    <div className="mt-8 pt-6 border-t border-slate-100 flex justify-center">
-                        <Button variant="outline" size="sm" className="text-slate-500 hover:text-indigo-600 hover:border-indigo-200" onClick={addMealItem}>
+                    <div className="mt-8 pt-6 border-t border-slate-100 flex justify-center gap-4">
+                        <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50" onClick={addMealItem}>
                             <Plus className="w-4 h-4 mr-2" /> Add Meal Slot
+                        </Button>
+                        <span className="text-slate-300 py-1">|</span>
+                        <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                            <Sparkles className="w-4 h-4 mr-2" /> Create Custom Item
                         </Button>
                     </div>
                 </CardContent>
@@ -682,6 +849,8 @@ export default function StaffCarePlan() {
                 </CardContent>
             </Card>
         </div>
+        </>
+        )}
       </main>
     </div>
   );
