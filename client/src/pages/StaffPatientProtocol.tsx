@@ -303,9 +303,13 @@ export default function StaffPatientProtocol() {
                             {/* Card Header-like Row */}
                             <div className="flex justify-between items-center mb-2">
                                 <span className="text-sm font-bold text-slate-800">{meal.name}</span>
-                                <div className="inline-flex items-center justify-center px-2 py-1 bg-slate-100 rounded text-[10px] text-slate-600 font-mono">
-                                    <Clock className="w-3 h-3 mr-1" />
-                                    {meal.time}
+                                <div className="inline-flex items-center">
+                                    <Clock className="w-3 h-3 mr-1.5 text-slate-400" />
+                                    <Input 
+                                        defaultValue={meal.time}
+                                        className="h-6 w-16 text-[10px] font-mono bg-white border-slate-200 text-slate-600 px-1 text-center focus:border-indigo-500"
+                                        placeholder="00:00"
+                                    />
                                 </div>
                             </div>
                             
