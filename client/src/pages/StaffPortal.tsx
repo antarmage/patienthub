@@ -789,7 +789,24 @@ export default function StaffPortal() {
                                                         )}
                                                     </td>
                                                     <td className="px-4 py-3">
-                                                        <Button size="sm" variant="outline" className="h-7 text-xs">View Log</Button>
+                                                        <div className="flex gap-2">
+                                                            <Button size="sm" variant="outline" className="h-7 text-xs">View Log</Button>
+                                                            {functionalMedicinePatients.find(fp => fp.name === p.name) && (
+                                                                <Button 
+                                                                    size="sm" 
+                                                                    className="h-7 text-xs bg-slate-900 text-white hover:bg-slate-800"
+                                                                    onClick={() => {
+                                                                        const fp = functionalMedicinePatients.find(f => f.name === p.name);
+                                                                        if (fp) {
+                                                                            setSelectedPatientForAdjust(fp);
+                                                                            setIsAdjustProtocolOpen(true);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    Adjust
+                                                                </Button>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -1149,7 +1166,17 @@ export default function StaffPortal() {
                                                 <span className="font-medium text-blue-600">{patient.nextReview}</span>
                                             </div>
                                         </div>
-                                        <Button size="sm" variant="outline" className="w-full mt-4 text-xs bg-white">Full Profile</Button>
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline" 
+                                            className="w-full mt-4 text-xs bg-white"
+                                            onClick={() => {
+                                                setSelectedPatientForAdjust(patient);
+                                                setIsAdjustProtocolOpen(true);
+                                            }}
+                                        >
+                                            Full Profile
+                                        </Button>
                                     </div>
 
                                     {/* Genomics Column */}
