@@ -18,7 +18,12 @@ import {
   FileText,
   Clock,
   TrendingUp,
-  Scale
+  Scale,
+  Dna,
+  Zap,
+  Leaf,
+  Info,
+  Plus
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -29,6 +34,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // --- MOCK DATA ---
 const patients = [
@@ -37,6 +43,69 @@ const patients = [
   { id: 3, name: "Sarah J.", age: 31, type: "Postpartum", status: "Week 6", avatar: "SJ", mood: "Depressed", weight: 65, hb: 12.0 },
   { id: 4, name: "Priya K.", age: 28, type: "PCOS", status: "Treatment", avatar: "PK", mood: "Stable", weight: 78, hb: 11.8 },
   { id: 5, name: "Elena R.", age: 36, type: "Fertility", status: "IUI Prep", avatar: "ER", mood: "Stressed", weight: 62, hb: 12.5 },
+];
+
+const functionalMedicinePatients = [
+  {
+    id: 101,
+    name: "Ananya S.",
+    age: 29,
+    condition: "PCOS (Insulin Resistant)",
+    genomics: {
+      mthfr: { status: "Heterozygous", risk: "Medium" },
+      caffeine: { status: "Slow Metabolizer", risk: "High" },
+      gluten: { status: "HLA-DQ2 Positive", risk: "High" },
+      comt: { status: "Met/Met (Worrier)", risk: "Medium" }
+    },
+    functional: {
+      gut: { status: "Dysbiosis", score: 45 },
+      inflammation: { marker: "hs-CRP", value: "3.2", status: "Elevated" },
+      nutrient: { deficiency: "Vitamin D, Magnesium", status: "Critical" },
+      hormone: { focus: "Estrogen Dominance", status: "Imbalanced" }
+    },
+    plan: "Anti-inflammatory, Gluten-Free",
+    nextReview: "2 days"
+  },
+  {
+    id: 102,
+    name: "Priya K.",
+    age: 28,
+    condition: "Endometriosis Stage II",
+    genomics: {
+      mthfr: { status: "Normal", risk: "Low" },
+      caffeine: { status: "Fast Metabolizer", risk: "Low" },
+      gluten: { status: "Negative", risk: "Low" },
+      estrogen: { status: "CYP1A1 Slow", risk: "High" }
+    },
+    functional: {
+      gut: { status: "Leaky Gut", score: 60 },
+      inflammation: { marker: "Homocysteine", value: "12", status: "Borderline" },
+      nutrient: { deficiency: "Omega-3", status: "Moderate" },
+      hormone: { focus: "Progesterone Support", status: "Low" }
+    },
+    plan: "Low Histamine, High Omega-3",
+    nextReview: "1 week"
+  },
+  {
+    id: 103,
+    name: "Meera D.",
+    age: 34,
+    condition: "Gestational Diabetes Risk",
+    genomics: {
+      mthfr: { status: "Homozygous", risk: "High" },
+      caffeine: { status: "Slow Metabolizer", risk: "High" },
+      carbs: { status: "TCF7L2 Variant", risk: "High" },
+      comt: { status: "Val/Val (Warrior)", risk: "Low" }
+    },
+    functional: {
+      gut: { status: "Stable", score: 85 },
+      inflammation: { marker: "Insulin", value: "18", status: "High" },
+      nutrient: { deficiency: "Chromium", status: "Moderate" },
+      hormone: { focus: "Insulin Sensitivity", status: "Resistant" }
+    },
+    plan: "Low Glycemic Index, Methylated Folate",
+    nextReview: "Tomorrow"
+  }
 ];
 
 const nutritionPlans = [
@@ -66,6 +135,7 @@ const appointments = [
 
 export default function StaffPortal() {
   const [activeRole, setActiveRole] = useState("nutritionist");
+  const [activeView, setActiveView] = useState("dashboard"); // 'dashboard', 'patients', 'schedule', 'reports'
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -136,19 +206,35 @@ export default function StaffPortal() {
 
         <div className="p-4">
             <div className="space-y-1">
-                 <Button variant="secondary" className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} bg-slate-100 text-slate-900`}>
+                 <Button 
+                    variant={activeView === 'dashboard' ? 'secondary' : 'ghost'} 
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'dashboard' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    onClick={() => setActiveView('dashboard')}
+                 >
                     <Activity className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
                     {sidebarOpen && "Dashboard"}
                  </Button>
-                 <Button variant="ghost" className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} text-slate-500 hover:text-slate-900`}>
+                 <Button 
+                    variant={activeView === 'patients' ? 'secondary' : 'ghost'} 
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'patients' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    onClick={() => setActiveView('patients')}
+                 >
                     <Users className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
                     {sidebarOpen && "My Patients"}
                  </Button>
-                 <Button variant="ghost" className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} text-slate-500 hover:text-slate-900`}>
+                 <Button 
+                    variant={activeView === 'schedule' ? 'secondary' : 'ghost'} 
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'schedule' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    onClick={() => setActiveView('schedule')}
+                 >
                     <CalendarCheck className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
                     {sidebarOpen && "Schedule"}
                  </Button>
-                 <Button variant="ghost" className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} text-slate-500 hover:text-slate-900`}>
+                 <Button 
+                    variant={activeView === 'reports' ? 'secondary' : 'ghost'} 
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'reports' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    onClick={() => setActiveView('reports')}
+                 >
                     <FileText className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
                     {sidebarOpen && "Notes & Reports"}
                  </Button>
@@ -200,7 +286,7 @@ export default function StaffPortal() {
         <div className="flex-1 overflow-y-auto p-6">
             
             {/* 1. NUTRITIONIST VIEW */}
-            {activeRole === 'nutritionist' && (
+            {activeRole === 'nutritionist' && activeView === 'dashboard' && (
                 <div className="max-w-6xl mx-auto space-y-6">
                     {/* Alerts Banner */}
                     <div className="grid grid-cols-3 gap-4">
@@ -320,6 +406,158 @@ export default function StaffPortal() {
                                 </CardContent>
                             </Card>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 1. NUTRITIONIST - MY PATIENTS VIEW (Functional & Genomics) */}
+            {activeRole === 'nutritionist' && activeView === 'patients' && (
+                <div className="max-w-7xl mx-auto space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-900 font-serif">Functional Nutrition Panel</h2>
+                            <p className="text-slate-500 mt-1">Integrative care combining genomics, gut health, and nutrient biomarkers.</p>
+                        </div>
+                        <div className="flex gap-2">
+                             <Button variant="outline" className="bg-white border-slate-200">
+                                <FlaskConical className="w-4 h-4 mr-2" /> Request Lab Panel
+                             </Button>
+                             <Button className="bg-emerald-600 hover:bg-emerald-700">
+                                <Plus className="w-4 h-4 mr-2" /> New Care Plan
+                             </Button>
+                        </div>
+                    </div>
+
+                    {/* Filters */}
+                    <div className="flex gap-2 pb-2">
+                        <Badge variant="secondary" className="px-3 py-1 bg-slate-900 text-white hover:bg-slate-800 cursor-pointer">All Patients</Badge>
+                        <Badge variant="outline" className="px-3 py-1 bg-white hover:bg-slate-50 cursor-pointer">PCOS</Badge>
+                        <Badge variant="outline" className="px-3 py-1 bg-white hover:bg-slate-50 cursor-pointer">Endometriosis</Badge>
+                        <Badge variant="outline" className="px-3 py-1 bg-white hover:bg-slate-50 cursor-pointer">Fertility Prep</Badge>
+                        <Badge variant="outline" className="px-3 py-1 bg-white hover:bg-slate-50 cursor-pointer">GDM Risk</Badge>
+                    </div>
+
+                    <div className="grid gap-6">
+                        {functionalMedicinePatients.map(patient => (
+                            <Card key={patient.id} className="shadow-sm border-slate-200 overflow-hidden group hover:shadow-md transition-shadow">
+                                <div className="grid grid-cols-12 divide-x divide-slate-100">
+                                    
+                                    {/* Patient Info */}
+                                    <div className="col-span-3 p-5 bg-slate-50/50">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
+                                                <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">{patient.name.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <h3 className="font-bold text-slate-900">{patient.name}</h3>
+                                                <p className="text-xs text-slate-500">{patient.age}y • {patient.condition}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2 mt-4">
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-slate-500">Dietary Plan</span>
+                                                <span className="font-medium text-slate-700">{patient.plan}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-slate-500">Next Review</span>
+                                                <span className="font-medium text-blue-600">{patient.nextReview}</span>
+                                            </div>
+                                        </div>
+                                        <Button size="sm" variant="outline" className="w-full mt-4 text-xs bg-white">Full Profile</Button>
+                                    </div>
+
+                                    {/* Genomics Column */}
+                                    <div className="col-span-3 p-5">
+                                        <h4 className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                            <Dna className="w-4 h-4" /> Genomic Insight
+                                        </h4>
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-center bg-purple-50 p-2 rounded border border-purple-100">
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-purple-900">MTHFR</p>
+                                                    <p className="text-[10px] text-purple-700">{patient.genomics.mthfr.status}</p>
+                                                </div>
+                                                <Badge className={`${patient.genomics.mthfr.risk === 'High' ? 'bg-rose-500' : patient.genomics.mthfr.risk === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'} h-1.5 w-1.5 p-0 rounded-full`}></Badge>
+                                            </div>
+                                            <div className="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-100">
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-slate-700">Caffeine Metabolism</p>
+                                                    <p className="text-[10px] text-slate-500">{patient.genomics.caffeine.status}</p>
+                                                </div>
+                                                <Badge className={`${patient.genomics.caffeine.risk === 'High' ? 'bg-rose-500' : 'bg-emerald-500'} h-1.5 w-1.5 p-0 rounded-full`}></Badge>
+                                            </div>
+                                            {(patient.genomics.gluten || patient.genomics.carbs) && (
+                                                <div className="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-100">
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-slate-700">{patient.genomics.gluten ? 'Gluten Sensitivity' : 'Carb Sensitivity'}</p>
+                                                        <p className="text-[10px] text-slate-500">{patient.genomics.gluten ? patient.genomics.gluten.status : patient.genomics.carbs?.status}</p>
+                                                    </div>
+                                                    <Badge className={`${(patient.genomics.gluten?.risk === 'High' || patient.genomics.carbs?.risk === 'High') ? 'bg-rose-500' : 'bg-emerald-500'} h-1.5 w-1.5 p-0 rounded-full`}></Badge>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Functional Markers Column */}
+                                    <div className="col-span-3 p-5">
+                                        <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                            <FlaskConical className="w-4 h-4" /> Functional Markers
+                                        </h4>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <div className="flex justify-between text-xs mb-1">
+                                                    <span className="text-slate-600">Gut Microbiome</span>
+                                                    <span className={`font-bold ${patient.functional.gut.score < 50 ? 'text-rose-600' : 'text-emerald-600'}`}>{patient.functional.gut.status}</span>
+                                                </div>
+                                                <Progress value={patient.functional.gut.score} className="h-1.5 bg-slate-100" />
+                                            </div>
+                                            <div>
+                                                <div className="flex justify-between text-xs mb-1">
+                                                    <span className="text-slate-600">Inflammation ({patient.functional.inflammation.marker})</span>
+                                                    <span className="font-bold text-amber-600">{patient.functional.inflammation.value}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-1.5 flex-1 bg-slate-100 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-amber-500 w-3/4 rounded-full"></div>
+                                                    </div>
+                                                    <span className="text-[10px] text-amber-600 font-medium">{patient.functional.inflammation.status}</span>
+                                                </div>
+                                            </div>
+                                            <div className="bg-rose-50 p-2 rounded border border-rose-100 flex items-start gap-2">
+                                                <AlertCircle className="w-3 h-3 text-rose-500 mt-0.5 shrink-0" />
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-rose-800">Deficiencies</p>
+                                                    <p className="text-[10px] text-rose-600">{patient.functional.nutrient.deficiency}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Plan Column */}
+                                    <div className="col-span-3 p-5 bg-slate-50/30">
+                                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                            <Zap className="w-4 h-4 text-amber-500" /> Intervention
+                                        </h4>
+                                        <div className="space-y-3">
+                                            <div className="flex items-start gap-2">
+                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5" />
+                                                <p className="text-xs text-slate-600">Supplement Protocol <span className="text-slate-400 text-[10px]">(Active)</span></p>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5" />
+                                                <p className="text-xs text-slate-600">Elimination Diet <span className="text-slate-400 text-[10px]">(Week 2)</span></p>
+                                            </div>
+                                            <div className="mt-4 pt-4 border-t border-slate-200">
+                                                <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Primary Focus</p>
+                                                <p className="text-sm font-medium text-slate-800">{patient.functional.hormone.focus}</p>
+                                            </div>
+                                            <Button size="sm" className="w-full bg-slate-900 text-white hover:bg-slate-800 h-8 text-xs mt-2">Adjust Protocol</Button>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </Card>
+                        ))}
                     </div>
                 </div>
             )}
