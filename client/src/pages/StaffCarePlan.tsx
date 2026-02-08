@@ -296,7 +296,77 @@ export default function StaffCarePlan() {
             </CardContent>
         </Card>
 
-        {/* 3. Genomic Modifiers */}
+        {/* 3. Lifestyle & Routine Assessment */}
+        <Card className="shadow-sm border-slate-200">
+            <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-slate-600" />
+                    <CardTitle className="text-base font-bold text-slate-900">Lifestyle & Routine Assessment</CardTitle>
+                </div>
+            </CardHeader>
+            <CardContent className="p-6">
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Activity Level</Label>
+                            <Select>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select activity level..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="sedentary">Sedentary (Office Job)</SelectItem>
+                                    <SelectItem value="light">Lightly Active (1-3 days/week)</SelectItem>
+                                    <SelectItem value="moderate">Moderately Active (3-5 days/week)</SelectItem>
+                                    <SelectItem value="active">Very Active (6-7 days/week)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Work Schedule</Label>
+                            <Select>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select work pattern..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="9-5">Standard 9-5</SelectItem>
+                                    <SelectItem value="shift">Shift Work / Night Shifts</SelectItem>
+                                    <SelectItem value="flexible">Flexible / Remote</SelectItem>
+                                    <SelectItem value="student">Student Schedule</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Typical Wake Time</Label>
+                                <Input type="time" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Typical Bedtime</Label>
+                                <Input type="time" />
+                            </div>
+                        </div>
+                         <div className="space-y-2">
+                            <Label>Sleep Quality</Label>
+                            <Select>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="How do you sleep?" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="good">Good (Uninterrupted)</SelectItem>
+                                    <SelectItem value="fair">Fair (Waking up 1-2 times)</SelectItem>
+                                    <SelectItem value="poor">Poor (Insomnia / Restless)</SelectItem>
+                                    <SelectItem value="apnea">Sleep Apnea (Diagnosed)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* 4. Genomic Modifiers */}
         <Card className="shadow-sm border-slate-200 bg-purple-50/30">
             <CardHeader className="py-4 border-b border-purple-100 bg-purple-50">
                 <div className="flex items-center gap-2">
@@ -331,7 +401,7 @@ export default function StaffCarePlan() {
             </CardContent>
         </Card>
 
-        {/* 4. Macronutrient Targets */}
+        {/* 5. Macronutrient Targets */}
         <Card className="shadow-sm border-slate-200">
             <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
                 <CardTitle className="text-base font-bold text-slate-900">Macronutrient Distribution</CardTitle>
@@ -363,7 +433,7 @@ export default function StaffCarePlan() {
             </CardContent>
         </Card>
 
-        {/* 5. Daily Schedule */}
+        {/* 6. Daily Schedule */}
         <div className="grid grid-cols-2 gap-6">
             <Card className="shadow-sm border-slate-200">
                 <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
