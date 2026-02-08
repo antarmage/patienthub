@@ -1713,9 +1713,11 @@ export default function StaffPortal() {
                              <Card className="shadow-sm border-slate-200">
                                 <CardHeader className="py-4 border-b border-slate-100 flex justify-between items-center">
                                     <CardTitle className="text-base font-bold text-slate-800">Appointment Schedule</CardTitle>
-                                    <Button size="sm" className="bg-slate-900 text-white hover:bg-slate-800 text-xs">
-                                        + New Booking
-                                    </Button>
+                                    <Link href="/staff/booking">
+                                        <Button size="sm" className="bg-slate-900 text-white hover:bg-slate-800 text-xs">
+                                            + New Booking
+                                        </Button>
+                                    </Link>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                      <table className="w-full text-sm text-left">
