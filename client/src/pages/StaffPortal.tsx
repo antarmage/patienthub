@@ -676,7 +676,7 @@ export default function StaffPortal() {
 
                              {/* ADJUST PROTOCOL DIALOG */}
                              <Dialog open={isAdjustProtocolOpen} onOpenChange={setIsAdjustProtocolOpen}>
-                                <DialogContent className="sm:max-w-[600px]">
+                                <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                                     <DialogHeader>
                                         <DialogTitle>Adjust Active Protocol</DialogTitle>
                                         <DialogDescription>
@@ -687,35 +687,170 @@ export default function StaffPortal() {
                                     {selectedPatientForAdjust && (
                                         <div className="grid gap-6 py-4">
                                             
-                                            {/* Current Focus */}
-                                            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex justify-between items-center">
+                                            {/* 1. Patient Context (Read Only) */}
+                                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex justify-between items-center">
                                                 <div>
-                                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Current Goal</p>
-                                                    <p className="font-bold text-slate-900">{selectedPatientForAdjust.functional.hormone.focus}</p>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Avatar className="h-8 w-8 text-xs">
+                                                            <AvatarFallback>{selectedPatientForAdjust.name.charAt(0)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <p className="font-bold text-slate-900 text-sm">{selectedPatientForAdjust.name}</p>
+                                                            <p className="text-xs text-slate-500">{selectedPatientForAdjust.condition}</p>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Active</Badge>
+                                                <div className="text-right">
+                                                     <p className="text-[10px] font-bold text-slate-500 uppercase">Current Goal</p>
+                                                     <p className="font-bold text-emerald-700 text-sm">{selectedPatientForAdjust.functional.hormone.focus}</p>
+                                                </div>
                                             </div>
 
-                                            {/* Modify Diet Phase */}
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between items-center">
+                                            {/* 2. Goal Adjustment */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Adjust Primary Goal</Label>
+                                                    <Select defaultValue="inflammation">
+                                                        <SelectTrigger>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="inflammation">Reduce Inflammation (hs-CRP)</SelectItem>
+                                                            <SelectItem value="fertility">Boost Egg Quality</SelectItem>
+                                                            <SelectItem value="gut">Gut Repair (4R Protocol)</SelectItem>
+                                                            <SelectItem value="bloodsugar">Insulin Sensitivity</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2">
                                                     <Label>Dietary Phase</Label>
-                                                    <span className="text-xs text-slate-500">Current: {selectedPatientForAdjust.plan}</span>
+                                                    <Select defaultValue="elimination">
+                                                        <SelectTrigger>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="elimination">Elimination Phase (Strict)</SelectItem>
+                                                            <SelectItem value="reintroduction">Reintroduction Phase</SelectItem>
+                                                            <SelectItem value="maintenance">Maintenance & Diversity</SelectItem>
+                                                            <SelectItem value="keto">Therapeutic Ketogenic</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
                                                 </div>
-                                                <Select defaultValue="elimination">
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="elimination">Elimination Phase (Strict)</SelectItem>
-                                                        <SelectItem value="reintroduction">Reintroduction Phase</SelectItem>
-                                                        <SelectItem value="maintenance">Maintenance & Diversity</SelectItem>
-                                                        <SelectItem value="keto">Therapeutic Ketogenic</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
                                             </div>
 
-                                            {/* Supplement Tweak */}
+                                            {/* 3. Genomic Modifiers (Preserved) */}
+                                            <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <Dna className="w-4 h-4 text-purple-600" />
+                                                    <h4 className="text-sm font-bold text-purple-900">Genomic Adjustments (Active)</h4>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    <div className="flex items-start space-x-2">
+                                                        <Checkbox id="adj-mthfr" defaultChecked={selectedPatientForAdjust.genomics.mthfr.risk === 'Medium' || selectedPatientForAdjust.genomics.mthfr.risk === 'High'} />
+                                                        <div className="grid gap-0.5 leading-none">
+                                                            <label htmlFor="adj-mthfr" className="text-xs font-medium text-slate-700 cursor-pointer">Methylation Support</label>
+                                                            <p className="text-[10px] text-slate-500">MTHFR Status: {selectedPatientForAdjust.genomics.mthfr.status}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-start space-x-2">
+                                                        <Checkbox id="adj-caffeine" defaultChecked={selectedPatientForAdjust.genomics.caffeine.risk === 'High'} />
+                                                        <div className="grid gap-0.5 leading-none">
+                                                            <label htmlFor="adj-caffeine" className="text-xs font-medium text-slate-700 cursor-pointer">Caffeine Protocol</label>
+                                                            <p className="text-[10px] text-slate-500">{selectedPatientForAdjust.genomics.caffeine.status}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-start space-x-2">
+                                                        <Checkbox id="adj-gluten" defaultChecked={selectedPatientForAdjust.genomics.gluten?.risk === 'High'} />
+                                                        <div className="grid gap-0.5 leading-none">
+                                                            <label htmlFor="adj-gluten" className="text-xs font-medium text-slate-700 cursor-pointer">Gluten Elimination</label>
+                                                            <p className="text-[10px] text-slate-500">Risk: {selectedPatientForAdjust.genomics.gluten?.risk || 'Low'}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* 4. Daily Schedule (Wake/Sleep) */}
+                                            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs font-bold text-slate-500 uppercase">Wake Up Time</Label>
+                                                    <div className="relative">
+                                                        <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                                                        <Input type="time" className="pl-9 bg-white" defaultValue="07:00" />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs font-bold text-slate-500 uppercase">Bedtime</Label>
+                                                    <div className="relative">
+                                                        <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                                                        <Input type="time" className="pl-9 bg-white" defaultValue="22:30" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* 5. Structured Meal Plan (Time-Based) */}
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between items-center">
+                                                    <Label>Daily Meal Structure</Label>
+                                                    <div className="flex gap-2">
+                                                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 cursor-pointer">Training Day</Badge>
+                                                        <Badge variant="outline" className="text-slate-500 cursor-pointer hover:bg-slate-50">Rest Day</Badge>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+                                                    {mealPlanItems.map((meal, index) => (
+                                                        <div key={meal.id} className={`space-y-2 ${index !== 0 ? 'pt-2 border-t border-slate-200' : ''}`}>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className={`w-2 h-2 rounded-full ${index % 3 === 0 ? 'bg-amber-400' : index % 3 === 1 ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
+                                                                <Input 
+                                                                    defaultValue={meal.name} 
+                                                                    className="h-6 w-32 text-xs font-bold text-slate-800 border-none bg-transparent p-0 focus-visible:ring-0" 
+                                                                />
+                                                                <div className="relative ml-auto">
+                                                                    <Clock className="absolute left-2 top-1.5 h-3 w-3 text-slate-400" />
+                                                                    <Input 
+                                                                        type="time" 
+                                                                        defaultValue={meal.time} 
+                                                                        className="h-6 w-24 text-xs bg-white pl-6 border-slate-200" 
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-12 gap-2">
+                                                                <div className="col-span-5">
+                                                                    <Input placeholder="E.g., Oatmeal with Berries" className="h-8 text-xs bg-white" defaultValue={meal.item} />
+                                                                </div>
+                                                                <div className="col-span-3">
+                                                                    <Input placeholder="Qty" className="h-8 text-xs bg-white" defaultValue={meal.qty} />
+                                                                </div>
+                                                                <div className="col-span-3">
+                                                                    <Input placeholder="Macros" className="h-8 text-xs bg-white" defaultValue={meal.macros} />
+                                                                </div>
+                                                                <div className="col-span-1">
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="icon" 
+                                                                        className="h-8 w-8 text-slate-400 hover:text-red-500"
+                                                                        onClick={() => removeMealItem(meal.id)}
+                                                                    >
+                                                                        <Minus className="w-3 h-3" />
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className="w-full text-xs border-dashed border-slate-300 text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                                                        onClick={addMealItem}
+                                                    >
+                                                        <Plus className="w-3 h-3 mr-1" /> Add Meal Time
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            {/* 6. Supplement Stack */}
                                             <div className="space-y-3">
                                                 <Label>Active Supplements</Label>
                                                 <div className="border border-slate-200 rounded-md divide-y divide-slate-100">
