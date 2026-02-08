@@ -299,17 +299,19 @@ export default function StaffPatientProtocol() {
              <CardContent className="p-0">
                  <div className="grid grid-cols-1 divide-y divide-slate-100">
                     {mealPlanItems.map((meal) => (
-                        <div key={meal.id} className="grid grid-cols-12 p-4 hover:bg-slate-50/50 group items-center gap-4 transition-colors">
-                            <div className="col-span-1 text-center">
-                                <span className="text-xs font-bold text-slate-400 block mb-1">{meal.name}</span>
+                        <div key={meal.id} className="p-4 hover:bg-slate-50/50 group transition-colors">
+                            {/* Card Header-like Row */}
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-bold text-slate-800">{meal.name}</span>
                                 <div className="inline-flex items-center justify-center px-2 py-1 bg-slate-100 rounded text-[10px] text-slate-600 font-mono">
                                     <Clock className="w-3 h-3 mr-1" />
                                     {meal.time}
                                 </div>
                             </div>
                             
-                            <div className="col-span-11 grid grid-cols-12 gap-4">
-                                <div className="col-span-5">
+                            {/* Inputs Row */}
+                            <div className="grid grid-cols-12 gap-3">
+                                <div className="col-span-6">
                                     <Input 
                                         defaultValue={meal.item} 
                                         className="h-9 bg-white border-slate-200 focus:border-indigo-500 text-sm font-medium" 
@@ -323,15 +325,15 @@ export default function StaffPatientProtocol() {
                                         placeholder="Qty (e.g., 1 bowl)"
                                     />
                                 </div>
-                                <div className="col-span-3">
+                                <div className="col-span-2">
                                     <Input 
                                         defaultValue={meal.macros} 
                                         className="h-9 bg-white border-slate-200 text-xs text-slate-500 font-mono" 
-                                        placeholder="Macros (e.g., 300kcal)"
+                                        placeholder="Macros"
                                     />
                                 </div>
                                 <div className="col-span-1 flex justify-end">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-rose-500">
+                                    <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-300 hover:text-rose-500">
                                         <AlertCircle className="w-4 h-4" />
                                     </Button>
                                 </div>
