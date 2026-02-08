@@ -125,6 +125,25 @@ export default function StaffPatientProtocol() {
     }));
   };
 
+  const [customMealData, setCustomMealData] = useState({ name: "", type: "", time: "00:00", qty: "1 serving", macros: "" });
+
+  const handleCustomMealAdd = () => {
+    const newId = Date.now();
+    setWeeklyPlan(prev => ({
+        ...prev,
+        [selectedDay]: [...(prev[selectedDay] || []), { 
+            id: newId, 
+            time: customMealData.time, 
+            name: customMealData.type === 'drink' ? 'Hydration' : 'Custom Meal', 
+            item: customMealData.name, 
+            qty: customMealData.qty, 
+            macros: customMealData.macros 
+        }]
+    }));
+    setIsCustomMealOpen(false);
+    setCustomMealData({ name: "", type: "", time: "00:00", qty: "1 serving", macros: "" }); // Reset
+  };
+
   // --- COMPONENT HANDLERS ---
   const addComponentToMeal = (day: string, mealId: number) => {
     setWeeklyPlan(prev => ({
@@ -546,21 +565,7 @@ export default function StaffPatientProtocol() {
                             variant="ghost" 
                             size="sm" 
                             className="text-xs text-emerald-600 hover:bg-emerald-50"
-                            onClick={() => {
-                                const newId = Date.now();
-                                setWeeklyPlan(prev => ({
-                                    ...prev,
-                                    [selectedDay]: [...(prev[selectedDay] || []), { 
-                                        id: newId, 
-                                        time: "00:00", 
-                                        name: "Custom Item", 
-                                        item: "Special Healing Drink", 
-                                        qty: "1 glass", 
-                                        macros: "150kcal" 
-                                    }]
-                                }));
-                                setIsCustomMealOpen(true);
-                            }}
+                            onClick={() => setIsCustomMealOpen(true)}
                         >
                             <Sparkles className="w-3 h-3 mr-1" /> Create Custom Item
                         </Button>
@@ -580,18 +585,42 @@ export default function StaffPatientProtocol() {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label>Recipe Name</Label>
-                            <Input placeholder="e.g. Adrenal Mocktail" />
+                            <Input 
+                                placeholder="e.g. Adrenal Mocktail" 
+                                value={customMealData.name}
+                                onChange={(e) => setCustomMealData({...customMealData, name: e.target.value})}
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label>Category</Label>
-                            <Select>
+                            <Select onValueChange={(val) => setCustomMealData({...customMealData, type: val})}>
                                 <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="drink">Healing Drink</SelectItem>
                                     <SelectItem value="salad">Superfood Salad</SelectItem>
                                     <SelectItem value="snack">Protein Snack</SelectItem>
+                                    <SelectItem value="meal">Main Meal</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Time</Label>
+                            <Input 
+                                type="time"
+                                value={customMealData.time}
+                                onChange={(e) => setCustomMealData({...customMealData, time: e.target.value})}
+                                className="font-mono"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Quantity</Label>
+                            <Input 
+                                placeholder="e.g. 1 glass" 
+                                value={customMealData.qty}
+                                onChange={(e) => setCustomMealData({...customMealData, qty: e.target.value})}
+                            />
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -601,15 +630,18 @@ export default function StaffPatientProtocol() {
                     <div className="space-y-2">
                         <Label>Target Macros</Label>
                         <div className="flex gap-2">
-                            <Input placeholder="Calories" className="w-1/3" />
-                            <Input placeholder="Protein" className="w-1/3" />
-                            <Input placeholder="Carbs" className="w-1/3" />
+                            <Input 
+                                placeholder="Calories (e.g. 150kcal)" 
+                                className="w-full" 
+                                value={customMealData.macros}
+                                onChange={(e) => setCustomMealData({...customMealData, macros: e.target.value})}
+                            />
                         </div>
                     </div>
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsCustomMealOpen(false)}>Cancel</Button>
-                    <Button onClick={() => setIsCustomMealOpen(false)}>Add to Plan</Button>
+                    <Button onClick={handleCustomMealAdd}>Add to Plan</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
