@@ -76,7 +76,8 @@ const functionalMedicinePatients = [
       hormone: { focus: "Estrogen Dominance", status: "Imbalanced" }
     },
     plan: "Anti-inflammatory, Gluten-Free",
-    nextReview: "2 days"
+    nextReview: "2 days",
+    clinicianNote: "Referral: Dr. Reynolds. Patient struggles with insulin resistance. Focus on fiber intake and low glycemic load."
   },
   {
     id: 102,
@@ -96,7 +97,8 @@ const functionalMedicinePatients = [
       hormone: { focus: "Progesterone Support", status: "Low" }
     },
     plan: "Low Histamine, High Omega-3",
-    nextReview: "1 week"
+    nextReview: "1 week",
+    clinicianNote: "Referral: Dr. Reynolds. Confirmed Endo Stage II. Avoid inflammatory foods. Prioritize omega-3s for pain management."
   },
   {
     id: 103,
@@ -116,7 +118,8 @@ const functionalMedicinePatients = [
       hormone: { focus: "Insulin Sensitivity", status: "Resistant" }
     },
     plan: "Low Glycemic Index, Methylated Folate",
-    nextReview: "Tomorrow"
+    nextReview: "Tomorrow",
+    clinicianNote: "Referral: Dr. Reynolds. GDM risk high. Strict sugar control needed. Monitor post-prandial spikes."
   }
 ];
 
@@ -153,6 +156,8 @@ export default function StaffPortal() {
   const [isAdjustProtocolOpen, setIsAdjustProtocolOpen] = useState(false);
   const [selectedPatientForAdjust, setSelectedPatientForAdjust] = useState<any>(null);
   const [isCreatePlanOpen, setIsCreatePlanOpen] = useState(false);
+
+  const [selectedPatientForCreate, setSelectedPatientForCreate] = useState<any>(null);
 
   const [mealPlanItems, setMealPlanItems] = useState([
     { id: 1, time: "08:00", name: "Breakfast", item: "", qty: "", macros: "" },
@@ -482,7 +487,10 @@ export default function StaffPortal() {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <Label>Select Patient</Label>
-                                                <Select>
+                                                <Select onValueChange={(val) => {
+                                                    const p = functionalMedicinePatients.find(pat => pat.id.toString() === val);
+                                                    setSelectedPatientForCreate(p);
+                                                }}>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Search patient..." />
                                                     </SelectTrigger>
@@ -508,6 +516,17 @@ export default function StaffPortal() {
                                                 </Select>
                                             </div>
                                         </div>
+
+                                        {/* Clinician Instructions (Dynamic) */}
+                                        {selectedPatientForCreate && selectedPatientForCreate.clinicianNote && (
+                                            <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex gap-3 items-start">
+                                                <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                                                <div>
+                                                    <p className="text-xs font-bold text-blue-800 uppercase mb-0.5">Clinician Instruction</p>
+                                                    <p className="text-sm text-blue-700 leading-snug">{selectedPatientForCreate.clinicianNote}</p>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {/* 2. Genomic Modifiers */}
                                         <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
@@ -705,6 +724,17 @@ export default function StaffPortal() {
                                                      <p className="font-bold text-emerald-700 text-sm">{selectedPatientForAdjust.functional.hormone.focus}</p>
                                                 </div>
                                             </div>
+
+                                            {/* Clinician Instructions (Dynamic) */}
+                                            {selectedPatientForAdjust.clinicianNote && (
+                                                <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex gap-3 items-start">
+                                                    <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                                                    <div>
+                                                        <p className="text-xs font-bold text-blue-800 uppercase mb-0.5">Clinician Instruction</p>
+                                                        <p className="text-sm text-blue-700 leading-snug">{selectedPatientForAdjust.clinicianNote}</p>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {/* 2. Goal Adjustment */}
                                             <div className="grid grid-cols-2 gap-4">
