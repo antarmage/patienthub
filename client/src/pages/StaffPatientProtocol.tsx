@@ -20,7 +20,9 @@ import {
   ListPlus,
   Plus,
   X,
-  Clock
+  Clock,
+  Check,
+  AlertTriangle
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -41,6 +43,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+
+// --- MOCK DATA FOR HISTORY ---
+const historyData = [
+  { date: 'Oct 01', weight: 69.5, inflammation: 4.2, adherence: 85 },
+  { date: 'Oct 08', weight: 69.1, inflammation: 3.8, adherence: 90 },
+  { date: 'Oct 15', weight: 68.8, inflammation: 3.5, adherence: 80 },
+  { date: 'Oct 22', weight: 68.5, inflammation: 3.2, adherence: 95 },
+  { date: 'Oct 29', weight: 68.2, inflammation: 2.8, adherence: 92 },
+  { date: 'Nov 05', weight: 67.9, inflammation: 2.5, adherence: 98 },
+];
+
+const intakeLog = [
+    { id: 1, date: "Today", meal: "Breakfast", status: "Consumed", item: "Oatmeal with Flax & Berries", notes: "Felt full" },
+    { id: 2, date: "Today", meal: "Morning Snack", status: "Skipped", item: "Walnuts (Soaked)", notes: "Forgot due to meeting" },
+    { id: 3, date: "Yesterday", meal: "Dinner", status: "Consumed", item: "Lentil Soup", notes: "" },
+    { id: 4, date: "Yesterday", meal: "Afternoon Snack", status: "Consumed", item: "Green Tea", notes: "" },
+    { id: 5, date: "Yesterday", meal: "Lunch", status: "Consumed", item: "Quinoa Salad", notes: "" },
+];
 
 // --- MOCK DATA (Should match StaffPortal for consistency) ---
 const patients = [
@@ -284,6 +305,18 @@ export default function StaffPatientProtocol() {
       </header>
 
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
+        <Tabs defaultValue="protocol" className="w-full">
+            <div className="flex items-center justify-between mb-6">
+                 <TabsList className="bg-white border border-slate-200">
+                    <TabsTrigger value="protocol">Protocol Design</TabsTrigger>
+                    <TabsTrigger value="progress">History & Progress</TabsTrigger>
+                 </TabsList>
+                 <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Calendar className="w-4 h-4" /> Last 30 Days
+                 </div>
+            </div>
+
+            <TabsContent value="protocol" className="space-y-6">
         
         {/* TOP ROW: Metabolic Context & Doctor's Note */}
         <div className="grid grid-cols-12 gap-6">
@@ -601,7 +634,85 @@ export default function StaffPatientProtocol() {
                  </div>
              </CardContent>
         </Card>
-        
+        </TabsContent>
+
+        <TabsContent value="progress" className="space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+                <Card className="shadow-sm border-slate-200">
+                    <CardHeader>
+                        <CardTitle className="text-base font-bold text-slate-900">Weight Trend</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[250px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={historyData}>
+                                    <defs>
+                                        <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
+                                    <YAxis domain={['dataMin - 1', 'dataMax + 1']} axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
+                                    <RechartsTooltip />
+                                    <Area type="monotone" dataKey="weight" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#colorWeight)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-slate-200">
+                    <CardHeader>
+                         <CardTitle className="text-base font-bold text-slate-900">Inflammation Markers (hs-CRP)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[250px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={historyData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
+                                    <RechartsTooltip />
+                                    <Line type="monotone" dataKey="inflammation" stroke="#ef4444" strokeWidth={2} dot={{r: 4, fill: '#ef4444'}} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="shadow-sm border-slate-200">
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-base font-bold text-slate-900">Recent Intake History</CardTitle>
+                    <Button variant="outline" size="sm" className="h-8">Export Log</Button>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        {intakeLog.map(log => (
+                            <div key={log.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-2 h-2 rounded-full ${log.status === 'Consumed' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-800">{log.meal}</p>
+                                        <p className="text-xs text-slate-500">{log.item} • {log.date}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    {log.notes && <span className="text-xs text-slate-400 italic">"{log.notes}"</span>}
+                                    <Badge variant="outline" className={`${log.status === 'Consumed' ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : 'text-rose-700 bg-rose-50 border-rose-100'}`}>
+                                        {log.status}
+                                    </Badge>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+        </TabsContent>
+        </Tabs>
+
             <Dialog open={isRequestLabOpen} onOpenChange={setIsRequestLabOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
