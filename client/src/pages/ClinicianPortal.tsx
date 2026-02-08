@@ -86,9 +86,72 @@ import {
 
 // Mock Data
 const patients = [
-  { id: 1, name: "Ananya S.", age: 29, status: "High Risk", focus: "Natural Conception", lastVisit: "2 days ago", cycleDay: 14, avatar: "AS", mode: "natural_conception", referredBy: "Dr. Sharma (GP)", referredTo: "Nutritionist", vaccination: "Up to Date", insurance: "Private (Gold)", contraception: "None (TTC)" },
-  { id: 2, name: "Meera D.", age: 34, status: "Monitor", focus: "Pregnancy Wk 24", lastVisit: "1 week ago", cycleDay: null, avatar: "MD", mode: "pregnancy", referredBy: "Self", referredTo: "Fetal Medicine", vaccination: "Flu Shot Due", insurance: "Corporate", contraception: "N/A" },
-  { id: 3, name: "Sarah J.", age: 31, status: "Stable", focus: "Postpartum Wk 6", lastVisit: "3 weeks ago", cycleDay: null, avatar: "SJ", mode: "postpartum", referredBy: "Dr. Khan (OBGYN)", referredTo: "Psychologist", vaccination: "Completed", insurance: "Self-Pay", contraception: "Discussing (IUD)" },
+  { 
+    id: 1, 
+    name: "Ananya S.", 
+    age: 29, 
+    status: "High Risk", 
+    focus: "Natural Conception", 
+    lastVisit: "2 days ago", 
+    cycleDay: 14, 
+    avatar: "AS", 
+    mode: "natural_conception", 
+    referredBy: "Dr. Sharma (GP)", 
+    referredTo: "Nutritionist", 
+    vaccination: "Up to Date", 
+    insurance: "Private (Gold)", 
+    contraception: "None (TTC)",
+    history: {
+      medical: ["PCOS (diagnosed 2018)", "Hypothyroidism", "Mild Asthma"],
+      surgical: ["Appendectomy (2015)"],
+      drug: ["Metformin 500mg", "Levothyroxine 50mcg", "Multivitamin"],
+      allergies: ["Penicillin", "Peanuts"]
+    }
+  },
+  { 
+    id: 2, 
+    name: "Meera D.", 
+    age: 34, 
+    status: "Monitor", 
+    focus: "Pregnancy Wk 24", 
+    lastVisit: "1 week ago", 
+    cycleDay: null, 
+    avatar: "MD", 
+    mode: "pregnancy", 
+    referredBy: "Self", 
+    referredTo: "Fetal Medicine", 
+    vaccination: "Flu Shot Due", 
+    insurance: "Corporate", 
+    contraception: "N/A",
+    history: {
+      medical: ["GDM (Gestational Diabetes)", "Anemia"],
+      surgical: ["C-Section (Previous Birth 2020)"],
+      drug: ["Insulin", "Iron Supplements", "Calcium"],
+      allergies: ["None"]
+    }
+  },
+  { 
+    id: 3, 
+    name: "Sarah J.", 
+    age: 31, 
+    status: "Stable", 
+    focus: "Postpartum Wk 6", 
+    lastVisit: "3 weeks ago", 
+    cycleDay: null, 
+    avatar: "SJ", 
+    mode: "postpartum", 
+    referredBy: "Dr. Khan (OBGYN)", 
+    referredTo: "Psychologist", 
+    vaccination: "Completed", 
+    insurance: "Self-Pay", 
+    contraception: "Discussing (IUD)",
+    history: {
+        medical: ["Postpartum Depression (Mild)", "Hypertension (Resolved)"],
+        surgical: ["Episiotomy (2025)"],
+        drug: ["Sertraline 50mg", "Vitamin D"],
+        allergies: ["Latex"]
+    }
+  },
   { id: 4, name: "Elena R.", age: 36, status: "Active Cycle", focus: "IUI Cycle #2", lastVisit: "Yesterday", cycleDay: 11, avatar: "ER", mode: "iui", referredBy: "Dr. Patel (Endo)", referredTo: "-", vaccination: "Up to Date", insurance: "Private", contraception: "None (TTC)" },
   { id: 5, name: "Priya K.", age: 28, status: "Assessment", focus: "PCOS Mgmt", lastVisit: "Today", cycleDay: 21, avatar: "PK", mode: "hormone_care", referredBy: "Dr. Lee (Derm)", referredTo: "Dietitian", vaccination: "HPV Due", insurance: "Corporate", contraception: "Oral Pill" },
 ];
@@ -2050,6 +2113,46 @@ export default function ClinicianPortal() {
               <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
                 <div className="max-w-7xl mx-auto space-y-6">
                    
+                   {/* 0. PATIENT HISTORY SUMMARY */}
+                   <Card className="shadow-sm border-slate-200">
+                      <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50 cursor-pointer group hover:bg-slate-50 transition-colors">
+                          <div className="flex items-center gap-2">
+                              <History className="w-4 h-4 text-slate-500" />
+                              <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wide">Patient History</CardTitle>
+                          </div>
+                      </CardHeader>
+                      <CardContent className="p-4">
+                          <div className="grid grid-cols-4 gap-6">
+                              <div>
+                                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Past Medical History</h4>
+                                  <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+                                      {selectedPatient.history?.medical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic">None recorded</li>}
+                                  </ul>
+                              </div>
+                              <div>
+                                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Past Surgical History</h4>
+                                  <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+                                      {selectedPatient.history?.surgical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic">None recorded</li>}
+                                  </ul>
+                              </div>
+                              <div>
+                                   <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Drug History</h4>
+                                   <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+                                      {selectedPatient.history?.drug?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic">None recorded</li>}
+                                  </ul>
+                              </div>
+                               <div>
+                                   <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 text-rose-600 border-b border-rose-100 pb-1">Allergies</h4>
+                                   <div className="flex flex-wrap gap-2 pt-1">
+                                      {selectedPatient.history?.allergies?.map((item: string, i: number) => (
+                                          <Badge key={i} variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-[10px]">{item}</Badge>
+                                      )) || <span className="text-xs text-slate-400 italic">No known allergies</span>}
+                                  </div>
+                              </div>
+                          </div>
+                      </CardContent>
+                   </Card>
+
                    {/* 1. CURRENT VISIT CLINICAL WORKSPACE (SOAP) - EXPANDED */}
                    <Card className="shadow-md border-blue-100 bg-white overflow-hidden">
                       <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center cursor-pointer" onClick={() => setShowDocumentation(!showDocumentation)}>
