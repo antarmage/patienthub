@@ -414,12 +414,16 @@ export default function StaffPortal() {
                     <div className="flex justify-between items-center">
                         <h2 className="text-2xl font-bold text-slate-900 font-serif">Staff Schedule</h2>
                         <div className="flex gap-2">
-                             <Button variant="outline" className="bg-white border-slate-200">
-                                <CalendarCheck className="w-4 h-4 mr-2" /> Sync Calendar
-                             </Button>
-                             <Button className="bg-slate-900 text-white hover:bg-slate-800">
-                                <Plus className="w-4 h-4 mr-2" /> New Appointment
-                             </Button>
+                             <Link href="/staff/check-in">
+                                <Button variant="outline" className="bg-white border-slate-200">
+                                   <CheckCircle2 className="w-4 h-4 mr-2" /> Check In
+                                </Button>
+                             </Link>
+                             <Link href="/staff/booking">
+                                <Button className="bg-slate-900 text-white hover:bg-slate-800">
+                                   <Plus className="w-4 h-4 mr-2" /> New Appointment
+                                </Button>
+                             </Link>
                         </div>
                     </div>
 
