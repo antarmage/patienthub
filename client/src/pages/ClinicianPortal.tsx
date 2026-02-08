@@ -38,7 +38,8 @@ import {
   Clock,
   Briefcase,
   Settings,
-  CreditCard
+  CreditCard,
+  MapPin
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -242,6 +243,7 @@ export default function ClinicianPortal() {
   const [careMode, setCareMode] = useState("natural_conception"); 
   const [showDocumentation, setShowDocumentation] = useState(false);
   const [scheduleViewMode, setScheduleViewMode] = useState("appointments"); // 'appointments' or 'occupancy'
+  const [calendarViewMode, setCalendarViewMode] = useState("month"); // 'month', 'week', 'day'
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile"); // 'profile' or 'availability'
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
 
@@ -781,9 +783,30 @@ export default function ClinicianPortal() {
 
                        <div className="h-6 w-px bg-slate-200"></div>
                        <div className="flex bg-slate-100 p-1 rounded-lg">
-                          <Button variant="ghost" size="sm" className="h-7 text-xs bg-white text-slate-900 shadow-sm">Month</Button>
-                          <Button variant="ghost" size="sm" className="h-7 text-xs text-slate-500 hover:text-slate-900">Week</Button>
-                          <Button variant="ghost" size="sm" className="h-7 text-xs text-slate-500 hover:text-slate-900">Day</Button>
+                          <Button 
+                             variant="ghost" 
+                             size="sm" 
+                             className={`h-7 text-xs ${calendarViewMode === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                             onClick={() => setCalendarViewMode('month')}
+                          >
+                             Month
+                          </Button>
+                          <Button 
+                             variant="ghost" 
+                             size="sm" 
+                             className={`h-7 text-xs ${calendarViewMode === 'week' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                             onClick={() => setCalendarViewMode('week')}
+                          >
+                             Week
+                          </Button>
+                          <Button 
+                             variant="ghost" 
+                             size="sm" 
+                             className={`h-7 text-xs ${calendarViewMode === 'day' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                             onClick={() => setCalendarViewMode('day')}
+                          >
+                             Day
+                          </Button>
                        </div>
                        <Button className="bg-blue-600 hover:bg-blue-700 h-9 text-xs">
                           <Plus className="w-4 h-4 mr-2" /> New Event
@@ -935,111 +958,301 @@ export default function ClinicianPortal() {
 
                  {/* Calendar Grid */}
                  <Card className="flex-1 shadow-sm border-slate-200 flex flex-col overflow-hidden">
-                    {/* Days Header */}
-                    <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
-                       {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                          <div key={day} className="py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
-                             {day}
-                          </div>
-                       ))}
-                    </div>
-                    
-                    {/* Calendar Cells */}
-                    <div className="grid grid-cols-7 flex-1 auto-rows-fr divide-x divide-slate-100 divide-y">
-                       {/* Previous Month Days */}
-                       {[29, 30].map(day => (
-                          <div key={`prev-${day}`} className="min-h-[100px] bg-slate-50/50 p-2 opacity-50">
-                             <span className="text-xs font-medium text-slate-400">{day}</span>
-                          </div>
-                       ))}
-
-                       {/* Current Month Days (October) */}
-                       {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                          <div key={day} className={`min-h-[100px] p-2 hover:bg-slate-50 transition-colors relative group ${day === 24 ? 'bg-blue-50/30' : ''}`}>
-                             <div className="flex justify-between items-start mb-1">
-                                <span className={`text-xs font-medium h-6 w-6 flex items-center justify-center rounded-full ${day === 24 ? 'bg-blue-600 text-white' : 'text-slate-700'}`}>
-                                   {day}
-                                </span>
-                                {day === 24 && <span className="text-[10px] font-bold text-blue-600">Today</span>}
+                    {/* Days Header - Different for Month/Week vs Day */}
+                    {calendarViewMode !== 'day' ? (
+                       <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 shrink-0">
+                          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                             <div key={day} className="py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                {day}
                              </div>
+                          ))}
+                       </div>
+                    ) : (
+                       <div className="border-b border-slate-200 bg-slate-50 py-2 px-4 shrink-0 flex justify-between items-center">
+                          <span className="text-sm font-bold text-slate-700">Wednesday, Oct 24</span>
+                          <span className="text-xs text-slate-500">8:00 AM - 6:00 PM</span>
+                       </div>
+                    )}
+                    
+                    <div className="flex-1 overflow-y-auto relative bg-white">
+                    {/* 1. MONTH VIEW */}
+                    {calendarViewMode === 'month' && (
+                       <div className="grid grid-cols-7 min-h-full auto-rows-fr divide-x divide-slate-100 divide-y border-b border-slate-100">
+                          {/* Previous Month Days */}
+                          {[29, 30].map(day => (
+                             <div key={`prev-${day}`} className="min-h-[100px] bg-slate-50/50 p-2 opacity-50">
+                                <span className="text-xs font-medium text-slate-400">{day}</span>
+                             </div>
+                          ))}
+
+                          {/* Current Month Days (October) */}
+                          {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                             <div key={day} className={`min-h-[100px] p-2 hover:bg-slate-50 transition-colors relative group ${day === 24 ? 'bg-blue-50/30' : ''}`}>
+                                <div className="flex justify-between items-start mb-1">
+                                   <span className={`text-xs font-medium h-6 w-6 flex items-center justify-center rounded-full ${day === 24 ? 'bg-blue-600 text-white' : 'text-slate-700'}`}>
+                                      {day}
+                                   </span>
+                                   {day === 24 && <span className="text-[10px] font-bold text-blue-600">Today</span>}
+                                </div>
+                                
+                                {/* Mock Events - Month View */}
+                                <div className="space-y-1">
+                                   {scheduleViewMode === 'occupancy' ? (
+                                      // OCCUPANCY VIEW - MONTH
+                                      <div className="space-y-1.5 mt-2">
+                                         <div className="space-y-0.5">
+                                            <div className="flex justify-between text-[10px] text-slate-500 font-medium"><span>OT Util</span> <span className={day > 20 ? "text-emerald-600" : "text-amber-600"}>{day > 20 ? "40%" : "90%"}</span></div>
+                                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                               <div className={`h-full w-[${day > 20 ? 40 : 90}%] rounded-full ${day > 20 ? "bg-emerald-500" : "bg-amber-500"}`}></div>
+                                            </div>
+                                         </div>
+                                      </div>
+                                   ) : (
+                                      // APPOINTMENTS VIEW - MONTH
+                                      <>
+                                         {day === 2 && (
+                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 truncate font-medium">
+                                               09:00 AM • IUI Proc
+                                            </div>
+                                         )}
+                                         {day === 8 && (
+                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200 truncate font-medium">
+                                               11:30 AM • Conf
+                                            </div>
+                                         )}
+                                         {day === 12 && (
+                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 truncate font-medium">
+                                               On-Call Shift
+                                            </div>
+                                         )}
+                                         {day === 24 && (
+                                            <>
+                                               <div className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 truncate font-medium flex items-center gap-1">
+                                                  <div className="w-1 h-1 rounded-full bg-blue-500"></div> 9:00 • Ananya S.
+                                               </div>
+                                               <div className="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 border border-pink-200 truncate font-medium flex items-center gap-1">
+                                                  <div className="w-1 h-1 rounded-full bg-pink-500"></div> 9:30 • Meera D.
+                                               </div>
+                                               <div className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 truncate font-medium opacity-70">
+                                                  +4 more...
+                                               </div>
+                                            </>
+                                         )}
+                                         {day === 25 && (
+                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 truncate font-medium flex items-center gap-1">
+                                               <div className="w-1 h-1 rounded-full bg-blue-500"></div> 10:00 • Priya K.
+                                            </div>
+                                         )}
+                                      </>
+                                   )}
+                                </div>
+                             </div>
+                          ))}
+
+                          {/* Next Month Days */}
+                          {[1, 2].map(day => (
+                             <div key={`next-${day}`} className="min-h-[100px] bg-slate-50/50 p-2 opacity-50">
+                                <span className="text-xs font-medium text-slate-400">{day}</span>
+                             </div>
+                          ))}
+                       </div>
+                    )}
+
+                    {/* 2. WEEK VIEW */}
+                    {calendarViewMode === 'week' && (
+                       <div className="flex min-h-full">
+                          {/* Time Axis */}
+                          <div className="w-12 shrink-0 border-r border-slate-200 bg-slate-50/50 flex flex-col pt-10">
+                             {Array.from({ length: 11 }, (_, i) => i + 8).map(hour => (
+                                <div key={hour} className="h-20 text-right pr-2 text-[10px] text-slate-400 font-medium relative">
+                                   <span className="-top-2 absolute right-2">{hour}:00</span>
+                                </div>
+                             ))}
+                          </div>
+                          {/* Days Columns */}
+                          <div className="flex-1 grid grid-cols-7 divide-x divide-slate-100">
+                             {Array.from({ length: 7 }, (_, i) => i).map(dayIndex => (
+                                <div key={dayIndex} className="relative pt-2">
+                                   {/* Day Grid Lines */}
+                                   {Array.from({ length: 11 }, (_, i) => i + 8).map(hour => (
+                                      <div key={hour} className="h-20 border-b border-slate-50 w-full relative group">
+                                         {/* Hover add button */}
+                                         <div className="absolute inset-0 hover:bg-slate-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                                            <Plus className="w-3 h-3 text-blue-400" />
+                                         </div>
+                                      </div>
+                                   ))}
+
+                                   {/* EVENTS FOR THIS DAY */}
+                                   {/* Specific mockup for Wednesday (Index 3) */}
+                                   {dayIndex === 3 && scheduleViewMode === 'appointments' && (
+                                      <>
+                                         <div className="absolute top-[80px] left-1 right-1 h-[60px] bg-blue-100 border-l-2 border-blue-500 rounded p-1 shadow-sm z-10 cursor-pointer hover:bg-blue-200 transition-colors">
+                                            <p className="text-[10px] font-bold text-blue-800">Ananya S.</p>
+                                            <p className="text-[9px] text-blue-600">Initial Consult</p>
+                                         </div>
+                                         <div className="absolute top-[150px] left-1 right-1 h-[45px] bg-pink-100 border-l-2 border-pink-500 rounded p-1 shadow-sm z-10 cursor-pointer hover:bg-pink-200 transition-colors">
+                                            <p className="text-[10px] font-bold text-pink-800">Meera D.</p>
+                                            <p className="text-[9px] text-pink-600">Scan</p>
+                                         </div>
+                                         <div className="absolute top-[320px] left-1 right-1 h-[90px] bg-purple-100 border-l-2 border-purple-500 rounded p-1 shadow-sm z-10 cursor-pointer hover:bg-purple-200 transition-colors flex flex-col justify-center">
+                                            <p className="text-[10px] font-bold text-purple-800">IUI Procedure</p>
+                                            <p className="text-[9px] text-purple-600">OT-1 • Dr. Reynolds</p>
+                                         </div>
+                                      </>
+                                   )}
+                                   
+                                   {/* Specific mockup for Friday (Index 5) */}
+                                   {dayIndex === 5 && scheduleViewMode === 'appointments' && (
+                                      <div className="absolute top-[240px] left-1 right-1 h-[120px] bg-amber-100 border-l-2 border-amber-500 rounded p-1 shadow-sm z-10 cursor-pointer hover:bg-amber-200 transition-colors flex flex-col justify-center">
+                                         <p className="text-[10px] font-bold text-amber-800">Dept Meeting</p>
+                                         <p className="text-[9px] text-amber-600">Conference Room B</p>
+                                      </div>
+                                   )}
+
+                                   {/* OCCUPANCY VIEW MOCKUP */}
+                                   {scheduleViewMode === 'occupancy' && dayIndex >= 1 && dayIndex <= 5 && (
+                                      <>
+                                         {/* Random occupancy blocks */}
+                                         <div className={`absolute top-[${100 + dayIndex * 20}px] left-0 right-0 h-[${60 + dayIndex * 10}px] bg-slate-100/50 border-y border-dashed border-slate-300 flex items-center justify-center`}>
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest rotate-90 md:rotate-0">High Volume</span>
+                                         </div>
+                                      </>
+                                   )}
+                                </div>
+                             ))}
+                          </div>
+                       </div>
+                    )}
+
+                    {/* 3. DAY VIEW */}
+                    {calendarViewMode === 'day' && (
+                       <div className="flex min-h-full">
+                          {/* Time Axis - Detailed */}
+                          <div className="w-16 shrink-0 border-r border-slate-200 bg-slate-50/50 flex flex-col pt-4">
+                             {Array.from({ length: 11 }, (_, i) => i + 8).map(hour => (
+                                <div key={hour} className="h-32 text-right pr-2 text-xs text-slate-500 font-bold relative">
+                                   <span className="-top-2 absolute right-2">{hour}:00</span>
+                                   <span className="top-14 absolute right-2 text-[10px] text-slate-300 font-normal">:30</span>
+                                </div>
+                             ))}
+                          </div>
+                          
+                          {/* Day Column */}
+                          <div className="flex-1 relative pt-4 px-4 bg-slate-50/10">
+                             {Array.from({ length: 11 }, (_, i) => i + 8).map(hour => (
+                                <div key={hour} className="h-32 border-b border-slate-100 w-full relative">
+                                   <div className="absolute top-1/2 left-0 right-0 border-b border-dashed border-slate-100"></div>
+                                </div>
+                             ))}
                              
-                             {/* Mock Events */}
-                             <div className="space-y-1">
-                                {scheduleViewMode === 'occupancy' ? (
-                                   // OCCUPANCY VIEW
-                                   <div className="space-y-1.5 mt-2">
-                                      <div className="space-y-0.5">
-                                         <div className="flex justify-between text-[10px] text-slate-500 font-medium"><span>OT-1</span> <span>80%</span></div>
-                                         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                            <div className="h-full bg-rose-500 w-[80%] rounded-full"></div>
+                             {/* Detailed Events for TODAY */}
+                             {scheduleViewMode === 'appointments' ? (
+                                <>
+                                   {/* Event 1 */}
+                                   <div className="absolute top-[20px] left-4 right-4 h-[90px] bg-white border border-blue-200 border-l-4 border-l-blue-500 rounded shadow-sm hover:shadow-md transition-all p-3 flex justify-between items-start">
+                                      <div>
+                                         <div className="flex items-center gap-2 mb-1">
+                                            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none h-5 text-[10px]">New Patient</Badge>
+                                            <span className="text-xs text-slate-500">8:15 AM - 9:45 AM</span>
+                                         </div>
+                                         <h3 className="font-bold text-slate-800 text-sm">Ananya S. - Initial Consultation</h3>
+                                         <p className="text-xs text-slate-500 mt-1 flex items-center gap-2"><MapPin className="w-3 h-3" /> Room 302 • Dr. Reynolds</p>
+                                      </div>
+                                      <Avatar className="h-8 w-8 bg-blue-50 text-blue-700 border border-blue-100">
+                                         <AvatarFallback>AS</AvatarFallback>
+                                      </Avatar>
+                                   </div>
+
+                                   {/* Event 2 */}
+                                   <div className="absolute top-[130px] left-4 right-4 h-[60px] bg-white border border-pink-200 border-l-4 border-l-pink-500 rounded shadow-sm hover:shadow-md transition-all p-3 flex justify-between items-center">
+                                      <div>
+                                         <span className="text-xs text-slate-500 block mb-0.5">10:00 AM - 11:00 AM</span>
+                                         <h3 className="font-bold text-slate-800 text-sm">Meera D. - Growth Scan</h3>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                         <Badge variant="outline" className="border-pink-200 text-pink-700 bg-pink-50 text-[10px]">USG</Badge>
+                                         <Avatar className="h-8 w-8 bg-pink-50 text-pink-700 border border-pink-100">
+                                            <AvatarFallback>MD</AvatarFallback>
+                                         </Avatar>
+                                      </div>
+                                   </div>
+
+                                   {/* Gap */}
+                                   <div className="absolute top-[210px] left-4 right-4 h-[40px] bg-slate-100 rounded border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 font-medium">
+                                      Free Slot (11:15 - 11:45)
+                                   </div>
+
+                                    {/* Event 3 */}
+                                   <div className="absolute top-[270px] left-4 right-4 h-[120px] bg-white border border-purple-200 border-l-4 border-l-purple-500 rounded shadow-sm hover:shadow-md transition-all p-3 flex justify-between items-start">
+                                      <div className="flex-1">
+                                         <div className="flex items-center gap-2 mb-1">
+                                            <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-none h-5 text-[10px]">Procedure</Badge>
+                                            <span className="text-xs text-slate-500">12:30 PM - 2:30 PM</span>
+                                         </div>
+                                         <h3 className="font-bold text-slate-800 text-sm">Elena R. - IUI Procedure</h3>
+                                         <p className="text-xs text-slate-500 mt-1 mb-2">Requires: Anesthetist, Nursing Staff</p>
+                                         <div className="flex items-center gap-2">
+                                             <div className="flex -space-x-2">
+                                                <div className="w-6 h-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[8px]">DR</div>
+                                                <div className="w-6 h-6 rounded-full bg-purple-200 border-2 border-white flex items-center justify-center text-[8px]">NS</div>
+                                             </div>
+                                             <span className="text-[10px] text-slate-400">+2 others</span>
                                          </div>
                                       </div>
-                                      <div className="space-y-0.5">
-                                         <div className="flex justify-between text-[10px] text-slate-500 font-medium"><span>OT-2</span> <span>40%</span></div>
-                                         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                            <div className="h-full bg-emerald-500 w-[40%] rounded-full"></div>
+                                      <Button size="sm" variant="outline" className="h-7 text-xs">View Protocol</Button>
+                                   </div>
+                                </>
+                             ) : (
+                                // OCCUPANCY DAY VIEW
+                                <div className="absolute inset-0 p-4">
+                                   <div className="h-full w-full bg-slate-50 rounded-xl border border-slate-200 p-6">
+                                      <h3 className="font-bold text-slate-800 mb-4">Resource Utilization - Today</h3>
+                                      <div className="space-y-6">
+                                         <div>
+                                            <div className="flex justify-between text-sm font-medium mb-2"><span>Operation Theater 1</span> <span className="text-emerald-600">Available from 3 PM</span></div>
+                                            <div className="h-8 w-full bg-slate-200 rounded-md overflow-hidden flex">
+                                               <div className="h-full w-[60%] bg-rose-500 flex items-center justify-center text-[10px] font-bold text-white uppercase tracking-wider">Booked</div>
+                                               <div className="h-full w-[40%] bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white uppercase tracking-wider">Free</div>
+                                            </div>
                                          </div>
-                                      </div>
-                                      <div className="space-y-0.5">
-                                         <div className="flex justify-between text-[10px] text-slate-500 font-medium"><span>Beds</span> <span>90%</span></div>
-                                         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                            <div className="h-full bg-amber-500 w-[90%] rounded-full"></div>
+                                         <div>
+                                            <div className="flex justify-between text-sm font-medium mb-2"><span>USG Room</span> <span className="text-amber-600">Heavy Load</span></div>
+                                            <div className="h-8 w-full bg-slate-200 rounded-md overflow-hidden flex">
+                                               <div className="h-full w-[30%] bg-rose-500"></div>
+                                               <div className="h-full w-[20%] bg-rose-400"></div>
+                                               <div className="h-full w-[40%] bg-rose-500"></div>
+                                               <div className="h-full w-[10%] bg-emerald-500"></div>
+                                            </div>
+                                         </div>
+                                         <div>
+                                            <div className="flex justify-between text-sm font-medium mb-2"><span>Consultation Rooms</span> <span className="text-blue-600">Normal Flow</span></div>
+                                            <div className="grid grid-cols-4 gap-2">
+                                               <div className="h-12 rounded bg-rose-100 border border-rose-200 flex flex-col items-center justify-center">
+                                                  <span className="text-xs font-bold text-rose-800">Room 1</span>
+                                                  <span className="text-[10px] text-rose-600">Busy</span>
+                                               </div>
+                                               <div className="h-12 rounded bg-rose-100 border border-rose-200 flex flex-col items-center justify-center">
+                                                  <span className="text-xs font-bold text-rose-800">Room 2</span>
+                                                  <span className="text-[10px] text-rose-600">Busy</span>
+                                               </div>
+                                               <div className="h-12 rounded bg-emerald-100 border border-emerald-200 flex flex-col items-center justify-center">
+                                                  <span className="text-xs font-bold text-emerald-800">Room 3</span>
+                                                  <span className="text-[10px] text-emerald-600">Free</span>
+                                               </div>
+                                               <div className="h-12 rounded bg-rose-100 border border-rose-200 flex flex-col items-center justify-center">
+                                                  <span className="text-xs font-bold text-rose-800">Room 4</span>
+                                                  <span className="text-[10px] text-rose-600">Busy</span>
+                                               </div>
+                                            </div>
                                          </div>
                                       </div>
                                    </div>
-                                ) : (
-                                   // APPOINTMENTS VIEW (Default)
-                                   <>
-                                      {day === 2 && (
-                                         <div className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 truncate font-medium">
-                                            09:00 AM • IUI Proc
-                                         </div>
-                                      )}
-                                      {day === 8 && (
-                                         <div className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200 truncate font-medium">
-                                            11:30 AM • Conf
-                                         </div>
-                                      )}
-                                      {day === 12 && (
-                                         <div className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 truncate font-medium">
-                                            On-Call Shift
-                                         </div>
-                                      )}
-                                      {day === 24 && (
-                                         <>
-                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 truncate font-medium flex items-center gap-1">
-                                               <div className="w-1 h-1 rounded-full bg-blue-500"></div> 9:00 • Ananya S.
-                                            </div>
-                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 border border-pink-200 truncate font-medium flex items-center gap-1">
-                                               <div className="w-1 h-1 rounded-full bg-pink-500"></div> 9:30 • Meera D.
-                                            </div>
-                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 truncate font-medium opacity-70">
-                                               +4 more...
-                                            </div>
-                                         </>
-                                      )}
-                                      {day === 25 && (
-                                         <div className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 truncate font-medium flex items-center gap-1">
-                                            <div className="w-1 h-1 rounded-full bg-blue-500"></div> 10:00 • Priya K.
-                                         </div>
-                                      )}
-                                      {day === 28 && (
-                                         <div className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200 truncate font-medium">
-                                            Dept Meeting
-                                         </div>
-                                      )}
-                                   </>
-                                )}
-                             </div>
+                                </div>
+                             )}
                           </div>
-                       ))}
-
-                       {/* Next Month Days */}
-                       {[1, 2].map(day => (
-                          <div key={`next-${day}`} className="min-h-[100px] bg-slate-50/50 p-2 opacity-50">
-                             <span className="text-xs font-medium text-slate-400">{day}</span>
-                          </div>
-                       ))}
+                       </div>
+                    )}
                     </div>
                  </Card>
               </div>
