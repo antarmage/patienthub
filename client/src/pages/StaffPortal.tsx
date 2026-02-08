@@ -329,6 +329,182 @@ export default function StaffPortal() {
         {/* Dashboard Content */}
         <div className="flex-1 overflow-y-auto p-6">
             
+            {/* 6. SCHEDULE VIEW */}
+            {activeView === 'schedule' && (
+                <div className="max-w-6xl mx-auto space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-bold text-slate-900 font-serif">Staff Schedule</h2>
+                        <div className="flex gap-2">
+                             <Button variant="outline" className="bg-white border-slate-200">
+                                <CalendarCheck className="w-4 h-4 mr-2" /> Sync Calendar
+                             </Button>
+                             <Button className="bg-slate-900 text-white hover:bg-slate-800">
+                                <Plus className="w-4 h-4 mr-2" /> New Appointment
+                             </Button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-12 gap-6 h-[calc(100vh-12rem)]">
+                        {/* Calendar Sidebar */}
+                        <Card className="col-span-3 border-slate-200 shadow-sm flex flex-col">
+                            <CardHeader className="py-4 border-b border-slate-100">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-sm font-bold text-slate-800">February 2026</h3>
+                                    <div className="flex gap-1">
+                                        <Button variant="ghost" size="icon" className="h-6 w-6"><ChevronRight className="w-4 h-4 rotate-180" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6"><ChevronRight className="w-4 h-4" /></Button>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-4">
+                                <div className="grid grid-cols-7 gap-1 text-center text-xs mb-2">
+                                    <span className="text-slate-400">Su</span>
+                                    <span className="text-slate-400">Mo</span>
+                                    <span className="text-slate-400">Tu</span>
+                                    <span className="text-slate-400">We</span>
+                                    <span className="text-slate-400">Th</span>
+                                    <span className="text-slate-400">Fr</span>
+                                    <span className="text-slate-400">Sa</span>
+                                </div>
+                                <div className="grid grid-cols-7 gap-1 text-center text-sm">
+                                    {/* Mock Calendar Grid */}
+                                    {[...Array(3)].map((_, i) => <span key={`empty-${i}`} className="p-2"></span>)}
+                                    {[...Array(28)].map((_, i) => (
+                                        <button 
+                                            key={i} 
+                                            className={`p-2 rounded-full hover:bg-slate-100 ${i === 7 ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'text-slate-700'}`}
+                                        >
+                                            {i + 1}
+                                        </button>
+                                    ))}
+                                </div>
+                                
+                                <div className="mt-6 space-y-4">
+                                    <div>
+                                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Filters</h4>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox id="filter-consult" defaultChecked />
+                                                <label htmlFor="filter-consult" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Consultations</label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox id="filter-scan" defaultChecked />
+                                                <label htmlFor="filter-scan" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Scans & Tests</label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox id="filter-team" />
+                                                <label htmlFor="filter-team" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Team Meetings</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Daily Schedule */}
+                        <Card className="col-span-9 border-slate-200 shadow-sm flex flex-col overflow-hidden">
+                             <CardHeader className="py-3 border-b border-slate-100 bg-slate-50/50 flex flex-row items-center justify-between">
+                                 <div className="flex gap-4">
+                                    <span className="text-sm font-bold text-slate-900 border-b-2 border-indigo-600 pb-3 -mb-3.5">Day View</span>
+                                    <span className="text-sm font-medium text-slate-500 cursor-pointer hover:text-slate-900">Week View</span>
+                                 </div>
+                                 <span className="text-xs font-medium text-slate-500">Sunday, Feb 8th</span>
+                             </CardHeader>
+                             <ScrollArea className="flex-1 bg-white">
+                                <div className="divide-y divide-slate-50">
+                                    {/* 09:00 Slot */}
+                                    <div className="flex h-32 group">
+                                        <div className="w-20 py-4 px-2 text-right text-xs text-slate-400 font-medium border-r border-slate-100 group-hover:bg-slate-50/50">
+                                            09:00 AM
+                                        </div>
+                                        <div className="flex-1 p-2 relative">
+                                            <div className="absolute top-2 left-2 right-2 bottom-2 bg-indigo-50 border-l-4 border-indigo-500 rounded p-3 cursor-pointer hover:shadow-sm transition-shadow">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <p className="font-bold text-indigo-900 text-sm">Initial Fertility Assessment</p>
+                                                        <p className="text-xs text-indigo-700 mt-0.5">Ananya S. • In-Person</p>
+                                                    </div>
+                                                    <Badge variant="secondary" className="bg-white text-indigo-700 text-[10px] hover:bg-white">Confirmed</Badge>
+                                                </div>
+                                                <div className="mt-3 flex gap-2">
+                                                    <Avatar className="h-6 w-6 text-[10px]">
+                                                        <AvatarFallback className="bg-indigo-200 text-indigo-800">AS</AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="text-xs text-indigo-600 self-center">+ Dr. Reynolds (OBGYN)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 10:00 Slot */}
+                                    <div className="flex h-32 group">
+                                        <div className="w-20 py-4 px-2 text-right text-xs text-slate-400 font-medium border-r border-slate-100 group-hover:bg-slate-50/50">
+                                            10:00 AM
+                                        </div>
+                                        <div className="flex-1 p-2 relative">
+                                            <div className="absolute top-2 left-2 right-2 bottom-2 bg-emerald-50 border-l-4 border-emerald-500 rounded p-3 cursor-pointer hover:shadow-sm transition-shadow">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <p className="font-bold text-emerald-900 text-sm">Diet Plan Review</p>
+                                                        <p className="text-xs text-emerald-700 mt-0.5">Priya K. (PCOS) • Video Call</p>
+                                                    </div>
+                                                    <Badge variant="secondary" className="bg-white text-emerald-700 text-[10px] hover:bg-white">Checking In</Badge>
+                                                </div>
+                                                 <div className="mt-3 flex gap-2">
+                                                    <Avatar className="h-6 w-6 text-[10px]">
+                                                        <AvatarFallback className="bg-emerald-200 text-emerald-800">PK</AvatarFallback>
+                                                    </Avatar>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 11:00 Slot (Empty) */}
+                                    <div className="flex h-20 group">
+                                        <div className="w-20 py-4 px-2 text-right text-xs text-slate-400 font-medium border-r border-slate-100 group-hover:bg-slate-50/50">
+                                            11:00 AM
+                                        </div>
+                                        <div className="flex-1 p-2 group-hover:bg-slate-50/30 cursor-pointer border-b border-transparent group-hover:border-slate-100 flex items-center justify-center">
+                                            <Button variant="ghost" size="sm" className="hidden group-hover:flex text-slate-400 text-xs h-8">
+                                                <Plus className="w-3 h-3 mr-1" /> Add Slot
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                     {/* 12:00 Slot */}
+                                    <div className="flex h-32 group">
+                                        <div className="w-20 py-4 px-2 text-right text-xs text-slate-400 font-medium border-r border-slate-100 group-hover:bg-slate-50/50">
+                                            12:00 PM
+                                        </div>
+                                        <div className="flex-1 p-2 relative">
+                                            <div className="absolute top-2 left-2 right-2 bottom-2 bg-amber-50 border-l-4 border-amber-500 rounded p-3 cursor-pointer hover:shadow-sm transition-shadow">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <p className="font-bold text-amber-900 text-sm">Staff Case Review</p>
+                                                        <p className="text-xs text-amber-700 mt-0.5">Multidisciplinary Team • Conf Room B</p>
+                                                    </div>
+                                                    <Badge variant="secondary" className="bg-white text-amber-700 text-[10px] hover:bg-white">Internal</Badge>
+                                                </div>
+                                                <div className="mt-3 flex -space-x-2">
+                                                    <Avatar className="h-6 w-6 text-[10px] border-2 border-white">
+                                                        <AvatarFallback className="bg-slate-200 text-slate-700">DR</AvatarFallback>
+                                                    </Avatar>
+                                                    <Avatar className="h-6 w-6 text-[10px] border-2 border-white">
+                                                        <AvatarFallback className="bg-slate-200 text-slate-700">ST</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="h-6 w-6 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[9px] font-bold text-slate-500">+3</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                             </ScrollArea>
+                        </Card>
+                    </div>
+                </div>
+            )}
+
             {/* 1. NUTRITIONIST VIEW */}
             {activeRole === 'nutritionist' && activeView === 'dashboard' && (
                 <div className="max-w-6xl mx-auto space-y-6">
