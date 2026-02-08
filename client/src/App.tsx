@@ -8,6 +8,7 @@ import Landing from "@/pages/Landing";
 import PatientPortal from "@/pages/PatientPortal";
 import ClinicianPortal from "@/pages/ClinicianPortal";
 import StaffPortal from "@/pages/StaffPortal";
+import StaffPatientProtocol from "@/pages/StaffPatientProtocol";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/patient" component={PatientPortal} />
       <Route path="/clinician" component={ClinicianPortal} />
       <Route path="/staff" component={StaffPortal} />
+      <Route path="/staff/protocol/:id" component={StaffPatientProtocol} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -148,7 +148,10 @@ const appointments = [
   { time: "11:00", patient: "Priya K.", type: "Diet Consult", doctor: "Ms. Gupta" },
 ];
 
+import { Link, useLocation } from "wouter";
+
 export default function StaffPortal() {
+  const [_, setLocation] = useLocation();
   const [activeRole, setActiveRole] = useState("nutritionist");
   const [activeView, setActiveView] = useState("dashboard"); // 'dashboard', 'patients', 'schedule', 'reports'
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -1397,10 +1400,7 @@ export default function StaffPortal() {
                                             <Button 
                                                 size="sm" 
                                                 className="w-full bg-slate-900 text-white hover:bg-slate-800 h-8 text-xs mt-2"
-                                                onClick={() => {
-                                                    setSelectedPatientForAdjust(patient);
-                                                    setIsAdjustProtocolOpen(true);
-                                                }}
+                                                onClick={() => setLocation(`/staff/protocol/${patient.id}`)}
                                             >
                                                 Adjust Protocol
                                             </Button>
