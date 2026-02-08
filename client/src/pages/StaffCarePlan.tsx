@@ -559,13 +559,13 @@ export default function StaffCarePlan() {
         </Card>
 
         {/* 7. Daily Schedule */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="space-y-6">
             <Card className="shadow-sm border-slate-200">
                 <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
                     <CardTitle className="text-sm font-bold text-slate-900 uppercase">Sleep Schedule</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
-                     <div className="grid gap-4">
+                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label className="text-xs font-bold text-slate-500 uppercase">Wake Up Time</Label>
                             <div className="relative">
@@ -580,6 +580,71 @@ export default function StaffCarePlan() {
                                 <Input type="time" className="pl-9 bg-white" defaultValue="22:30" />
                             </div>
                         </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-slate-200">
+                <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                     <div className="flex justify-between items-center">
+                        <CardTitle className="text-base font-bold text-slate-900">Daily Meal Structure</CardTitle>
+                        <div className="flex gap-2">
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 cursor-pointer">Training Day</Badge>
+                            <Badge variant="outline" className="text-slate-500 cursor-pointer hover:bg-slate-50">Rest Day</Badge>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <div className="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+                        {mealPlanItems.map((meal, index) => (
+                            <div key={meal.id} className={`space-y-2 ${index !== 0 ? 'pt-2 border-t border-slate-200' : ''}`}>
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${index % 3 === 0 ? 'bg-amber-400' : index % 3 === 1 ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
+                                    <Input 
+                                        defaultValue={meal.name} 
+                                        className="h-6 w-32 text-xs font-bold text-slate-800 border-none bg-transparent p-0 focus-visible:ring-0" 
+                                    />
+                                    <div className="relative ml-auto">
+                                        <Clock className="absolute left-2 top-1.5 h-3 w-3 text-slate-400" />
+                                        <Input 
+                                            type="time" 
+                                            defaultValue={meal.time} 
+                                            className="h-6 w-24 text-xs bg-white pl-6 border-slate-200" 
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-12 gap-2">
+                                    <div className="col-span-5">
+                                        <Input placeholder="E.g., Oatmeal with Berries" className="h-8 text-xs bg-white" defaultValue={meal.item} />
+                                    </div>
+                                    <div className="col-span-3">
+                                        <Input placeholder="Qty" className="h-8 text-xs bg-white" defaultValue={meal.qty} />
+                                    </div>
+                                    <div className="col-span-3">
+                                        <Input placeholder="Macros" className="h-8 text-xs bg-white" defaultValue={meal.macros} />
+                                    </div>
+                                    <div className="col-span-1">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-8 w-8 text-slate-400 hover:text-red-500"
+                                            onClick={() => removeMealItem(meal.id)}
+                                        >
+                                            <Minus className="w-3 h-3" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full text-xs border-dashed border-slate-300 text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                            onClick={addMealItem}
+                        >
+                            <Plus className="w-3 h-3 mr-1" /> Add Meal Time
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
@@ -605,71 +670,6 @@ export default function StaffCarePlan() {
                 </CardContent>
             </Card>
         </div>
-
-        <Card className="shadow-sm border-slate-200">
-            <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
-                 <div className="flex justify-between items-center">
-                    <CardTitle className="text-base font-bold text-slate-900">Structured Meal Plan</CardTitle>
-                    <div className="flex gap-2">
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 cursor-pointer">Training Day</Badge>
-                        <Badge variant="outline" className="text-slate-500 cursor-pointer hover:bg-slate-50">Rest Day</Badge>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent className="p-6">
-                <div className="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50/50">
-                    {mealPlanItems.map((meal, index) => (
-                        <div key={meal.id} className={`space-y-2 ${index !== 0 ? 'pt-2 border-t border-slate-200' : ''}`}>
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${index % 3 === 0 ? 'bg-amber-400' : index % 3 === 1 ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
-                                <Input 
-                                    defaultValue={meal.name} 
-                                    className="h-6 w-32 text-xs font-bold text-slate-800 border-none bg-transparent p-0 focus-visible:ring-0" 
-                                />
-                                <div className="relative ml-auto">
-                                    <Clock className="absolute left-2 top-1.5 h-3 w-3 text-slate-400" />
-                                    <Input 
-                                        type="time" 
-                                        defaultValue={meal.time} 
-                                        className="h-6 w-24 text-xs bg-white pl-6 border-slate-200" 
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-12 gap-2">
-                                <div className="col-span-5">
-                                    <Input placeholder="E.g., Oatmeal with Berries" className="h-8 text-xs bg-white" defaultValue={meal.item} />
-                                </div>
-                                <div className="col-span-3">
-                                    <Input placeholder="Qty" className="h-8 text-xs bg-white" defaultValue={meal.qty} />
-                                </div>
-                                <div className="col-span-3">
-                                    <Input placeholder="Macros" className="h-8 text-xs bg-white" defaultValue={meal.macros} />
-                                </div>
-                                <div className="col-span-1">
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-8 w-8 text-slate-400 hover:text-red-500"
-                                        onClick={() => removeMealItem(meal.id)}
-                                    >
-                                        <Minus className="w-3 h-3" />
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                    
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full text-xs border-dashed border-slate-300 text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-                        onClick={addMealItem}
-                    >
-                        <Plus className="w-3 h-3 mr-1" /> Add Meal Time
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
       </main>
     </div>
   );
