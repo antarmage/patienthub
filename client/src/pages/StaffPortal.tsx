@@ -505,6 +505,167 @@ export default function StaffPortal() {
                 </div>
             )}
 
+            {/* 7. REPORTS & NOTES VIEW */}
+            {activeView === 'reports' && (
+                <div className="max-w-6xl mx-auto space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-900 font-serif">Clinical Documentation</h2>
+                            <p className="text-slate-500 text-sm mt-1">Manage progress notes, lab reports, and care summaries.</p>
+                        </div>
+                        <div className="flex gap-2">
+                             <Button variant="outline" className="bg-white border-slate-200">
+                                <Search className="w-4 h-4 mr-2" /> Search Archives
+                             </Button>
+                             <Button className="bg-slate-900 text-white hover:bg-slate-800">
+                                <Plus className="w-4 h-4 mr-2" /> Create New Note
+                             </Button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-12 gap-6">
+                        {/* Reports Sidebar */}
+                        <Card className="col-span-4 border-slate-200 shadow-sm h-[calc(100vh-12rem)] flex flex-col">
+                            <CardHeader className="py-4 border-b border-slate-100">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                                    <Input placeholder="Filter by patient or type..." className="pl-9 bg-slate-50 border-slate-200" />
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-0 flex-1 overflow-y-auto">
+                                <div className="divide-y divide-slate-100">
+                                    {/* Note Item 1 */}
+                                    <div className="p-4 hover:bg-slate-50 cursor-pointer border-l-4 border-transparent hover:border-indigo-500 transition-all bg-indigo-50/30">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="font-bold text-slate-900 text-sm">Diet Plan Adjustment</span>
+                                            <span className="text-[10px] text-slate-400">10:30 AM</span>
+                                        </div>
+                                        <p className="text-xs text-slate-500 mb-2 line-clamp-2">Patient reported increased bloating with dairy reintroduction. Switched to lactose-free alternatives for Week 3.</p>
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="h-5 w-5 text-[8px]">
+                                                <AvatarFallback className="bg-slate-200">AS</AvatarFallback>
+                                            </Avatar>
+                                            <span className="text-xs text-slate-600 font-medium">Ananya S.</span>
+                                            <Badge variant="secondary" className="ml-auto text-[10px] bg-indigo-100 text-indigo-700 hover:bg-indigo-100">Progress Note</Badge>
+                                        </div>
+                                    </div>
+
+                                    {/* Note Item 2 */}
+                                    <div className="p-4 hover:bg-slate-50 cursor-pointer border-l-4 border-transparent hover:border-indigo-500 transition-all">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="font-bold text-slate-900 text-sm">Lab Results Review</span>
+                                            <span className="text-[10px] text-slate-400">Yesterday</span>
+                                        </div>
+                                        <p className="text-xs text-slate-500 mb-2 line-clamp-2">Serum progesterone levels indicate ovulation occurred. Luteal phase support protocol initiated.</p>
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="h-5 w-5 text-[8px]">
+                                                <AvatarFallback className="bg-slate-200">MD</AvatarFallback>
+                                            </Avatar>
+                                            <span className="text-xs text-slate-600 font-medium">Meera D.</span>
+                                            <Badge variant="secondary" className="ml-auto text-[10px] bg-purple-100 text-purple-700 hover:bg-purple-100">Lab Analysis</Badge>
+                                        </div>
+                                    </div>
+
+                                    {/* Note Item 3 */}
+                                    <div className="p-4 hover:bg-slate-50 cursor-pointer border-l-4 border-transparent hover:border-indigo-500 transition-all">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="font-bold text-slate-900 text-sm">Postpartum Screening</span>
+                                            <span className="text-[10px] text-slate-400">Feb 6</span>
+                                        </div>
+                                        <p className="text-xs text-slate-500 mb-2 line-clamp-2">EPDS Score: 12. Mild anxiety symptoms noted. Referred to Dr. Cohen for follow-up.</p>
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="h-5 w-5 text-[8px]">
+                                                <AvatarFallback className="bg-slate-200">SJ</AvatarFallback>
+                                            </Avatar>
+                                            <span className="text-xs text-slate-600 font-medium">Sarah J.</span>
+                                            <Badge variant="secondary" className="ml-auto text-[10px] bg-rose-100 text-rose-700 hover:bg-rose-100">Screening</Badge>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Editor Area */}
+                        <Card className="col-span-8 border-slate-200 shadow-sm flex flex-col h-[calc(100vh-12rem)]">
+                            <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between bg-slate-50/30">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h3 className="font-bold text-slate-900">Diet Plan Adjustment</h3>
+                                        <Badge variant="outline" className="text-xs text-slate-500 font-normal">Draft</Badge>
+                                    </div>
+                                    <p className="text-xs text-slate-500">Created by <span className="font-medium text-slate-700">You</span> • Today at 10:30 AM</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button variant="ghost" size="sm" className="h-8 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50">Delete</Button>
+                                    <Button size="sm" className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white">Save & Sign</Button>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-6 flex-1 overflow-y-auto">
+                                <div className="space-y-6 max-w-2xl">
+                                    {/* Patient Context */}
+                                    <div className="flex items-center gap-3 p-3 bg-blue-50/50 border border-blue-100 rounded-lg">
+                                        <Avatar className="h-10 w-10 border-2 border-white">
+                                            <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">AS</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className="font-bold text-sm text-slate-900">Ananya S.</p>
+                                            <p className="text-xs text-slate-500">DOB: 12/04/1995 • MRN: #883920</p>
+                                        </div>
+                                        <Button variant="ghost" size="sm" className="ml-auto text-xs text-blue-600 h-7">View History</Button>
+                                    </div>
+
+                                    {/* SOAP Note Structure */}
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">S (Subjective)</Label>
+                                            <Textarea 
+                                                className="min-h-[80px] bg-slate-50/50 border-slate-200 focus:bg-white transition-colors text-sm"
+                                                defaultValue="Patient reports feeling significantly better energy levels. However, noted bloating 30 mins after consuming greek yogurt." 
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">O (Objective)</Label>
+                                            <Textarea 
+                                                className="min-h-[80px] bg-slate-50/50 border-slate-200 focus:bg-white transition-colors text-sm"
+                                                defaultValue="Weight: 68.2kg (-0.5kg). BP: 118/76. Food log shows 90% adherence to anti-inflammatory protocol." 
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">A (Assessment)</Label>
+                                            <Textarea 
+                                                className="min-h-[80px] bg-slate-50/50 border-slate-200 focus:bg-white transition-colors text-sm"
+                                                defaultValue="Likely lactose intolerance or casein sensitivity. Progress towards weight goal is steady." 
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">P (Plan)</Label>
+                                            <Textarea 
+                                                className="min-h-[80px] bg-slate-50/50 border-slate-200 focus:bg-white transition-colors text-sm"
+                                                defaultValue="1. Switch to coconut or almond yogurt.\n2. Continue magnesium at bedtime.\n3. Review in 2 weeks." 
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Attachments */}
+                                    <div className="pt-4 border-t border-slate-100">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 block">Attachments</Label>
+                                        <div className="flex gap-3">
+                                            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded text-xs font-medium text-slate-700">
+                                                <FileText className="w-3 h-3 text-slate-400" />
+                                                Updated_Meal_Plan.pdf
+                                            </div>
+                                            <Button variant="ghost" size="sm" className="h-8 text-xs text-blue-600 border border-dashed border-blue-200 bg-blue-50/50">
+                                                + Upload File
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            )}
+
             {/* 1. NUTRITIONIST VIEW */}
             {activeRole === 'nutritionist' && activeView === 'dashboard' && (
                 <div className="max-w-6xl mx-auto space-y-6">
