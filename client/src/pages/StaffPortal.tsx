@@ -75,6 +75,10 @@ const functionalMedicinePatients = [
       nutrient: { deficiency: "Vitamin D, Magnesium", status: "Critical" },
       hormone: { focus: "Estrogen Dominance", status: "Imbalanced" }
     },
+    intervention: {
+        protocol: "Supplement Protocol (Active)",
+        dietPhase: "Elimination Diet (Week 2)"
+    },
     plan: "Anti-inflammatory, Gluten-Free",
     nextReview: "2 days",
     clinicianNote: "Referral: Dr. Reynolds. Patient struggles with insulin resistance. Focus on fiber intake and low glycemic load."
@@ -95,6 +99,10 @@ const functionalMedicinePatients = [
       inflammation: { marker: "Homocysteine", value: "12", status: "Borderline" },
       nutrient: { deficiency: "Omega-3", status: "Moderate" },
       hormone: { focus: "Progesterone Support", status: "Low" }
+    },
+    intervention: {
+        protocol: "Gut Healing Protocol (Week 4)",
+        dietPhase: "Reintroduction Phase"
     },
     plan: "Low Histamine, High Omega-3",
     nextReview: "1 week",
@@ -117,6 +125,10 @@ const functionalMedicinePatients = [
       nutrient: { deficiency: "Chromium", status: "Moderate" },
       hormone: { focus: "Insulin Sensitivity", status: "Resistant" }
     },
+    intervention: {
+        protocol: "Metabolic Reset (Day 5)",
+        dietPhase: "Low GI Strict"
+    },
     plan: "Low Glycemic Index, Methylated Folate",
     nextReview: "Tomorrow",
     clinicianNote: "Referral: Dr. Reynolds. GDM risk high. Strict sugar control needed. Monitor post-prandial spikes."
@@ -137,6 +149,10 @@ const functionalMedicinePatients = [
       inflammation: { marker: "hs-CRP", value: "0.8", status: "Optimal" },
       nutrient: { deficiency: "Iron", status: "Mild" },
       hormone: { focus: "Thyroid Support", status: "Stable" }
+    },
+    intervention: {
+        protocol: "Prenatal Support",
+        dietPhase: "Maintenance (T2)"
     },
     plan: "Prenatal Wellness, Iron-Rich",
     nextReview: "2 weeks",
@@ -877,35 +893,58 @@ export default function StaffPortal() {
                                                 </div>
                                             )}
 
-                                            {/* 2. Goal Adjustment */}
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label>Adjust Primary Goal</Label>
-                                                    <Select defaultValue="inflammation">
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="inflammation">Reduce Inflammation (hs-CRP)</SelectItem>
-                                                            <SelectItem value="fertility">Boost Egg Quality</SelectItem>
-                                                            <SelectItem value="gut">Gut Repair (4R Protocol)</SelectItem>
-                                                            <SelectItem value="bloodsugar">Insulin Sensitivity</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
+                                            {/* 2. Clinical Context & Goal Adjustment */}
+                                            <div className="space-y-6">
+                                                {/* Context Banner */}
+                                                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Clinical Context</h4>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <span className="text-[10px] text-slate-400 block">Genomics</span>
+                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                <Badge variant="outline" className={`text-[10px] bg-white ${selectedPatientForAdjust.genomics.mthfr.risk === 'Medium' ? 'text-amber-700 border-amber-200' : 'text-slate-600 border-slate-200'}`}>MTHFR: {selectedPatientForAdjust.genomics.mthfr.status}</Badge>
+                                                                <Badge variant="outline" className={`text-[10px] bg-white ${selectedPatientForAdjust.genomics.caffeine.risk === 'High' ? 'text-rose-700 border-rose-200' : 'text-slate-600 border-slate-200'}`}>{selectedPatientForAdjust.genomics.caffeine.status === "Slow Metabolizer" ? "Slow Caffeine" : "Fast Caffeine"}</Badge>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[10px] text-slate-400 block">Biomarkers</span>
+                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                 <Badge variant="outline" className={`text-[10px] bg-white ${selectedPatientForAdjust.functional.gut.score < 50 ? 'text-rose-700 border-rose-200' : 'text-slate-600 border-slate-200'}`}>Gut: {selectedPatientForAdjust.functional.gut.status}</Badge>
+                                                                 <Badge variant="outline" className={`text-[10px] bg-white ${selectedPatientForAdjust.functional.inflammation.status === 'Elevated' ? 'text-amber-700 border-amber-200' : 'text-slate-600 border-slate-200'}`}>Inflam: {selectedPatientForAdjust.functional.inflammation.status}</Badge>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label>Dietary Phase</Label>
-                                                    <Select defaultValue="elimination">
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="elimination">Elimination Phase (Strict)</SelectItem>
-                                                            <SelectItem value="reintroduction">Reintroduction Phase</SelectItem>
-                                                            <SelectItem value="maintenance">Maintenance & Diversity</SelectItem>
-                                                            <SelectItem value="keto">Therapeutic Ketogenic</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label>Adjust Primary Goal</Label>
+                                                        <Select defaultValue="inflammation">
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select goal..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="inflammation">Reduce Inflammation (hs-CRP)</SelectItem>
+                                                                <SelectItem value="fertility">Boost Egg Quality</SelectItem>
+                                                                <SelectItem value="gut">Gut Repair (4R Protocol)</SelectItem>
+                                                                <SelectItem value="bloodsugar">Insulin Sensitivity</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Dietary Phase</Label>
+                                                        <Select defaultValue="elimination">
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select phase..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="elimination">{selectedPatientForAdjust.intervention?.dietPhase || "Elimination Phase (Strict)"}</SelectItem>
+                                                                <SelectItem value="reintroduction">Reintroduction Phase</SelectItem>
+                                                                <SelectItem value="maintenance">Maintenance & Diversity</SelectItem>
+                                                                <SelectItem value="keto">Therapeutic Ketogenic</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -1188,11 +1227,11 @@ export default function StaffPortal() {
                                         <div className="space-y-3">
                                             <div className="flex items-start gap-2">
                                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5" />
-                                                <p className="text-xs text-slate-600">Supplement Protocol <span className="text-slate-400 text-[10px]">(Active)</span></p>
+                                                <p className="text-xs text-slate-600">{patient.intervention?.protocol || "Standard Protocol"} <span className="text-slate-400 text-[10px]">(Active)</span></p>
                                             </div>
                                             <div className="flex items-start gap-2">
                                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5" />
-                                                <p className="text-xs text-slate-600">Elimination Diet <span className="text-slate-400 text-[10px]">(Week 2)</span></p>
+                                                <p className="text-xs text-slate-600">{patient.intervention?.dietPhase || "Maintenance"} <span className="text-slate-400 text-[10px]">(Current)</span></p>
                                             </div>
                                             <div className="mt-4 pt-4 border-t border-slate-200">
                                                 <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Primary Focus</p>
@@ -1201,7 +1240,10 @@ export default function StaffPortal() {
                                             <Button 
                                                 size="sm" 
                                                 className="w-full bg-slate-900 text-white hover:bg-slate-800 h-8 text-xs mt-2"
-                                                onClick={() => setLocation(`/staff/protocol/${patient.id}`)}
+                                                onClick={() => {
+                                                    setSelectedPatientForAdjust(patient);
+                                                    setIsAdjustProtocolOpen(true);
+                                                }}
                                             >
                                                 Adjust Protocol
                                             </Button>

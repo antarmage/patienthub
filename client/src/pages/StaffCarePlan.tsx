@@ -52,6 +52,10 @@ const functionalMedicinePatients = [
       nutrient: { deficiency: "Vitamin D, Magnesium", status: "Critical" },
       hormone: { focus: "Estrogen Dominance", status: "Imbalanced" }
     },
+    intervention: {
+        protocol: "Supplement Protocol (Active)",
+        dietPhase: "Elimination Diet (Week 2)"
+    },
     plan: "Anti-inflammatory, Gluten-Free",
     nextReview: "2 days",
     clinicianNote: "Referral: Dr. Reynolds. Patient struggles with insulin resistance. Focus on fiber intake and low glycemic load.",
@@ -78,6 +82,10 @@ const functionalMedicinePatients = [
       inflammation: { marker: "Homocysteine", value: "12", status: "Borderline" },
       nutrient: { deficiency: "Omega-3", status: "Moderate" },
       hormone: { focus: "Progesterone Support", status: "Low" }
+    },
+    intervention: {
+        protocol: "Gut Healing Protocol (Week 4)",
+        dietPhase: "Reintroduction Phase"
     },
     plan: "Low Histamine, High Omega-3",
     nextReview: "1 week",
@@ -106,6 +114,10 @@ const functionalMedicinePatients = [
       nutrient: { deficiency: "Chromium", status: "Moderate" },
       hormone: { focus: "Insulin Sensitivity", status: "Resistant" }
     },
+    intervention: {
+        protocol: "Metabolic Reset (Day 5)",
+        dietPhase: "Low GI Strict"
+    },
     plan: "Low Glycemic Index, Methylated Folate",
     nextReview: "Tomorrow",
     clinicianNote: "Referral: Dr. Reynolds. GDM risk high. Strict sugar control needed. Monitor post-prandial spikes.",
@@ -132,6 +144,10 @@ const functionalMedicinePatients = [
       inflammation: { marker: "hs-CRP", value: "0.8", status: "Optimal" },
       nutrient: { deficiency: "Iron", status: "Mild" },
       hormone: { focus: "Thyroid Support", status: "Stable" }
+    },
+    intervention: {
+        protocol: "Prenatal Support",
+        dietPhase: "Maintenance (T2)"
     },
     plan: "Prenatal Wellness, Iron-Rich",
     nextReview: "2 weeks",
