@@ -144,6 +144,24 @@ export default function StaffPatientProtocol() {
     setCustomMealData({ name: "", type: "", time: "00:00", qty: "1 serving", macros: "" }); // Reset
   };
 
+  const [isRequestLabOpen, setIsRequestLabOpen] = useState(false);
+  const [selectedLabs, setSelectedLabs] = useState<string[]>([]);
+  
+  const labCategories = {
+    "Hormonal": ["FSH/LH", "Estradiol", "Progesterone", "Testosterone (Total/Free)", "Prolactin"],
+    "Metabolic": ["HbA1c", "Fasting Insulin", "Lipid Profile", "Thyroid Panel (TSH, T3, T4)"],
+    "Inflammatory": ["hs-CRP", "Homocysteine", "Ferritin", "ESR"],
+    "Nutritional": ["Vitamin D", "Vitamin B12", "Iron Studies", "Magnesium"]
+  };
+
+  const toggleLabSelection = (lab: string) => {
+    if (selectedLabs.includes(lab)) {
+      setSelectedLabs(selectedLabs.filter(l => l !== lab));
+    } else {
+      setSelectedLabs([...selectedLabs, lab]);
+    }
+  };
+
   // --- COMPONENT HANDLERS ---
   const addComponentToMeal = (day: string, mealId: number) => {
     setWeeklyPlan(prev => ({
@@ -345,7 +363,17 @@ export default function StaffPatientProtocol() {
             <Card className="col-span-8 shadow-sm border-slate-200">
                 <CardHeader className="py-3 border-b border-slate-100 flex flex-row items-center justify-between">
                     <CardTitle className="text-base font-bold text-slate-900">Recent Lab Biomarkers</CardTitle>
-                    <Button variant="ghost" size="sm" className="text-xs text-indigo-600 h-7">View Full Report</Button>
+                    <div className="flex gap-2">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-xs h-7 border-slate-200"
+                            onClick={() => setIsRequestLabOpen(true)}
+                        >
+                            <Plus className="w-3 h-3 mr-1" /> Request Labs
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-xs text-indigo-600 h-7">View Full Report</Button>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-4">
                     <div className="grid grid-cols-2 gap-x-8 gap-y-4">
@@ -574,8 +602,56 @@ export default function StaffPatientProtocol() {
              </CardContent>
         </Card>
         
-        {/* Custom Meal Dialog */}
-        <Dialog open={isCustomMealOpen} onOpenChange={setIsCustomMealOpen}>
+            <Dialog open={isRequestLabOpen} onOpenChange={setIsRequestLabOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Request Lab Panel</DialogTitle>
+                        <DialogDescription>Select biomarkers to be tested for {patient.name}</DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="grid grid-cols-2 gap-6 py-4">
+                        {Object.entries(labCategories).map(([category, labs]) => (
+                            <div key={category} className="space-y-3">
+                                <h4 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-1">{category}</h4>
+                                <div className="space-y-2">
+                                    {labs.map(lab => (
+                                        <div key={lab} className="flex items-center space-x-2">
+                                            <input 
+                                                type="checkbox" 
+                                                id={`lab-${lab}`} 
+                                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                checked={selectedLabs.includes(lab)}
+                                                onChange={() => toggleLabSelection(lab)}
+                                            />
+                                            <label 
+                                                htmlFor={`lab-${lab}`} 
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-600"
+                                            >
+                                                {lab}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Clinical Justification / Notes</Label>
+                        <Input placeholder="e.g. Monitoring insulin resistance progress..." />
+                    </div>
+
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setIsRequestLabOpen(false)}>Cancel</Button>
+                        <Button onClick={() => setIsRequestLabOpen(false)} disabled={selectedLabs.length === 0}>
+                            Send Request ({selectedLabs.length})
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Custom Meal Dialog */}
+            <Dialog open={isCustomMealOpen} onOpenChange={setIsCustomMealOpen}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Create Custom Recipe</DialogTitle>
