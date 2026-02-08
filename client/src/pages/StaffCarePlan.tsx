@@ -14,7 +14,12 @@ import {
   Brain,
   Dumbbell,
   FileText,
-  Stethoscope
+  Stethoscope,
+  Utensils,
+  AlertCircle,
+  Heart,
+  MinusCircle,
+  Coffee
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -366,7 +371,85 @@ export default function StaffCarePlan() {
             </CardContent>
         </Card>
 
-        {/* 4. Genomic Modifiers */}
+        {/* 4. Dietary Preferences & Constraints */}
+        <Card className="shadow-sm border-slate-200">
+            <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                    <Utensils className="w-4 h-4 text-slate-600" />
+                    <CardTitle className="text-base font-bold text-slate-900">Dietary Preferences & Constraints</CardTitle>
+                </div>
+            </CardHeader>
+            <CardContent className="p-6">
+                <div className="space-y-6">
+                    {/* Allergies & Sensitivities */}
+                    <div className="space-y-3">
+                        <Label className="flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-rose-500" />
+                            Known Allergies & Sensitivities
+                        </Label>
+                        <Textarea 
+                            placeholder="List confirmed allergies (e.g. Peanuts) or sensitivities (e.g. Dairy causes bloating)..." 
+                            className="h-20 bg-rose-50/30 border-rose-100 focus:border-rose-300" 
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                        {/* Favorites & Non-Negotiables */}
+                        <div className="space-y-3">
+                            <Label className="flex items-center gap-2">
+                                <Heart className="w-4 h-4 text-pink-500" />
+                                Favorites & Non-Negotiables
+                            </Label>
+                            <div className="space-y-2">
+                                <Input placeholder="Must-have comfort foods..." className="bg-slate-50" />
+                                <p className="text-[10px] text-slate-400">Foods the patient is unwilling to give up.</p>
+                            </div>
+                        </div>
+
+                        {/* Aversions (Hates) */}
+                        <div className="space-y-3">
+                            <Label className="flex items-center gap-2">
+                                <MinusCircle className="w-4 h-4 text-slate-500" />
+                                Food Aversions (Dislikes)
+                            </Label>
+                            <div className="space-y-2">
+                                <Input placeholder="Foods they absolutely hate..." className="bg-slate-50" />
+                                <p className="text-[10px] text-slate-400">Foods to avoid in the meal plan.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Cravings & Addictions */}
+                    <div className="space-y-3">
+                         <Label className="flex items-center gap-2">
+                            <Coffee className="w-4 h-4 text-amber-600" />
+                            Cravings & Habits
+                        </Label>
+                        <div className="grid grid-cols-4 gap-3">
+                            <div className="flex items-center space-x-2 border border-slate-200 rounded p-3 hover:bg-slate-50 cursor-pointer">
+                                <Checkbox id="crave-sugar" />
+                                <label htmlFor="crave-sugar" className="text-sm font-medium leading-none cursor-pointer text-slate-700">Sugar / Sweets</label>
+                            </div>
+                            <div className="flex items-center space-x-2 border border-slate-200 rounded p-3 hover:bg-slate-50 cursor-pointer">
+                                <Checkbox id="crave-caffeine" />
+                                <label htmlFor="crave-caffeine" className="text-sm font-medium leading-none cursor-pointer text-slate-700">Caffeine</label>
+                            </div>
+                            <div className="flex items-center space-x-2 border border-slate-200 rounded p-3 hover:bg-slate-50 cursor-pointer">
+                                <Checkbox id="crave-salty" />
+                                <label htmlFor="crave-salty" className="text-sm font-medium leading-none cursor-pointer text-slate-700">Salty Snacks</label>
+                            </div>
+                             <div className="flex items-center space-x-2 border border-slate-200 rounded p-3 hover:bg-slate-50 cursor-pointer">
+                                <Checkbox id="crave-soda" />
+                                <label htmlFor="crave-soda" className="text-sm font-medium leading-none cursor-pointer text-slate-700">Soda / Fizzy</label>
+                            </div>
+                        </div>
+                        <Input placeholder="Other specific cravings or addictions..." className="mt-2" />
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* 5. Genomic Modifiers */}
         <Card className="shadow-sm border-slate-200 bg-purple-50/30">
             <CardHeader className="py-4 border-b border-purple-100 bg-purple-50">
                 <div className="flex items-center gap-2">
@@ -401,7 +484,7 @@ export default function StaffCarePlan() {
             </CardContent>
         </Card>
 
-        {/* 5. Macronutrient Targets */}
+        {/* 6. Macronutrient Targets */}
         <Card className="shadow-sm border-slate-200">
             <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
                 <CardTitle className="text-base font-bold text-slate-900">Macronutrient Distribution</CardTitle>
@@ -433,7 +516,7 @@ export default function StaffCarePlan() {
             </CardContent>
         </Card>
 
-        {/* 6. Daily Schedule */}
+        {/* 7. Daily Schedule */}
         <div className="grid grid-cols-2 gap-6">
             <Card className="shadow-sm border-slate-200">
                 <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
