@@ -13,7 +13,8 @@ import {
   Activity,
   Brain,
   Dumbbell,
-  Sparkles
+  FileText,
+  Stethoscope
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 // --- MOCK DATA (Should match StaffPortal for consistency) ---
@@ -45,7 +47,13 @@ const functionalMedicinePatients = [
     },
     plan: "Anti-inflammatory, Gluten-Free",
     nextReview: "2 days",
-    clinicianNote: "Referral: Dr. Reynolds. Patient struggles with insulin resistance. Focus on fiber intake and low glycemic load."
+    clinicianNote: "Referral: Dr. Reynolds. Patient struggles with insulin resistance. Focus on fiber intake and low glycemic load.",
+    history: {
+        diagnosis: "Diagnosed PCOS (2019), Insulin Resistance (2021).",
+        medications: "Metformin 500mg, Ovasitol.",
+        allergies: "Peanuts (Severe).",
+        lifestyle: "Sedentary job, high stress. Sleeps 6 hours avg."
+    }
   },
   {
     id: 102,
@@ -66,7 +74,13 @@ const functionalMedicinePatients = [
     },
     plan: "Low Histamine, High Omega-3",
     nextReview: "1 week",
-    clinicianNote: "Referral: Dr. Reynolds. Confirmed Endo Stage II. Avoid inflammatory foods. Prioritize omega-3s for pain management."
+    clinicianNote: "Referral: Dr. Reynolds. Confirmed Endo Stage II. Avoid inflammatory foods. Prioritize omega-3s for pain management.",
+    history: {
+        diagnosis: "Endometriosis Stage II (Laparoscopy 2023).",
+        medications: "NSAIDs (PRN), Magnesium.",
+        allergies: "None known.",
+        lifestyle: "Active, yoga practitioner. Vegetarian."
+    }
   },
   {
     id: 103,
@@ -87,7 +101,13 @@ const functionalMedicinePatients = [
     },
     plan: "Low Glycemic Index, Methylated Folate",
     nextReview: "Tomorrow",
-    clinicianNote: "Referral: Dr. Reynolds. GDM risk high. Strict sugar control needed. Monitor post-prandial spikes."
+    clinicianNote: "Referral: Dr. Reynolds. GDM risk high. Strict sugar control needed. Monitor post-prandial spikes.",
+    history: {
+        diagnosis: "Pre-diabetic range HbA1c in first trimester.",
+        medications: "Prenatal Vitamins, Iron.",
+        allergies: "Dairy (Mild intolerance).",
+        lifestyle: "Corporate job, moderate activity. Craves sweets."
+    }
   }
 ];
 
@@ -207,7 +227,76 @@ export default function StaffCarePlan() {
             </CardContent>
         </Card>
 
-        {/* 2. Genomic Modifiers */}
+        {/* 2. Patient History & Clinical Intake */}
+        <Card className="shadow-sm border-slate-200">
+            <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                    <Stethoscope className="w-4 h-4 text-slate-600" />
+                    <CardTitle className="text-base font-bold text-slate-900">Clinical Intake & History</CardTitle>
+                </div>
+            </CardHeader>
+            <CardContent className="p-6">
+                {selectedPatient?.history ? (
+                    <div className="grid grid-cols-2 gap-6 mb-6">
+                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 space-y-3">
+                            <h4 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-2">Medical History (Pre-filled)</h4>
+                            <div className="grid grid-cols-1 gap-2">
+                                <div>
+                                    <span className="text-xs font-medium text-slate-500 block">Diagnosis</span>
+                                    <span className="text-sm text-slate-800">{selectedPatient.history.diagnosis}</span>
+                                </div>
+                                <div>
+                                    <span className="text-xs font-medium text-slate-500 block">Current Medications</span>
+                                    <span className="text-sm text-slate-800">{selectedPatient.history.medications}</span>
+                                </div>
+                                <div>
+                                    <span className="text-xs font-medium text-slate-500 block">Allergies/Intolerances</span>
+                                    <span className="text-sm text-slate-800">{selectedPatient.history.allergies}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Dietary Recall (24h)</Label>
+                                <Textarea placeholder="Note what the patient ate yesterday..." className="h-24 resize-none" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Current Symptoms (Reported)</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox id="sym-bloating" />
+                                        <label htmlFor="sym-bloating" className="text-sm text-slate-600">Bloating/Gas</label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox id="sym-fatigue" />
+                                        <label htmlFor="sym-fatigue" className="text-sm text-slate-600">Chronic Fatigue</label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox id="sym-brainfog" />
+                                        <label htmlFor="sym-brainfog" className="text-sm text-slate-600">Brain Fog</label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox id="sym-cravings" />
+                                        <label htmlFor="sym-cravings" className="text-sm text-slate-600">Sugar Cravings</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-slate-500 text-sm">
+                        Please select a patient to view and document their clinical history.
+                    </div>
+                )}
+                
+                <div className="space-y-2">
+                    <Label>Consultation Notes</Label>
+                    <Textarea placeholder="Key takeaways from today's session, specific goals discussed..." className="h-20" />
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* 3. Genomic Modifiers */}
         <Card className="shadow-sm border-slate-200 bg-purple-50/30">
             <CardHeader className="py-4 border-b border-purple-100 bg-purple-50">
                 <div className="flex items-center gap-2">
@@ -242,7 +331,7 @@ export default function StaffCarePlan() {
             </CardContent>
         </Card>
 
-        {/* 3. Macronutrient Targets */}
+        {/* 4. Macronutrient Targets */}
         <Card className="shadow-sm border-slate-200">
             <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
                 <CardTitle className="text-base font-bold text-slate-900">Macronutrient Distribution</CardTitle>
@@ -274,7 +363,7 @@ export default function StaffCarePlan() {
             </CardContent>
         </Card>
 
-        {/* 4. Daily Schedule */}
+        {/* 5. Daily Schedule */}
         <div className="grid grid-cols-2 gap-6">
             <Card className="shadow-sm border-slate-200">
                 <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
