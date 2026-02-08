@@ -23,7 +23,8 @@ import {
   Zap,
   Leaf,
   Info,
-  Plus
+  Plus,
+  Minus
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -543,10 +544,94 @@ export default function StaffPortal() {
                                             </div>
                                         </div>
 
-                                        {/* 4. Meal Protocol */}
-                                        <div className="space-y-2">
-                                            <Label>Meal Protocol & Timing</Label>
-                                            <Textarea placeholder="E.g., Intermittent Fasting 16:8. Start with warm lemon water. Breakfast: High protein..." className="min-h-[100px]" />
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-center">
+                                                <Label>Structured Meal Plan</Label>
+                                                <div className="flex gap-2">
+                                                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 cursor-pointer">Training Day</Badge>
+                                                    <Badge variant="outline" className="text-slate-500 cursor-pointer hover:bg-slate-50">Rest Day</Badge>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+                                                {/* Breakfast */}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-amber-400"></div>
+                                                        <span className="text-sm font-bold text-slate-800">Breakfast</span>
+                                                        <span className="text-xs text-slate-400">08:00 AM</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-12 gap-2">
+                                                        <div className="col-span-5">
+                                                            <Input placeholder="E.g., Oatmeal with Berries" className="h-8 text-xs bg-white" />
+                                                        </div>
+                                                        <div className="col-span-3">
+                                                            <Input placeholder="Qty (e.g. 50g)" className="h-8 text-xs bg-white" />
+                                                        </div>
+                                                        <div className="col-span-3">
+                                                            <Input placeholder="Protein/Carb/Fat" className="h-8 text-xs bg-white" />
+                                                        </div>
+                                                        <div className="col-span-1">
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500">
+                                                                <Minus className="w-3 h-3" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                    <Button variant="ghost" size="sm" className="text-[10px] h-6 text-blue-600 pl-0 hover:bg-transparent">+ Add Item</Button>
+                                                </div>
+
+                                                {/* Lunch */}
+                                                <div className="space-y-2 pt-2 border-t border-slate-200">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                                        <span className="text-sm font-bold text-slate-800">Lunch</span>
+                                                        <span className="text-xs text-slate-400">01:00 PM</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-12 gap-2">
+                                                        <div className="col-span-5">
+                                                            <Input placeholder="E.g., Grilled Chicken Salad" className="h-8 text-xs bg-white" />
+                                                        </div>
+                                                        <div className="col-span-3">
+                                                            <Input placeholder="Qty" className="h-8 text-xs bg-white" />
+                                                        </div>
+                                                        <div className="col-span-3">
+                                                            <Input placeholder="Macros" className="h-8 text-xs bg-white" />
+                                                        </div>
+                                                        <div className="col-span-1">
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500">
+                                                                <Minus className="w-3 h-3" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                    <Button variant="ghost" size="sm" className="text-[10px] h-6 text-blue-600 pl-0 hover:bg-transparent">+ Add Item</Button>
+                                                </div>
+
+                                                {/* Dinner */}
+                                                <div className="space-y-2 pt-2 border-t border-slate-200">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                                                        <span className="text-sm font-bold text-slate-800">Dinner</span>
+                                                        <span className="text-xs text-slate-400">07:30 PM</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-12 gap-2">
+                                                        <div className="col-span-5">
+                                                            <Input placeholder="E.g., Salmon & Asparagus" className="h-8 text-xs bg-white" />
+                                                        </div>
+                                                        <div className="col-span-3">
+                                                            <Input placeholder="Qty" className="h-8 text-xs bg-white" />
+                                                        </div>
+                                                        <div className="col-span-3">
+                                                            <Input placeholder="Macros" className="h-8 text-xs bg-white" />
+                                                        </div>
+                                                        <div className="col-span-1">
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500">
+                                                                <Minus className="w-3 h-3" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                    <Button variant="ghost" size="sm" className="text-[10px] h-6 text-blue-600 pl-0 hover:bg-transparent">+ Add Item</Button>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         {/* 5. Supplement Stack */}
