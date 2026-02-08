@@ -15,6 +15,7 @@ import {
   Save,
   Printer,
   Share2,
+  Trash2,
   Clock
 } from "lucide-react";
 import { Link } from "wouter";
@@ -90,6 +91,10 @@ export default function StaffPatientProtocol() {
     { id: 4, time: "16:00", name: "Afternoon Snack", item: "Green Tea + Apple", qty: "1 cup", macros: "80kcal, 0g P" },
     { id: 5, time: "19:30", name: "Dinner", item: "Lentil Soup + Steamed Veg", qty: "1 bowl", macros: "320kcal, 15g P" }
   ]);
+
+  const removeMealItem = (id: number) => {
+    setMealPlanItems(mealPlanItems.filter(item => item.id !== id));
+  };
 
   const totalCalories = 1320; // Mock calculation
   const targetCalories = patient.meta.tdee - 300; // Deficit goal
@@ -337,8 +342,13 @@ export default function StaffPatientProtocol() {
                                     />
                                 </div>
                                 <div className="col-span-1 flex justify-end">
-                                    <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-300 hover:text-rose-500">
-                                        <AlertCircle className="w-4 h-4" />
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-9 w-9 text-slate-300 hover:text-rose-500 hover:bg-rose-50"
+                                        onClick={() => removeMealItem(meal.id)}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
                                     </Button>
                                 </div>
                             </div>
@@ -346,7 +356,22 @@ export default function StaffPatientProtocol() {
                     ))}
                     
                     <div className="p-3 bg-slate-50/50 text-center">
-                        <Button variant="ghost" size="sm" className="text-xs text-indigo-600 hover:bg-indigo-50">
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs text-indigo-600 hover:bg-indigo-50"
+                            onClick={() => {
+                                const newId = Math.max(...mealPlanItems.map(i => i.id), 0) + 1;
+                                setMealPlanItems([...mealPlanItems, { 
+                                    id: newId, 
+                                    time: "00:00", 
+                                    name: "New Meal", 
+                                    item: "", 
+                                    qty: "", 
+                                    macros: "" 
+                                }]);
+                            }}
+                        >
                             + Add Meal Slot
                         </Button>
                     </div>
