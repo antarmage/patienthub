@@ -220,6 +220,16 @@ export default function StaffPortal() {
   const [selectedPatientForAdjust, setSelectedPatientForAdjust] = useState<any>(null);
   const [isCreatePlanOpen, setIsCreatePlanOpen] = useState(false);
 
+  const [isVitalsOpen, setIsVitalsOpen] = useState(false);
+  const [selectedPatientForVitals, setSelectedPatientForVitals] = useState<any>(null);
+  const [vitalsData, setVitalsData] = useState({
+      systolic: '',
+      diastolic: '',
+      height: '',
+      weight: '',
+      pulse: ''
+  });
+
   const [selectedPatientForCreate, setSelectedPatientForCreate] = useState<any>(null);
 
   const [mealPlanItems, setMealPlanItems] = useState([
@@ -1602,7 +1612,15 @@ export default function StaffPortal() {
                                                         </Button>
                                                     )}
                                                     {p.action === "Take Vitals" && (
-                                                        <Button size="sm" variant="outline" className="border-indigo-200 text-indigo-700 bg-indigo-50 h-8 text-xs hover:bg-indigo-100">
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant="outline" 
+                                                            className="border-indigo-200 text-indigo-700 bg-indigo-50 h-8 text-xs hover:bg-indigo-100"
+                                                            onClick={() => {
+                                                                setSelectedPatientForVitals(p);
+                                                                setIsVitalsOpen(true);
+                                                            }}
+                                                        >
                                                             <Activity className="w-3 h-3 mr-1" /> Take Vitals
                                                         </Button>
                                                     )}
@@ -1778,6 +1796,95 @@ export default function StaffPortal() {
                     </div>
                 </div>
             )}
+
+            {/* Vitals Collection Dialog */}
+            <Dialog open={isVitalsOpen} onOpenChange={setIsVitalsOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Activity className="w-5 h-5 text-indigo-600" /> 
+                            Record Vitals
+                        </DialogTitle>
+                        <DialogDescription>
+                            Enter current vital signs for <span className="font-bold text-slate-900">{selectedPatientForVitals?.name}</span>
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="grid gap-6 py-4">
+                        {/* Blood Pressure */}
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-500 uppercase">Blood Pressure (mmHg)</Label>
+                            <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <Input 
+                                        placeholder="120" 
+                                        className="text-center font-mono text-lg" 
+                                        value={vitalsData.systolic}
+                                        onChange={(e) => setVitalsData({...vitalsData, systolic: e.target.value})}
+                                    />
+                                    <span className="absolute right-3 top-2.5 text-xs text-slate-400">SYS</span>
+                                </div>
+                                <span className="text-slate-300 text-xl font-light">/</span>
+                                <div className="relative flex-1">
+                                    <Input 
+                                        placeholder="80" 
+                                        className="text-center font-mono text-lg" 
+                                        value={vitalsData.diastolic}
+                                        onChange={(e) => setVitalsData({...vitalsData, diastolic: e.target.value})}
+                                    />
+                                    <span className="absolute right-3 top-2.5 text-xs text-slate-400">DIA</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase">Height (cm)</Label>
+                                <Input 
+                                    placeholder="165" 
+                                    className="font-mono" 
+                                    value={vitalsData.height}
+                                    onChange={(e) => setVitalsData({...vitalsData, height: e.target.value})}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase">Weight (kg)</Label>
+                                <Input 
+                                    placeholder="65.0" 
+                                    className="font-mono" 
+                                    value={vitalsData.weight}
+                                    onChange={(e) => setVitalsData({...vitalsData, weight: e.target.value})}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase">Pulse (bpm)</Label>
+                                <Input 
+                                    placeholder="72" 
+                                    className="font-mono" 
+                                    value={vitalsData.pulse}
+                                    onChange={(e) => setVitalsData({...vitalsData, pulse: e.target.value})}
+                                />
+                            </div>
+                        </div>
+                        
+                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                             <div className="flex justify-between items-center text-sm">
+                                <span className="text-slate-500">BMI Calculation:</span>
+                                <span className="font-bold text-slate-900">
+                                    {vitalsData.height && vitalsData.weight 
+                                        ? (Number(vitalsData.weight) / Math.pow(Number(vitalsData.height)/100, 2)).toFixed(1)
+                                        : '--'}
+                                </span>
+                             </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsVitalsOpen(false)}>Cancel</Button>
+                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setIsVitalsOpen(false)}>Save Vitals</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
         </div>
       </main>
