@@ -30,6 +30,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ListPlus, Trash2 } from "lucide-react";
 
 // --- MOCK DATA (Should match StaffPortal for consistency) ---
 const functionalMedicinePatients = [
@@ -588,62 +590,72 @@ export default function StaffCarePlan() {
                 <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
                      <div className="flex justify-between items-center">
                         <CardTitle className="text-base font-bold text-slate-900">Daily Meal Structure</CardTitle>
-                        <div className="flex gap-2">
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 cursor-pointer">Training Day</Badge>
-                            <Badge variant="outline" className="text-slate-500 cursor-pointer hover:bg-slate-50">Rest Day</Badge>
-                        </div>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
-                    <div className="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50/50">
-                        {mealPlanItems.map((meal, index) => (
-                            <div key={meal.id} className={`space-y-2 ${index !== 0 ? 'pt-2 border-t border-slate-200' : ''}`}>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${index % 3 === 0 ? 'bg-amber-400' : index % 3 === 1 ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
-                                    <Input 
-                                        defaultValue={meal.name} 
-                                        className="h-6 w-32 text-xs font-bold text-slate-800 border-none bg-transparent p-0 focus-visible:ring-0" 
-                                    />
-                                    <div className="relative ml-auto">
-                                        <Clock className="absolute left-2 top-1.5 h-3 w-3 text-slate-400" />
-                                        <Input 
-                                            type="time" 
-                                            defaultValue={meal.time} 
-                                            className="h-6 w-24 text-xs bg-white pl-6 border-slate-200" 
-                                        />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-12 gap-2">
-                                    <div className="col-span-5">
-                                        <Input placeholder="E.g., Oatmeal with Berries" className="h-8 text-xs bg-white" defaultValue={meal.item} />
-                                    </div>
-                                    <div className="col-span-3">
-                                        <Input placeholder="Qty" className="h-8 text-xs bg-white" defaultValue={meal.qty} />
-                                    </div>
-                                    <div className="col-span-3">
-                                        <Input placeholder="Macros" className="h-8 text-xs bg-white" defaultValue={meal.macros} />
-                                    </div>
-                                    <div className="col-span-1">
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-8 w-8 text-slate-400 hover:text-red-500"
-                                            onClick={() => removeMealItem(meal.id)}
-                                        >
-                                            <Minus className="w-3 h-3" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                    <Tabs defaultValue="monday" className="w-full">
+                        <TabsList className="w-full justify-start h-auto p-0 bg-transparent border-b border-slate-200 rounded-none mb-6">
+                            {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                                <TabsTrigger 
+                                    key={day} 
+                                    value={day.toLowerCase()}
+                                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 rounded-none px-4 py-2 text-slate-500"
+                                >
+                                    {day}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
                         
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="w-full text-xs border-dashed border-slate-300 text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-                            onClick={addMealItem}
-                        >
-                            <Plus className="w-3 h-3 mr-1" /> Add Meal Time
+                        <div className="space-y-8">
+                            {mealPlanItems.map((meal, index) => (
+                                <div key={meal.id} className="space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="font-bold text-slate-900 text-sm">{meal.name}</h4>
+                                        <div className="flex items-center text-slate-500 bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                                            <Clock className="w-3.5 h-3.5 mr-1.5" />
+                                            <span className="text-xs font-medium">{meal.time}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex gap-3 items-center">
+                                        <div className="flex-1">
+                                            <Input 
+                                                defaultValue={meal.item || (index === 0 ? "Oatmeal with Flax & Berries" : index === 2 ? "Quinoa Salad with Chickpeas" : "")} 
+                                                placeholder="Enter meal item..."
+                                                className="rounded-full bg-white border-slate-200 text-sm h-10 px-4"
+                                            />
+                                        </div>
+                                        <div className="w-32">
+                                            <Input 
+                                                defaultValue={meal.qty || (index === 0 ? "1 bowl" : index === 2 ? "1 plate" : "")} 
+                                                placeholder="Qty"
+                                                className="rounded-full bg-white border-slate-200 text-sm h-10 px-4"
+                                            />
+                                        </div>
+                                        <div className="w-40">
+                                            <Input 
+                                                defaultValue={meal.macros || (index === 0 ? "350kcal, 12g P" : index === 2 ? "450kcal, 18g P" : "")} 
+                                                placeholder="Macros"
+                                                className="rounded-full bg-white border-slate-200 text-sm h-10 px-4 text-slate-500"
+                                            />
+                                        </div>
+                                        <div className="flex gap-1 ml-1">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50">
+                                                <ListPlus className="w-4 h-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-rose-500 hover:bg-rose-50" onClick={() => removeMealItem(meal.id)}>
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </Tabs>
+                    
+                    <div className="mt-8 pt-6 border-t border-slate-100 flex justify-center">
+                        <Button variant="outline" size="sm" className="text-slate-500 hover:text-indigo-600 hover:border-indigo-200" onClick={addMealItem}>
+                            <Plus className="w-4 h-4 mr-2" /> Add Meal Slot
                         </Button>
                     </div>
                 </CardContent>
