@@ -2030,6 +2030,10 @@ export default function StaffPortal() {
                                 <Label className="text-xs font-bold text-slate-500 uppercase">Email Address</Label>
                                 <Input placeholder="patient@example.com" type="email" />
                             </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase">Referred By <span className="text-slate-400 font-normal lowercase">(optional)</span></Label>
+                                <Input placeholder="Dr. Name or Clinic" />
+                            </div>
                         </TabsContent>
 
                         <TabsContent value="medical" className="space-y-4 mt-4">
