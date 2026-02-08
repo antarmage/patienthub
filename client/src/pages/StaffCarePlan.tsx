@@ -265,6 +265,28 @@ export default function StaffCarePlan() {
                                 <Label>Dietary Recall (24h)</Label>
                                 <Textarea placeholder="Note what the patient ate yesterday..." className="h-24 resize-none" />
                             </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Weight History</Label>
+                                    <Input placeholder="When did weight gain start?" className="bg-white" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Anxiety & Mood Meds</Label>
+                                    <Select>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Taking any anxiety meds?" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No, none</SelectItem>
+                                            <SelectItem value="ssri">Yes, SSRIs</SelectItem>
+                                            <SelectItem value="benzo">Yes, Benzodiazepines</SelectItem>
+                                            <SelectItem value="herbal">Herbal / Natural Only</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
                             <div className="space-y-2">
                                 <Label>Current Symptoms (Reported)</Label>
                                 <div className="grid grid-cols-2 gap-2">
@@ -459,6 +481,12 @@ export default function StaffCarePlan() {
                         </div>
                         <Input placeholder="Other specific cravings or addictions..." className="mt-2" />
                     </div>
+                </div>
+                
+                <div className="mt-6 flex justify-end border-t border-slate-100 pt-4">
+                    <Button className="bg-slate-900 text-white hover:bg-slate-800">
+                        <Save className="w-4 h-4 mr-2" /> Save Intake & Proceed to Planning
+                    </Button>
                 </div>
             </CardContent>
         </Card>
