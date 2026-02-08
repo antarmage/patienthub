@@ -226,6 +226,8 @@ export default function StaffPortal() {
   const [selectedPatientForUpload, setSelectedPatientForUpload] = useState<any>(null);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [selectedPatientForOnboarding, setSelectedPatientForOnboarding] = useState<any>(null);
+  const [isClinicalActionOpen, setIsClinicalActionOpen] = useState(false);
+  const [selectedTaskForAction, setSelectedTaskForAction] = useState<any>(null);
   const [vitalsData, setVitalsData] = useState({
       systolic: '',
       diastolic: '',
@@ -1680,7 +1682,15 @@ export default function StaffPortal() {
                                                     </div>
                                                     <p className="text-sm font-bold text-slate-800">{task.title}</p>
                                                 </div>
-                                                <Button size="sm" variant="outline" className="text-xs h-8">
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline" 
+                                                    className="text-xs h-8"
+                                                    onClick={() => {
+                                                        setSelectedTaskForAction(task);
+                                                        setIsClinicalActionOpen(true);
+                                                    }}
+                                                >
                                                     Action
                                                 </Button>
                                             </div>
@@ -2074,6 +2084,121 @@ export default function StaffPortal() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsOnboardingOpen(false)}>Cancel</Button>
                         <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setIsOnboardingOpen(false)}>Complete Registration</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Clinical Action Dialog */}
+            <Dialog open={isClinicalActionOpen} onOpenChange={setIsClinicalActionOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            {selectedTaskForAction?.type === 'lab' && <FlaskConical className="w-5 h-5 text-indigo-600" />}
+                            {selectedTaskForAction?.type === 'usg' && <Activity className="w-5 h-5 text-purple-600" />}
+                            {selectedTaskForAction?.type === 'onboard' && <Users className="w-5 h-5 text-emerald-600" />}
+                            
+                            {selectedTaskForAction?.type === 'lab' && "Schedule Lab Test"}
+                            {selectedTaskForAction?.type === 'usg' && "Book Ultrasound Scan"}
+                            {selectedTaskForAction?.type === 'onboard' && "Complete Registration"}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Action for <span className="font-bold text-slate-900">{selectedTaskForAction?.patient}</span>: {selectedTaskForAction?.title}
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="py-4 space-y-4">
+                        {selectedTaskForAction?.type === 'lab' && (
+                            <>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase">Test Type</Label>
+                                    <Input value="Oral Glucose Tolerance Test (OGTT)" readOnly className="bg-slate-50" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase">Date</Label>
+                                        <Input type="date" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase">Time Slot</Label>
+                                        <Select>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select Time" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="08:00">08:00 AM</SelectItem>
+                                                <SelectItem value="09:00">09:00 AM</SelectItem>
+                                                <SelectItem value="10:00">10:00 AM</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase">Phlebotomist</Label>
+                                    <Select>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Assign Staff" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="sarah">Sarah J. (Available)</SelectItem>
+                                            <SelectItem value="mike">Mike T. (Busy)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </>
+                        )}
+
+                        {selectedTaskForAction?.type === 'usg' && (
+                            <>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase">Scan Type</Label>
+                                    <Input value="T2 Anomaly Scan (20 Weeks)" readOnly className="bg-slate-50" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase">Preferred Date</Label>
+                                        <Input type="date" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase">Radiologist</Label>
+                                        <Select>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select Doctor" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="dr_lee">Dr. Lee (Radiology)</SelectItem>
+                                                <SelectItem value="dr_patel">Dr. Patel (OBGYN)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 p-3 bg-amber-50 text-amber-800 text-xs rounded border border-amber-100">
+                                    <Info className="w-4 h-4 shrink-0" />
+                                    Patient requires a full bladder for this scan. Instructions will be sent via SMS.
+                                </div>
+                            </>
+                        )}
+
+                        {selectedTaskForAction?.type === 'onboard' && (
+                            <div className="text-center p-4">
+                                <p className="text-sm text-slate-600 mb-4">This patient is waiting in the queue. Please proceed to the full onboarding form.</p>
+                                <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => {
+                                    setIsClinicalActionOpen(false);
+                                    setSelectedPatientForOnboarding({ name: selectedTaskForAction.patient });
+                                    setIsOnboardingOpen(true);
+                                }}>
+                                    Open Onboarding Form
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsClinicalActionOpen(false)}>Cancel</Button>
+                        {selectedTaskForAction?.type !== 'onboard' && (
+                            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setIsClinicalActionOpen(false)}>
+                                Confirm Booking
+                            </Button>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
