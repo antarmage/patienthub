@@ -1738,7 +1738,9 @@ export default function StaffPortal() {
                                                     <td className="px-4 py-3 text-slate-600">{apt.type}</td>
                                                     <td className="px-4 py-3 text-slate-500">{apt.doctor}</td>
                                                     <td className="px-4 py-3 flex gap-2">
-                                                        <Button size="sm" variant="outline" className="h-7 text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100">Check In</Button>
+                                                        <Link href="/staff/check-in">
+                                                            <Button size="sm" variant="outline" className="h-7 text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100">Check In</Button>
+                                                        </Link>
                                                     </td>
                                                 </tr>
                                             ))}
