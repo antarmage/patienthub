@@ -115,6 +115,33 @@ const functionalMedicinePatients = [
         allergies: "Dairy (Mild intolerance).",
         lifestyle: "Corporate job, moderate activity. Craves sweets."
     }
+  },
+  {
+    id: 104,
+    name: "Zara M.",
+    age: 31,
+    condition: "Pregnancy (Trimester 2)",
+    genomics: {
+      mthfr: { status: "Heterozygous", risk: "Medium" },
+      caffeine: { status: "Fast Metabolizer", risk: "Low" },
+      gluten: { status: "Negative", risk: "Low" },
+      comt: { status: "Val/Met (Balanced)", risk: "Low" }
+    },
+    functional: {
+      gut: { status: "Good", score: 90 },
+      inflammation: { marker: "hs-CRP", value: "0.8", status: "Optimal" },
+      nutrient: { deficiency: "Iron", status: "Mild" },
+      hormone: { focus: "Thyroid Support", status: "Stable" }
+    },
+    plan: "Prenatal Wellness, Iron-Rich",
+    nextReview: "2 weeks",
+    clinicianNote: "Routine prenatal care (Week 20). Focus on iron-rich foods and adequate protein for fetal growth. Monitor energy levels.",
+    history: {
+        diagnosis: "Healthy Pregnancy, Week 20.",
+        medications: "Prenatal Vitamins.",
+        allergies: "None.",
+        lifestyle: "Active, walks daily. Yoga twice a week."
+    }
   }
 ];
 
