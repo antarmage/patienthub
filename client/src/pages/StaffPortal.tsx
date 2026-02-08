@@ -798,8 +798,7 @@ export default function StaffPortal() {
                                                                     onClick={() => {
                                                                         const fp = functionalMedicinePatients.find(f => f.name === p.name);
                                                                         if (fp) {
-                                                                            setSelectedPatientForAdjust(fp);
-                                                                            setIsAdjustProtocolOpen(true);
+                                                                            setLocation(`/staff/protocol/${fp.id}`);
                                                                         }
                                                                     }}
                                                                 >
@@ -1170,10 +1169,7 @@ export default function StaffPortal() {
                                             size="sm" 
                                             variant="outline" 
                                             className="w-full mt-4 text-xs bg-white"
-                                            onClick={() => {
-                                                setSelectedPatientForAdjust(patient);
-                                                setIsAdjustProtocolOpen(true);
-                                            }}
+                                            onClick={() => setLocation(`/staff/protocol/${patient.id}`)}
                                         >
                                             Full Profile
                                         </Button>
@@ -1267,10 +1263,7 @@ export default function StaffPortal() {
                                             <Button 
                                                 size="sm" 
                                                 className="w-full bg-slate-900 text-white hover:bg-slate-800 h-8 text-xs mt-2"
-                                                onClick={() => {
-                                                    setSelectedPatientForAdjust(patient);
-                                                    setIsAdjustProtocolOpen(true);
-                                                }}
+                                                onClick={() => setLocation(`/staff/protocol/${patient.id}`)}
                                             >
                                                 Adjust Protocol
                                             </Button>
