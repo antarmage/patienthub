@@ -84,16 +84,66 @@ export default function StaffPatientProtocol() {
   const patientId = params?.id ? parseInt(params.id) : null;
   const patient = patients.find(p => p.id === patientId) || patients[0]; // Fallback for demo
 
-  const [mealPlanItems, setMealPlanItems] = useState([
-    { id: 1, time: "08:00", name: "Breakfast", item: "Oatmeal with Flax & Berries", qty: "1 bowl", macros: "350kcal, 12g P" },
-    { id: 2, time: "11:00", name: "Morning Snack", item: "Walnuts (Soaked)", qty: "5-6 pcs", macros: "120kcal, 4g P" },
-    { id: 3, time: "13:00", name: "Lunch", item: "Quinoa Salad with Chickpeas", qty: "1 plate", macros: "450kcal, 18g P" },
-    { id: 4, time: "16:00", name: "Afternoon Snack", item: "Green Tea + Apple", qty: "1 cup", macros: "80kcal, 0g P" },
-    { id: 5, time: "19:30", name: "Dinner", item: "Lentil Soup + Steamed Veg", qty: "1 bowl", macros: "320kcal, 15g P" }
-  ]);
+  const [selectedDay, setSelectedDay] = useState("Monday");
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-  const removeMealItem = (id: number) => {
-    setMealPlanItems(mealPlanItems.filter(item => item.id !== id));
+  // Mock database of weekly plans
+  const [weeklyPlan, setWeeklyPlan] = useState<Record<string, any[]>>({
+    "Monday": [
+        { id: 1, time: "08:00", name: "Breakfast", item: "Oatmeal with Flax & Berries", qty: "1 bowl", macros: "350kcal, 12g P" },
+        { id: 2, time: "11:00", name: "Morning Snack", item: "Walnuts (Soaked)", qty: "5-6 pcs", macros: "120kcal, 4g P" },
+        { id: 3, time: "13:00", name: "Lunch", item: "Quinoa Salad with Chickpeas", qty: "1 plate", macros: "450kcal, 18g P" },
+        { id: 4, time: "16:00", name: "Afternoon Snack", item: "Green Tea + Apple", qty: "1 cup", macros: "80kcal, 0g P" },
+        { id: 5, time: "19:30", name: "Dinner", item: "Lentil Soup + Steamed Veg", qty: "1 bowl", macros: "320kcal, 15g P" }
+    ],
+    "Tuesday": [
+        { id: 6, time: "08:00", name: "Breakfast", item: "Scrambled Eggs (or Tofu) with Spinach", qty: "2 eggs", macros: "320kcal, 18g P" },
+        { id: 7, time: "11:00", name: "Morning Snack", item: "Almonds", qty: "10 pcs", macros: "140kcal, 5g P" },
+        { id: 8, time: "13:00", name: "Lunch", item: "Grilled Chicken/Paneer Salad", qty: "1 bowl", macros: "400kcal, 25g P" },
+    ]
+  });
+
+  const currentDayPlan = weeklyPlan[selectedDay] || [];
+
+  const updateMealItem = (day: string, id: number, field: string, value: string) => {
+    setWeeklyPlan(prev => ({
+        ...prev,
+        [day]: prev[day]?.map(item => item.id === id ? { ...item, [field]: value } : item) || []
+    }));
+  };
+
+  const removeMealItem = (day: string, id: number) => {
+    setWeeklyPlan(prev => ({
+        ...prev,
+        [day]: prev[day]?.filter(item => item.id !== id) || []
+    }));
+  };
+
+  const addMealItem = (day: string) => {
+    const newId = Date.now();
+    setWeeklyPlan(prev => ({
+        ...prev,
+        [day]: [...(prev[day] || []), { 
+            id: newId, 
+            time: "00:00", 
+            name: "New Meal", 
+            item: "", 
+            qty: "", 
+            macros: "" 
+        }]
+    }));
+  };
+
+  const copyToAllDays = () => {
+    const currentPlan = weeklyPlan[selectedDay] || [];
+    const newWeeklyPlan = { ...weeklyPlan };
+    days.forEach(day => {
+        if (day !== selectedDay) {
+            // Deep copy to avoid reference issues
+            newWeeklyPlan[day] = JSON.parse(JSON.stringify(currentPlan)).map((item: any) => ({...item, id: Math.random() })); 
+        }
+    });
+    setWeeklyPlan(newWeeklyPlan);
   };
 
   const totalCalories = 1320; // Mock calculation
@@ -284,26 +334,50 @@ export default function StaffPatientProtocol() {
 
         {/* BOTTOM SECTION: Diet Planner */}
         <Card className="shadow-sm border-slate-200 overflow-hidden">
-             <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50 flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle className="text-lg font-bold text-slate-900 font-serif">Daily Meal Plan</CardTitle>
-                    <p className="text-xs text-slate-500 mt-0.5">Customize meals based on caloric needs and phase.</p>
+             <CardHeader className="py-0 px-0 border-b border-slate-100 bg-white">
+                <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50">
+                    <div>
+                        <CardTitle className="text-lg font-bold text-slate-900 font-serif">Weekly Meal Plan</CardTitle>
+                        <p className="text-xs text-slate-500 mt-0.5">Plan meals for the entire week.</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="text-right">
+                            <p className="text-[10px] uppercase font-bold text-slate-400">Planned</p>
+                            <p className={`text-sm font-bold ${totalCalories > targetCalories ? 'text-amber-600' : 'text-slate-700'}`}>
+                                {totalCalories} / {targetCalories} kcal
+                            </p>
+                        </div>
+                        <Button size="sm" variant="outline" className="bg-white text-slate-600 border-slate-200" onClick={copyToAllDays}>
+                            <Calendar className="w-4 h-4 mr-2" /> Copy {selectedDay} to All
+                        </Button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-4">
-                     <div className="text-right">
-                         <p className="text-[10px] uppercase font-bold text-slate-400">Planned</p>
-                         <p className={`text-sm font-bold ${totalCalories > targetCalories ? 'text-amber-600' : 'text-slate-700'}`}>
-                             {totalCalories} / {targetCalories} kcal
-                         </p>
-                     </div>
-                     <Button size="sm" variant="outline" className="bg-white text-slate-600 border-slate-200">
-                        <Calendar className="w-4 h-4 mr-2" /> Copy to Week
-                     </Button>
+                
+                {/* Day Tabs */}
+                <div className="px-4 pt-2 bg-white">
+                    <Tabs value={selectedDay} onValueChange={setSelectedDay} className="w-full">
+                        <TabsList className="w-full justify-start h-auto p-0 bg-transparent gap-6 border-b border-transparent">
+                            {days.map(day => (
+                                <TabsTrigger 
+                                    key={day} 
+                                    value={day}
+                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-700 px-2 py-3 text-slate-500 hover:text-slate-800 transition-all"
+                                >
+                                    {day}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </Tabs>
                 </div>
              </CardHeader>
              <CardContent className="p-0">
                  <div className="grid grid-cols-1 divide-y divide-slate-100">
-                    {mealPlanItems.map((meal) => (
+                    {currentDayPlan.length === 0 && (
+                        <div className="p-8 text-center text-slate-400 text-sm">
+                            No meals planned for {selectedDay}.
+                        </div>
+                    )}
+                    {currentDayPlan.map((meal) => (
                         <div key={meal.id} className="p-4 hover:bg-slate-50/50 group transition-colors">
                             {/* Card Header-like Row */}
                             <div className="flex justify-between items-center mb-2">
@@ -311,7 +385,8 @@ export default function StaffPatientProtocol() {
                                 <div className="inline-flex items-center">
                                     <Clock className="w-3 h-3 mr-1.5 text-slate-400" />
                                     <Input 
-                                        defaultValue={meal.time}
+                                        value={meal.time}
+                                        onChange={(e) => updateMealItem(selectedDay, meal.id, "time", e.target.value)}
                                         className="h-6 w-16 text-[10px] font-mono bg-white border-slate-200 text-slate-600 px-1 text-center focus:border-indigo-500"
                                         placeholder="00:00"
                                     />
@@ -322,21 +397,24 @@ export default function StaffPatientProtocol() {
                             <div className="grid grid-cols-12 gap-3">
                                 <div className="col-span-6">
                                     <Input 
-                                        defaultValue={meal.item} 
+                                        value={meal.item}
+                                        onChange={(e) => updateMealItem(selectedDay, meal.id, "item", e.target.value)} 
                                         className="h-9 bg-white border-slate-200 focus:border-indigo-500 text-sm font-medium" 
                                         placeholder="Enter meal description..."
                                     />
                                 </div>
                                 <div className="col-span-3">
                                     <Input 
-                                        defaultValue={meal.qty} 
+                                        value={meal.qty}
+                                        onChange={(e) => updateMealItem(selectedDay, meal.id, "qty", e.target.value)} 
                                         className="h-9 bg-white border-slate-200 text-xs text-slate-600" 
                                         placeholder="Qty (e.g., 1 bowl)"
                                     />
                                 </div>
                                 <div className="col-span-2">
                                     <Input 
-                                        defaultValue={meal.macros} 
+                                        value={meal.macros}
+                                        onChange={(e) => updateMealItem(selectedDay, meal.id, "macros", e.target.value)} 
                                         className="h-9 bg-white border-slate-200 text-xs text-slate-500 font-mono" 
                                         placeholder="Macros"
                                     />
@@ -346,7 +424,7 @@ export default function StaffPatientProtocol() {
                                         variant="ghost" 
                                         size="icon" 
                                         className="h-9 w-9 text-slate-300 hover:text-rose-500 hover:bg-rose-50"
-                                        onClick={() => removeMealItem(meal.id)}
+                                        onClick={() => removeMealItem(selectedDay, meal.id)}
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </Button>
@@ -360,19 +438,9 @@ export default function StaffPatientProtocol() {
                             variant="ghost" 
                             size="sm" 
                             className="text-xs text-indigo-600 hover:bg-indigo-50"
-                            onClick={() => {
-                                const newId = Math.max(...mealPlanItems.map(i => i.id), 0) + 1;
-                                setMealPlanItems([...mealPlanItems, { 
-                                    id: newId, 
-                                    time: "00:00", 
-                                    name: "New Meal", 
-                                    item: "", 
-                                    qty: "", 
-                                    macros: "" 
-                                }]);
-                            }}
+                            onClick={() => addMealItem(selectedDay)}
                         >
-                            + Add Meal Slot
+                            + Add Meal Slot to {selectedDay}
                         </Button>
                     </div>
                  </div>
