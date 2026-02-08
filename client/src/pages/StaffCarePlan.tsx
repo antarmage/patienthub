@@ -442,6 +442,14 @@ export default function StaffCarePlan() {
                                 <Checkbox id="crave-soda" />
                                 <label htmlFor="crave-soda" className="text-sm font-medium leading-none cursor-pointer text-slate-700">Soda / Fizzy</label>
                             </div>
+                            <div className="flex items-center space-x-2 border border-slate-200 rounded p-3 hover:bg-slate-50 cursor-pointer">
+                                <Checkbox id="habit-alcohol" />
+                                <label htmlFor="habit-alcohol" className="text-sm font-medium leading-none cursor-pointer text-slate-700">Alcohol</label>
+                            </div>
+                            <div className="flex items-center space-x-2 border border-slate-200 rounded p-3 hover:bg-slate-50 cursor-pointer">
+                                <Checkbox id="habit-nicotine" />
+                                <label htmlFor="habit-nicotine" className="text-sm font-medium leading-none cursor-pointer text-slate-700">Nicotine</label>
+                            </div>
                         </div>
                         <Input placeholder="Other specific cravings or addictions..." className="mt-2" />
                     </div>
