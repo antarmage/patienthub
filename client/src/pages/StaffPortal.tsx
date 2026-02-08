@@ -15,6 +15,10 @@ import {
   Heart,
   AlertCircle,
   CheckCircle2,
+  ShoppingBag,
+  Pill,
+  ClipboardList,
+  ArrowRightCircle,
   FileText,
   Clock,
   TrendingUp,
@@ -51,6 +55,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 
 // --- MOCK DATA ---
 const patients = [
@@ -199,6 +204,7 @@ const patientQueue = [
     { id: 1, name: "Priya K.", time: "10:50 AM", status: "Waiting", action: "Take Vitals" },
     { id: 2, name: "Zara M.", time: "11:15 AM", status: "Check-in", action: "Upload Records" },
     { id: 3, name: "Sarah J.", time: "11:30 AM", status: "Arriving", action: "Onboard" },
+    { id: 4, name: "Ananya S.", time: "09:00 AM", status: "Completed", action: "Checkout" },
 ];
 
 const crossSellOpportunities = [
@@ -232,6 +238,8 @@ export default function StaffPortal() {
   const [selectedPatientForOnboarding, setSelectedPatientForOnboarding] = useState<any>(null);
   const [isClinicalActionOpen, setIsClinicalActionOpen] = useState(false);
   const [selectedTaskForAction, setSelectedTaskForAction] = useState<any>(null);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [selectedPatientForCheckout, setSelectedPatientForCheckout] = useState<any>(null);
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
   const [selectedFollowUp, setSelectedFollowUp] = useState<any>(null);
   const [vitalsData, setVitalsData] = useState({
@@ -1622,6 +1630,18 @@ export default function StaffPortal() {
                                                         {p.status}
                                                     </Badge>
                                                     
+                                                    {p.action === "Checkout" && (
+                                                        <Button 
+                                                            size="sm" 
+                                                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs"
+                                                            onClick={() => {
+                                                                setSelectedPatientForCheckout(p);
+                                                                setIsCheckoutOpen(true);
+                                                            }}
+                                                        >
+                                                            Process Checkout
+                                                        </Button>
+                                                    )}
                                                     {p.action === "Onboard" && (
                                                         <Button 
                                                             size="sm" 
@@ -1848,6 +1868,134 @@ export default function StaffPortal() {
                     </div>
                 </div>
             )}
+
+            {/* Checkout / Post-Consultation Dialog */}
+            <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
+                <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-xl font-serif">
+                             <ClipboardList className="w-6 h-6 text-indigo-600" />
+                             Post-Consultation Action Plan
+                        </DialogTitle>
+                        <DialogDescription>
+                            Complete next steps for <span className="font-bold text-slate-900">{selectedPatientForCheckout?.name}</span>
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="py-2 space-y-8">
+                        
+                        {/* 1. Clinical Referrals & Lifestyle */}
+                        <div className="space-y-3">
+                            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                                <Activity className="w-4 h-4 text-emerald-600" /> Clinical Referrals & Lifestyle
+                            </h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="flex items-start space-x-3 p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
+                                    <Checkbox id="ref-lifestyle" />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <label htmlFor="ref-lifestyle" className="text-sm font-medium leading-none cursor-pointer">Lifestyle Modification</label>
+                                        <p className="text-xs text-slate-500">Sleep hygiene & stress mgmt handout</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start space-x-3 p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
+                                    <Checkbox id="ref-nutrition" defaultChecked />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <label htmlFor="ref-nutrition" className="text-sm font-medium leading-none cursor-pointer">Nutrition Consultation</label>
+                                        <p className="text-xs text-slate-500">Book w/ Ms. Gupta (PCOS Protocol)</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* 2. Pharmacy & Education */}
+                        <div className="space-y-3">
+                             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                                <Pill className="w-4 h-4 text-blue-600" /> Pharmacy & Education
+                            </h3>
+                            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                                <div className="flex items-start space-x-3 mb-4">
+                                    <Checkbox id="task-explain" defaultChecked />
+                                    <label htmlFor="task-explain" className="text-sm font-bold text-blue-900 cursor-pointer">Explain Prescribed Medicine</label>
+                                </div>
+                                <div className="space-y-2 pl-7">
+                                    <div className="flex justify-between text-xs bg-white p-2 rounded border border-blue-100">
+                                        <span className="font-medium">Metformin 500mg</span>
+                                        <span className="text-slate-500">1-0-1 (After meals)</span>
+                                    </div>
+                                    <div className="flex justify-between text-xs bg-white p-2 rounded border border-blue-100">
+                                        <span className="font-medium">Folic Acid 5mg</span>
+                                        <span className="text-slate-500">0-1-0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* 3. Scheduling & Next Steps */}
+                        <div className="space-y-3">
+                            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                                <CalendarCheck className="w-4 h-4 text-purple-600" /> Scheduling
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Button variant="outline" className="h-auto py-3 flex flex-col items-start gap-1 border-slate-200 hover:border-purple-300 hover:bg-purple-50">
+                                    <span className="font-bold text-slate-900 flex items-center gap-2"><Plus className="w-3 h-3" /> Book USG Appointment</span>
+                                    <span className="text-xs text-slate-500 font-normal">Pelvic Scan / Follicular Study</span>
+                                </Button>
+                                <Button variant="outline" className="h-auto py-3 flex flex-col items-start gap-1 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50">
+                                    <span className="font-bold text-slate-900 flex items-center gap-2"><Clock className="w-3 h-3" /> Schedule Follow-up</span>
+                                    <span className="text-xs text-slate-500 font-normal">Review in 2 weeks</span>
+                                </Button>
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* 4. Product Sales (Cross-Sell) */}
+                        <div className="space-y-3">
+                            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                                <ShoppingBag className="w-4 h-4 text-rose-600" /> Recommended Products
+                            </h3>
+                            <div className="grid grid-cols-1 gap-2">
+                                <div className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:border-rose-200 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-slate-100 rounded-md flex items-center justify-center">
+                                            <span className="text-xs font-bold text-slate-400">IMG</span>
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-sm text-slate-900">Prenatal Multi-Vitamin Pack</p>
+                                            <p className="text-xs text-slate-500">$45.00 • In Stock</p>
+                                        </div>
+                                    </div>
+                                    <Button size="sm" variant="outline" className="h-8 text-xs border-slate-200 text-slate-600">Add to Bill</Button>
+                                </div>
+                                <div className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:border-rose-200 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-slate-100 rounded-md flex items-center justify-center">
+                                            <span className="text-xs font-bold text-slate-400">IMG</span>
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-sm text-slate-900">Magnesium Glycinate</p>
+                                            <p className="text-xs text-slate-500">$28.00 • In Stock</p>
+                                        </div>
+                                    </div>
+                                    <Button size="sm" variant="outline" className="h-8 text-xs border-slate-200 text-slate-600">Add to Bill</Button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <DialogFooter className="py-4 border-t border-slate-100">
+                        <Button variant="outline" onClick={() => setIsCheckoutOpen(false)}>Save as Draft</Button>
+                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[150px]" onClick={() => setIsCheckoutOpen(false)}>
+                            <CheckCircle2 className="w-4 h-4 mr-2" /> Complete & Close
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Follow Up Action Dialog */}
             <Dialog open={isFollowUpOpen} onOpenChange={setIsFollowUpOpen}>
