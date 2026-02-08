@@ -544,6 +544,24 @@ export default function StaffPortal() {
                                             </div>
                                         </div>
 
+                                        {/* 4. Daily Schedule */}
+                                        <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-slate-500 uppercase">Wake Up Time</Label>
+                                                <div className="relative">
+                                                    <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                                                    <Input type="time" className="pl-9 bg-white" defaultValue="07:00" />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-slate-500 uppercase">Bedtime</Label>
+                                                <div className="relative">
+                                                    <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                                                    <Input type="time" className="pl-9 bg-white" defaultValue="22:30" />
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <div className="space-y-4">
                                             <div className="flex justify-between items-center">
                                                 <Label>Structured Meal Plan</Label>
