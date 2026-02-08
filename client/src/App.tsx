@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import PatientPortal from "@/pages/PatientPortal";
 import ClinicianPortal from "@/pages/ClinicianPortal";
+import StaffPortal from "@/pages/StaffPortal";
 
 function Router() {
   return (
@@ -14,6 +15,7 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/patient" component={PatientPortal} />
       <Route path="/clinician" component={ClinicianPortal} />
+      <Route path="/staff" component={StaffPortal} />
       <Route component={NotFound} />
     </Switch>
   );

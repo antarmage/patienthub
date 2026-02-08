@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { ArrowRight, User, Stethoscope } from "lucide-react";
+import { ArrowRight, User, Users, Stethoscope } from "lucide-react";
 // Import the generated background image
 import calmGradient from "../assets/images/calm-gradient.png";
 
@@ -68,6 +68,25 @@ export default function Landing() {
                 <div>
                   <h3 className="text-2xl font-serif text-blue-900 group-hover:text-blue-700 transition-colors">Clinician Portal</h3>
                   <p className="text-slate-500">Decision support & risk analysis.</p>
+                </div>
+                <ArrowRight className="ml-auto w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+          >
+            <Link href="/staff">
+              <div className="group bg-white/60 backdrop-blur-md border border-purple-100 p-8 rounded-2xl shadow-sm hover:shadow-lg hover:border-purple-300 transition-all cursor-pointer flex items-center gap-6">
+                <div className="bg-purple-50 p-4 rounded-full group-hover:bg-purple-100 transition-colors">
+                  <Users className="w-8 h-8 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-serif text-purple-900 group-hover:text-purple-700 transition-colors">Staff Portal</h3>
+                  <p className="text-slate-500">Care team & specialist access.</p>
                 </div>
                 <ArrowRight className="ml-auto w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
               </div>
