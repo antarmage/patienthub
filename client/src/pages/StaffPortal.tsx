@@ -224,6 +224,8 @@ export default function StaffPortal() {
   const [selectedPatientForVitals, setSelectedPatientForVitals] = useState<any>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedPatientForUpload, setSelectedPatientForUpload] = useState<any>(null);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [selectedPatientForOnboarding, setSelectedPatientForOnboarding] = useState<any>(null);
   const [vitalsData, setVitalsData] = useState({
       systolic: '',
       diastolic: '',
@@ -1609,7 +1611,14 @@ export default function StaffPortal() {
                                                     </Badge>
                                                     
                                                     {p.action === "Onboard" && (
-                                                        <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs">
+                                                        <Button 
+                                                            size="sm" 
+                                                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs"
+                                                            onClick={() => {
+                                                                setSelectedPatientForOnboarding(p);
+                                                                setIsOnboardingOpen(true);
+                                                            }}
+                                                        >
                                                             Start Onboarding
                                                         </Button>
                                                     )}
@@ -1949,6 +1958,122 @@ export default function StaffPortal() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Cancel</Button>
                         <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setIsUploadOpen(false)}>Upload Documents</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Onboarding Dialog */}
+            <Dialog open={isOnboardingOpen} onOpenChange={setIsOnboardingOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Users className="w-5 h-5 text-indigo-600" /> 
+                            New Patient Onboarding
+                        </DialogTitle>
+                        <DialogDescription>
+                            Complete registration for <span className="font-bold text-slate-900">{selectedPatientForOnboarding?.name}</span>
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <Tabs defaultValue="demographics" className="w-full">
+                        <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="demographics">Personal Details</TabsTrigger>
+                            <TabsTrigger value="medical">Medical History</TabsTrigger>
+                            <TabsTrigger value="insurance">Insurance & Payment</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="demographics" className="space-y-4 mt-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase">First Name</Label>
+                                    <Input placeholder="Jane" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase">Last Name</Label>
+                                    <Input placeholder="Doe" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase">Date of Birth</Label>
+                                    <Input type="date" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase">Gender</Label>
+                                    <Select>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="female">Female</SelectItem>
+                                            <SelectItem value="male">Male</SelectItem>
+                                            <SelectItem value="other">Other</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase">Contact Number</Label>
+                                <Input placeholder="+1 (555) 000-0000" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase">Email Address</Label>
+                                <Input placeholder="patient@example.com" type="email" />
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="medical" className="space-y-4 mt-4">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase">Chief Complaint</Label>
+                                <Textarea placeholder="Reason for visit..." className="h-20" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase">Known Allergies</Label>
+                                <Input placeholder="e.g. Penicillin, Peanuts" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase">Current Medications</Label>
+                                <Textarea placeholder="List current medications..." className="h-20" />
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="insurance" className="space-y-4 mt-4">
+                             <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase">Insurance Provider</Label>
+                                    <Input placeholder="Provider Name" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase">Policy Number</Label>
+                                    <Input placeholder="Policy #" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase">Payment Method</Label>
+                                <Select>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Method" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="credit">Credit Card</SelectItem>
+                                        <SelectItem value="debit">Debit Card</SelectItem>
+                                        <SelectItem value="cash">Cash</SelectItem>
+                                        <SelectItem value="insurance">Insurance Direct</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex items-start gap-2 mt-4 p-4 bg-slate-50 rounded border border-slate-100">
+                                <Checkbox id="terms" />
+                                <Label htmlFor="terms" className="text-sm text-slate-600 leading-snug">
+                                    I confirm that the insurance details provided are accurate and authorize billing.
+                                </Label>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsOnboardingOpen(false)}>Cancel</Button>
+                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setIsOnboardingOpen(false)}>Complete Registration</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
