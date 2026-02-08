@@ -16,6 +16,7 @@ import {
   Printer,
   Share2,
   Trash2,
+  Sparkles,
   Clock
 } from "lucide-react";
 import { Link } from "wouter";
@@ -29,6 +30,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // --- MOCK DATA (Should match StaffPortal for consistency) ---
 const patients = [
@@ -85,6 +94,7 @@ export default function StaffPatientProtocol() {
   const patient = patients.find(p => p.id === patientId) || patients[0]; // Fallback for demo
 
   const [selectedDay, setSelectedDay] = useState("Monday");
+  const [isCustomMealOpen, setIsCustomMealOpen] = useState(false);
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   // Mock database of weekly plans
@@ -433,19 +443,87 @@ export default function StaffPatientProtocol() {
                         </div>
                     ))}
                     
-                    <div className="p-3 bg-slate-50/50 text-center">
+                    <div className="p-3 bg-slate-50/50 text-center flex items-center justify-center gap-2">
                         <Button 
                             variant="ghost" 
                             size="sm" 
                             className="text-xs text-indigo-600 hover:bg-indigo-50"
                             onClick={() => addMealItem(selectedDay)}
                         >
-                            + Add Meal Slot to {selectedDay}
+                            + Add Meal Slot
+                        </Button>
+                        <span className="text-slate-300">|</span>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs text-emerald-600 hover:bg-emerald-50"
+                            onClick={() => {
+                                const newId = Date.now();
+                                setWeeklyPlan(prev => ({
+                                    ...prev,
+                                    [selectedDay]: [...(prev[selectedDay] || []), { 
+                                        id: newId, 
+                                        time: "00:00", 
+                                        name: "Custom Item", 
+                                        item: "Special Healing Drink", 
+                                        qty: "1 glass", 
+                                        macros: "150kcal" 
+                                    }]
+                                }));
+                                setIsCustomMealOpen(true);
+                            }}
+                        >
+                            <Sparkles className="w-3 h-3 mr-1" /> Create Custom Item
                         </Button>
                     </div>
                  </div>
              </CardContent>
         </Card>
+        
+        {/* Custom Meal Dialog */}
+        <Dialog open={isCustomMealOpen} onOpenChange={setIsCustomMealOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Create Custom Recipe</DialogTitle>
+                    <DialogDescription>Design a specialized meal, drink, or supplement stack.</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Recipe Name</Label>
+                            <Input placeholder="e.g. Adrenal Mocktail" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Category</Label>
+                            <Select>
+                                <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="drink">Healing Drink</SelectItem>
+                                    <SelectItem value="salad">Superfood Salad</SelectItem>
+                                    <SelectItem value="snack">Protein Snack</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Ingredients & Instructions</Label>
+                        <Input className="h-20" placeholder="List key ingredients..." />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Target Macros</Label>
+                        <div className="flex gap-2">
+                            <Input placeholder="Calories" className="w-1/3" />
+                            <Input placeholder="Protein" className="w-1/3" />
+                            <Input placeholder="Carbs" className="w-1/3" />
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsCustomMealOpen(false)}>Cancel</Button>
+                    <Button onClick={() => setIsCustomMealOpen(false)}>Add to Plan</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
       </main>
     </div>
