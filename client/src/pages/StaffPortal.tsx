@@ -154,6 +154,30 @@ export default function StaffPortal() {
   const [selectedPatientForAdjust, setSelectedPatientForAdjust] = useState<any>(null);
   const [isCreatePlanOpen, setIsCreatePlanOpen] = useState(false);
 
+  const [mealPlanItems, setMealPlanItems] = useState([
+    { id: 1, time: "08:00", name: "Breakfast", item: "", qty: "", macros: "" },
+    { id: 2, time: "11:00", name: "Morning Snack", item: "", qty: "", macros: "" },
+    { id: 3, time: "13:00", name: "Lunch", item: "", qty: "", macros: "" },
+    { id: 4, time: "16:00", name: "Afternoon Snack", item: "", qty: "", macros: "" },
+    { id: 5, time: "19:30", name: "Dinner", item: "", qty: "", macros: "" }
+  ]);
+
+  const addMealItem = () => {
+    const newItem = { 
+        id: Date.now(), 
+        time: "00:00", 
+        name: "Meal/Snack", 
+        item: "", 
+        qty: "", 
+        macros: "" 
+    };
+    setMealPlanItems([...mealPlanItems, newItem]);
+  };
+
+  const removeMealItem = (id: number) => {
+    setMealPlanItems(mealPlanItems.filter(item => item.id !== id));
+  };
+
   const roles = [
     { id: "nutritionist", label: "Nutritionist", icon: Apple, color: "text-emerald-600", bg: "bg-emerald-50" },
     { id: "psychologist", label: "Psychologist", icon: Brain, color: "text-purple-600", bg: "bg-purple-50" },
@@ -572,83 +596,55 @@ export default function StaffPortal() {
                                             </div>
 
                                             <div className="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50/50">
-                                                {/* Breakfast */}
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-                                                        <span className="text-sm font-bold text-slate-800">Breakfast</span>
-                                                        <span className="text-xs text-slate-400">08:00 AM</span>
-                                                    </div>
-                                                    <div className="grid grid-cols-12 gap-2">
-                                                        <div className="col-span-5">
-                                                            <Input placeholder="E.g., Oatmeal with Berries" className="h-8 text-xs bg-white" />
+                                                {mealPlanItems.map((meal, index) => (
+                                                    <div key={meal.id} className={`space-y-2 ${index !== 0 ? 'pt-2 border-t border-slate-200' : ''}`}>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`w-2 h-2 rounded-full ${index % 3 === 0 ? 'bg-amber-400' : index % 3 === 1 ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
+                                                            <Input 
+                                                                defaultValue={meal.name} 
+                                                                className="h-6 w-32 text-xs font-bold text-slate-800 border-none bg-transparent p-0 focus-visible:ring-0" 
+                                                            />
+                                                            <div className="relative ml-auto">
+                                                                <Clock className="absolute left-2 top-1.5 h-3 w-3 text-slate-400" />
+                                                                <Input 
+                                                                    type="time" 
+                                                                    defaultValue={meal.time} 
+                                                                    className="h-6 w-24 text-xs bg-white pl-6 border-slate-200" 
+                                                                />
+                                                            </div>
                                                         </div>
-                                                        <div className="col-span-3">
-                                                            <Input placeholder="Qty (e.g. 50g)" className="h-8 text-xs bg-white" />
-                                                        </div>
-                                                        <div className="col-span-3">
-                                                            <Input placeholder="Protein/Carb/Fat" className="h-8 text-xs bg-white" />
-                                                        </div>
-                                                        <div className="col-span-1">
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500">
-                                                                <Minus className="w-3 h-3" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                    <Button variant="ghost" size="sm" className="text-[10px] h-6 text-blue-600 pl-0 hover:bg-transparent">+ Add Item</Button>
-                                                </div>
-
-                                                {/* Lunch */}
-                                                <div className="space-y-2 pt-2 border-t border-slate-200">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                                        <span className="text-sm font-bold text-slate-800">Lunch</span>
-                                                        <span className="text-xs text-slate-400">01:00 PM</span>
-                                                    </div>
-                                                    <div className="grid grid-cols-12 gap-2">
-                                                        <div className="col-span-5">
-                                                            <Input placeholder="E.g., Grilled Chicken Salad" className="h-8 text-xs bg-white" />
-                                                        </div>
-                                                        <div className="col-span-3">
-                                                            <Input placeholder="Qty" className="h-8 text-xs bg-white" />
-                                                        </div>
-                                                        <div className="col-span-3">
-                                                            <Input placeholder="Macros" className="h-8 text-xs bg-white" />
-                                                        </div>
-                                                        <div className="col-span-1">
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500">
-                                                                <Minus className="w-3 h-3" />
-                                                            </Button>
+                                                        <div className="grid grid-cols-12 gap-2">
+                                                            <div className="col-span-5">
+                                                                <Input placeholder="E.g., Oatmeal with Berries" className="h-8 text-xs bg-white" defaultValue={meal.item} />
+                                                            </div>
+                                                            <div className="col-span-3">
+                                                                <Input placeholder="Qty" className="h-8 text-xs bg-white" defaultValue={meal.qty} />
+                                                            </div>
+                                                            <div className="col-span-3">
+                                                                <Input placeholder="Macros" className="h-8 text-xs bg-white" defaultValue={meal.macros} />
+                                                            </div>
+                                                            <div className="col-span-1">
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    className="h-8 w-8 text-slate-400 hover:text-red-500"
+                                                                    onClick={() => removeMealItem(meal.id)}
+                                                                >
+                                                                    <Minus className="w-3 h-3" />
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <Button variant="ghost" size="sm" className="text-[10px] h-6 text-blue-600 pl-0 hover:bg-transparent">+ Add Item</Button>
-                                                </div>
-
-                                                {/* Dinner */}
-                                                <div className="space-y-2 pt-2 border-t border-slate-200">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                                                        <span className="text-sm font-bold text-slate-800">Dinner</span>
-                                                        <span className="text-xs text-slate-400">07:30 PM</span>
-                                                    </div>
-                                                    <div className="grid grid-cols-12 gap-2">
-                                                        <div className="col-span-5">
-                                                            <Input placeholder="E.g., Salmon & Asparagus" className="h-8 text-xs bg-white" />
-                                                        </div>
-                                                        <div className="col-span-3">
-                                                            <Input placeholder="Qty" className="h-8 text-xs bg-white" />
-                                                        </div>
-                                                        <div className="col-span-3">
-                                                            <Input placeholder="Macros" className="h-8 text-xs bg-white" />
-                                                        </div>
-                                                        <div className="col-span-1">
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500">
-                                                                <Minus className="w-3 h-3" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                    <Button variant="ghost" size="sm" className="text-[10px] h-6 text-blue-600 pl-0 hover:bg-transparent">+ Add Item</Button>
-                                                </div>
+                                                ))}
+                                                
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    className="w-full text-xs border-dashed border-slate-300 text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                                                    onClick={addMealItem}
+                                                >
+                                                    <Plus className="w-3 h-3 mr-1" /> Add Meal Time
+                                                </Button>
                                             </div>
                                         </div>
 
