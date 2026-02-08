@@ -24,7 +24,11 @@ import {
   Leaf,
   Info,
   Plus,
-  Minus
+  Minus,
+  Phone,
+  Mail,
+  MessageSquare,
+  ArrowRight
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -228,6 +232,8 @@ export default function StaffPortal() {
   const [selectedPatientForOnboarding, setSelectedPatientForOnboarding] = useState<any>(null);
   const [isClinicalActionOpen, setIsClinicalActionOpen] = useState(false);
   const [selectedTaskForAction, setSelectedTaskForAction] = useState<any>(null);
+  const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
+  const [selectedFollowUp, setSelectedFollowUp] = useState<any>(null);
   const [vitalsData, setVitalsData] = useState({
       systolic: '',
       diastolic: '',
@@ -1760,9 +1766,18 @@ export default function StaffPortal() {
                                                     <span className="text-sm font-bold text-slate-800">{item.patient}</span>
                                                     <Badge variant="outline" className="text-[10px] bg-white border-rose-200 text-rose-600">{item.type}</Badge>
                                                 </div>
-                                                <p className="text-xs text-slate-500 mb-2">{item.action} • {item.daysAgo ? `${item.daysAgo} days ago` : item.amount}</p>
-                                                <Button size="sm" variant="ghost" className="w-full h-7 text-xs bg-white border border-rose-200 text-rose-700 hover:bg-rose-100">
-                                                    Take Action
+                                                <p className="text-xs text-slate-500 mb-2">{item.daysAgo ? `${item.daysAgo} days ago` : item.amount}</p>
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="ghost" 
+                                                    className="w-full h-7 text-xs bg-white border border-rose-200 text-rose-700 hover:bg-rose-100 flex items-center justify-center gap-1.5"
+                                                    onClick={() => {
+                                                        setSelectedFollowUp(item);
+                                                        setIsFollowUpOpen(true);
+                                                    }}
+                                                >
+                                                    {item.action.includes("Call") ? <Phone className="w-3 h-3" /> : <Mail className="w-3 h-3" />}
+                                                    {item.action}
                                                 </Button>
                                             </div>
                                         ))}
@@ -1829,6 +1844,50 @@ export default function StaffPortal() {
                     </div>
                 </div>
             )}
+
+            {/* Follow Up Action Dialog */}
+            <Dialog open={isFollowUpOpen} onOpenChange={setIsFollowUpOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            {selectedFollowUp?.action.includes("Call") ? <Phone className="w-5 h-5 text-rose-600" /> : <Mail className="w-5 h-5 text-rose-600" />}
+                            {selectedFollowUp?.action}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Initiate follow-up with <span className="font-bold text-slate-900">{selectedFollowUp?.patient}</span>
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="py-4 space-y-4">
+                        <div className="bg-rose-50 p-3 rounded-lg border border-rose-100 flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-sm font-bold text-rose-900">{selectedFollowUp?.type}</p>
+                                <p className="text-xs text-rose-700 mt-1">
+                                    {selectedFollowUp?.type === "Missed Appointment" 
+                                        ? "Patient did not show up for scheduled visit 2 days ago. Reschedule required." 
+                                        : "Outstanding balance of $150 pending for recent lab tests."}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <Label>Notes for Record</Label>
+                            <Textarea placeholder="Enter outcome of call or details of message sent..." className="min-h-[100px]" />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="flex gap-2 justify-between sm:justify-between">
+                         <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setIsFollowUpOpen(false)}>Snooze</Button>
+                            <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50" onClick={() => setIsFollowUpOpen(false)}>Dismiss</Button>
+                         </div>
+                        <Button className="bg-rose-600 hover:bg-rose-700 text-white" onClick={() => setIsFollowUpOpen(false)}>
+                            <CheckCircle2 className="w-4 h-4 mr-2" /> Mark Complete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Vitals Collection Dialog */}
             <Dialog open={isVitalsOpen} onOpenChange={setIsVitalsOpen}>
