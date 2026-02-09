@@ -120,6 +120,18 @@ export default function ClinicianPortal() {
 
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    if (selectedPatient) {
+      const mode = (selectedPatient.mode || '').toLowerCase();
+      if (mode === 'pregnancy') setCareMode('pregnancy');
+      else if (mode === 'ivf' || mode === 'iui') setCareMode('iui');
+      else if (mode === 'postpartum') setCareMode('postpartum');
+      else if (mode === 'ttc' || mode === 'trying_to_conceive') setCareMode('natural_conception');
+      else if (mode === 'hormone' || mode === 'cycle') setCareMode('hormone_care');
+      else setCareMode('natural_conception');
+    }
+  }, [selectedPatient]);
+
   const extractLabMutation = useMutation({
     mutationFn: async (patientId: number) => {
       const res = await fetch(`/api/patients/${patientId}/extract-lab-results`, { method: 'POST' });
