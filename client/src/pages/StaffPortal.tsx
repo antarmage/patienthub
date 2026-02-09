@@ -172,6 +172,7 @@ export default function StaffPortal() {
   const staffUsername = typeof window !== 'undefined' ? localStorage.getItem("staffUsername") || "" : "";
   const defaultRole = staffUsername.includes("reception") ? "receptionist" 
     : staffUsername.includes("nurse") ? "phlebotomist" 
+    : staffUsername.includes("nutritionist") ? "nutritionist"
     : "nutritionist";
   const [activeRole, setActiveRole] = useState(defaultRole);
   const [activeView, setActiveView] = useState("dashboard"); // 'dashboard', 'patients', 'schedule', 'reports'
