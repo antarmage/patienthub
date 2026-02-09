@@ -298,8 +298,8 @@ export default function StaffPatientProtocol() {
     setWeeklyPlan(newWeeklyPlan);
   };
 
-  const totalCalories = 1320; // Mock calculation
-  const targetCalories = patient.meta.tdee - 300; // Deficit goal
+  const totalCalories = 1320;
+  const targetCalories = (patient?.meta?.tdee || 1800) - 300;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
