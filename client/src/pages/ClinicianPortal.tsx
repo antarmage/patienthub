@@ -2378,28 +2378,23 @@ export default function ClinicianPortal() {
                        <AvatarFallback>{selectedPatient.avatar}</AvatarFallback>
                     </Avatar>
                     <div>
-                       <h2 className="text-lg font-bold text-slate-900 leading-none">{selectedPatient.name}</h2>
-                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <span className="text-xs text-slate-500">Age: {selectedPatient.age}</span>
-                          <span className="text-slate-300">•</span>
+                       <div className="flex items-center gap-2">
+                          <h2 className="text-lg font-bold text-slate-900 leading-none">{selectedPatient.name}</h2>
+                          <span className="text-xs text-slate-400">{selectedPatient.age}y</span>
                           {selectedPatient.condition && (
-                            <>
-                              <span className="text-xs font-medium text-pink-600">{selectedPatient.condition}</span>
-                              <span className="text-slate-300">•</span>
-                            </>
+                            <Badge variant="outline" className="text-[10px] h-5 border-pink-200 text-pink-700 bg-pink-50 font-medium">
+                              {selectedPatient.condition}
+                            </Badge>
                           )}
-                          {selectedPatient.lmp && (
-                            <>
-                              <span className="text-xs text-slate-500">LMP: {new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                              <span className="text-slate-300">•</span>
-                            </>
+                          {selectedPatient.status === "High Risk" && (
+                            <Badge variant="outline" className="text-[10px] h-5 border-rose-200 text-rose-700 bg-rose-50 font-semibold">
+                              High Risk
+                            </Badge>
                           )}
-                          <span className="text-xs text-slate-500">Ref By: {selectedPatient.referredBy || selectedPatient.focus || '-'}</span>
-                          <span className="text-slate-300">•</span>
-                          
-                          {/* 4. CARE PATHWAY SWITCH */}
+                       </div>
+                       <div className="flex items-center gap-2 mt-1">
                           <Select value={careMode} onValueChange={setCareMode}>
-                            <SelectTrigger className="h-6 text-[10px] bg-slate-50 border-slate-200 w-[180px] font-semibold text-blue-700">
+                            <SelectTrigger className="h-5 text-[10px] bg-slate-50 border-slate-200 w-[160px] font-semibold text-blue-700">
                               <SelectValue placeholder="Select Pathway" />
                             </SelectTrigger>
                             <SelectContent>
@@ -2411,13 +2406,7 @@ export default function ClinicianPortal() {
                               <SelectItem value="postpartum">Postpartum Care</SelectItem>
                             </SelectContent>
                           </Select>
-
-                          <span className="text-slate-300">•</span>
-                          <span className="text-xs font-medium text-slate-700">
-                             {careMode === 'hormone_care' && `Cycle Day ${selectedPatient.cycleDay || 21} (Luteal)`}
-                             {careMode === 'natural_conception' && `Cycle Day ${selectedPatient.cycleDay || 14} (Ovulatory)`}
-                             {careMode === 'induction' && `Cycle Day ${selectedPatient.cycleDay || 10} (Follicular)`}
-                             {careMode === 'iui' && `Cycle Day ${selectedPatient.cycleDay || 11} (Trigger Ready)`}
+                          <span className="text-xs text-slate-600">
                              {careMode === 'pregnancy' && (() => {
                                if (selectedPatient.lmp) {
                                  const lmpDate = new Date(selectedPatient.lmp);
@@ -2427,49 +2416,22 @@ export default function ClinicianPortal() {
                                  const days = diffDays % 7;
                                  if (weeks > 42) return 'Post-term';
                                  const trimester = weeks < 13 ? 1 : weeks < 27 ? 2 : 3;
-                                 return `Week ${weeks}+${days} (Trimester ${trimester})`;
+                                 return `Wk ${weeks}+${days} · T${trimester}`;
                                }
-                               return 'Pregnancy Care';
+                               return '';
                              })()}
-                             {careMode === 'postpartum' && 'Week 6 (Recovery)'}
+                             {careMode !== 'pregnancy' && careMode !== 'postpartum' && `CD ${selectedPatient.cycleDay || '-'}`}
+                             {careMode === 'postpartum' && 'Recovery'}
                           </span>
                        </div>
                     </div>
                  </div>
                  
-                 {/* Risk Badge */}
-                 <div className="flex items-center gap-3">
-                    {/* NEW: Vaccination, Insurance, Contraception Flags */}
-                    <div className="hidden md:flex items-center gap-3 mr-4 border-r border-slate-200 pr-4">
-                        <div className="flex flex-col items-end">
-                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Vaccination</span>
-                            <Badge variant="outline" className={`text-[10px] h-5 border-slate-200 ${selectedPatient.vaccination === 'Up to Date' || selectedPatient.vaccination === 'Completed' ? 'text-emerald-600 bg-emerald-50' : 'text-amber-600 bg-amber-50'}`}>
-                                {selectedPatient.vaccination}
-                            </Badge>
-                        </div>
-                        <div className="flex flex-col items-end">
-                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Insurance</span>
-                            <span className="text-xs font-medium text-slate-700">{selectedPatient.insurance}</span>
-                        </div>
-                        <div className="flex flex-col items-end">
-                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Contraception</span>
-                            <span className="text-xs font-medium text-slate-700">{selectedPatient.contraception}</span>
-                        </div>
-                    </div>
-
-                    {selectedPatient.status === "High Risk" && (
-                        <div className="px-3 py-1 bg-rose-50 border border-rose-100 rounded-full flex items-center gap-1.5">
-                           <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                           <span className="text-xs font-semibold text-rose-700">High Risk</span>
-                        </div>
-                    )}
+                 <div className="flex items-center gap-2">
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400" onClick={() => { setIsSearching(true); }} data-testid="button-search-header">
+                       <Search className="w-4 h-4" />
+                    </Button>
                  </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                 <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400" onClick={() => { setIsSearching(true); }} data-testid="button-search-header">
-                    <Search className="w-4 h-4" />
-                 </Button>
               </div>
             </header>
 
