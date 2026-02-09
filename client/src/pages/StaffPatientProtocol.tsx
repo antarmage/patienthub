@@ -416,9 +416,9 @@ export default function StaffPatientProtocol() {
                         <p className="text-xs text-slate-500 font-medium uppercase mb-1">Current Phase</p>
                         <div className="flex items-center gap-2 text-purple-600 mb-1">
                             <Activity className="w-4 h-4" />
-                            <span className="font-bold text-sm truncate">{patient.meta.phase.split(' ')[0]}</span>
+                            <span className="font-bold text-sm truncate">{(patient?.meta?.phase || 'Follicular').split(' ')[0]}</span>
                         </div>
-                        <p className="text-[10px] text-slate-400">Day {patient.meta.phase.split('Day ')[1]?.replace(')', '')}</p>
+                        <p className="text-[10px] text-slate-400">Day {(patient?.meta?.phase || '').split('Day ')[1]?.replace(')', '') || '-'}</p>
                     </CardContent>
                  </Card>
 
@@ -427,10 +427,10 @@ export default function StaffPatientProtocol() {
                         <p className="text-xs text-slate-500 font-medium uppercase mb-1">Energy Exp (TDEE)</p>
                         <div className="flex items-center gap-2 text-amber-600 mb-1">
                             <Flame className="w-4 h-4" />
-                            <span className="font-bold text-lg">{patient.meta.tdee}</span>
+                            <span className="font-bold text-lg">{patient?.meta?.tdee || 1800}</span>
                             <span className="text-xs font-normal text-slate-500">kcal</span>
                         </div>
-                        <p className="text-[10px] text-slate-400">Activity: {patient.meta.activity.split(' ')[0]}</p>
+                        <p className="text-[10px] text-slate-400">Activity: {(patient?.meta?.activity || 'Moderate').split(' ')[0]}</p>
                     </CardContent>
                  </Card>
 
@@ -451,11 +451,11 @@ export default function StaffPatientProtocol() {
                         <p className="text-xs text-slate-500 font-medium uppercase mb-1">Biometrics</p>
                         <div className="flex justify-between items-end">
                              <div>
-                                <p className="text-sm font-bold text-slate-800">{patient.meta.weight}</p>
+                                <p className="text-sm font-bold text-slate-800">{patient?.meta?.weight || patient?.weight || '-'}</p>
                                 <p className="text-[10px] text-slate-400">Weight</p>
                              </div>
                              <div className="text-right">
-                                <p className="text-sm font-bold text-slate-800">{patient.meta.bmi}</p>
+                                <p className="text-sm font-bold text-slate-800">{patient?.meta?.bmi || '-'}</p>
                                 <p className="text-[10px] text-slate-400">BMI</p>
                              </div>
                         </div>
