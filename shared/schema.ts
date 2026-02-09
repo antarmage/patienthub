@@ -179,3 +179,23 @@ export const usgData = pgTable("usg_data", {
 export const insertUsgDataSchema = createInsertSchema(usgData).omit({ id: true });
 export type InsertUsgData = z.infer<typeof insertUsgDataSchema>;
 export type UsgData = typeof usgData.$inferSelect;
+
+export const labResults = pgTable("lab_results", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  labTaskId: integer("lab_task_id").references(() => labTasks.id),
+  testName: text("test_name").notNull(),
+  category: text("category"),
+  date: date("date").notNull(),
+  results: jsonb("results"),
+  unit: text("unit"),
+  value: real("value"),
+  referenceMin: real("reference_min"),
+  referenceMax: real("reference_max"),
+  status: text("status"),
+  notes: text("notes"),
+});
+
+export const insertLabResultSchema = createInsertSchema(labResults).omit({ id: true });
+export type InsertLabResult = z.infer<typeof insertLabResultSchema>;
+export type LabResult = typeof labResults.$inferSelect;

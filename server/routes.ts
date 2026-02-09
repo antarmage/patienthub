@@ -162,6 +162,24 @@ export async function registerRoutes(
     res.status(201).json(data);
   });
 
+  app.get("/api/patients/:id/lab-results", async (req, res) => {
+    const results = await storage.getLabResults(parseInt(req.params.id));
+    res.json(results);
+  });
+
+  app.post("/api/patients/:id/lab-results", async (req, res) => {
+    const result = await storage.createLabResult({
+      ...req.body,
+      patientId: parseInt(req.params.id),
+    });
+    res.status(201).json(result);
+  });
+
+  app.get("/api/lab-tasks/:id/results", async (req, res) => {
+    const results = await storage.getLabResultsByTask(parseInt(req.params.id));
+    res.json(results);
+  });
+
   app.get("/api/analytics/fertility", async (_req, res) => {
     res.json([
       { month: 'Jan', active: 45, ovulationRate: 78, pregnancies: 4 },
