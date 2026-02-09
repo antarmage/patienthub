@@ -41,7 +41,8 @@ import {
   Settings,
   CreditCard,
   MapPin,
-  X
+  X,
+  ExternalLink
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -168,6 +169,29 @@ export default function ClinicianPortal() {
     enabled: !!selectedPatient
   });
   const usgData = usgQuery.data || [];
+
+  const labResultsQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/lab-results`],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${selectedPatient?.id}/lab-results`);
+      if (!res.ok) throw new Error('Failed to fetch lab results');
+      return res.json();
+    },
+    enabled: !!selectedPatient
+  });
+  const labResults = labResultsQuery.data || [];
+
+  const labDocumentsQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/documents`, 'lab'],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${selectedPatient?.id}/documents`);
+      if (!res.ok) throw new Error('Failed to fetch documents');
+      const docs = await res.json();
+      return docs.filter((d: any) => d.category === 'Lab Report');
+    },
+    enabled: !!selectedPatient
+  });
+  const labDocuments = labDocumentsQuery.data || [];
 
   const fertilityAnalyticsQuery = useQuery({
     queryKey: ['/api/analytics/fertility'],
@@ -2997,58 +3021,87 @@ export default function ClinicianPortal() {
                             <CardHeader className="py-3 border-b border-slate-100">
                                <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
                                   <FlaskConical className="w-4 h-4 text-purple-600" /> Lab Intelligence
+                                  {labDocuments.length > 0 && (
+                                    <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium ml-auto">
+                                      {labResults.length > 0 ? `${labResults.length} results` : `${labDocuments.length} report${labDocuments.length !== 1 ? 's' : ''}`}
+                                    </span>
+                                  )}
                                </CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
-                               <table className="w-full text-sm text-left">
-                                  <thead className="text-xs text-slate-500 bg-slate-50 uppercase">
-                                     <tr>
-                                        <th className="px-4 py-2 font-medium">Test</th>
-                                        <th className="px-4 py-2 font-medium">Value</th>
-                                        <th className="px-4 py-2 font-medium">Trend</th>
-                                        <th className="px-4 py-2 font-medium">Status</th>
-                                     </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-slate-100">
-                                     {careMode === 'pregnancy' ? (
-                                        <>
-                                           <tr>
-                                              <td className="px-4 py-3 font-medium text-slate-700">Fasting Glucose</td>
-                                              <td className="px-4 py-3">88 mg/dL</td>
-                                              <td className="px-4 py-3 text-emerald-500">Stable</td>
-                                              <td className="px-4 py-3"><Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50">Normal</Badge></td>
-                                           </tr>
-                                           <tr>
-                                              <td className="px-4 py-3 font-medium text-slate-700">OGTT (1hr)</td>
-                                              <td className="px-4 py-3">135 mg/dL</td>
-                                              <td className="px-4 py-3 text-amber-500">Borderline</td>
-                                              <td className="px-4 py-3"><Badge variant="outline" className="border-amber-200 text-amber-700 bg-amber-50">Monitor</Badge></td>
-                                           </tr>
-                                           <tr>
-                                              <td className="px-4 py-3 font-medium text-slate-700">Hemoglobin</td>
-                                              <td className="px-4 py-3">11.2 g/dL</td>
-                                              <td className="px-4 py-3 text-slate-400">Stable</td>
-                                              <td className="px-4 py-3"><Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50">Normal</Badge></td>
-                                           </tr>
-                                        </>
-                                     ) : (
-                                        <>
-                                           <tr>
-                                              <td className="px-4 py-3 font-medium text-slate-700">Progesterone (D21)</td>
-                                              <td className="px-4 py-3">8.2 ng/mL</td>
-                                              <td className="px-4 py-3 text-rose-500 flex items-center gap-1"><TrendingUp className="w-3 h-3 rotate-180" /> Dropping</td>
-                                              <td className="px-4 py-3"><Badge variant="outline" className="border-rose-200 text-rose-700 bg-rose-50">Low</Badge></td>
-                                           </tr>
-                                           <tr>
-                                              <td className="px-4 py-3 font-medium text-slate-700">AMH</td>
-                                              <td className="px-4 py-3">2.1 ng/mL</td>
-                                              <td className="px-4 py-3 text-slate-400">- Stable</td>
-                                              <td className="px-4 py-3"><Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50">Normal</Badge></td>
-                                           </tr>
-                                        </>
-                                     )}
-                                  </tbody>
-                               </table>
+                               {labResults.length > 0 ? (
+                                  <table className="w-full text-sm text-left">
+                                     <thead className="text-xs text-slate-500 bg-slate-50 uppercase">
+                                        <tr>
+                                           <th className="px-4 py-2 font-medium">Test</th>
+                                           <th className="px-4 py-2 font-medium">Value</th>
+                                           <th className="px-4 py-2 font-medium">Date</th>
+                                           <th className="px-4 py-2 font-medium">Status</th>
+                                        </tr>
+                                     </thead>
+                                     <tbody className="divide-y divide-slate-100">
+                                        {labResults.map((lr: any) => {
+                                           const s = (lr.status || '').toLowerCase();
+                                           const badgeClass = s === 'normal' ? 'border-emerald-200 text-emerald-700 bg-emerald-50'
+                                              : s === 'high' || s === 'critical' ? 'border-rose-200 text-rose-700 bg-rose-50'
+                                              : s === 'low' ? 'border-amber-200 text-amber-700 bg-amber-50'
+                                              : s === 'monitor' || s === 'borderline' ? 'border-amber-200 text-amber-700 bg-amber-50'
+                                              : 'border-slate-200 text-slate-700 bg-slate-50';
+                                           return (
+                                              <tr key={lr.id} data-testid={`lab-result-row-${lr.id}`}>
+                                                 <td className="px-4 py-3 font-medium text-slate-700">{lr.testName}</td>
+                                                 <td className="px-4 py-3">{lr.value != null ? `${lr.value} ${lr.unit || ''}` : '-'}</td>
+                                                 <td className="px-4 py-3 text-xs text-slate-400">{lr.date ? new Date(lr.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '-'}</td>
+                                                 <td className="px-4 py-3">
+                                                    <Badge variant="outline" className={badgeClass}>
+                                                       {lr.status || 'Pending'}
+                                                    </Badge>
+                                                 </td>
+                                              </tr>
+                                           );
+                                        })}
+                                     </tbody>
+                                  </table>
+                               ) : labDocuments.length > 0 ? (
+                                  <div className="divide-y divide-slate-100">
+                                     {labDocuments.map((doc: any) => (
+                                        <div key={doc.id} className="px-4 py-3 flex items-center justify-between hover:bg-slate-50/50 transition-colors" data-testid={`lab-doc-${doc.id}`}>
+                                           <div className="flex items-center gap-3 min-w-0 flex-1">
+                                              <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
+                                                 <FileText className="w-4 h-4 text-purple-500" />
+                                              </div>
+                                              <div className="min-w-0">
+                                                 <p className="text-sm font-medium text-slate-700 truncate">
+                                                    {doc.metadata?.extractedPatientName || doc.name?.replace(/TestReport_/g, '').replace(/_[^_]+\.pdf$/, '') || 'Lab Report'}
+                                                 </p>
+                                                 <p className="text-[10px] text-slate-400">
+                                                    {doc.date ? new Date(doc.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Imported'}
+                                                    {doc.metadata?.fileSize && ` · ${(parseInt(doc.metadata.fileSize) / 1024 / 1024).toFixed(1)} MB`}
+                                                 </p>
+                                              </div>
+                                           </div>
+                                           {doc.metadata?.driveViewUrl && (
+                                              <a
+                                                href={doc.metadata.driveViewUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="shrink-0 ml-2 text-purple-500 hover:text-purple-700 transition-colors"
+                                                title="View in Google Drive"
+                                                data-testid={`lab-doc-link-${doc.id}`}
+                                              >
+                                                 <ExternalLink className="w-4 h-4" />
+                                              </a>
+                                           )}
+                                        </div>
+                                     ))}
+                                  </div>
+                               ) : (
+                                  <div className="py-8 text-center">
+                                     <FlaskConical className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                                     <p className="text-xs text-slate-400">No lab reports available</p>
+                                     <p className="text-[10px] text-slate-300 mt-1">Import reports from Google Drive or add results manually</p>
+                                  </div>
+                               )}
                             </CardContent>
                          </Card>
 
