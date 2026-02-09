@@ -40,7 +40,8 @@ import {
   Briefcase,
   Settings,
   CreditCard,
-  MapPin
+  MapPin,
+  X
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -110,6 +111,8 @@ export default function ClinicianPortal() {
   const providerInitials = providerName.split(" ").filter((w: string) => w[0]?.match(/[A-Z]/)).map((w: string) => w[0]).join("").slice(0, 2) || "DR";
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [queueDate, setQueueDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [patientSearch, setPatientSearch] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
   const patientsQuery = useQuery({
     queryKey: ['/api/patients', clinicianProvider?.id],
@@ -254,6 +257,12 @@ export default function ClinicianPortal() {
       return patient ? { ...patient, appointmentTime: apt.time, appointmentType: apt.type, appointmentId: apt.id, appointmentStatus: apt.status } : null;
     }).filter(Boolean);
   }, [appointments, patients, queueDate]);
+
+  const searchResults = useMemo(() => {
+    if (!patientSearch.trim()) return [];
+    const q = patientSearch.toLowerCase().trim();
+    return patients.filter((p: any) => p.name?.toLowerCase().includes(q)).slice(0, 20);
+  }, [patients, patientSearch]);
 
   const appointmentsByDay = useMemo(() => {
     const map: Record<number, any[]> = {};
@@ -2392,7 +2401,7 @@ export default function ClinicianPortal() {
                     <ArrowUpRight className="w-3.5 h-3.5" /> Insight
                  </Button>
                  <Separator orientation="vertical" className="h-8 mx-2" />
-                 <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400">
+                 <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400" onClick={() => { setIsSearching(true); }} data-testid="button-search-header">
                     <Search className="w-4 h-4" />
                  </Button>
               </div>
@@ -2403,44 +2412,93 @@ export default function ClinicianPortal() {
               {/* Patient List Column (Left) */}
               <div className="w-72 border-r border-slate-200 bg-white flex flex-col shrink-0">
                  <div className="p-3 border-b border-slate-100 bg-slate-50/50 space-y-2">
-                    <div className="flex justify-between items-center">
-                       <h3 className="font-semibold text-xs uppercase tracking-wider text-slate-500 pl-2">Patient Queue</h3>
-                       <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-medium">{queuePatients.length}</span>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                      <Input
+                        placeholder="Search patient by name..."
+                        value={patientSearch}
+                        onChange={(e) => { setPatientSearch(e.target.value); setIsSearching(!!e.target.value); }}
+                        className="h-8 text-xs border-slate-200 pl-8 pr-8"
+                        data-testid="input-patient-search"
+                      />
+                      {patientSearch && (
+                        <button onClick={() => { setPatientSearch(""); setIsSearching(false); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
-                    <Input
-                      type="date"
-                      value={queueDate}
-                      onChange={(e) => setQueueDate(e.target.value)}
-                      className="h-7 text-xs border-slate-200"
-                      data-testid="input-queue-date-sidebar"
-                    />
+                    {!isSearching && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="date"
+                          value={queueDate}
+                          onChange={(e) => setQueueDate(e.target.value)}
+                          className="h-7 text-xs border-slate-200 flex-1"
+                          data-testid="input-queue-date-sidebar"
+                        />
+                        <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-medium shrink-0">{queuePatients.length}</span>
+                      </div>
+                    )}
+                    {isSearching && searchResults.length > 0 && (
+                      <div className="text-[10px] text-slate-400">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</div>
+                    )}
                  </div>
                  <ScrollArea className="flex-1">
-                    {queuePatients.length === 0 && (
-                      <div className="py-8 text-center text-slate-400 text-xs">No patients for this date</div>
+                    {isSearching ? (
+                      <>
+                        {searchResults.length === 0 && patientSearch.trim() && (
+                          <div className="py-8 text-center text-slate-400 text-xs">No patients found</div>
+                        )}
+                        {searchResults.map((patient: any) => (
+                          <div 
+                            key={patient.id}
+                            onClick={() => { setSelectedPatient(patient); setPatientSearch(""); setIsSearching(false); }}
+                            className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-blue-50/40 group relative`}
+                            data-testid={`search-result-${patient.id}`}
+                          >
+                             <div className="flex justify-between items-start mb-1">
+                                <span className="font-semibold text-sm text-slate-700">{patient.name}</span>
+                                <span className="text-[10px] text-slate-400">{patient.phone || ''}</span>
+                             </div>
+                             <p className="text-xs text-slate-500 mb-1 truncate">{patient.type || 'General'}</p>
+                             <div className="flex items-center gap-2">
+                                {patient.status === 'High Risk' && <div className="w-2 h-2 rounded-full bg-rose-500"></div>}
+                                {patient.status === 'Monitor' && <div className="w-2 h-2 rounded-full bg-amber-500"></div>}
+                                {patient.status === 'Active Cycle' && <div className="w-2 h-2 rounded-full bg-emerald-500"></div>}
+                                <span className="text-[10px] font-medium text-slate-400">{patient.status || 'active'}</span>
+                             </div>
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {queuePatients.length === 0 && (
+                          <div className="py-8 text-center text-slate-400 text-xs">No patients for this date</div>
+                        )}
+                        {queuePatients.map((patient: any) => (
+                          <div 
+                            key={patient.id}
+                            onClick={() => setSelectedPatient(patient)}
+                            className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 group relative ${selectedPatient?.id === patient.id ? 'bg-blue-50/60' : ''}`}
+                          >
+                             {selectedPatient?.id === patient.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>}
+                             
+                             <div className="flex justify-between items-start mb-1">
+                                <span className={`font-semibold text-sm ${selectedPatient?.id === patient.id ? 'text-blue-900' : 'text-slate-700'}`}>{patient.name}</span>
+                                <span className="text-[10px] text-slate-400">{patient.appointmentTime || patient.lastVisit}</span>
+                             </div>
+                             <p className="text-xs text-slate-500 mb-2 truncate">{patient.type || 'General'}</p>
+                             
+                             <div className="flex items-center gap-2">
+                                {patient.status === 'High Risk' && <div className="w-2 h-2 rounded-full bg-rose-500"></div>}
+                                {patient.status === 'Monitor' && <div className="w-2 h-2 rounded-full bg-amber-500"></div>}
+                                {patient.status === 'Active Cycle' && <div className="w-2 h-2 rounded-full bg-emerald-500"></div>}
+                                <span className="text-[10px] font-medium text-slate-400">{patient.status}</span>
+                             </div>
+                          </div>
+                        ))}
+                      </>
                     )}
-                    {queuePatients.map((patient: any) => (
-                      <div 
-                        key={patient.id}
-                        onClick={() => setSelectedPatient(patient)}
-                        className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 group relative ${selectedPatient?.id === patient.id ? 'bg-blue-50/60' : ''}`}
-                      >
-                         {selectedPatient?.id === patient.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>}
-                         
-                         <div className="flex justify-between items-start mb-1">
-                            <span className={`font-semibold text-sm ${selectedPatient?.id === patient.id ? 'text-blue-900' : 'text-slate-700'}`}>{patient.name}</span>
-                            <span className="text-[10px] text-slate-400">{patient.appointmentTime || patient.lastVisit}</span>
-                         </div>
-                         <p className="text-xs text-slate-500 mb-2 truncate">{patient.type || 'General'}</p>
-                         
-                         <div className="flex items-center gap-2">
-                            {patient.status === 'High Risk' && <div className="w-2 h-2 rounded-full bg-rose-500"></div>}
-                            {patient.status === 'Monitor' && <div className="w-2 h-2 rounded-full bg-amber-500"></div>}
-                            {patient.status === 'Active Cycle' && <div className="w-2 h-2 rounded-full bg-emerald-500"></div>}
-                            <span className="text-[10px] font-medium text-slate-400">{patient.status}</span>
-                         </div>
-                      </div>
-                    ))}
                  </ScrollArea>
               </div>
 
