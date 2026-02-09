@@ -2466,18 +2466,7 @@ export default function ClinicianPortal() {
                  </div>
               </div>
 
-              {/* Quick Actions */}
-              <div className="flex items-center gap-3">
-                 <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 border-slate-300 text-slate-600">
-                    <FileText className="w-3.5 h-3.5" /> Note
-                 </Button>
-                 <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 border-slate-300 text-slate-600">
-                    <Activity className="w-3.5 h-3.5" /> Lab
-                 </Button>
-                 <Button size="sm" className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 shadow-sm">
-                    <ArrowUpRight className="w-3.5 h-3.5" /> Insight
-                 </Button>
-                 <Separator orientation="vertical" className="h-8 mx-2" />
+              <div className="flex items-center gap-2">
                  <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400" onClick={() => { setIsSearching(true); }} data-testid="button-search-header">
                     <Search className="w-4 h-4" />
                  </Button>
