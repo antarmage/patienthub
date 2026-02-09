@@ -717,7 +717,8 @@ export async function registerRoutes(
 - "status": one of "Normal", "High", "Low", "Critical", or "Borderline" based on the reference range
 - "category": the test category (e.g., "Hematology", "Hormone", "Biochemistry", "Thyroid", "Liver Function", "Kidney Function")
 - "referenceMin": minimum of reference range as number (or null)
-- "referenceMax": maximum of reference range as number (or null)`
+- "referenceMax": maximum of reference range as number (or null)
+- "collectedDate": the sample collection date or report date found on the PDF in YYYY-MM-DD format (e.g., "2025-01-15"). Look for fields like "Collected On", "Sample Collection Date", "Report Date", "Date" on the report. If not found, use null.`
                   },
                 ],
               },
@@ -738,11 +739,12 @@ export async function registerRoutes(
             continue;
           }
 
-          const reportDate = doc.date || new Date().toISOString().split('T')[0];
+          const fallbackDate = doc.date || new Date().toISOString().split('T')[0];
 
           for (const item of parsed) {
             if (!item.testName) continue;
-            const dupKey = `${normalizeTestName(item.testName)}|${reportDate}`;
+            const resultDate = item.collectedDate || fallbackDate;
+            const dupKey = `${normalizeTestName(item.testName)}|${resultDate}`;
             if (existingSet.has(dupKey)) {
               skippedDuplicates++;
               continue;
@@ -754,7 +756,7 @@ export async function registerRoutes(
               unit: item.unit || null,
               status: item.status || null,
               category: item.category || null,
-              date: reportDate,
+              date: resultDate,
               referenceMin: item.referenceMin != null ? parseFloat(item.referenceMin) : null,
               referenceMax: item.referenceMax != null ? parseFloat(item.referenceMax) : null,
               notes: `Extracted from Drive file: ${driveFileId}`,
