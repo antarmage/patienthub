@@ -193,6 +193,146 @@ export async function registerRoutes(
     res.status(201).json(visit);
   });
 
+  app.get("/api/patients/:id/medications", async (req, res) => {
+    const meds = await storage.getMedications(parseInt(req.params.id));
+    res.json(meds);
+  });
+
+  app.post("/api/patients/:id/medications", async (req, res) => {
+    const med = await storage.createMedication({ ...req.body, patientId: parseInt(req.params.id) });
+    res.status(201).json(med);
+  });
+
+  app.patch("/api/medications/:id", async (req, res) => {
+    const updated = await storage.updateMedication(parseInt(req.params.id), req.body);
+    if (!updated) return res.status(404).json({ error: "Medication not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/medications/:id", async (req, res) => {
+    const deleted = await storage.deleteMedication(parseInt(req.params.id));
+    if (!deleted) return res.status(404).json({ error: "Medication not found" });
+    res.status(204).send();
+  });
+
+  app.get("/api/patients/:id/clinical-notes", async (req, res) => {
+    const notes = await storage.getClinicalNotes(parseInt(req.params.id));
+    res.json(notes);
+  });
+
+  app.post("/api/patients/:id/clinical-notes", async (req, res) => {
+    const note = await storage.createClinicalNote({ ...req.body, patientId: parseInt(req.params.id) });
+    res.status(201).json(note);
+  });
+
+  app.patch("/api/clinical-notes/:id", async (req, res) => {
+    const updated = await storage.updateClinicalNote(parseInt(req.params.id), req.body);
+    if (!updated) return res.status(404).json({ error: "Clinical note not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/clinical-notes/:id", async (req, res) => {
+    const deleted = await storage.deleteClinicalNote(parseInt(req.params.id));
+    if (!deleted) return res.status(404).json({ error: "Clinical note not found" });
+    res.status(204).send();
+  });
+
+  app.get("/api/patients/:id/referrals", async (req, res) => {
+    const refs = await storage.getReferrals(parseInt(req.params.id));
+    res.json(refs);
+  });
+
+  app.post("/api/patients/:id/referrals", async (req, res) => {
+    const ref = await storage.createReferral({ ...req.body, patientId: parseInt(req.params.id) });
+    res.status(201).json(ref);
+  });
+
+  app.patch("/api/referrals/:id", async (req, res) => {
+    const updated = await storage.updateReferral(parseInt(req.params.id), req.body);
+    if (!updated) return res.status(404).json({ error: "Referral not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/referrals/:id", async (req, res) => {
+    const deleted = await storage.deleteReferral(parseInt(req.params.id));
+    if (!deleted) return res.status(404).json({ error: "Referral not found" });
+    res.status(204).send();
+  });
+
+  app.get("/api/patients/:id/invoices", async (req, res) => {
+    const inv = await storage.getInvoices(parseInt(req.params.id));
+    res.json(inv);
+  });
+
+  app.post("/api/patients/:id/invoices", async (req, res) => {
+    const inv = await storage.createInvoice({ ...req.body, patientId: parseInt(req.params.id) });
+    res.status(201).json(inv);
+  });
+
+  app.patch("/api/invoices/:id", async (req, res) => {
+    const updated = await storage.updateInvoice(parseInt(req.params.id), req.body);
+    if (!updated) return res.status(404).json({ error: "Invoice not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/invoices/:id", async (req, res) => {
+    const deleted = await storage.deleteInvoice(parseInt(req.params.id));
+    if (!deleted) return res.status(404).json({ error: "Invoice not found" });
+    res.status(204).send();
+  });
+
+  app.get("/api/patients/:id/consent-forms", async (req, res) => {
+    const forms = await storage.getConsentForms(parseInt(req.params.id));
+    res.json(forms);
+  });
+
+  app.post("/api/patients/:id/consent-forms", async (req, res) => {
+    const form = await storage.createConsentForm({ ...req.body, patientId: parseInt(req.params.id) });
+    res.status(201).json(form);
+  });
+
+  app.patch("/api/consent-forms/:id", async (req, res) => {
+    const updated = await storage.updateConsentForm(parseInt(req.params.id), req.body);
+    if (!updated) return res.status(404).json({ error: "Consent form not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/consent-forms/:id", async (req, res) => {
+    const deleted = await storage.deleteConsentForm(parseInt(req.params.id));
+    if (!deleted) return res.status(404).json({ error: "Consent form not found" });
+    res.status(204).send();
+  });
+
+  app.get("/api/patients/:id/documents", async (req, res) => {
+    const docs = await storage.getDocuments(parseInt(req.params.id));
+    res.json(docs);
+  });
+
+  app.post("/api/patients/:id/documents", async (req, res) => {
+    const doc = await storage.createDocument({ ...req.body, patientId: parseInt(req.params.id) });
+    res.status(201).json(doc);
+  });
+
+  app.patch("/api/documents/:id", async (req, res) => {
+    const updated = await storage.updateDocument(parseInt(req.params.id), req.body);
+    if (!updated) return res.status(404).json({ error: "Document not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/documents/:id", async (req, res) => {
+    const deleted = await storage.deleteDocument(parseInt(req.params.id));
+    if (!deleted) return res.status(404).json({ error: "Document not found" });
+    res.status(204).send();
+  });
+
+  app.post("/api/auth/passcode", async (req, res) => {
+    const { passcode } = req.body;
+    if (!passcode) return res.status(400).json({ error: "Passcode required" });
+    const user = await storage.getUserByPasscode(passcode);
+    if (!user) return res.status(401).json({ error: "Invalid passcode" });
+    res.json({ role: user.role, username: user.username, id: user.id });
+  });
+
   app.get("/api/analytics/fertility", async (_req, res) => {
     res.json([
       { month: 'Jan', active: 45, ovulationRate: 78, pregnancies: 4 },

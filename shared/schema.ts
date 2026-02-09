@@ -242,3 +242,105 @@ export const visitHistory = pgTable("visit_history", {
 export const insertVisitHistorySchema = createInsertSchema(visitHistory).omit({ id: true });
 export type InsertVisitHistory = z.infer<typeof insertVisitHistorySchema>;
 export type VisitHistory = typeof visitHistory.$inferSelect;
+
+export const medications = pgTable("medications", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  name: text("name").notNull(),
+  dose: text("dose"),
+  frequency: text("frequency"),
+  route: text("route"),
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  prescribedBy: integer("prescribed_by").references(() => providers.id),
+  status: text("status"),
+  notes: text("notes"),
+});
+
+export const insertMedicationSchema = createInsertSchema(medications).omit({ id: true });
+export type InsertMedication = z.infer<typeof insertMedicationSchema>;
+export type Medication = typeof medications.$inferSelect;
+
+export const clinicalNotes = pgTable("clinical_notes", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  providerId: integer("provider_id").references(() => providers.id),
+  date: date("date").notNull(),
+  type: text("type"),
+  title: text("title"),
+  content: text("content").notNull(),
+  tags: text("tags").array(),
+  isPrivate: integer("is_private"),
+});
+
+export const insertClinicalNoteSchema = createInsertSchema(clinicalNotes).omit({ id: true });
+export type InsertClinicalNote = z.infer<typeof insertClinicalNoteSchema>;
+export type ClinicalNote = typeof clinicalNotes.$inferSelect;
+
+export const referrals = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  referredByProviderId: integer("referred_by_provider_id").references(() => providers.id),
+  referredToProviderId: integer("referred_to_provider_id").references(() => providers.id),
+  referredToExternal: text("referred_to_external"),
+  date: date("date").notNull(),
+  reason: text("reason"),
+  urgency: text("urgency"),
+  status: text("status"),
+  notes: text("notes"),
+  outcome: text("outcome"),
+});
+
+export const insertReferralSchema = createInsertSchema(referrals).omit({ id: true });
+export type InsertReferral = z.infer<typeof insertReferralSchema>;
+export type Referral = typeof referrals.$inferSelect;
+
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
+  date: date("date").notNull(),
+  items: jsonb("items"),
+  subtotal: real("subtotal"),
+  tax: real("tax"),
+  total: real("total"),
+  paymentMethod: text("payment_method"),
+  paymentStatus: text("payment_status"),
+  insuranceClaimId: text("insurance_claim_id"),
+  notes: text("notes"),
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true });
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
+
+export const consentForms = pgTable("consent_forms", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  formType: text("form_type").notNull(),
+  signedDate: date("signed_date"),
+  signedVia: text("signed_via"),
+  status: text("status"),
+  expiryDate: date("expiry_date"),
+  notes: text("notes"),
+});
+
+export const insertConsentFormSchema = createInsertSchema(consentForms).omit({ id: true });
+export type InsertConsentForm = z.infer<typeof insertConsentFormSchema>;
+export type ConsentForm = typeof consentForms.$inferSelect;
+
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  name: text("name").notNull(),
+  type: text("type"),
+  category: text("category"),
+  date: date("date").notNull(),
+  uploadedBy: integer("uploaded_by").references(() => providers.id),
+  description: text("description"),
+  metadata: jsonb("metadata"),
+});
+
+export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true });
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type Document = typeof documents.$inferSelect;

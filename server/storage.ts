@@ -3,6 +3,7 @@ import { db } from "./db";
 import {
   users, patients, providers, services, appointments, labTasks,
   nutritionPlans, workouts, hormoneReadings, pregnancyMetrics, follicleData, usgData, labResults, visitHistory,
+  medications, clinicalNotes, referrals, invoices, consentForms, documents,
   type User, type InsertUser,
   type Patient, type InsertPatient,
   type Provider, type InsertProvider,
@@ -17,6 +18,12 @@ import {
   type UsgData, type InsertUsgData,
   type LabResult, type InsertLabResult,
   type VisitHistory, type InsertVisitHistory,
+  type Medication, type InsertMedication,
+  type ClinicalNote, type InsertClinicalNote,
+  type Referral, type InsertReferral,
+  type Invoice, type InsertInvoice,
+  type ConsentForm, type InsertConsentForm,
+  type Document, type InsertDocument,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -70,6 +77,38 @@ export interface IStorage {
 
   getVisitHistory(patientId: number): Promise<VisitHistory[]>;
   createVisitHistory(visit: InsertVisitHistory): Promise<VisitHistory>;
+
+  getMedications(patientId: number): Promise<Medication[]>;
+  createMedication(med: InsertMedication): Promise<Medication>;
+  updateMedication(id: number, data: Partial<InsertMedication>): Promise<Medication | undefined>;
+  deleteMedication(id: number): Promise<boolean>;
+
+  getClinicalNotes(patientId: number): Promise<ClinicalNote[]>;
+  createClinicalNote(note: InsertClinicalNote): Promise<ClinicalNote>;
+  updateClinicalNote(id: number, data: Partial<InsertClinicalNote>): Promise<ClinicalNote | undefined>;
+  deleteClinicalNote(id: number): Promise<boolean>;
+
+  getReferrals(patientId: number): Promise<Referral[]>;
+  createReferral(referral: InsertReferral): Promise<Referral>;
+  updateReferral(id: number, data: Partial<InsertReferral>): Promise<Referral | undefined>;
+  deleteReferral(id: number): Promise<boolean>;
+
+  getInvoices(patientId: number): Promise<Invoice[]>;
+  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  updateInvoice(id: number, data: Partial<InsertInvoice>): Promise<Invoice | undefined>;
+  deleteInvoice(id: number): Promise<boolean>;
+
+  getConsentForms(patientId: number): Promise<ConsentForm[]>;
+  createConsentForm(form: InsertConsentForm): Promise<ConsentForm>;
+  updateConsentForm(id: number, data: Partial<InsertConsentForm>): Promise<ConsentForm | undefined>;
+  deleteConsentForm(id: number): Promise<boolean>;
+
+  getDocuments(patientId: number): Promise<Document[]>;
+  createDocument(doc: InsertDocument): Promise<Document>;
+  updateDocument(id: number, data: Partial<InsertDocument>): Promise<Document | undefined>;
+  deleteDocument(id: number): Promise<boolean>;
+
+  getUserByPasscode(passcode: string): Promise<User | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -240,6 +279,125 @@ export class DatabaseStorage implements IStorage {
   async createVisitHistory(visit: InsertVisitHistory): Promise<VisitHistory> {
     const [created] = await db.insert(visitHistory).values(visit).returning();
     return created;
+  }
+
+  async getMedications(patientId: number): Promise<Medication[]> {
+    return db.select().from(medications).where(eq(medications.patientId, patientId));
+  }
+
+  async createMedication(med: InsertMedication): Promise<Medication> {
+    const [created] = await db.insert(medications).values(med).returning();
+    return created;
+  }
+
+  async updateMedication(id: number, data: Partial<InsertMedication>): Promise<Medication | undefined> {
+    const [updated] = await db.update(medications).set(data).where(eq(medications.id, id)).returning();
+    return updated;
+  }
+
+  async deleteMedication(id: number): Promise<boolean> {
+    const [deleted] = await db.delete(medications).where(eq(medications.id, id)).returning();
+    return !!deleted;
+  }
+
+  async getClinicalNotes(patientId: number): Promise<ClinicalNote[]> {
+    return db.select().from(clinicalNotes).where(eq(clinicalNotes.patientId, patientId));
+  }
+
+  async createClinicalNote(note: InsertClinicalNote): Promise<ClinicalNote> {
+    const [created] = await db.insert(clinicalNotes).values(note).returning();
+    return created;
+  }
+
+  async updateClinicalNote(id: number, data: Partial<InsertClinicalNote>): Promise<ClinicalNote | undefined> {
+    const [updated] = await db.update(clinicalNotes).set(data).where(eq(clinicalNotes.id, id)).returning();
+    return updated;
+  }
+
+  async deleteClinicalNote(id: number): Promise<boolean> {
+    const [deleted] = await db.delete(clinicalNotes).where(eq(clinicalNotes.id, id)).returning();
+    return !!deleted;
+  }
+
+  async getReferrals(patientId: number): Promise<Referral[]> {
+    return db.select().from(referrals).where(eq(referrals.patientId, patientId));
+  }
+
+  async createReferral(referral: InsertReferral): Promise<Referral> {
+    const [created] = await db.insert(referrals).values(referral).returning();
+    return created;
+  }
+
+  async updateReferral(id: number, data: Partial<InsertReferral>): Promise<Referral | undefined> {
+    const [updated] = await db.update(referrals).set(data).where(eq(referrals.id, id)).returning();
+    return updated;
+  }
+
+  async deleteReferral(id: number): Promise<boolean> {
+    const [deleted] = await db.delete(referrals).where(eq(referrals.id, id)).returning();
+    return !!deleted;
+  }
+
+  async getInvoices(patientId: number): Promise<Invoice[]> {
+    return db.select().from(invoices).where(eq(invoices.patientId, patientId));
+  }
+
+  async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
+    const [created] = await db.insert(invoices).values(invoice).returning();
+    return created;
+  }
+
+  async updateInvoice(id: number, data: Partial<InsertInvoice>): Promise<Invoice | undefined> {
+    const [updated] = await db.update(invoices).set(data).where(eq(invoices.id, id)).returning();
+    return updated;
+  }
+
+  async deleteInvoice(id: number): Promise<boolean> {
+    const [deleted] = await db.delete(invoices).where(eq(invoices.id, id)).returning();
+    return !!deleted;
+  }
+
+  async getConsentForms(patientId: number): Promise<ConsentForm[]> {
+    return db.select().from(consentForms).where(eq(consentForms.patientId, patientId));
+  }
+
+  async createConsentForm(form: InsertConsentForm): Promise<ConsentForm> {
+    const [created] = await db.insert(consentForms).values(form).returning();
+    return created;
+  }
+
+  async updateConsentForm(id: number, data: Partial<InsertConsentForm>): Promise<ConsentForm | undefined> {
+    const [updated] = await db.update(consentForms).set(data).where(eq(consentForms.id, id)).returning();
+    return updated;
+  }
+
+  async deleteConsentForm(id: number): Promise<boolean> {
+    const [deleted] = await db.delete(consentForms).where(eq(consentForms.id, id)).returning();
+    return !!deleted;
+  }
+
+  async getDocuments(patientId: number): Promise<Document[]> {
+    return db.select().from(documents).where(eq(documents.patientId, patientId));
+  }
+
+  async createDocument(doc: InsertDocument): Promise<Document> {
+    const [created] = await db.insert(documents).values(doc).returning();
+    return created;
+  }
+
+  async updateDocument(id: number, data: Partial<InsertDocument>): Promise<Document | undefined> {
+    const [updated] = await db.update(documents).set(data).where(eq(documents.id, id)).returning();
+    return updated;
+  }
+
+  async deleteDocument(id: number): Promise<boolean> {
+    const [deleted] = await db.delete(documents).where(eq(documents.id, id)).returning();
+    return !!deleted;
+  }
+
+  async getUserByPasscode(passcode: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.password, passcode));
+    return user;
   }
 }
 

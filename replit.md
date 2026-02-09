@@ -42,7 +42,7 @@ Preferred communication style: Simple, everyday language.
 - **Schema Location**: `shared/schema.ts` (shared between client and server)
 - **Migrations**: Drizzle Kit with `drizzle-kit push` for schema sync
 - **Connection**: `pg` Pool via `DATABASE_URL` environment variable
-- **Key Tables**: `users`, `patients`, `providers`, `services`, `appointments`, `labTasks`, `nutritionPlans`, `workouts`, `hormoneReadings`, `pregnancyMetrics`, `follicleData`, `usgData`
+- **Key Tables**: `users`, `patients`, `providers`, `services`, `appointments`, `labTasks`, `nutritionPlans`, `workouts`, `hormoneReadings`, `pregnancyMetrics`, `follicleData`, `usgData`, `labResults`, `visitHistory`, `medications`, `clinicalNotes`, `referrals`, `invoices`, `consentForms`, `documents`
 - **JSON Storage**: Extensive use of `jsonb` columns for flexible medical data (genomics, functional assessments, intervention plans, medical history)
 
 ### API Structure
@@ -61,6 +61,20 @@ All routes are registered in `server/routes.ts`. Key endpoints:
 - `GET/POST /api/pregnancy-metrics` — Pregnancy monitoring data
 - `GET/POST /api/follicle-data` — Fertility tracking (follicle scans)
 - `GET/POST /api/usg-data` — Ultrasound data
+- `GET/POST /api/patients/:id/visit-history` — Patient visit history with SOAP notes
+- `GET/POST/PATCH/DELETE /api/patients/:id/medications` — Medication management
+- `GET/POST/PATCH/DELETE /api/patients/:id/clinical-notes` — Clinical notes
+- `GET/POST/PATCH/DELETE /api/patients/:id/referrals` — Referral tracking
+- `GET/POST /api/patients/:id/invoices`, `PATCH/DELETE /api/invoices/:id` — Billing
+- `GET/POST/PATCH/DELETE /api/patients/:id/consent-forms` — Consent form tracking
+- `GET/POST/PATCH/DELETE /api/patients/:id/documents` — Document metadata
+- `POST /api/auth/passcode` — Unified passcode login (returns role + redirects to appropriate portal)
+
+### Authentication
+- Unified passcode-based login on the Landing page for Clinician and Staff portals
+- Users enter a passcode; API returns their role (clinician/staff) and the frontend redirects accordingly
+- Patient Portal remains open (no passcode required)
+- Default passcodes: dr.priya=1234, dr.ramesh=5678, staff.reception=0000, staff.nurse=1111
 
 ### Storage Layer
 - Abstracted through `IStorage` interface in `server/storage.ts`
