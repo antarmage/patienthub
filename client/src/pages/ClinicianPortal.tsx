@@ -44,7 +44,8 @@ import {
   X,
   ExternalLink,
   Loader2,
-  Sparkle
+  Sparkle,
+  Upload
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -205,6 +206,29 @@ export default function ClinicianPortal() {
     enabled: !!selectedPatient
   });
   const usgData = usgQuery.data || [];
+
+  const visitHistoryQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/visit-history`],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${selectedPatient?.id}/visit-history`);
+      if (!res.ok) throw new Error('Failed to fetch visit history');
+      return res.json();
+    },
+    enabled: !!selectedPatient
+  });
+  const visitHistory = visitHistoryQuery.data || [];
+  const latestVisit = visitHistory.length > 0 ? visitHistory[visitHistory.length - 1] : null;
+
+  const medicationsQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/medications`],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${selectedPatient?.id}/medications`);
+      if (!res.ok) throw new Error('Failed to fetch medications');
+      return res.json();
+    },
+    enabled: !!selectedPatient
+  });
+  const medications = medicationsQuery.data || [];
 
   const labResultsQuery = useQuery({
     queryKey: [`/api/patients/${selectedPatient?.id}/lab-results`],
@@ -2641,196 +2665,251 @@ export default function ClinicianPortal() {
                       </CardContent>
                    </Card>
 
-                   {/* 1. CURRENT VISIT CLINICAL WORKSPACE (SOAP) - EXPANDED */}
+                   {/* 1. CURRENT VISIT CLINICAL WORKSPACE (SOAP) - DYNAMIC */}
                    <Card className="shadow-md border-blue-100 bg-white overflow-hidden">
                       <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center cursor-pointer" onClick={() => setShowDocumentation(!showDocumentation)}>
                          <h3 className="font-bold text-sm text-slate-700 flex items-center gap-2">
                             <ClipboardList className="w-4 h-4 text-blue-600" /> 
                             Current Visit Workspace
-                            {!showDocumentation && <span className="text-xs font-normal text-slate-400 ml-2">(Click to expand documentation)</span>}
+                            {latestVisit && <Badge variant="outline" className="text-[10px] font-normal text-slate-400 ml-2">{new Date(latestVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</Badge>}
+                            {!latestVisit && !showDocumentation && <span className="text-xs font-normal text-slate-400 ml-2">(No visit records yet)</span>}
                          </h3>
                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-slate-400">Auto-save on</span>
+                            {visitHistory.length > 1 && <Badge variant="outline" className="text-[10px] font-normal text-slate-500">{visitHistory.length} visits</Badge>}
                             <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${showDocumentation ? 'rotate-90' : ''}`} />
                          </div>
                       </div>
                       
                       {showDocumentation && (
                          <CardContent className="p-0">
-                            <div className="flex flex-col divide-y divide-slate-100">
-                               
-                               {/* 1. Chief Complaints */}
-                               <div className="p-4 bg-slate-50/30">
-                                  <div className="flex items-center gap-2 mb-2">
-                                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Chief Complaints</span>
-                                     <div className="flex gap-2 ml-2">
-                                        <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-slate-100 font-normal">Unable to conceive</Badge>
-                                        <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-slate-100 font-normal">Irregular ovulation</Badge>
-                                        <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-slate-100 font-normal">Pain</Badge>
-                                     </div>
-                                  </div>
-                                  <Textarea placeholder="Patient's primary concerns..." className="min-h-[60px] text-sm" />
-                               </div>
-
-                               {/* 2. O/E - Vitals & Examination */}
-                               <div className="p-4 grid grid-cols-4 gap-6">
-                                  <div className="col-span-1 space-y-3">
-                                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Vitals</span>
-                                     <div className="space-y-2">
-                                        <div className="grid grid-cols-2 gap-2">
-                                           <div>
-                                              <Label className="text-[10px] text-slate-500">BP</Label>
-                                              <div className="relative">
-                                                 <Input className="h-7 text-xs pr-6" placeholder="120/80" />
-                                                 <Activity className="w-3 h-3 absolute right-2 top-2 text-slate-400" />
-                                              </div>
-                                           </div>
-                                           <div>
-                                              <Label className="text-[10px] text-slate-500">Pulse</Label>
-                                              <div className="relative">
-                                                 <Input className="h-7 text-xs pr-6" placeholder="72" />
-                                                 <Heart className="w-3 h-3 absolute right-2 top-2 text-slate-400" />
-                                              </div>
-                                           </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                           <div>
-                                              <Label className="text-[10px] text-slate-500">Weight</Label>
-                                              <div className="relative">
-                                                 <Input className="h-7 text-xs pr-6" placeholder="kg" />
-                                                 <Scale className="w-3 h-3 absolute right-2 top-2 text-slate-400" />
-                                              </div>
-                                           </div>
-                                           <div>
-                                              <Label className="text-[10px] text-slate-500">BMI</Label>
-                                              <Input className="h-7 text-xs bg-slate-50" readOnly placeholder="--" />
-                                           </div>
-                                        </div>
-                                     </div>
-                                  </div>
-                                  
-                                  <div className="col-span-3">
-                                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Clinical Examination</span>
-                                     <div className="grid grid-cols-3 gap-3">
-                                        <div className="border border-slate-200 rounded p-2">
-                                           <div className="flex items-center justify-between mb-1">
-                                              <span className="text-xs font-medium">Thyroid</span>
-                                              <Checkbox className="h-3 w-3" />
-                                           </div>
-                                           <Input className="h-6 text-[10px] border-none bg-slate-50 px-2" placeholder="Notes..." />
-                                        </div>
-                                        <div className="border border-slate-200 rounded p-2">
-                                           <div className="flex items-center justify-between mb-1">
-                                              <span className="text-xs font-medium">Hirsutism</span>
-                                              <Checkbox className="h-3 w-3" />
-                                           </div>
-                                           <Input className="h-6 text-[10px] border-none bg-slate-50 px-2" placeholder="Score..." />
-                                        </div>
-                                        <div className="border border-slate-200 rounded p-2">
-                                           <div className="flex items-center justify-between mb-1">
-                                              <span className="text-xs font-medium">Pelvic Tenderness</span>
-                                              <Checkbox className="h-3 w-3" />
-                                           </div>
-                                           <Input className="h-6 text-[10px] border-none bg-slate-50 px-2" placeholder="Notes..." />
-                                        </div>
-                                     </div>
-                                  </div>
-                               </div>
-
-                               {/* 3. Medicines & Treatment Plan */}
-                               <div className="p-4">
-                                  <div className="flex items-center justify-between mb-3">
-                                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Rx / Treatment Plan</span>
-                                     <div className="flex gap-2">
-                                        <Badge variant="outline" className="text-[10px] cursor-pointer bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"><Plus className="w-3 h-3 mr-1" /> Letrozole</Badge>
-                                        <Badge variant="outline" className="text-[10px] cursor-pointer bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"><Plus className="w-3 h-3 mr-1" /> Progesterone</Badge>
-                                     </div>
-                                  </div>
-                                  <div className="border border-slate-200 rounded-md overflow-hidden">
-                                     <table className="w-full text-xs text-left">
-                                        <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
-                                           <tr>
-                                              <th className="px-3 py-2 font-medium w-1/3">Drug Name</th>
-                                              <th className="px-3 py-2 font-medium">Dose</th>
-                                              <th className="px-3 py-2 font-medium">Freq</th>
-                                              <th className="px-3 py-2 font-medium">Duration</th>
-                                              <th className="px-3 py-2 font-medium">Instruction</th>
-                                           </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                           <tr>
-                                              <td className="p-2"><Input className="h-7 text-xs border-none focus-visible:ring-0 px-1" placeholder="Search drug..." /></td>
-                                              <td className="p-2"><Input className="h-7 text-xs border-none focus-visible:ring-0 px-1" placeholder="e.g. 5mg" /></td>
-                                              <td className="p-2"><Input className="h-7 text-xs border-none focus-visible:ring-0 px-1" placeholder="OD/BD" /></td>
-                                              <td className="p-2"><Input className="h-7 text-xs border-none focus-visible:ring-0 px-1" placeholder="5 days" /></td>
-                                              <td className="p-2"><Input className="h-7 text-xs border-none focus-visible:ring-0 px-1" placeholder="CD 3-7" /></td>
-                                           </tr>
-                                        </tbody>
-                                     </table>
-                                     <Button variant="ghost" className="w-full text-xs text-slate-400 h-8 hover:text-slate-600">+ Add Medication</Button>
-                                  </div>
-                               </div>
-
-                              {/* 4. Referrals & Lifestyle (NEW) */}
-                              <div className="p-4 bg-slate-50/30">
-                                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-3">Referrals & Recommendations</span>
-                                 <div className="flex items-center gap-4">
-                                    <div className="flex-1">
-                                       <Label className="text-[10px] text-slate-500 mb-1.5 block">Internal/External Referral</Label>
-                                       <Select defaultValue={selectedPatient.referredTo !== "-" ? selectedPatient.referredTo : undefined}>
-                                          <SelectTrigger className="h-8 text-xs bg-white border-slate-200 w-full">
-                                             <SelectValue placeholder="Select Specialty..." />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                             <SelectItem value="Fetal Medicine">Fetal Medicine</SelectItem>
-                                             <SelectItem value="Nutritionist">Nutritionist</SelectItem>
-                                             <SelectItem value="Psychologist">Psychologist</SelectItem>
-                                             <SelectItem value="Endocrinologist">Endocrinologist</SelectItem>
-                                             <SelectItem value="Dietitian">Dietitian</SelectItem>
-                                          </SelectContent>
-                                       </Select>
-                                    </div>
-                                    <div className="flex-1">
-                                       <Label className="text-[10px] text-slate-500 mb-1.5 block">Lifestyle Intervention</Label>
-                                       <div className="flex items-center gap-2 h-8 px-3 bg-white border border-slate-200 rounded-md">
-                                          <Checkbox id="lifestyle-mod-plan" className="h-4 w-4 rounded-full data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500" />
-                                          <label htmlFor="lifestyle-mod-plan" className="text-xs font-medium text-slate-700 cursor-pointer select-none">Prescribe Lifestyle Modification</label>
-                                       </div>
-                                    </div>
+                            {!latestVisit && medications.length === 0 ? (
+                              <div className="p-8 text-center">
+                                 <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                                 <p className="text-sm font-medium text-slate-600 mb-1">No clinical records found</p>
+                                 <p className="text-xs text-slate-400 mb-4">Upload a prescription or add visit notes to get started</p>
+                                 <div className="flex justify-center gap-3">
+                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-blue-200 text-blue-700">
+                                       <Upload className="w-3.5 h-3.5" /> Upload Prescription
+                                    </Button>
+                                    <Button size="sm" className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700">
+                                       <Plus className="w-3.5 h-3.5" /> New Visit Note
+                                    </Button>
                                  </div>
                               </div>
-
-                               {/* 4. Investigation Suggestions */}
-                               <div className="p-4 bg-slate-50/30">
-                                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-3">Order Investigations</span>
-                                  <Tabs defaultValue="hormones" className="w-full">
-                                     <TabsList className="h-7 bg-slate-200/50 mb-3">
-                                        <TabsTrigger value="hormones" className="text-[10px] h-6 px-3">Hormones</TabsTrigger>
-                                        <TabsTrigger value="blood" className="text-[10px] h-6 px-3">Routine Bloods</TabsTrigger>
-                                        <TabsTrigger value="fertility" className="text-[10px] h-6 px-3">Fertility</TabsTrigger>
-                                        <TabsTrigger value="imaging" className="text-[10px] h-6 px-3">Imaging</TabsTrigger>
-                                     </TabsList>
-                                     <TabsContent value="hormones" className="mt-0">
-                                        <div className="flex flex-wrap gap-2">
-                                           {['AMH', 'TSH', 'Prolactin', 'FSH/LH', 'Progesterone', 'Estradiol', 'Testosterone'].map(test => (
-                                              <div key={test} className="flex items-center space-x-2 bg-white border border-slate-200 rounded px-2 py-1.5">
-                                                 <Checkbox id={test} className="h-3.5 w-3.5" />
-                                                 <label htmlFor={test} className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                                                    {test}
-                                                 </label>
-                                              </div>
-                                           ))}
-                                        </div>
-                                     </TabsContent>
-                                  </Tabs>
+                            ) : (
+                            <div className="flex flex-col divide-y divide-slate-100">
+                               
+                               {/* S — Subjective (Symptoms) */}
+                               <div className="p-4 bg-amber-50/30">
+                                  <div className="flex items-center gap-2 mb-2">
+                                     <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">S</Badge>
+                                     <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Subjective (Symptoms)</span>
+                                  </div>
+                                  {latestVisit?.chiefComplaint && (
+                                    <div className="mb-2">
+                                       <span className="text-[10px] text-slate-400 uppercase font-bold">Chief Complaint</span>
+                                       <p className="text-sm text-slate-800 mt-0.5">{latestVisit.chiefComplaint}</p>
+                                    </div>
+                                  )}
+                                  {latestVisit?.subjective ? (
+                                    <p className="text-sm text-slate-700 leading-relaxed">{latestVisit.subjective}</p>
+                                  ) : (
+                                    <Textarea placeholder="Patient's symptoms, complaints, history of present illness..." className="min-h-[60px] text-sm border-amber-200 focus-visible:ring-amber-300" />
+                                  )}
                                </div>
 
-                               {/* 5. Prescription Generator */}
+                               {/* O — Objective (Observations) */}
+                               <div className="p-4 bg-blue-50/30">
+                                  <div className="flex items-center gap-2 mb-2">
+                                     <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">O</Badge>
+                                     <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Objective (Observations)</span>
+                                  </div>
+                                  
+                                  {/* Dynamic vitals from visit or patient */}
+                                  <div className="grid grid-cols-6 gap-2 mb-3">
+                                     {(() => {
+                                       const vitals = latestVisit?.vitals as any || {};
+                                       const vitalItems = [
+                                         { label: 'BP', value: vitals.bp || selectedPatient.bp, unit: 'mmHg' },
+                                         { label: 'Pulse', value: vitals.pulse, unit: 'bpm' },
+                                         { label: 'Weight', value: vitals.weight || selectedPatient.weight, unit: 'kg' },
+                                         { label: 'BMI', value: selectedPatient.height && (vitals.weight || selectedPatient.weight) ? ((vitals.weight || selectedPatient.weight) / Math.pow(parseFloat(selectedPatient.height || '0') / 100, 2)).toFixed(1) : null },
+                                         { label: 'Hb', value: vitals.hb || selectedPatient.hb, unit: 'g/dL' },
+                                         { label: 'SpO2', value: vitals.spo2, unit: '%' },
+                                       ];
+                                       return vitalItems.map((v, i) => (
+                                         <div key={i} className="bg-white p-2 rounded border border-slate-100 text-center">
+                                           <div className="text-[10px] text-slate-400 uppercase font-bold">{v.label}</div>
+                                           <div className="text-sm font-bold text-slate-800">{v.value || '—'}{v.value && v.unit ? <span className="text-[10px] font-normal text-slate-400 ml-0.5">{v.unit}</span> : ''}</div>
+                                         </div>
+                                       ));
+                                     })()}
+                                  </div>
+
+                                  {/* Dynamic cycle info */}
+                                  <div className="grid grid-cols-3 gap-3 mb-3">
+                                     <div className="bg-white p-2 rounded border border-slate-100">
+                                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Cycle Phase</span>
+                                        <span className="text-xs font-semibold text-slate-700">
+                                          {careMode === 'pregnancy' ? (() => {
+                                            if (selectedPatient.lmp) {
+                                              const weeks = Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7)));
+                                              return weeks < 13 ? 'Trimester 1' : weeks < 27 ? 'Trimester 2' : 'Trimester 3';
+                                            }
+                                            return '—';
+                                          })() : (() => {
+                                            const cd = selectedPatient.cycleDay || 0;
+                                            if (cd <= 5) return 'Menstrual';
+                                            if (cd <= 13) return 'Follicular';
+                                            if (cd <= 16) return 'Ovulatory';
+                                            return 'Luteal';
+                                          })()}
+                                        </span>
+                                     </div>
+                                     <div className="bg-white p-2 rounded border border-slate-100">
+                                        <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                                          {careMode === 'pregnancy' ? 'Gestational Age' : 'Cycle Day'}
+                                        </span>
+                                        <span className="text-xs font-semibold text-slate-700">
+                                          {careMode === 'pregnancy' ? (() => {
+                                            if (selectedPatient.lmp) {
+                                              const diffDays = Math.max(0, Math.floor((new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24)));
+                                              return `${Math.floor(diffDays/7)}w ${diffDays%7}d`;
+                                            }
+                                            return '—';
+                                          })() : `Day ${selectedPatient.cycleDay || '—'}`}
+                                        </span>
+                                     </div>
+                                     <div className="bg-white p-2 rounded border border-slate-100">
+                                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Genomic Risk</span>
+                                        <span className="text-xs font-semibold text-slate-700">{selectedPatient.condition || '—'}</span>
+                                     </div>
+                                  </div>
+
+                                  {latestVisit?.objective ? (
+                                    <p className="text-sm text-slate-700 leading-relaxed">{latestVisit.objective}</p>
+                                  ) : (
+                                    <Textarea placeholder="Clinical findings, examination notes, test results..." className="min-h-[50px] text-sm border-blue-200 focus-visible:ring-blue-300" />
+                                  )}
+                               </div>
+
+                               {/* A — Assessment */}
+                               <div className="p-4 bg-emerald-50/30">
+                                  <div className="flex items-center gap-2 mb-2">
+                                     <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">A</Badge>
+                                     <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Assessment</span>
+                                  </div>
+                                  {latestVisit?.assessment ? (
+                                    <div className="bg-white border border-emerald-100 rounded p-3">
+                                       <p className="text-sm text-slate-700 leading-relaxed italic">"{latestVisit.assessment}"</p>
+                                    </div>
+                                  ) : latestVisit?.diagnosis ? (
+                                    <div className="bg-white border border-emerald-100 rounded p-3">
+                                       <span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Diagnosis</span>
+                                       <p className="text-sm text-slate-700">{latestVisit.diagnosis}</p>
+                                    </div>
+                                  ) : (
+                                    <Textarea placeholder="Clinical assessment, differential diagnosis..." className="min-h-[50px] text-sm border-emerald-200 focus-visible:ring-emerald-300" />
+                                  )}
+                               </div>
+
+                               {/* P — Plan */}
+                               <div className="p-4 bg-purple-50/30">
+                                  <div className="flex items-center gap-2 mb-2">
+                                     <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">P</Badge>
+                                     <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Plan</span>
+                                  </div>
+                                  
+                                  {/* Plan notes */}
+                                  {latestVisit?.planNotes ? (
+                                    <div className="bg-white border border-purple-100 rounded p-3 mb-3">
+                                       <p className="text-sm text-slate-700 leading-relaxed">{latestVisit.planNotes}</p>
+                                    </div>
+                                  ) : !medications.length && !latestVisit?.prescriptions && !latestVisit?.labsOrdered ? (
+                                    <Textarea placeholder="Treatment plan, prescriptions, follow-up..." className="min-h-[50px] text-sm border-purple-200 focus-visible:ring-purple-300 mb-3" />
+                                  ) : null}
+
+                                  {/* Dynamic medications table */}
+                                  {medications.length > 0 && (
+                                    <div className="mb-3">
+                                       <span className="text-[10px] text-slate-500 uppercase font-bold block mb-2">Active Medications</span>
+                                       <div className="border border-slate-200 rounded-md overflow-hidden">
+                                          <table className="w-full text-xs text-left">
+                                             <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                                                <tr>
+                                                   <th className="px-3 py-1.5 font-medium">Drug</th>
+                                                   <th className="px-3 py-1.5 font-medium">Dose</th>
+                                                   <th className="px-3 py-1.5 font-medium">Frequency</th>
+                                                   <th className="px-3 py-1.5 font-medium">Status</th>
+                                                   <th className="px-3 py-1.5 font-medium">Notes</th>
+                                                </tr>
+                                             </thead>
+                                             <tbody className="divide-y divide-slate-100">
+                                                {medications.map((med: any) => (
+                                                  <tr key={med.id}>
+                                                     <td className="px-3 py-2 font-medium text-slate-800">{med.name}</td>
+                                                     <td className="px-3 py-2 text-slate-600">{med.dose || '—'}</td>
+                                                     <td className="px-3 py-2 text-slate-600">{med.frequency || '—'}</td>
+                                                     <td className="px-3 py-2">
+                                                       <Badge variant="outline" className={`text-[10px] ${med.status === 'active' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>
+                                                         {med.status || 'active'}
+                                                       </Badge>
+                                                     </td>
+                                                     <td className="px-3 py-2 text-slate-500">{med.notes || '—'}</td>
+                                                  </tr>
+                                                ))}
+                                             </tbody>
+                                          </table>
+                                       </div>
+                                    </div>
+                                  )}
+
+                                  {/* Dynamic prescriptions from visit */}
+                                  {latestVisit?.prescriptions && Array.isArray(latestVisit.prescriptions) && (latestVisit.prescriptions as any[]).length > 0 && (
+                                    <div className="mb-3">
+                                       <span className="text-[10px] text-slate-500 uppercase font-bold block mb-2">Visit Prescriptions</span>
+                                       <div className="flex flex-wrap gap-2">
+                                          {(latestVisit.prescriptions as any[]).map((rx: any, i: number) => (
+                                            <Badge key={i} variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">
+                                              {typeof rx === 'string' ? rx : `${rx.name || rx.drug} ${rx.dose || ''}`}
+                                            </Badge>
+                                          ))}
+                                       </div>
+                                    </div>
+                                  )}
+
+                                  {/* Dynamic labs ordered */}
+                                  {latestVisit?.labsOrdered && Array.isArray(latestVisit.labsOrdered) && (latestVisit.labsOrdered as any[]).length > 0 && (
+                                    <div className="mb-3">
+                                       <span className="text-[10px] text-slate-500 uppercase font-bold block mb-2">Labs Ordered</span>
+                                       <div className="flex flex-wrap gap-2">
+                                          {(latestVisit.labsOrdered as any[]).map((lab: any, i: number) => (
+                                            <Badge key={i} variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+                                              {typeof lab === 'string' ? lab : lab.name || lab.test}
+                                            </Badge>
+                                          ))}
+                                       </div>
+                                    </div>
+                                  )}
+
+                                  {/* Follow-up */}
+                                  {latestVisit?.followUpPlan && (
+                                    <div className="bg-white border border-slate-100 rounded p-2 mt-2">
+                                       <span className="text-[10px] text-slate-400 uppercase font-bold block">Follow-up</span>
+                                       <p className="text-xs text-slate-700 mt-0.5">{latestVisit.followUpPlan}</p>
+                                    </div>
+                                  )}
+                               </div>
+
+                               {/* Footer actions */}
                                <div className="p-4 bg-slate-100 flex items-center justify-between">
                                   <div className="text-xs text-slate-500">
                                      <span className="font-semibold text-slate-700">{providerName}</span> • {providerSpecialty}
                                   </div>
                                   <div className="flex gap-2">
+                                     <Button variant="outline" size="sm" className="h-8 gap-2 bg-white text-xs border-slate-300">
+                                        <Upload className="w-3.5 h-3.5" /> Upload Prescription
+                                     </Button>
                                      <Button variant="outline" size="sm" className="h-8 gap-2 bg-white text-xs border-slate-300">
                                         <Printer className="w-3.5 h-3.5" /> Print
                                      </Button>
@@ -2841,47 +2920,76 @@ export default function ClinicianPortal() {
                                </div>
 
                             </div>
+                            )}
                          </CardContent>
                       )}
                       
-                      {/* Collapsed Summary View (Always Visible if Collapsed) */}
+                      {/* Collapsed Summary View */}
                       {!showDocumentation && (
                          <CardContent className="p-0">
+                            {!latestVisit && medications.length === 0 ? (
+                              <div className="p-4 text-center">
+                                 <p className="text-xs text-slate-400">No visit records. Click to add notes or upload a prescription.</p>
+                              </div>
+                            ) : (
                             <div className="grid grid-cols-4 divide-x divide-slate-100">
                                {/* Subjective */}
-                               <div className="p-4 space-y-3">
-                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">S (Symptoms)</span> <Button variant="ghost" size="icon" className="h-5 w-5"><Sparkles className="w-3 h-3 text-blue-400" /></Button></div>
-                                  <div className="space-y-2">
-                                     <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100">PMS severity score: 8/10</div>
-                                     <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100">Sleep quality: Poor</div>
-                                  </div>
+                               <div className="p-3 space-y-2">
+                                  <span className="text-[10px] font-bold text-amber-600 uppercase">S (Symptoms)</span>
+                                  {latestVisit?.chiefComplaint ? (
+                                    <p className="text-xs text-slate-700 line-clamp-3">{latestVisit.chiefComplaint}</p>
+                                  ) : latestVisit?.subjective ? (
+                                    <p className="text-xs text-slate-700 line-clamp-3">{latestVisit.subjective}</p>
+                                  ) : (
+                                    <p className="text-xs text-slate-400 italic">No symptoms recorded</p>
+                                  )}
                                </div>
                                {/* Objective */}
-                               <div className="p-4 space-y-3">
-                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">O (Observations)</span></div>
-                                  <div className="space-y-2 text-xs text-slate-600">
-                                     <div className="flex justify-between"><span>Cycle Phase:</span> <span className="font-medium">Luteal</span></div>
-                                     <div className="flex justify-between"><span>Luteal Length:</span> <span className="font-medium text-rose-600">9 days</span></div>
-                                     <div className="flex justify-between"><span>Genomic Risk:</span> <span className="font-medium text-amber-600">PCOS</span></div>
+                               <div className="p-3 space-y-2">
+                                  <span className="text-[10px] font-bold text-blue-600 uppercase">O (Observations)</span>
+                                  <div className="space-y-1 text-xs text-slate-600">
+                                     <div className="flex justify-between"><span>Phase:</span> <span className="font-medium">{(() => {
+                                       if (careMode === 'pregnancy') return 'Pregnancy';
+                                       const cd = selectedPatient.cycleDay || 0;
+                                       if (cd <= 5) return 'Menstrual';
+                                       if (cd <= 13) return 'Follicular';
+                                       if (cd <= 16) return 'Ovulatory';
+                                       return 'Luteal';
+                                     })()}</span></div>
+                                     {selectedPatient.bp && <div className="flex justify-between"><span>BP:</span> <span className="font-medium">{selectedPatient.bp}</span></div>}
+                                     {selectedPatient.condition && <div className="flex justify-between"><span>Risk:</span> <span className="font-medium text-amber-600">{selectedPatient.condition}</span></div>}
                                   </div>
                                </div>
-                               {/* Assessment (AI) */}
-                               <div className="p-4 space-y-3 bg-blue-50/30">
-                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-blue-600">A (Assessment)</span> <Sparkles className="w-3 h-3 text-blue-500" /></div>
-                                  <p className="text-xs leading-relaxed text-slate-700">
-                                     "Recurrent short luteal phase with likely progesterone insufficiency. PMS exacerbated by reported sleep deficit."
-                                  </p>
+                               {/* Assessment */}
+                               <div className="p-3 space-y-2 bg-emerald-50/30">
+                                  <span className="text-[10px] font-bold text-emerald-600 uppercase">A (Assessment)</span>
+                                  {latestVisit?.assessment ? (
+                                    <p className="text-xs leading-relaxed text-slate-700 line-clamp-3 italic">"{latestVisit.assessment}"</p>
+                                  ) : latestVisit?.diagnosis ? (
+                                    <p className="text-xs text-slate-700 line-clamp-3">{latestVisit.diagnosis}</p>
+                                  ) : (
+                                    <p className="text-xs text-slate-400 italic">No assessment yet</p>
+                                  )}
                                </div>
                                {/* Plan */}
-                               <div className="p-4 space-y-3">
-                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">P (Plan)</span></div>
-                                  <div className="space-y-2">
-                                     <div className="flex items-center gap-2"><Checkbox id="p1" defaultChecked /> <label htmlFor="p1" className="text-xs text-slate-700">Start luteal progesterone</label></div>
-                                     <div className="flex items-center gap-2"><Checkbox id="p2" /> <label htmlFor="p2" className="text-xs text-slate-700">Order Day 21 labs</label></div>
-                                  </div>
-                                  <Button size="sm" className="w-full h-7 text-xs bg-blue-600 hover:bg-blue-700 mt-2" onClick={() => setShowDocumentation(true)}>Full Note & Rx</Button>
+                               <div className="p-3 space-y-2">
+                                  <span className="text-[10px] font-bold text-purple-600 uppercase">P (Plan)</span>
+                                  {medications.length > 0 ? (
+                                    <div className="space-y-1">
+                                       {medications.slice(0, 3).map((med: any) => (
+                                         <div key={med.id} className="text-xs text-slate-700 truncate">{med.name} {med.dose || ''}</div>
+                                       ))}
+                                       {medications.length > 3 && <span className="text-[10px] text-slate-400">+{medications.length - 3} more</span>}
+                                    </div>
+                                  ) : latestVisit?.planNotes ? (
+                                    <p className="text-xs text-slate-700 line-clamp-3">{latestVisit.planNotes}</p>
+                                  ) : (
+                                    <p className="text-xs text-slate-400 italic">No plan recorded</p>
+                                  )}
+                                  <Button size="sm" className="w-full h-6 text-[10px] bg-blue-600 hover:bg-blue-700 mt-1" onClick={() => setShowDocumentation(true)}>Expand</Button>
                                </div>
                             </div>
+                            )}
                          </CardContent>
                       )}
                    </Card>
