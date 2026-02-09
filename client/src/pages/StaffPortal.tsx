@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
   Users, 
   Activity, 
@@ -33,7 +33,13 @@ import {
   Phone,
   Mail,
   MessageSquare,
-  ArrowRight
+  ArrowRight,
+  Upload,
+  Camera,
+  Eye,
+  Loader2,
+  X,
+  Image as ImageIcon
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -61,6 +67,280 @@ import { Separator } from "@/components/ui/separator";
 
 
 import { Link, useLocation } from "wouter";
+
+function UploadRecordsDialog({ isOpen, onClose, patient }: { isOpen: boolean; onClose: () => void; patient: any }) {
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string; preview: string; type: string } | null>(null);
+  const [ocrResult, setOcrResult] = useState<any>(null);
+  const [activeDocTab, setActiveDocTab] = useState("prescription");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const ocrMutation = useMutation({
+    mutationFn: async (imageData: { image: string; mimeType: string }) => {
+      const res = await fetch('/api/ocr/prescription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(imageData),
+      });
+      if (!res.ok) throw new Error('OCR processing failed');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setOcrResult(data.data);
+    },
+  });
+
+  const handleFileSelect = useCallback((file: File) => {
+    const maxSize = 10 * 1024 * 1024;
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+    
+    if (file.size > maxSize) {
+      alert('File is too large. Maximum size is 10MB.');
+      return;
+    }
+    if (!allowedTypes.includes(file.type)) {
+      alert('Unsupported file type. Please upload JPG, PNG, or PDF files.');
+      return;
+    }
+
+    const sizeKB = (file.size / 1024).toFixed(1);
+    const sizeStr = file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${sizeKB} KB`;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      setUploadedFile({
+        name: file.name,
+        size: sizeStr,
+        preview: base64,
+        type: file.type,
+      });
+      setOcrResult(null);
+      
+      if (activeDocTab === 'prescription') {
+        ocrMutation.mutate({ image: base64, mimeType: file.type });
+      }
+    };
+    reader.readAsDataURL(file);
+  }, [activeDocTab]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelect(file);
+  }, [handleFileSelect]);
+
+  const resetDialog = () => {
+    setUploadedFile(null);
+    setOcrResult(null);
+    setActiveDocTab("prescription");
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={resetDialog}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-indigo-600" />
+            Upload Patient Records
+          </DialogTitle>
+          <DialogDescription>
+            Attach external medical documents for <span className="font-bold text-slate-900">{patient?.name}</span>
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs value={activeDocTab} onValueChange={(v) => { setActiveDocTab(v); setUploadedFile(null); setOcrResult(null); }} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="prescription" data-testid="tab-prescription">
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Prescriptions
+            </TabsTrigger>
+            <TabsTrigger value="blood" data-testid="tab-blood">Blood Reports</TabsTrigger>
+            <TabsTrigger value="usg" data-testid="tab-usg">USG / Scans</TabsTrigger>
+          </TabsList>
+
+          {activeDocTab === 'prescription' && (
+            <div className="mt-2 px-1">
+              <div className="flex items-center gap-2 p-2 bg-indigo-50 border border-indigo-100 rounded-lg">
+                <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+                <p className="text-xs text-indigo-700 font-medium">AI-powered handwriting recognition will automatically read prescriptions</p>
+              </div>
+            </div>
+          )}
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf"
+            className="hidden"
+            data-testid="input-file-upload"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileSelect(file);
+            }}
+          />
+
+          {!uploadedFile ? (
+            <div
+              className="mt-4 p-8 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-slate-50 hover:bg-indigo-50/50 hover:border-indigo-300 transition-colors cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
+              data-testid="drop-zone-upload"
+            >
+              <div className="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center mb-3">
+                <Upload className="w-7 h-7 text-indigo-500" />
+              </div>
+              <p className="text-sm font-medium text-slate-900">Click to upload or drag and drop</p>
+              <p className="text-xs text-slate-500 mt-1">JPG, PNG, or PDF (max 10MB)</p>
+              {activeDocTab === 'prescription' && (
+                <p className="text-xs text-indigo-600 font-medium mt-2">Handwritten prescriptions will be automatically read</p>
+              )}
+            </div>
+          ) : (
+            <div className="mt-4 space-y-4">
+              <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-indigo-50 rounded flex items-center justify-center">
+                      <ImageIcon className="w-4 h-4 text-indigo-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">{uploadedFile.name}</p>
+                      <p className="text-[10px] text-slate-400">{uploadedFile.size}</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-rose-500" onClick={() => { setUploadedFile(null); setOcrResult(null); }} data-testid="btn-remove-file">
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {uploadedFile.preview && uploadedFile.type.startsWith('image/') && (
+                  <div className="p-3 bg-white flex justify-center">
+                    <img src={uploadedFile.preview} alt="Preview" className="max-h-48 rounded border border-slate-100 object-contain" />
+                  </div>
+                )}
+              </div>
+
+              {activeDocTab === 'prescription' && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-indigo-600" />
+                    <Label className="text-xs font-bold text-indigo-700 uppercase tracking-wider">AI Prescription Reading</Label>
+                    {ocrMutation.isPending && <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />}
+                  </div>
+
+                  {ocrMutation.isPending && (
+                    <div className="p-6 bg-indigo-50/50 border border-indigo-100 rounded-lg flex flex-col items-center gap-3">
+                      <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                      <p className="text-sm font-medium text-indigo-700">Reading handwritten prescription...</p>
+                      <p className="text-xs text-indigo-500">AI is analyzing the document</p>
+                    </div>
+                  )}
+
+                  {ocrMutation.isError && (
+                    <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg">
+                      <p className="text-sm font-medium text-rose-700">Could not read the prescription. Please try a clearer image.</p>
+                      <Button size="sm" variant="outline" className="mt-2 text-xs border-rose-200 text-rose-600" onClick={() => ocrMutation.mutate({ image: uploadedFile.preview, mimeType: uploadedFile.type })} data-testid="btn-retry-ocr">
+                        Try Again
+                      </Button>
+                    </div>
+                  )}
+
+                  {ocrResult && (
+                    <div className="bg-white border border-indigo-100 rounded-lg overflow-hidden">
+                      <div className="p-3 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
+                        <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Extracted Information</span>
+                        <Badge className={`text-[10px] ${ocrResult.confidence === 'high' ? 'bg-emerald-100 text-emerald-700' : ocrResult.confidence === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>
+                          {ocrResult.confidence === 'high' ? 'High Confidence' : ocrResult.confidence === 'medium' ? 'Medium Confidence' : 'Low Confidence'}
+                        </Badge>
+                      </div>
+
+                      <div className="p-4 space-y-4">
+                        {ocrResult.doctorName && (
+                          <div className="flex gap-3">
+                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Doctor</span>
+                            <span className="text-sm text-slate-800">{ocrResult.doctorName}</span>
+                          </div>
+                        )}
+                        {ocrResult.date && (
+                          <div className="flex gap-3">
+                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Date</span>
+                            <span className="text-sm text-slate-800">{ocrResult.date}</span>
+                          </div>
+                        )}
+                        {ocrResult.diagnosis && (
+                          <div className="flex gap-3">
+                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Diagnosis</span>
+                            <span className="text-sm text-slate-800 font-medium">{ocrResult.diagnosis}</span>
+                          </div>
+                        )}
+
+                        {ocrResult.medications?.length > 0 && (
+                          <div className="space-y-2">
+                            <span className="text-xs font-bold text-slate-500 uppercase">Medications</span>
+                            <div className="space-y-2">
+                              {ocrResult.medications.map((med: any, i: number) => (
+                                <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-100" data-testid={`medication-item-${i}`}>
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <Pill className="w-4 h-4 text-indigo-500 shrink-0" />
+                                      <span className="text-sm font-bold text-slate-900">{med.name}</span>
+                                    </div>
+                                    {med.dosage && <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">{med.dosage}</Badge>}
+                                  </div>
+                                  <div className="ml-6 mt-1.5 space-y-0.5">
+                                    {med.frequency && <p className="text-xs text-slate-600"><span className="font-medium">Frequency:</span> {med.frequency}</p>}
+                                    {med.duration && <p className="text-xs text-slate-600"><span className="font-medium">Duration:</span> {med.duration}</p>}
+                                    {med.instructions && <p className="text-xs text-slate-500 italic">{med.instructions}</p>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {ocrResult.notes && (
+                          <div className="flex gap-3">
+                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Notes</span>
+                            <span className="text-sm text-slate-700">{ocrResult.notes}</span>
+                          </div>
+                        )}
+
+                        {ocrResult.rawText && (
+                          <details className="mt-2">
+                            <summary className="text-xs font-bold text-slate-400 uppercase cursor-pointer hover:text-slate-600">Raw Text</summary>
+                            <pre className="mt-2 p-3 bg-slate-50 rounded text-xs text-slate-600 whitespace-pre-wrap border border-slate-100 max-h-32 overflow-y-auto">{ocrResult.rawText}</pre>
+                          </details>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="mt-4">
+            <Label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Notes / Description</Label>
+            <Textarea placeholder="Add any relevant details about these documents..." className="h-20" data-testid="input-upload-notes" />
+          </div>
+        </Tabs>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={resetDialog} data-testid="btn-cancel-upload">Cancel</Button>
+          <Button
+            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            disabled={!uploadedFile || ocrMutation.isPending}
+            onClick={resetDialog}
+            data-testid="btn-confirm-upload"
+          >
+            {ocrMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</> : 'Upload Documents'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function StaffPortal() {
   const [_, setLocation] = useLocation();
@@ -2131,61 +2411,11 @@ export default function StaffPortal() {
             </Dialog>
 
             {/* Upload Records Dialog */}
-            <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-                <DialogContent className="max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <FileText className="w-5 h-5 text-indigo-600" /> 
-                            Upload Patient Records
-                        </DialogTitle>
-                        <DialogDescription>
-                            Attach external medical documents for <span className="font-bold text-slate-900">{selectedPatientForUpload?.name}</span>
-                        </DialogDescription>
-                    </DialogHeader>
-                    
-                    <Tabs defaultValue="prescription" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="prescription">Prescriptions</TabsTrigger>
-                            <TabsTrigger value="blood">Blood Reports</TabsTrigger>
-                            <TabsTrigger value="usg">USG / Scans</TabsTrigger>
-                        </TabsList>
-                        
-                        <div className="mt-4 p-8 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
-                             <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-3">
-                                <Sparkles className="w-6 h-6 text-indigo-500" />
-                             </div>
-                             <p className="text-sm font-medium text-slate-900">Click to upload or drag and drop</p>
-                             <p className="text-xs text-slate-500 mt-1">PDF, JPG, or PNG (max 10MB)</p>
-                        </div>
-
-                        <div className="mt-4 space-y-2">
-                            <Label className="text-xs font-bold text-slate-500 uppercase">Uploaded Files</Label>
-                            <div className="bg-white border border-slate-200 rounded-lg divide-y divide-slate-100">
-                                <div className="p-3 flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 bg-red-50 rounded flex items-center justify-center text-red-600 font-bold text-xs">PDF</div>
-                                        <div>
-                                            <p className="text-sm font-medium text-slate-800">Previous_Prescription.pdf</p>
-                                            <p className="text-[10px] text-slate-400">2.4 MB • Uploading...</p>
-                                        </div>
-                                    </div>
-                                    <Progress value={65} className="w-20 h-1.5" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-4">
-                            <Label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Notes / Description</Label>
-                            <Textarea placeholder="Add any relevant details about these documents..." className="h-20" />
-                        </div>
-                    </Tabs>
-
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Cancel</Button>
-                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setIsUploadOpen(false)}>Upload Documents</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <UploadRecordsDialog
+                isOpen={isUploadOpen}
+                onClose={() => { setIsUploadOpen(false); }}
+                patient={selectedPatientForUpload}
+            />
 
             {/* Onboarding Dialog */}
             <Dialog open={isOnboardingOpen} onOpenChange={setIsOnboardingOpen}>

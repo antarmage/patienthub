@@ -18,7 +18,7 @@ export function registerOcrRoutes(app: Express): void {
         return res.status(400).json({ error: "Image data is required" });
       }
 
-      const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+      const base64Data = image.replace(/^data:[^;]+;base64,/, "");
 
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
