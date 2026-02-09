@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { registerOcrRoutes } from "./replit_integrations/ocr";
+import { getUncachableGoogleSheetClient } from "./google-sheets";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -409,6 +410,154 @@ export async function registerRoutes(
       { month: 'May', acne: 4, hirsutism: 5, weight: 71 },
       { month: 'Jun', acne: 3, hirsutism: 5, weight: 70 },
     ]);
+  });
+
+  app.post("/api/google-sheets/sync", async (_req, res) => {
+    try {
+      const sheets = await getUncachableGoogleSheetClient();
+      const spreadsheetId = "1mj3hkqjoQFrckIGC9Y0Jjlh6kYIYPHBVuPKAl7k-bxo";
+
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "'Form Responses 1'!A:R",
+      });
+
+      const rows = response.data.values || [];
+      if (rows.length < 2) {
+        return res.json({ imported: 0, skipped: 0, errors: [], message: "No data rows found" });
+      }
+
+      const headers = rows[0];
+      const dataRows = rows.slice(1);
+
+      const colIndex = (name: string) => {
+        const idx = headers.findIndex((h: string) => h.toLowerCase().trim().includes(name.toLowerCase()));
+        return idx;
+      };
+
+      const nameIdx = colIndex("name");
+      const phoneIdx = colIndex("phone");
+      const emailIdx = colIndex("email");
+      const addressIdx = colIndex("address");
+      const itemsIdx = colIndex("items");
+      const typeIdx = colIndex("patient type");
+      const lmpIdx = colIndex("lmp");
+      const heightIdx = colIndex("height");
+      const bpIdx = colIndex("bp");
+      const weightIdx = colIndex("weight");
+      const ageIdx = colIndex("age");
+      const timestampIdx = colIndex("timestamp");
+
+      const existingPatients = await storage.getPatients();
+      const existingByPhone = new Map<string, number>();
+      const existingByName = new Map<string, number>();
+      for (const p of existingPatients) {
+        if (p.phone) existingByPhone.set(p.phone.replace(/\D/g, ""), p.id);
+        existingByName.set(p.name.toLowerCase().trim(), p.id);
+      }
+
+      let imported = 0;
+      let updated = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i];
+        const val = (idx: number) => (idx >= 0 && idx < row.length ? (row[idx] || "").trim() : "");
+
+        const name = val(nameIdx);
+        if (!name) {
+          skipped++;
+          continue;
+        }
+
+        const phone = val(phoneIdx).replace(/\D/g, "");
+        const email = val(emailIdx);
+        const address = val(addressIdx);
+        const patientType = val(typeIdx);
+        const lmp = val(lmpIdx);
+        const height = val(heightIdx);
+        const bp = val(bpIdx);
+        const weightStr = val(weightIdx);
+        const ageStr = val(ageIdx);
+        const timestamp = val(timestampIdx);
+        const items = val(itemsIdx);
+
+        const weight = weightStr ? parseFloat(weightStr.replace(/[^\d.]/g, "")) : undefined;
+        const age = ageStr ? parseInt(ageStr.replace(/\D/g, ""), 10) : undefined;
+
+        let existingId = phone ? existingByPhone.get(phone) : undefined;
+        if (!existingId) {
+          existingId = existingByName.get(name.toLowerCase().trim());
+        }
+
+        try {
+          if (existingId) {
+            await storage.updatePatient(existingId, {
+              phone: phone || undefined,
+              email: email || undefined,
+              address: address || undefined,
+              type: patientType || undefined,
+              lmp: lmp || undefined,
+              height: height || undefined,
+              bp: bp || undefined,
+              weight: weight && !isNaN(weight) ? weight : undefined,
+              lastVisit: timestamp || undefined,
+              focus: items || undefined,
+            });
+            updated++;
+          } else {
+            const patient = await storage.createPatient({
+              name,
+              age: age && !isNaN(age) ? age : 0,
+              phone: phone || undefined,
+              email: email || undefined,
+              address: address || undefined,
+              type: patientType || undefined,
+              lmp: lmp || undefined,
+              height: height || undefined,
+              bp: bp || undefined,
+              weight: weight && !isNaN(weight) ? weight : undefined,
+              lastVisit: timestamp || undefined,
+              focus: items || undefined,
+              status: "active",
+            });
+            if (phone) existingByPhone.set(phone, patient.id);
+            existingByName.set(name.toLowerCase().trim(), patient.id);
+            imported++;
+          }
+        } catch (err: any) {
+          errors.push(`Row ${i + 2}: ${name} - ${err.message}`);
+        }
+      }
+
+      res.json({
+        imported,
+        updated,
+        skipped,
+        total: dataRows.length,
+        errors: errors.slice(0, 10),
+        message: `Sync complete: ${imported} new patients imported, ${updated} existing updated, ${skipped} skipped`,
+      });
+    } catch (err: any) {
+      console.error("Google Sheets sync error:", err);
+      res.status(500).json({ error: "Failed to sync from Google Sheets: " + err.message });
+    }
+  });
+
+  app.get("/api/google-sheets/status", async (_req, res) => {
+    try {
+      const sheets = await getUncachableGoogleSheetClient();
+      const spreadsheetId = "1mj3hkqjoQFrckIGC9Y0Jjlh6kYIYPHBVuPKAl7k-bxo";
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "'Form Responses 1'!A:A",
+      });
+      const rowCount = (response.data.values?.length || 1) - 1;
+      res.json({ connected: true, rowCount });
+    } catch (err: any) {
+      res.json({ connected: false, rowCount: 0, error: err.message });
+    }
   });
 
   return httpServer;

@@ -39,7 +39,8 @@ import {
   Eye,
   Loader2,
   X,
-  Image as ImageIcon
+  Image as ImageIcon,
+  RefreshCw
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -588,6 +589,33 @@ export default function StaffPortal() {
   const [logData, setLogData] = useState<{ visits: any[], medications: any[], notes: any[], appointments: any[], protocols: any[] }>({ visits: [], medications: [], notes: [], appointments: [], protocols: [] });
   const [logLoading, setLogLoading] = useState(false);
   const [logTab, setLogTab] = useState("all");
+
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<any>(null);
+  const [sheetStatus, setSheetStatus] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/google-sheets/status')
+      .then(r => r.json())
+      .then(data => setSheetStatus(data))
+      .catch(() => setSheetStatus({ connected: false, rowCount: 0 }));
+  }, []);
+
+  const handleSheetSync = async () => {
+    setIsSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch('/api/google-sheets/sync', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Sync failed');
+      setSyncResult(data);
+      patientsQuery.refetch();
+    } catch (err: any) {
+      setSyncResult({ error: err.message });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const openViewLog = async (patient: any) => {
     setSelectedPatientForLog(patient);
@@ -2279,6 +2307,49 @@ export default function StaffPortal() {
                                             </div>
                                         ))}
                                     </div>
+                                </CardContent>
+                            </Card>
+
+                             {/* Google Sheets Sync */}
+                             <Card className="shadow-sm border-slate-200 bg-blue-50/30">
+                                <CardHeader className="py-3 border-b border-blue-100 bg-blue-50/50">
+                                    <div className="flex items-center gap-2">
+                                        <FileText className="w-4 h-4 text-blue-600" />
+                                        <CardTitle className="text-sm font-bold text-blue-900 uppercase tracking-wide">Google Sheets Import</CardTitle>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-4 space-y-3">
+                                    <div className="text-xs text-slate-600">
+                                        <p>Import patient data from the clinic's Google Sheet registration form.</p>
+                                        {sheetStatus && (
+                                            <div className="mt-2 flex items-center gap-2">
+                                                <span className={`w-2 h-2 rounded-full ${sheetStatus.connected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                                                <span>{sheetStatus.connected ? `${sheetStatus.rowCount} records available` : 'Not connected'}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {syncResult && (
+                                        <div className={`p-2 rounded text-xs ${syncResult.error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`} data-testid="sync-result">
+                                            {syncResult.error ? syncResult.error : syncResult.message}
+                                            {syncResult.errors && syncResult.errors.length > 0 && (
+                                                <div className="mt-1 text-[10px] text-amber-700">
+                                                    {syncResult.errors.slice(0, 3).map((e: string, i: number) => <div key={i}>{e}</div>)}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    <Button 
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs h-9"
+                                        onClick={handleSheetSync}
+                                        disabled={isSyncing}
+                                        data-testid="button-sync-sheets"
+                                    >
+                                        {isSyncing ? (
+                                            <><RefreshCw className="w-3 h-3 mr-2 animate-spin" /> Syncing...</>
+                                        ) : (
+                                            <><RefreshCw className="w-3 h-3 mr-2" /> Sync Patient Data</>
+                                        )}
+                                    </Button>
                                 </CardContent>
                             </Card>
 

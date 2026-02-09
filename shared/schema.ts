@@ -46,6 +46,12 @@ export const patients = pgTable("patients", {
   nextReview: text("next_review"),
   clinicianNote: text("clinician_note"),
   condition: text("condition"),
+  phone: text("phone"),
+  email: text("email"),
+  address: text("address"),
+  lmp: text("lmp"),
+  height: text("height"),
+  bp: text("bp"),
 });
 
 export const insertPatientSchema = createInsertSchema(patients).omit({ id: true });

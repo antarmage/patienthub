@@ -44,6 +44,7 @@ Preferred communication style: Simple, everyday language.
 - **Connection**: `pg` Pool via `DATABASE_URL` environment variable
 - **Key Tables**: `users`, `patients`, `providers`, `services`, `appointments`, `labTasks`, `nutritionPlans`, `workouts`, `hormoneReadings`, `pregnancyMetrics`, `follicleData`, `usgData`, `labResults`, `visitHistory`, `medications`, `clinicalNotes`, `referrals`, `invoices`, `consentForms`, `documents`
 - **JSON Storage**: Extensive use of `jsonb` columns for flexible medical data (genomics, functional assessments, intervention plans, medical history)
+- **Google Sheets Integration**: Connected to spreadsheet ID `1mj3hkqjoQFrckIGC9Y0Jjlh6kYIYPHBVuPKAl7k-bxo`, reads "Form Responses 1" sheet (patient registration form data). Sync matches patients by phone number or name to avoid duplicates. Patients table extended with phone, email, address, lmp, height, bp columns.
 
 ### API Structure
 All routes are registered in `server/routes.ts`. Key endpoints:
@@ -69,6 +70,8 @@ All routes are registered in `server/routes.ts`. Key endpoints:
 - `GET/POST/PATCH/DELETE /api/patients/:id/consent-forms` — Consent form tracking
 - `GET/POST/PATCH/DELETE /api/patients/:id/documents` — Document metadata
 - `POST /api/auth/passcode` — Unified passcode login (returns role + redirects to appropriate portal)
+- `POST /api/google-sheets/sync` — Import/sync patient data from Google Sheet (Form Responses 1)
+- `GET /api/google-sheets/status` — Check Google Sheet connection status and row count
 
 ### Authentication
 - Unified passcode-based login on the Landing page for Clinician and Staff portals
