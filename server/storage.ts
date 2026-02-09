@@ -107,6 +107,7 @@ export interface IStorage {
   deleteConsentForm(id: number): Promise<boolean>;
 
   getDocuments(patientId: number): Promise<Document[]>;
+  getAllDocuments(): Promise<Document[]>;
   createDocument(doc: InsertDocument): Promise<Document>;
   updateDocument(id: number, data: Partial<InsertDocument>): Promise<Document | undefined>;
   deleteDocument(id: number): Promise<boolean>;
@@ -392,6 +393,10 @@ export class DatabaseStorage implements IStorage {
 
   async getDocuments(patientId: number): Promise<Document[]> {
     return db.select().from(documents).where(eq(documents.patientId, patientId));
+  }
+
+  async getAllDocuments(): Promise<Document[]> {
+    return db.select().from(documents);
   }
 
   async createDocument(doc: InsertDocument): Promise<Document> {

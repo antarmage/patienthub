@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { registerOcrRoutes } from "./replit_integrations/ocr";
 import { getUncachableGoogleSheetClient } from "./google-sheets";
+import { importLabReports, listLabReportFiles } from "./google-drive";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -638,6 +639,49 @@ export async function registerRoutes(
       res.json({ connected: true, rowCount });
     } catch (err: any) {
       res.json({ connected: false, rowCount: 0, error: err.message });
+    }
+  });
+
+  app.post("/api/google-drive/import-lab-reports", async (_req, res) => {
+    try {
+      const patients = await storage.getPatients();
+      const allDocs = await storage.getAllDocuments();
+
+      const result = await importLabReports(
+        patients.map(p => ({ id: p.id, name: p.name })),
+        allDocs.map(d => ({ patientId: d.patientId, metadata: d.metadata })),
+        (doc) => storage.createDocument(doc)
+      );
+
+      res.json(result);
+    } catch (err: any) {
+      console.error("Google Drive import error:", err);
+      res.status(500).json({ error: "Failed to import lab reports: " + err.message });
+    }
+  });
+
+  app.get("/api/google-drive/status", async (_req, res) => {
+    try {
+      const files = await listLabReportFiles();
+      const allDocs = await storage.getAllDocuments();
+      const importedDriveIds = new Set<string>();
+      for (const doc of allDocs) {
+        if (doc.metadata && typeof doc.metadata === 'object' && (doc.metadata as any).driveFileId) {
+          importedDriveIds.add((doc.metadata as any).driveFileId);
+        }
+      }
+      const testReports = files.filter(f => f.name.startsWith('TestReport_'));
+      const alreadyImported = testReports.filter(f => importedDriveIds.has(f.id)).length;
+
+      res.json({
+        connected: true,
+        totalFiles: files.length,
+        testReports: testReports.length,
+        alreadyImported,
+        pendingImport: testReports.length - alreadyImported,
+      });
+    } catch (err: any) {
+      res.json({ connected: false, totalFiles: 0, error: err.message });
     }
   });
 

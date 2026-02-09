@@ -594,11 +594,19 @@ export default function StaffPortal() {
   const [syncResult, setSyncResult] = useState<any>(null);
   const [sheetStatus, setSheetStatus] = useState<any>(null);
 
+  const [isImportingLabs, setIsImportingLabs] = useState(false);
+  const [labImportResult, setLabImportResult] = useState<any>(null);
+  const [driveStatus, setDriveStatus] = useState<any>(null);
+
   useEffect(() => {
     fetch('/api/google-sheets/status')
       .then(r => r.json())
       .then(data => setSheetStatus(data))
       .catch(() => setSheetStatus({ connected: false, rowCount: 0 }));
+    fetch('/api/google-drive/status')
+      .then(r => r.json())
+      .then(data => setDriveStatus(data))
+      .catch(() => setDriveStatus({ connected: false, totalFiles: 0 }));
   }, []);
 
   const handleSheetSync = async () => {
@@ -614,6 +622,25 @@ export default function StaffPortal() {
       setSyncResult({ error: err.message });
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleLabImport = async () => {
+    setIsImportingLabs(true);
+    setLabImportResult(null);
+    try {
+      const res = await fetch('/api/google-drive/import-lab-reports', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      setLabImportResult(data);
+      fetch('/api/google-drive/status')
+        .then(r => r.json())
+        .then(data => setDriveStatus(data))
+        .catch(() => {});
+    } catch (err: any) {
+      setLabImportResult({ error: err.message });
+    } finally {
+      setIsImportingLabs(false);
     }
   };
 
@@ -2348,6 +2375,68 @@ export default function StaffPortal() {
                                             <><RefreshCw className="w-3 h-3 mr-2 animate-spin" /> Syncing...</>
                                         ) : (
                                             <><RefreshCw className="w-3 h-3 mr-2" /> Sync Patient Data</>
+                                        )}
+                                    </Button>
+                                </CardContent>
+                            </Card>
+
+                             {/* Google Drive Lab Reports Import */}
+                             <Card className="shadow-sm border-slate-200 bg-purple-50/30">
+                                <CardHeader className="py-3 border-b border-purple-100 bg-purple-50/50">
+                                    <div className="flex items-center gap-2">
+                                        <FlaskConical className="w-4 h-4 text-purple-600" />
+                                        <CardTitle className="text-sm font-bold text-purple-900 uppercase tracking-wide">Lab Reports Import</CardTitle>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-4 space-y-3">
+                                    <div className="text-xs text-slate-600">
+                                        <p>Import lab reports from Google Drive and map them to patients.</p>
+                                        {driveStatus && (
+                                            <div className="mt-2 space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-2 h-2 rounded-full ${driveStatus.connected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                                                    <span>{driveStatus.connected ? `${driveStatus.testReports} lab reports found` : 'Not connected'}</span>
+                                                </div>
+                                                {driveStatus.connected && driveStatus.alreadyImported > 0 && (
+                                                    <div className="flex items-center gap-2 text-emerald-600">
+                                                        <CheckCircle2 className="w-3 h-3" />
+                                                        <span>{driveStatus.alreadyImported} already imported</span>
+                                                    </div>
+                                                )}
+                                                {driveStatus.connected && driveStatus.pendingImport > 0 && (
+                                                    <div className="flex items-center gap-2 text-amber-600">
+                                                        <AlertCircle className="w-3 h-3" />
+                                                        <span>{driveStatus.pendingImport} pending import</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    {labImportResult && (
+                                        <div className={`p-2 rounded text-xs ${labImportResult.error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`} data-testid="lab-import-result">
+                                            {labImportResult.error ? labImportResult.error : (
+                                                <div className="space-y-1">
+                                                    <div className="font-medium">{labImportResult.imported} reports imported, {labImportResult.skipped} skipped</div>
+                                                    {labImportResult.unmatched?.length > 0 && (
+                                                        <div className="text-amber-700 text-[10px]">
+                                                            <div className="font-medium">Unmatched patients:</div>
+                                                            {labImportResult.unmatched.map((name: string, i: number) => <div key={i}>{name}</div>)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    <Button 
+                                        className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs h-9"
+                                        onClick={handleLabImport}
+                                        disabled={isImportingLabs}
+                                        data-testid="button-import-labs"
+                                    >
+                                        {isImportingLabs ? (
+                                            <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Importing...</>
+                                        ) : (
+                                            <><Upload className="w-3 h-3 mr-2" /> Import Lab Reports</>
                                         )}
                                     </Button>
                                 </CardContent>
