@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Users, 
@@ -203,6 +203,44 @@ export default function StaffPortal() {
   });
 
   const [selectedPatientForCreate, setSelectedPatientForCreate] = useState<any>(null);
+  const [isViewLogOpen, setIsViewLogOpen] = useState(false);
+  const [selectedPatientForLog, setSelectedPatientForLog] = useState<any>(null);
+  const [logData, setLogData] = useState<{ visits: any[], medications: any[], notes: any[], appointments: any[], protocols: any[] }>({ visits: [], medications: [], notes: [], appointments: [], protocols: [] });
+  const [logLoading, setLogLoading] = useState(false);
+  const [logTab, setLogTab] = useState("all");
+
+  const openViewLog = async (patient: any) => {
+    setSelectedPatientForLog(patient);
+    setIsViewLogOpen(true);
+    setLogLoading(true);
+    setLogTab("all");
+    try {
+      const [visitsRes, medsRes, notesRes, apptsRes, protocolsRes] = await Promise.all([
+        fetch(`/api/patients/${patient.id}/visit-history`),
+        fetch(`/api/patients/${patient.id}/medications`),
+        fetch(`/api/patients/${patient.id}/clinical-notes`),
+        fetch(`/api/appointments?patientId=${patient.id}`),
+        fetch(`/api/patient-protocols/${patient.id}`),
+      ]);
+      const [visits, medications, notes, appts, protocol] = await Promise.all([
+        visitsRes.ok ? visitsRes.json() : [],
+        medsRes.ok ? medsRes.json() : [],
+        notesRes.ok ? notesRes.json() : [],
+        apptsRes.ok ? apptsRes.json() : [],
+        protocolsRes.ok ? protocolsRes.json() : null,
+      ]);
+      setLogData({
+        visits: Array.isArray(visits) ? visits : [],
+        medications: Array.isArray(medications) ? medications : [],
+        notes: Array.isArray(notes) ? notes : [],
+        appointments: Array.isArray(appts) ? appts : [],
+        protocols: protocol ? [protocol] : [],
+      });
+    } catch {
+      setLogData({ visits: [], medications: [], notes: [], appointments: [], protocols: [] });
+    }
+    setLogLoading(false);
+  };
 
   const [mealPlanItems, setMealPlanItems] = useState([
     { id: 1, time: "08:00", name: "Breakfast", item: "", qty: "", macros: "" },
@@ -799,7 +837,7 @@ export default function StaffPortal() {
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex gap-2">
-                                                            <Button size="sm" variant="outline" className="h-7 text-xs">View Log</Button>
+                                                            <Button size="sm" variant="outline" className="h-7 text-xs" data-testid={`btn-view-log-${p.id}`} onClick={() => openViewLog(p)}>View Log</Button>
                                                             {functionalMedicinePatients.find((fp: any) => fp.name === p.name) && (
                                                                 <Button 
                                                                     size="sm" 
@@ -2370,6 +2408,202 @@ export default function StaffPortal() {
                                 Confirm Booking
                             </Button>
                         )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isViewLogOpen} onOpenChange={setIsViewLogOpen}>
+                <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9">
+                                <AvatarFallback className="bg-indigo-100 text-indigo-700 text-sm font-bold">
+                                    {selectedPatientForLog?.name?.split(' ').map((n: string) => n[0]).join('') || '?'}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <span className="text-lg">{selectedPatientForLog?.name || 'Patient'} — Log</span>
+                                <p className="text-xs text-slate-500 font-normal mt-0.5">
+                                    {selectedPatientForLog?.carePathway && <Badge variant="secondary" className="text-[10px] mr-2">{selectedPatientForLog.carePathway}</Badge>}
+                                    ID: {selectedPatientForLog?.id}
+                                </p>
+                            </div>
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="flex gap-1 border-b border-slate-100 pb-2">
+                        {[
+                            { key: "all", label: "All" },
+                            { key: "visits", label: "Visits" },
+                            { key: "medications", label: "Medications" },
+                            { key: "notes", label: "Notes" },
+                            { key: "appointments", label: "Appointments" },
+                            { key: "protocols", label: "Protocols" },
+                        ].map(tab => (
+                            <Button
+                                key={tab.key}
+                                size="sm"
+                                variant={logTab === tab.key ? "default" : "ghost"}
+                                className={`h-7 text-xs ${logTab === tab.key ? 'bg-slate-900 text-white' : ''}`}
+                                onClick={() => setLogTab(tab.key)}
+                                data-testid={`log-tab-${tab.key}`}
+                            >
+                                {tab.label}
+                            </Button>
+                        ))}
+                    </div>
+
+                    <ScrollArea className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: '60vh' }}>
+                        {logLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="animate-spin w-6 h-6 border-2 border-slate-300 border-t-slate-700 rounded-full" />
+                                <span className="ml-3 text-sm text-slate-500">Loading patient log...</span>
+                            </div>
+                        ) : (
+                            <div className="space-y-3 py-2">
+                                {(logTab === "all" || logTab === "visits") && logData.visits.length > 0 && (
+                                    <div>
+                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                            <ClipboardList className="w-3.5 h-3.5" /> Visit History
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {logData.visits.map((v: any, i: number) => (
+                                                <div key={i} className="bg-slate-50 rounded-lg p-3 border border-slate-100" data-testid={`log-visit-${i}`}>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <span className="font-semibold text-sm text-slate-800">{v.visitType || 'Visit'}</span>
+                                                        <span className="text-[10px] text-slate-400">{v.visitDate || v.createdAt || ''}</span>
+                                                    </div>
+                                                    {v.subjective && <p className="text-xs text-slate-600"><span className="font-medium">S:</span> {v.subjective}</p>}
+                                                    {v.objective && <p className="text-xs text-slate-600"><span className="font-medium">O:</span> {v.objective}</p>}
+                                                    {v.assessment && <p className="text-xs text-slate-600"><span className="font-medium">A:</span> {v.assessment}</p>}
+                                                    {v.plan && <p className="text-xs text-slate-600"><span className="font-medium">P:</span> {v.plan}</p>}
+                                                    {v.provider && <p className="text-[10px] text-slate-400 mt-1">Provider: {v.provider}</p>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(logTab === "all" || logTab === "medications") && logData.medications.length > 0 && (
+                                    <div>
+                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                            <Pill className="w-3.5 h-3.5" /> Medications
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {logData.medications.map((m: any, i: number) => (
+                                                <div key={i} className="bg-blue-50/50 rounded-lg p-3 border border-blue-100" data-testid={`log-med-${i}`}>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="font-semibold text-sm text-slate-800">{m.name}</span>
+                                                        <Badge className={`text-[10px] ${m.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'} border-none`}>
+                                                            {m.status || 'active'}
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="text-xs text-slate-600 mt-1">{m.dosage} — {m.frequency}</p>
+                                                    {m.prescribedBy && <p className="text-[10px] text-slate-400 mt-1">Prescribed by: {m.prescribedBy}</p>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(logTab === "all" || logTab === "notes") && logData.notes.length > 0 && (
+                                    <div>
+                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                            <FileText className="w-3.5 h-3.5" /> Clinical Notes
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {logData.notes.map((n: any, i: number) => (
+                                                <div key={i} className="bg-amber-50/50 rounded-lg p-3 border border-amber-100" data-testid={`log-note-${i}`}>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <span className="font-semibold text-sm text-slate-800">{n.noteType || 'Note'}</span>
+                                                        <span className="text-[10px] text-slate-400">{n.createdAt || ''}</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-600">{n.content}</p>
+                                                    {n.author && <p className="text-[10px] text-slate-400 mt-1">By: {n.author}</p>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(logTab === "all" || logTab === "appointments") && logData.appointments.length > 0 && (
+                                    <div>
+                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                            <CalendarCheck className="w-3.5 h-3.5" /> Appointments
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {logData.appointments.map((a: any, i: number) => (
+                                                <div key={i} className="bg-violet-50/50 rounded-lg p-3 border border-violet-100" data-testid={`log-appt-${i}`}>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <span className="font-semibold text-sm text-slate-800">{a.type || a.service || 'Appointment'}</span>
+                                                        <Badge className={`text-[10px] border-none ${
+                                                            a.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                                                            a.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                                            'bg-blue-100 text-blue-700'
+                                                        }`}>
+                                                            {a.status || 'scheduled'}
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="text-xs text-slate-600">{a.date} at {a.time}</p>
+                                                    {a.provider && <p className="text-[10px] text-slate-400 mt-1">With: {a.provider}</p>}
+                                                    {a.notes && <p className="text-xs text-slate-500 mt-1 italic">{a.notes}</p>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(logTab === "all" || logTab === "protocols") && logData.protocols.length > 0 && (
+                                    <div>
+                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                            <Apple className="w-3.5 h-3.5" /> Nutrition Protocols
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {logData.protocols.map((pr: any, i: number) => (
+                                                <div key={i} className="bg-emerald-50/50 rounded-lg p-3 border border-emerald-100" data-testid={`log-protocol-${i}`}>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <span className="font-semibold text-sm text-slate-800">Saved Protocol</span>
+                                                        <span className="text-[10px] text-slate-400">{pr.savedAt || ''}</span>
+                                                    </div>
+                                                    {pr.primaryGoal && <p className="text-xs text-slate-600"><span className="font-medium">Goal:</span> {pr.primaryGoal}</p>}
+                                                    {pr.dietaryStrategy && <p className="text-xs text-slate-600"><span className="font-medium">Strategy:</span> {pr.dietaryStrategy}</p>}
+                                                    {pr.savedBy && <p className="text-[10px] text-slate-400 mt-1">Saved by: {pr.savedBy}</p>}
+                                                    {pr.weeklyPlan && (
+                                                        <p className="text-[10px] text-slate-400 mt-1">
+                                                            {Object.keys(pr.weeklyPlan).length} day(s) planned
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {!logLoading && (
+                                    (() => {
+                                        const hasData = (logTab === "all" && (logData.visits.length + logData.medications.length + logData.notes.length + logData.appointments.length + logData.protocols.length) > 0) ||
+                                            (logTab === "visits" && logData.visits.length > 0) ||
+                                            (logTab === "medications" && logData.medications.length > 0) ||
+                                            (logTab === "notes" && logData.notes.length > 0) ||
+                                            (logTab === "appointments" && logData.appointments.length > 0) ||
+                                            (logTab === "protocols" && logData.protocols.length > 0);
+                                        if (!hasData) {
+                                            return (
+                                                <div className="text-center py-12">
+                                                    <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                                                    <p className="text-sm text-slate-500">No {logTab === 'all' ? 'records' : logTab} found for this patient.</p>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })()
+                                )}
+                            </div>
+                        )}
+                    </ScrollArea>
+
+                    <DialogFooter className="pt-2 border-t border-slate-100">
+                        <Button variant="outline" onClick={() => setIsViewLogOpen(false)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
