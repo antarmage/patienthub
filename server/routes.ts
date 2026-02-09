@@ -675,16 +675,17 @@ export async function registerRoutes(
       }
 
       const existingResults = await storage.getLabResults(patientId);
+      const existingSet = new Set(
+        existingResults.map((lr: any) => `${(lr.testName || '').toLowerCase().trim()}|${lr.date || ''}`)
+      );
 
       let totalExtracted = 0;
+      let skippedDuplicates = 0;
       const errors: string[] = [];
 
       for (const doc of labDocs) {
         const driveFileId = (doc.metadata as any)?.driveFileId;
         if (!driveFileId) continue;
-
-        const alreadyExtracted = existingResults.some((lr: any) => lr.notes && lr.notes.includes(driveFileId));
-        if (alreadyExtracted) continue;
 
         try {
           const pdfBuffer = await downloadFileAsBuffer(driveFileId);
@@ -740,6 +741,11 @@ export async function registerRoutes(
 
           for (const item of parsed) {
             if (!item.testName) continue;
+            const dupKey = `${item.testName.toLowerCase().trim()}|${reportDate}`;
+            if (existingSet.has(dupKey)) {
+              skippedDuplicates++;
+              continue;
+            }
             await storage.createLabResult({
               patientId,
               testName: item.testName,
@@ -754,6 +760,7 @@ export async function registerRoutes(
               results: null,
               labTaskId: null,
             });
+            existingSet.add(dupKey);
             totalExtracted++;
           }
         } catch (err: any) {
@@ -762,11 +769,22 @@ export async function registerRoutes(
         }
       }
 
+      let message = '';
+      if (totalExtracted > 0) {
+        message = `Extracted ${totalExtracted} new lab result(s)`;
+      } else {
+        message = "No new results extracted";
+      }
+      if (skippedDuplicates > 0) {
+        message += ` (${skippedDuplicates} duplicate${skippedDuplicates > 1 ? 's' : ''} skipped)`;
+      }
+
       res.json({
         extracted: totalExtracted,
+        skippedDuplicates,
         documentsProcessed: labDocs.length,
         errors,
-        message: totalExtracted > 0 ? `Extracted ${totalExtracted} lab results from ${labDocs.length} report(s)` : "No new results extracted",
+        message,
       });
     } catch (err: any) {
       console.error("Lab extraction error:", err);
