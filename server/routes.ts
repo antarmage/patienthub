@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { registerOcrRoutes } from "./replit_integrations/ocr";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -386,6 +387,8 @@ export async function registerRoutes(
       { week: 12, epds: 3, physical: 98 },
     ]);
   });
+
+  registerOcrRoutes(app);
 
   app.get("/api/analytics/pcos", async (_req, res) => {
     res.json([

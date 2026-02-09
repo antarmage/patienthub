@@ -1,0 +1,1 @@
+export { registerOcrRoutes } from "./routes";

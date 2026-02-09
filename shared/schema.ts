@@ -359,3 +359,5 @@ export const patientProtocols = pgTable("patient_protocols", {
 export const insertPatientProtocolSchema = createInsertSchema(patientProtocols).omit({ id: true });
 export type InsertPatientProtocol = z.infer<typeof insertPatientProtocolSchema>;
 export type PatientProtocol = typeof patientProtocols.$inferSelect;
+
+export * from "./models/chat";
