@@ -2534,7 +2534,18 @@ export default function ClinicianPortal() {
               <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
                 <div className="max-w-7xl mx-auto space-y-6">
                    
-                   {/* 0. PATIENT HISTORY SUMMARY */}
+                   {/* 0. PATIENT QUICK INFO */}
+                   <div className="flex items-center gap-4 text-xs text-slate-600 bg-white border border-slate-200 rounded-lg px-4 py-2 shadow-sm">
+                      {selectedPatient.lmp && (
+                        <span><span className="font-semibold text-slate-500">LMP:</span> {new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                      )}
+                      <span><span className="font-semibold text-slate-500">Ref:</span> {selectedPatient.referredBy || selectedPatient.focus || '—'}</span>
+                      <span><span className="font-semibold text-slate-500">Vaccination:</span> {selectedPatient.vaccination || '—'}</span>
+                      <span><span className="font-semibold text-slate-500">Insurance:</span> {selectedPatient.insurance || '—'}</span>
+                      <span><span className="font-semibold text-slate-500">Contraception:</span> {selectedPatient.contraception || '—'}</span>
+                   </div>
+
+                   {/* PATIENT HISTORY SUMMARY */}
                    <Card className="shadow-sm border-slate-200">
                       <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50 cursor-pointer group hover:bg-slate-50 transition-colors">
                           <div className="flex items-center gap-2">
