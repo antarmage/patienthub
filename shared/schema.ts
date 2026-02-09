@@ -344,3 +344,18 @@ export const documents = pgTable("documents", {
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true });
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
+
+export const patientProtocols = pgTable("patient_protocols", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull(),
+  primaryGoal: text("primary_goal"),
+  dietaryStrategy: text("dietary_strategy"),
+  weeklyPlan: jsonb("weekly_plan"),
+  notes: text("notes"),
+  savedBy: text("saved_by"),
+  savedAt: text("saved_at"),
+});
+
+export const insertPatientProtocolSchema = createInsertSchema(patientProtocols).omit({ id: true });
+export type InsertPatientProtocol = z.infer<typeof insertPatientProtocolSchema>;
+export type PatientProtocol = typeof patientProtocols.$inferSelect;

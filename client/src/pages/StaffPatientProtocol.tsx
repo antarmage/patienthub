@@ -45,7 +45,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const historyData = [
   { date: 'Oct 01', weight: 69.5, inflammation: 4.2, adherence: 85 },
@@ -150,6 +151,24 @@ export default function StaffPatientProtocol() {
   const [match, params] = useRoute("/staff/protocol/:id");
   const patientId = params?.id ? parseInt(params.id) : null;
   const patient = patients.find((p: any) => p.id === patientId) || patients[0];
+
+  const { toast } = useToast();
+  const [primaryGoal, setPrimaryGoal] = useState("inflammation");
+  const [dietaryStrategy, setDietaryStrategy] = useState("anti-inflammatory");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const protocolQuery = useQuery({
+    queryKey: ['/api/patient-protocols', patientId],
+    queryFn: async () => {
+      if (!patientId) return null;
+      const res = await fetch(`/api/patient-protocols/${patientId}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!patientId,
+  });
+
+  const existingProtocol = protocolQuery.data;
 
   const [selectedDay, setSelectedDay] = useState("Monday");
   const [isCustomMealOpen, setIsCustomMealOpen] = useState(false);
@@ -298,6 +317,31 @@ export default function StaffPatientProtocol() {
     setWeeklyPlan(newWeeklyPlan);
   };
 
+  const handleSaveProtocol = async () => {
+    if (!patient) return;
+    setIsSaving(true);
+    try {
+      const staffUsername = localStorage.getItem("staffUsername") || "unknown";
+      const res = await fetch("/api/patient-protocols", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: patient.id,
+          primaryGoal,
+          dietaryStrategy,
+          weeklyPlan,
+          savedBy: staffUsername,
+          savedAt: new Date().toISOString(),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      toast({ title: "Protocol saved", description: `Protocol for ${patient.name} saved successfully.` });
+    } catch {
+      toast({ title: "Error", description: "Failed to save protocol. Please try again.", variant: "destructive" });
+    }
+    setIsSaving(false);
+  };
+
   const totalCalories = 1320;
   const targetCalories = (patient?.meta?.tdee || 1800) - 300;
 
@@ -345,8 +389,8 @@ export default function StaffPatientProtocol() {
              <Button variant="outline" size="sm" className="bg-white border-slate-200">
                 <Printer className="w-4 h-4 mr-2" /> Print
              </Button>
-             <Button className="bg-slate-900 text-white hover:bg-slate-800" size="sm">
-                <Save className="w-4 h-4 mr-2" /> Save Protocol
+             <Button className="bg-slate-900 text-white hover:bg-slate-800" size="sm" onClick={handleSaveProtocol} disabled={isSaving} data-testid="button-save-protocol">
+                <Save className="w-4 h-4 mr-2" /> {isSaving ? "Saving..." : "Save Protocol"}
              </Button>
         </div>
       </header>
@@ -531,7 +575,7 @@ export default function StaffPatientProtocol() {
                 <CardContent className="p-4 space-y-4">
                      <div className="space-y-2">
                         <Label className="text-xs text-slate-500">Primary Goal</Label>
-                        <Select defaultValue="inflammation">
+                        <Select value={primaryGoal} onValueChange={setPrimaryGoal}>
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
@@ -544,7 +588,7 @@ export default function StaffPatientProtocol() {
                      </div>
                      <div className="space-y-2">
                         <Label className="text-xs text-slate-500">Dietary Strategy</Label>
-                        <Select defaultValue={patient.id === 101 ? "anti-inflammatory" : "low-histamine"}>
+                        <Select value={dietaryStrategy} onValueChange={setDietaryStrategy}>
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>

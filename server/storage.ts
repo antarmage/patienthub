@@ -3,7 +3,7 @@ import { db } from "./db";
 import {
   users, patients, providers, services, appointments, labTasks,
   nutritionPlans, workouts, hormoneReadings, pregnancyMetrics, follicleData, usgData, labResults, visitHistory,
-  medications, clinicalNotes, referrals, invoices, consentForms, documents,
+  medications, clinicalNotes, referrals, invoices, consentForms, documents, patientProtocols,
   type User, type InsertUser,
   type Patient, type InsertPatient,
   type Provider, type InsertProvider,
@@ -24,6 +24,7 @@ import {
   type Invoice, type InsertInvoice,
   type ConsentForm, type InsertConsentForm,
   type Document, type InsertDocument,
+  type PatientProtocol, type InsertPatientProtocol,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -109,6 +110,9 @@ export interface IStorage {
   deleteDocument(id: number): Promise<boolean>;
 
   getUserByPasscode(passcode: string): Promise<User | undefined>;
+
+  getPatientProtocol(patientId: number): Promise<PatientProtocol | undefined>;
+  savePatientProtocol(protocol: InsertPatientProtocol): Promise<PatientProtocol>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -398,6 +402,16 @@ export class DatabaseStorage implements IStorage {
   async getUserByPasscode(passcode: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.password, passcode));
     return user;
+  }
+
+  async getPatientProtocol(patientId: number): Promise<PatientProtocol | undefined> {
+    const results = await db.select().from(patientProtocols).where(eq(patientProtocols.patientId, patientId));
+    return results[results.length - 1];
+  }
+
+  async savePatientProtocol(protocol: InsertPatientProtocol): Promise<PatientProtocol> {
+    const [saved] = await db.insert(patientProtocols).values(protocol).returning();
+    return saved;
   }
 }
 

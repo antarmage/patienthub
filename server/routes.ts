@@ -333,6 +333,17 @@ export async function registerRoutes(
     res.json({ role: user.role, username: user.username, id: user.id });
   });
 
+  app.get("/api/patient-protocols/:patientId", async (req, res) => {
+    const patientId = parseInt(req.params.patientId);
+    const protocol = await storage.getPatientProtocol(patientId);
+    res.json(protocol || null);
+  });
+
+  app.post("/api/patient-protocols", async (req, res) => {
+    const protocol = await storage.savePatientProtocol(req.body);
+    res.json(protocol);
+  });
+
   app.get("/api/analytics/fertility", async (_req, res) => {
     res.json([
       { month: 'Jan', active: 45, ovulationRate: 78, pregnancies: 4 },
