@@ -2273,7 +2273,7 @@ export default function ClinicianPortal() {
         )}
 
         {/* PATIENT DETAIL VIEW (Previous Implementation) */}
-        {activeView === 'patient_detail' && (
+        {activeView === 'patient_detail' && selectedPatient && (
           <div className="flex-1 flex flex-col overflow-hidden z-0 relative">
             {/* Background for Detail View */}
             <div 
