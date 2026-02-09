@@ -36,6 +36,9 @@ export default function Landing() {
       if (data.username) {
         localStorage.setItem("staffUsername", data.username);
       }
+      if (data.provider) {
+        localStorage.setItem("clinicianProvider", JSON.stringify(data.provider));
+      }
       if (data.role === "clinician") {
         setLocation("/clinician");
       } else if (data.role === "staff") {

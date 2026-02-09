@@ -62,6 +62,7 @@ export const providers = pgTable("providers", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   role: text("role"),
+  specialty: text("specialty"),
   availability: text("availability"),
 });
 

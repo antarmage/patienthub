@@ -342,7 +342,27 @@ export async function registerRoutes(
     if (!passcode) return res.status(400).json({ error: "Passcode required" });
     const user = await storage.getUserByPasscode(passcode);
     if (!user) return res.status(401).json({ error: "Invalid passcode" });
-    res.json({ role: user.role, username: user.username, id: user.id });
+
+    let providerInfo = null;
+    if (user.role === "clinician") {
+      const providers = await storage.getProviders();
+      const usernameToProvider: Record<string, string> = {
+        "dr.priya": "Dr. Priya",
+        "dr.ramesh": "Dr. Ramesh",
+        "dr.sai": "Dr. Sai Dibyadarshini Bhuyan",
+      };
+      const providerName = usernameToProvider[user.username];
+      if (providerName) {
+        providerInfo = providers.find(p => p.name.toLowerCase().includes(providerName.toLowerCase().split(' ')[1]));
+      }
+    }
+
+    res.json({
+      role: user.role,
+      username: user.username,
+      id: user.id,
+      provider: providerInfo ? { id: providerInfo.id, name: providerInfo.name, specialty: providerInfo.specialty, role: providerInfo.role } : null,
+    });
   });
 
   app.get("/api/patient-protocols/:patientId", async (req, res) => {

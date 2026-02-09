@@ -97,6 +97,17 @@ export default function ClinicianPortal() {
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingType, setBookingType] = useState("surgery");
+
+  const clinicianProvider = useMemo(() => {
+    try {
+      const stored = localStorage.getItem("clinicianProvider");
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return null;
+  }, []);
+  const providerName = clinicianProvider?.name || "Doctor";
+  const providerSpecialty = clinicianProvider?.specialty || "Clinician";
+  const providerInitials = providerName.split(" ").filter((w: string) => w[0]?.match(/[A-Z]/)).map((w: string) => w[0]).join("").slice(0, 2) || "DR";
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
 
   const patientsQuery = useQuery({
@@ -339,11 +350,11 @@ export default function ClinicianPortal() {
         <div className="p-4 border-t border-slate-800 bg-slate-900/50">
           <div className="flex items-center gap-3">
              <Avatar className="h-9 w-9 border border-slate-600">
-                <AvatarFallback className="bg-slate-700 text-slate-300">DR</AvatarFallback>
+                <AvatarFallback className="bg-slate-700 text-slate-300">{providerInitials}</AvatarFallback>
              </Avatar>
              <div className="text-sm">
-                <p className="text-white font-medium">Dr. Reynolds</p>
-                <p className="text-xs text-slate-500">Reproductive Endo</p>
+                <p className="text-white font-medium">{providerName}</p>
+                <p className="text-xs text-slate-500">{providerSpecialty}</p>
              </div>
           </div>
         </div>
@@ -1253,7 +1264,7 @@ export default function ClinicianPortal() {
                                                   <span className="text-xs text-slate-500">{apt.time}{apt.endTime ? ` - ${apt.endTime}` : ''}</span>
                                                </div>
                                                <h3 className="font-bold text-slate-800 text-sm">{patient?.name || 'Patient'} - {apt.reason || apt.type || 'Appointment'}</h3>
-                                               <p className="text-xs text-slate-500 mt-1 flex items-center gap-2"><MapPin className="w-3 h-3" /> {apt.room || 'Room TBD'} • Dr. Reynolds</p>
+                                               <p className="text-xs text-slate-500 mt-1 flex items-center gap-2"><MapPin className="w-3 h-3" /> {apt.room || 'Room TBD'} • {providerName}</p>
                                             </div>
                                             <Avatar className={`h-8 w-8 ${s.avatarBg} ${s.avatarText} border ${s.avatarBorder}`}>
                                                <AvatarFallback>{getInitials(patient?.name)}</AvatarFallback>
@@ -1940,17 +1951,17 @@ export default function ClinicianPortal() {
                                     <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="firstName">First Name</Label>
-                                        <Input id="firstName" defaultValue="David" />
+                                        <Input id="firstName" defaultValue={providerName.split(' ').slice(0, -1).join(' ')} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="lastName">Last Name</Label>
-                                        <Input id="lastName" defaultValue="Reynolds" />
+                                        <Input id="lastName" defaultValue={providerName.split(' ').pop() || ''} />
                                     </div>
                                     </div>
 
                                     <div className="space-y-2">
                                     <Label htmlFor="specialty">Specialty</Label>
-                                    <Input id="specialty" defaultValue="Reproductive Endocrinology" />
+                                    <Input id="specialty" defaultValue={providerSpecialty} />
                                     </div>
 
                                     <div className="space-y-2">
@@ -2628,7 +2639,7 @@ export default function ClinicianPortal() {
                                {/* 5. Prescription Generator */}
                                <div className="p-4 bg-slate-100 flex items-center justify-between">
                                   <div className="text-xs text-slate-500">
-                                     <span className="font-semibold text-slate-700">Dr. Reynolds</span> • Reproductive Endocrinology
+                                     <span className="font-semibold text-slate-700">{providerName}</span> • {providerSpecialty}
                                   </div>
                                   <div className="flex gap-2">
                                      <Button variant="outline" size="sm" className="h-8 gap-2 bg-white text-xs border-slate-300">
