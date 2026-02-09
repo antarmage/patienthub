@@ -2011,7 +2011,7 @@ export default function ClinicianPortal() {
                                                       <Briefcase className="w-5 h-5" />
                                                   </div>
                                                   <div>
-                                                      <h3 className="font-bold text-slate-900 text-sm">HelixCare Main Center</h3>
+                                                      <h3 className="font-bold text-slate-900 text-sm">Saivie Main Center</h3>
                                                       <p className="text-xs text-slate-500">Koramangala, Bangalore</p>
                                                   </div>
                                               </div>

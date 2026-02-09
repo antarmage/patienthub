@@ -249,7 +249,7 @@ export default function StaffPortal() {
             <Card className="max-w-md w-full shadow-lg border-slate-200">
                 <CardHeader className="text-center pb-2">
                     <div className="mx-auto w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-serif font-bold text-2xl mb-4">H</div>
-                    <CardTitle className="text-2xl font-serif text-slate-900">HelixCare Staff Portal</CardTitle>
+                    <CardTitle className="text-2xl font-serif text-slate-900">Saivie Staff Portal</CardTitle>
                     <p className="text-slate-500 text-sm">Select your role to access the care workspace.</p>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-4">
@@ -282,7 +282,7 @@ export default function StaffPortal() {
           {sidebarOpen ? (
             <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-serif font-bold">H</div>
-                <span className="font-serif font-bold text-lg text-slate-800">HelixCare</span>
+                <span className="font-serif font-bold text-lg text-slate-800">Saivie</span>
             </div>
           ) : (
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-serif font-bold mx-auto">H</div>
@@ -336,8 +336,8 @@ export default function StaffPortal() {
                 </Avatar>
                 {sidebarOpen && (
                     <div className="overflow-hidden">
-                        <p className="text-sm font-medium text-slate-900 truncate">Staff Portal</p>
-                        <button onClick={() => setIsLoggedIn(false)} className="text-xs text-rose-500 hover:text-rose-700 truncate text-left block w-full">Sign Out</button>
+                        <p className="text-sm font-medium text-slate-900 truncate">{currentRole?.label || 'Staff'}</p>
+                        <button onClick={() => { localStorage.removeItem("staffUsername"); setLocation("/"); }} className="text-xs text-rose-500 hover:text-rose-700 truncate text-left block w-full">Sign Out</button>
                     </div>
                 )}
              </div>
