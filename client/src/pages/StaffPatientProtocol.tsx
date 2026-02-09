@@ -146,10 +146,10 @@ export default function StaffPatientProtocol() {
     [appointmentsQuery.data, allPatients, allProviders]
   );
 
-  const patients = functionalMedicinePatients;
+  const patients = allPatients;
   const [match, params] = useRoute("/staff/protocol/:id");
   const patientId = params?.id ? parseInt(params.id) : null;
-  const patient = patients.find((p: any) => p.id === patientId) || patients[0]; // Fallback for demo
+  const patient = patients.find((p: any) => p.id === patientId) || patients[0];
 
   const [selectedDay, setSelectedDay] = useState("Monday");
   const [isCustomMealOpen, setIsCustomMealOpen] = useState(false);
@@ -300,6 +300,19 @@ export default function StaffPatientProtocol() {
 
   const totalCalories = 1320;
   const targetCalories = (patient?.meta?.tdee || 1800) - 300;
+
+  if (!patient) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <p className="text-slate-500">Loading patient data...</p>
+          <Link href="/staff">
+            <Button variant="outline" size="sm">Back to Staff Portal</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
