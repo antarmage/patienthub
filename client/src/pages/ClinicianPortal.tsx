@@ -536,7 +536,7 @@ export default function ClinicianPortal() {
                                           <td className="px-4 py-3 text-slate-500 font-medium">{timeSlots[idx] || '11:00'}</td>
                                           <td className="px-4 py-3 font-semibold text-slate-900" data-testid={`text-patient-name-${p.id}`}>{p.name}</td>
                                           <td className="px-4 py-3"><Badge variant="outline" className={typeColors[p.type] || 'border-slate-200 text-slate-700 bg-slate-50'}>{p.type || 'General'}</Badge></td>
-                                          <td className="px-4 py-3 text-slate-600 text-xs">{p.focus || p.status || 'Scheduled'}</td>
+                                          <td className="px-4 py-3 text-slate-600 text-xs">{p.type || p.status || 'General'}</td>
                                           <td className={`px-4 py-3 flex items-center gap-2 text-xs font-medium ${flagColors[idx] || 'text-slate-600'}`}><div className={`w-2 h-2 rounded-full ${dotColors[idx] || 'bg-slate-500'}`}></div> {p.condition || 'Follow-up'}</td>
                                           <td className="px-4 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
                                        </tr>
@@ -2384,7 +2384,7 @@ export default function ClinicianPortal() {
                             <span className={`font-semibold text-sm ${selectedPatient.id === patient.id ? 'text-blue-900' : 'text-slate-700'}`}>{patient.name}</span>
                             <span className="text-[10px] text-slate-400">{patient.lastVisit}</span>
                          </div>
-                         <p className="text-xs text-slate-500 mb-2 truncate">{patient.focus}</p>
+                         <p className="text-xs text-slate-500 mb-2 truncate">{patient.type || 'General'}</p>
                          
                          <div className="flex items-center gap-2">
                             {patient.status === 'High Risk' && <div className="w-2 h-2 rounded-full bg-rose-500"></div>}
