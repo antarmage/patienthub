@@ -348,13 +348,6 @@ export default function ClinicianPortal() {
     }
   }, [patients, selectedPatient]);
 
-  // Sync care mode when patient changes
-  useEffect(() => {
-    if (selectedPatient) {
-      setCareMode(selectedPatient.mode);
-    }
-  }, [selectedPatient]);
-
   // Set the theme attribute on mount
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'clinician');
@@ -2386,10 +2379,22 @@ export default function ClinicianPortal() {
                     </Avatar>
                     <div>
                        <h2 className="text-lg font-bold text-slate-900 leading-none">{selectedPatient.name}</h2>
-                       <div className="flex items-center gap-2 mt-1">
+                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <span className="text-xs text-slate-500">Age: {selectedPatient.age}</span>
                           <span className="text-slate-300">•</span>
-                          <span className="text-xs text-slate-500">Ref By: {selectedPatient.referredBy}</span>
+                          {selectedPatient.condition && (
+                            <>
+                              <span className="text-xs font-medium text-pink-600">{selectedPatient.condition}</span>
+                              <span className="text-slate-300">•</span>
+                            </>
+                          )}
+                          {selectedPatient.lmp && (
+                            <>
+                              <span className="text-xs text-slate-500">LMP: {new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                              <span className="text-slate-300">•</span>
+                            </>
+                          )}
+                          <span className="text-xs text-slate-500">Ref By: {selectedPatient.referredBy || selectedPatient.focus || '-'}</span>
                           <span className="text-slate-300">•</span>
                           
                           {/* 4. CARE PATHWAY SWITCH */}
@@ -2409,11 +2414,23 @@ export default function ClinicianPortal() {
 
                           <span className="text-slate-300">•</span>
                           <span className="text-xs font-medium text-slate-700">
-                             {careMode === 'hormone_care' && 'Cycle Day 21 (Luteal)'}
-                             {careMode === 'natural_conception' && 'Cycle Day 14 (Ovulatory)'}
-                             {careMode === 'induction' && 'Cycle Day 10 (Follicular)'}
-                             {careMode === 'iui' && 'Cycle Day 11 (Trigger Ready)'}
-                             {careMode === 'pregnancy' && 'Week 24 (Trimester 2)'}
+                             {careMode === 'hormone_care' && `Cycle Day ${selectedPatient.cycleDay || 21} (Luteal)`}
+                             {careMode === 'natural_conception' && `Cycle Day ${selectedPatient.cycleDay || 14} (Ovulatory)`}
+                             {careMode === 'induction' && `Cycle Day ${selectedPatient.cycleDay || 10} (Follicular)`}
+                             {careMode === 'iui' && `Cycle Day ${selectedPatient.cycleDay || 11} (Trigger Ready)`}
+                             {careMode === 'pregnancy' && (() => {
+                               if (selectedPatient.lmp) {
+                                 const lmpDate = new Date(selectedPatient.lmp);
+                                 const today = new Date();
+                                 const diffDays = Math.max(0, Math.floor((today.getTime() - lmpDate.getTime()) / (1000 * 60 * 60 * 24)));
+                                 const weeks = Math.floor(diffDays / 7);
+                                 const days = diffDays % 7;
+                                 if (weeks > 42) return 'Post-term';
+                                 const trimester = weeks < 13 ? 1 : weeks < 27 ? 2 : 3;
+                                 return `Week ${weeks}+${days} (Trimester ${trimester})`;
+                               }
+                               return 'Pregnancy Care';
+                             })()}
                              {careMode === 'postpartum' && 'Week 6 (Recovery)'}
                           </span>
                        </div>
