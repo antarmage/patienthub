@@ -33,6 +33,9 @@ export default function Landing() {
         return;
       }
       const data = await res.json();
+      if (data.username) {
+        localStorage.setItem("staffUsername", data.username);
+      }
       if (data.role === "clinician") {
         setLocation("/clinician");
       } else if (data.role === "staff") {

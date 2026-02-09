@@ -169,7 +169,11 @@ export default function StaffPortal() {
     });
   }, [appointmentsRaw, patients, providers]);
 
-  const [activeRole, setActiveRole] = useState("nutritionist");
+  const staffUsername = typeof window !== 'undefined' ? localStorage.getItem("staffUsername") || "" : "";
+  const defaultRole = staffUsername.includes("reception") ? "receptionist" 
+    : staffUsername.includes("nurse") ? "phlebotomist" 
+    : "nutritionist";
+  const [activeRole, setActiveRole] = useState(defaultRole);
   const [activeView, setActiveView] = useState("dashboard"); // 'dashboard', 'patients', 'schedule', 'reports'
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
