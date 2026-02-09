@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { 
   Users, 
   Activity, 
@@ -57,142 +58,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 
-// --- MOCK DATA ---
-const patients = [
-  { id: 1, name: "Ananya S.", age: 29, type: "Fertility", status: "Active Cycle", avatar: "AS", mood: "Anxious", weight: 68, hb: 11.2 },
-  { id: 2, name: "Meera D.", age: 34, type: "Pregnancy", status: "Week 24", avatar: "MD", mood: "Stable", weight: 72, hb: 10.5 },
-  { id: 3, name: "Sarah J.", age: 31, type: "Postpartum", status: "Week 6", avatar: "SJ", mood: "Depressed", weight: 65, hb: 12.0 },
-  { id: 4, name: "Priya K.", age: 28, type: "PCOS", status: "Treatment", avatar: "PK", mood: "Stable", weight: 78, hb: 11.8 },
-  { id: 5, name: "Elena R.", age: 36, type: "Fertility", status: "IUI Prep", avatar: "ER", mood: "Stressed", weight: 62, hb: 12.5 },
-];
-
-const functionalMedicinePatients = [
-  {
-    id: 101,
-    name: "Ananya S.",
-    age: 29,
-    condition: "PCOS (Insulin Resistant)",
-    genomics: {
-      mthfr: { status: "Heterozygous", risk: "Medium" },
-      caffeine: { status: "Slow Metabolizer", risk: "High" },
-      gluten: { status: "HLA-DQ2 Positive", risk: "High" },
-      comt: { status: "Met/Met (Worrier)", risk: "Medium" }
-    },
-    functional: {
-      gut: { status: "Dysbiosis", score: 45 },
-      inflammation: { marker: "hs-CRP", value: "3.2", status: "Elevated" },
-      nutrient: { deficiency: "Vitamin D, Magnesium", status: "Critical" },
-      hormone: { focus: "Estrogen Dominance", status: "Imbalanced" }
-    },
-    intervention: {
-        protocol: "Supplement Protocol (Active)",
-        dietPhase: "Elimination Diet (Week 2)"
-    },
-    plan: "Anti-inflammatory, Gluten-Free",
-    nextReview: "2 days",
-    clinicianNote: "Referral: Dr. Reynolds. Patient struggles with insulin resistance. Focus on fiber intake and low glycemic load."
-  },
-  {
-    id: 102,
-    name: "Priya K.",
-    age: 28,
-    condition: "Endometriosis Stage II",
-    genomics: {
-      mthfr: { status: "Normal", risk: "Low" },
-      caffeine: { status: "Fast Metabolizer", risk: "Low" },
-      gluten: { status: "Negative", risk: "Low" },
-      estrogen: { status: "CYP1A1 Slow", risk: "High" }
-    },
-    functional: {
-      gut: { status: "Leaky Gut", score: 60 },
-      inflammation: { marker: "Homocysteine", value: "12", status: "Borderline" },
-      nutrient: { deficiency: "Omega-3", status: "Moderate" },
-      hormone: { focus: "Progesterone Support", status: "Low" }
-    },
-    intervention: {
-        protocol: "Gut Healing Protocol (Week 4)",
-        dietPhase: "Reintroduction Phase"
-    },
-    plan: "Low Histamine, High Omega-3",
-    nextReview: "1 week",
-    clinicianNote: "Referral: Dr. Reynolds. Confirmed Endo Stage II. Avoid inflammatory foods. Prioritize omega-3s for pain management."
-  },
-  {
-    id: 103,
-    name: "Meera D.",
-    age: 34,
-    condition: "Gestational Diabetes Risk",
-    genomics: {
-      mthfr: { status: "Homozygous", risk: "High" },
-      caffeine: { status: "Slow Metabolizer", risk: "High" },
-      carbs: { status: "TCF7L2 Variant", risk: "High" },
-      comt: { status: "Val/Val (Warrior)", risk: "Low" }
-    },
-    functional: {
-      gut: { status: "Stable", score: 85 },
-      inflammation: { marker: "Insulin", value: "18", status: "High" },
-      nutrient: { deficiency: "Chromium", status: "Moderate" },
-      hormone: { focus: "Insulin Sensitivity", status: "Resistant" }
-    },
-    intervention: {
-        protocol: "Metabolic Reset (Day 5)",
-        dietPhase: "Low GI Strict"
-    },
-    plan: "Low Glycemic Index, Methylated Folate",
-    nextReview: "Tomorrow",
-    clinicianNote: "Referral: Dr. Reynolds. GDM risk high. Strict sugar control needed. Monitor post-prandial spikes."
-  },
-  {
-    id: 104,
-    name: "Zara M.",
-    age: 31,
-    condition: "Pregnancy (Trimester 2)",
-    genomics: {
-      mthfr: { status: "Heterozygous", risk: "Medium" },
-      caffeine: { status: "Fast Metabolizer", risk: "Low" },
-      gluten: { status: "Negative", risk: "Low" },
-      comt: { status: "Val/Met (Balanced)", risk: "Low" }
-    },
-    functional: {
-      gut: { status: "Good", score: 90 },
-      inflammation: { marker: "hs-CRP", value: "0.8", status: "Optimal" },
-      nutrient: { deficiency: "Iron", status: "Mild" },
-      hormone: { focus: "Thyroid Support", status: "Stable" }
-    },
-    intervention: {
-        protocol: "Prenatal Support",
-        dietPhase: "Maintenance (T2)"
-    },
-    plan: "Prenatal Wellness, Iron-Rich",
-    nextReview: "2 weeks",
-    clinicianNote: "Routine prenatal care (Week 20). Focus on iron-rich foods and adequate protein for fetal growth. Monitor energy levels."
-  }
-];
-
-const nutritionPlans = [
-  { id: 1, name: "Ovulation Support", tags: ["High Protein", "Low GI"], assignedTo: 12 },
-  { id: 2, name: "GDM Management", tags: ["Sugar Control", "Balanced"], assignedTo: 5 },
-  { id: 3, name: "Postpartum Healing", tags: ["Galactogogues", "Iron Rich"], assignedTo: 8 },
-];
-
-const workouts = [
-  { id: 1, name: "Follicular Yoga", phase: "Follicular", intensity: "Low" },
-  { id: 2, name: "Luteal Strength", phase: "Luteal", intensity: "Medium" },
-  { id: 3, name: "Trimester 2 Flow", phase: "Pregnancy", intensity: "Low" },
-];
-
-const labTasks = [
-  { id: 1, patient: "Ananya S.", test: "Serum Progesterone", due: "Today", status: "Pending" },
-  { id: 2, patient: "Meera D.", test: "OGTT (75g)", due: "Tomorrow", status: "Scheduled" },
-  { id: 3, patient: "Priya K.", test: "Hormone Panel", due: "Overdue", status: "Delayed" },
-];
-
-const appointments = [
-  { time: "09:00", patient: "Ananya S.", type: "Fertility Scan", doctor: "Dr. Reynolds" },
-  { time: "09:30", patient: "Meera D.", type: "Antenatal Check", doctor: "Dr. Reynolds" },
-  { time: "10:00", patient: "Sarah J.", type: "Postpartum Review", doctor: "Dr. Reynolds" },
-  { time: "11:00", patient: "Priya K.", type: "Diet Consult", doctor: "Ms. Gupta" },
-];
 
 const receptionistTasks = [
   { id: 1, type: "lab", patient: "Meera D.", title: "Book OGTT", urgency: "High", status: "Pending" },
@@ -222,6 +87,88 @@ import { Link, useLocation } from "wouter";
 
 export default function StaffPortal() {
   const [_, setLocation] = useLocation();
+
+  const patientsQuery = useQuery({
+    queryKey: ['/api/patients'],
+    queryFn: async () => {
+      const res = await fetch('/api/patients');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+  const patients = patientsQuery.data || [];
+  const functionalMedicinePatients = patients.filter((p: any) => p.genomics);
+
+  const nutritionPlansQuery = useQuery({
+    queryKey: ['/api/nutrition-plans'],
+    queryFn: async () => {
+      const res = await fetch('/api/nutrition-plans');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+  const nutritionPlans = nutritionPlansQuery.data || [];
+
+  const workoutsQuery = useQuery({
+    queryKey: ['/api/workouts'],
+    queryFn: async () => {
+      const res = await fetch('/api/workouts');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+  const workouts = workoutsQuery.data || [];
+
+  const labTasksQuery = useQuery({
+    queryKey: ['/api/lab-tasks'],
+    queryFn: async () => {
+      const res = await fetch('/api/lab-tasks');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+  const labTasksRaw = labTasksQuery.data || [];
+  const labTasks = useMemo(() => {
+    return labTasksRaw.map((task: any) => {
+      const patient = patients.find((p: any) => p.id === task.patientId);
+      return {
+        ...task,
+        patient: patient ? patient.name : `Patient #${task.patientId}`,
+      };
+    });
+  }, [labTasksRaw, patients]);
+
+  const providersQuery = useQuery({
+    queryKey: ['/api/providers'],
+    queryFn: async () => {
+      const res = await fetch('/api/providers');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+  const providers = providersQuery.data || [];
+
+  const appointmentsQuery = useQuery({
+    queryKey: ['/api/appointments'],
+    queryFn: async () => {
+      const res = await fetch('/api/appointments');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+  const appointmentsRaw = appointmentsQuery.data || [];
+  const appointments = useMemo(() => {
+    return appointmentsRaw.map((apt: any) => {
+      const patient = patients.find((p: any) => p.id === apt.patientId);
+      const provider = providers.find((p: any) => p.id === apt.providerId);
+      return {
+        ...apt,
+        patient: patient ? patient.name : `Patient #${apt.patientId}`,
+        doctor: provider ? provider.name : `Provider #${apt.providerId}`,
+      };
+    });
+  }, [appointmentsRaw, patients, providers]);
+
   const [activeRole, setActiveRole] = useState("nutritionist");
   const [activeView, setActiveView] = useState("dashboard"); // 'dashboard', 'patients', 'schedule', 'reports'
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -821,7 +768,7 @@ export default function StaffPortal() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {patients.map(p => (
+                                            {patients.map((p: any) => (
                                                 <tr key={p.id} className="hover:bg-slate-50/50">
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-3">
@@ -848,12 +795,12 @@ export default function StaffPortal() {
                                                     <td className="px-4 py-3">
                                                         <div className="flex gap-2">
                                                             <Button size="sm" variant="outline" className="h-7 text-xs">View Log</Button>
-                                                            {functionalMedicinePatients.find(fp => fp.name === p.name) && (
+                                                            {functionalMedicinePatients.find((fp: any) => fp.name === p.name) && (
                                                                 <Button 
                                                                     size="sm" 
                                                                     className="h-7 text-xs bg-slate-900 text-white hover:bg-slate-800"
                                                                     onClick={() => {
-                                                                        const fp = functionalMedicinePatients.find(f => f.name === p.name);
+                                                                        const fp = functionalMedicinePatients.find((f: any) => f.name === p.name);
                                                                         if (fp) {
                                                                             setLocation(`/staff/protocol/${fp.id}`);
                                                                         }
@@ -879,14 +826,14 @@ export default function StaffPortal() {
                                     <CardTitle className="text-sm font-bold text-slate-800">Diet Plan Templates</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-0 divide-y divide-slate-100">
-                                    {nutritionPlans.map(plan => (
+                                    {nutritionPlans.map((plan: any) => (
                                         <div key={plan.id} className="p-3 hover:bg-slate-50 cursor-pointer">
                                             <div className="flex justify-between items-center mb-1">
                                                 <span className="font-medium text-sm text-slate-800">{plan.name}</span>
                                                 <span className="text-xs text-slate-400">{plan.assignedTo} users</span>
                                             </div>
                                             <div className="flex flex-wrap gap-1 mt-2">
-                                                {plan.tags.map(tag => (
+                                                {plan.tags?.map((tag: any) => (
                                                     <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded border border-indigo-100">{tag}</span>
                                                 ))}
                                             </div>
@@ -1197,7 +1144,7 @@ export default function StaffPortal() {
                     </div>
 
                     <div className="grid gap-6">
-                        {functionalMedicinePatients.map(patient => (
+                        {functionalMedicinePatients.map((patient: any) => (
                             <Card key={patient.id} className="shadow-sm border-slate-200 overflow-hidden group hover:shadow-md transition-shadow">
                                 <div className="grid grid-cols-12 divide-x divide-slate-100">
                                     
@@ -1377,7 +1324,7 @@ export default function StaffPortal() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {patients.map(p => (
+                                    {patients.map((p: any) => (
                                         <tr key={p.id} className="hover:bg-slate-50/50">
                                             <td className="px-4 py-3 font-semibold text-slate-900">{p.name}</td>
                                             <td className="px-4 py-3 text-slate-500">{p.status}</td>
@@ -1416,7 +1363,7 @@ export default function StaffPortal() {
                                 <CardTitle className="text-sm font-bold text-slate-800">Workout Plans</CardTitle>
                             </CardHeader>
                             <CardContent className="p-4 space-y-4">
-                                {workouts.map(w => (
+                                {workouts.map((w: any) => (
                                     <div key={w.id} className="flex items-center justify-between p-3 border border-slate-100 rounded-lg hover:border-blue-200 transition-colors cursor-pointer bg-white">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded bg-blue-50 flex items-center justify-center text-blue-600">
@@ -1467,7 +1414,7 @@ export default function StaffPortal() {
             {activeRole === 'dermatologist' && (
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="grid grid-cols-3 gap-6">
-                         {patients.filter(p => p.type === 'PCOS' || p.type === 'Pregnancy').map(p => (
+                         {patients.filter((p: any) => p.type === 'PCOS' || p.type === 'Pregnancy').map((p: any) => (
                              <Card key={p.id} className="shadow-sm border-slate-200">
                                  <CardHeader className="pb-2">
                                      <div className="flex justify-between items-start">
@@ -1526,7 +1473,7 @@ export default function StaffPortal() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {labTasks.map(task => (
+                                    {labTasks.map((task: any) => (
                                         <tr key={task.id} className="hover:bg-slate-50/50">
                                             <td className="px-6 py-4">
                                                 <Badge variant="outline" className={`
@@ -1751,7 +1698,7 @@ export default function StaffPortal() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {appointments.map((apt, i) => (
+                                            {appointments.map((apt: any, i: number) => (
                                                 <tr key={i} className="hover:bg-slate-50/50">
                                                     <td className="px-4 py-3 font-medium text-slate-500">{apt.time}</td>
                                                     <td className="px-4 py-3 font-semibold text-slate-900">{apt.patient}</td>

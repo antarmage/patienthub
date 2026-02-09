@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { 
   Calendar as CalendarIcon, 
@@ -39,18 +40,43 @@ export default function NewBooking() {
     "09:00 AM", "09:30 AM", "10:00 AM", "11:15 AM", "02:00 PM", "03:30 PM", "04:15 PM"
   ];
 
-  const services = [
-    { id: "consult", name: "Initial Consultation", duration: "60 min", price: "$200" },
-    { id: "followup", name: "Follow-up Review", duration: "30 min", price: "$100" },
-    { id: "scan", name: "Ultrasound Scan", duration: "45 min", price: "$150" },
-    { id: "lab", name: "Blood Work", duration: "15 min", price: "$50" },
-  ];
+  const { data: servicesData } = useQuery({
+    queryKey: ['/api/services'],
+    queryFn: async () => {
+      const res = await fetch('/api/services');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
 
-  const providers = [
-    { id: "dr-reynolds", name: "Dr. Reynolds", role: "Reproductive Specialist", avail: "High" },
-    { id: "ms-gupta", name: "Ms. Gupta", role: "Nutritionist", avail: "Medium" },
-    { id: "dr-chen", name: "Dr. Chen", role: "Endocrinologist", avail: "Low" },
-  ];
+  const { data: providersData } = useQuery({
+    queryKey: ['/api/providers'],
+    queryFn: async () => {
+      const res = await fetch('/api/providers');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const services = useMemo(() => {
+    if (!servicesData) return [];
+    return servicesData.map((s: any) => ({
+      id: s.serviceId || String(s.id),
+      name: s.name,
+      duration: s.duration,
+      price: s.price,
+    }));
+  }, [servicesData]);
+
+  const providers = useMemo(() => {
+    if (!providersData) return [];
+    return providersData.map((p: any) => ({
+      id: p.name.toLowerCase().replace(/\s+/g, '-').replace(/\./g, ''),
+      name: p.name,
+      role: p.role,
+      avail: p.availability,
+    }));
+  }, [providersData]);
 
   const handleNext = () => setStep(step + 1);
   const handleBack = () => setStep(step - 1);
@@ -170,7 +196,7 @@ export default function NewBooking() {
                     <div className="space-y-4">
                         <Label>Select Service</Label>
                         <div className="grid grid-cols-1 gap-3">
-                            {services.map(s => (
+                            {services.map((s: any) => (
                                 <div 
                                     key={s.id}
                                     onClick={() => setSelectedService(s.id)}
@@ -198,7 +224,7 @@ export default function NewBooking() {
                                 <SelectValue placeholder="Any Available Provider" />
                             </SelectTrigger>
                             <SelectContent>
-                                {providers.map(p => (
+                                {providers.map((p: any) => (
                                     <SelectItem key={p.id} value={p.id}>
                                         <span className="font-medium text-slate-900">{p.name}</span>
                                         <span className="text-slate-400 ml-2 text-xs">({p.role})</span>

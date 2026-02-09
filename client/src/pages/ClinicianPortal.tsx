@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { 
   LayoutDashboard, 
   Users, 
@@ -85,174 +86,134 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-// Mock Data
-const patients = [
-  { 
-    id: 1, 
-    name: "Ananya S.", 
-    age: 29, 
-    status: "High Risk", 
-    focus: "Natural Conception", 
-    lastVisit: "2 days ago", 
-    cycleDay: 14, 
-    avatar: "AS", 
-    mode: "natural_conception", 
-    referredBy: "Dr. Sharma (GP)", 
-    referredTo: "Nutritionist", 
-    vaccination: "Up to Date", 
-    insurance: "Private (Gold)", 
-    contraception: "None (TTC)",
-    history: {
-      medical: ["PCOS (diagnosed 2018)", "Hypothyroidism", "Mild Asthma"],
-      surgical: ["Appendectomy (2015)"],
-      drug: ["Metformin 500mg", "Levothyroxine 50mcg", "Multivitamin"],
-      allergies: ["Penicillin", "Peanuts"]
-    }
-  },
-  { 
-    id: 2, 
-    name: "Meera D.", 
-    age: 34, 
-    status: "Monitor", 
-    focus: "Pregnancy Wk 24", 
-    lastVisit: "1 week ago", 
-    cycleDay: null, 
-    avatar: "MD", 
-    mode: "pregnancy", 
-    referredBy: "Self", 
-    referredTo: "Fetal Medicine", 
-    vaccination: "Flu Shot Due", 
-    insurance: "Corporate", 
-    contraception: "N/A",
-    history: {
-      medical: ["GDM (Gestational Diabetes)", "Anemia"],
-      surgical: ["C-Section (Previous Birth 2020)"],
-      drug: ["Insulin", "Iron Supplements", "Calcium"],
-      allergies: ["None"]
-    }
-  },
-  { 
-    id: 3, 
-    name: "Sarah J.", 
-    age: 31, 
-    status: "Stable", 
-    focus: "Postpartum Wk 6", 
-    lastVisit: "3 weeks ago", 
-    cycleDay: null, 
-    avatar: "SJ", 
-    mode: "postpartum", 
-    referredBy: "Dr. Khan (OBGYN)", 
-    referredTo: "Psychologist", 
-    vaccination: "Completed", 
-    insurance: "Self-Pay", 
-    contraception: "Discussing (IUD)",
-    history: {
-        medical: ["Postpartum Depression (Mild)", "Hypertension (Resolved)"],
-        surgical: ["Episiotomy (2025)"],
-        drug: ["Sertraline 50mg", "Vitamin D"],
-        allergies: ["Latex"]
-    }
-  },
-  { id: 4, name: "Elena R.", age: 36, status: "Active Cycle", focus: "IUI Cycle #2", lastVisit: "Yesterday", cycleDay: 11, avatar: "ER", mode: "iui", referredBy: "Dr. Patel (Endo)", referredTo: "-", vaccination: "Up to Date", insurance: "Private", contraception: "None (TTC)" },
-  { id: 5, name: "Priya K.", age: 28, status: "Assessment", focus: "PCOS Mgmt", lastVisit: "Today", cycleDay: 21, avatar: "PK", mode: "hormone_care", referredBy: "Dr. Lee (Derm)", referredTo: "Dietitian", vaccination: "HPV Due", insurance: "Corporate", contraception: "Oral Pill" },
-];
-
-const hormoneData = [
-  { day: 1, estrogen: 20, progesterone: 5, symptoms: 2 },
-  { day: 5, estrogen: 30, progesterone: 5, symptoms: 1 },
-  { day: 10, estrogen: 60, progesterone: 6, symptoms: 3 },
-  { day: 14, estrogen: 90, progesterone: 8, symptoms: 2 },
-  { day: 16, estrogen: 50, progesterone: 20, symptoms: 5 },
-  { day: 20, estrogen: 40, progesterone: 60, symptoms: 7 }, 
-  { day: 25, estrogen: 30, progesterone: 40, symptoms: 8 },
-  { day: 28, estrogen: 25, progesterone: 10, symptoms: 4 },
-];
-
-const pregnancyData = [
-  { week: 12, weight: 60, expected: 61, systolic: 110, diastolic: 70 },
-  { week: 16, weight: 62, expected: 63, systolic: 112, diastolic: 72 },
-  { week: 20, weight: 65, expected: 65, systolic: 115, diastolic: 74 },
-  { week: 24, weight: 68, expected: 68, systolic: 122, diastolic: 82 }, // Spike
-  { week: 28, weight: 71, expected: 71, systolic: 120, diastolic: 80 }, 
-  { week: 32, weight: 74, expected: 74, systolic: 122, diastolic: 81 },
-];
-
-const follicleData = [
-  { day: 3, left: 5, right: 4, endometrium: 4 },
-  { day: 7, left: 8, right: 6, endometrium: 5.5 },
-  { day: 10, left: 14, right: 9, endometrium: 7.2 },
-  { day: 12, left: 18, right: 11, endometrium: 9.1 }, // Trigger ready
-];
-
-const usgData = [
-  { week: 12, hc: 60, ac: 55, fl: 8 },
-  { week: 16, hc: 110, ac: 100, fl: 20 },
-  { week: 20, hc: 180, ac: 160, fl: 32 },
-  { week: 24, hc: 220, ac: 200, fl: 43 },
-  { week: 28, hc: 260, ac: 240, fl: 52 },
-];
-
-// --- ANALYTICS MOCK DATA ---
-const fertilityAnalyticsData = [
-  { month: 'Jan', active: 45, ovulationRate: 78, pregnancies: 4 },
-  { month: 'Feb', active: 48, ovulationRate: 82, pregnancies: 5 },
-  { month: 'Mar', active: 52, ovulationRate: 80, pregnancies: 6 },
-  { month: 'Apr', active: 50, ovulationRate: 85, pregnancies: 4 },
-  { month: 'May', active: 55, ovulationRate: 88, pregnancies: 7 },
-  { month: 'Jun', active: 58, ovulationRate: 87, pregnancies: 8 },
-];
-
-const follicleSizeDistribution = [
-  { size: '14-16mm', count: 12 },
-  { size: '16-18mm', count: 28 },
-  { size: '18-20mm', count: 45 },
-  { size: '20-22mm', count: 30 },
-  { size: '&gt;22mm', count: 15 },
-];
-
-const pregnancyRiskData = [
-  { month: 'Jan', anemia: 12, gdm: 5, hypertension: 8 },
-  { month: 'Feb', anemia: 10, gdm: 6, hypertension: 7 },
-  { month: 'Mar', anemia: 8, gdm: 4, hypertension: 9 },
-  { month: 'Apr', anemia: 9, gdm: 5, hypertension: 6 },
-  { month: 'May', anemia: 7, gdm: 4, hypertension: 5 },
-  { month: 'Jun', anemia: 6, gdm: 3, hypertension: 4 },
-];
-
-const postpartumScoreData = [
-  { week: 1, epds: 12, physical: 40 },
-  { week: 2, epds: 10, physical: 55 },
-  { week: 4, epds: 8, physical: 70 },
-  { week: 6, epds: 6, physical: 85 },
-  { week: 8, epds: 4, physical: 92 },
-  { week: 12, epds: 3, physical: 98 },
-];
-
-const pcosSymptomData = [
-  { month: 'Jan', acne: 8, hirsutism: 7, weight: 75 },
-  { month: 'Feb', acne: 7, hirsutism: 7, weight: 74 },
-  { month: 'Mar', acne: 6, hirsutism: 6, weight: 73 },
-  { month: 'Apr', acne: 5, hirsutism: 6, weight: 72 },
-  { month: 'May', acne: 4, hirsutism: 5, weight: 71 },
-  { month: 'Jun', acne: 3, hirsutism: 5, weight: 70 },
-];
-
 export default function ClinicianPortal() {
-  const [activeView, setActiveView] = useState("dashboard"); // 'dashboard' or 'patient_detail'
-  const [selectedPatient, setSelectedPatient] = useState(patients[0]);
+  const [activeView, setActiveView] = useState("dashboard");
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [careMode, setCareMode] = useState("natural_conception"); 
   const [showDocumentation, setShowDocumentation] = useState(false);
-  const [scheduleViewMode, setScheduleViewMode] = useState("appointments"); // 'appointments' or 'occupancy'
-  const [calendarViewMode, setCalendarViewMode] = useState("month"); // 'month', 'week', 'day'
-  const [activeSettingsTab, setActiveSettingsTab] = useState("profile"); // 'profile' or 'availability'
+  const [scheduleViewMode, setScheduleViewMode] = useState("appointments");
+  const [calendarViewMode, setCalendarViewMode] = useState("month");
+  const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [bookingType, setBookingType] = useState("surgery"); // 'surgery', 'c_section', 'consultation'
+  const [bookingType, setBookingType] = useState("surgery");
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+
+  const patientsQuery = useQuery({
+    queryKey: ['/api/patients'],
+    queryFn: async () => {
+      const res = await fetch('/api/patients');
+      if (!res.ok) throw new Error('Failed to fetch patients');
+      return res.json();
+    }
+  });
+  const patients = patientsQuery.data || [];
+
+  const hormoneQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/hormones`],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${selectedPatient?.id}/hormones`);
+      if (!res.ok) throw new Error('Failed to fetch hormone data');
+      return res.json();
+    },
+    enabled: !!selectedPatient
+  });
+  const hormoneData = hormoneQuery.data || [];
+
+  const pregnancyQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/pregnancy-metrics`],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${selectedPatient?.id}/pregnancy-metrics`);
+      if (!res.ok) throw new Error('Failed to fetch pregnancy data');
+      return res.json();
+    },
+    enabled: !!selectedPatient
+  });
+  const pregnancyData = pregnancyQuery.data || [];
+
+  const follicleQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/follicle-data`],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${selectedPatient?.id}/follicle-data`);
+      if (!res.ok) throw new Error('Failed to fetch follicle data');
+      return res.json();
+    },
+    enabled: !!selectedPatient
+  });
+  const follicleData = follicleQuery.data || [];
+
+  const usgQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/usg-data`],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${selectedPatient?.id}/usg-data`);
+      if (!res.ok) throw new Error('Failed to fetch USG data');
+      return res.json();
+    },
+    enabled: !!selectedPatient
+  });
+  const usgData = usgQuery.data || [];
+
+  const fertilityAnalyticsQuery = useQuery({
+    queryKey: ['/api/analytics/fertility'],
+    queryFn: async () => {
+      const res = await fetch('/api/analytics/fertility');
+      if (!res.ok) throw new Error('Failed to fetch fertility analytics');
+      return res.json();
+    }
+  });
+  const fertilityAnalyticsData = fertilityAnalyticsQuery.data || [];
+
+  const follicleDistributionQuery = useQuery({
+    queryKey: ['/api/analytics/follicle-distribution'],
+    queryFn: async () => {
+      const res = await fetch('/api/analytics/follicle-distribution');
+      if (!res.ok) throw new Error('Failed to fetch follicle distribution');
+      return res.json();
+    }
+  });
+  const follicleSizeDistribution = follicleDistributionQuery.data || [];
+
+  const pregnancyRiskQuery = useQuery({
+    queryKey: ['/api/analytics/pregnancy-risk'],
+    queryFn: async () => {
+      const res = await fetch('/api/analytics/pregnancy-risk');
+      if (!res.ok) throw new Error('Failed to fetch pregnancy risk data');
+      return res.json();
+    }
+  });
+  const pregnancyRiskData = pregnancyRiskQuery.data || [];
+
+  const postpartumQuery = useQuery({
+    queryKey: ['/api/analytics/postpartum'],
+    queryFn: async () => {
+      const res = await fetch('/api/analytics/postpartum');
+      if (!res.ok) throw new Error('Failed to fetch postpartum data');
+      return res.json();
+    }
+  });
+  const postpartumScoreData = postpartumQuery.data || [];
+
+  const pcosQuery = useQuery({
+    queryKey: ['/api/analytics/pcos'],
+    queryFn: async () => {
+      const res = await fetch('/api/analytics/pcos');
+      if (!res.ok) throw new Error('Failed to fetch PCOS data');
+      return res.json();
+    }
+  });
+  const pcosSymptomData = pcosQuery.data || [];
+
+  useEffect(() => {
+    if (patients.length > 0 && !selectedPatient) {
+      setSelectedPatient(patients[0]);
+    }
+  }, [patients, selectedPatient]);
 
   // Sync care mode when patient changes
   useEffect(() => {
-     setCareMode(selectedPatient.mode);
+    if (selectedPatient) {
+      setCareMode(selectedPatient.mode);
+    }
   }, [selectedPatient]);
 
   // Set the theme attribute on mount
@@ -922,7 +883,7 @@ export default function ClinicianPortal() {
                                          <SelectValue placeholder="Select patient" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                         {patients.map(p => (
+                                         {patients.map((p: any) => (
                                             <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
                                          ))}
                                       </SelectContent>
@@ -2400,7 +2361,7 @@ export default function ClinicianPortal() {
                     <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-medium">24</span>
                  </div>
                  <ScrollArea className="flex-1">
-                    {patients.map(patient => (
+                    {patients.map((patient: any) => (
                       <div 
                         key={patient.id}
                         onClick={() => setSelectedPatient(patient)}

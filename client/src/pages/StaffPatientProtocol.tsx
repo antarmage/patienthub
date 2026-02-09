@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useRoute } from "wouter";
 import { 
   ArrowLeft, 
@@ -45,8 +45,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { useQuery } from "@tanstack/react-query";
 
-// --- MOCK DATA FOR HISTORY ---
 const historyData = [
   { date: 'Oct 01', weight: 69.5, inflammation: 4.2, adherence: 85 },
   { date: 'Oct 08', weight: 69.1, inflammation: 3.8, adherence: 90 },
@@ -64,71 +64,92 @@ const intakeLog = [
     { id: 5, date: "Yesterday", meal: "Lunch", status: "Consumed", item: "Quinoa Salad", notes: "" },
 ];
 
-// --- MOCK DATA (Should match StaffPortal for consistency) ---
-const patients = [
-  { 
-    id: 101, 
-    name: "Ananya S.", 
-    age: 29, 
-    condition: "PCOS (Insulin Resistant)", 
-    avatar: "AS",
-    meta: {
-      phase: "Luteal Phase (Day 22)",
-      bmr: 1450,
-      tdee: 1850,
-      weight: "68.2 kg",
-      height: "165 cm",
-      bmi: "25.0",
-      activity: "Moderate (Yoga 3x/week)"
-    },
-    labs: {
-        hscrp: { value: 3.2, status: "High", range: "< 1.0", name: "hs-CRP" },
-        insulin: { value: 12.5, status: "Elevated", range: "< 10.0", name: "Fasting Insulin" },
-        hba1c: { value: 5.7, status: "Borderline", range: "< 5.7", name: "HbA1c" },
-        vitd: { value: 22, status: "Low", range: "30-100", name: "Vitamin D" }
-    },
-    history: {
-      medical: ["PCOS (diagnosed 2018)", "Hypothyroidism", "Mild Asthma"],
-      surgical: ["Appendectomy (2015)"],
-      drug: ["Metformin 500mg", "Levothyroxine 50mcg", "Multivitamin"],
-      allergies: ["Penicillin", "Peanuts"]
-    },
-    clinicianNote: "Referral: Dr. Reynolds. Patient struggles with insulin resistance. Focus on fiber intake and low glycemic load."
-  },
-   { 
-    id: 102, 
-    name: "Priya K.", 
-    age: 28, 
-    condition: "Endometriosis Stage II", 
-    avatar: "PK",
-    meta: {
-      phase: "Follicular Phase (Day 5)",
-      bmr: 1380,
-      tdee: 1700,
-      weight: "62.0 kg",
-      height: "162 cm",
-      bmi: "23.6",
-      activity: "Sedentary"
-    },
-    labs: {
-        hscrp: { value: 5.8, status: "Critical", range: "< 1.0", name: "hs-CRP" },
-        ca125: { value: 45, status: "High", range: "< 35", name: "CA-125" },
-        estradiol: { value: 180, status: "Normal", range: "30-400", name: "Estradiol" }
-    },
-    history: {
-      medical: ["Endometriosis (diagnosed 2021)", "Dysmenorrhea"],
-      surgical: ["Laparoscopy (2021)"],
-      drug: ["Ibuprofen (PRN)", "Omega-3 Supplements"],
-      allergies: ["Sulfa Drugs"]
-    },
-    clinicianNote: "Referral: Dr. Reynolds. Confirmed Endo Stage II. Avoid inflammatory foods. Prioritize omega-3s for pain management."
-  }
-];
-
 export default function StaffPatientProtocol() {
+  const patientsQuery = useQuery({
+    queryKey: ['/api/patients'],
+    queryFn: async () => {
+      const res = await fetch('/api/patients');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const providersQuery = useQuery({
+    queryKey: ['/api/providers'],
+    queryFn: async () => {
+      const res = await fetch('/api/providers');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const nutritionPlansQuery = useQuery({
+    queryKey: ['/api/nutrition-plans'],
+    queryFn: async () => {
+      const res = await fetch('/api/nutrition-plans');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const workoutsQuery = useQuery({
+    queryKey: ['/api/workouts'],
+    queryFn: async () => {
+      const res = await fetch('/api/workouts');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const labTasksQuery = useQuery({
+    queryKey: ['/api/lab-tasks'],
+    queryFn: async () => {
+      const res = await fetch('/api/lab-tasks');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const appointmentsQuery = useQuery({
+    queryKey: ['/api/appointments'],
+    queryFn: async () => {
+      const res = await fetch('/api/appointments');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const allPatients = patientsQuery.data || [];
+  const allProviders = providersQuery.data || [];
+  const nutritionPlans = nutritionPlansQuery.data || [];
+  const workouts = workoutsQuery.data || [];
+
+  const functionalMedicinePatients = useMemo(
+    () => allPatients.filter((p: any) => p.genomics != null),
+    [allPatients]
+  );
+
+  const labTasks = useMemo(
+    () => (labTasksQuery.data || []).map((task: any) => {
+      const pat = allPatients.find((p: any) => p.id === task.patientId);
+      return { ...task, patientName: pat?.name || 'Unknown' };
+    }),
+    [labTasksQuery.data, allPatients]
+  );
+
+  const appointments = useMemo(
+    () => (appointmentsQuery.data || []).map((appt: any) => {
+      const pat = allPatients.find((p: any) => p.id === appt.patientId);
+      const prov = allProviders.find((pr: any) => pr.id === appt.providerId);
+      return { ...appt, patientName: pat?.name || 'Unknown', providerName: prov?.name || 'Unknown' };
+    }),
+    [appointmentsQuery.data, allPatients, allProviders]
+  );
+
+  const patients = functionalMedicinePatients;
   const [match, params] = useRoute("/staff/protocol/:id");
   const patientId = params?.id ? parseInt(params.id) : null;
-  const patient = patients.find(p => p.id === patientId) || patients[0]; // Fallback for demo
+  const patient = patients.find((p: any) => p.id === patientId) || patients[0]; // Fallback for demo
 
   const [selectedDay, setSelectedDay] = useState("Monday");
   const [isCustomMealOpen, setIsCustomMealOpen] = useState(false);

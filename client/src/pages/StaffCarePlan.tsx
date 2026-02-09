@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Link, useRoute } from "wouter";
 import { 
   ArrowLeft,
@@ -32,139 +32,47 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ListPlus, Trash2, Sparkles } from "lucide-react";
-
-// --- MOCK DATA (Should match StaffPortal for consistency) ---
-const functionalMedicinePatients = [
-  {
-    id: 101,
-    name: "Ananya S.",
-    age: 29,
-    condition: "PCOS (Insulin Resistant)",
-    genomics: {
-      mthfr: { status: "Heterozygous", risk: "Medium" },
-      caffeine: { status: "Slow Metabolizer", risk: "High" },
-      gluten: { status: "HLA-DQ2 Positive", risk: "High" },
-      comt: { status: "Met/Met (Worrier)", risk: "Medium" }
-    },
-    functional: {
-      gut: { status: "Dysbiosis", score: 45 },
-      inflammation: { marker: "hs-CRP", value: "3.2", status: "Elevated" },
-      nutrient: { deficiency: "Vitamin D, Magnesium", status: "Critical" },
-      hormone: { focus: "Estrogen Dominance", status: "Imbalanced" }
-    },
-    intervention: {
-        protocol: "Supplement Protocol (Active)",
-        dietPhase: "Elimination Diet (Week 2)"
-    },
-    plan: "Anti-inflammatory, Gluten-Free",
-    nextReview: "2 days",
-    clinicianNote: "Referral: Dr. Reynolds. Patient struggles with insulin resistance. Focus on fiber intake and low glycemic load.",
-    history: {
-        diagnosis: "Diagnosed PCOS (2019), Insulin Resistance (2021).",
-        medications: "Metformin 500mg, Ovasitol.",
-        allergies: "Peanuts (Severe).",
-        lifestyle: "Sedentary job, high stress. Sleeps 6 hours avg."
-    }
-  },
-  {
-    id: 102,
-    name: "Priya K.",
-    age: 28,
-    condition: "Endometriosis Stage II",
-    genomics: {
-      mthfr: { status: "Normal", risk: "Low" },
-      caffeine: { status: "Fast Metabolizer", risk: "Low" },
-      gluten: { status: "Negative", risk: "Low" },
-      estrogen: { status: "CYP1A1 Slow", risk: "High" }
-    },
-    functional: {
-      gut: { status: "Leaky Gut", score: 60 },
-      inflammation: { marker: "Homocysteine", value: "12", status: "Borderline" },
-      nutrient: { deficiency: "Omega-3", status: "Moderate" },
-      hormone: { focus: "Progesterone Support", status: "Low" }
-    },
-    intervention: {
-        protocol: "Gut Healing Protocol (Week 4)",
-        dietPhase: "Reintroduction Phase"
-    },
-    plan: "Low Histamine, High Omega-3",
-    nextReview: "1 week",
-    clinicianNote: "Referral: Dr. Reynolds. Confirmed Endo Stage II. Avoid inflammatory foods. Prioritize omega-3s for pain management.",
-    history: {
-        diagnosis: "Endometriosis Stage II (Laparoscopy 2023).",
-        medications: "NSAIDs (PRN), Magnesium.",
-        allergies: "None known.",
-        lifestyle: "Active, yoga practitioner. Vegetarian."
-    }
-  },
-  {
-    id: 103,
-    name: "Meera D.",
-    age: 34,
-    condition: "Gestational Diabetes Risk",
-    genomics: {
-      mthfr: { status: "Homozygous", risk: "High" },
-      caffeine: { status: "Slow Metabolizer", risk: "High" },
-      carbs: { status: "TCF7L2 Variant", risk: "High" },
-      comt: { status: "Val/Val (Warrior)", risk: "Low" }
-    },
-    functional: {
-      gut: { status: "Stable", score: 85 },
-      inflammation: { marker: "Insulin", value: "18", status: "High" },
-      nutrient: { deficiency: "Chromium", status: "Moderate" },
-      hormone: { focus: "Insulin Sensitivity", status: "Resistant" }
-    },
-    intervention: {
-        protocol: "Metabolic Reset (Day 5)",
-        dietPhase: "Low GI Strict"
-    },
-    plan: "Low Glycemic Index, Methylated Folate",
-    nextReview: "Tomorrow",
-    clinicianNote: "Referral: Dr. Reynolds. GDM risk high. Strict sugar control needed. Monitor post-prandial spikes.",
-    history: {
-        diagnosis: "Pre-diabetic range HbA1c in first trimester.",
-        medications: "Prenatal Vitamins, Iron.",
-        allergies: "Dairy (Mild intolerance).",
-        lifestyle: "Corporate job, moderate activity. Craves sweets."
-    }
-  },
-  {
-    id: 104,
-    name: "Zara M.",
-    age: 31,
-    condition: "Pregnancy (Trimester 2)",
-    genomics: {
-      mthfr: { status: "Heterozygous", risk: "Medium" },
-      caffeine: { status: "Fast Metabolizer", risk: "Low" },
-      gluten: { status: "Negative", risk: "Low" },
-      comt: { status: "Val/Met (Balanced)", risk: "Low" }
-    },
-    functional: {
-      gut: { status: "Good", score: 90 },
-      inflammation: { marker: "hs-CRP", value: "0.8", status: "Optimal" },
-      nutrient: { deficiency: "Iron", status: "Mild" },
-      hormone: { focus: "Thyroid Support", status: "Stable" }
-    },
-    intervention: {
-        protocol: "Prenatal Support",
-        dietPhase: "Maintenance (T2)"
-    },
-    plan: "Prenatal Wellness, Iron-Rich",
-    nextReview: "2 weeks",
-    clinicianNote: "Routine prenatal care (Week 20). Focus on iron-rich foods and adequate protein for fetal growth. Monitor energy levels.",
-    history: {
-        diagnosis: "Healthy Pregnancy, Week 20.",
-        medications: "Prenatal Vitamins.",
-        allergies: "None.",
-        lifestyle: "Active, walks daily. Yoga twice a week."
-    }
-  }
-];
+import { useQuery } from "@tanstack/react-query";
 
 export default function StaffCarePlan() {
+  const patientsQuery = useQuery({
+    queryKey: ['/api/patients'],
+    queryFn: async () => {
+      const res = await fetch('/api/patients');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const nutritionPlansQuery = useQuery({
+    queryKey: ['/api/nutrition-plans'],
+    queryFn: async () => {
+      const res = await fetch('/api/nutrition-plans');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const workoutsQuery = useQuery({
+    queryKey: ['/api/workouts'],
+    queryFn: async () => {
+      const res = await fetch('/api/workouts');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const allPatients = patientsQuery.data || [];
+  const nutritionPlans = nutritionPlansQuery.data || [];
+  const workouts = workoutsQuery.data || [];
+
+  const functionalMedicinePatients = useMemo(
+    () => allPatients.filter((p: any) => p.genomics != null),
+    [allPatients]
+  );
   const [match, params] = useRoute("/staff/create-plan/:id?");
   const patientId = params?.id ? parseInt(params.id) : null;
-  const initialPatient = patientId ? functionalMedicinePatients.find(p => p.id === patientId) : null;
+  const initialPatient = patientId ? functionalMedicinePatients.find((p: any) => p.id === patientId) : null;
   
   const [selectedPatient, setSelectedPatient] = useState<any>(initialPatient);
   
@@ -244,7 +152,7 @@ export default function StaffCarePlan() {
                         <Select 
                             value={selectedPatient?.id.toString()} 
                             onValueChange={(val) => {
-                                const p = functionalMedicinePatients.find(pat => pat.id.toString() === val);
+                                const p = functionalMedicinePatients.find((pat: any) => pat.id.toString() === val);
                                 setSelectedPatient(p);
                             }}
                         >
@@ -252,7 +160,7 @@ export default function StaffCarePlan() {
                                 <SelectValue placeholder="Search patient..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {functionalMedicinePatients.map(p => (
+                                {functionalMedicinePatients.map((p: any) => (
                                     <SelectItem key={p.id} value={p.id.toString()}>{p.name} ({p.condition})</SelectItem>
                                 ))}
                             </SelectContent>

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { 
   Search, 
@@ -19,21 +20,56 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 
-// Mock Data
-const upcomingAppointments = [
-  { id: 1, name: "Ananya S.", time: "09:00", type: "Fertility Scan", doctor: "Dr. Reynolds", status: "On Time", image: "AS" },
-  { id: 2, name: "Meera D.", time: "09:30", type: "Antenatal Check", doctor: "Dr. Reynolds", status: "Late", image: "MD" },
-  { id: 3, name: "Sarah J.", time: "10:00", type: "Postpartum Review", doctor: "Dr. Reynolds", status: "On Time", image: "SJ" },
-  { id: 4, name: "Priya K.", time: "11:00", type: "Diet Consult", doctor: "Ms. Gupta", status: "On Time", image: "PK" },
-];
-
 export default function CheckIn() {
+  const { data: appointmentsData } = useQuery({
+    queryKey: ['/api/appointments'],
+    queryFn: async () => {
+      const res = await fetch('/api/appointments');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const { data: patientsData } = useQuery({
+    queryKey: ['/api/patients'],
+    queryFn: async () => {
+      const res = await fetch('/api/patients');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const { data: providersData } = useQuery({
+    queryKey: ['/api/providers'],
+    queryFn: async () => {
+      const res = await fetch('/api/providers');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const upcomingAppointments = useMemo(() => {
+    if (!appointmentsData || !patientsData || !providersData) return [];
+    return appointmentsData.map((appt: any) => {
+      const patient = patientsData.find((p: any) => p.id === appt.patientId);
+      const provider = providersData.find((pr: any) => pr.id === appt.providerId);
+      return {
+        id: appt.id,
+        name: patient?.name || 'Unknown',
+        time: appt.time,
+        type: appt.type,
+        doctor: provider?.name || 'Unknown',
+        status: appt.status,
+        image: patient?.avatar || '??',
+      };
+    });
+  }, [appointmentsData, patientsData, providersData]);
   const [_, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [step, setStep] = useState(1); // 1: List, 2: Details/Confirm, 3: Success
 
-  const filteredAppointments = upcomingAppointments.filter(app => 
+  const filteredAppointments = upcomingAppointments.filter((app: any) => 
     app.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -99,7 +135,7 @@ export default function CheckIn() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-                    {filteredAppointments.map(app => (
+                    {filteredAppointments.map((app: any) => (
                         <Card 
                             key={app.id} 
                             className="cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all group"
