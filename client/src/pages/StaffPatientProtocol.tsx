@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRoute } from "wouter";
 import { 
   ArrowLeft, 
@@ -169,6 +169,7 @@ export default function StaffPatientProtocol() {
   });
 
   const existingProtocol = protocolQuery.data;
+  const [protocolLoaded, setProtocolLoaded] = useState(false);
 
   const [selectedDay, setSelectedDay] = useState("Monday");
   const [isCustomMealOpen, setIsCustomMealOpen] = useState(false);
@@ -189,6 +190,21 @@ export default function StaffPatientProtocol() {
         { id: 8, time: "13:00", name: "Lunch", item: "Grilled Chicken/Paneer Salad", qty: "1 bowl", macros: "400kcal, 25g P" },
     ]
   });
+
+  useEffect(() => {
+    if (existingProtocol && !protocolLoaded) {
+      if (existingProtocol.weeklyPlan) {
+        setWeeklyPlan(existingProtocol.weeklyPlan as Record<string, any[]>);
+      }
+      if (existingProtocol.primaryGoal) {
+        setPrimaryGoal(existingProtocol.primaryGoal);
+      }
+      if (existingProtocol.dietaryStrategy) {
+        setDietaryStrategy(existingProtocol.dietaryStrategy);
+      }
+      setProtocolLoaded(true);
+    }
+  }, [existingProtocol, protocolLoaded]);
 
   const currentDayPlan = weeklyPlan[selectedDay] || [];
 
@@ -342,7 +358,13 @@ export default function StaffPatientProtocol() {
     setIsSaving(false);
   };
 
-  const totalCalories = 1320;
+  const totalCalories = useMemo(() => {
+    const dayPlan = weeklyPlan[selectedDay] || [];
+    return dayPlan.reduce((sum: number, item: any) => {
+      const match = (item.macros || "").match(/(\d+)\s*kcal/i);
+      return sum + (match ? parseInt(match[1]) : 0);
+    }, 0);
+  }, [weeklyPlan, selectedDay]);
   const targetCalories = (patient?.meta?.tdee || 1800) - 300;
 
   if (!patient) {
