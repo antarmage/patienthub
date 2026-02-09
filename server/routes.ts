@@ -181,6 +181,11 @@ export async function registerRoutes(
     res.json(results);
   });
 
+  app.get("/api/visit-history", async (req, res) => {
+    const visits = await storage.getAllVisitHistory();
+    res.json(visits);
+  });
+
   app.get("/api/patients/:id/visit-history", async (req, res) => {
     const visits = await storage.getVisitHistory(parseInt(req.params.id));
     res.json(visits);
@@ -214,6 +219,11 @@ export async function registerRoutes(
     const deleted = await storage.deleteMedication(parseInt(req.params.id));
     if (!deleted) return res.status(404).json({ error: "Medication not found" });
     res.status(204).send();
+  });
+
+  app.get("/api/clinical-notes", async (req, res) => {
+    const notes = await storage.getAllClinicalNotes();
+    res.json(notes);
   });
 
   app.get("/api/patients/:id/clinical-notes", async (req, res) => {

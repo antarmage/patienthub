@@ -405,6 +405,73 @@ export default function StaffPortal() {
   });
   const providers = providersQuery.data || [];
 
+  const allVisitHistoryQuery = useQuery({
+    queryKey: ['/api/visit-history'],
+    queryFn: async () => {
+      const res = await fetch('/api/visit-history');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+  const allVisits = allVisitHistoryQuery.data || [];
+
+  const allClinicalNotesQuery = useQuery({
+    queryKey: ['/api/clinical-notes'],
+    queryFn: async () => {
+      const res = await fetch('/api/clinical-notes');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+  const allClinicalNotes = allClinicalNotesQuery.data || [];
+
+  const documentationItems = useMemo(() => {
+    const items: any[] = [];
+    allVisits.forEach((v: any) => {
+      const patient = patients.find((p: any) => p.id === v.patientId);
+      const provider = providers.find((p: any) => p.id === v.providerId);
+      items.push({
+        id: `visit-${v.id}`,
+        source: 'visit',
+        patientId: v.patientId,
+        patientName: patient?.name || `Patient #${v.patientId}`,
+        providerName: provider?.name || 'Unknown',
+        title: v.chiefComplaint || v.visitType || 'Visit Note',
+        type: v.visitType || 'Visit',
+        date: v.date,
+        diagnosis: v.diagnosis,
+        subjective: v.subjective,
+        objective: v.objective,
+        assessment: v.assessment,
+        plan: v.planNotes,
+        prescriptions: v.prescriptions,
+        procedures: v.procedures,
+        labsOrdered: v.labsOrdered,
+        followUpPlan: v.followUpPlan,
+        outcome: v.outcome,
+        vitals: v.vitals,
+      });
+    });
+    allClinicalNotes.forEach((n: any) => {
+      const patient = patients.find((p: any) => p.id === n.patientId);
+      const provider = providers.find((p: any) => p.id === n.providerId);
+      items.push({
+        id: `note-${n.id}`,
+        source: 'note',
+        patientId: n.patientId,
+        patientName: patient?.name || `Patient #${n.patientId}`,
+        providerName: provider?.name || 'Unknown',
+        title: n.title || 'Clinical Note',
+        type: n.type || 'Note',
+        date: n.date,
+        content: n.content,
+        tags: n.tags,
+      });
+    });
+    items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return items;
+  }, [allVisits, allClinicalNotes, patients, providers]);
+
   const appointmentsQuery = useQuery({
     queryKey: ['/api/appointments'],
     queryFn: async () => {
@@ -504,6 +571,7 @@ export default function StaffPortal() {
   const [selectedTaskForAction, setSelectedTaskForAction] = useState<any>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPatientForCheckout, setSelectedPatientForCheckout] = useState<any>(null);
+  const [selectedDocItem, setSelectedDocItem] = useState<any>(null);
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
   const [selectedFollowUp, setSelectedFollowUp] = useState<any>(null);
   const [vitalsData, setVitalsData] = useState({
@@ -901,16 +969,11 @@ export default function StaffPortal() {
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="flex justify-between items-center">
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-900 font-serif">Clinical Documentation</h2>
+                            <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-clinical-doc-heading">Clinical Documentation</h2>
                             <p className="text-slate-500 text-sm mt-1">Manage progress notes, lab reports, and care summaries.</p>
                         </div>
                         <div className="flex gap-2">
-                             <Button variant="outline" className="bg-white border-slate-200">
-                                <Search className="w-4 h-4 mr-2" /> Search Archives
-                             </Button>
-                             <Button className="bg-slate-900 text-white hover:bg-slate-800">
-                                <Plus className="w-4 h-4 mr-2" /> Create New Note
-                             </Button>
+                             <Badge variant="secondary" className="bg-slate-100 text-slate-600 text-xs">{documentationItems.length} Records</Badge>
                         </div>
                     </div>
 
@@ -920,118 +983,218 @@ export default function StaffPortal() {
                             <CardHeader className="py-4 border-b border-slate-100">
                                 <div className="relative">
                                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                                    <Input placeholder="Filter by patient or type..." className="pl-9 bg-slate-50 border-slate-200" />
+                                    <Input placeholder="Filter by patient or type..." className="pl-9 bg-slate-50 border-slate-200" data-testid="input-filter-docs" />
                                 </div>
                             </CardHeader>
                             <CardContent className="p-0 flex-1 overflow-y-auto">
                                 <div className="divide-y divide-slate-100">
-                                    {(() => {
-                                        const noteTemplates = [
-                                            { title: 'Diet Plan Adjustment', time: '10:30 AM', desc: 'Patient reported increased bloating with dairy reintroduction. Switched to lactose-free alternatives for Week 3.', badgeLabel: 'Progress Note', badgeBg: 'bg-indigo-100', badgeText: 'text-indigo-700', highlight: true },
-                                            { title: 'Lab Results Review', time: 'Yesterday', desc: 'Serum progesterone levels indicate ovulation occurred. Luteal phase support protocol initiated.', badgeLabel: 'Lab Analysis', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', highlight: false },
-                                            { title: 'Postpartum Screening', time: 'Feb 6', desc: 'EPDS Score: 12. Mild anxiety symptoms noted. Referred to Dr. Cohen for follow-up.', badgeLabel: 'Screening', badgeBg: 'bg-rose-100', badgeText: 'text-rose-700', highlight: false },
-                                        ];
-                                        return patients.slice(0, 3).map((p: any, idx: number) => {
-                                            const template = noteTemplates[idx] || noteTemplates[0];
-                                            const initials = p.name?.split(' ').map((n: string) => n[0]).join('') || '?';
-                                            return (
-                                                <div key={p.id} className={`p-4 hover:bg-slate-50 cursor-pointer border-l-4 border-transparent hover:border-indigo-500 transition-all ${template.highlight ? 'bg-indigo-50/30' : ''}`}>
-                                                    <div className="flex justify-between items-start mb-1">
-                                                        <span className="font-bold text-slate-900 text-sm">{template.title}</span>
-                                                        <span className="text-[10px] text-slate-400">{template.time}</span>
-                                                    </div>
-                                                    <p className="text-xs text-slate-500 mb-2 line-clamp-2">{template.desc}</p>
-                                                    <div className="flex items-center gap-2">
-                                                        <Avatar className="h-5 w-5 text-[8px]">
-                                                            <AvatarFallback className="bg-slate-200">{initials}</AvatarFallback>
-                                                        </Avatar>
-                                                        <span className="text-xs text-slate-600 font-medium">{p.name}</span>
-                                                        <Badge variant="secondary" className={`ml-auto text-[10px] ${template.badgeBg} ${template.badgeText} hover:${template.badgeBg}`}>{template.badgeLabel}</Badge>
-                                                    </div>
+                                    {documentationItems.length === 0 && (
+                                        <div className="p-6 text-center text-slate-400 text-sm">No clinical documentation found.</div>
+                                    )}
+                                    {documentationItems.map((item: any) => {
+                                        const initials = item.patientName?.split(' ').map((n: string) => n[0]).join('') || '?';
+                                        const isSelected = selectedDocItem?.id === item.id;
+                                        const badgeConfig = item.source === 'visit' 
+                                            ? { label: item.type || 'Visit', bg: 'bg-indigo-100', text: 'text-indigo-700' }
+                                            : { label: item.type || 'Note', bg: 'bg-purple-100', text: 'text-purple-700' };
+                                        const description = item.source === 'visit' 
+                                            ? (item.diagnosis || item.subjective || item.assessment || 'No details')
+                                            : (item.content || 'No content');
+                                        return (
+                                            <div 
+                                                key={item.id} 
+                                                className={`p-4 hover:bg-slate-50 cursor-pointer border-l-4 transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50/30' : 'border-transparent'}`}
+                                                onClick={() => setSelectedDocItem(item)}
+                                                data-testid={`doc-item-${item.id}`}
+                                            >
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className="font-bold text-slate-900 text-sm line-clamp-1">{item.title}</span>
+                                                    <span className="text-[10px] text-slate-400 shrink-0 ml-2">{item.date}</span>
                                                 </div>
-                                            );
-                                        });
-                                    })()}
+                                                <p className="text-xs text-slate-500 mb-2 line-clamp-2">{description}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="h-5 w-5 text-[8px]">
+                                                        <AvatarFallback className="bg-slate-200">{initials}</AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="text-xs text-slate-600 font-medium">{item.patientName}</span>
+                                                    <Badge variant="secondary" className={`ml-auto text-[10px] ${badgeConfig.bg} ${badgeConfig.text}`}>{badgeConfig.label}</Badge>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </CardContent>
                         </Card>
 
-                        {/* Editor Area */}
+                        {/* Detail/Editor Area */}
                         <Card className="col-span-8 border-slate-200 shadow-sm flex flex-col h-[calc(100vh-12rem)]">
-                            <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between bg-slate-50/30">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="font-bold text-slate-900">Diet Plan Adjustment</h3>
-                                        <Badge variant="outline" className="text-xs text-slate-500 font-normal">Draft</Badge>
+                            {!selectedDocItem ? (
+                                <div className="flex-1 flex items-center justify-center text-slate-400">
+                                    <div className="text-center">
+                                        <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                                        <p className="text-sm font-medium">Select a record to view details</p>
+                                        <p className="text-xs mt-1">Choose from the list on the left</p>
                                     </div>
-                                    <p className="text-xs text-slate-500">Created by <span className="font-medium text-slate-700">You</span> • Today at 10:30 AM</p>
                                 </div>
-                                <div className="flex gap-2">
-                                    <Button variant="ghost" size="sm" className="h-8 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50">Delete</Button>
-                                    <Button size="sm" className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white">Save & Sign</Button>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-6 flex-1 overflow-y-auto">
-                                <div className="space-y-6 max-w-2xl">
-                                    {/* Patient Context */}
-                                    <div className="flex items-center gap-3 p-3 bg-blue-50/50 border border-blue-100 rounded-lg">
-                                        <Avatar className="h-10 w-10 border-2 border-white">
-                                            <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">{patients[0]?.name?.split(' ').map((n: string) => n[0]).join('') || '?'}</AvatarFallback>
-                                        </Avatar>
+                            ) : (
+                                <>
+                                    <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between bg-slate-50/30">
                                         <div>
-                                            <p className="font-bold text-sm text-slate-900">{patients[0]?.name || 'Loading...'}</p>
-                                            <p className="text-xs text-slate-500">{patients[0]?.type || 'Patient'} • MRN: #{patients[0]?.id || '—'}</p>
-                                        </div>
-                                        <Button variant="ghost" size="sm" className="ml-auto text-xs text-blue-600 h-7">View History</Button>
-                                    </div>
-
-                                    {/* SOAP Note Structure */}
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">S (Subjective)</Label>
-                                            <Textarea 
-                                                className="min-h-[80px] bg-slate-50/50 border-slate-200 focus:bg-white transition-colors text-sm"
-                                                placeholder="Enter patient's subjective complaints and observations..." 
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">O (Objective)</Label>
-                                            <Textarea 
-                                                className="min-h-[80px] bg-slate-50/50 border-slate-200 focus:bg-white transition-colors text-sm"
-                                                placeholder="Enter objective measurements (weight, BP, lab values, adherence %)..." 
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">A (Assessment)</Label>
-                                            <Textarea 
-                                                className="min-h-[80px] bg-slate-50/50 border-slate-200 focus:bg-white transition-colors text-sm"
-                                                placeholder="Enter clinical assessment and diagnosis..." 
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">P (Plan)</Label>
-                                            <Textarea 
-                                                className="min-h-[80px] bg-slate-50/50 border-slate-200 focus:bg-white transition-colors text-sm"
-                                                placeholder="Enter treatment plan and next steps..." 
-                                            />
-                                        </div>
-                                    </div>
-                                    
-                                    {/* Attachments */}
-                                    <div className="pt-4 border-t border-slate-100">
-                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 block">Attachments</Label>
-                                        <div className="flex gap-3">
-                                            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded text-xs font-medium text-slate-700">
-                                                <FileText className="w-3 h-3 text-slate-400" />
-                                                Updated_Meal_Plan.pdf
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="font-bold text-slate-900" data-testid="text-doc-detail-title">{selectedDocItem.title}</h3>
+                                                <Badge variant="outline" className="text-xs text-slate-500 font-normal">{selectedDocItem.source === 'visit' ? selectedDocItem.type : selectedDocItem.type}</Badge>
                                             </div>
-                                            <Button variant="ghost" size="sm" className="h-8 text-xs text-blue-600 border border-dashed border-blue-200 bg-blue-50/50">
-                                                + Upload File
-                                            </Button>
+                                            <p className="text-xs text-slate-500">
+                                                By <span className="font-medium text-slate-700">{selectedDocItem.providerName}</span> • {selectedDocItem.date}
+                                            </p>
                                         </div>
-                                    </div>
-                                </div>
-                            </CardContent>
+                                        <Button variant="ghost" size="sm" className="h-8 text-xs text-slate-500" onClick={() => setSelectedDocItem(null)}>
+                                            <X className="w-4 h-4 mr-1" /> Close
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent className="p-6 flex-1 overflow-y-auto">
+                                        <div className="space-y-6 max-w-2xl">
+                                            <div className="flex items-center gap-3 p-3 bg-blue-50/50 border border-blue-100 rounded-lg">
+                                                <Avatar className="h-10 w-10 border-2 border-white">
+                                                    <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">
+                                                        {selectedDocItem.patientName?.split(' ').map((n: string) => n[0]).join('') || '?'}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <p className="font-bold text-sm text-slate-900" data-testid="text-doc-patient-name">{selectedDocItem.patientName}</p>
+                                                    <p className="text-xs text-slate-500">MRN: #{selectedDocItem.patientId}</p>
+                                                </div>
+                                            </div>
+
+                                            {selectedDocItem.source === 'visit' && (
+                                                <div className="space-y-4">
+                                                    {selectedDocItem.diagnosis && (
+                                                        <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                                                            <Label className="text-xs font-bold text-amber-700 uppercase tracking-wider">Diagnosis</Label>
+                                                            <p className="text-sm text-slate-800 mt-1">{selectedDocItem.diagnosis}</p>
+                                                        </div>
+                                                    )}
+
+                                                    {selectedDocItem.subjective && (
+                                                        <div className="space-y-1">
+                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">S (Subjective)</Label>
+                                                            <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700">{selectedDocItem.subjective}</div>
+                                                        </div>
+                                                    )}
+                                                    {selectedDocItem.objective && (
+                                                        <div className="space-y-1">
+                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">O (Objective)</Label>
+                                                            <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700">{selectedDocItem.objective}</div>
+                                                        </div>
+                                                    )}
+                                                    {selectedDocItem.assessment && (
+                                                        <div className="space-y-1">
+                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">A (Assessment)</Label>
+                                                            <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700">{selectedDocItem.assessment}</div>
+                                                        </div>
+                                                    )}
+                                                    {selectedDocItem.plan && (
+                                                        <div className="space-y-1">
+                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">P (Plan)</Label>
+                                                            <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700">{selectedDocItem.plan}</div>
+                                                        </div>
+                                                    )}
+
+                                                    {selectedDocItem.vitals && (
+                                                        <div className="space-y-1">
+                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vitals</Label>
+                                                            <div className="grid grid-cols-3 gap-2">
+                                                                {Object.entries(selectedDocItem.vitals as Record<string, any>).map(([key, val]) => (
+                                                                    <div key={key} className="p-2 bg-slate-50 rounded border border-slate-100 text-center">
+                                                                        <p className="text-[10px] text-slate-400 uppercase">{key}</p>
+                                                                        <p className="text-sm font-bold text-slate-800">{String(val)}</p>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {selectedDocItem.prescriptions?.length > 0 && (
+                                                        <div className="space-y-2">
+                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Prescriptions</Label>
+                                                            {selectedDocItem.prescriptions.map((rx: any, i: number) => (
+                                                                <div key={i} className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg flex items-center justify-between">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Pill className="w-4 h-4 text-blue-600" />
+                                                                        <span className="text-sm font-bold text-slate-800">{rx.name}</span>
+                                                                    </div>
+                                                                    <div className="flex gap-2">
+                                                                        {rx.dose && <Badge variant="outline" className="text-[10px] bg-white">{rx.dose}</Badge>}
+                                                                        {rx.frequency && <Badge variant="outline" className="text-[10px] bg-white">{rx.frequency}</Badge>}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {selectedDocItem.procedures?.length > 0 && (
+                                                        <div className="space-y-2">
+                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Procedures</Label>
+                                                            {selectedDocItem.procedures.map((proc: any, i: number) => (
+                                                                <div key={i} className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-lg">
+                                                                    <p className="text-sm font-bold text-slate-800">{proc.name}</p>
+                                                                    {proc.finding && <p className="text-xs text-slate-600 mt-1">{proc.finding}</p>}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {selectedDocItem.labsOrdered?.length > 0 && (
+                                                        <div className="space-y-2">
+                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Labs Ordered</Label>
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                {selectedDocItem.labsOrdered.map((lab: any, i: number) => (
+                                                                    <div key={i} className="p-2 bg-purple-50/50 border border-purple-100 rounded-lg">
+                                                                        <p className="text-xs font-bold text-slate-700">{lab.test}</p>
+                                                                        {lab.result !== undefined && <p className="text-sm font-bold text-purple-700">{lab.result} {lab.unit || ''}</p>}
+                                                                        {lab.scheduled && <p className="text-[10px] text-slate-500">Scheduled: {lab.scheduled}</p>}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {selectedDocItem.followUpPlan && (
+                                                        <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+                                                            <Label className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Follow-up Plan</Label>
+                                                            <p className="text-sm text-slate-800 mt-1">{selectedDocItem.followUpPlan}</p>
+                                                        </div>
+                                                    )}
+
+                                                    {selectedDocItem.outcome && (
+                                                        <div className="flex gap-2 items-center">
+                                                            <Label className="text-xs font-bold text-slate-500 uppercase">Outcome:</Label>
+                                                            <Badge variant="outline" className={`text-xs ${selectedDocItem.outcome === 'Resolved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                                                {selectedDocItem.outcome}
+                                                            </Badge>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {selectedDocItem.source === 'note' && (
+                                                <div className="space-y-4">
+                                                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                                                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{selectedDocItem.content}</p>
+                                                    </div>
+                                                    {selectedDocItem.tags?.length > 0 && (
+                                                        <div className="flex gap-2 flex-wrap">
+                                                            {selectedDocItem.tags.map((tag: string, i: number) => (
+                                                                <Badge key={i} variant="secondary" className="text-xs bg-slate-100 text-slate-600">{tag}</Badge>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </>
+                            )}
                         </Card>
                     </div>
                 </div>

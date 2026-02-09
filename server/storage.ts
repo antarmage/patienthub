@@ -77,6 +77,7 @@ export interface IStorage {
   createLabResult(result: InsertLabResult): Promise<LabResult>;
 
   getVisitHistory(patientId: number): Promise<VisitHistory[]>;
+  getAllVisitHistory(): Promise<VisitHistory[]>;
   createVisitHistory(visit: InsertVisitHistory): Promise<VisitHistory>;
 
   getMedications(patientId: number): Promise<Medication[]>;
@@ -85,6 +86,7 @@ export interface IStorage {
   deleteMedication(id: number): Promise<boolean>;
 
   getClinicalNotes(patientId: number): Promise<ClinicalNote[]>;
+  getAllClinicalNotes(): Promise<ClinicalNote[]>;
   createClinicalNote(note: InsertClinicalNote): Promise<ClinicalNote>;
   updateClinicalNote(id: number, data: Partial<InsertClinicalNote>): Promise<ClinicalNote | undefined>;
   deleteClinicalNote(id: number): Promise<boolean>;
@@ -280,6 +282,10 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(visitHistory).where(eq(visitHistory.patientId, patientId));
   }
 
+  async getAllVisitHistory(): Promise<VisitHistory[]> {
+    return db.select().from(visitHistory).orderBy(visitHistory.date);
+  }
+
   async createVisitHistory(visit: InsertVisitHistory): Promise<VisitHistory> {
     const [created] = await db.insert(visitHistory).values(visit).returning();
     return created;
@@ -306,6 +312,10 @@ export class DatabaseStorage implements IStorage {
 
   async getClinicalNotes(patientId: number): Promise<ClinicalNote[]> {
     return db.select().from(clinicalNotes).where(eq(clinicalNotes.patientId, patientId));
+  }
+
+  async getAllClinicalNotes(): Promise<ClinicalNote[]> {
+    return db.select().from(clinicalNotes).orderBy(clinicalNotes.date);
   }
 
   async createClinicalNote(note: InsertClinicalNote): Promise<ClinicalNote> {
