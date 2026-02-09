@@ -164,6 +164,15 @@ export interface ImportResult {
   }>;
 }
 
+export async function downloadFileAsBuffer(fileId: string): Promise<Buffer> {
+  const drive = await getUncachableGoogleDriveClient();
+  const res = await drive.files.get(
+    { fileId, alt: 'media' },
+    { responseType: 'arraybuffer' }
+  );
+  return Buffer.from(res.data as ArrayBuffer);
+}
+
 export async function listLabReportFiles(): Promise<DriveFile[]> {
   const drive = await getUncachableGoogleDriveClient();
   const allFiles: DriveFile[] = [];

@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { registerOcrRoutes } from "./replit_integrations/ocr";
 import { getUncachableGoogleSheetClient } from "./google-sheets";
-import { importLabReports, listLabReportFiles } from "./google-drive";
+import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "./google-drive";
+import { ai } from "./replit_integrations/image/client";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -657,6 +658,119 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("Google Drive import error:", err);
       res.status(500).json({ error: "Failed to import lab reports: " + err.message });
+    }
+  });
+
+  app.post("/api/patients/:id/extract-lab-results", async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const patient = await storage.getPatient(patientId);
+      if (!patient) return res.status(404).json({ error: "Patient not found" });
+
+      const allDocs = await storage.getDocuments(patientId);
+      const labDocs = allDocs.filter((d: any) => d.category === 'Lab Report' && d.metadata?.driveFileId);
+
+      if (labDocs.length === 0) {
+        return res.json({ extracted: 0, message: "No lab report PDFs found for this patient" });
+      }
+
+      const existingResults = await storage.getLabResults(patientId);
+
+      let totalExtracted = 0;
+      const errors: string[] = [];
+
+      for (const doc of labDocs) {
+        const driveFileId = (doc.metadata as any)?.driveFileId;
+        if (!driveFileId) continue;
+
+        const alreadyExtracted = existingResults.some((lr: any) => lr.notes && lr.notes.includes(driveFileId));
+        if (alreadyExtracted) continue;
+
+        try {
+          const pdfBuffer = await downloadFileAsBuffer(driveFileId);
+          const base64Pdf = pdfBuffer.toString('base64');
+
+          if (pdfBuffer.length > 7 * 1024 * 1024) {
+            errors.push(`File too large for processing: ${doc.name} (${(pdfBuffer.length / 1024 / 1024).toFixed(1)} MB)`);
+            continue;
+          }
+
+          const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    inlineData: {
+                      mimeType: "application/pdf",
+                      data: base64Pdf,
+                    },
+                  },
+                  {
+                    text: `Extract all lab test results from this medical lab report PDF. Return a JSON array of test results. Each element should have these fields:
+- "testName": the name of the test (e.g., "Hemoglobin", "TSH", "Fasting Glucose", "AMH", "Progesterone")
+- "value": the numeric value as a number (not string). If no numeric value, use null.
+- "unit": the unit of measurement (e.g., "g/dL", "mg/dL", "ng/mL", "mIU/L")
+- "status": one of "Normal", "High", "Low", "Critical", or "Borderline" based on the reference range
+- "category": the test category (e.g., "Hematology", "Hormone", "Biochemistry", "Thyroid", "Liver Function", "Kidney Function")
+- "referenceMin": minimum of reference range as number (or null)
+- "referenceMax": maximum of reference range as number (or null)`
+                  },
+                ],
+              },
+            ],
+            config: {
+              responseMimeType: "application/json",
+            },
+          });
+
+          const text = response.text || "";
+          let parsed: any[];
+          try {
+            const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const result = JSON.parse(cleaned);
+            parsed = Array.isArray(result) ? result : [result];
+          } catch {
+            errors.push(`Could not parse AI response for ${doc.name}`);
+            continue;
+          }
+
+          const reportDate = doc.date || new Date().toISOString().split('T')[0];
+
+          for (const item of parsed) {
+            if (!item.testName) continue;
+            await storage.createLabResult({
+              patientId,
+              testName: item.testName,
+              value: item.value != null ? parseFloat(item.value) : null,
+              unit: item.unit || null,
+              status: item.status || null,
+              category: item.category || null,
+              date: reportDate,
+              referenceMin: item.referenceMin != null ? parseFloat(item.referenceMin) : null,
+              referenceMax: item.referenceMax != null ? parseFloat(item.referenceMax) : null,
+              notes: `Extracted from Drive file: ${driveFileId}`,
+              results: null,
+              labTaskId: null,
+            });
+            totalExtracted++;
+          }
+        } catch (err: any) {
+          console.error(`Error extracting from ${doc.name}:`, err.message);
+          errors.push(`Error processing ${doc.name}: ${err.message}`);
+        }
+      }
+
+      res.json({
+        extracted: totalExtracted,
+        documentsProcessed: labDocs.length,
+        errors,
+        message: totalExtracted > 0 ? `Extracted ${totalExtracted} lab results from ${labDocs.length} report(s)` : "No new results extracted",
+      });
+    } catch (err: any) {
+      console.error("Lab extraction error:", err);
+      res.status(500).json({ error: "Failed to extract lab results: " + err.message });
     }
   });
 

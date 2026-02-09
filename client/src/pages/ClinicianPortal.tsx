@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   LayoutDashboard, 
   Users, 
@@ -42,7 +42,9 @@ import {
   CreditCard,
   MapPin,
   X,
-  ExternalLink
+  ExternalLink,
+  Loader2,
+  Sparkle
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -114,6 +116,28 @@ export default function ClinicianPortal() {
   const [queueDate, setQueueDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [patientSearch, setPatientSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [extractionStatus, setExtractionStatus] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
+
+  const extractLabMutation = useMutation({
+    mutationFn: async (patientId: number) => {
+      const res = await fetch(`/api/patients/${patientId}/extract-lab-results`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to extract lab results');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setExtractionStatus(data.message || `Extracted ${data.extracted} results`);
+      if (selectedPatient) {
+        queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/lab-results`] });
+      }
+      setTimeout(() => setExtractionStatus(null), 5000);
+    },
+    onError: (err: any) => {
+      setExtractionStatus(`Error: ${err.message}`);
+      setTimeout(() => setExtractionStatus(null), 5000);
+    },
+  });
 
   const patientsQuery = useQuery({
     queryKey: ['/api/patients', clinicianProvider?.id],
@@ -3018,11 +3042,37 @@ export default function ClinicianPortal() {
 
                          {/* SHARED: LAB INTELLIGENCE PANEL */}
                          <Card className="shadow-sm border-slate-200">
-                            <CardHeader className="py-3 border-b border-slate-100">
+                            <CardHeader className="py-3 border-b border-slate-100 flex flex-row items-center justify-between">
                                <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
                                   <FlaskConical className="w-4 h-4 text-purple-600" /> Lab Intelligence
+                                  {labResults.length > 0 && (
+                                    <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium">
+                                      {labResults.length}
+                                    </span>
+                                  )}
                                </CardTitle>
+                               {labDocuments.length > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-[11px] gap-1.5 border-purple-200 text-purple-700 hover:bg-purple-50"
+                                    disabled={extractLabMutation.isPending}
+                                    onClick={() => selectedPatient && extractLabMutation.mutate(selectedPatient.id)}
+                                    data-testid="button-extract-lab"
+                                  >
+                                    {extractLabMutation.isPending ? (
+                                      <><Loader2 className="w-3 h-3 animate-spin" /> Reading Reports...</>
+                                    ) : (
+                                      <><Sparkle className="w-3 h-3" /> Extract from Reports</>
+                                    )}
+                                  </Button>
+                               )}
                             </CardHeader>
+                            {extractionStatus && (
+                              <div className={`px-4 py-2 text-xs ${extractionStatus.startsWith('Error') ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                                {extractionStatus}
+                              </div>
+                            )}
                             <CardContent className="p-0">
                                {labResults.length > 0 ? (
                                   <table className="w-full text-sm text-left">
