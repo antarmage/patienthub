@@ -9,9 +9,18 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
-  app.get("/api/patients", async (_req, res) => {
-    const patients = await storage.getPatients();
-    res.json(patients);
+  app.get("/api/patients", async (req, res) => {
+    const providerId = req.query.providerId ? parseInt(req.query.providerId as string) : undefined;
+    if (providerId) {
+      const allAppointments = await storage.getAppointments();
+      const patientIds = Array.from(new Set(allAppointments.filter(a => a.providerId === providerId).map(a => a.patientId).filter(Boolean)));
+      const allPatients = await storage.getPatients();
+      const filtered = allPatients.filter(p => patientIds.includes(p.id));
+      res.json(filtered);
+    } else {
+      const patients = await storage.getPatients();
+      res.json(patients);
+    }
   });
 
   app.get("/api/patients/:id", async (req, res) => {
@@ -52,17 +61,19 @@ export async function registerRoutes(
   });
 
   app.get("/api/appointments", async (req, res) => {
-    const { date, patientId } = req.query;
+    const { date, patientId, providerId } = req.query;
+    let appts;
     if (date) {
-      const appts = await storage.getAppointmentsByDate(date as string);
-      res.json(appts);
+      appts = await storage.getAppointmentsByDate(date as string);
     } else if (patientId) {
-      const appts = await storage.getAppointmentsByPatient(parseInt(patientId as string));
-      res.json(appts);
+      appts = await storage.getAppointmentsByPatient(parseInt(patientId as string));
     } else {
-      const appts = await storage.getAppointments();
-      res.json(appts);
+      appts = await storage.getAppointments();
     }
+    if (providerId) {
+      appts = appts.filter(a => a.providerId === parseInt(providerId as string));
+    }
+    res.json(appts);
   });
 
   app.post("/api/appointments", async (req, res) => {

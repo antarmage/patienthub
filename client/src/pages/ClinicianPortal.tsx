@@ -111,9 +111,10 @@ export default function ClinicianPortal() {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
 
   const patientsQuery = useQuery({
-    queryKey: ['/api/patients'],
+    queryKey: ['/api/patients', clinicianProvider?.id],
     queryFn: async () => {
-      const res = await fetch('/api/patients');
+      const url = clinicianProvider?.id ? `/api/patients?providerId=${clinicianProvider.id}` : '/api/patients';
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch patients');
       return res.json();
     }
@@ -215,9 +216,10 @@ export default function ClinicianPortal() {
   const pcosSymptomData = pcosQuery.data || [];
 
   const appointmentsQuery = useQuery({
-    queryKey: ['/api/appointments'],
+    queryKey: ['/api/appointments', clinicianProvider?.id],
     queryFn: async () => {
-      const res = await fetch('/api/appointments');
+      const url = clinicianProvider?.id ? `/api/appointments?providerId=${clinicianProvider.id}` : '/api/appointments';
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch');
       return res.json();
     }
