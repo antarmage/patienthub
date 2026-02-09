@@ -171,7 +171,7 @@ export default function StaffPortal() {
 
   const [activeRole, setActiveRole] = useState("nutritionist");
   const [activeView, setActiveView] = useState("dashboard"); // 'dashboard', 'patients', 'schedule', 'reports'
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isAdjustProtocolOpen, setIsAdjustProtocolOpen] = useState(false);
   const [selectedPatientForAdjust, setSelectedPatientForAdjust] = useState<any>(null);
