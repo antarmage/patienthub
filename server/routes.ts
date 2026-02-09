@@ -675,8 +675,9 @@ export async function registerRoutes(
       }
 
       const existingResults = await storage.getLabResults(patientId);
+      const normalizeTestName = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
       const existingSet = new Set(
-        existingResults.map((lr: any) => `${(lr.testName || '').toLowerCase().trim()}|${lr.date || ''}`)
+        existingResults.map((lr: any) => `${normalizeTestName(lr.testName || '')}|${lr.date || ''}`)
       );
 
       let totalExtracted = 0;
@@ -741,7 +742,7 @@ export async function registerRoutes(
 
           for (const item of parsed) {
             if (!item.testName) continue;
-            const dupKey = `${item.testName.toLowerCase().trim()}|${reportDate}`;
+            const dupKey = `${normalizeTestName(item.testName)}|${reportDate}`;
             if (existingSet.has(dupKey)) {
               skippedDuplicates++;
               continue;

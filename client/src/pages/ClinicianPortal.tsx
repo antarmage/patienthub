@@ -3098,7 +3098,7 @@ export default function ClinicianPortal() {
                                                  <td className="px-4 py-3 text-xs text-slate-400">{lr.date ? new Date(lr.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '-'}</td>
                                                  <td className="px-4 py-3">
                                                     <Badge variant="outline" className={badgeClass}>
-                                                       {lr.status || 'Pending'}
+                                                       {lr.status || 'N/A'}
                                                     </Badge>
                                                  </td>
                                               </tr>
