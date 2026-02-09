@@ -2368,70 +2368,137 @@ export default function ClinicianPortal() {
             />
           
             {/* 1. STICKY PATIENT CONTEXT HEADER */}
-            <header className="h-18 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-10 shadow-sm relative w-full">
-              <div className="flex items-center gap-6">
-                 <Button variant="ghost" size="icon" className="mr-2" onClick={() => setActiveView('dashboard')}>
-                    <LayoutDashboard className="w-5 h-5 text-slate-500" />
-                 </Button>
-                 <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10 border border-slate-200 bg-slate-100 text-slate-600">
-                       <AvatarFallback>{selectedPatient.avatar}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                       <div className="flex items-center gap-2">
-                          <h2 className="text-lg font-bold text-slate-900 leading-none">{selectedPatient.name}</h2>
-                          <span className="text-xs text-slate-400">{selectedPatient.age}y</span>
-                          {selectedPatient.condition && (
-                            <Badge variant="outline" className="text-[10px] h-5 border-pink-200 text-pink-700 bg-pink-50 font-medium">
-                              {selectedPatient.condition}
-                            </Badge>
-                          )}
-                          {selectedPatient.status === "High Risk" && (
-                            <Badge variant="outline" className="text-[10px] h-5 border-rose-200 text-rose-700 bg-rose-50 font-semibold">
-                              High Risk
-                            </Badge>
-                          )}
-                       </div>
-                       <div className="flex items-center gap-2 mt-1">
-                          <Select value={careMode} onValueChange={setCareMode}>
-                            <SelectTrigger className="h-5 text-[10px] bg-slate-50 border-slate-200 w-[160px] font-semibold text-blue-700">
-                              <SelectValue placeholder="Select Pathway" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="hormone_care">Hormone & Cycle Care</SelectItem>
-                              <SelectItem value="natural_conception">Natural Conception</SelectItem>
-                              <SelectItem value="induction">Ovulation Induction</SelectItem>
-                              <SelectItem value="iui">IUI Procedure Cycle</SelectItem>
-                              <SelectItem value="pregnancy">Pregnancy Care</SelectItem>
-                              <SelectItem value="postpartum">Postpartum Care</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <span className="text-xs text-slate-600">
-                             {careMode === 'pregnancy' && (() => {
-                               if (selectedPatient.lmp) {
-                                 const lmpDate = new Date(selectedPatient.lmp);
-                                 const today = new Date();
-                                 const diffDays = Math.max(0, Math.floor((today.getTime() - lmpDate.getTime()) / (1000 * 60 * 60 * 24)));
-                                 const weeks = Math.floor(diffDays / 7);
-                                 const days = diffDays % 7;
-                                 if (weeks > 42) return 'Post-term';
-                                 const trimester = weeks < 13 ? 1 : weeks < 27 ? 2 : 3;
-                                 return `Wk ${weeks}+${days} · T${trimester}`;
-                               }
-                               return '';
-                             })()}
-                             {careMode !== 'pregnancy' && careMode !== 'postpartum' && `CD ${selectedPatient.cycleDay || '-'}`}
-                             {careMode === 'postpartum' && 'Recovery'}
-                          </span>
+            <header className="bg-white border-b border-slate-200 shrink-0 z-10 shadow-sm relative w-full">
+              <div className="flex items-center justify-between px-5 py-2">
+                 <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setActiveView('dashboard')}>
+                       <LayoutDashboard className="w-4 h-4 text-slate-500" />
+                    </Button>
+                    <div className="flex items-center gap-3">
+                       <Avatar className="h-9 w-9 border border-slate-200 bg-slate-100 text-slate-600 text-sm">
+                          <AvatarFallback>{selectedPatient.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback>
+                       </Avatar>
+                       <div>
+                          <div className="flex items-center gap-2">
+                             <h2 className="text-sm font-bold text-slate-900">{selectedPatient.name}</h2>
+                             <span className="text-[11px] text-slate-400 font-medium">{selectedPatient.age}y{selectedPatient.phone ? ` · ${selectedPatient.phone}` : ''}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                             {selectedPatient.condition && (
+                               <Badge variant="outline" className="text-[10px] h-[18px] border-pink-200 text-pink-700 bg-pink-50/80 font-medium px-1.5">
+                                 {selectedPatient.condition}
+                               </Badge>
+                             )}
+                             {selectedPatient.status === "High Risk" && (
+                               <Badge variant="outline" className="text-[10px] h-[18px] border-rose-200 text-rose-700 bg-rose-50/80 font-semibold px-1.5">
+                                 High Risk
+                               </Badge>
+                             )}
+                             {selectedPatient.status && selectedPatient.status !== "High Risk" && (
+                               <Badge variant="outline" className="text-[10px] h-[18px] border-emerald-200 text-emerald-700 bg-emerald-50/80 font-medium px-1.5">
+                                 {selectedPatient.status}
+                               </Badge>
+                             )}
+                          </div>
                        </div>
                     </div>
                  </div>
-                 
-                 <div className="flex items-center gap-2">
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400" onClick={() => { setIsSearching(true); }} data-testid="button-search-header">
-                       <Search className="w-4 h-4" />
+
+                 <div className="flex items-center gap-3">
+                    <Select value={careMode} onValueChange={setCareMode}>
+                      <SelectTrigger className="h-7 text-[11px] bg-blue-50/80 border-blue-200 w-[170px] font-semibold text-blue-700">
+                        <SelectValue placeholder="Select Pathway" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hormone_care">Hormone & Cycle Care</SelectItem>
+                        <SelectItem value="natural_conception">Natural Conception</SelectItem>
+                        <SelectItem value="induction">Ovulation Induction</SelectItem>
+                        <SelectItem value="iui">IUI Procedure Cycle</SelectItem>
+                        <SelectItem value="pregnancy">Pregnancy Care</SelectItem>
+                        <SelectItem value="postpartum">Postpartum Care</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <div className="text-[11px] font-semibold text-slate-700 bg-slate-100 rounded px-2 py-1">
+                       {careMode === 'pregnancy' && (() => {
+                         if (selectedPatient.lmp) {
+                           const lmpDate = new Date(selectedPatient.lmp);
+                           const today = new Date();
+                           const diffDays = Math.max(0, Math.floor((today.getTime() - lmpDate.getTime()) / (1000 * 60 * 60 * 24)));
+                           const weeks = Math.floor(diffDays / 7);
+                           const days = diffDays % 7;
+                           if (weeks > 42) return 'Post-term';
+                           const trimester = weeks < 13 ? 1 : weeks < 27 ? 2 : 3;
+                           return `Wk ${weeks}+${days} · T${trimester}`;
+                         }
+                         return 'No LMP';
+                       })()}
+                       {careMode === 'postpartum' && (() => {
+                         if (selectedPatient.lmp) {
+                           const lmpDate = new Date(selectedPatient.lmp);
+                           const edd = new Date(lmpDate.getTime() + 280 * 24 * 60 * 60 * 1000);
+                           const today = new Date();
+                           const postDays = Math.max(0, Math.floor((today.getTime() - edd.getTime()) / (1000 * 60 * 60 * 24)));
+                           const postWeeks = Math.floor(postDays / 7);
+                           return `PP Wk ${postWeeks}`;
+                         }
+                         return 'Postpartum';
+                       })()}
+                       {careMode !== 'pregnancy' && careMode !== 'postpartum' && `CD ${selectedPatient.cycleDay || '—'}`}
+                    </div>
+
+                    <div className="h-5 w-px bg-slate-200" />
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400" onClick={() => { setIsSearching(true); }} data-testid="button-search-header">
+                       <Search className="w-3.5 h-3.5" />
                     </Button>
                  </div>
+              </div>
+
+              {/* Dynamic context strip */}
+              <div className="flex items-center gap-3 px-5 py-1.5 bg-slate-50/80 border-t border-slate-100 text-[11px] text-slate-600 overflow-x-auto">
+                 {selectedPatient.lmp && (
+                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">LMP</span> {new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                 )}
+                 {selectedPatient.lmp && careMode === 'pregnancy' && (() => {
+                   const lmpDate = new Date(selectedPatient.lmp);
+                   const edd = new Date(lmpDate.getTime() + 280 * 24 * 60 * 60 * 1000);
+                   return <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">EDD</span> {edd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>;
+                 })()}
+                 {selectedPatient.bp && (
+                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">BP</span> {selectedPatient.bp}</span>
+                 )}
+                 {selectedPatient.weight && (
+                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Wt</span> {selectedPatient.weight} kg</span>
+                 )}
+                 {selectedPatient.height && selectedPatient.weight && (() => {
+                   const hm = parseFloat(selectedPatient.height) / 100;
+                   if (hm > 0) {
+                     const bmi = (selectedPatient.weight / (hm * hm)).toFixed(1);
+                     return <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">BMI</span> {bmi}</span>;
+                   }
+                   return null;
+                 })()}
+                 {selectedPatient.hb && (
+                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Hb</span> {selectedPatient.hb} g/dL</span>
+                 )}
+                 {selectedPatient.referredBy && (
+                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Ref</span> {selectedPatient.referredBy}</span>
+                 )}
+                 {selectedPatient.vaccination && (
+                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Vacc</span> {selectedPatient.vaccination}</span>
+                 )}
+                 {selectedPatient.insurance && (
+                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Ins</span> {selectedPatient.insurance}</span>
+                 )}
+                 {selectedPatient.contraception && (
+                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Contra</span> {selectedPatient.contraception}</span>
+                 )}
+                 {selectedPatient.lastVisit && (
+                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Last Visit</span> {selectedPatient.lastVisit}</span>
+                 )}
+                 {selectedPatient.nextReview && (
+                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Next</span> {selectedPatient.nextReview}</span>
+                 )}
               </div>
             </header>
 
@@ -2534,17 +2601,6 @@ export default function ClinicianPortal() {
               <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
                 <div className="max-w-7xl mx-auto space-y-6">
                    
-                   {/* 0. PATIENT QUICK INFO */}
-                   <div className="flex items-center gap-4 text-xs text-slate-600 bg-white border border-slate-200 rounded-lg px-4 py-2 shadow-sm">
-                      {selectedPatient.lmp && (
-                        <span><span className="font-semibold text-slate-500">LMP:</span> {new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                      )}
-                      <span><span className="font-semibold text-slate-500">Ref:</span> {selectedPatient.referredBy || selectedPatient.focus || '—'}</span>
-                      <span><span className="font-semibold text-slate-500">Vaccination:</span> {selectedPatient.vaccination || '—'}</span>
-                      <span><span className="font-semibold text-slate-500">Insurance:</span> {selectedPatient.insurance || '—'}</span>
-                      <span><span className="font-semibold text-slate-500">Contraception:</span> {selectedPatient.contraception || '—'}</span>
-                   </div>
-
                    {/* PATIENT HISTORY SUMMARY */}
                    <Card className="shadow-sm border-slate-200">
                       <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50 cursor-pointer group hover:bg-slate-50 transition-colors">
