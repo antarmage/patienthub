@@ -484,7 +484,7 @@ export default function StaffPatientProtocol() {
                 </CardHeader>
                 <CardContent className="p-4">
                     <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                        {Object.entries(patient.labs).map(([key, data]: [string, any]) => (
+                        {Object.entries(patient.labs || {}).map(([key, data]: [string, any]) => (
                             <div key={key} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded group border border-transparent hover:border-slate-100 transition-all">
                                 <div>
                                     <p className="text-xs font-medium text-slate-500 uppercase">{data.name}</p>
