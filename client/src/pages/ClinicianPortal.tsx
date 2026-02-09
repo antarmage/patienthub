@@ -2994,73 +2994,123 @@ export default function ClinicianPortal() {
                             </Card>
                          )}
 
-                         {/* 3. PREGNANCY WORKSPACE (ENHANCED) */}
+                         {/* 3. PREGNANCY WORKSPACE */}
                          {careMode === 'pregnancy' && (
                             <>
-                               {/* USG & Biometry Card */}
-                               <Card className="shadow-sm border-slate-200 overflow-hidden relative">
-                                  <div className="absolute inset-0 opacity-10 pointer-events-none z-0" style={{ backgroundImage: `url(${fetalBiometryBg})`, backgroundSize: 'cover' }}></div>
-                                  <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between relative z-10">
-                                     <div className="flex items-center gap-2">
-                                        <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
-                                           <Activity className="w-4 h-4 text-emerald-600" /> Fetal Biometry (USG)
-                                        </CardTitle>
-                                        <Badge variant="outline" className="bg-white/50">Last Scan: 2 days ago</Badge>
-                                     </div>
+                               {/* Fetal Biometry (USG) */}
+                               <Card className="shadow-sm border-slate-200">
+                                  <CardHeader className="py-3 border-b border-slate-100 flex flex-row items-center justify-between">
+                                     <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+                                        <Activity className="w-4 h-4 text-emerald-600" /> Fetal Biometry (USG)
+                                     </CardTitle>
+                                     {usgData.length > 0 && (
+                                       <Badge variant="outline" className="text-[10px] font-normal text-slate-500">
+                                         {usgData.length} scan{usgData.length > 1 ? 's' : ''} recorded
+                                       </Badge>
+                                     )}
                                   </CardHeader>
-                                  <CardContent className="pt-6 relative z-10">
-                                     <div className="grid grid-cols-3 gap-4 mb-4">
-                                        <div className="bg-white/80 p-3 rounded border border-slate-100 shadow-sm text-center">
-                                           <div className="text-[10px] text-slate-500 uppercase font-bold">Est. Fetal Weight</div>
-                                           <div className="text-lg font-bold text-slate-800">600g <span className="text-xs font-normal text-emerald-600">50th %ile</span></div>
-                                        </div>
-                                        <div className="bg-white/80 p-3 rounded border border-slate-100 shadow-sm text-center">
-                                           <div className="text-[10px] text-slate-500 uppercase font-bold">Amniotic Fluid (AFI)</div>
-                                           <div className="text-lg font-bold text-slate-800">14cm <span className="text-xs font-normal text-emerald-600">Normal</span></div>
-                                        </div>
-                                        <div className="bg-white/80 p-3 rounded border border-slate-100 shadow-sm text-center">
-                                           <div className="text-[10px] text-slate-500 uppercase font-bold">Placenta</div>
-                                           <div className="text-lg font-bold text-slate-800">Posterior <span className="text-xs font-normal text-slate-400">Gr I</span></div>
-                                        </div>
-                                     </div>
-                                     
-                                     {/* NEW: Head Circumference Growth Chart */}
-                                     <div className="bg-white/60 rounded-lg p-2 border border-slate-100 mt-2">
-                                        <div className="text-xs font-semibold text-slate-600 mb-2 pl-2">Growth Trends (HC/AC/FL)</div>
-                                        <div className="h-[180px] w-full">
-                                           <ResponsiveContainer width="100%" height="100%">
-                                              <LineChart data={usgData}>
-                                                 <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
-                                                 <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
-                                                 <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
-                                                 <Line type="monotone" dataKey="hc" stroke="#3b82f6" strokeWidth={2} name="Head Circ (mm)" dot={{r: 3}} />
-                                                 <Line type="monotone" dataKey="ac" stroke="#10b981" strokeWidth={2} name="Abd Circ (mm)" dot={{r: 3}} />
-                                                 <Line type="monotone" dataKey="fl" stroke="#f59e0b" strokeWidth={2} name="Femur Len (mm)" dot={{r: 3}} />
-                                              </LineChart>
-                                           </ResponsiveContainer>
-                                        </div>
+                                  <CardContent className="pt-4">
+                                     {/* Dynamic stat cards from latest USG */}
+                                     {usgData.length > 0 && (() => {
+                                       const latest = usgData[usgData.length - 1];
+                                       return (
+                                         <div className="grid grid-cols-4 gap-3 mb-4">
+                                           <div className="bg-slate-50 p-2.5 rounded border border-slate-100 text-center">
+                                             <div className="text-[10px] text-slate-500 uppercase font-bold">BPD</div>
+                                             <div className="text-base font-bold text-slate-800">{latest.bpd || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">mm</span></div>
+                                           </div>
+                                           <div className="bg-slate-50 p-2.5 rounded border border-slate-100 text-center">
+                                             <div className="text-[10px] text-slate-500 uppercase font-bold">HC</div>
+                                             <div className="text-base font-bold text-slate-800">{latest.hc || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">mm</span></div>
+                                           </div>
+                                           <div className="bg-slate-50 p-2.5 rounded border border-slate-100 text-center">
+                                             <div className="text-[10px] text-slate-500 uppercase font-bold">AC</div>
+                                             <div className="text-base font-bold text-slate-800">{latest.ac || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">mm</span></div>
+                                           </div>
+                                           <div className="bg-slate-50 p-2.5 rounded border border-slate-100 text-center">
+                                             <div className="text-[10px] text-slate-500 uppercase font-bold">FL</div>
+                                             <div className="text-base font-bold text-slate-800">{latest.fl || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">mm</span></div>
+                                           </div>
+                                         </div>
+                                       );
+                                     })()}
+
+                                     <div className="h-[250px] w-full">
+                                       {usgData.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                           <LineChart data={usgData}>
+                                              <XAxis dataKey="week" tickFormatter={(v) => `Wk ${v}`} axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} />
+                                              <YAxis axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} />
+                                              <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} labelFormatter={(v) => `Week ${v}`} />
+                                              <Line type="monotone" dataKey="hc" stroke="#3b82f6" strokeWidth={2} name="Head Circ (mm)" dot={{r: 3, fill: '#3b82f6'}} />
+                                              <Line type="monotone" dataKey="ac" stroke="#10b981" strokeWidth={2} name="Abd Circ (mm)" dot={{r: 3, fill: '#10b981'}} />
+                                              <Line type="monotone" dataKey="fl" stroke="#f59e0b" strokeWidth={2} name="Femur Len (mm)" dot={{r: 3, fill: '#f59e0b'}} />
+                                              {usgData[0]?.bpd !== undefined && (
+                                                <Line type="monotone" dataKey="bpd" stroke="#8b5cf6" strokeWidth={2} name="BPD (mm)" dot={{r: 3, fill: '#8b5cf6'}} />
+                                              )}
+                                           </LineChart>
+                                        </ResponsiveContainer>
+                                       ) : (
+                                         <div className="flex items-center justify-center h-full text-sm text-slate-400">No USG data recorded yet</div>
+                                       )}
                                      </div>
                                   </CardContent>
                                </Card>
 
                                {/* Maternal Vitals & Trends */}
                                <Card className="shadow-sm border-slate-200">
-                                  <CardHeader className="py-4 border-b border-slate-100">
-                                     <CardTitle className="text-base font-bold text-slate-800">Maternal Vitals & Trends</CardTitle>
+                                  <CardHeader className="py-3 border-b border-slate-100 flex flex-row items-center justify-between">
+                                     <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+                                        <Heart className="w-4 h-4 text-pink-600" /> Maternal Vitals & Trends
+                                     </CardTitle>
+                                     {pregnancyData.length > 0 && (
+                                       <Badge variant="outline" className="text-[10px] font-normal text-slate-500">
+                                         {pregnancyData.length} record{pregnancyData.length > 1 ? 's' : ''}
+                                       </Badge>
+                                     )}
                                   </CardHeader>
-                                  <CardContent className="pt-6">
-                                     <div className="h-[280px] w-full">
+                                  <CardContent className="pt-4">
+                                     {/* Dynamic latest vitals */}
+                                     {pregnancyData.length > 0 && (() => {
+                                       const latest = pregnancyData[pregnancyData.length - 1];
+                                       return (
+                                         <div className="grid grid-cols-4 gap-3 mb-4">
+                                           <div className="bg-pink-50/50 p-2.5 rounded border border-pink-100 text-center">
+                                             <div className="text-[10px] text-slate-500 uppercase font-bold">Weight</div>
+                                             <div className="text-base font-bold text-slate-800">{latest.weight || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">kg</span></div>
+                                           </div>
+                                           <div className="bg-rose-50/50 p-2.5 rounded border border-rose-100 text-center">
+                                             <div className="text-[10px] text-slate-500 uppercase font-bold">BP</div>
+                                             <div className="text-base font-bold text-slate-800">{latest.systolic || '—'}/{latest.diastolic || '—'}</div>
+                                           </div>
+                                           <div className="bg-blue-50/50 p-2.5 rounded border border-blue-100 text-center">
+                                             <div className="text-[10px] text-slate-500 uppercase font-bold">Fundal Ht</div>
+                                             <div className="text-base font-bold text-slate-800">{latest.fundalHeight || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">cm</span></div>
+                                           </div>
+                                           <div className="bg-emerald-50/50 p-2.5 rounded border border-emerald-100 text-center">
+                                             <div className="text-[10px] text-slate-500 uppercase font-bold">FHR</div>
+                                             <div className="text-base font-bold text-slate-800">{latest.fetalHr || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">bpm</span></div>
+                                           </div>
+                                         </div>
+                                       );
+                                     })()}
+
+                                     <div className="h-[250px] w-full">
+                                       {pregnancyData.length > 0 ? (
                                         <ResponsiveContainer width="100%" height="100%">
                                           <ComposedChart data={pregnancyData}>
-                                            <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
-                                            <YAxis yAxisId="left" domain={[50, 100]} label={{ value: 'Weight (kg)', angle: -90, position: 'insideLeft', fontSize: 10 }} axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
-                                            <YAxis yAxisId="right" orientation="right" domain={[60, 160]} label={{ value: 'BP (mmHg)', angle: 90, position: 'insideRight', fontSize: 10 }} axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
-                                            <Tooltip contentStyle={{ borderRadius: '8px' }} />
+                                            <XAxis dataKey="week" tickFormatter={(v) => `Wk ${v}`} axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} />
+                                            <YAxis yAxisId="left" domain={['auto', 'auto']} label={{ value: 'Weight (kg)', angle: -90, position: 'insideLeft', fontSize: 10 }} axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} />
+                                            <YAxis yAxisId="right" orientation="right" domain={['auto', 'auto']} label={{ value: 'BP (mmHg)', angle: 90, position: 'insideRight', fontSize: 10 }} axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} />
+                                            <Tooltip contentStyle={{ borderRadius: '8px' }} labelFormatter={(v) => `Week ${v}`} />
                                             <Area yAxisId="left" type="monotone" dataKey="weight" stroke="#ec4899" strokeWidth={2} fill="#fbcfe8" fillOpacity={0.2} name="Maternal Weight" />
-                                            <Line yAxisId="right" type="monotone" dataKey="systolic" stroke="#f43f5e" strokeWidth={2} dot={{r: 4, fill: '#f43f5e'}} name="Systolic BP" />
-                                            <Line yAxisId="right" type="monotone" dataKey="diastolic" stroke="#f43f5e" strokeDasharray="3 3" strokeWidth={2} dot={{r: 4, fill: '#f43f5e'}} name="Diastolic BP" />
+                                            <Line yAxisId="right" type="monotone" dataKey="systolic" stroke="#f43f5e" strokeWidth={2} dot={{r: 3, fill: '#f43f5e'}} name="Systolic BP" />
+                                            <Line yAxisId="right" type="monotone" dataKey="diastolic" stroke="#f43f5e" strokeDasharray="3 3" strokeWidth={2} dot={{r: 3, fill: '#f43f5e'}} name="Diastolic BP" />
                                           </ComposedChart>
                                         </ResponsiveContainer>
+                                       ) : (
+                                         <div className="flex items-center justify-center h-full text-sm text-slate-400">No pregnancy vitals recorded yet</div>
+                                       )}
                                      </div>
                                   </CardContent>
                                </Card>
