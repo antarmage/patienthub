@@ -40,6 +40,23 @@ export default function NewBooking() {
     "09:00 AM", "09:30 AM", "10:00 AM", "11:15 AM", "02:00 PM", "03:30 PM", "04:15 PM"
   ];
 
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: patientsData } = useQuery({
+    queryKey: ['/api/patients'],
+    queryFn: async () => {
+      const res = await fetch('/api/patients');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+  const matchedPatients = useMemo(() => {
+    if (!patientsData || !searchQuery) return patientsData || [];
+    return patientsData.filter((p: any) => 
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [patientsData, searchQuery]);
+
   const { data: servicesData } = useQuery({
     queryKey: ['/api/services'],
     queryFn: async () => {
@@ -148,19 +165,25 @@ export default function NewBooking() {
                         <div className="space-y-4">
                              <div className="relative">
                                 <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                                <Input className="pl-9 h-11" placeholder="Search by name, DOB, or MRN..." />
+                                <Input className="pl-9 h-11" placeholder="Search by name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} data-testid="input-patient-search" />
                              </div>
                              
-                             {/* Mock Search Result */}
-                             <div className="border border-indigo-100 bg-indigo-50/50 rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-indigo-50 transition-colors">
-                                <Avatar className="h-10 w-10">
-                                    <AvatarFallback className="bg-indigo-200 text-indigo-700">MD</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                    <p className="font-bold text-slate-900 text-sm">Meera D.</p>
-                                    <p className="text-xs text-slate-500">DOB: 12/04/1990 • ID: #88392</p>
-                                </div>
-                                <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                             <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {matchedPatients.slice(0, 5).map((p: any) => (
+                                    <div key={p.id} className="border border-indigo-100 bg-indigo-50/50 rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-indigo-50 transition-colors" data-testid={`patient-result-${p.id}`}>
+                                        <Avatar className="h-10 w-10">
+                                            <AvatarFallback className="bg-indigo-200 text-indigo-700">{p.avatar || p.name?.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1">
+                                            <p className="font-bold text-slate-900 text-sm">{p.name}</p>
+                                            <p className="text-xs text-slate-500">{p.type} • ID: #{p.id}</p>
+                                        </div>
+                                        <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                                    </div>
+                                ))}
+                                {matchedPatients.length === 0 && (
+                                    <p className="text-sm text-slate-400 text-center py-4">No patients found</p>
+                                )}
                              </div>
                         </div>
                     ) : (
@@ -290,20 +313,20 @@ export default function NewBooking() {
                             <div className="flex justify-between items-start pb-4 border-b border-indigo-100">
                                 <div>
                                     <p className="text-xs text-indigo-500 uppercase font-bold tracking-wide">Patient</p>
-                                    <p className="text-lg font-serif font-bold text-slate-900">Meera D.</p>
+                                    <p className="text-lg font-serif font-bold text-slate-900">{matchedPatients[0]?.name || "New Patient"}</p>
                                 </div>
-                                <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">Existing</Badge>
+                                <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">{patientType === 'existing' ? 'Existing' : 'New'}</Badge>
                             </div>
                             
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
                                     <p className="text-xs text-indigo-500 uppercase font-bold tracking-wide mb-1">Service</p>
-                                    <p className="font-medium text-slate-900">Initial Consultation</p>
-                                    <p className="text-xs text-slate-500">60 mins • $200</p>
+                                    <p className="font-medium text-slate-900">{services.find((s: any) => s.id?.toString() === selectedService)?.name || "Not selected"}</p>
+                                    <p className="text-xs text-slate-500">{services.find((s: any) => s.id?.toString() === selectedService)?.duration || ""} mins</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-indigo-500 uppercase font-bold tracking-wide mb-1">Provider</p>
-                                    <p className="font-medium text-slate-900">Dr. Reynolds</p>
+                                    <p className="font-medium text-slate-900">{providers.find((p: any) => p.id?.toString() === selectedProvider)?.name || "Not selected"}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-indigo-500 uppercase font-bold tracking-wide mb-1">Date</p>

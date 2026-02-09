@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
   LayoutDashboard, 
@@ -203,6 +203,53 @@ export default function ClinicianPortal() {
   });
   const pcosSymptomData = pcosQuery.data || [];
 
+  const appointmentsQuery = useQuery({
+    queryKey: ['/api/appointments'],
+    queryFn: async () => {
+      const res = await fetch('/api/appointments');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+  const appointments = appointmentsQuery.data || [];
+
+  const invoicesQuery = useQuery({
+    queryKey: ['/api/invoices'],
+    queryFn: async () => {
+      const results: any[] = [];
+      for (const p of patients) {
+        try {
+          const res = await fetch(`/api/patients/${p.id}/invoices`);
+          if (res.ok) {
+            const data = await res.json();
+            results.push(...data.map((inv: any) => ({ ...inv, patientName: p.name })));
+          }
+        } catch {}
+      }
+      return results;
+    },
+    enabled: patients.length > 0
+  });
+  const invoices = invoicesQuery.data || [];
+
+  const appointmentsByDay = useMemo(() => {
+    const map: Record<number, any[]> = {};
+    appointments.forEach((apt: any) => {
+      if (apt.date) {
+        const dayOfMonth = new Date(apt.date).getDate();
+        if (!map[dayOfMonth]) map[dayOfMonth] = [];
+        const patient = patients.find((p: any) => p.id === apt.patientId);
+        map[dayOfMonth].push({ ...apt, patientName: patient?.name || 'Unknown' });
+      }
+    });
+    return map;
+  }, [appointments, patients]);
+
+  const getInitials = (name?: string) => {
+    if (!name) return '??';
+    return name.split(' ').map((n: string) => n[0]).join('');
+  };
+
   useEffect(() => {
     if (patients.length > 0 && !selectedPatient) {
       setSelectedPatient(patients[0]);
@@ -373,16 +420,16 @@ export default function ClinicianPortal() {
                         
                         <div className="grid grid-cols-3 gap-4">
                            {/* Priority Card 1 - Fertility */}
-                           <Card className="border-l-4 border-l-rose-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigateToPatient(patients[0])}>
+                           <Card data-testid="priority-card-0" className="border-l-4 border-l-rose-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => patients[0] && navigateToPatient(patients[0])}>
                               <CardContent className="p-4">
                                  <div className="flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-2">
                                        <Avatar className="h-8 w-8 text-xs border border-rose-100 bg-rose-50 text-rose-700">
-                                          <AvatarFallback>AS</AvatarFallback>
+                                          <AvatarFallback>{getInitials(patients[0]?.name)}</AvatarFallback>
                                        </Avatar>
                                        <div>
-                                          <p className="font-bold text-sm text-slate-900">Ananya S.</p>
-                                          <p className="text-[10px] text-slate-500">TTC 6 mo</p>
+                                          <p data-testid="text-priority-name-0" className="font-bold text-sm text-slate-900">{patients[0]?.name || 'Loading...'}</p>
+                                          <p className="text-[10px] text-slate-500">{patients[0]?.type || 'TTC'}</p>
                                        </div>
                                     </div>
                                     <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-200 border-none text-[10px]">Action</Badge>
@@ -399,16 +446,16 @@ export default function ClinicianPortal() {
                            </Card>
 
                            {/* Priority Card 2 - Pregnancy */}
-                           <Card className="border-l-4 border-l-amber-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigateToPatient(patients[1])}>
+                           <Card data-testid="priority-card-1" className="border-l-4 border-l-amber-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => patients[1] && navigateToPatient(patients[1])}>
                               <CardContent className="p-4">
                                  <div className="flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-2">
                                        <Avatar className="h-8 w-8 text-xs border border-amber-100 bg-amber-50 text-amber-700">
-                                          <AvatarFallback>MD</AvatarFallback>
+                                          <AvatarFallback>{getInitials(patients[1]?.name)}</AvatarFallback>
                                        </Avatar>
                                        <div>
-                                          <p className="font-bold text-sm text-slate-900">Meera D.</p>
-                                          <p className="text-[10px] text-slate-500">Pregnancy 24w</p>
+                                          <p data-testid="text-priority-name-1" className="font-bold text-sm text-slate-900">{patients[1]?.name || 'Loading...'}</p>
+                                          <p className="text-[10px] text-slate-500">{patients[1]?.type || 'Pregnancy'}</p>
                                        </div>
                                     </div>
                                     <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-none text-[10px]">Review</Badge>
@@ -425,16 +472,16 @@ export default function ClinicianPortal() {
                            </Card>
 
                            {/* Priority Card 3 - Postpartum */}
-                           <Card className="border-l-4 border-l-amber-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigateToPatient(patients[2])}>
+                           <Card data-testid="priority-card-2" className="border-l-4 border-l-amber-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => patients[2] && navigateToPatient(patients[2])}>
                               <CardContent className="p-4">
                                  <div className="flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-2">
                                        <Avatar className="h-8 w-8 text-xs border border-slate-100 bg-slate-50 text-slate-600">
-                                          <AvatarFallback>SJ</AvatarFallback>
+                                          <AvatarFallback>{getInitials(patients[2]?.name)}</AvatarFallback>
                                        </Avatar>
                                        <div>
-                                          <p className="font-bold text-sm text-slate-900">Sarah J.</p>
-                                          <p className="text-[10px] text-slate-500">Postpartum 6w</p>
+                                          <p data-testid="text-priority-name-2" className="font-bold text-sm text-slate-900">{patients[2]?.name || 'Loading...'}</p>
+                                          <p className="text-[10px] text-slate-500">{patients[2]?.type || 'Postpartum'}</p>
                                        </div>
                                     </div>
                                     <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-none text-[10px]">Alert</Badge>
@@ -473,38 +520,28 @@ export default function ClinicianPortal() {
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
-                                 <tr className="hover:bg-slate-50 cursor-pointer" onClick={() => navigateToPatient(patients[0])}>
-                                    <td className="px-4 py-3 text-slate-500 font-medium">09:00</td>
-                                    <td className="px-4 py-3 font-semibold text-slate-900">Ananya S.</td>
-                                    <td className="px-4 py-3"><Badge variant="outline" className="border-purple-200 text-purple-700 bg-purple-50">Fertility</Badge></td>
-                                    <td className="px-4 py-3 text-slate-600 text-xs">Day 12 Scan</td>
-                                    <td className="px-4 py-3 flex items-center gap-2 text-xs font-medium text-emerald-600"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Ovulation Window</td>
-                                    <td className="px-4 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
-                                 </tr>
-                                 <tr className="hover:bg-slate-50 cursor-pointer" onClick={() => navigateToPatient(patients[1])}>
-                                    <td className="px-4 py-3 text-slate-500 font-medium">09:30</td>
-                                    <td className="px-4 py-3 font-semibold text-slate-900">Meera D.</td>
-                                    <td className="px-4 py-3"><Badge variant="outline" className="border-pink-200 text-pink-700 bg-pink-50">Pregnancy</Badge></td>
-                                    <td className="px-4 py-3 text-slate-600 text-xs">Week 24</td>
-                                    <td className="px-4 py-3 flex items-center gap-2 text-xs font-medium text-amber-600"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Routine Follow-up</td>
-                                    <td className="px-4 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
-                                 </tr>
-                                 <tr className="hover:bg-slate-50 cursor-pointer" onClick={() => navigateToPatient(patients[2])}>
-                                    <td className="px-4 py-3 text-slate-500 font-medium">10:00</td>
-                                    <td className="px-4 py-3 font-semibold text-slate-900">Sarah J.</td>
-                                    <td className="px-4 py-3"><Badge variant="outline" className="border-slate-200 text-slate-700 bg-slate-50">Postpartum</Badge></td>
-                                    <td className="px-4 py-3 text-slate-600 text-xs">Week 6</td>
-                                    <td className="px-4 py-3 flex items-center gap-2 text-xs font-medium text-amber-600"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Mood Check</td>
-                                    <td className="px-4 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
-                                 </tr>
-                                 <tr className="hover:bg-slate-50 cursor-pointer" onClick={() => navigateToPatient(patients[3])}>
-                                    <td className="px-4 py-3 text-slate-500 font-medium">10:30</td>
-                                    <td className="px-4 py-3 font-semibold text-slate-900">Elena R.</td>
-                                    <td className="px-4 py-3"><Badge variant="outline" className="border-purple-200 text-purple-700 bg-purple-50">IUI Cycle</Badge></td>
-                                    <td className="px-4 py-3 text-slate-600 text-xs">CD 11</td>
-                                    <td className="px-4 py-3 flex items-center gap-2 text-xs font-medium text-blue-600"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Trigger Ready</td>
-                                    <td className="px-4 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
-                                 </tr>
+                                 {patients.slice(0, 6).map((p: any, idx: number) => {
+                                    const timeSlots = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30'];
+                                    const typeColors: Record<string, string> = {
+                                       'Fertility': 'border-purple-200 text-purple-700 bg-purple-50',
+                                       'Pregnancy': 'border-pink-200 text-pink-700 bg-pink-50',
+                                       'Postpartum': 'border-slate-200 text-slate-700 bg-slate-50',
+                                       'IUI Cycle': 'border-purple-200 text-purple-700 bg-purple-50',
+                                       'PCOS': 'border-emerald-200 text-emerald-700 bg-emerald-50',
+                                    };
+                                    const flagColors = ['text-emerald-600', 'text-amber-600', 'text-amber-600', 'text-blue-600', 'text-rose-600', 'text-slate-600'];
+                                    const dotColors = ['bg-emerald-500', 'bg-amber-500', 'bg-amber-500', 'bg-blue-500', 'bg-rose-500', 'bg-slate-500'];
+                                    return (
+                                       <tr key={p.id} data-testid={`row-patient-${p.id}`} className="hover:bg-slate-50 cursor-pointer" onClick={() => navigateToPatient(p)}>
+                                          <td className="px-4 py-3 text-slate-500 font-medium">{timeSlots[idx] || '11:00'}</td>
+                                          <td className="px-4 py-3 font-semibold text-slate-900" data-testid={`text-patient-name-${p.id}`}>{p.name}</td>
+                                          <td className="px-4 py-3"><Badge variant="outline" className={typeColors[p.type] || 'border-slate-200 text-slate-700 bg-slate-50'}>{p.type || 'General'}</Badge></td>
+                                          <td className="px-4 py-3 text-slate-600 text-xs">{p.focus || p.status || 'Scheduled'}</td>
+                                          <td className={`px-4 py-3 flex items-center gap-2 text-xs font-medium ${flagColors[idx] || 'text-slate-600'}`}><div className={`w-2 h-2 rounded-full ${dotColors[idx] || 'bg-slate-500'}`}></div> {p.condition || 'Follow-up'}</td>
+                                          <td className="px-4 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
+                                       </tr>
+                                    );
+                                 })}
                               </tbody>
                            </table>
                         </CardContent>
@@ -641,27 +678,23 @@ export default function ClinicianPortal() {
                         </CardHeader>
                         <CardContent className="p-0">
                            <div className="divide-y divide-slate-100">
-                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <div>
-                                    <p className="text-xs font-medium text-slate-800">Ananya S.</p>
-                                    <p className="text-[10px] text-slate-500">Follicular Study (Day 12)</p>
-                                 </div>
-                                 <Badge variant="outline" className="text-slate-500 border-slate-200">Scheduled</Badge>
-                              </div>
-                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <div>
-                                    <p className="text-xs font-medium text-slate-800">Meera D.</p>
-                                    <p className="text-[10px] text-slate-500">Anomaly Scan (Week 20)</p>
-                                 </div>
-                                 <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none">Completed</Badge>
-                              </div>
-                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <div>
-                                    <p className="text-xs font-medium text-slate-800">Elena R.</p>
-                                    <p className="text-[10px] text-slate-500">Early Pregnancy Scan</p>
-                                 </div>
-                                 <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">Pending</Badge>
-                              </div>
+                              {patients.slice(0, 3).map((p: any, idx: number) => {
+                                 const usgDescriptions = ['Follicular Study', 'Anomaly Scan', 'Early Pregnancy Scan'];
+                                 const statusBadges = [
+                                    <Badge key="s" variant="outline" className="text-slate-500 border-slate-200">Scheduled</Badge>,
+                                    <Badge key="c" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none">Completed</Badge>,
+                                    <Badge key="p" variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">Pending</Badge>,
+                                 ];
+                                 return (
+                                    <div key={p.id} data-testid={`usg-referral-${p.id}`} className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
+                                       <div>
+                                          <p className="text-xs font-medium text-slate-800" data-testid={`text-usg-name-${p.id}`}>{p.name}</p>
+                                          <p className="text-[10px] text-slate-500">{usgDescriptions[idx] || 'USG Referral'}</p>
+                                       </div>
+                                       {statusBadges[idx] || statusBadges[0]}
+                                    </div>
+                                 );
+                              })}
                            </div>
                         </CardContent>
                      </Card>
@@ -1074,38 +1107,26 @@ export default function ClinicianPortal() {
                                    ) : (
                                       // APPOINTMENTS VIEW - MONTH
                                       <>
-                                         {day === 2 && (
-                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 truncate font-medium">
-                                               09:00 AM • IUI Proc
-                                            </div>
-                                         )}
-                                         {day === 8 && (
-                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200 truncate font-medium">
-                                               11:30 AM • Conf
-                                            </div>
-                                         )}
-                                         {day === 12 && (
-                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 truncate font-medium">
-                                               On-Call Shift
-                                            </div>
-                                         )}
-                                         {day === 24 && (
+                                         {appointmentsByDay[day] && (
                                             <>
-                                               <div className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 truncate font-medium flex items-center gap-1">
-                                                  <div className="w-1 h-1 rounded-full bg-blue-500"></div> 9:00 • Ananya S.
-                                               </div>
-                                               <div className="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 border border-pink-200 truncate font-medium flex items-center gap-1">
-                                                  <div className="w-1 h-1 rounded-full bg-pink-500"></div> 9:30 • Meera D.
-                                               </div>
-                                               <div className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 truncate font-medium opacity-70">
-                                                  +4 more...
-                                               </div>
+                                               {appointmentsByDay[day].slice(0, 2).map((apt: any, aidx: number) => {
+                                                  const eventColors = [
+                                                     { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500' },
+                                                     { bg: 'bg-pink-100', text: 'text-pink-700', border: 'border-pink-200', dot: 'bg-pink-500' },
+                                                  ];
+                                                  const c = eventColors[aidx % eventColors.length];
+                                                  return (
+                                                     <div key={apt.id || aidx} data-testid={`calendar-event-${day}-${aidx}`} className={`text-[10px] px-1.5 py-0.5 rounded ${c.bg} ${c.text} border ${c.border} truncate font-medium flex items-center gap-1`}>
+                                                        <div className={`w-1 h-1 rounded-full ${c.dot}`}></div> {apt.time} • {apt.patientName}
+                                                     </div>
+                                                  );
+                                               })}
+                                               {appointmentsByDay[day].length > 2 && (
+                                                  <div className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 truncate font-medium opacity-70">
+                                                     +{appointmentsByDay[day].length - 2} more...
+                                                  </div>
+                                               )}
                                             </>
-                                         )}
-                                         {day === 25 && (
-                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 truncate font-medium flex items-center gap-1">
-                                               <div className="w-1 h-1 rounded-full bg-blue-500"></div> 10:00 • Priya K.
-                                            </div>
                                          )}
                                       </>
                                    )}
@@ -1148,25 +1169,28 @@ export default function ClinicianPortal() {
                                    ))}
 
                                    {/* EVENTS FOR THIS DAY */}
-                                   {/* Specific mockup for Wednesday (Index 3) */}
                                    {dayIndex === 3 && scheduleViewMode === 'appointments' && (
                                       <>
-                                         <div className="absolute top-[80px] left-1 right-1 h-[60px] bg-blue-100 border-l-2 border-blue-500 rounded p-1 shadow-sm z-10 cursor-pointer hover:bg-blue-200 transition-colors">
-                                            <p className="text-[10px] font-bold text-blue-800">Ananya S.</p>
-                                            <p className="text-[9px] text-blue-600">Initial Consult</p>
-                                         </div>
-                                         <div className="absolute top-[150px] left-1 right-1 h-[45px] bg-pink-100 border-l-2 border-pink-500 rounded p-1 shadow-sm z-10 cursor-pointer hover:bg-pink-200 transition-colors">
-                                            <p className="text-[10px] font-bold text-pink-800">Meera D.</p>
-                                            <p className="text-[9px] text-pink-600">Scan</p>
-                                         </div>
-                                         <div className="absolute top-[320px] left-1 right-1 h-[90px] bg-purple-100 border-l-2 border-purple-500 rounded p-1 shadow-sm z-10 cursor-pointer hover:bg-purple-200 transition-colors flex flex-col justify-center">
-                                            <p className="text-[10px] font-bold text-purple-800">IUI Procedure</p>
-                                            <p className="text-[9px] text-purple-600">OT-1 • Dr. Reynolds</p>
-                                         </div>
+                                         {appointments.slice(0, 3).map((apt: any, aidx: number) => {
+                                            const patient = patients.find((p: any) => p.id === apt.patientId);
+                                            const weekColors = [
+                                               { bg: 'bg-blue-100', border: 'border-blue-500', name: 'text-blue-800', desc: 'text-blue-600', hover: 'hover:bg-blue-200' },
+                                               { bg: 'bg-pink-100', border: 'border-pink-500', name: 'text-pink-800', desc: 'text-pink-600', hover: 'hover:bg-pink-200' },
+                                               { bg: 'bg-purple-100', border: 'border-purple-500', name: 'text-purple-800', desc: 'text-purple-600', hover: 'hover:bg-purple-200' },
+                                            ];
+                                            const c = weekColors[aidx % weekColors.length];
+                                            const tops = [80, 150, 320];
+                                            const heights = [60, 45, 90];
+                                            return (
+                                               <div key={apt.id || aidx} data-testid={`week-event-${apt.id || aidx}`} className={`absolute top-[${tops[aidx]}px] left-1 right-1 h-[${heights[aidx]}px] ${c.bg} border-l-2 ${c.border} rounded p-1 shadow-sm z-10 cursor-pointer ${c.hover} transition-colors`}>
+                                                  <p className={`text-[10px] font-bold ${c.name}`}>{patient?.name || apt.reason || 'Appointment'}</p>
+                                                  <p className={`text-[9px] ${c.desc}`}>{apt.type || apt.reason || 'Consultation'}</p>
+                                               </div>
+                                            );
+                                         })}
                                       </>
                                    )}
                                    
-                                   {/* Specific mockup for Friday (Index 5) */}
                                    {dayIndex === 5 && scheduleViewMode === 'appointments' && (
                                       <div className="absolute top-[240px] left-1 right-1 h-[120px] bg-amber-100 border-l-2 border-amber-500 rounded p-1 shadow-sm z-10 cursor-pointer hover:bg-amber-200 transition-colors flex flex-col justify-center">
                                          <p className="text-[10px] font-bold text-amber-800">Dept Meeting</p>
@@ -1213,59 +1237,35 @@ export default function ClinicianPortal() {
                              {/* Detailed Events for TODAY */}
                              {scheduleViewMode === 'appointments' ? (
                                 <>
-                                   {/* Event 1 */}
-                                   <div className="absolute top-[20px] left-4 right-4 h-[90px] bg-white border border-blue-200 border-l-4 border-l-blue-500 rounded shadow-sm hover:shadow-md transition-all p-3 flex justify-between items-start">
-                                      <div>
-                                         <div className="flex items-center gap-2 mb-1">
-                                            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none h-5 text-[10px]">New Patient</Badge>
-                                            <span className="text-xs text-slate-500">8:15 AM - 9:45 AM</span>
+                                   {appointments.slice(0, 3).map((apt: any, aidx: number) => {
+                                      const patient = patients.find((p: any) => p.id === apt.patientId);
+                                      const dayStyles = [
+                                         { top: 20, height: 90, borderColor: 'border-blue-200', borderLeft: 'border-l-blue-500', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', avatarBg: 'bg-blue-50', avatarText: 'text-blue-700', avatarBorder: 'border-blue-100' },
+                                         { top: 130, height: 60, borderColor: 'border-pink-200', borderLeft: 'border-l-pink-500', badgeBg: 'bg-pink-100', badgeText: 'text-pink-700', avatarBg: 'bg-pink-50', avatarText: 'text-pink-700', avatarBorder: 'border-pink-100' },
+                                         { top: 270, height: 120, borderColor: 'border-purple-200', borderLeft: 'border-l-purple-500', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', avatarBg: 'bg-purple-50', avatarText: 'text-purple-700', avatarBorder: 'border-purple-100' },
+                                      ];
+                                      const s = dayStyles[aidx];
+                                      return (
+                                         <div key={apt.id || aidx} data-testid={`day-event-${apt.id || aidx}`} className={`absolute top-[${s.top}px] left-4 right-4 h-[${s.height}px] bg-white border ${s.borderColor} border-l-4 ${s.borderLeft} rounded shadow-sm hover:shadow-md transition-all p-3 flex justify-between items-start`}>
+                                            <div>
+                                               <div className="flex items-center gap-2 mb-1">
+                                                  <Badge className={`${s.badgeBg} ${s.badgeText} hover:${s.badgeBg} border-none h-5 text-[10px]`}>{apt.type || apt.visitType || 'Consultation'}</Badge>
+                                                  <span className="text-xs text-slate-500">{apt.time}{apt.endTime ? ` - ${apt.endTime}` : ''}</span>
+                                               </div>
+                                               <h3 className="font-bold text-slate-800 text-sm">{patient?.name || 'Patient'} - {apt.reason || apt.type || 'Appointment'}</h3>
+                                               <p className="text-xs text-slate-500 mt-1 flex items-center gap-2"><MapPin className="w-3 h-3" /> {apt.room || 'Room TBD'} • Dr. Reynolds</p>
+                                            </div>
+                                            <Avatar className={`h-8 w-8 ${s.avatarBg} ${s.avatarText} border ${s.avatarBorder}`}>
+                                               <AvatarFallback>{getInitials(patient?.name)}</AvatarFallback>
+                                            </Avatar>
                                          </div>
-                                         <h3 className="font-bold text-slate-800 text-sm">Ananya S. - Initial Consultation</h3>
-                                         <p className="text-xs text-slate-500 mt-1 flex items-center gap-2"><MapPin className="w-3 h-3" /> Room 302 • Dr. Reynolds</p>
+                                      );
+                                   })}
+                                   {appointments.length >= 2 && (
+                                      <div className="absolute top-[210px] left-4 right-4 h-[40px] bg-slate-100 rounded border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 font-medium">
+                                         Free Slot (11:15 - 11:45)
                                       </div>
-                                      <Avatar className="h-8 w-8 bg-blue-50 text-blue-700 border border-blue-100">
-                                         <AvatarFallback>AS</AvatarFallback>
-                                      </Avatar>
-                                   </div>
-
-                                   {/* Event 2 */}
-                                   <div className="absolute top-[130px] left-4 right-4 h-[60px] bg-white border border-pink-200 border-l-4 border-l-pink-500 rounded shadow-sm hover:shadow-md transition-all p-3 flex justify-between items-center">
-                                      <div>
-                                         <span className="text-xs text-slate-500 block mb-0.5">10:00 AM - 11:00 AM</span>
-                                         <h3 className="font-bold text-slate-800 text-sm">Meera D. - Growth Scan</h3>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                         <Badge variant="outline" className="border-pink-200 text-pink-700 bg-pink-50 text-[10px]">USG</Badge>
-                                         <Avatar className="h-8 w-8 bg-pink-50 text-pink-700 border border-pink-100">
-                                            <AvatarFallback>MD</AvatarFallback>
-                                         </Avatar>
-                                      </div>
-                                   </div>
-
-                                   {/* Gap */}
-                                   <div className="absolute top-[210px] left-4 right-4 h-[40px] bg-slate-100 rounded border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 font-medium">
-                                      Free Slot (11:15 - 11:45)
-                                   </div>
-
-                                    {/* Event 3 */}
-                                   <div className="absolute top-[270px] left-4 right-4 h-[120px] bg-white border border-purple-200 border-l-4 border-l-purple-500 rounded shadow-sm hover:shadow-md transition-all p-3 flex justify-between items-start">
-                                      <div className="flex-1">
-                                         <div className="flex items-center gap-2 mb-1">
-                                            <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-none h-5 text-[10px]">Procedure</Badge>
-                                            <span className="text-xs text-slate-500">12:30 PM - 2:30 PM</span>
-                                         </div>
-                                         <h3 className="font-bold text-slate-800 text-sm">Elena R. - IUI Procedure</h3>
-                                         <p className="text-xs text-slate-500 mt-1 mb-2">Requires: Anesthetist, Nursing Staff</p>
-                                         <div className="flex items-center gap-2">
-                                             <div className="flex -space-x-2">
-                                                <div className="w-6 h-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[8px]">DR</div>
-                                                <div className="w-6 h-6 rounded-full bg-purple-200 border-2 border-white flex items-center justify-center text-[8px]">NS</div>
-                                             </div>
-                                             <span className="text-[10px] text-slate-400">+2 others</span>
-                                         </div>
-                                      </div>
-                                      <Button size="sm" variant="outline" className="h-7 text-xs">View Protocol</Button>
-                                   </div>
+                                   )}
                                 </>
                              ) : (
                                 // OCCUPANCY DAY VIEW
@@ -1831,16 +1831,27 @@ export default function ClinicianPortal() {
                       </CardHeader>
                       <CardContent className="p-0">
                          <div className="divide-y divide-slate-100">
-                            {[
-                               { patient: "Ananya S.", service: "IVF Cycle Package", amount: "$12,500", status: "Paid", date: "Today" },
-                               { patient: "Meera D.", service: "Fetal Scan (20w)", amount: "$350", status: "Paid", date: "Today" },
-                               { patient: "Elena R.", service: "Consultation", amount: "$150", status: "Pending", date: "Yesterday" },
-                               { patient: "Sarah J.", service: "Postpartum Care", amount: "$200", status: "Paid", date: "Yesterday" },
-                               { patient: "Priya K.", service: "Hormone Panel", amount: "$450", status: "Paid", date: "Oct 22" },
-                            ].map((tx, i) => (
-                               <div key={i} className="p-4 hover:bg-slate-50 transition-colors">
+                            {(invoices.length > 0 ? invoices.slice(0, 5).map((inv: any) => ({
+                               patient: inv.patientName || 'Patient',
+                               service: (inv.items as any)?.[0]?.name || 'Service',
+                               amount: `$${inv.total?.toLocaleString() || '0'}`,
+                               status: inv.paymentStatus === 'paid' ? 'Paid' : 'Pending',
+                               date: inv.date || 'Recent',
+                            })) : patients.slice(0, 5).map((p: any, idx: number) => {
+                               const services = ['Consultation', 'Fetal Scan', 'Follow-up', 'Care Visit', 'Hormone Panel'];
+                               const amounts = ['$150', '$350', '$150', '$200', '$450'];
+                               const statuses = ['Paid', 'Paid', 'Pending', 'Paid', 'Paid'];
+                               return {
+                                  patient: p.name || 'Patient',
+                                  service: services[idx] || 'Consultation',
+                                  amount: amounts[idx] || '$150',
+                                  status: statuses[idx] || 'Paid',
+                                  date: idx < 2 ? 'Today' : 'Yesterday',
+                               };
+                            })).map((tx: any, i: number) => (
+                               <div key={i} data-testid={`billing-transaction-${i}`} className="p-4 hover:bg-slate-50 transition-colors">
                                   <div className="flex justify-between items-start mb-1">
-                                     <p className="text-sm font-bold text-slate-900">{tx.patient}</p>
+                                     <p className="text-sm font-bold text-slate-900" data-testid={`text-billing-patient-${i}`}>{tx.patient}</p>
                                      <p className="text-sm font-bold text-slate-900">{tx.amount}</p>
                                   </div>
                                   <div className="flex justify-between items-center">

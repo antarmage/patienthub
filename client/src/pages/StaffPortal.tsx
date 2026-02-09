@@ -59,29 +59,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 
 
-const receptionistTasks = [
-  { id: 1, type: "lab", patient: "Meera D.", title: "Book OGTT", urgency: "High", status: "Pending" },
-  { id: 2, type: "usg", patient: "Zara M.", title: "Schedule T2 Anomaly Scan", urgency: "Medium", status: "Pending" },
-  { id: 3, type: "onboard", patient: "New Patient (Walk-in)", title: "Complete Registration", urgency: "Immediate", status: "Waiting" },
-];
-
-const patientQueue = [
-    { id: 1, name: "Priya K.", time: "10:50 AM", status: "Waiting", action: "Take Vitals" },
-    { id: 2, name: "Zara M.", time: "11:15 AM", status: "Check-in", action: "Upload Records" },
-    { id: 3, name: "Sarah J.", time: "11:30 AM", status: "Arriving", action: "Onboard" },
-    { id: 4, name: "Ananya S.", time: "09:00 AM", status: "Completed", action: "Checkout" },
-];
-
-const crossSellOpportunities = [
-    { id: 1, patient: "Ananya S.", service: "Nutrigenomics Panel", reason: "Requested personalized diet" },
-    { id: 2, patient: "Meera D.", service: "Prenatal Yoga Class", reason: "Mentioned back pain" },
-    { id: 3, patient: "Priya K.", service: "Gut Microbiome Test", reason: "Persistent bloating symptoms" },
-];
-
-const followUpList = [
-    { id: 1, patient: "Sarah J.", type: "Missed Appointment", daysAgo: 2, action: "Call to Reschedule" },
-    { id: 2, patient: "Elena R.", type: "Payment Pending", amount: "$150", action: "Send Reminder" },
-];
 
 import { Link, useLocation } from "wouter";
 
@@ -168,6 +145,61 @@ export default function StaffPortal() {
       };
     });
   }, [appointmentsRaw, patients, providers]);
+
+  const patientQueue = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return appointments
+      .filter((apt: any) => apt.date === todayStr || apt.status === 'On Time' || apt.status === 'Late')
+      .map((apt: any, idx: number) => {
+        const statusMap: Record<string, string> = { 'On Time': 'Waiting', 'Late': 'Check-in', 'Completed': 'Completed' };
+        const queueStatus = statusMap[apt.status] || 'Arriving';
+        const actionMap: Record<string, string> = { 'Waiting': 'Take Vitals', 'Check-in': 'Upload Records', 'Arriving': 'Onboard', 'Completed': 'Checkout' };
+        return {
+          id: apt.id,
+          name: apt.patient,
+          time: apt.time || '—',
+          status: queueStatus,
+          action: actionMap[queueStatus] || 'Take Vitals',
+        };
+      });
+  }, [appointments]);
+
+  const receptionistTasks = useMemo(() => {
+    return labTasks
+      .filter((t: any) => t.status === 'Pending' || t.status === 'Scheduled' || t.status === 'Delayed')
+      .map((t: any) => ({
+        id: t.id,
+        type: t.test?.toLowerCase().includes('usg') || t.test?.toLowerCase().includes('scan') ? 'usg' : 'lab',
+        patient: t.patient,
+        title: t.status === 'Delayed' ? `Urgent: ${t.test}` : `Book ${t.test}`,
+        urgency: t.status === 'Delayed' ? 'High' : t.due === 'Today' ? 'High' : 'Medium',
+        status: t.status,
+      }));
+  }, [labTasks]);
+
+  const crossSellOpportunities = useMemo(() => {
+    return patients.slice(0, 3).map((p: any, idx: number) => {
+      const services = [
+        { service: "Nutrigenomics Panel", reason: "Has genomic data available" },
+        { service: "Prenatal Yoga Class", reason: "Could benefit from guided exercise" },
+        { service: "Gut Microbiome Test", reason: "Recommended for hormonal balance" },
+      ];
+      return { id: p.id, patient: p.name, ...services[idx % services.length] };
+    });
+  }, [patients]);
+
+  const followUpList = useMemo(() => {
+    return patients
+      .filter((p: any) => p.status === 'High Risk' || p.mood === 'Depressed' || p.mood === 'Anxious')
+      .slice(0, 3)
+      .map((p: any, idx: number) => ({
+        id: p.id,
+        patient: p.name,
+        type: p.status === 'High Risk' ? 'High Risk Follow-up' : 'Mood Check-in',
+        daysAgo: idx + 1,
+        action: p.status === 'High Risk' ? 'Schedule Priority Visit' : 'Call to Check-in',
+      }));
+  }, [patients]);
 
   const staffUsername = typeof window !== 'undefined' ? localStorage.getItem("staffUsername") || "" : "";
   const defaultRole = staffUsername.includes("reception") ? "receptionist" 
@@ -499,52 +531,44 @@ export default function StaffPortal() {
                              </CardHeader>
                              <ScrollArea className="flex-1 bg-white">
                                 <div className="divide-y divide-slate-50">
-                                    {/* 09:00 Slot */}
-                                    <div className="flex h-32 group">
-                                        <div className="w-20 py-4 px-2 text-right text-xs text-slate-400 font-medium border-r border-slate-100 group-hover:bg-slate-50/50">
-                                            09:00 AM
-                                        </div>
-                                        <div className="flex-1 p-2 relative">
-                                            <div className="absolute top-2 left-2 right-2 bottom-2 bg-indigo-50 border-l-4 border-indigo-500 rounded p-3 cursor-pointer hover:shadow-sm transition-shadow">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <p className="font-bold text-indigo-900 text-sm">Initial Fertility Assessment</p>
-                                                        <p className="text-xs text-indigo-700 mt-0.5">Ananya S. • In-Person</p>
+                                    {(() => {
+                                        const todayStr = new Date().toISOString().split('T')[0];
+                                        const todayAppts = appointments.filter((a: any) => a.date === todayStr);
+                                        const colorSchemes = [
+                                            { bg: 'bg-indigo-50', border: 'border-indigo-500', title: 'text-indigo-900', sub: 'text-indigo-700', avatarBg: 'bg-indigo-200', avatarText: 'text-indigo-800', badgeBg: 'bg-white', badgeText: 'text-indigo-700', accent: 'text-indigo-600' },
+                                            { bg: 'bg-emerald-50', border: 'border-emerald-500', title: 'text-emerald-900', sub: 'text-emerald-700', avatarBg: 'bg-emerald-200', avatarText: 'text-emerald-800', badgeBg: 'bg-white', badgeText: 'text-emerald-700', accent: 'text-emerald-600' },
+                                        ];
+                                        return todayAppts.slice(0, 2).map((appt: any, idx: number) => {
+                                            const patient = patients.find((p: any) => p.id === appt.patientId);
+                                            const patientName = patient?.name || `Patient #${appt.patientId}`;
+                                            const initials = patientName?.split(' ').map((n: string) => n[0]).join('') || '?';
+                                            const colors = colorSchemes[idx % colorSchemes.length];
+                                            return (
+                                                <div key={appt.id} className="flex h-32 group">
+                                                    <div className="w-20 py-4 px-2 text-right text-xs text-slate-400 font-medium border-r border-slate-100 group-hover:bg-slate-50/50">
+                                                        {appt.time || '—'}
                                                     </div>
-                                                    <Badge variant="secondary" className="bg-white text-indigo-700 text-[10px] hover:bg-white">Confirmed</Badge>
-                                                </div>
-                                                <div className="mt-3 flex gap-2">
-                                                    <Avatar className="h-6 w-6 text-[10px]">
-                                                        <AvatarFallback className="bg-indigo-200 text-indigo-800">AS</AvatarFallback>
-                                                    </Avatar>
-                                                    <span className="text-xs text-indigo-600 self-center">+ Dr. Reynolds (OBGYN)</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* 10:00 Slot */}
-                                    <div className="flex h-32 group">
-                                        <div className="w-20 py-4 px-2 text-right text-xs text-slate-400 font-medium border-r border-slate-100 group-hover:bg-slate-50/50">
-                                            10:00 AM
-                                        </div>
-                                        <div className="flex-1 p-2 relative">
-                                            <div className="absolute top-2 left-2 right-2 bottom-2 bg-emerald-50 border-l-4 border-emerald-500 rounded p-3 cursor-pointer hover:shadow-sm transition-shadow">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <p className="font-bold text-emerald-900 text-sm">Diet Plan Review</p>
-                                                        <p className="text-xs text-emerald-700 mt-0.5">Priya K. (PCOS) • Video Call</p>
+                                                    <div className="flex-1 p-2 relative">
+                                                        <div className={`absolute top-2 left-2 right-2 bottom-2 ${colors.bg} border-l-4 ${colors.border} rounded p-3 cursor-pointer hover:shadow-sm transition-shadow`}>
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <p className={`font-bold ${colors.title} text-sm`}>{appt.reason || appt.type || 'Consultation'}</p>
+                                                                    <p className={`text-xs ${colors.sub} mt-0.5`}>{patientName}{patient?.type ? ` (${patient.type})` : ''} • {appt.visitType || 'In-Person'}</p>
+                                                                </div>
+                                                                <Badge variant="secondary" className={`${colors.badgeBg} ${colors.badgeText} text-[10px] hover:${colors.badgeBg}`}>{appt.status || 'Confirmed'}</Badge>
+                                                            </div>
+                                                            <div className="mt-3 flex gap-2">
+                                                                <Avatar className="h-6 w-6 text-[10px]">
+                                                                    <AvatarFallback className={`${colors.avatarBg} ${colors.avatarText}`}>{initials}</AvatarFallback>
+                                                                </Avatar>
+                                                                {appt.doctor && <span className={`text-xs ${colors.accent} self-center`}>+ {appt.doctor}</span>}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <Badge variant="secondary" className="bg-white text-emerald-700 text-[10px] hover:bg-white">Checking In</Badge>
                                                 </div>
-                                                 <div className="mt-3 flex gap-2">
-                                                    <Avatar className="h-6 w-6 text-[10px]">
-                                                        <AvatarFallback className="bg-emerald-200 text-emerald-800">PK</AvatarFallback>
-                                                    </Avatar>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                            );
+                                        });
+                                    })()}
 
                                     {/* 11:00 Slot (Empty) */}
                                     <div className="flex h-20 group">
@@ -621,53 +645,33 @@ export default function StaffPortal() {
                             </CardHeader>
                             <CardContent className="p-0 flex-1 overflow-y-auto">
                                 <div className="divide-y divide-slate-100">
-                                    {/* Note Item 1 */}
-                                    <div className="p-4 hover:bg-slate-50 cursor-pointer border-l-4 border-transparent hover:border-indigo-500 transition-all bg-indigo-50/30">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className="font-bold text-slate-900 text-sm">Diet Plan Adjustment</span>
-                                            <span className="text-[10px] text-slate-400">10:30 AM</span>
-                                        </div>
-                                        <p className="text-xs text-slate-500 mb-2 line-clamp-2">Patient reported increased bloating with dairy reintroduction. Switched to lactose-free alternatives for Week 3.</p>
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="h-5 w-5 text-[8px]">
-                                                <AvatarFallback className="bg-slate-200">AS</AvatarFallback>
-                                            </Avatar>
-                                            <span className="text-xs text-slate-600 font-medium">Ananya S.</span>
-                                            <Badge variant="secondary" className="ml-auto text-[10px] bg-indigo-100 text-indigo-700 hover:bg-indigo-100">Progress Note</Badge>
-                                        </div>
-                                    </div>
-
-                                    {/* Note Item 2 */}
-                                    <div className="p-4 hover:bg-slate-50 cursor-pointer border-l-4 border-transparent hover:border-indigo-500 transition-all">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className="font-bold text-slate-900 text-sm">Lab Results Review</span>
-                                            <span className="text-[10px] text-slate-400">Yesterday</span>
-                                        </div>
-                                        <p className="text-xs text-slate-500 mb-2 line-clamp-2">Serum progesterone levels indicate ovulation occurred. Luteal phase support protocol initiated.</p>
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="h-5 w-5 text-[8px]">
-                                                <AvatarFallback className="bg-slate-200">MD</AvatarFallback>
-                                            </Avatar>
-                                            <span className="text-xs text-slate-600 font-medium">Meera D.</span>
-                                            <Badge variant="secondary" className="ml-auto text-[10px] bg-purple-100 text-purple-700 hover:bg-purple-100">Lab Analysis</Badge>
-                                        </div>
-                                    </div>
-
-                                    {/* Note Item 3 */}
-                                    <div className="p-4 hover:bg-slate-50 cursor-pointer border-l-4 border-transparent hover:border-indigo-500 transition-all">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className="font-bold text-slate-900 text-sm">Postpartum Screening</span>
-                                            <span className="text-[10px] text-slate-400">Feb 6</span>
-                                        </div>
-                                        <p className="text-xs text-slate-500 mb-2 line-clamp-2">EPDS Score: 12. Mild anxiety symptoms noted. Referred to Dr. Cohen for follow-up.</p>
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="h-5 w-5 text-[8px]">
-                                                <AvatarFallback className="bg-slate-200">SJ</AvatarFallback>
-                                            </Avatar>
-                                            <span className="text-xs text-slate-600 font-medium">Sarah J.</span>
-                                            <Badge variant="secondary" className="ml-auto text-[10px] bg-rose-100 text-rose-700 hover:bg-rose-100">Screening</Badge>
-                                        </div>
-                                    </div>
+                                    {(() => {
+                                        const noteTemplates = [
+                                            { title: 'Diet Plan Adjustment', time: '10:30 AM', desc: 'Patient reported increased bloating with dairy reintroduction. Switched to lactose-free alternatives for Week 3.', badgeLabel: 'Progress Note', badgeBg: 'bg-indigo-100', badgeText: 'text-indigo-700', highlight: true },
+                                            { title: 'Lab Results Review', time: 'Yesterday', desc: 'Serum progesterone levels indicate ovulation occurred. Luteal phase support protocol initiated.', badgeLabel: 'Lab Analysis', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', highlight: false },
+                                            { title: 'Postpartum Screening', time: 'Feb 6', desc: 'EPDS Score: 12. Mild anxiety symptoms noted. Referred to Dr. Cohen for follow-up.', badgeLabel: 'Screening', badgeBg: 'bg-rose-100', badgeText: 'text-rose-700', highlight: false },
+                                        ];
+                                        return patients.slice(0, 3).map((p: any, idx: number) => {
+                                            const template = noteTemplates[idx] || noteTemplates[0];
+                                            const initials = p.name?.split(' ').map((n: string) => n[0]).join('') || '?';
+                                            return (
+                                                <div key={p.id} className={`p-4 hover:bg-slate-50 cursor-pointer border-l-4 border-transparent hover:border-indigo-500 transition-all ${template.highlight ? 'bg-indigo-50/30' : ''}`}>
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <span className="font-bold text-slate-900 text-sm">{template.title}</span>
+                                                        <span className="text-[10px] text-slate-400">{template.time}</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 mb-2 line-clamp-2">{template.desc}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <Avatar className="h-5 w-5 text-[8px]">
+                                                            <AvatarFallback className="bg-slate-200">{initials}</AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="text-xs text-slate-600 font-medium">{p.name}</span>
+                                                        <Badge variant="secondary" className={`ml-auto text-[10px] ${template.badgeBg} ${template.badgeText} hover:${template.badgeBg}`}>{template.badgeLabel}</Badge>
+                                                    </div>
+                                                </div>
+                                            );
+                                        });
+                                    })()}
                                 </div>
                             </CardContent>
                         </Card>
@@ -692,11 +696,11 @@ export default function StaffPortal() {
                                     {/* Patient Context */}
                                     <div className="flex items-center gap-3 p-3 bg-blue-50/50 border border-blue-100 rounded-lg">
                                         <Avatar className="h-10 w-10 border-2 border-white">
-                                            <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">AS</AvatarFallback>
+                                            <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">{patients[0]?.name?.split(' ').map((n: string) => n[0]).join('') || '?'}</AvatarFallback>
                                         </Avatar>
                                         <div>
-                                            <p className="font-bold text-sm text-slate-900">Ananya S.</p>
-                                            <p className="text-xs text-slate-500">DOB: 12/04/1995 • MRN: #883920</p>
+                                            <p className="font-bold text-sm text-slate-900">{patients[0]?.name || 'Loading...'}</p>
+                                            <p className="text-xs text-slate-500">{patients[0]?.type || 'Patient'} • MRN: #{patients[0]?.id || '—'}</p>
                                         </div>
                                         <Button variant="ghost" size="sm" className="ml-auto text-xs text-blue-600 h-7">View History</Button>
                                     </div>
@@ -707,28 +711,28 @@ export default function StaffPortal() {
                                             <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">S (Subjective)</Label>
                                             <Textarea 
                                                 className="min-h-[80px] bg-slate-50/50 border-slate-200 focus:bg-white transition-colors text-sm"
-                                                defaultValue="Patient reports feeling significantly better energy levels. However, noted bloating 30 mins after consuming greek yogurt." 
+                                                placeholder="Enter patient's subjective complaints and observations..." 
                                             />
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">O (Objective)</Label>
                                             <Textarea 
                                                 className="min-h-[80px] bg-slate-50/50 border-slate-200 focus:bg-white transition-colors text-sm"
-                                                defaultValue="Weight: 68.2kg (-0.5kg). BP: 118/76. Food log shows 90% adherence to anti-inflammatory protocol." 
+                                                placeholder="Enter objective measurements (weight, BP, lab values, adherence %)..." 
                                             />
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">A (Assessment)</Label>
                                             <Textarea 
                                                 className="min-h-[80px] bg-slate-50/50 border-slate-200 focus:bg-white transition-colors text-sm"
-                                                defaultValue="Likely lactose intolerance or casein sensitivity. Progress towards weight goal is steady." 
+                                                placeholder="Enter clinical assessment and diagnosis..." 
                                             />
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">P (Plan)</Label>
                                             <Textarea 
                                                 className="min-h-[80px] bg-slate-50/50 border-slate-200 focus:bg-white transition-colors text-sm"
-                                                defaultValue="1. Switch to coconut or almond yogurt.\n2. Continue magnesium at bedtime.\n3. Review in 2 weeks." 
+                                                placeholder="Enter treatment plan and next steps..." 
                                             />
                                         </div>
                                     </div>
@@ -763,7 +767,7 @@ export default function StaffPortal() {
                                 <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
                                 <div>
                                     <p className="font-bold text-red-900 text-sm">Low Hb Alerts</p>
-                                    <p className="text-xs text-red-700 mt-1">3 Pregnant patients flagged with Hb &lt; 10.5</p>
+                                    <p className="text-xs text-red-700 mt-1">{patients.filter((p: any) => p.hb && p.hb < 11).length} patients flagged with Hb &lt; 11</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -771,8 +775,8 @@ export default function StaffPortal() {
                             <CardContent className="p-4 flex items-start gap-3">
                                 <Scale className="w-5 h-5 text-amber-600 mt-0.5" />
                                 <div>
-                                    <p className="font-bold text-amber-900 text-sm">Weight Gain Warning</p>
-                                    <p className="text-xs text-amber-700 mt-1">2 PCOS patients gaining &gt;2kg this month</p>
+                                    <p className="font-bold text-amber-900 text-sm">Weight Monitoring</p>
+                                    <p className="text-xs text-amber-700 mt-1">{patients.filter((p: any) => p.type === 'PCOS' && p.weight > 70).length} PCOS patients above 70kg</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -780,8 +784,8 @@ export default function StaffPortal() {
                             <CardContent className="p-4 flex items-start gap-3">
                                 <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5" />
                                 <div>
-                                    <p className="font-bold text-emerald-900 text-sm">Goal Achieved</p>
-                                    <p className="text-xs text-emerald-700 mt-1">5 patients hit target BMI for IVF</p>
+                                    <p className="font-bold text-emerald-900 text-sm">Active Patients</p>
+                                    <p className="text-xs text-emerald-700 mt-1">{patients.length} patients in the system</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -1432,20 +1436,26 @@ export default function StaffPortal() {
                             </CardHeader>
                             <CardContent className="p-0">
                                 <div className="divide-y divide-slate-100">
-                                    <div className="p-4 flex gap-3">
-                                        <div className="w-2 h-2 rounded-full bg-rose-500 mt-1.5 shrink-0"></div>
-                                        <div>
-                                            <p className="text-sm font-medium text-slate-900">Sudden Activity Drop</p>
-                                            <p className="text-xs text-slate-500">Meera D. (Pregnancy) has 0 activity mins for 3 days.</p>
-                                        </div>
-                                    </div>
-                                    <div className="p-4 flex gap-3">
-                                        <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
-                                        <div>
-                                            <p className="text-sm font-medium text-slate-900">Weight Plateau</p>
-                                            <p className="text-xs text-slate-500">Priya K. (PCOS) weight stable for 4 weeks despite plan.</p>
-                                        </div>
-                                    </div>
+                                    {(() => {
+                                        const alertTemplates = [
+                                            { color: 'bg-rose-500', title: 'Sudden Activity Drop', suffix: 'has 0 activity mins for 3 days.' },
+                                            { color: 'bg-amber-500', title: 'Weight Plateau', suffix: 'weight stable for 4 weeks despite plan.' },
+                                        ];
+                                        const alertPatients = patients.filter((p: any) => p.type === 'Pregnancy' || p.type === 'PCOS').slice(0, 2);
+                                        return alertTemplates.map((tmpl, idx) => {
+                                            const p = alertPatients[idx];
+                                            const patientLabel = p ? `${p.name} (${p.type})` : `Patient ${idx + 1}`;
+                                            return (
+                                                <div key={idx} className="p-4 flex gap-3">
+                                                    <div className={`w-2 h-2 rounded-full ${tmpl.color} mt-1.5 shrink-0`}></div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-slate-900">{tmpl.title}</p>
+                                                        <p className="text-xs text-slate-500">{patientLabel} {tmpl.suffix}</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        });
+                                    })()}
                                 </div>
                             </CardContent>
                          </Card>
@@ -1560,25 +1570,25 @@ export default function StaffPortal() {
                         <Card className="shadow-sm border-slate-200">
                             <CardContent className="p-4">
                                 <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Today's Visits</p>
-                                <p className="text-2xl font-bold text-slate-900">24</p>
+                                <p className="text-2xl font-bold text-slate-900">{appointments.length}</p>
                             </CardContent>
                         </Card>
                         <Card className="shadow-sm border-slate-200">
                             <CardContent className="p-4">
                                 <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Checked In</p>
-                                <p className="text-2xl font-bold text-emerald-600">8</p>
+                                <p className="text-2xl font-bold text-emerald-600">{appointments.filter((a: any) => a.status === 'On Time').length}</p>
                             </CardContent>
                         </Card>
                         <Card className="shadow-sm border-slate-200">
                             <CardContent className="p-4">
-                                <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">No Shows</p>
-                                <p className="text-2xl font-bold text-rose-600">1</p>
+                                <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Late</p>
+                                <p className="text-2xl font-bold text-rose-600">{appointments.filter((a: any) => a.status === 'Late').length}</p>
                             </CardContent>
                         </Card>
                         <Card className="shadow-sm border-slate-200">
                             <CardContent className="p-4">
-                                <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Pending Pay</p>
-                                <p className="text-2xl font-bold text-amber-600">3</p>
+                                <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Pending Tasks</p>
+                                <p className="text-2xl font-bold text-amber-600">{labTasks.filter((t: any) => t.status === 'Pending' || t.status === 'Delayed').length}</p>
                             </CardContent>
                         </Card>
                     </div>
@@ -1598,11 +1608,11 @@ export default function StaffPortal() {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="divide-y divide-slate-100">
-                                        {patientQueue.map(p => (
+                                        {patientQueue.map((p: any) => (
                                             <div key={p.id} className="p-4 flex items-center justify-between hover:bg-slate-50">
                                                 <div className="flex items-center gap-4">
                                                     <div className="bg-indigo-100 w-10 h-10 rounded-full flex items-center justify-center text-indigo-700 font-bold text-xs">
-                                                        {p.name.split(' ').map(n => n[0]).join('')}
+                                                        {p.name.split(' ').map((n: string) => n[0]).join('')}
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-slate-900 text-sm">{p.name}</p>
@@ -1687,7 +1697,7 @@ export default function StaffPortal() {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="divide-y divide-slate-100">
-                                        {receptionistTasks.map(task => (
+                                        {receptionistTasks.map((task: any) => (
                                             <div key={task.id} className="p-4 flex items-center justify-between hover:bg-slate-50">
                                                 <div>
                                                     <div className="flex items-center gap-2 mb-1">
@@ -1774,7 +1784,7 @@ export default function StaffPortal() {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="divide-y divide-rose-100">
-                                        {followUpList.map(item => (
+                                        {followUpList.map((item: any) => (
                                             <div key={item.id} className="p-3 hover:bg-rose-50/50">
                                                 <div className="flex justify-between items-start mb-1">
                                                     <span className="text-sm font-bold text-slate-800">{item.patient}</span>
@@ -1809,7 +1819,7 @@ export default function StaffPortal() {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="divide-y divide-emerald-100">
-                                        {crossSellOpportunities.map(opp => (
+                                        {crossSellOpportunities.map((opp: any) => (
                                             <div key={opp.id} className="p-3 hover:bg-emerald-50/50">
                                                 <div className="mb-2">
                                                     <span className="text-xs font-medium text-slate-500 block mb-0.5">Recommend for {opp.patient}</span>
@@ -2006,9 +2016,9 @@ export default function StaffPortal() {
                             <div>
                                 <p className="text-sm font-bold text-rose-900">{selectedFollowUp?.type}</p>
                                 <p className="text-xs text-rose-700 mt-1">
-                                    {selectedFollowUp?.type === "Missed Appointment" 
-                                        ? "Patient did not show up for scheduled visit 2 days ago. Reschedule required." 
-                                        : "Outstanding balance of $150 pending for recent lab tests."}
+                                    {selectedFollowUp?.type?.includes("High Risk") 
+                                        ? "Patient flagged as high risk. Priority follow-up visit required." 
+                                        : "Patient requires a mood check-in based on recent assessments."}
                                 </p>
                             </div>
                         </div>

@@ -60,7 +60,7 @@ export default function PatientPortal() {
              animate={{ opacity: 1, x: 0 }}
              transition={{ duration: 0.5 }}
           >
-            <h1 className="text-3xl font-serif text-foreground font-medium tracking-tight">Good Morning, Ananya</h1>
+            <h1 className="text-3xl font-serif text-foreground font-medium tracking-tight">Good Morning</h1>
             <p className="text-muted-foreground text-sm mt-1 font-medium tracking-wide opacity-80 uppercase">Day 14 • Ovulation Phase</p>
           </motion.div>
           
