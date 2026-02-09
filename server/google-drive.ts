@@ -81,6 +81,11 @@ const VARIANT_GROUPS = [
   ['bibi', 'biwi'],
   ['khatun', 'khatoon'],
   ['parveen', 'parvin', 'parween'],
+  ['nurjahan', 'noorjahan'],
+  ['kumari', 'kumary'],
+  ['dey', 'de'],
+  ['yasmin', 'yasmeen', 'yesmin'],
+  ['mukherjee', 'mukharjee', 'mukhopadhyay'],
 ];
 
 function areVariants(a: string, b: string): boolean {
@@ -90,6 +95,8 @@ function areVariants(a: string, b: string): boolean {
   }
   return false;
 }
+
+const HONORIFICS = ['bibi', 'biwi', 'khatun', 'khatoon', 'begum', 'devi'];
 
 function nameMatchScore(driveName: string, dbName: string): number {
   const a = normalizeNameForMatch(driveName);
@@ -103,11 +110,18 @@ function nameMatchScore(driveName: string, dbName: string): number {
   if (aParts.length < 2 || bParts.length < 2) return 0;
 
   const firstMatch = aParts[0] === bParts[0];
+  const firstVariant = areVariants(aParts[0], bParts[0]);
   const lastMatch = aParts[aParts.length - 1] === bParts[bParts.length - 1];
   const lastVariant = areVariants(aParts[aParts.length - 1], bParts[bParts.length - 1]);
 
   if (firstMatch && lastMatch) return 90;
   if (firstMatch && lastVariant) return 80;
+  if (firstVariant && lastMatch) return 80;
+  if (firstVariant && lastVariant) return 75;
+
+  const aLastIsHonorific = HONORIFICS.includes(aParts[aParts.length - 1]);
+  const bLastIsHonorific = HONORIFICS.includes(bParts[bParts.length - 1]);
+  if ((firstMatch || firstVariant) && aLastIsHonorific && bLastIsHonorific) return 75;
 
   if (firstMatch && aParts.length >= 2 && bParts.length >= 2) {
     const overlapCount = aParts.filter(p => bParts.some(bp => areVariants(p, bp))).length;
