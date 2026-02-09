@@ -456,9 +456,34 @@ export async function registerRoutes(
         existingByName.set(p.name.toLowerCase().trim(), p.id);
       }
 
+      const existingAppointments = await storage.getAppointments();
+      const appointmentKeys = new Set(
+        existingAppointments.map((a: any) => `${a.patientId}_${a.date}_${a.time}`)
+      );
+
+      const parseTimestamp = (ts: string): { date: string; time: string } | null => {
+        if (!ts) return null;
+        try {
+          const parts = ts.split(" ");
+          const dateParts = parts[0].split("/");
+          if (dateParts.length !== 3) return null;
+          const month = dateParts[0].padStart(2, "0");
+          const day = dateParts[1].padStart(2, "0");
+          const year = dateParts[2].length === 2 ? "20" + dateParts[2] : dateParts[2];
+          const date = `${year}-${month}-${day}`;
+          const timePart = parts[1] || "00:00:00";
+          const timePieces = timePart.split(":");
+          const time = `${timePieces[0].padStart(2, "0")}:${(timePieces[1] || "00").padStart(2, "0")}`;
+          return { date, time };
+        } catch {
+          return null;
+        }
+      }
+
       let imported = 0;
       let updated = 0;
       let skipped = 0;
+      let appointmentsCreated = 0;
       const errors: string[] = [];
 
       for (let i = 0; i < dataRows.length; i++) {
@@ -485,6 +510,7 @@ export async function registerRoutes(
 
         const weight = weightStr ? parseFloat(weightStr.replace(/[^\d.]/g, "")) : undefined;
         const age = ageStr ? parseInt(ageStr.replace(/\D/g, ""), 10) : undefined;
+        const parsed = parseTimestamp(timestamp);
 
         let existingId = phone ? existingByPhone.get(phone) : undefined;
         if (!existingId) {
@@ -492,6 +518,8 @@ export async function registerRoutes(
         }
 
         try {
+          let patientId: number;
+
           if (existingId) {
             await storage.updatePatient(existingId, {
               phone: phone || undefined,
@@ -502,9 +530,10 @@ export async function registerRoutes(
               height: height || undefined,
               bp: bp || undefined,
               weight: weight && !isNaN(weight) ? weight : undefined,
-              lastVisit: timestamp || undefined,
+              lastVisit: parsed?.date || undefined,
               focus: items || undefined,
             });
+            patientId = existingId;
             updated++;
           } else {
             const patient = await storage.createPatient({
@@ -518,13 +547,33 @@ export async function registerRoutes(
               height: height || undefined,
               bp: bp || undefined,
               weight: weight && !isNaN(weight) ? weight : undefined,
-              lastVisit: timestamp || undefined,
+              lastVisit: parsed?.date || undefined,
               focus: items || undefined,
               status: "active",
             });
+            patientId = patient.id;
             if (phone) existingByPhone.set(phone, patient.id);
             existingByName.set(name.toLowerCase().trim(), patient.id);
             imported++;
+          }
+
+          if (parsed) {
+            const apptKey = `${patientId}_${parsed.date}_${parsed.time}`;
+            if (!appointmentKeys.has(apptKey)) {
+              await storage.createAppointment({
+                patientId,
+                date: parsed.date,
+                time: parsed.time,
+                type: items || "Consultation",
+                status: "Completed",
+                reason: items || undefined,
+                visitType: patientType || undefined,
+                notes: bp ? `BP: ${bp}` : undefined,
+                vitals: bp || weight ? { bp: bp || undefined, weight: weight || undefined, height: height || undefined } as any : undefined,
+              });
+              appointmentKeys.add(apptKey);
+              appointmentsCreated++;
+            }
           }
         } catch (err: any) {
           errors.push(`Row ${i + 2}: ${name} - ${err.message}`);
@@ -535,9 +584,10 @@ export async function registerRoutes(
         imported,
         updated,
         skipped,
+        appointmentsCreated,
         total: dataRows.length,
         errors: errors.slice(0, 10),
-        message: `Sync complete: ${imported} new patients imported, ${updated} existing updated, ${skipped} skipped`,
+        message: `Sync complete: ${imported} new patients, ${updated} updated, ${appointmentsCreated} appointments created`,
       });
     } catch (err: any) {
       console.error("Google Sheets sync error:", err);
