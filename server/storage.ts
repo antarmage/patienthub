@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, patients, providers, services, appointments, labTasks,
-  nutritionPlans, workouts, hormoneReadings, pregnancyMetrics, follicleData, usgData, labResults,
+  nutritionPlans, workouts, hormoneReadings, pregnancyMetrics, follicleData, usgData, labResults, visitHistory,
   type User, type InsertUser,
   type Patient, type InsertPatient,
   type Provider, type InsertProvider,
@@ -16,6 +16,7 @@ import {
   type FollicleData, type InsertFollicleData,
   type UsgData, type InsertUsgData,
   type LabResult, type InsertLabResult,
+  type VisitHistory, type InsertVisitHistory,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -66,6 +67,9 @@ export interface IStorage {
   getLabResults(patientId: number): Promise<LabResult[]>;
   getLabResultsByTask(labTaskId: number): Promise<LabResult[]>;
   createLabResult(result: InsertLabResult): Promise<LabResult>;
+
+  getVisitHistory(patientId: number): Promise<VisitHistory[]>;
+  createVisitHistory(visit: InsertVisitHistory): Promise<VisitHistory>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -226,6 +230,15 @@ export class DatabaseStorage implements IStorage {
 
   async createLabResult(result: InsertLabResult): Promise<LabResult> {
     const [created] = await db.insert(labResults).values(result).returning();
+    return created;
+  }
+
+  async getVisitHistory(patientId: number): Promise<VisitHistory[]> {
+    return db.select().from(visitHistory).where(eq(visitHistory.patientId, patientId));
+  }
+
+  async createVisitHistory(visit: InsertVisitHistory): Promise<VisitHistory> {
+    const [created] = await db.insert(visitHistory).values(visit).returning();
     return created;
   }
 }

@@ -180,6 +180,19 @@ export async function registerRoutes(
     res.json(results);
   });
 
+  app.get("/api/patients/:id/visit-history", async (req, res) => {
+    const visits = await storage.getVisitHistory(parseInt(req.params.id));
+    res.json(visits);
+  });
+
+  app.post("/api/patients/:id/visit-history", async (req, res) => {
+    const visit = await storage.createVisitHistory({
+      ...req.body,
+      patientId: parseInt(req.params.id),
+    });
+    res.status(201).json(visit);
+  });
+
   app.get("/api/analytics/fertility", async (_req, res) => {
     res.json([
       { month: 'Jan', active: 45, ovulationRate: 78, pregnancies: 4 },

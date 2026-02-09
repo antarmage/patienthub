@@ -216,3 +216,29 @@ export const labResults = pgTable("lab_results", {
 export const insertLabResultSchema = createInsertSchema(labResults).omit({ id: true });
 export type InsertLabResult = z.infer<typeof insertLabResultSchema>;
 export type LabResult = typeof labResults.$inferSelect;
+
+export const visitHistory = pgTable("visit_history", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
+  providerId: integer("provider_id").references(() => providers.id),
+  date: date("date").notNull(),
+  visitType: text("visit_type"),
+  chiefComplaint: text("chief_complaint"),
+  diagnosis: text("diagnosis"),
+  vitals: jsonb("vitals"),
+  examination: jsonb("examination"),
+  subjective: text("subjective"),
+  objective: text("objective"),
+  assessment: text("assessment"),
+  planNotes: text("plan_notes"),
+  prescriptions: jsonb("prescriptions"),
+  procedures: jsonb("procedures"),
+  labsOrdered: jsonb("labs_ordered"),
+  followUpPlan: text("follow_up_plan"),
+  outcome: text("outcome"),
+});
+
+export const insertVisitHistorySchema = createInsertSchema(visitHistory).omit({ id: true });
+export type InsertVisitHistory = z.infer<typeof insertVisitHistorySchema>;
+export type VisitHistory = typeof visitHistory.$inferSelect;
