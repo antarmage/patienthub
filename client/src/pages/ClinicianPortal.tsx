@@ -2980,8 +2980,8 @@ export default function ClinicianPortal() {
                          {careMode === 'pregnancy' && (
                             <>
                                {/* USG & Biometry Card */}
-                               <Card className="shadow-sm border-slate-200 overflow-hidden">
-                                  <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `url(${fetalBiometryBg})`, backgroundSize: 'cover' }}></div>
+                               <Card className="shadow-sm border-slate-200 overflow-hidden relative">
+                                  <div className="absolute inset-0 opacity-10 pointer-events-none z-0" style={{ backgroundImage: `url(${fetalBiometryBg})`, backgroundSize: 'cover' }}></div>
                                   <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between relative z-10">
                                      <div className="flex items-center gap-2">
                                         <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
