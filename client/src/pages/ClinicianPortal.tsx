@@ -109,6 +109,7 @@ export default function ClinicianPortal() {
   const providerSpecialty = clinicianProvider?.specialty || "Clinician";
   const providerInitials = providerName.split(" ").filter((w: string) => w[0]?.match(/[A-Z]/)).map((w: string) => w[0]).join("").slice(0, 2) || "DR";
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [queueDate, setQueueDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   const patientsQuery = useQuery({
     queryKey: ['/api/patients', clinicianProvider?.id],
@@ -244,6 +245,15 @@ export default function ClinicianPortal() {
     enabled: patients.length > 0
   });
   const invoices = invoicesQuery.data || [];
+
+  const queuePatients = useMemo(() => {
+    const dateAppts = appointments.filter((a: any) => a.date === queueDate);
+    dateAppts.sort((a: any, b: any) => (a.time || '').localeCompare(b.time || ''));
+    return dateAppts.map((apt: any) => {
+      const patient = patients.find((p: any) => p.id === apt.patientId);
+      return patient ? { ...patient, appointmentTime: apt.time, appointmentType: apt.type, appointmentId: apt.id, appointmentStatus: apt.status } : null;
+    }).filter(Boolean);
+  }, [appointments, patients, queueDate]);
 
   const appointmentsByDay = useMemo(() => {
     const map: Record<number, any[]> = {};
@@ -516,47 +526,59 @@ export default function ClinicianPortal() {
                      <Card className="shadow-sm border-slate-200">
                         <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
                            <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                              <CalendarCheck className="w-4 h-4 text-blue-600" /> Today's Patient Flow
+                              <CalendarCheck className="w-4 h-4 text-blue-600" /> Patient Flow
                            </CardTitle>
-                           <Button variant="ghost" size="sm" className="h-7 text-xs text-slate-500">View Full Schedule</Button>
+                           <div className="flex items-center gap-2">
+                              <Input
+                                type="date"
+                                value={queueDate}
+                                onChange={(e) => setQueueDate(e.target.value)}
+                                className="h-7 text-xs w-36 border-slate-200"
+                                data-testid="input-queue-date"
+                              />
+                              <span className="text-xs text-slate-500 font-medium">{queuePatients.length} patients</span>
+                           </div>
                         </CardHeader>
                         <CardContent className="p-0">
+                           {queuePatients.length === 0 ? (
+                              <div className="py-12 text-center text-slate-400 text-sm">
+                                 No patients scheduled for this date
+                              </div>
+                           ) : (
                            <table className="w-full text-sm text-left">
                               <thead className="text-xs text-slate-500 bg-slate-50 uppercase border-b border-slate-100">
                                  <tr>
                                     <th className="px-4 py-3 font-medium w-20">Time</th>
                                     <th className="px-4 py-3 font-medium">Patient</th>
                                     <th className="px-4 py-3 font-medium">Type</th>
-                                    <th className="px-4 py-3 font-medium">Stage</th>
-                                    <th className="px-4 py-3 font-medium">Clinical Flag</th>
+                                    <th className="px-4 py-3 font-medium">Status</th>
                                     <th className="px-4 py-3 font-medium w-10"></th>
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
-                                 {patients.slice(0, 6).map((p: any, idx: number) => {
-                                    const timeSlots = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30'];
+                                 {queuePatients.map((p: any) => {
                                     const typeColors: Record<string, string> = {
                                        'Fertility': 'border-purple-200 text-purple-700 bg-purple-50',
+                                       'Pregnant': 'border-pink-200 text-pink-700 bg-pink-50',
                                        'Pregnancy': 'border-pink-200 text-pink-700 bg-pink-50',
                                        'Postpartum': 'border-slate-200 text-slate-700 bg-slate-50',
                                        'IUI Cycle': 'border-purple-200 text-purple-700 bg-purple-50',
                                        'PCOS': 'border-emerald-200 text-emerald-700 bg-emerald-50',
+                                       'Others': 'border-slate-200 text-slate-700 bg-slate-50',
                                     };
-                                    const flagColors = ['text-emerald-600', 'text-amber-600', 'text-amber-600', 'text-blue-600', 'text-rose-600', 'text-slate-600'];
-                                    const dotColors = ['bg-emerald-500', 'bg-amber-500', 'bg-amber-500', 'bg-blue-500', 'bg-rose-500', 'bg-slate-500'];
                                     return (
-                                       <tr key={p.id} data-testid={`row-patient-${p.id}`} className="hover:bg-slate-50 cursor-pointer" onClick={() => navigateToPatient(p)}>
-                                          <td className="px-4 py-3 text-slate-500 font-medium">{timeSlots[idx] || '11:00'}</td>
+                                       <tr key={`${p.appointmentId}-${p.id}`} data-testid={`row-patient-${p.id}`} className="hover:bg-slate-50 cursor-pointer" onClick={() => navigateToPatient(p)}>
+                                          <td className="px-4 py-3 text-slate-500 font-medium">{p.appointmentTime || '--:--'}</td>
                                           <td className="px-4 py-3 font-semibold text-slate-900" data-testid={`text-patient-name-${p.id}`}>{p.name}</td>
                                           <td className="px-4 py-3"><Badge variant="outline" className={typeColors[p.type] || 'border-slate-200 text-slate-700 bg-slate-50'}>{p.type || 'General'}</Badge></td>
-                                          <td className="px-4 py-3 text-slate-600 text-xs">{p.type || p.status || 'General'}</td>
-                                          <td className={`px-4 py-3 flex items-center gap-2 text-xs font-medium ${flagColors[idx] || 'text-slate-600'}`}><div className={`w-2 h-2 rounded-full ${dotColors[idx] || 'bg-slate-500'}`}></div> {p.condition || 'Follow-up'}</td>
+                                          <td className="px-4 py-3 text-slate-600 text-xs">{p.appointmentStatus || 'Scheduled'}</td>
                                           <td className="px-4 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
                                        </tr>
                                     );
                                  })}
                               </tbody>
                            </table>
+                           )}
                         </CardContent>
                      </Card>
 
@@ -2380,22 +2402,34 @@ export default function ClinicianPortal() {
               
               {/* Patient List Column (Left) */}
               <div className="w-72 border-r border-slate-200 bg-white flex flex-col shrink-0">
-                 <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 className="font-semibold text-xs uppercase tracking-wider text-slate-500 pl-2">Patient Queue</h3>
-                    <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-medium">24</span>
+                 <div className="p-3 border-b border-slate-100 bg-slate-50/50 space-y-2">
+                    <div className="flex justify-between items-center">
+                       <h3 className="font-semibold text-xs uppercase tracking-wider text-slate-500 pl-2">Patient Queue</h3>
+                       <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-medium">{queuePatients.length}</span>
+                    </div>
+                    <Input
+                      type="date"
+                      value={queueDate}
+                      onChange={(e) => setQueueDate(e.target.value)}
+                      className="h-7 text-xs border-slate-200"
+                      data-testid="input-queue-date-sidebar"
+                    />
                  </div>
                  <ScrollArea className="flex-1">
-                    {patients.map((patient: any) => (
+                    {queuePatients.length === 0 && (
+                      <div className="py-8 text-center text-slate-400 text-xs">No patients for this date</div>
+                    )}
+                    {queuePatients.map((patient: any) => (
                       <div 
                         key={patient.id}
                         onClick={() => setSelectedPatient(patient)}
-                        className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 group relative ${selectedPatient.id === patient.id ? 'bg-blue-50/60' : ''}`}
+                        className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 group relative ${selectedPatient?.id === patient.id ? 'bg-blue-50/60' : ''}`}
                       >
-                         {selectedPatient.id === patient.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>}
+                         {selectedPatient?.id === patient.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>}
                          
                          <div className="flex justify-between items-start mb-1">
-                            <span className={`font-semibold text-sm ${selectedPatient.id === patient.id ? 'text-blue-900' : 'text-slate-700'}`}>{patient.name}</span>
-                            <span className="text-[10px] text-slate-400">{patient.lastVisit}</span>
+                            <span className={`font-semibold text-sm ${selectedPatient?.id === patient.id ? 'text-blue-900' : 'text-slate-700'}`}>{patient.name}</span>
+                            <span className="text-[10px] text-slate-400">{patient.appointmentTime || patient.lastVisit}</span>
                          </div>
                          <p className="text-xs text-slate-500 mb-2 truncate">{patient.type || 'General'}</p>
                          
