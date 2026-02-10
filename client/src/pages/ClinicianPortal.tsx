@@ -439,6 +439,38 @@ export default function ClinicianPortal() {
     },
   });
 
+  const [showAddMedRow, setShowAddMedRow] = useState(false);
+  const [newMed, setNewMed] = useState({ name: '', dose: '', frequency: '', startDate: '', status: 'Active', notes: '' });
+  const [medSuggestions, setMedSuggestions] = useState<any[]>([]);
+  const [showMedSuggestions, setShowMedSuggestions] = useState(false);
+  const [editMedSuggestions, setEditMedSuggestions] = useState<any[]>([]);
+  const [showEditMedSuggestions, setShowEditMedSuggestions] = useState(false);
+
+  const filterCatalogSuggestions = (query: string) => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    return medicineCatalog.filter((m: any) =>
+      (m.name || '').toLowerCase().includes(q) || (m.genericName || '').toLowerCase().includes(q)
+    ).slice(0, 6);
+  };
+
+  const addMedMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch(`/api/patients/${selectedPatient!.id}/medications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to add medication');
+      return res.json();
+    },
+    onSuccess: () => {
+      if (selectedPatient) queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/medications`] });
+      setShowAddMedRow(false);
+      setNewMed({ name: '', dose: '', frequency: '', startDate: '', status: 'Active', notes: '' });
+    },
+  });
+
   const pcosQuery = useQuery({
     queryKey: ['/api/analytics/pcos'],
     queryFn: async () => {
@@ -3098,7 +3130,7 @@ export default function ClinicianPortal() {
                                   {medications.length > 0 && (
                                     <div className="mb-3">
                                        <span className="text-[10px] text-slate-500 uppercase font-bold block mb-2">Active Medications</span>
-                                       <div className="border border-slate-200 rounded-md overflow-hidden">
+                                       <div className="border border-slate-200 rounded-md overflow-visible">
                                           <table className="w-full text-xs text-left">
                                              <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
                                                 <tr>
@@ -3116,7 +3148,19 @@ export default function ClinicianPortal() {
                                                   <tr key={med.id}>
                                                     {editingMedId === med.id ? (
                                                       <>
-                                                        <td className="px-1 py-1"><Input value={editMedData.name || ''} onChange={e => setEditMedData({...editMedData, name: e.target.value})} className="h-7 text-xs" /></td>
+                                                        <td className="px-1 py-1 relative">
+                                                          <Input value={editMedData.name || ''} onChange={e => { setEditMedData({...editMedData, name: e.target.value}); const s = filterCatalogSuggestions(e.target.value); setEditMedSuggestions(s); setShowEditMedSuggestions(s.length > 0); }} onFocus={() => { const s = filterCatalogSuggestions(editMedData.name || ''); setEditMedSuggestions(s); setShowEditMedSuggestions(s.length > 0); }} onBlur={() => setTimeout(() => setShowEditMedSuggestions(false), 200)} className="h-7 text-xs" autoComplete="off" />
+                                                          {showEditMedSuggestions && editMedSuggestions.length > 0 && (
+                                                            <div className="absolute z-50 top-full left-1 right-1 mt-0.5 bg-white border border-slate-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                                                              {editMedSuggestions.map((s: any) => (
+                                                                <div key={s.id} className="px-3 py-1.5 text-xs hover:bg-blue-50 cursor-pointer flex justify-between items-center" onMouseDown={() => { setEditMedData({...editMedData, name: s.name, dose: s.defaultDose || editMedData.dose, frequency: s.defaultFrequency || editMedData.frequency}); setShowEditMedSuggestions(false); }}>
+                                                                  <span className="font-medium text-slate-800">{s.name}</span>
+                                                                  <span className="text-slate-400 text-[10px]">{s.genericName || s.category || ''}</span>
+                                                                </div>
+                                                              ))}
+                                                            </div>
+                                                          )}
+                                                        </td>
                                                         <td className="px-1 py-1"><Input value={editMedData.dose || ''} onChange={e => setEditMedData({...editMedData, dose: e.target.value})} className="h-7 text-xs" /></td>
                                                         <td className="px-1 py-1"><Input value={editMedData.frequency || ''} onChange={e => setEditMedData({...editMedData, frequency: e.target.value})} className="h-7 text-xs" /></td>
                                                         <td className="px-1 py-1"><Input type="date" value={editMedData.startDate || ''} onChange={e => setEditMedData({...editMedData, startDate: e.target.value})} className="h-7 text-xs" /></td>
@@ -3168,9 +3212,121 @@ export default function ClinicianPortal() {
                                                     )}
                                                   </tr>
                                                 ))}
+                                                {showAddMedRow && (
+                                                  <tr className="bg-blue-50/30">
+                                                    <td className="px-1 py-1 relative">
+                                                      <Input placeholder="Drug name" value={newMed.name} onChange={e => { setNewMed({...newMed, name: e.target.value}); const s = filterCatalogSuggestions(e.target.value); setMedSuggestions(s); setShowMedSuggestions(s.length > 0); }} onFocus={() => { const s = filterCatalogSuggestions(newMed.name); setMedSuggestions(s); setShowMedSuggestions(s.length > 0); }} onBlur={() => setTimeout(() => setShowMedSuggestions(false), 200)} className="h-7 text-xs" autoComplete="off" data-testid="input-new-med-name" />
+                                                      {showMedSuggestions && medSuggestions.length > 0 && (
+                                                        <div className="absolute z-50 top-full left-1 right-1 mt-0.5 bg-white border border-slate-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                                                          {medSuggestions.map((s: any) => (
+                                                            <div key={s.id} className="px-3 py-1.5 text-xs hover:bg-blue-50 cursor-pointer flex justify-between items-center" onMouseDown={() => { setNewMed({...newMed, name: s.name, dose: s.defaultDose || newMed.dose, frequency: s.defaultFrequency || newMed.frequency}); setShowMedSuggestions(false); }}>
+                                                              <span className="font-medium text-slate-800">{s.name}</span>
+                                                              <span className="text-slate-400 text-[10px]">{s.genericName || s.category || ''}</span>
+                                                            </div>
+                                                          ))}
+                                                        </div>
+                                                      )}
+                                                    </td>
+                                                    <td className="px-1 py-1"><Input placeholder="Dose" value={newMed.dose} onChange={e => setNewMed({...newMed, dose: e.target.value})} className="h-7 text-xs" /></td>
+                                                    <td className="px-1 py-1"><Input placeholder="Frequency" value={newMed.frequency} onChange={e => setNewMed({...newMed, frequency: e.target.value})} className="h-7 text-xs" /></td>
+                                                    <td className="px-1 py-1"><Input type="date" value={newMed.startDate} onChange={e => setNewMed({...newMed, startDate: e.target.value})} className="h-7 text-xs" /></td>
+                                                    <td className="px-1 py-1">
+                                                      <Select value={newMed.status} onValueChange={v => setNewMed({...newMed, status: v})}>
+                                                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                          <SelectItem value="Active">Active</SelectItem>
+                                                          <SelectItem value="Completed">Completed</SelectItem>
+                                                          <SelectItem value="Discontinued">Discontinued</SelectItem>
+                                                        </SelectContent>
+                                                      </Select>
+                                                    </td>
+                                                    <td className="px-1 py-1"><Input placeholder="Notes" value={newMed.notes} onChange={e => setNewMed({...newMed, notes: e.target.value})} className="h-7 text-xs" /></td>
+                                                    <td className="px-1 py-1">
+                                                      <div className="flex gap-1">
+                                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" disabled={!newMed.name.trim() || addMedMutation.isPending} onClick={() => addMedMutation.mutate(newMed)} data-testid="button-save-new-med">
+                                                          <Check className="w-3 h-3" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-slate-600" onClick={() => { setShowAddMedRow(false); setNewMed({ name: '', dose: '', frequency: '', startDate: '', status: 'Active', notes: '' }); }}>
+                                                          <X className="w-3 h-3" />
+                                                        </Button>
+                                                      </div>
+                                                    </td>
+                                                  </tr>
+                                                )}
                                              </tbody>
                                           </table>
                                        </div>
+                                       {!showAddMedRow && (
+                                         <Button variant="ghost" size="sm" className="mt-1.5 h-7 text-xs text-blue-600 hover:text-blue-700 gap-1" onClick={() => setShowAddMedRow(true)} data-testid="button-add-med-manual">
+                                           <Plus className="w-3 h-3" /> Add Medication
+                                         </Button>
+                                       )}
+                                    </div>
+                                  )}
+
+                                  {!medications.length && (
+                                    <div className="mb-3">
+                                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-dashed border-slate-300 text-slate-600" onClick={() => setShowAddMedRow(true)} data-testid="button-add-first-med">
+                                        <Plus className="w-3.5 h-3.5" /> Add Medication Manually
+                                      </Button>
+                                      {showAddMedRow && (
+                                        <div className="border border-slate-200 rounded-md overflow-visible mt-2">
+                                          <table className="w-full text-xs text-left">
+                                            <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                                              <tr>
+                                                <th className="px-3 py-1.5 font-medium">Drug</th>
+                                                <th className="px-3 py-1.5 font-medium">Dose</th>
+                                                <th className="px-3 py-1.5 font-medium">Frequency</th>
+                                                <th className="px-3 py-1.5 font-medium">Date</th>
+                                                <th className="px-3 py-1.5 font-medium">Status</th>
+                                                <th className="px-3 py-1.5 font-medium">Notes</th>
+                                                <th className="px-2 py-1.5 font-medium w-16"></th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              <tr className="bg-blue-50/30">
+                                                <td className="px-1 py-1 relative">
+                                                  <Input placeholder="Drug name" value={newMed.name} onChange={e => { setNewMed({...newMed, name: e.target.value}); const s = filterCatalogSuggestions(e.target.value); setMedSuggestions(s); setShowMedSuggestions(s.length > 0); }} onFocus={() => { const s = filterCatalogSuggestions(newMed.name); setMedSuggestions(s); setShowMedSuggestions(s.length > 0); }} onBlur={() => setTimeout(() => setShowMedSuggestions(false), 200)} className="h-7 text-xs" autoComplete="off" />
+                                                  {showMedSuggestions && medSuggestions.length > 0 && (
+                                                    <div className="absolute z-50 top-full left-1 right-1 mt-0.5 bg-white border border-slate-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                                                      {medSuggestions.map((s: any) => (
+                                                        <div key={s.id} className="px-3 py-1.5 text-xs hover:bg-blue-50 cursor-pointer flex justify-between items-center" onMouseDown={() => { setNewMed({...newMed, name: s.name, dose: s.defaultDose || newMed.dose, frequency: s.defaultFrequency || newMed.frequency}); setShowMedSuggestions(false); }}>
+                                                          <span className="font-medium text-slate-800">{s.name}</span>
+                                                          <span className="text-slate-400 text-[10px]">{s.genericName || s.category || ''}</span>
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                </td>
+                                                <td className="px-1 py-1"><Input placeholder="Dose" value={newMed.dose} onChange={e => setNewMed({...newMed, dose: e.target.value})} className="h-7 text-xs" /></td>
+                                                <td className="px-1 py-1"><Input placeholder="Frequency" value={newMed.frequency} onChange={e => setNewMed({...newMed, frequency: e.target.value})} className="h-7 text-xs" /></td>
+                                                <td className="px-1 py-1"><Input type="date" value={newMed.startDate} onChange={e => setNewMed({...newMed, startDate: e.target.value})} className="h-7 text-xs" /></td>
+                                                <td className="px-1 py-1">
+                                                  <Select value={newMed.status} onValueChange={v => setNewMed({...newMed, status: v})}>
+                                                    <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                      <SelectItem value="Active">Active</SelectItem>
+                                                      <SelectItem value="Completed">Completed</SelectItem>
+                                                      <SelectItem value="Discontinued">Discontinued</SelectItem>
+                                                    </SelectContent>
+                                                  </Select>
+                                                </td>
+                                                <td className="px-1 py-1"><Input placeholder="Notes" value={newMed.notes} onChange={e => setNewMed({...newMed, notes: e.target.value})} className="h-7 text-xs" /></td>
+                                                <td className="px-1 py-1">
+                                                  <div className="flex gap-1">
+                                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" disabled={!newMed.name.trim() || addMedMutation.isPending} onClick={() => addMedMutation.mutate(newMed)} data-testid="button-save-first-med">
+                                                      <Check className="w-3 h-3" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-slate-600" onClick={() => { setShowAddMedRow(false); setNewMed({ name: '', dose: '', frequency: '', startDate: '', status: 'Active', notes: '' }); }}>
+                                                      <X className="w-3 h-3" />
+                                                    </Button>
+                                                  </div>
+                                                </td>
+                                              </tr>
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
 
