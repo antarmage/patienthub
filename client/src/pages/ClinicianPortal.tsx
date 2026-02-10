@@ -2877,6 +2877,7 @@ export default function ClinicianPortal() {
                                                    <th className="px-3 py-1.5 font-medium">Drug</th>
                                                    <th className="px-3 py-1.5 font-medium">Dose</th>
                                                    <th className="px-3 py-1.5 font-medium">Frequency</th>
+                                                   <th className="px-3 py-1.5 font-medium">Date</th>
                                                    <th className="px-3 py-1.5 font-medium">Status</th>
                                                    <th className="px-3 py-1.5 font-medium">Notes</th>
                                                 </tr>
@@ -2887,6 +2888,7 @@ export default function ClinicianPortal() {
                                                      <td className="px-3 py-2 font-medium text-slate-800">{med.name}</td>
                                                      <td className="px-3 py-2 text-slate-600">{med.dose || '—'}</td>
                                                      <td className="px-3 py-2 text-slate-600">{med.frequency || '—'}</td>
+                                                     <td className="px-3 py-2 text-slate-500">{med.startDate ? new Date(med.startDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
                                                      <td className="px-3 py-2">
                                                        <Badge variant="outline" className={`text-[10px] ${med.status === 'active' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>
                                                          {med.status || 'active'}
