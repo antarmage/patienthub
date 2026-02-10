@@ -49,7 +49,11 @@ import {
   Upload,
   Pencil,
   Trash2,
-  Check
+  Check,
+  Shield,
+  Milestone,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -3355,6 +3359,52 @@ export default function ClinicianPortal() {
                                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">A</Badge>
                                      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Assessment</span>
                                   </div>
+
+                                  {careMode === 'pregnancy' && (
+                                    <div className="grid grid-cols-2 gap-3 mb-3">
+                                      <div className="bg-white p-2.5 rounded border border-emerald-100">
+                                        <span className="text-[10px] text-emerald-600 uppercase font-bold block mb-1.5">P/V (Per Vaginum)</span>
+                                        <Textarea
+                                          placeholder="Cervix: position, consistency, dilation, effacement. Membranes, presenting part, station..."
+                                          defaultValue={(latestVisit?.vitals as any)?.pvExam || ''}
+                                          className="min-h-[60px] text-xs border-emerald-200 focus-visible:ring-emerald-300 resize-none"
+                                          data-testid="input-pv-exam"
+                                          onBlur={(e) => {
+                                            const val = e.target.value;
+                                            if (latestVisit?.id) {
+                                              const currentVitals = (latestVisit.vitals as any) || {};
+                                              fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ ...latestVisit, vitals: { ...currentVitals, pvExam: val } })
+                                              }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
+                                            }
+                                          }}
+                                        />
+                                      </div>
+                                      <div className="bg-white p-2.5 rounded border border-emerald-100">
+                                        <span className="text-[10px] text-emerald-600 uppercase font-bold block mb-1.5">P/S (Per Speculum)</span>
+                                        <Textarea
+                                          placeholder="Cervix appearance, os, discharge, bleeding, lesions..."
+                                          defaultValue={(latestVisit?.vitals as any)?.psExam || ''}
+                                          className="min-h-[60px] text-xs border-emerald-200 focus-visible:ring-emerald-300 resize-none"
+                                          data-testid="input-ps-exam"
+                                          onBlur={(e) => {
+                                            const val = e.target.value;
+                                            if (latestVisit?.id) {
+                                              const currentVitals = (latestVisit.vitals as any) || {};
+                                              fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ ...latestVisit, vitals: { ...currentVitals, psExam: val } })
+                                              }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
+                                            }
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+
                                   {latestVisit?.assessment ? (
                                     <div className="bg-white border border-emerald-100 rounded p-3">
                                        <p className="text-sm text-slate-700 leading-relaxed italic">"{latestVisit.assessment}"</p>
@@ -3962,6 +4012,217 @@ export default function ClinicianPortal() {
                                  );
                                })()}
 
+                               {/* IMMUNISATION SECTION - Pregnancy */}
+                               {careMode === 'pregnancy' && (() => {
+                                 const pregnancyWeekImm = selectedPatient.lmp ? Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7))) : 0;
+                                 const immunisations = [
+                                   { name: 'TT-1 (Tetanus Toxoid)', weekRange: '12-16 weeks', recWeek: 12, icon: '💉' },
+                                   { name: 'TT-2 (Tetanus Toxoid)', weekRange: '16-20 weeks (4 wks after TT-1)', recWeek: 16, icon: '💉' },
+                                   { name: 'Tdap (Tetanus, Diphtheria, Pertussis)', weekRange: '27-36 weeks', recWeek: 27, icon: '🛡️' },
+                                   { name: 'Influenza Vaccine', weekRange: 'Any trimester (seasonal)', recWeek: 14, icon: '🦠' },
+                                   { name: 'COVID-19 Vaccine', weekRange: 'Any trimester (if due)', recWeek: -1, icon: '💊' },
+                                   { name: 'Hepatitis B (if non-immune)', weekRange: 'Booking visit', recWeek: 8, icon: '🔬' },
+                                   { name: 'TT Booster (if previously immunised)', weekRange: '16-20 weeks', recWeek: -1, icon: '💉' },
+                                 ];
+                                 const vitals = (latestVisit?.vitals as any) || {};
+                                 const givenVaccines: Record<string, { date: string }> = vitals.immunisations || {};
+                                 const givenCount = Object.keys(givenVaccines).length;
+
+                                 return (
+                                   <div className="p-4 bg-teal-50/30" data-testid="card-immunisation">
+                                     <div className="flex items-center justify-between mb-3">
+                                       <div className="flex items-center gap-2">
+                                         <Badge className="bg-teal-100 text-teal-800 border-teal-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded"><Shield className="w-3 h-3" /></Badge>
+                                         <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Immunisation</span>
+                                         <Badge className="text-[10px] bg-teal-100 text-teal-700 border-teal-200">{givenCount}/{immunisations.length}</Badge>
+                                       </div>
+                                     </div>
+                                     <div className="space-y-1.5">
+                                       {immunisations.map((vax, i) => {
+                                         const given = givenVaccines[vax.name];
+                                         const isDue = !given && pregnancyWeekImm >= vax.recWeek && vax.recWeek > 0;
+                                         const isPast = !given && pregnancyWeekImm > vax.recWeek + 8 && vax.recWeek > 0;
+                                         return (
+                                           <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all ${given ? 'bg-emerald-50 border-emerald-200' : isDue ? 'bg-amber-50 border-amber-300 shadow-sm' : isPast ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-100'}`} data-testid={`immunisation-${i}`}>
+                                             <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                               <span className="text-sm">{vax.icon}</span>
+                                               <div className="min-w-0">
+                                                 <div className={`text-xs font-semibold truncate ${given ? 'text-emerald-700 line-through opacity-70' : isDue ? 'text-amber-800' : isPast ? 'text-rose-700' : 'text-slate-700'}`}>{vax.name}</div>
+                                                 <div className="text-[10px] text-slate-400">{vax.weekRange}</div>
+                                               </div>
+                                             </div>
+                                             <div className="flex items-center gap-2 shrink-0">
+                                               {given ? (
+                                                 <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border-emerald-200 gap-1"><Check className="w-2.5 h-2.5" /> {given.date ? new Date(given.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Done'}</Badge>
+                                               ) : isDue ? (
+                                                 <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-300 animate-pulse">DUE NOW</Badge>
+                                               ) : isPast ? (
+                                                 <Badge className="text-[9px] bg-rose-100 text-rose-700 border-rose-200">OVERDUE</Badge>
+                                               ) : (
+                                                 <Badge variant="outline" className="text-[9px] text-slate-400 border-slate-200">Upcoming</Badge>
+                                               )}
+                                               {!given && (
+                                                 <Button
+                                                   variant="ghost"
+                                                   size="sm"
+                                                   className={`h-6 px-2 text-[10px] ${isDue || isPast ? 'text-emerald-600 hover:bg-emerald-100' : 'text-slate-400 hover:bg-slate-100'}`}
+                                                   data-testid={`button-mark-vaccine-${i}`}
+                                                   onClick={() => {
+                                                     if (latestVisit?.id) {
+                                                       const currentVitals = (latestVisit.vitals as any) || {};
+                                                       const updatedImm = { ...(currentVitals.immunisations || {}), [vax.name]: { date: new Date().toISOString().split('T')[0] } };
+                                                       fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
+                                                         method: 'POST',
+                                                         headers: { 'Content-Type': 'application/json' },
+                                                         body: JSON.stringify({ ...latestVisit, vitals: { ...currentVitals, immunisations: updatedImm } })
+                                                       }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
+                                                     }
+                                                   }}
+                                                 >
+                                                   <Check className="w-3 h-3 mr-0.5" /> Mark Given
+                                                 </Button>
+                                               )}
+                                             </div>
+                                           </div>
+                                         );
+                                       })}
+                                     </div>
+                                   </div>
+                                 );
+                               })()}
+
+                               {/* PREGNANCY PROGRESS TRAIL */}
+                               {careMode === 'pregnancy' && selectedPatient.lmp && (() => {
+                                 const lmpDate = new Date(selectedPatient.lmp);
+                                 const today = new Date();
+                                 const totalDays = Math.max(0, Math.floor((today.getTime() - lmpDate.getTime()) / (1000*60*60*24)));
+                                 const currentWeekPT = Math.floor(totalDays / 7);
+                                 const eddDate = new Date(lmpDate.getTime() + 280 * 24*60*60*1000);
+                                 const daysRemaining = Math.max(0, Math.ceil((eddDate.getTime() - today.getTime()) / (1000*60*60*24)));
+                                 const progressPct = Math.min(100, (totalDays / 280) * 100);
+
+                                 const vitals = (latestVisit?.vitals as any) || {};
+                                 const givenVaccines = vitals.immunisations || {};
+                                 const completedMap = getCompletedInvestigations();
+
+                                 const investigationsByWeekPT: Record<string, string[]> = {
+                                   'booking': ['CBC (Complete Blood Count)', 'Blood Group & Rh Typing', 'Random Blood Sugar (RBS)', 'TSH (Thyroid Stimulating Hormone)', 'Urine Routine & Microscopy', 'HIV, HBsAg, VDRL', 'Rubella IgG', 'Blood Pressure', 'USG - Dating Scan'],
+                                   'first_trimester': ['NT Scan (Nuchal Translucency)', 'Dual Marker (PAPP-A + Free β-hCG)', 'Urine Culture', 'TSH (repeat if abnormal)', 'USG - NT Scan'],
+                                   'second_trimester_early': ['Quadruple Marker', 'USG - Anomaly Scan (TIFFA)', 'CBC (repeat)'],
+                                   'second_trimester_mid': ['OGTT (75g Glucose Tolerance Test)', 'CBC (repeat)', 'Anti-D Injection', 'USG - Fetal Echocardiography'],
+                                   'third_trimester_early': ['USG - Growth Scan', 'CBC (repeat)', 'TSH (repeat)', 'Urine Routine', 'USG - Doppler Study'],
+                                   'third_trimester_late': ['USG - Growth Scan (repeat)', 'GBS Screening (Vaginal Swab)', 'CBC + Coagulation Profile', 'LFT, KFT', 'NST (Non-Stress Test)', 'USG - Presentation & Lie'],
+                                   'term': ['NST (weekly)', 'BPP (Biophysical Profile)', 'USG - AFI (Amniotic Fluid Index)', 'Bishop Score Assessment', 'USG - EFW & Doppler'],
+                                 };
+
+                                 const milestones = [
+                                   { week: 0, label: 'LMP', color: 'bg-pink-500', detail: lmpDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) },
+                                   { week: 8, label: 'Booking Visit', color: 'bg-blue-500', detail: 'First prenatal visit' },
+                                   { week: 12, label: 'End T1', color: 'bg-indigo-500', detail: 'NT scan, screening' },
+                                   { week: 20, label: 'Anomaly Scan', color: 'bg-violet-500', detail: 'TIFFA scan' },
+                                   { week: 28, label: 'T3 Begins', color: 'bg-purple-500', detail: 'OGTT, Anti-D' },
+                                   { week: 32, label: 'Growth Scan', color: 'bg-fuchsia-500', detail: 'Fetal growth' },
+                                   { week: 36, label: 'Pre-delivery', color: 'bg-rose-500', detail: 'GBS, workup' },
+                                   { week: 40, label: 'EDD', color: 'bg-red-500', detail: eddDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) },
+                                 ];
+
+                                 const allTests = Object.values(investigationsByWeekPT).flat();
+                                 const completedTests = allTests.filter(t => isInvestigationCompleted(t, completedMap));
+                                 const totalVaccines = 7;
+                                 const givenVaccineCount = Object.keys(givenVaccines).length;
+
+                                 const hasVitals = !!(vitals.bp || vitals.weight || vitals.fundalHeight || vitals.fetalHeartRate);
+                                 const hasPVPS = !!(vitals.pvExam || vitals.psExam);
+
+                                 const overallItems = [
+                                   { label: 'Investigations', done: completedTests.length, total: allTests.length, color: 'text-indigo-600 bg-indigo-100' },
+                                   { label: 'Immunisations', done: givenVaccineCount, total: totalVaccines, color: 'text-teal-600 bg-teal-100' },
+                                   { label: 'Vitals Recorded', done: hasVitals ? 1 : 0, total: 1, color: 'text-blue-600 bg-blue-100' },
+                                   { label: 'Clinical Exam (PV/PS)', done: hasPVPS ? 1 : 0, total: 1, color: 'text-emerald-600 bg-emerald-100' },
+                                 ];
+
+                                 const overallDone = overallItems.reduce((s, i) => s + i.done, 0);
+                                 const overallTotal = overallItems.reduce((s, i) => s + i.total, 0);
+                                 const overallPct = overallTotal > 0 ? Math.round((overallDone / overallTotal) * 100) : 0;
+
+                                 return (
+                                   <div className="p-4 bg-gradient-to-br from-slate-50 to-violet-50/30" data-testid="card-pregnancy-progress">
+                                     <div className="flex items-center gap-2 mb-3">
+                                       <Badge className="bg-violet-100 text-violet-800 border-violet-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded"><Milestone className="w-3 h-3" /></Badge>
+                                       <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Pregnancy Progress Trail</span>
+                                       <Badge className="text-[10px] bg-violet-100 text-violet-700 border-violet-200">Week {currentWeekPT} / 40</Badge>
+                                     </div>
+
+                                     <div className="relative mb-4">
+                                       <div className="h-3 bg-slate-200 rounded-full overflow-hidden">
+                                         <div className="h-full rounded-full bg-gradient-to-r from-pink-400 via-violet-400 to-indigo-500 transition-all duration-700" style={{ width: `${progressPct}%` }} />
+                                       </div>
+                                       <div className="absolute top-0 left-0 w-full h-3 flex items-center">
+                                         {milestones.map((m, i) => {
+                                           const pos = (m.week / 40) * 100;
+                                           const passed = currentWeekPT >= m.week;
+                                           return (
+                                             <div key={i} className="absolute group" style={{ left: `${pos}%`, transform: 'translateX(-50%)' }}>
+                                               <div className={`w-3 h-3 rounded-full border-2 border-white ${passed ? m.color : 'bg-slate-300'} shadow-sm`} />
+                                               <div className="absolute top-4 left-1/2 -translate-x-1/2 hidden group-hover:block bg-slate-800 text-white px-2 py-1 rounded text-[9px] whitespace-nowrap z-10 shadow-lg">
+                                                 <div className="font-bold">{m.label}</div>
+                                                 <div className="text-slate-300">{m.detail}</div>
+                                               </div>
+                                             </div>
+                                           );
+                                         })}
+                                       </div>
+                                       <div className="flex justify-between mt-1.5 text-[9px] text-slate-400">
+                                         <span>LMP</span>
+                                         <span>T1</span>
+                                         <span>T2</span>
+                                         <span>T3</span>
+                                         <span>EDD</span>
+                                       </div>
+                                     </div>
+
+                                     <div className="grid grid-cols-2 gap-2 mb-3">
+                                       <div className="bg-white rounded-lg border border-violet-100 p-2.5 text-center">
+                                         <div className="text-lg font-bold text-violet-700">{daysRemaining}</div>
+                                         <div className="text-[10px] text-slate-400 uppercase font-bold">Days to EDD</div>
+                                       </div>
+                                       <div className="bg-white rounded-lg border border-violet-100 p-2.5 text-center">
+                                         <div className="text-lg font-bold text-violet-700">{overallPct}%</div>
+                                         <div className="text-[10px] text-slate-400 uppercase font-bold">Care Completion</div>
+                                       </div>
+                                     </div>
+
+                                     <div className="space-y-2">
+                                       {overallItems.map((item, i) => {
+                                         const pct = item.total > 0 ? Math.round((item.done / item.total) * 100) : 0;
+                                         return (
+                                           <div key={i} className="flex items-center gap-3">
+                                             <span className="text-[11px] text-slate-600 w-32 shrink-0 font-medium">{item.label}</span>
+                                             <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                               <div className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? 'bg-emerald-400' : pct > 50 ? 'bg-violet-400' : pct > 0 ? 'bg-amber-400' : 'bg-slate-200'}`} style={{ width: `${pct}%` }} />
+                                             </div>
+                                             <span className={`text-[10px] font-bold w-12 text-right ${pct === 100 ? 'text-emerald-600' : 'text-slate-500'}`}>{item.done}/{item.total}</span>
+                                           </div>
+                                         );
+                                       })}
+                                     </div>
+
+                                     {overallPct < 50 && (
+                                       <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center gap-2">
+                                         <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                                         <span>Several care items pending. Please review investigations, immunisations, and clinical exams to ensure completeness.</span>
+                                       </div>
+                                     )}
+                                     {overallPct >= 80 && (
+                                       <div className="mt-3 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-center gap-2">
+                                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                         <span>Care plan is well on track. Continue monitoring vitals and scheduled tests.</span>
+                                       </div>
+                                     )}
+                                   </div>
+                                 );
+                               })()}
+
                                {/* Footer actions */}
                                <div className="p-4 bg-slate-100 flex items-center justify-between">
                                   <div className="text-xs text-slate-500">
@@ -4041,6 +4302,12 @@ export default function ClinicianPortal() {
                                {/* Assessment */}
                                <div className="p-4 space-y-3 bg-blue-50/30">
                                   <div className="flex justify-between items-center"><span className="text-xs font-bold text-blue-600">A (Assessment)</span> <Sparkles className="w-3 h-3 text-blue-500" /></div>
+                                  {careMode === 'pregnancy' && (
+                                    <div className="space-y-1 text-xs text-slate-600 mb-2">
+                                      <div className="flex justify-between"><span>P/V:</span> <span className="font-medium text-right max-w-[120px] truncate">{(latestVisit?.vitals as any)?.pvExam || <span className="text-slate-400 italic">—</span>}</span></div>
+                                      <div className="flex justify-between"><span>P/S:</span> <span className="font-medium text-right max-w-[120px] truncate">{(latestVisit?.vitals as any)?.psExam || <span className="text-slate-400 italic">—</span>}</span></div>
+                                    </div>
+                                  )}
                                   {latestVisit?.assessment ? (
                                     <p className="text-xs leading-relaxed text-slate-700">"{latestVisit.assessment}"</p>
                                   ) : latestVisit?.diagnosis ? (
