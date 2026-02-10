@@ -630,10 +630,9 @@ export default function ClinicianPortal() {
   const pcosSymptomData = pcosQuery.data || [];
 
   const appointmentsQuery = useQuery({
-    queryKey: ['/api/appointments', clinicianProvider?.id],
+    queryKey: ['/api/appointments'],
     queryFn: async () => {
-      const url = clinicianProvider?.id ? `/api/appointments?providerId=${clinicianProvider.id}` : '/api/appointments';
-      const res = await fetch(url);
+      const res = await fetch('/api/appointments');
       if (!res.ok) throw new Error('Failed to fetch');
       return res.json();
     }
