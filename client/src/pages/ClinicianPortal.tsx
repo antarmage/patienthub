@@ -45,7 +45,10 @@ import {
   ExternalLink,
   Loader2,
   Sparkle,
-  Upload
+  Upload,
+  Pencil,
+  Trash2,
+  Check
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -385,6 +388,54 @@ export default function ClinicianPortal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/medicine-catalog'] });
+    },
+  });
+
+  const [editingCatalogId, setEditingCatalogId] = useState<number | null>(null);
+  const [editCatalogData, setEditCatalogData] = useState<any>({});
+
+  const updateCatalogMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const res = await fetch(`/api/medicine-catalog/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to update medicine');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/medicine-catalog'] });
+      setEditingCatalogId(null);
+    },
+  });
+
+  const [editingMedId, setEditingMedId] = useState<number | null>(null);
+  const [editMedData, setEditMedData] = useState<any>({});
+
+  const updateMedMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const res = await fetch(`/api/medications/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to update medication');
+      return res.json();
+    },
+    onSuccess: () => {
+      if (selectedPatient) queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/medications`] });
+      setEditingMedId(null);
+    },
+  });
+
+  const deleteMedMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/medications/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete medication');
+    },
+    onSuccess: () => {
+      if (selectedPatient) queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/medications`] });
     },
   });
 
@@ -2539,7 +2590,7 @@ export default function ClinicianPortal() {
                                                 <th className="px-3 py-2 font-medium">Frequency</th>
                                                 <th className="px-3 py-2 font-medium">Route</th>
                                                 <th className="px-3 py-2 font-medium">Category</th>
-                                                <th className="px-2 py-2 font-medium w-10"></th>
+                                                <th className="px-2 py-2 font-medium w-16"></th>
                                               </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
@@ -2551,27 +2602,47 @@ export default function ClinicianPortal() {
                                                 })
                                                 .map((med: any) => (
                                                 <tr key={med.id} className="hover:bg-slate-50" data-testid={`row-catalog-${med.id}`}>
-                                                  <td className="px-3 py-2 font-medium text-slate-800">{med.name}</td>
-                                                  <td className="px-3 py-2 text-slate-500">{med.genericName || '—'}</td>
-                                                  <td className="px-3 py-2 text-slate-600">{med.defaultDose || '—'}</td>
-                                                  <td className="px-3 py-2 text-slate-500">{med.defaultFrequency || '—'}</td>
-                                                  <td className="px-3 py-2 text-slate-500">{med.route || '—'}</td>
-                                                  <td className="px-3 py-2">
-                                                    {med.category && (
-                                                      <Badge variant="outline" className="text-[10px]">{med.category}</Badge>
-                                                    )}
-                                                  </td>
-                                                  <td className="px-2 py-2">
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="sm"
-                                                      className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
-                                                      onClick={() => deleteCatalogMutation.mutate(med.id)}
-                                                      data-testid={`button-delete-catalog-${med.id}`}
-                                                    >
-                                                      <X className="w-3 h-3" />
-                                                    </Button>
-                                                  </td>
+                                                  {editingCatalogId === med.id ? (
+                                                    <>
+                                                      <td className="px-1 py-1"><Input value={editCatalogData.name || ''} onChange={e => setEditCatalogData({...editCatalogData, name: e.target.value})} className="h-7 text-xs" /></td>
+                                                      <td className="px-1 py-1"><Input value={editCatalogData.genericName || ''} onChange={e => setEditCatalogData({...editCatalogData, genericName: e.target.value})} className="h-7 text-xs" /></td>
+                                                      <td className="px-1 py-1"><Input value={editCatalogData.defaultDose || ''} onChange={e => setEditCatalogData({...editCatalogData, defaultDose: e.target.value})} className="h-7 text-xs" /></td>
+                                                      <td className="px-1 py-1"><Input value={editCatalogData.defaultFrequency || ''} onChange={e => setEditCatalogData({...editCatalogData, defaultFrequency: e.target.value})} className="h-7 text-xs" /></td>
+                                                      <td className="px-1 py-1"><Input value={editCatalogData.route || ''} onChange={e => setEditCatalogData({...editCatalogData, route: e.target.value})} className="h-7 text-xs" /></td>
+                                                      <td className="px-1 py-1"><Input value={editCatalogData.category || ''} onChange={e => setEditCatalogData({...editCatalogData, category: e.target.value})} className="h-7 text-xs" /></td>
+                                                      <td className="px-1 py-1">
+                                                        <div className="flex gap-1">
+                                                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" onClick={() => updateCatalogMutation.mutate({ id: med.id, data: editCatalogData })}>
+                                                            <Check className="w-3 h-3" />
+                                                          </Button>
+                                                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-slate-600" onClick={() => setEditingCatalogId(null)}>
+                                                            <X className="w-3 h-3" />
+                                                          </Button>
+                                                        </div>
+                                                      </td>
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <td className="px-3 py-2 font-medium text-slate-800">{med.name}</td>
+                                                      <td className="px-3 py-2 text-slate-500">{med.genericName || '—'}</td>
+                                                      <td className="px-3 py-2 text-slate-600">{med.defaultDose || '—'}</td>
+                                                      <td className="px-3 py-2 text-slate-500">{med.defaultFrequency || '—'}</td>
+                                                      <td className="px-3 py-2 text-slate-500">{med.route || '—'}</td>
+                                                      <td className="px-3 py-2">
+                                                        {med.category && <Badge variant="outline" className="text-[10px]">{med.category}</Badge>}
+                                                      </td>
+                                                      <td className="px-1 py-2">
+                                                        <div className="flex gap-1">
+                                                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-blue-600" onClick={() => { setEditingCatalogId(med.id); setEditCatalogData({ name: med.name, genericName: med.genericName || '', defaultDose: med.defaultDose || '', defaultFrequency: med.defaultFrequency || '', route: med.route || '', category: med.category || '' }); }} data-testid={`button-edit-catalog-${med.id}`}>
+                                                            <Pencil className="w-3 h-3" />
+                                                          </Button>
+                                                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600" onClick={() => deleteCatalogMutation.mutate(med.id)} data-testid={`button-delete-catalog-${med.id}`}>
+                                                            <Trash2 className="w-3 h-3" />
+                                                          </Button>
+                                                        </div>
+                                                      </td>
+                                                    </>
+                                                  )}
                                                 </tr>
                                               ))}
                                               {medicineCatalog.length === 0 && (
@@ -3037,21 +3108,64 @@ export default function ClinicianPortal() {
                                                    <th className="px-3 py-1.5 font-medium">Date</th>
                                                    <th className="px-3 py-1.5 font-medium">Status</th>
                                                    <th className="px-3 py-1.5 font-medium">Notes</th>
+                                                   <th className="px-2 py-1.5 font-medium w-16"></th>
                                                 </tr>
                                              </thead>
                                              <tbody className="divide-y divide-slate-100">
                                                 {medications.map((med: any) => (
                                                   <tr key={med.id}>
-                                                     <td className="px-3 py-2 font-medium text-slate-800">{med.name}</td>
-                                                     <td className="px-3 py-2 text-slate-600">{med.dose || '—'}</td>
-                                                     <td className="px-3 py-2 text-slate-600">{med.frequency || '—'}</td>
-                                                     <td className="px-3 py-2 text-slate-500">{med.startDate ? new Date(med.startDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
-                                                     <td className="px-3 py-2">
-                                                       <Badge variant="outline" className={`text-[10px] ${med.status === 'active' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>
-                                                         {med.status || 'active'}
-                                                       </Badge>
-                                                     </td>
-                                                     <td className="px-3 py-2 text-slate-500">{med.notes || '—'}</td>
+                                                    {editingMedId === med.id ? (
+                                                      <>
+                                                        <td className="px-1 py-1"><Input value={editMedData.name || ''} onChange={e => setEditMedData({...editMedData, name: e.target.value})} className="h-7 text-xs" /></td>
+                                                        <td className="px-1 py-1"><Input value={editMedData.dose || ''} onChange={e => setEditMedData({...editMedData, dose: e.target.value})} className="h-7 text-xs" /></td>
+                                                        <td className="px-1 py-1"><Input value={editMedData.frequency || ''} onChange={e => setEditMedData({...editMedData, frequency: e.target.value})} className="h-7 text-xs" /></td>
+                                                        <td className="px-1 py-1"><Input type="date" value={editMedData.startDate || ''} onChange={e => setEditMedData({...editMedData, startDate: e.target.value})} className="h-7 text-xs" /></td>
+                                                        <td className="px-1 py-1">
+                                                          <Select value={editMedData.status || 'Active'} onValueChange={v => setEditMedData({...editMedData, status: v})}>
+                                                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                                            <SelectContent>
+                                                              <SelectItem value="Active">Active</SelectItem>
+                                                              <SelectItem value="Completed">Completed</SelectItem>
+                                                              <SelectItem value="Discontinued">Discontinued</SelectItem>
+                                                            </SelectContent>
+                                                          </Select>
+                                                        </td>
+                                                        <td className="px-1 py-1"><Input value={editMedData.notes || ''} onChange={e => setEditMedData({...editMedData, notes: e.target.value})} className="h-7 text-xs" /></td>
+                                                        <td className="px-1 py-1">
+                                                          <div className="flex gap-1">
+                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" onClick={() => updateMedMutation.mutate({ id: med.id, data: editMedData })}>
+                                                              <Check className="w-3 h-3" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-slate-600" onClick={() => setEditingMedId(null)}>
+                                                              <X className="w-3 h-3" />
+                                                            </Button>
+                                                          </div>
+                                                        </td>
+                                                      </>
+                                                    ) : (
+                                                      <>
+                                                        <td className="px-3 py-2 font-medium text-slate-800">{med.name}</td>
+                                                        <td className="px-3 py-2 text-slate-600">{med.dose || '—'}</td>
+                                                        <td className="px-3 py-2 text-slate-600">{med.frequency || '—'}</td>
+                                                        <td className="px-3 py-2 text-slate-500">{med.startDate ? new Date(med.startDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                                                        <td className="px-3 py-2">
+                                                          <Badge variant="outline" className={`text-[10px] ${med.status === 'active' || med.status === 'Active' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>
+                                                            {med.status || 'Active'}
+                                                          </Badge>
+                                                        </td>
+                                                        <td className="px-3 py-2 text-slate-500">{med.notes || '—'}</td>
+                                                        <td className="px-1 py-2">
+                                                          <div className="flex gap-1">
+                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-blue-600" onClick={() => { setEditingMedId(med.id); setEditMedData({ name: med.name, dose: med.dose || '', frequency: med.frequency || '', startDate: med.startDate || '', status: med.status || 'Active', notes: med.notes || '' }); }} data-testid={`button-edit-med-${med.id}`}>
+                                                              <Pencil className="w-3 h-3" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600" onClick={() => deleteMedMutation.mutate(med.id)} data-testid={`button-delete-med-${med.id}`}>
+                                                              <Trash2 className="w-3 h-3" />
+                                                            </Button>
+                                                          </div>
+                                                        </td>
+                                                      </>
+                                                    )}
                                                   </tr>
                                                 ))}
                                              </tbody>
