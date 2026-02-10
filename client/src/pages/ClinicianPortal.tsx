@@ -119,7 +119,8 @@ export default function ClinicianPortal() {
   const providerSpecialty = clinicianProvider?.specialty || "Clinician";
   const providerInitials = providerName.split(" ").filter((w: string) => w[0]?.match(/[A-Z]/)).map((w: string) => w[0]).join("").slice(0, 2) || "DR";
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [queueDate, setQueueDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [queueDateFrom, setQueueDateFrom] = useState(() => new Date().toISOString().split('T')[0]);
+  const [queueDateTo, setQueueDateTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [patientSearch, setPatientSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [extractionStatus, setExtractionStatus] = useState<string | null>(null);
@@ -619,13 +620,13 @@ export default function ClinicianPortal() {
   const invoices = invoicesQuery.data || [];
 
   const queuePatients = useMemo(() => {
-    const dateAppts = appointments.filter((a: any) => a.date === queueDate);
-    dateAppts.sort((a: any, b: any) => (a.time || '').localeCompare(b.time || ''));
+    const dateAppts = appointments.filter((a: any) => a.date >= queueDateFrom && a.date <= queueDateTo);
+    dateAppts.sort((a: any, b: any) => (a.date || '').localeCompare(b.date || '') || (a.time || '').localeCompare(b.time || ''));
     return dateAppts.map((apt: any) => {
       const patient = patients.find((p: any) => p.id === apt.patientId);
-      return patient ? { ...patient, appointmentTime: apt.time, appointmentType: apt.type, appointmentId: apt.id, appointmentStatus: apt.status } : null;
+      return patient ? { ...patient, appointmentDate: apt.date, appointmentTime: apt.time, appointmentType: apt.type, appointmentId: apt.id, appointmentStatus: apt.status } : null;
     }).filter(Boolean);
-  }, [appointments, patients, queueDate]);
+  }, [appointments, patients, queueDateFrom, queueDateTo]);
 
   const searchResults = useMemo(() => {
     if (!patientSearch.trim()) return [];
@@ -855,31 +856,40 @@ export default function ClinicianPortal() {
                            <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
                               <CalendarCheck className="w-4 h-4 text-blue-600" /> Patient Flow
                            </CardTitle>
-                           <div className="flex items-center gap-2">
+                           <div className="flex items-center gap-1.5">
                               <Input
                                 type="date"
-                                value={queueDate}
-                                onChange={(e) => setQueueDate(e.target.value)}
-                                className="h-7 text-xs w-36 border-slate-200"
-                                data-testid="input-queue-date"
+                                value={queueDateFrom}
+                                onChange={(e) => { setQueueDateFrom(e.target.value); if (e.target.value > queueDateTo) setQueueDateTo(e.target.value); }}
+                                className="h-7 text-xs w-[120px] border-slate-200"
+                                data-testid="input-queue-date-from"
                               />
-                              <span className="text-xs text-slate-500 font-medium">{queuePatients.length} patients</span>
+                              <span className="text-[10px] text-slate-400">to</span>
+                              <Input
+                                type="date"
+                                value={queueDateTo}
+                                onChange={(e) => { setQueueDateTo(e.target.value); if (e.target.value < queueDateFrom) setQueueDateFrom(e.target.value); }}
+                                className="h-7 text-xs w-[120px] border-slate-200"
+                                data-testid="input-queue-date-to"
+                              />
+                              <span className="text-xs text-slate-500 font-medium">{queuePatients.length}</span>
                            </div>
                         </CardHeader>
                         <CardContent className="p-0">
                            {queuePatients.length === 0 ? (
                               <div className="py-12 text-center text-slate-400 text-sm">
-                                 No patients scheduled for this date
+                                 No patients scheduled {queueDateFrom !== queueDateTo ? 'for this date range' : 'for this date'}
                               </div>
                            ) : (
                            <table className="w-full text-sm text-left">
                               <thead className="text-xs text-slate-500 bg-slate-50 uppercase border-b border-slate-100">
                                  <tr>
-                                    <th className="px-4 py-3 font-medium w-20">Time</th>
-                                    <th className="px-4 py-3 font-medium">Patient</th>
-                                    <th className="px-4 py-3 font-medium">Type</th>
-                                    <th className="px-4 py-3 font-medium">Status</th>
-                                    <th className="px-4 py-3 font-medium w-10"></th>
+                                    {queueDateFrom !== queueDateTo && <th className="px-3 py-3 font-medium w-20">Date</th>}
+                                    <th className="px-3 py-3 font-medium w-16">Time</th>
+                                    <th className="px-3 py-3 font-medium">Patient</th>
+                                    <th className="px-3 py-3 font-medium">Type</th>
+                                    <th className="px-3 py-3 font-medium">Status</th>
+                                    <th className="px-3 py-3 font-medium w-10"></th>
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
@@ -895,11 +905,12 @@ export default function ClinicianPortal() {
                                     };
                                     return (
                                        <tr key={`${p.appointmentId}-${p.id}`} data-testid={`row-patient-${p.id}`} className="hover:bg-slate-50 cursor-pointer" onClick={() => navigateToPatient(p)}>
-                                          <td className="px-4 py-3 text-slate-500 font-medium">{p.appointmentTime || '--:--'}</td>
-                                          <td className="px-4 py-3 font-semibold text-slate-900" data-testid={`text-patient-name-${p.id}`}>{p.name}</td>
-                                          <td className="px-4 py-3"><Badge variant="outline" className={typeColors[p.type] || 'border-slate-200 text-slate-700 bg-slate-50'}>{p.type || 'General'}</Badge></td>
-                                          <td className="px-4 py-3 text-slate-600 text-xs">{p.appointmentStatus || 'Scheduled'}</td>
-                                          <td className="px-4 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
+                                          {queueDateFrom !== queueDateTo && <td className="px-3 py-3 text-slate-500 text-xs font-medium">{p.appointmentDate ? new Date(p.appointmentDate + 'T00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}</td>}
+                                          <td className="px-3 py-3 text-slate-500 font-medium">{p.appointmentTime || '--:--'}</td>
+                                          <td className="px-3 py-3 font-semibold text-slate-900" data-testid={`text-patient-name-${p.id}`}>{p.name}</td>
+                                          <td className="px-3 py-3"><Badge variant="outline" className={typeColors[p.type] || 'border-slate-200 text-slate-700 bg-slate-50'}>{p.type || 'General'}</Badge></td>
+                                          <td className="px-3 py-3 text-slate-600 text-xs">{p.appointmentStatus || 'Scheduled'}</td>
+                                          <td className="px-3 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
                                        </tr>
                                     );
                                  })}
@@ -2917,15 +2928,25 @@ export default function ClinicianPortal() {
                       )}
                     </div>
                     {!isSearching && (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="date"
-                          value={queueDate}
-                          onChange={(e) => setQueueDate(e.target.value)}
-                          className="h-7 text-xs border-slate-200 flex-1"
-                          data-testid="input-queue-date-sidebar"
-                        />
-                        <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-medium shrink-0">{queuePatients.length}</span>
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            type="date"
+                            value={queueDateFrom}
+                            onChange={(e) => { setQueueDateFrom(e.target.value); if (e.target.value > queueDateTo) setQueueDateTo(e.target.value); }}
+                            className="h-7 text-xs border-slate-200 flex-1"
+                            data-testid="input-queue-date-from-sidebar"
+                          />
+                          <span className="text-[10px] text-slate-400">to</span>
+                          <Input
+                            type="date"
+                            value={queueDateTo}
+                            onChange={(e) => { setQueueDateTo(e.target.value); if (e.target.value < queueDateFrom) setQueueDateFrom(e.target.value); }}
+                            className="h-7 text-xs border-slate-200 flex-1"
+                            data-testid="input-queue-date-to-sidebar"
+                          />
+                          <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-medium shrink-0">{queuePatients.length}</span>
+                        </div>
                       </div>
                     )}
                     {isSearching && searchResults.length > 0 && (
