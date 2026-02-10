@@ -1246,6 +1246,8 @@ Be thorough — extract every medication mentioned including supplements and vit
           title = 'High BP Alert Patients';
           filtered = patients.filter((p: any) => {
             if (!pregnancyTypes.some(t => (p.type || '').toLowerCase().includes(t))) return false;
+            const ps = (p.pregnancyStatus || '').toLowerCase();
+            if (['completed', 'aborted', 'not_continuing'].includes(ps)) return false;
             const weeks = calcWeeks(p.lmp);
             if (weeks !== null && (weeks < 1 || weeks > 42)) return false;
             const bp = (p.bp || '').toString().trim();
