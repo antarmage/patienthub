@@ -3633,16 +3633,22 @@ export default function ClinicianPortal() {
                                  const completedTests = allTests.filter(t => isInvestigationCompleted(t.name, completedMap));
                                  const pendingTests = allTests.filter(t => !isInvestigationCompleted(t.name, completedMap));
 
-                                 const allPastCompleted: { name: string; description: string; weekRange?: string }[] = [];
-                                 if (careMode === 'pregnancy' && pregnancyWeek > 0) {
-                                   Object.values(investigationsByWeek).forEach(group => {
-                                     group.tests.forEach(test => {
-                                       if (!allTests.some(t => t.name === test.name) && isInvestigationCompleted(test.name, completedMap)) {
-                                         allPastCompleted.push({ ...test, weekRange: group.weekRange });
-                                       }
-                                     });
-                                   });
-                                 }
+                                 const weekOrder = ['booking', 'first_trimester', 'second_trimester_early', 'second_trimester_mid', 'third_trimester_early', 'third_trimester_late', 'term'];
+
+                                 const getCurrentWeekKey = () => {
+                                   if (pregnancyWeek <= 10) return 'booking';
+                                   if (pregnancyWeek <= 14) return 'first_trimester';
+                                   if (pregnancyWeek <= 20) return 'second_trimester_early';
+                                   if (pregnancyWeek <= 28) return 'second_trimester_mid';
+                                   if (pregnancyWeek <= 32) return 'third_trimester_early';
+                                   if (pregnancyWeek <= 36) return 'third_trimester_late';
+                                   return 'term';
+                                 };
+                                 const currentWeekKey = getCurrentWeekKey();
+
+                                 const pastWeekKeys = careMode === 'pregnancy' && pregnancyWeek > 0
+                                   ? weekOrder.filter(k => weekOrder.indexOf(k) < weekOrder.indexOf(currentWeekKey))
+                                   : [];
 
                                  return (
                                    <div className="p-4 bg-indigo-50/30" data-testid="card-investigations">
@@ -3650,13 +3656,12 @@ export default function ClinicianPortal() {
                                        <div className="flex items-center gap-2">
                                          <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">I</Badge>
                                          <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Investigations</span>
-                                         <Badge variant="outline" className="text-[10px] text-indigo-600 border-indigo-200 bg-indigo-50">{sectionTitle}</Badge>
                                          {careMode === 'pregnancy' && pregnancyWeek > 0 && (
                                            <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-200">Week {pregnancyWeek}</Badge>
                                          )}
                                        </div>
                                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => setShowAddInvestigation(!showAddInvestigation)} data-testid="button-add-investigation">
-                                         <Plus className="w-3 h-3" /> Add Investigation
+                                         <Plus className="w-3 h-3" /> Add
                                        </Button>
                                      </div>
 
@@ -3667,30 +3672,51 @@ export default function ClinicianPortal() {
                                        </div>
                                      )}
 
-                                     <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                                       {pendingTests.map((test, i) => {
-                                         const isCustom = customInvestigations.some(c => c.name === test.name);
-                                         const isUsg = test.name.startsWith('USG');
-                                         return (
-                                           <label key={`pending-${i}`} className={`flex items-start gap-2.5 py-1.5 px-2 rounded cursor-pointer group transition-colors ${selectedInvestigations.has(test.name) ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-white border border-transparent'}`} data-testid={`checkbox-investigation-${i}`}>
-                                             <Checkbox checked={selectedInvestigations.has(test.name)} onCheckedChange={() => toggleInvestigation(test.name)} className="mt-0.5 border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600" />
-                                             <div className="flex-1 min-w-0">
-                                               <span className={`text-xs font-medium block ${selectedInvestigations.has(test.name) ? 'text-indigo-800' : 'text-slate-800'}`}>
-                                                 {isUsg && <span className="inline-block bg-violet-100 text-violet-700 text-[9px] font-bold px-1 rounded mr-1">USG</span>}
-                                                 {test.name.replace(/^USG - /, '')}
-                                               </span>
-                                               <span className="text-[10px] text-slate-400 block">{test.description}</span>
+                                     <div className="mb-3 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                                       <div className="flex items-center gap-2 mb-2">
+                                         <span className="text-[10px] text-indigo-700 uppercase font-bold tracking-wider">Current: {sectionTitle}</span>
+                                         <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">{pendingTests.length} Pending</Badge>
+                                         <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border-emerald-200">{completedTests.length} Done</Badge>
+                                       </div>
+                                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                                         {pendingTests.map((test, i) => {
+                                           const isCustom = customInvestigations.some(c => c.name === test.name);
+                                           const isUsg = test.name.startsWith('USG');
+                                           return (
+                                             <label key={`pending-${i}`} className={`flex items-start gap-2 py-1 px-2 rounded cursor-pointer group transition-colors ${selectedInvestigations.has(test.name) ? 'bg-white border border-indigo-300' : 'hover:bg-white/60 border border-transparent'}`} data-testid={`checkbox-investigation-${i}`}>
+                                               <Checkbox checked={selectedInvestigations.has(test.name)} onCheckedChange={() => toggleInvestigation(test.name)} className="mt-0.5 border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600" />
+                                               <div className="flex-1 min-w-0">
+                                                 <span className={`text-xs font-medium block ${selectedInvestigations.has(test.name) ? 'text-indigo-800' : 'text-slate-800'}`}>
+                                                   {isUsg && <span className="inline-block bg-violet-100 text-violet-700 text-[9px] font-bold px-1 rounded mr-1">USG</span>}
+                                                   {test.name.replace(/^USG - /, '')}
+                                                 </span>
+                                                 <span className="text-[10px] text-slate-400 block">{test.description}</span>
+                                               </div>
+                                               {isCustom && (
+                                                 <button onClick={(e) => { e.preventDefault(); setCustomInvestigations(customInvestigations.filter(c => c.name !== test.name)); }} className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600" data-testid={`button-remove-custom-investigation-${i}`}><X className="w-3 h-3" /></button>
+                                               )}
+                                             </label>
+                                           );
+                                         })}
+                                         {completedTests.map((test, i) => {
+                                           const match = isInvestigationCompleted(test.name, completedMap);
+                                           return (
+                                             <div key={`done-${i}`} className="flex items-start gap-2 py-1 px-2 rounded bg-emerald-50/50 border border-emerald-100" data-testid={`completed-investigation-${i}`}>
+                                               <Check className="w-3.5 h-3.5 text-emerald-600 mt-0.5 flex-shrink-0" />
+                                               <div className="flex-1 min-w-0">
+                                                 <span className="text-xs font-medium text-emerald-800 block line-through opacity-80">{test.name}</span>
+                                                 <span className="text-[10px] text-emerald-500 block">
+                                                   {match?.source}{match?.date ? ` • ${new Date(match.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : ''}
+                                                 </span>
+                                               </div>
                                              </div>
-                                             {isCustom && (
-                                               <button onClick={(e) => { e.preventDefault(); setCustomInvestigations(customInvestigations.filter(c => c.name !== test.name)); }} className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600" data-testid={`button-remove-custom-investigation-${i}`}><X className="w-3 h-3" /></button>
-                                             )}
-                                           </label>
-                                         );
-                                       })}
+                                           );
+                                         })}
+                                       </div>
                                      </div>
 
                                      {selectedInvestigations.size > 0 && (
-                                       <div className="mt-3 pt-3 border-t border-indigo-100 flex items-center justify-between">
+                                       <div className="mb-3 p-2 border border-indigo-100 rounded-md bg-white flex items-center justify-between">
                                          <div className="flex flex-wrap gap-1.5">
                                            {Array.from(selectedInvestigations).map(name => (
                                              <Badge key={name} className="text-[10px] bg-indigo-100 text-indigo-700 border-indigo-200 gap-1">
@@ -3703,34 +3729,51 @@ export default function ClinicianPortal() {
                                        </div>
                                      )}
 
-                                     {(completedTests.length > 0 || allPastCompleted.length > 0) && (
-                                       <div className="mt-3 pt-3 border-t border-emerald-100">
-                                         <span className="text-[10px] text-emerald-600 uppercase font-bold block mb-2">Completed Investigations ({completedTests.length + allPastCompleted.length})</span>
-                                         <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-                                           {completedTests.map((test, i) => {
-                                             const match = isInvestigationCompleted(test.name, completedMap);
+                                     {careMode === 'pregnancy' && pregnancyWeek > 0 && pastWeekKeys.length > 0 && (
+                                       <div className="border-t border-slate-200 pt-3">
+                                         <span className="text-[10px] text-slate-500 uppercase font-bold block mb-2 tracking-wider">Previous Weeks Investigation History</span>
+                                         <div className="space-y-2">
+                                           {pastWeekKeys.map(weekKey => {
+                                             const group = investigationsByWeek[weekKey];
+                                             const groupCompleted = group.tests.filter(t => isInvestigationCompleted(t.name, completedMap));
+                                             const groupPending = group.tests.filter(t => !isInvestigationCompleted(t.name, completedMap));
+                                             const allDone = groupPending.length === 0;
                                              return (
-                                               <div key={`done-${i}`} className="flex items-start gap-2.5 py-1 px-2 rounded bg-emerald-50/50 border border-emerald-100" data-testid={`completed-investigation-${i}`}>
-                                                 <Check className="w-3.5 h-3.5 text-emerald-600 mt-0.5 flex-shrink-0" />
-                                                 <div className="flex-1 min-w-0">
-                                                   <span className="text-xs font-medium text-emerald-800 block line-through opacity-80">{test.name}</span>
-                                                   <span className="text-[10px] text-emerald-500 block">
-                                                     {match?.source}{match?.date ? ` • ${new Date(match.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : ''}
-                                                   </span>
+                                               <div key={weekKey} className={`rounded-lg border p-2.5 ${allDone ? 'bg-emerald-50/40 border-emerald-200' : 'bg-amber-50/30 border-amber-200'}`} data-testid={`past-week-${weekKey}`}>
+                                                 <div className="flex items-center justify-between mb-1.5">
+                                                   <div className="flex items-center gap-2">
+                                                     {allDone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-500" />}
+                                                     <span className="text-[11px] font-semibold text-slate-700">{group.weekRange}</span>
+                                                   </div>
+                                                   <div className="flex items-center gap-1.5">
+                                                     <Badge className={`text-[9px] ${allDone ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                                       {groupCompleted.length}/{group.tests.length} Done
+                                                     </Badge>
+                                                     {groupPending.length > 0 && (
+                                                       <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">
+                                                         {groupPending.length} Pending
+                                                       </Badge>
+                                                     )}
+                                                   </div>
                                                  </div>
-                                               </div>
-                                             );
-                                           })}
-                                           {allPastCompleted.map((test, i) => {
-                                             const match = isInvestigationCompleted(test.name, completedMap);
-                                             return (
-                                               <div key={`past-${i}`} className="flex items-start gap-2.5 py-1 px-2 rounded bg-emerald-50/30 border border-emerald-50" data-testid={`past-completed-investigation-${i}`}>
-                                                 <Check className="w-3.5 h-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                                                 <div className="flex-1 min-w-0">
-                                                   <span className="text-xs font-medium text-emerald-700 block line-through opacity-70">{test.name}</span>
-                                                   <span className="text-[10px] text-emerald-400 block">
-                                                     {test.weekRange?.split('(')[0].trim()} • {match?.source}{match?.date ? ` • ${new Date(match.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : ''}
-                                                   </span>
+                                                 <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                                                   {group.tests.map((test, ti) => {
+                                                     const match = isInvestigationCompleted(test.name, completedMap);
+                                                     const done = !!match;
+                                                     const isUsg = test.name.startsWith('USG');
+                                                     return (
+                                                       <div key={ti} className={`flex items-center gap-1.5 py-0.5 px-1.5 rounded text-[11px] ${done ? 'text-emerald-700' : 'text-amber-700'}`} data-testid={`past-investigation-${weekKey}-${ti}`}>
+                                                         {done ? <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" /> : <Clock className="w-3 h-3 text-amber-400 flex-shrink-0" />}
+                                                         <span className={`truncate ${done ? 'line-through opacity-70' : 'font-medium'}`}>
+                                                           {isUsg && <span className="inline-block bg-violet-100 text-violet-700 text-[8px] font-bold px-0.5 rounded mr-0.5">USG</span>}
+                                                           {test.name.replace(/^USG - /, '')}
+                                                         </span>
+                                                         {done && match?.date && (
+                                                           <span className="text-[9px] text-emerald-500 flex-shrink-0">{new Date(match.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
+                                                         )}
+                                                       </div>
+                                                     );
+                                                   })}
                                                  </div>
                                                </div>
                                              );
@@ -3739,18 +3782,22 @@ export default function ClinicianPortal() {
                                        </div>
                                      )}
 
-                                     {careMode === 'pregnancy' && pregnancyWeek > 0 && (
-                                       <div className="mt-3 pt-3 border-t border-indigo-100">
-                                         <span className="text-[10px] text-slate-400 uppercase font-bold block mb-2">All Pregnancy Investigation Milestones</span>
-                                         <div className="flex flex-wrap gap-1.5">
-                                           {Object.entries(investigationsByWeek).map(([key, val]) => (
-                                             <Badge key={key} variant="outline" className={`text-[10px] cursor-default ${val.weekRange === sectionTitle ? 'bg-indigo-100 text-indigo-700 border-indigo-300 font-semibold' : 'text-slate-400 border-slate-200'}`}>
-                                               {val.weekRange.split('(')[0].trim()}
-                                             </Badge>
-                                           ))}
+                                     {careMode === 'pregnancy' && pregnancyWeek > 0 && (() => {
+                                       const futureKeys = weekOrder.filter(k => weekOrder.indexOf(k) > weekOrder.indexOf(currentWeekKey));
+                                       if (futureKeys.length === 0) return null;
+                                       return (
+                                         <div className="border-t border-slate-100 pt-3 mt-3">
+                                           <span className="text-[10px] text-slate-400 uppercase font-bold block mb-2 tracking-wider">Upcoming Weeks</span>
+                                           <div className="flex flex-wrap gap-1.5">
+                                             {futureKeys.map(key => (
+                                               <Badge key={key} variant="outline" className="text-[10px] text-slate-400 border-slate-200 cursor-default">
+                                                 {investigationsByWeek[key].weekRange.split('(')[0].trim()} ({investigationsByWeek[key].tests.length} tests)
+                                               </Badge>
+                                             ))}
+                                           </div>
                                          </div>
-                                       </div>
-                                     )}
+                                       );
+                                     })()}
                                    </div>
                                  );
                                })()}
