@@ -4906,35 +4906,35 @@ export default function ClinicianPortal() {
                             <CardHeader className="py-3 border-b border-slate-100 flex justify-between items-center flex-row">
                                <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
                                   <Pill className="w-4 h-4 text-blue-600" /> Active Meds
+                                  {medications.length > 0 && <Badge className="text-[9px] bg-blue-100 text-blue-700 border-blue-200">{medications.filter((m: any) => m.status === 'Active' || m.status === 'active').length}</Badge>}
                                </CardTitle>
-                               <Button size="icon" variant="ghost" className="h-6 w-6"><ChevronRight className="w-4 h-4" /></Button>
+                               <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setShowDocumentation(true)}><ChevronRight className="w-4 h-4" /></Button>
                             </CardHeader>
                             <CardContent className="p-0">
-                               {(careMode === 'iui' || careMode === 'induction') ? (
-                                  <div className="p-3 border-b border-slate-50 flex justify-between items-center">
-                                     <div>
-                                        <div className="font-medium text-sm text-slate-900">Letrozole</div>
-                                        <div className="text-xs text-slate-500">5mg • CD 3-7</div>
+                               {medications.length > 0 ? (
+                                 medications.map((med: any, i: number) => (
+                                   <div key={med.id} className={`p-3 flex justify-between items-center ${i < medications.length - 1 ? 'border-b border-slate-50' : ''}`} data-testid={`active-med-card-${med.id}`}>
+                                     <div className="min-w-0 flex-1">
+                                       <div className="font-medium text-sm text-slate-900 truncate">{med.name}</div>
+                                       <div className="text-xs text-slate-500">{[med.dose, med.frequency].filter(Boolean).join(' • ') || '—'}{med.notes ? ` • ${med.notes}` : ''}</div>
                                      </div>
-                                     <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">Completed</Badge>
-                                  </div>
+                                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                       <Badge variant="secondary" className={`text-[10px] ${med.status === 'Active' || med.status === 'active' ? 'bg-emerald-50 text-emerald-700' : med.status === 'Completed' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-500'}`}>
+                                         {med.status || 'Active'}
+                                       </Badge>
+                                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-300 hover:text-blue-600" onClick={() => { setShowDocumentation(true); setEditingMedId(med.id); setEditMedData({ name: med.name, dose: med.dose || '', frequency: med.frequency || '', startDate: med.startDate || '', status: med.status || 'Active', notes: med.notes || '' }); }} data-testid={`button-edit-med-card-${med.id}`}>
+                                         <Pencil className="w-3 h-3" />
+                                       </Button>
+                                     </div>
+                                   </div>
+                                 ))
                                ) : (
-                                  <div className="p-3 border-b border-slate-50 flex justify-between items-center">
-                                     <div>
-                                        <div className="font-medium text-sm text-slate-900">Prenatal Multi</div>
-                                        <div className="text-xs text-slate-500">Daily</div>
-                                     </div>
-                                     <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">Active</Badge>
-                                  </div>
-                               )}
-                               {careMode === 'pregnancy' && (
-                                  <div className="p-3 flex justify-between items-center">
-                                     <div>
-                                        <div className="font-medium text-sm text-slate-900">Aspirin</div>
-                                        <div className="text-xs text-slate-500">81mg • Preeclampsia Prevention</div>
-                                     </div>
-                                     <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">Active</Badge>
-                                  </div>
+                                 <div className="p-4 text-center">
+                                   <p className="text-xs text-slate-400 mb-2">No medications prescribed</p>
+                                   <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-dashed border-blue-300 text-blue-600" onClick={() => { setShowDocumentation(true); setShowAddMedRow(true); }} data-testid="button-add-med-from-card">
+                                     <Plus className="w-3 h-3" /> Add Medication
+                                   </Button>
+                                 </div>
                                )}
                             </CardContent>
                          </Card>
