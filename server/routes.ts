@@ -643,9 +643,10 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/google-drive/import-lab-reports", async (_req, res) => {
+  app.post("/api/google-drive/import-lab-reports", async (req, res) => {
     try {
-      const patients = await storage.getPatients();
+      const autoCreate = req.body?.autoCreatePatients !== false;
+      let patients = await storage.getPatients();
       const allDocs = await storage.getAllDocuments();
 
       const result = await importLabReports(
@@ -654,7 +655,37 @@ export async function registerRoutes(
         (doc) => storage.createDocument(doc)
       );
 
-      res.json(result);
+      if (autoCreate && result.unmatched.length > 0) {
+        const uniqueNames = Array.from(new Set(result.unmatched));
+        const createdPatients: Array<{ driveName: string; patientId: number; patientName: string }> = [];
+
+        for (const driveName of uniqueNames) {
+          const nameParts = driveName.replace(/^(DR|MRS|MR|MS|MISS)\s+/i, '').trim().split(/\s+/);
+          const formattedName = nameParts.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+
+          const newPatient = await storage.createPatient({
+            name: formattedName,
+            age: 0,
+            status: 'active',
+          });
+          createdPatients.push({ driveName, patientId: newPatient.id, patientName: newPatient.name });
+        }
+
+        const updatedPatients = await storage.getPatients();
+        const secondResult = await importLabReports(
+          updatedPatients.map(p => ({ id: p.id, name: p.name })),
+          (await storage.getAllDocuments()).map(d => ({ patientId: d.patientId, metadata: d.metadata })),
+          (doc) => storage.createDocument(doc)
+        );
+
+        res.json({
+          ...secondResult,
+          autoCreatedPatients: createdPatients,
+          firstPassImported: result.imported,
+        });
+      } else {
+        res.json(result);
+      }
     } catch (err: any) {
       console.error("Google Drive import error:", err);
       res.status(500).json({ error: "Failed to import lab reports: " + err.message });
