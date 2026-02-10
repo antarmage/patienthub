@@ -2682,21 +2682,6 @@ export default function ClinicianPortal() {
                       
                       {showDocumentation && (
                          <CardContent className="p-0">
-                            {!latestVisit && medications.length === 0 ? (
-                              <div className="p-8 text-center">
-                                 <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                                 <p className="text-sm font-medium text-slate-600 mb-1">No clinical records found</p>
-                                 <p className="text-xs text-slate-400 mb-4">Upload a prescription or add visit notes to get started</p>
-                                 <div className="flex justify-center gap-3">
-                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-blue-200 text-blue-700">
-                                       <Upload className="w-3.5 h-3.5" /> Upload Prescription
-                                    </Button>
-                                    <Button size="sm" className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700">
-                                       <Plus className="w-3.5 h-3.5" /> New Visit Note
-                                    </Button>
-                                 </div>
-                              </div>
-                            ) : (
                             <div className="flex flex-col divide-y divide-slate-100">
                                
                                {/* S — Subjective (Symptoms) */}
@@ -2920,76 +2905,84 @@ export default function ClinicianPortal() {
                                </div>
 
                             </div>
-                            )}
                          </CardContent>
                       )}
                       
                       {/* Collapsed Summary View */}
                       {!showDocumentation && (
                          <CardContent className="p-0">
-                            {!latestVisit && medications.length === 0 ? (
-                              <div className="p-4 text-center">
-                                 <p className="text-xs text-slate-400">No visit records. Click to add notes or upload a prescription.</p>
-                              </div>
-                            ) : (
                             <div className="grid grid-cols-4 divide-x divide-slate-100">
                                {/* Subjective */}
-                               <div className="p-3 space-y-2">
-                                  <span className="text-[10px] font-bold text-amber-600 uppercase">S (Symptoms)</span>
-                                  {latestVisit?.chiefComplaint ? (
-                                    <p className="text-xs text-slate-700 line-clamp-3">{latestVisit.chiefComplaint}</p>
-                                  ) : latestVisit?.subjective ? (
-                                    <p className="text-xs text-slate-700 line-clamp-3">{latestVisit.subjective}</p>
-                                  ) : (
-                                    <p className="text-xs text-slate-400 italic">No symptoms recorded</p>
-                                  )}
+                               <div className="p-4 space-y-3">
+                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">S (Symptoms)</span> <Button variant="ghost" size="icon" className="h-5 w-5"><Sparkles className="w-3 h-3 text-blue-400" /></Button></div>
+                                  <div className="space-y-2">
+                                     {latestVisit?.chiefComplaint ? (
+                                       <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100">{latestVisit.chiefComplaint}</div>
+                                     ) : latestVisit?.subjective ? (
+                                       <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100 line-clamp-3">{latestVisit.subjective}</div>
+                                     ) : (
+                                       <>
+                                         <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100 text-slate-400 italic">No symptoms recorded</div>
+                                       </>
+                                     )}
+                                  </div>
                                </div>
                                {/* Objective */}
-                               <div className="p-3 space-y-2">
-                                  <span className="text-[10px] font-bold text-blue-600 uppercase">O (Observations)</span>
-                                  <div className="space-y-1 text-xs text-slate-600">
-                                     <div className="flex justify-between"><span>Phase:</span> <span className="font-medium">{(() => {
-                                       if (careMode === 'pregnancy') return 'Pregnancy';
+                               <div className="p-4 space-y-3">
+                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">O (Observations)</span></div>
+                                  <div className="space-y-2 text-xs text-slate-600">
+                                     <div className="flex justify-between"><span>Cycle Phase:</span> <span className="font-medium">{(() => {
+                                       if (careMode === 'pregnancy') {
+                                         if (selectedPatient.lmp) {
+                                           const weeks = Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7)));
+                                           return weeks < 13 ? 'T1' : weeks < 27 ? 'T2' : 'T3';
+                                         }
+                                         return 'Pregnancy';
+                                       }
                                        const cd = selectedPatient.cycleDay || 0;
                                        if (cd <= 5) return 'Menstrual';
                                        if (cd <= 13) return 'Follicular';
                                        if (cd <= 16) return 'Ovulatory';
                                        return 'Luteal';
                                      })()}</span></div>
-                                     {selectedPatient.bp && <div className="flex justify-between"><span>BP:</span> <span className="font-medium">{selectedPatient.bp}</span></div>}
-                                     {selectedPatient.condition && <div className="flex justify-between"><span>Risk:</span> <span className="font-medium text-amber-600">{selectedPatient.condition}</span></div>}
+                                     <div className="flex justify-between"><span>{careMode === 'pregnancy' ? 'Gest. Age:' : 'Cycle Day:'}</span> <span className="font-medium">{careMode === 'pregnancy' ? (() => {
+                                       if (selectedPatient.lmp) {
+                                         const diffDays = Math.max(0, Math.floor((new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24)));
+                                         return `${Math.floor(diffDays/7)}w ${diffDays%7}d`;
+                                       }
+                                       return '—';
+                                     })() : `${selectedPatient.cycleDay || '—'}`}</span></div>
+                                     <div className="flex justify-between"><span>Genomic Risk:</span> <span className={`font-medium ${selectedPatient.condition ? 'text-amber-600' : ''}`}>{selectedPatient.condition || '—'}</span></div>
                                   </div>
                                </div>
                                {/* Assessment */}
-                               <div className="p-3 space-y-2 bg-emerald-50/30">
-                                  <span className="text-[10px] font-bold text-emerald-600 uppercase">A (Assessment)</span>
+                               <div className="p-4 space-y-3 bg-blue-50/30">
+                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-blue-600">A (Assessment)</span> <Sparkles className="w-3 h-3 text-blue-500" /></div>
                                   {latestVisit?.assessment ? (
-                                    <p className="text-xs leading-relaxed text-slate-700 line-clamp-3 italic">"{latestVisit.assessment}"</p>
+                                    <p className="text-xs leading-relaxed text-slate-700">"{latestVisit.assessment}"</p>
                                   ) : latestVisit?.diagnosis ? (
-                                    <p className="text-xs text-slate-700 line-clamp-3">{latestVisit.diagnosis}</p>
+                                    <p className="text-xs leading-relaxed text-slate-700">{latestVisit.diagnosis}</p>
                                   ) : (
-                                    <p className="text-xs text-slate-400 italic">No assessment yet</p>
+                                    <p className="text-xs text-slate-400 italic">No assessment recorded</p>
                                   )}
                                </div>
                                {/* Plan */}
-                               <div className="p-3 space-y-2">
-                                  <span className="text-[10px] font-bold text-purple-600 uppercase">P (Plan)</span>
-                                  {medications.length > 0 ? (
-                                    <div className="space-y-1">
-                                       {medications.slice(0, 3).map((med: any) => (
-                                         <div key={med.id} className="text-xs text-slate-700 truncate">{med.name} {med.dose || ''}</div>
-                                       ))}
-                                       {medications.length > 3 && <span className="text-[10px] text-slate-400">+{medications.length - 3} more</span>}
-                                    </div>
-                                  ) : latestVisit?.planNotes ? (
-                                    <p className="text-xs text-slate-700 line-clamp-3">{latestVisit.planNotes}</p>
-                                  ) : (
-                                    <p className="text-xs text-slate-400 italic">No plan recorded</p>
-                                  )}
-                                  <Button size="sm" className="w-full h-6 text-[10px] bg-blue-600 hover:bg-blue-700 mt-1" onClick={() => setShowDocumentation(true)}>Expand</Button>
+                               <div className="p-4 space-y-3">
+                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">P (Plan)</span></div>
+                                  <div className="space-y-2">
+                                     {medications.length > 0 ? (
+                                       medications.slice(0, 3).map((med: any) => (
+                                         <div key={med.id} className="flex items-center gap-2"><Checkbox id={`p-${med.id}`} defaultChecked={med.status === 'active'} /> <label htmlFor={`p-${med.id}`} className="text-xs text-slate-700">{med.name} {med.dose || ''}</label></div>
+                                       ))
+                                     ) : latestVisit?.planNotes ? (
+                                       <p className="text-xs text-slate-700 line-clamp-3">{latestVisit.planNotes}</p>
+                                     ) : (
+                                       <p className="text-xs text-slate-400 italic">No plan recorded</p>
+                                     )}
+                                  </div>
+                                  <Button size="sm" className="w-full h-7 text-xs bg-blue-600 hover:bg-blue-700 mt-2" onClick={() => setShowDocumentation(true)}>Full Note & Rx</Button>
                                </div>
                             </div>
-                            )}
                          </CardContent>
                       )}
                    </Card>
