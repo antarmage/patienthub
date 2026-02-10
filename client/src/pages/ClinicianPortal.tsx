@@ -3670,10 +3670,80 @@ export default function ClinicianPortal() {
                                   {/* Follow-up */}
                                   {latestVisit?.followUpPlan && (
                                     <div className="bg-white border border-slate-100 rounded p-2 mt-2">
-                                       <span className="text-[10px] text-slate-400 uppercase font-bold block">Follow-up</span>
+                                       <span className="text-[10px] text-slate-400 uppercase font-bold block">Follow-up Notes</span>
                                        <p className="text-xs text-slate-700 mt-0.5">{latestVisit.followUpPlan}</p>
                                     </div>
                                   )}
+
+                                  {/* Next Visit Date */}
+                                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 mt-3">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <CalendarCheck className="w-4 h-4 text-blue-600" />
+                                        <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">Next Visit Date</span>
+                                      </div>
+                                      {selectedPatient.nextReview && (
+                                        <Badge className="text-[10px] bg-blue-100 text-blue-700 border-blue-200">
+                                          {(() => {
+                                            const d = new Date(selectedPatient.nextReview);
+                                            const today = new Date();
+                                            const diff = Math.ceil((d.getTime() - today.getTime()) / (1000*60*60*24));
+                                            if (diff === 0) return 'Today';
+                                            if (diff === 1) return 'Tomorrow';
+                                            if (diff < 0) return `${Math.abs(diff)}d overdue`;
+                                            if (diff <= 7) return `In ${diff} days`;
+                                            return `In ${Math.ceil(diff/7)} weeks`;
+                                          })()}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <Input
+                                        type="date"
+                                        defaultValue={selectedPatient.nextReview || ''}
+                                        min={new Date().toISOString().split('T')[0]}
+                                        className="h-8 text-sm border-blue-200 focus-visible:ring-blue-300 bg-white flex-1"
+                                        data-testid="input-next-visit-date"
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          if (val) {
+                                            fetch(`/api/patients/${selectedPatient.id}`, {
+                                              method: 'PATCH',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ nextReview: val })
+                                            }).then(() => {
+                                              queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+                                              queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+                                            });
+                                          }
+                                        }}
+                                      />
+                                      {selectedPatient.nextReview && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 text-xs text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2"
+                                          onClick={() => {
+                                            fetch(`/api/patients/${selectedPatient.id}`, {
+                                              method: 'PATCH',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ nextReview: null })
+                                            }).then(() => {
+                                              queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+                                            });
+                                          }}
+                                          data-testid="button-clear-next-visit"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                    {selectedPatient.nextReview && (
+                                      <p className="text-[11px] text-blue-600 mt-1.5 font-medium">
+                                        Scheduled: {new Date(selectedPatient.nextReview).toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                                      </p>
+                                    )}
+                                  </div>
                                </div>
 
                                {/* INVESTIGATIONS SECTION */}
