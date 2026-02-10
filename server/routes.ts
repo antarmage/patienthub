@@ -1165,5 +1165,115 @@ Be thorough — extract every medication mentioned including supplements and vit
     }
   });
 
+  app.get("/api/patients/by-category/:category", async (req: any, res: any) => {
+    try {
+      const { category } = req.params;
+      const patients = await storage.getPatients();
+      const allAppointments = await storage.getAppointments();
+      const today = new Date().toISOString().split('T')[0];
+
+      const fertilityTypes = ['fertility', 'ttc', 'iui', 'ivf', 'natural_conception', 'iui cycle', 'pcos'];
+      const pregnancyTypes = ['pregnancy', 'pregnant', 'antenatal'];
+      const postpartumTypes = ['postpartum', 'postnatal'];
+
+      const calcWeeks = (lmp: string | null | undefined) => {
+        if (!lmp) return null;
+        const d = new Date(lmp);
+        if (isNaN(d.getTime())) return null;
+        return Math.floor((Date.now() - d.getTime()) / (7 * 24 * 60 * 60 * 1000));
+      };
+
+      let filtered: any[] = [];
+      let title = '';
+
+      switch (category) {
+        case 'fertility':
+          title = 'Fertility Active Patients';
+          filtered = patients.filter((p: any) => fertilityTypes.some(t => (p.type || '').toLowerCase().includes(t)));
+          break;
+        case 'pregnancy':
+          title = 'Active Pregnancy Follow-ups';
+          filtered = patients.filter((p: any) => {
+            if (!pregnancyTypes.some(t => (p.type || '').toLowerCase().includes(t))) return false;
+            const weeks = calcWeeks(p.lmp);
+            if (weeks === null) return true;
+            return weeks >= 1 && weeks <= 42;
+          });
+          break;
+        case 'postpartum':
+          title = 'Postpartum Active Patients';
+          filtered = patients.filter((p: any) => postpartumTypes.some(t => (p.type || '').toLowerCase().includes(t)));
+          break;
+        case 'high-risk':
+          title = 'High Risk Patients';
+          filtered = patients.filter((p: any) => {
+            const risk = (p.riskLevel || p.risk || '').toLowerCase();
+            const type = (p.type || '').toLowerCase();
+            return risk.includes('high') || type.includes('high risk');
+          });
+          break;
+        case 'today-appointments':
+          title = "Today's Appointments";
+          const todayAppts = allAppointments.filter((a: any) => a.date === today);
+          const patientIds = todayAppts.map((a: any) => a.patientId);
+          filtered = patients.filter((p: any) => patientIds.includes(p.id)).map((p: any) => {
+            const appt = todayAppts.find((a: any) => a.patientId === p.id);
+            return { ...p, appointmentTime: appt?.time, appointmentType: appt?.type };
+          });
+          break;
+        case 'referrals':
+          title = 'Patients with Referrals';
+          const refPatients: any[] = [];
+          for (const p of patients.slice(0, 200)) {
+            try {
+              const refs = await storage.getReferrals(p.id);
+              if (refs.length > 0) refPatients.push({ ...p, referralCount: refs.length });
+            } catch {}
+          }
+          filtered = refPatients;
+          break;
+        case 'high-bp':
+          title = 'High BP Alert Patients';
+          filtered = patients.filter((p: any) => {
+            if (!pregnancyTypes.some(t => (p.type || '').toLowerCase().includes(t))) return false;
+            const weeks = calcWeeks(p.lmp);
+            if (weeks !== null && (weeks < 1 || weeks > 42)) return false;
+            const bp = (p.bp || '').toString().trim();
+            if (!bp || !bp.includes('/')) return false;
+            const systolic = parseInt(bp.split('/')[0], 10);
+            return !isNaN(systolic) && systolic >= 140;
+          });
+          break;
+        default:
+          title = 'All Patients';
+          filtered = patients;
+      }
+
+      const result = filtered.map((p: any) => {
+        const weeks = calcWeeks(p.lmp);
+        return {
+          id: p.id,
+          name: p.name,
+          age: p.age,
+          type: p.type,
+          phone: p.phone,
+          email: p.email,
+          lmp: p.lmp,
+          bp: p.bp,
+          gestationalWeeks: weeks,
+          riskLevel: p.riskLevel || p.risk,
+          appointmentTime: p.appointmentTime,
+          appointmentType: p.appointmentType,
+          referralCount: p.referralCount,
+        };
+      });
+
+      res.json({ title, category, count: result.length, patients: result });
+    } catch (err: any) {
+      console.error("Patient category error:", err);
+      res.status(500).json({ error: "Failed to fetch patients: " + err.message });
+    }
+  });
+
   return httpServer;
 }

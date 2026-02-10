@@ -12,6 +12,7 @@ import StaffPatientProtocol from "@/pages/StaffPatientProtocol";
 import StaffCarePlan from "@/pages/StaffCarePlan";
 import CheckIn from "@/pages/CheckIn";
 import NewBooking from "@/pages/NewBooking";
+import PatientListByCategory from "@/pages/PatientListByCategory";
 
 function Router() {
   return (
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/patient" component={PatientPortal} />
       <Route path="/clinician" component={ClinicianPortal} />
+      <Route path="/clinician/patients/:category" component={PatientListByCategory} />
       <Route path="/staff" component={StaffPortal} />
       <Route path="/staff/check-in" component={CheckIn} />
       <Route path="/staff/booking" component={NewBooking} />
