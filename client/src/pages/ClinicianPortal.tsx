@@ -133,6 +133,46 @@ export default function ClinicianPortal() {
     }
   }, [selectedPatient]);
 
+  const prescriptionInputRef = React.useRef<HTMLInputElement>(null);
+
+  const uploadPrescriptionMutation = useMutation({
+    mutationFn: async ({ patientId, file }: { patientId: number; file: File }) => {
+      const res = await fetch(`/api/patients/${patientId}/documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: file.name,
+          type: 'prescription',
+          category: 'Prescription',
+          date: new Date().toISOString().split('T')[0],
+          description: `Prescription uploaded for patient`,
+          metadata: { fileSize: String(file.size), uploadedAt: new Date().toISOString(), originalFilename: file.name },
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to upload prescription');
+      return res.json();
+    },
+    onSuccess: () => {
+      if (selectedPatient) {
+        queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/documents`] });
+      }
+      setExtractionStatus('Prescription uploaded successfully');
+      setTimeout(() => setExtractionStatus(null), 4000);
+    },
+    onError: (err: any) => {
+      setExtractionStatus(`Upload failed: ${err.message}`);
+      setTimeout(() => setExtractionStatus(null), 4000);
+    },
+  });
+
+  const handlePrescriptionUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && selectedPatient) {
+      uploadPrescriptionMutation.mutate({ patientId: selectedPatient.id, file });
+    }
+    if (prescriptionInputRef.current) prescriptionInputRef.current.value = '';
+  };
+
   const extractLabMutation = useMutation({
     mutationFn: async (patientId: number) => {
       const res = await fetch(`/api/patients/${patientId}/extract-lab-results`, { method: 'POST' });
@@ -2892,8 +2932,9 @@ export default function ClinicianPortal() {
                                      <span className="font-semibold text-slate-700">{providerName}</span> • {providerSpecialty}
                                   </div>
                                   <div className="flex gap-2">
-                                     <Button variant="outline" size="sm" className="h-8 gap-2 bg-white text-xs border-slate-300">
-                                        <Upload className="w-3.5 h-3.5" /> Upload Prescription
+                                     <input type="file" ref={prescriptionInputRef} onChange={handlePrescriptionUpload} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" />
+                                     <Button variant="outline" size="sm" className="h-8 gap-2 bg-white text-xs border-slate-300" onClick={() => prescriptionInputRef.current?.click()} disabled={uploadPrescriptionMutation.isPending}>
+                                        {uploadPrescriptionMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />} Upload Prescription
                                      </Button>
                                      <Button variant="outline" size="sm" className="h-8 gap-2 bg-white text-xs border-slate-300">
                                         <Printer className="w-3.5 h-3.5" /> Print
