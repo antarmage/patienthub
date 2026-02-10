@@ -3083,179 +3083,6 @@ export default function ClinicianPortal() {
                       </CardContent>
                    </Card>
 
-                   {/* INVESTIGATIONS SECTION */}
-                   {(() => {
-                     let pregnancyWeek = 0;
-                     if (selectedPatient.lmp) {
-                       pregnancyWeek = Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7)));
-                     }
-
-                     const investigationsByWeek: Record<string, { tests: { name: string; description: string }[]; weekRange: string }> = {
-                       'booking': {
-                         weekRange: '6-10 weeks (Booking Visit)',
-                         tests: [
-                           { name: 'CBC (Complete Blood Count)', description: 'Hemoglobin, WBC, platelets' },
-                           { name: 'Blood Group & Rh Typing', description: 'ABO and Rh factor' },
-                           { name: 'Random Blood Sugar (RBS)', description: 'Screen for diabetes' },
-                           { name: 'TSH (Thyroid Stimulating Hormone)', description: 'Thyroid function' },
-                           { name: 'Urine Routine & Microscopy', description: 'UTI screening, proteinuria' },
-                           { name: 'HIV, HBsAg, VDRL', description: 'Infectious disease screening' },
-                           { name: 'Rubella IgG', description: 'Immunity check' },
-                           { name: 'Blood Pressure', description: 'Baseline BP recording' },
-                         ]
-                       },
-                       'first_trimester': {
-                         weekRange: '11-14 weeks (First Trimester Screening)',
-                         tests: [
-                           { name: 'NT Scan (Nuchal Translucency)', description: 'Down syndrome screening ultrasound' },
-                           { name: 'Dual Marker (PAPP-A + Free β-hCG)', description: 'Combined first trimester screening' },
-                           { name: 'Urine Culture', description: 'Asymptomatic bacteriuria' },
-                           { name: 'TSH (repeat if abnormal)', description: 'Thyroid recheck' },
-                         ]
-                       },
-                       'second_trimester_early': {
-                         weekRange: '16-20 weeks',
-                         tests: [
-                           { name: 'Quadruple Marker', description: 'AFP, hCG, uE3, Inhibin A (if dual marker not done)' },
-                           { name: 'Anomaly Scan (TIFFA)', description: 'Detailed anatomy scan at 18-20 weeks' },
-                           { name: 'CBC (repeat)', description: 'Check for anemia' },
-                         ]
-                       },
-                       'second_trimester_mid': {
-                         weekRange: '24-28 weeks',
-                         tests: [
-                           { name: 'OGTT (75g Glucose Tolerance Test)', description: 'Gestational diabetes screening' },
-                           { name: 'CBC (repeat)', description: 'Hemoglobin check' },
-                           { name: 'Anti-D Injection', description: 'For Rh-negative mothers at 28 weeks' },
-                         ]
-                       },
-                       'third_trimester_early': {
-                         weekRange: '28-32 weeks',
-                         tests: [
-                           { name: 'Growth Scan', description: 'Fetal growth assessment' },
-                           { name: 'CBC (repeat)', description: 'Anemia screening' },
-                           { name: 'TSH (repeat)', description: 'Thyroid function check' },
-                           { name: 'Urine Routine', description: 'Proteinuria screening for preeclampsia' },
-                         ]
-                       },
-                       'third_trimester_late': {
-                         weekRange: '34-36 weeks',
-                         tests: [
-                           { name: 'Growth Scan (repeat)', description: 'Fetal weight estimation, AFI' },
-                           { name: 'GBS Screening (Vaginal Swab)', description: 'Group B Streptococcus at 35-37 weeks' },
-                           { name: 'CBC + Coagulation Profile', description: 'Pre-delivery workup' },
-                           { name: 'LFT, KFT', description: 'Liver and kidney function' },
-                           { name: 'NST (Non-Stress Test)', description: 'Fetal wellbeing' },
-                         ]
-                       },
-                       'term': {
-                         weekRange: '37-40 weeks (Term)',
-                         tests: [
-                           { name: 'NST (weekly)', description: 'Fetal heart rate monitoring' },
-                           { name: 'BPP (Biophysical Profile)', description: 'If indicated' },
-                           { name: 'AFI (Amniotic Fluid Index)', description: 'Fluid assessment' },
-                           { name: 'Bishop Score Assessment', description: 'Cervical readiness evaluation' },
-                         ]
-                       },
-                     };
-
-                     const fertilityInvestigations = [
-                       { name: 'Day 2/3 Hormonal Panel', description: 'FSH, LH, E2, Prolactin, TSH, AMH' },
-                       { name: 'Pelvic Ultrasound', description: 'Antral follicle count, uterine assessment' },
-                       { name: 'HSG (Hysterosalpingography)', description: 'Tubal patency test' },
-                       { name: 'Semen Analysis', description: 'Partner sperm evaluation' },
-                       { name: 'Day 21 Progesterone', description: 'Confirm ovulation' },
-                       { name: 'Karyotype', description: 'Chromosomal analysis if indicated' },
-                       { name: 'Vitamin D, B12, Ferritin', description: 'Nutritional status' },
-                       { name: 'Glucose Tolerance Test', description: 'PCOS/metabolic screening' },
-                     ];
-
-                     const cycleInvestigations = [
-                       { name: 'Hormonal Panel', description: 'FSH, LH, E2, Progesterone, Testosterone, DHEAS' },
-                       { name: 'TSH, Free T3, Free T4', description: 'Thyroid function' },
-                       { name: 'Pelvic Ultrasound', description: 'Ovarian morphology, endometrial thickness' },
-                       { name: 'Prolactin', description: 'Rule out hyperprolactinemia' },
-                       { name: 'Fasting Insulin + Glucose', description: 'Insulin resistance check' },
-                       { name: 'Lipid Profile', description: 'Metabolic health' },
-                       { name: 'Vitamin D, B12', description: 'Nutritional assessment' },
-                       { name: 'CBC', description: 'Anemia screening' },
-                     ];
-
-                     let currentTests: { name: string; description: string }[] = [];
-                     let sectionTitle = '';
-
-                     if (careMode === 'pregnancy' && pregnancyWeek > 0) {
-                       if (pregnancyWeek <= 10) { currentTests = investigationsByWeek.booking.tests; sectionTitle = investigationsByWeek.booking.weekRange; }
-                       else if (pregnancyWeek <= 14) { currentTests = investigationsByWeek.first_trimester.tests; sectionTitle = investigationsByWeek.first_trimester.weekRange; }
-                       else if (pregnancyWeek <= 20) { currentTests = investigationsByWeek.second_trimester_early.tests; sectionTitle = investigationsByWeek.second_trimester_early.weekRange; }
-                       else if (pregnancyWeek <= 28) { currentTests = investigationsByWeek.second_trimester_mid.tests; sectionTitle = investigationsByWeek.second_trimester_mid.weekRange; }
-                       else if (pregnancyWeek <= 32) { currentTests = investigationsByWeek.third_trimester_early.tests; sectionTitle = investigationsByWeek.third_trimester_early.weekRange; }
-                       else if (pregnancyWeek <= 36) { currentTests = investigationsByWeek.third_trimester_late.tests; sectionTitle = investigationsByWeek.third_trimester_late.weekRange; }
-                       else { currentTests = investigationsByWeek.term.tests; sectionTitle = investigationsByWeek.term.weekRange; }
-                     } else if (careMode === 'natural_conception' || careMode === 'iui' || careMode === 'ivf') {
-                       currentTests = fertilityInvestigations;
-                       sectionTitle = 'Fertility Workup';
-                     } else {
-                       currentTests = cycleInvestigations;
-                       sectionTitle = 'Cycle & Hormonal Workup';
-                     }
-
-                     return (
-                       <Card className="shadow-sm border-indigo-100" data-testid="card-investigations">
-                         <CardHeader className="py-3 px-4 border-b border-indigo-50 bg-indigo-50/30">
-                           <div className="flex items-center justify-between">
-                             <div className="flex items-center gap-2">
-                               <Stethoscope className="w-4 h-4 text-indigo-600" />
-                               <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wide">Investigations</CardTitle>
-                               <Badge variant="outline" className="text-[10px] text-indigo-600 border-indigo-200 bg-indigo-50">{sectionTitle}</Badge>
-                               {careMode === 'pregnancy' && pregnancyWeek > 0 && (
-                                 <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-200">Week {pregnancyWeek}</Badge>
-                               )}
-                             </div>
-                           </div>
-                         </CardHeader>
-                         <CardContent className="p-4">
-                           <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                             {currentTests.map((test, i) => (
-                               <label key={i} className={`flex items-start gap-2.5 py-1.5 px-2 rounded cursor-pointer group transition-colors ${selectedInvestigations.has(test.name) ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-slate-50 border border-transparent'}`} data-testid={`checkbox-investigation-${i}`}>
-                                 <Checkbox checked={selectedInvestigations.has(test.name)} onCheckedChange={() => toggleInvestigation(test.name)} className="mt-0.5 border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600" />
-                                 <div className="flex-1 min-w-0">
-                                   <span className={`text-xs font-medium block ${selectedInvestigations.has(test.name) ? 'text-indigo-800' : 'text-slate-800'}`}>{test.name}</span>
-                                   <span className="text-[10px] text-slate-400 block">{test.description}</span>
-                                 </div>
-                               </label>
-                             ))}
-                           </div>
-                           {selectedInvestigations.size > 0 && (
-                             <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
-                               <div className="flex flex-wrap gap-1.5">
-                                 {Array.from(selectedInvestigations).map(name => (
-                                   <Badge key={name} className="text-[10px] bg-indigo-100 text-indigo-700 border-indigo-200 gap-1">
-                                     {name}
-                                     <button onClick={() => toggleInvestigation(name)} className="ml-0.5 hover:text-indigo-900" data-testid={`button-remove-investigation-${name}`}><X className="w-2.5 h-2.5" /></button>
-                                   </Badge>
-                                 ))}
-                               </div>
-                               <span className="text-[10px] text-indigo-600 font-medium whitespace-nowrap ml-2">{selectedInvestigations.size} selected</span>
-                             </div>
-                           )}
-                           {careMode === 'pregnancy' && pregnancyWeek > 0 && (
-                             <div className="mt-3 pt-3 border-t border-slate-100">
-                               <span className="text-[10px] text-slate-400 uppercase font-bold block mb-2">All Pregnancy Investigation Milestones</span>
-                               <div className="flex flex-wrap gap-1.5">
-                                 {Object.entries(investigationsByWeek).map(([key, val]) => (
-                                   <Badge key={key} variant="outline" className={`text-[10px] cursor-default ${val.weekRange === sectionTitle ? 'bg-indigo-100 text-indigo-700 border-indigo-300 font-semibold' : 'text-slate-400 border-slate-200'}`}>
-                                     {val.weekRange.split('(')[0].trim()}
-                                   </Badge>
-                                 ))}
-                               </div>
-                             </div>
-                           )}
-                         </CardContent>
-                       </Card>
-                     );
-                   })()}
-
                    {/* 1. CURRENT VISIT CLINICAL WORKSPACE (SOAP) - DYNAMIC */}
                    <Card className="shadow-md border-blue-100 bg-white overflow-hidden">
                       <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center cursor-pointer" onClick={() => setShowDocumentation(!showDocumentation)}>
@@ -3645,6 +3472,173 @@ export default function ClinicianPortal() {
                                     </div>
                                   )}
                                </div>
+
+                               {/* INVESTIGATIONS SECTION */}
+                               {(() => {
+                                 let pregnancyWeek = 0;
+                                 if (selectedPatient.lmp) {
+                                   pregnancyWeek = Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7)));
+                                 }
+
+                                 const investigationsByWeek: Record<string, { tests: { name: string; description: string }[]; weekRange: string }> = {
+                                   'booking': {
+                                     weekRange: '6-10 weeks (Booking Visit)',
+                                     tests: [
+                                       { name: 'CBC (Complete Blood Count)', description: 'Hemoglobin, WBC, platelets' },
+                                       { name: 'Blood Group & Rh Typing', description: 'ABO and Rh factor' },
+                                       { name: 'Random Blood Sugar (RBS)', description: 'Screen for diabetes' },
+                                       { name: 'TSH (Thyroid Stimulating Hormone)', description: 'Thyroid function' },
+                                       { name: 'Urine Routine & Microscopy', description: 'UTI screening, proteinuria' },
+                                       { name: 'HIV, HBsAg, VDRL', description: 'Infectious disease screening' },
+                                       { name: 'Rubella IgG', description: 'Immunity check' },
+                                       { name: 'Blood Pressure', description: 'Baseline BP recording' },
+                                     ]
+                                   },
+                                   'first_trimester': {
+                                     weekRange: '11-14 weeks (First Trimester Screening)',
+                                     tests: [
+                                       { name: 'NT Scan (Nuchal Translucency)', description: 'Down syndrome screening ultrasound' },
+                                       { name: 'Dual Marker (PAPP-A + Free β-hCG)', description: 'Combined first trimester screening' },
+                                       { name: 'Urine Culture', description: 'Asymptomatic bacteriuria' },
+                                       { name: 'TSH (repeat if abnormal)', description: 'Thyroid recheck' },
+                                     ]
+                                   },
+                                   'second_trimester_early': {
+                                     weekRange: '16-20 weeks',
+                                     tests: [
+                                       { name: 'Quadruple Marker', description: 'AFP, hCG, uE3, Inhibin A (if dual marker not done)' },
+                                       { name: 'Anomaly Scan (TIFFA)', description: 'Detailed anatomy scan at 18-20 weeks' },
+                                       { name: 'CBC (repeat)', description: 'Check for anemia' },
+                                     ]
+                                   },
+                                   'second_trimester_mid': {
+                                     weekRange: '24-28 weeks',
+                                     tests: [
+                                       { name: 'OGTT (75g Glucose Tolerance Test)', description: 'Gestational diabetes screening' },
+                                       { name: 'CBC (repeat)', description: 'Hemoglobin check' },
+                                       { name: 'Anti-D Injection', description: 'For Rh-negative mothers at 28 weeks' },
+                                     ]
+                                   },
+                                   'third_trimester_early': {
+                                     weekRange: '28-32 weeks',
+                                     tests: [
+                                       { name: 'Growth Scan', description: 'Fetal growth assessment' },
+                                       { name: 'CBC (repeat)', description: 'Anemia screening' },
+                                       { name: 'TSH (repeat)', description: 'Thyroid function check' },
+                                       { name: 'Urine Routine', description: 'Proteinuria screening for preeclampsia' },
+                                     ]
+                                   },
+                                   'third_trimester_late': {
+                                     weekRange: '34-36 weeks',
+                                     tests: [
+                                       { name: 'Growth Scan (repeat)', description: 'Fetal weight estimation, AFI' },
+                                       { name: 'GBS Screening (Vaginal Swab)', description: 'Group B Streptococcus at 35-37 weeks' },
+                                       { name: 'CBC + Coagulation Profile', description: 'Pre-delivery workup' },
+                                       { name: 'LFT, KFT', description: 'Liver and kidney function' },
+                                       { name: 'NST (Non-Stress Test)', description: 'Fetal wellbeing' },
+                                     ]
+                                   },
+                                   'term': {
+                                     weekRange: '37-40 weeks (Term)',
+                                     tests: [
+                                       { name: 'NST (weekly)', description: 'Fetal heart rate monitoring' },
+                                       { name: 'BPP (Biophysical Profile)', description: 'If indicated' },
+                                       { name: 'AFI (Amniotic Fluid Index)', description: 'Fluid assessment' },
+                                       { name: 'Bishop Score Assessment', description: 'Cervical readiness evaluation' },
+                                     ]
+                                   },
+                                 };
+
+                                 const fertilityInvestigations = [
+                                   { name: 'Day 2/3 Hormonal Panel', description: 'FSH, LH, E2, Prolactin, TSH, AMH' },
+                                   { name: 'Pelvic Ultrasound', description: 'Antral follicle count, uterine assessment' },
+                                   { name: 'HSG (Hysterosalpingography)', description: 'Tubal patency test' },
+                                   { name: 'Semen Analysis', description: 'Partner sperm evaluation' },
+                                   { name: 'Day 21 Progesterone', description: 'Confirm ovulation' },
+                                   { name: 'Karyotype', description: 'Chromosomal analysis if indicated' },
+                                   { name: 'Vitamin D, B12, Ferritin', description: 'Nutritional status' },
+                                   { name: 'Glucose Tolerance Test', description: 'PCOS/metabolic screening' },
+                                 ];
+
+                                 const cycleInvestigations = [
+                                   { name: 'Hormonal Panel', description: 'FSH, LH, E2, Progesterone, Testosterone, DHEAS' },
+                                   { name: 'TSH, Free T3, Free T4', description: 'Thyroid function' },
+                                   { name: 'Pelvic Ultrasound', description: 'Ovarian morphology, endometrial thickness' },
+                                   { name: 'Prolactin', description: 'Rule out hyperprolactinemia' },
+                                   { name: 'Fasting Insulin + Glucose', description: 'Insulin resistance check' },
+                                   { name: 'Lipid Profile', description: 'Metabolic health' },
+                                   { name: 'Vitamin D, B12', description: 'Nutritional assessment' },
+                                   { name: 'CBC', description: 'Anemia screening' },
+                                 ];
+
+                                 let currentTests: { name: string; description: string }[] = [];
+                                 let sectionTitle = '';
+
+                                 if (careMode === 'pregnancy' && pregnancyWeek > 0) {
+                                   if (pregnancyWeek <= 10) { currentTests = investigationsByWeek.booking.tests; sectionTitle = investigationsByWeek.booking.weekRange; }
+                                   else if (pregnancyWeek <= 14) { currentTests = investigationsByWeek.first_trimester.tests; sectionTitle = investigationsByWeek.first_trimester.weekRange; }
+                                   else if (pregnancyWeek <= 20) { currentTests = investigationsByWeek.second_trimester_early.tests; sectionTitle = investigationsByWeek.second_trimester_early.weekRange; }
+                                   else if (pregnancyWeek <= 28) { currentTests = investigationsByWeek.second_trimester_mid.tests; sectionTitle = investigationsByWeek.second_trimester_mid.weekRange; }
+                                   else if (pregnancyWeek <= 32) { currentTests = investigationsByWeek.third_trimester_early.tests; sectionTitle = investigationsByWeek.third_trimester_early.weekRange; }
+                                   else if (pregnancyWeek <= 36) { currentTests = investigationsByWeek.third_trimester_late.tests; sectionTitle = investigationsByWeek.third_trimester_late.weekRange; }
+                                   else { currentTests = investigationsByWeek.term.tests; sectionTitle = investigationsByWeek.term.weekRange; }
+                                 } else if (careMode === 'natural_conception' || careMode === 'iui' || careMode === 'ivf') {
+                                   currentTests = fertilityInvestigations;
+                                   sectionTitle = 'Fertility Workup';
+                                 } else {
+                                   currentTests = cycleInvestigations;
+                                   sectionTitle = 'Cycle & Hormonal Workup';
+                                 }
+
+                                 return (
+                                   <div className="p-4 bg-indigo-50/30" data-testid="card-investigations">
+                                     <div className="flex items-center gap-2 mb-3">
+                                       <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">I</Badge>
+                                       <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Investigations</span>
+                                       <Badge variant="outline" className="text-[10px] text-indigo-600 border-indigo-200 bg-indigo-50">{sectionTitle}</Badge>
+                                       {careMode === 'pregnancy' && pregnancyWeek > 0 && (
+                                         <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-200">Week {pregnancyWeek}</Badge>
+                                       )}
+                                     </div>
+                                     <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                                       {currentTests.map((test, i) => (
+                                         <label key={i} className={`flex items-start gap-2.5 py-1.5 px-2 rounded cursor-pointer group transition-colors ${selectedInvestigations.has(test.name) ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-white border border-transparent'}`} data-testid={`checkbox-investigation-${i}`}>
+                                           <Checkbox checked={selectedInvestigations.has(test.name)} onCheckedChange={() => toggleInvestigation(test.name)} className="mt-0.5 border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600" />
+                                           <div className="flex-1 min-w-0">
+                                             <span className={`text-xs font-medium block ${selectedInvestigations.has(test.name) ? 'text-indigo-800' : 'text-slate-800'}`}>{test.name}</span>
+                                             <span className="text-[10px] text-slate-400 block">{test.description}</span>
+                                           </div>
+                                         </label>
+                                       ))}
+                                     </div>
+                                     {selectedInvestigations.size > 0 && (
+                                       <div className="mt-3 pt-3 border-t border-indigo-100 flex items-center justify-between">
+                                         <div className="flex flex-wrap gap-1.5">
+                                           {Array.from(selectedInvestigations).map(name => (
+                                             <Badge key={name} className="text-[10px] bg-indigo-100 text-indigo-700 border-indigo-200 gap-1">
+                                               {name}
+                                               <button onClick={() => toggleInvestigation(name)} className="ml-0.5 hover:text-indigo-900" data-testid={`button-remove-investigation-${name}`}><X className="w-2.5 h-2.5" /></button>
+                                             </Badge>
+                                           ))}
+                                         </div>
+                                         <span className="text-[10px] text-indigo-600 font-medium whitespace-nowrap ml-2">{selectedInvestigations.size} selected</span>
+                                       </div>
+                                     )}
+                                     {careMode === 'pregnancy' && pregnancyWeek > 0 && (
+                                       <div className="mt-3 pt-3 border-t border-indigo-100">
+                                         <span className="text-[10px] text-slate-400 uppercase font-bold block mb-2">All Pregnancy Investigation Milestones</span>
+                                         <div className="flex flex-wrap gap-1.5">
+                                           {Object.entries(investigationsByWeek).map(([key, val]) => (
+                                             <Badge key={key} variant="outline" className={`text-[10px] cursor-default ${val.weekRange === sectionTitle ? 'bg-indigo-100 text-indigo-700 border-indigo-300 font-semibold' : 'text-slate-400 border-slate-200'}`}>
+                                               {val.weekRange.split('(')[0].trim()}
+                                             </Badge>
+                                           ))}
+                                         </div>
+                                       </div>
+                                     )}
+                                   </div>
+                                 );
+                               })()}
 
                                {/* Footer actions */}
                                <div className="p-4 bg-slate-100 flex items-center justify-between">
