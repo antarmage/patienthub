@@ -105,6 +105,7 @@ export default function ClinicianPortal() {
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [careMode, setCareMode] = useState("natural_conception"); 
   const [showDocumentation, setShowDocumentation] = useState(false);
+  const [showPastRecords, setShowPastRecords] = useState(false);
   const [scheduleViewMode, setScheduleViewMode] = useState("appointments");
   const [calendarViewMode, setCalendarViewMode] = useState("month");
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
@@ -4504,6 +4505,80 @@ export default function ClinicianPortal() {
                          </CardContent>
                       )}
                    </Card>
+
+                   {/* PAST VISIT RECORDS */}
+                   {visitHistory.length > 0 && (
+                     <Card className="shadow-sm border-slate-200 bg-white overflow-hidden">
+                       <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center cursor-pointer" onClick={() => setShowPastRecords(!showPastRecords)} data-testid="toggle-past-records">
+                         <h3 className="font-bold text-sm text-slate-700 flex items-center gap-2">
+                           <History className="w-4 h-4 text-slate-500" />
+                           Past Records
+                           <Badge variant="outline" className="text-[10px] font-normal text-slate-500">{visitHistory.length} visit{visitHistory.length !== 1 ? 's' : ''}</Badge>
+                         </h3>
+                         <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${showPastRecords ? 'rotate-90' : ''}`} />
+                       </div>
+                       {showPastRecords && (
+                         <CardContent className="p-0 max-h-[500px] overflow-y-auto">
+                           {[...visitHistory].reverse().map((visit: any, idx: number) => {
+                             const vitals = (visit.vitals as any) || {};
+                             const vitalsList = [
+                               vitals.weight && `Wt: ${vitals.weight}kg`,
+                               vitals.bp && `BP: ${vitals.bp}`,
+                               vitals.pulse && `Pulse: ${vitals.pulse}`,
+                               vitals.temperature && `Temp: ${vitals.temperature}°F`,
+                               vitals.fetalHeartRate && `FHR: ${vitals.fetalHeartRate}bpm`,
+                               vitals.fundalHeight && `FH: ${vitals.fundalHeight}cm`,
+                             ].filter(Boolean);
+                             const isToday = new Date(visit.date).toDateString() === new Date().toDateString();
+                             return (
+                               <div key={visit.id} className={`border-b border-slate-100 last:border-0 ${idx === 0 && isToday ? 'bg-blue-50/30' : ''}`} data-testid={`past-visit-${visit.id}`}>
+                                 <div className="px-4 py-3 flex items-start gap-3">
+                                   <div className="flex flex-col items-center pt-0.5">
+                                     <div className={`w-2.5 h-2.5 rounded-full ${idx === 0 && isToday ? 'bg-blue-500' : 'bg-slate-300'}`} />
+                                     {idx < visitHistory.length - 1 && <div className="w-px h-full bg-slate-200 mt-1" />}
+                                   </div>
+                                   <div className="flex-1 min-w-0">
+                                     <div className="flex items-center justify-between mb-1">
+                                       <div className="flex items-center gap-2">
+                                         <span className="text-xs font-bold text-slate-800">
+                                           {new Date(visit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                         </span>
+                                         {isToday && idx === 0 && <Badge className="text-[9px] bg-blue-100 text-blue-700 border-blue-200">Today</Badge>}
+                                         {visit.visitType && <Badge variant="outline" className="text-[9px] text-slate-500">{visit.visitType}</Badge>}
+                                       </div>
+                                       {visit.provider && <span className="text-[10px] text-slate-400">{visit.provider}</span>}
+                                     </div>
+                                     {visit.chiefComplaint && (
+                                       <p className="text-xs text-slate-700 mb-1"><span className="font-semibold text-slate-500">CC:</span> {visit.chiefComplaint}</p>
+                                     )}
+                                     {visit.subjective && !visit.chiefComplaint && (
+                                       <p className="text-xs text-slate-600 mb-1 line-clamp-2">{visit.subjective}</p>
+                                     )}
+                                     {vitalsList.length > 0 && (
+                                       <div className="flex flex-wrap gap-1.5 mb-1">
+                                         {vitalsList.map((v, i) => (
+                                           <span key={i} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{v}</span>
+                                         ))}
+                                       </div>
+                                     )}
+                                     {visit.diagnosis && (
+                                       <p className="text-[11px] text-slate-600"><span className="font-semibold text-slate-500">Dx:</span> {visit.diagnosis}</p>
+                                     )}
+                                     {visit.assessment && !visit.diagnosis && (
+                                       <p className="text-[11px] text-slate-600 line-clamp-2"><span className="font-semibold text-slate-500">Assessment:</span> {visit.assessment}</p>
+                                     )}
+                                     {visit.planNotes && (
+                                       <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2"><span className="font-semibold">Plan:</span> {visit.planNotes}</p>
+                                     )}
+                                   </div>
+                                 </div>
+                               </div>
+                             );
+                           })}
+                         </CardContent>
+                       )}
+                     </Card>
+                   )}
 
                    {/* 1. DYNAMIC SUMMARY BAR BASED ON PATHWAY */}
                    {careMode === 'natural_conception' && (
