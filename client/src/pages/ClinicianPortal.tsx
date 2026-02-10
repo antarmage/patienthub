@@ -2947,7 +2947,7 @@ export default function ClinicianPortal() {
               
               {/* Patient List Column (Left) */}
               <div className="w-72 border-r border-slate-200 bg-white flex flex-col shrink-0">
-                 <div className="p-3 border-b border-slate-100 bg-slate-50/50 space-y-2">
+                 <div className="p-3 border-b border-slate-100 bg-slate-50/50 space-y-2 overflow-hidden">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                       <Input
@@ -2964,21 +2964,21 @@ export default function ClinicianPortal() {
                       )}
                     </div>
                     {!isSearching && (
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-1.5">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1">
                           <Input
                             type="date"
                             value={queueDateFrom}
                             onChange={(e) => { setQueueDateFrom(e.target.value); if (e.target.value > queueDateTo) setQueueDateTo(e.target.value); }}
-                            className="h-7 text-xs border-slate-200 flex-1"
+                            className="h-7 text-[11px] border-slate-200 flex-1 min-w-0 px-1.5"
                             data-testid="input-queue-date-from-sidebar"
                           />
-                          <span className="text-[10px] text-slate-400">to</span>
+                          <span className="text-[10px] text-slate-400 shrink-0">to</span>
                           <Input
                             type="date"
                             value={queueDateTo}
                             onChange={(e) => { setQueueDateTo(e.target.value); if (e.target.value < queueDateFrom) setQueueDateFrom(e.target.value); }}
-                            className="h-7 text-xs border-slate-200 flex-1"
+                            className="h-7 text-[11px] border-slate-200 flex-1 min-w-0 px-1.5"
                             data-testid="input-queue-date-to-sidebar"
                           />
                           <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-medium shrink-0">{queuePatients.length}</span>
