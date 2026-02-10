@@ -2663,12 +2663,12 @@ export default function ClinicianPortal() {
                                                       <td className="px-3 py-2">
                                                         {med.category && <Badge variant="outline" className="text-[10px]">{med.category}</Badge>}
                                                       </td>
-                                                      <td className="px-1 py-2">
-                                                        <div className="flex gap-1">
-                                                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-blue-600" onClick={() => { setEditingCatalogId(med.id); setEditCatalogData({ name: med.name, genericName: med.genericName || '', defaultDose: med.defaultDose || '', defaultFrequency: med.defaultFrequency || '', route: med.route || '', category: med.category || '' }); }} data-testid={`button-edit-catalog-${med.id}`}>
+                                                      <td className="px-2 py-2">
+                                                        <div className="flex gap-1.5">
+                                                          <Button variant="outline" size="sm" className="h-6 w-6 p-0 text-blue-500 border-blue-200 hover:bg-blue-50 hover:text-blue-700" onClick={() => { setEditingCatalogId(med.id); setEditCatalogData({ name: med.name, genericName: med.genericName || '', defaultDose: med.defaultDose || '', defaultFrequency: med.defaultFrequency || '', route: med.route || '', category: med.category || '' }); }} data-testid={`button-edit-catalog-${med.id}`}>
                                                             <Pencil className="w-3 h-3" />
                                                           </Button>
-                                                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600" onClick={() => deleteCatalogMutation.mutate(med.id)} data-testid={`button-delete-catalog-${med.id}`}>
+                                                          <Button variant="outline" size="sm" className="h-6 w-6 p-0 text-rose-500 border-rose-200 hover:bg-rose-50 hover:text-rose-700" onClick={() => deleteCatalogMutation.mutate(med.id)} data-testid={`button-delete-catalog-${med.id}`}>
                                                             <Trash2 className="w-3 h-3" />
                                                           </Button>
                                                         </div>
