@@ -3644,10 +3644,12 @@ export default function ClinicianPortal() {
                                     const saveScheduleVitals = (field: string, val: string) => {
                                       if (latestVisit?.id) {
                                         const currentVitals = (latestVisit.vitals as any) || {};
+                                        let parsedVal: any = val;
+                                        try { parsedVal = JSON.parse(val); } catch {}
                                         fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
                                           method: 'POST',
                                           headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({ ...latestVisit, vitals: { ...currentVitals, [field]: val } })
+                                          body: JSON.stringify({ ...latestVisit, vitals: { ...currentVitals, [field]: parsedVal } })
                                         }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
                                       }
                                     };
@@ -3729,38 +3731,114 @@ export default function ClinicianPortal() {
                                           )}
 
                                           {/* Next Blood Test / USG */}
-                                          <div className="bg-white rounded-lg border border-indigo-100 p-2.5">
-                                            <div className="flex items-center justify-between mb-1.5">
-                                              <span className="text-[11px] font-bold text-indigo-700 flex items-center gap-1.5"><FlaskConical className="w-3 h-3" /> Next Blood Test / USG</span>
-                                              {invCountdown && <Badge className={`text-[9px] ${invCountdown.color} border-0`}>{invCountdown.text}</Badge>}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <Input
-                                                type="date"
-                                                key={`inv-${selectedPatient.id}-${nextInvDate}`}
-                                                defaultValue={nextInvDate}
-                                                min={new Date().toISOString().split('T')[0]}
-                                                className="h-7 text-xs border-indigo-200 focus-visible:ring-indigo-300 flex-1"
-                                                data-testid="input-next-investigation-date"
-                                                onBlur={(e) => { if (e.target.value) saveScheduleVitals('nextInvestigationDate', e.target.value); }}
-                                              />
-                                              {nextInvDate && (
-                                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-rose-400 hover:text-rose-600 hover:bg-rose-50" onClick={() => saveScheduleVitals('nextInvestigationDate', '')} data-testid="button-clear-next-inv"><X className="w-3 h-3" /></Button>
-                                              )}
-                                            </div>
-                                            <Input
-                                              type="text"
-                                              placeholder="e.g. CBC, TSH repeat, Growth Scan..."
-                                              key={`inv-notes-${selectedPatient.id}-${nextInvNotes}`}
-                                              defaultValue={nextInvNotes}
-                                              className="h-7 text-xs border-indigo-200 focus-visible:ring-indigo-300 mt-1.5"
-                                              data-testid="input-next-investigation-notes"
-                                              onBlur={(e) => { if (e.target.value) saveScheduleVitals('nextInvestigationNotes', e.target.value); }}
-                                            />
-                                            {nextInvDate && (
-                                              <p className="text-[10px] text-indigo-500 mt-1">{new Date(nextInvDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })}{nextInvNotes ? ` — ${nextInvNotes}` : ''}</p>
-                                            )}
-                                          </div>
+                                          {(() => {
+                                            let invPregnancyWeek = 0;
+                                            if (selectedPatient.lmp) {
+                                              invPregnancyWeek = Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7)));
+                                            }
+
+                                            const invMilestones: Record<string, { weekRange: string; tests: string[] }> = {
+                                              'booking': { weekRange: '6-10 wks', tests: ['CBC', 'Blood Group & Rh', 'RBS', 'TSH', 'Urine R/M', 'HIV/HBsAg/VDRL', 'Rubella IgG', 'USG Dating Scan'] },
+                                              'first_trimester': { weekRange: '11-14 wks', tests: ['NT Scan', 'Dual Marker', 'Urine Culture', 'TSH (repeat)', 'USG NT Scan'] },
+                                              'second_trimester_early': { weekRange: '16-20 wks', tests: ['Quadruple Marker', 'USG Anomaly Scan (TIFFA)', 'CBC (repeat)'] },
+                                              'second_trimester_mid': { weekRange: '24-28 wks', tests: ['OGTT (75g)', 'CBC (repeat)', 'Anti-D (if Rh-)', 'USG Fetal Echo'] },
+                                              'third_trimester_early': { weekRange: '28-32 wks', tests: ['USG Growth Scan', 'CBC (repeat)', 'TSH (repeat)', 'Urine Routine', 'USG Doppler'] },
+                                              'third_trimester_late': { weekRange: '34-36 wks', tests: ['USG Growth Scan', 'GBS Screening', 'CBC + Coagulation', 'LFT/KFT', 'NST', 'USG Presentation'] },
+                                              'term': { weekRange: '37-40 wks', tests: ['NST (weekly)', 'BPP', 'USG AFI', 'Bishop Score', 'USG EFW & Doppler'] },
+                                            };
+
+                                            const fertilityTests = ['Day 2/3 Hormones', 'USG Pelvic', 'HSG', 'Semen Analysis', 'Day 21 Progesterone', 'Vit D/B12/Ferritin', 'OGTT', 'USG Follicular Monitoring'];
+                                            const cycleTests = ['Hormonal Panel', 'TSH/T3/T4', 'USG Pelvic', 'Prolactin', 'Fasting Insulin', 'Lipid Profile', 'Vit D/B12', 'CBC'];
+
+                                            let suggestedTests: string[] = [];
+                                            let milestoneLabel = '';
+
+                                            if (careMode === 'pregnancy' && invPregnancyWeek > 0) {
+                                              const getKey = () => {
+                                                if (invPregnancyWeek <= 10) return 'booking';
+                                                if (invPregnancyWeek <= 14) return 'first_trimester';
+                                                if (invPregnancyWeek <= 20) return 'second_trimester_early';
+                                                if (invPregnancyWeek <= 28) return 'second_trimester_mid';
+                                                if (invPregnancyWeek <= 32) return 'third_trimester_early';
+                                                if (invPregnancyWeek <= 36) return 'third_trimester_late';
+                                                return 'term';
+                                              };
+                                              const key = getKey();
+                                              suggestedTests = invMilestones[key].tests;
+                                              milestoneLabel = invMilestones[key].weekRange;
+                                            } else if (careMode === 'natural_conception' || careMode === 'iui' || careMode === 'ivf') {
+                                              suggestedTests = fertilityTests;
+                                              milestoneLabel = 'Fertility';
+                                            } else {
+                                              suggestedTests = cycleTests;
+                                              milestoneLabel = 'Cycle';
+                                            }
+
+                                            const savedTests: string[] = schedVitals.nextInvestigationTests || [];
+                                            const customInvText = schedVitals.nextInvestigationCustom || '';
+
+                                            const toggleTest = (testName: string) => {
+                                              const current: string[] = schedVitals.nextInvestigationTests || [];
+                                              const updated = current.includes(testName)
+                                                ? current.filter((t: string) => t !== testName)
+                                                : [...current, testName];
+                                              saveScheduleVitals('nextInvestigationTests', JSON.stringify(updated));
+                                            };
+
+                                            return (
+                                              <div className="bg-white rounded-lg border border-indigo-100 p-2.5">
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                  <span className="text-[11px] font-bold text-indigo-700 flex items-center gap-1.5"><FlaskConical className="w-3 h-3" /> Next Investigations</span>
+                                                  <div className="flex items-center gap-1.5">
+                                                    {milestoneLabel && <Badge className="text-[9px] bg-indigo-100 text-indigo-600 border-indigo-200">{milestoneLabel}</Badge>}
+                                                    {invCountdown && <Badge className={`text-[9px] ${invCountdown.color} border-0`}>{invCountdown.text}</Badge>}
+                                                  </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <Input
+                                                    type="date"
+                                                    key={`inv-${selectedPatient.id}-${nextInvDate}`}
+                                                    defaultValue={nextInvDate}
+                                                    min={new Date().toISOString().split('T')[0]}
+                                                    className="h-7 text-xs border-indigo-200 focus-visible:ring-indigo-300 flex-1"
+                                                    data-testid="input-next-investigation-date"
+                                                    onBlur={(e) => { if (e.target.value) saveScheduleVitals('nextInvestigationDate', e.target.value); }}
+                                                  />
+                                                  {nextInvDate && (
+                                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-rose-400 hover:text-rose-600 hover:bg-rose-50" onClick={() => saveScheduleVitals('nextInvestigationDate', '')} data-testid="button-clear-next-inv"><X className="w-3 h-3" /></Button>
+                                                  )}
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-1" data-testid="investigation-checkboxes">
+                                                  {suggestedTests.map((test) => (
+                                                    <label key={test} className={`flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer text-[11px] transition-colors ${savedTests.includes(test) ? 'bg-indigo-100 text-indigo-800 font-medium' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`} data-testid={`checkbox-inv-${test.replace(/[^a-zA-Z0-9]/g, '-')}`}>
+                                                      <input
+                                                        type="checkbox"
+                                                        checked={savedTests.includes(test)}
+                                                        onChange={() => toggleTest(test)}
+                                                        className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                      />
+                                                      <span className="truncate">{test}</span>
+                                                    </label>
+                                                  ))}
+                                                </div>
+                                                <Input
+                                                  type="text"
+                                                  placeholder="+ Custom / Repeat test..."
+                                                  key={`inv-custom-${selectedPatient.id}-${customInvText}`}
+                                                  defaultValue={customInvText}
+                                                  className="h-7 text-xs border-indigo-200 focus-visible:ring-indigo-300 mt-2"
+                                                  data-testid="input-next-investigation-custom"
+                                                  onBlur={(e) => saveScheduleVitals('nextInvestigationCustom', e.target.value)}
+                                                />
+                                                {(nextInvDate || savedTests.length > 0) && (
+                                                  <div className="mt-1.5">
+                                                    {nextInvDate && <p className="text-[10px] text-indigo-500">{new Date(nextInvDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })}</p>}
+                                                    {savedTests.length > 0 && <p className="text-[10px] text-indigo-600 font-medium mt-0.5">{savedTests.join(', ')}{customInvText ? `, ${customInvText}` : ''}</p>}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })()}
                                         </div>
                                       </div>
                                     );
