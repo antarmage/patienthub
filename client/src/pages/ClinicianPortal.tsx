@@ -525,7 +525,8 @@ export default function ClinicianPortal() {
     if (completedMap.has(lower)) return completedMap.get(lower);
 
     const aliases = investigationAliases[lower] || [];
-    for (const [key, val] of completedMap.entries()) {
+    const entries = Array.from(completedMap.entries());
+    for (const [key, val] of entries) {
       if (key === lower) return val;
       if (aliases.some(alias => key.includes(alias))) return val;
     }
@@ -563,6 +564,17 @@ export default function ClinicianPortal() {
       setNewMed({ name: '', dose: '', frequency: '', startDate: '', status: 'Active', notes: '' });
     },
   });
+
+  const dashboardStatsQuery = useQuery({
+    queryKey: ['/api/dashboard/stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/dashboard/stats');
+      if (!res.ok) throw new Error('Failed to fetch dashboard stats');
+      return res.json();
+    },
+    refetchInterval: 60000,
+  });
+  const dashStats = dashboardStatsQuery.data;
 
   const pcosQuery = useQuery({
     queryKey: ['/api/analytics/pcos'],
@@ -744,7 +756,7 @@ export default function ClinicianPortal() {
                          <div className="p-2 bg-blue-50 rounded-lg text-blue-600"><Users className="w-5 h-5" /></div>
                          <div>
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Today's Appointments</p>
-                            <p className="text-xl font-bold text-slate-900">18</p>
+                            <p className="text-xl font-bold text-slate-900" data-testid="stat-today-appointments">{dashStats?.todayAppointments ?? '—'}</p>
                          </div>
                       </div>
                       <div className="h-8 w-px bg-slate-100"></div>
@@ -752,7 +764,7 @@ export default function ClinicianPortal() {
                          <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><Dna className="w-5 h-5" /></div>
                          <div>
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Fertility Active</p>
-                            <p className="text-xl font-bold text-slate-900">9</p>
+                            <p className="text-xl font-bold text-slate-900" data-testid="stat-fertility-active">{dashStats?.fertilityActive ?? '—'}</p>
                          </div>
                       </div>
                       <div className="h-8 w-px bg-slate-100"></div>
@@ -760,15 +772,15 @@ export default function ClinicianPortal() {
                          <div className="p-2 bg-pink-50 rounded-lg text-pink-600"><Baby className="w-5 h-5" /></div>
                          <div>
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Pregnancy Follow-ups</p>
-                            <p className="text-xl font-bold text-slate-900">6</p>
+                            <p className="text-xl font-bold text-slate-900" data-testid="stat-pregnancy-followups">{dashStats?.pregnancyFollowups ?? '—'}</p>
                          </div>
                       </div>
                       <div className="h-8 w-px bg-slate-100"></div>
                       <div className="flex items-center gap-3">
                          <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><FileText className="w-5 h-5" /></div>
                          <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Referrals In/Out</p>
-                            <p className="text-xl font-bold text-slate-900">4 <span className="text-sm text-slate-400 font-normal">/ 2</span></p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Referrals</p>
+                            <p className="text-xl font-bold text-slate-900" data-testid="stat-referrals">{dashStats?.totalReferrals ?? '—'}</p>
                          </div>
                       </div>
                       <div className="h-8 w-px bg-slate-100"></div>
@@ -776,13 +788,13 @@ export default function ClinicianPortal() {
                          <div className="p-2 bg-rose-50 rounded-lg text-rose-600"><AlertTriangle className="w-5 h-5" /></div>
                          <div>
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">High Risk Alerts</p>
-                            <p className="text-xl font-bold text-slate-900">2</p>
+                            <p className="text-xl font-bold text-slate-900" data-testid="stat-high-risk">{dashStats?.highRiskAlerts ?? '—'}</p>
                          </div>
                       </div>
                    </div>
                    <div className="text-right">
-                      <p className="text-sm font-medium text-slate-900">Wednesday, Oct 24</p>
-                      <p className="text-xs text-slate-500">Clinic Hours: 09:00 - 17:00</p>
+                      <p className="text-sm font-medium text-slate-900">{new Date().toLocaleDateString('en-IN', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                      <p className="text-xs text-slate-500">Total Patients: {dashStats?.totalPatients ?? '—'}</p>
                    </div>
                 </div>
 
@@ -799,83 +811,39 @@ export default function ClinicianPortal() {
                         </div>
                         
                         <div className="grid grid-cols-3 gap-4">
-                           {/* Priority Card 1 - Fertility */}
-                           <Card data-testid="priority-card-0" className="border-l-4 border-l-rose-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => patients[0] && navigateToPatient(patients[0])}>
-                              <CardContent className="p-4">
-                                 <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center gap-2">
-                                       <Avatar className="h-8 w-8 text-xs border border-rose-100 bg-rose-50 text-rose-700">
-                                          <AvatarFallback>{getInitials(patients[0]?.name)}</AvatarFallback>
-                                       </Avatar>
-                                       <div>
-                                          <p data-testid="text-priority-name-0" className="font-bold text-sm text-slate-900">{patients[0]?.name || 'Loading...'}</p>
-                                          <p className="text-[10px] text-slate-500">{patients[0]?.type || 'TTC'}</p>
+                           {(dashStats?.priorityPatients || []).length > 0 ? (dashStats.priorityPatients as any[]).map((pp: any, idx: number) => {
+                              const borderColors: Record<string, string> = { action: 'border-l-rose-500', review: 'border-l-amber-500', alert: 'border-l-amber-500' };
+                              const badgeColors: Record<string, string> = { action: 'bg-rose-100 text-rose-700', review: 'bg-amber-100 text-amber-700', alert: 'bg-amber-100 text-amber-700' };
+                              const avatarColors: Record<string, string> = { fertility: 'border-rose-100 bg-rose-50 text-rose-700', pregnancy: 'border-amber-100 bg-amber-50 text-amber-700', postpartum: 'border-slate-100 bg-slate-50 text-slate-600' };
+                              const typeIcons: Record<string, any> = { fertility: <Microscope className="w-3 h-3 text-purple-500" />, pregnancy: <Baby className="w-3 h-3 text-pink-500" />, postpartum: <Brain className="w-3 h-3 text-slate-500" /> };
+                              const typeLabels: Record<string, string> = { fertility: 'Fertility Follow-up', pregnancy: 'Pregnancy Follow-up', postpartum: 'Postpartum Check' };
+                              const patient = patients.find((p: any) => p.id === pp.id) || pp;
+                              return (
+                                 <Card key={pp.id} data-testid={`priority-card-${idx}`} className={`border-l-4 ${borderColors[pp.priorityLevel] || 'border-l-slate-300'} shadow-sm cursor-pointer hover:shadow-md transition-shadow`} onClick={() => patient && navigateToPatient(patient)}>
+                                    <CardContent className="p-4">
+                                       <div className="flex justify-between items-start mb-2">
+                                          <div className="flex items-center gap-2">
+                                             <Avatar className={`h-8 w-8 text-xs border ${avatarColors[pp.priorityType] || 'border-slate-100 bg-slate-50 text-slate-600'}`}>
+                                                <AvatarFallback>{getInitials(pp.name)}</AvatarFallback>
+                                             </Avatar>
+                                             <div>
+                                                <p data-testid={`text-priority-name-${idx}`} className="font-bold text-sm text-slate-900">{pp.name}</p>
+                                                <p className="text-[10px] text-slate-500">{pp.type || pp.priorityType}</p>
+                                             </div>
+                                          </div>
+                                          <Badge className={`${badgeColors[pp.priorityLevel] || 'bg-slate-100 text-slate-700'} hover:opacity-80 border-none text-[10px]`}>{pp.priorityLevel === 'action' ? 'Action' : pp.priorityLevel === 'review' ? 'Review' : 'Alert'}</Badge>
                                        </div>
-                                    </div>
-                                    <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-200 border-none text-[10px]">Action</Badge>
-                                 </div>
-                                 <div className="space-y-1">
-                                    <div className="flex items-center gap-2 text-xs text-slate-700 font-medium">
-                                       <Microscope className="w-3 h-3 text-purple-500" /> Follicle Ready (20mm)
-                                    </div>
-                                    <div className="flex items-center gap-2 text-xs text-rose-600 font-medium">
-                                       <Syringe className="w-3 h-3" /> Trigger Due Today
-                                    </div>
-                                 </div>
-                              </CardContent>
-                           </Card>
-
-                           {/* Priority Card 2 - Pregnancy */}
-                           <Card data-testid="priority-card-1" className="border-l-4 border-l-amber-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => patients[1] && navigateToPatient(patients[1])}>
-                              <CardContent className="p-4">
-                                 <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center gap-2">
-                                       <Avatar className="h-8 w-8 text-xs border border-amber-100 bg-amber-50 text-amber-700">
-                                          <AvatarFallback>{getInitials(patients[1]?.name)}</AvatarFallback>
-                                       </Avatar>
-                                       <div>
-                                          <p data-testid="text-priority-name-1" className="font-bold text-sm text-slate-900">{patients[1]?.name || 'Loading...'}</p>
-                                          <p className="text-[10px] text-slate-500">{patients[1]?.type || 'Pregnancy'}</p>
+                                       <div className="space-y-1">
+                                          <div className="flex items-center gap-2 text-xs text-slate-700 font-medium">
+                                             {typeIcons[pp.priorityType] || <Users className="w-3 h-3" />} {typeLabels[pp.priorityType] || 'Follow-up'}
+                                          </div>
                                        </div>
-                                    </div>
-                                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-none text-[10px]">Review</Badge>
-                                 </div>
-                                 <div className="space-y-1">
-                                    <div className="flex items-center gap-2 text-xs text-slate-700 font-medium">
-                                       <FlaskConical className="w-3 h-3 text-slate-500" /> OGTT Pending
-                                    </div>
-                                    <div className="flex items-center gap-2 text-xs text-amber-600 font-medium">
-                                       <Scale className="w-3 h-3" /> Weight gain high
-                                    </div>
-                                 </div>
-                              </CardContent>
-                           </Card>
-
-                           {/* Priority Card 3 - Postpartum */}
-                           <Card data-testid="priority-card-2" className="border-l-4 border-l-amber-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => patients[2] && navigateToPatient(patients[2])}>
-                              <CardContent className="p-4">
-                                 <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center gap-2">
-                                       <Avatar className="h-8 w-8 text-xs border border-slate-100 bg-slate-50 text-slate-600">
-                                          <AvatarFallback>{getInitials(patients[2]?.name)}</AvatarFallback>
-                                       </Avatar>
-                                       <div>
-                                          <p data-testid="text-priority-name-2" className="font-bold text-sm text-slate-900">{patients[2]?.name || 'Loading...'}</p>
-                                          <p className="text-[10px] text-slate-500">{patients[2]?.type || 'Postpartum'}</p>
-                                       </div>
-                                    </div>
-                                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-none text-[10px]">Alert</Badge>
-                                 </div>
-                                 <div className="space-y-1">
-                                    <div className="flex items-center gap-2 text-xs text-rose-600 font-medium">
-                                       <Brain className="w-3 h-3" /> EPDS Score High
-                                    </div>
-                                    <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                                       <MessageSquare className="w-3 h-3" /> Psych Consult Needed
-                                    </div>
-                                 </div>
-                              </CardContent>
-                           </Card>
+                                    </CardContent>
+                                 </Card>
+                              );
+                           }) : (
+                              <div className="col-span-3 py-8 text-center text-slate-400 text-sm">No priority patients at this time</div>
+                           )}
                         </div>
                      </div>
 
@@ -943,37 +911,37 @@ export default function ClinicianPortal() {
                      <div className="grid grid-cols-4 gap-4">
                         <Card className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white border-none shadow-md">
                            <CardContent className="p-4">
-                              <p className="text-[10px] text-indigo-200 uppercase tracking-wider font-bold mb-1">Pregnancies (This Month)</p>
+                              <p className="text-[10px] text-indigo-200 uppercase tracking-wider font-bold mb-1">Pregnancy Patients</p>
                               <div className="flex items-end justify-between">
-                                 <p className="text-3xl font-bold">5</p>
+                                 <p className="text-3xl font-bold" data-testid="stat-pregnancies-month">{dashStats?.pregnancyFollowups ?? '—'}</p>
                                  <TrendingUp className="w-4 h-4 text-indigo-300 mb-1" />
                               </div>
                            </CardContent>
                         </Card>
                         <Card className="shadow-sm border-slate-200">
                            <CardContent className="p-4">
-                              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">Cycle Success Rate</p>
+                              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">Fertility Patients</p>
                               <div className="flex items-end justify-between">
-                                 <p className="text-2xl font-bold text-slate-800">24%</p>
-                                 <span className="text-xs text-emerald-600 font-medium">+2% vs last mo</span>
+                                 <p className="text-2xl font-bold text-slate-800" data-testid="stat-fertility-insights">{dashStats?.fertilityActive ?? '—'}</p>
+                                 <Dna className="w-4 h-4 text-purple-400 mb-1" />
                               </div>
                            </CardContent>
                         </Card>
                         <Card className="shadow-sm border-slate-200">
                            <CardContent className="p-4">
-                              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">PCOS Symptom Trend</p>
+                              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">Postpartum Active</p>
                               <div className="flex items-end justify-between">
-                                 <p className="text-2xl font-bold text-slate-800">High</p>
-                                 <span className="text-xs text-emerald-600 font-medium">Improvement ↑</span>
-                              </div>
-                           </CardContent>
-                        </Card>
-                        <Card className="shadow-sm border-slate-200">
-                           <CardContent className="p-4">
-                              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">Postpartum Recovery</p>
-                              <div className="flex items-end justify-between">
-                                 <p className="text-2xl font-bold text-slate-800">8.2<span className="text-sm text-slate-400 font-normal">/10</span></p>
+                                 <p className="text-2xl font-bold text-slate-800" data-testid="stat-postpartum-insights">{dashStats?.postpartumActive ?? '—'}</p>
                                  <Activity className="w-4 h-4 text-slate-400 mb-1" />
+                              </div>
+                           </CardContent>
+                        </Card>
+                        <Card className="shadow-sm border-slate-200">
+                           <CardContent className="p-4">
+                              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">Lab Reports</p>
+                              <div className="flex items-end justify-between">
+                                 <p className="text-2xl font-bold text-slate-800" data-testid="stat-lab-reports">{dashStats?.teamActivity?.labReportsTotal ?? '—'}</p>
+                                 <FileText className="w-4 h-4 text-blue-400 mb-1" />
                               </div>
                            </CardContent>
                         </Card>
@@ -994,16 +962,16 @@ export default function ClinicianPortal() {
                         <CardContent className="p-0">
                            <div className="divide-y divide-slate-100">
                               <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <span className="text-xs font-medium text-slate-600">Ovulation Window</span>
-                                 <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none">3 Active</Badge>
+                                 <span className="text-xs font-medium text-slate-600">Active Fertility Patients</span>
+                                 <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none" data-testid="stat-fertility-active-badge">{dashStats?.fertilityActive ?? 0} Active</Badge>
                               </div>
                               <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <span className="text-xs font-medium text-slate-600">IUIs Planned</span>
-                                 <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-none">2 This Week</Badge>
+                                 <span className="text-xs font-medium text-slate-600">Today's Fertility Appointments</span>
+                                 <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-none">{queuePatients.filter((p: any) => ['fertility', 'ttc', 'iui', 'ivf', 'iui cycle', 'pcos'].some(t => (p.type || '').toLowerCase().includes(t))).length} Today</Badge>
                               </div>
                               <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <span className="text-xs font-medium text-slate-600">Low Probability</span>
-                                 <Badge variant="outline" className="text-slate-500">2 Optimize</Badge>
+                                 <span className="text-xs font-medium text-slate-600">Pending Lab Tasks</span>
+                                 <Badge variant="outline" className="text-slate-500">{dashStats?.pendingLabTasks ?? 0} Pending</Badge>
                               </div>
                            </div>
                         </CardContent>
@@ -1020,16 +988,16 @@ export default function ClinicianPortal() {
                         <CardContent className="p-0">
                            <div className="divide-y divide-slate-100">
                               <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
+                                 <span className="text-xs font-medium text-slate-600">Active Pregnancies</span>
+                                 <Badge className="bg-pink-100 text-pink-700 hover:bg-pink-200 border-none" data-testid="stat-pregnancy-watch">{dashStats?.pregnancyFollowups ?? 0} Patients</Badge>
+                              </div>
+                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
                                  <span className="text-xs font-medium text-slate-600">High BP Alerts</span>
-                                 <div className="flex items-center gap-1 text-xs font-bold text-rose-600"><AlertCircle className="w-3 h-3" /> 1</div>
+                                 <div className="flex items-center gap-1 text-xs font-bold text-rose-600"><AlertCircle className="w-3 h-3" /> {dashStats?.clinicInsights?.highBpAlerts ?? 0}</div>
                               </div>
                               <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <span className="text-xs font-medium text-slate-600">Low Hb Cases</span>
-                                 <div className="flex items-center gap-1 text-xs font-bold text-amber-600">2</div>
-                              </div>
-                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <span className="text-xs font-medium text-slate-600">Scans Due</span>
-                                 <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">4 This Week</Badge>
+                                 <span className="text-xs font-medium text-slate-600">Today's Pregnancy Visits</span>
+                                 <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">{queuePatients.filter((p: any) => ['pregnancy', 'pregnant', 'antenatal'].some(t => (p.type || '').toLowerCase().includes(t))).length} Today</Badge>
                               </div>
                            </div>
                         </CardContent>
@@ -1046,16 +1014,16 @@ export default function ClinicianPortal() {
                         <CardContent className="p-0">
                            <div className="divide-y divide-slate-100">
                               <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <span className="text-xs font-medium text-slate-600">Depression Risk</span>
-                                 <div className="flex items-center gap-1 text-xs font-bold text-rose-600"><Brain className="w-3 h-3" /> 1 High</div>
+                                 <span className="text-xs font-medium text-slate-600">Active Postpartum</span>
+                                 <Badge className="bg-slate-100 text-slate-700 border-none" data-testid="stat-postpartum-watch">{dashStats?.postpartumActive ?? 0} Patients</Badge>
                               </div>
                               <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <span className="text-xs font-medium text-slate-600">Lactation Issues</span>
-                                 <Badge variant="outline" className="text-slate-500">2 Logged</Badge>
+                                 <span className="text-xs font-medium text-slate-600">High Risk Flags</span>
+                                 <div className="flex items-center gap-1 text-xs font-bold text-rose-600"><Brain className="w-3 h-3" /> {dashStats?.highRiskAlerts ?? 0}</div>
                               </div>
                               <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <span className="text-xs font-medium text-slate-600">Contraception</span>
-                                 <Badge className="bg-slate-100 text-slate-700 border-none">3 Due</Badge>
+                                 <span className="text-xs font-medium text-slate-600">Today's Visits</span>
+                                 <Badge variant="outline" className="text-slate-500">{dashStats?.teamActivity?.visitsToday ?? 0} Today</Badge>
                               </div>
                            </div>
                         </CardContent>
@@ -1070,23 +1038,18 @@ export default function ClinicianPortal() {
                         </CardHeader>
                         <CardContent className="p-0">
                            <div className="divide-y divide-slate-100">
-                              {patients.slice(0, 3).map((p: any, idx: number) => {
-                                 const usgDescriptions = ['Follicular Study', 'Anomaly Scan', 'Early Pregnancy Scan'];
-                                 const statusBadges = [
-                                    <Badge key="s" variant="outline" className="text-slate-500 border-slate-200">Scheduled</Badge>,
-                                    <Badge key="c" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none">Completed</Badge>,
-                                    <Badge key="p" variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">Pending</Badge>,
-                                 ];
-                                 return (
-                                    <div key={p.id} data-testid={`usg-referral-${p.id}`} className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                       <div>
-                                          <p className="text-xs font-medium text-slate-800" data-testid={`text-usg-name-${p.id}`}>{p.name}</p>
-                                          <p className="text-[10px] text-slate-500">{usgDescriptions[idx] || 'USG Referral'}</p>
-                                       </div>
-                                       {statusBadges[idx] || statusBadges[0]}
+                              {(dashStats?.usgReferralPatients || queuePatients.slice(0, 3)).map((p: any, idx: number) => (
+                                 <div key={p.id || idx} data-testid={`usg-referral-${p.id || idx}`} className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer" onClick={() => { const pat = patients.find((pt: any) => pt.id === p.id); if (pat) navigateToPatient(pat); }}>
+                                    <div>
+                                       <p className="text-xs font-medium text-slate-800" data-testid={`text-usg-name-${p.id || idx}`}>{p.name}</p>
+                                       <p className="text-[10px] text-slate-500">{p.usgType || p.type || 'USG Referral'}</p>
                                     </div>
-                                 );
-                              })}
+                                    <Badge variant="outline" className="text-slate-500 border-slate-200">Scheduled</Badge>
+                                 </div>
+                              ))}
+                              {(!dashStats?.usgReferralPatients || dashStats.usgReferralPatients.length === 0) && queuePatients.length === 0 && (
+                                 <div className="p-4 text-center text-slate-400 text-xs">No USG referrals today</div>
+                              )}
                            </div>
                         </CardContent>
                      </Card>
@@ -1100,24 +1063,24 @@ export default function ClinicianPortal() {
                         </CardHeader>
                         <CardContent className="p-4 space-y-4">
                            <div className="flex items-start gap-3">
-                              <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center shrink-0 text-[10px] font-bold text-purple-700">P</div>
+                              <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center shrink-0 text-[10px] font-bold text-purple-700">C</div>
                               <div>
-                                 <p className="text-xs font-medium text-slate-800">Psychologist Notes</p>
-                                 <p className="text-[10px] text-slate-500">2 new entries added today</p>
+                                 <p className="text-xs font-medium text-slate-800">Clinical Notes</p>
+                                 <p className="text-[10px] text-slate-500" data-testid="stat-clinical-notes">{dashStats?.teamActivity?.clinicalNotes ?? 0} entries today</p>
                               </div>
                            </div>
                            <div className="flex items-start gap-3">
                               <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 text-[10px] font-bold text-emerald-700">N</div>
                               <div>
                                  <p className="text-xs font-medium text-slate-800">Nutrition Plans</p>
-                                 <p className="text-[10px] text-slate-500">3 updated by Dietitian</p>
+                                 <p className="text-[10px] text-slate-500" data-testid="stat-nutrition-plans">{dashStats?.teamActivity?.nutritionPlans ?? 0} total plans</p>
                               </div>
                            </div>
                            <div className="flex items-start gap-3">
                               <div className="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center shrink-0 text-[10px] font-bold text-rose-700">L</div>
                               <div>
-                                 <p className="text-xs font-medium text-slate-800">Lab Results</p>
-                                 <p className="text-[10px] text-slate-500">6 reports uploaded</p>
+                                 <p className="text-xs font-medium text-slate-800">Lab Reports</p>
+                                 <p className="text-[10px] text-slate-500" data-testid="stat-lab-reports-team">{dashStats?.teamActivity?.labReportsTotal ?? 0} reports ({dashStats?.teamActivity?.labReportsToday ?? 0} today)</p>
                               </div>
                            </div>
                         </CardContent>

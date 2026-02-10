@@ -1007,5 +1007,151 @@ Be thorough — extract every medication mentioned including supplements and vit
     }
   });
 
+  app.get("/api/dashboard/stats", async (_req, res) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const patients = await storage.getPatients();
+      const allAppointments = await storage.getAppointments();
+      const todayAppointments = allAppointments.filter((a: any) => a.date === today);
+      const allDocuments = await storage.getAllDocuments();
+      const allClinicalNotes = await storage.getAllClinicalNotes();
+      const allVisitHistory = await storage.getAllVisitHistory();
+      const nutritionPlans = await storage.getNutritionPlans();
+      const labTasks = await storage.getLabTasks();
+
+      const fertilityTypes = ['fertility', 'ttc', 'iui', 'ivf', 'natural_conception', 'iui cycle', 'pcos'];
+      const pregnancyTypes = ['pregnancy', 'pregnant', 'antenatal'];
+      const postpartumTypes = ['postpartum', 'postnatal'];
+
+      const fertilityCount = patients.filter((p: any) => fertilityTypes.some(t => (p.type || '').toLowerCase().includes(t))).length;
+      const pregnancyCount = patients.filter((p: any) => pregnancyTypes.some(t => (p.type || '').toLowerCase().includes(t))).length;
+      const postpartumCount = patients.filter((p: any) => postpartumTypes.some(t => (p.type || '').toLowerCase().includes(t))).length;
+
+      const allReferrals: any[] = [];
+      for (const p of patients.slice(0, 100)) {
+        try {
+          const refs = await storage.getReferrals(p.id);
+          allReferrals.push(...refs);
+        } catch {}
+      }
+      const referralsIn = allReferrals.filter((r: any) => (r.direction || '').toLowerCase() === 'in' || (r.type || '').toLowerCase().includes('incoming')).length;
+      const referralsOut = allReferrals.filter((r: any) => (r.direction || '').toLowerCase() === 'out' || (r.type || '').toLowerCase().includes('outgoing')).length;
+
+      const highRiskPatients = patients.filter((p: any) => {
+        const risk = (p.riskLevel || p.risk || '').toLowerCase();
+        const type = (p.type || '').toLowerCase();
+        return risk.includes('high') || type.includes('high risk');
+      });
+
+      const todayLabReports = allDocuments.filter((d: any) => d.category === 'Lab Report' && d.date === today).length;
+      const recentLabReports = allDocuments.filter((d: any) => d.category === 'Lab Report').length;
+
+      const todayNotes = allClinicalNotes.filter((n: any) => {
+        const noteDate = n.date || (n.createdAt ? new Date(n.createdAt).toISOString().split('T')[0] : '');
+        return noteDate === today;
+      }).length;
+
+      const recentNutritionUpdates = nutritionPlans.length;
+
+      const todayVisits = allVisitHistory.filter((v: any) => v.date === today).length;
+
+      const pregnantPatients = patients.filter((p: any) => {
+        const type = (p.type || '').toLowerCase();
+        return pregnancyTypes.some(t => type.includes(t));
+      });
+      const highBpAlerts = pregnantPatients.filter((p: any) => {
+        const bp = (p.bp || '').toString().trim();
+        if (!bp || !bp.includes('/')) return false;
+        const systolic = parseInt(bp.split('/')[0], 10);
+        return !isNaN(systolic) && systolic >= 140;
+      }).length;
+      const lowHbCases = pregnantPatients.filter((p: any) => {
+        const hb = parseFloat(p.hb);
+        return !isNaN(hb) && hb > 0 && hb < 10;
+      }).length;
+
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      const thisMonthAppointments = allAppointments.filter((a: any) => {
+        const d = new Date(a.date);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      });
+
+      const priorityPatients = [];
+      const todayPatientIds = todayAppointments.map((a: any) => a.patientId);
+      const todayPatients = patients.filter((p: any) => todayPatientIds.includes(p.id));
+
+      const fertilityTodayPatients = todayPatients.filter((p: any) => fertilityTypes.some(t => (p.type || '').toLowerCase().includes(t)));
+      const pregnancyTodayPatients = todayPatients.filter((p: any) => pregnancyTypes.some(t => (p.type || '').toLowerCase().includes(t)));
+      const postpartumTodayPatients = todayPatients.filter((p: any) => postpartumTypes.some(t => (p.type || '').toLowerCase().includes(t)));
+
+      if (fertilityTodayPatients.length > 0) priorityPatients.push({ ...fertilityTodayPatients[0], priorityType: 'fertility', priorityLevel: 'action' });
+      else if (patients.filter((p: any) => fertilityTypes.some(t => (p.type || '').toLowerCase().includes(t))).length > 0) {
+        const fp = patients.find((p: any) => fertilityTypes.some(t => (p.type || '').toLowerCase().includes(t)));
+        if (fp) priorityPatients.push({ ...fp, priorityType: 'fertility', priorityLevel: 'action' });
+      }
+
+      if (pregnancyTodayPatients.length > 0) priorityPatients.push({ ...pregnancyTodayPatients[0], priorityType: 'pregnancy', priorityLevel: 'review' });
+      else if (pregnantPatients.length > 0) priorityPatients.push({ ...pregnantPatients[0], priorityType: 'pregnancy', priorityLevel: 'review' });
+
+      if (postpartumTodayPatients.length > 0) priorityPatients.push({ ...postpartumTodayPatients[0], priorityType: 'postpartum', priorityLevel: 'alert' });
+      else {
+        const pp = patients.find((p: any) => postpartumTypes.some(t => (p.type || '').toLowerCase().includes(t)));
+        if (pp) priorityPatients.push({ ...pp, priorityType: 'postpartum', priorityLevel: 'alert' });
+      }
+
+      const usgReferralPatients = todayPatients.slice(0, 5).map((p: any) => {
+        const type = (p.type || '').toLowerCase();
+        let usgType = 'General USG';
+        if (fertilityTypes.some(t => type.includes(t))) usgType = 'Follicular Study';
+        else if (pregnancyTypes.some(t => type.includes(t))) {
+          if (p.lmp) {
+            const weeks = Math.floor((Date.now() - new Date(p.lmp).getTime()) / (7*24*60*60*1000));
+            if (weeks <= 10) usgType = 'Early Pregnancy Scan';
+            else if (weeks <= 14) usgType = 'NT Scan';
+            else if (weeks <= 22) usgType = 'Anomaly Scan';
+            else usgType = 'Growth Scan';
+          } else usgType = 'Pregnancy Scan';
+        }
+        return { id: p.id, name: p.name, usgType, type: p.type };
+      });
+
+      const pendingLabTasks = labTasks.filter((t: any) => (t.status || '').toLowerCase() !== 'completed').length;
+
+      res.json({
+        today,
+        todayAppointments: todayAppointments.length,
+        totalPatients: patients.length,
+        fertilityActive: fertilityCount,
+        pregnancyFollowups: pregnancyCount,
+        postpartumActive: postpartumCount,
+        referralsIn,
+        referralsOut: referralsOut || allReferrals.length,
+        totalReferrals: allReferrals.length,
+        highRiskAlerts: highRiskPatients.length,
+        highRiskPatients: highRiskPatients.slice(0, 5).map((p: any) => ({ id: p.id, name: p.name, type: p.type })),
+        priorityPatients,
+        usgReferralPatients,
+        thisMonthPregnancies: pregnancyCount,
+        pendingLabTasks,
+        teamActivity: {
+          clinicalNotes: todayNotes,
+          nutritionPlans: recentNutritionUpdates,
+          labReportsToday: todayLabReports,
+          labReportsTotal: recentLabReports,
+          visitsToday: todayVisits,
+        },
+        clinicInsights: {
+          pregnanciesThisMonth: pregnancyCount,
+          highBpAlerts,
+          lowHbCases,
+        },
+      });
+    } catch (err: any) {
+      console.error("Dashboard stats error:", err);
+      res.status(500).json({ error: "Failed to fetch dashboard stats: " + err.message });
+    }
+  });
+
   return httpServer;
 }
