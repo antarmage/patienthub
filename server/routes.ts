@@ -1027,6 +1027,8 @@ Be thorough — extract every medication mentioned including supplements and vit
 
       const allPregnancyTypePatients = patients.filter((p: any) => pregnancyTypes.some(t => (p.type || '').toLowerCase().includes(t)));
       const pregnancyCount = allPregnancyTypePatients.filter((p: any) => {
+        const ps = (p.pregnancyStatus || '').toLowerCase();
+        if (['completed', 'aborted', 'not_continuing'].includes(ps)) return false;
         if (!p.lmp) return true;
         const lmpDate = new Date(p.lmp);
         if (isNaN(lmpDate.getTime())) return true;
@@ -1065,6 +1067,8 @@ Be thorough — extract every medication mentioned including supplements and vit
       const todayVisits = allVisitHistory.filter((v: any) => v.date === today).length;
 
       const pregnantPatients = allPregnancyTypePatients.filter((p: any) => {
+        const ps = (p.pregnancyStatus || '').toLowerCase();
+        if (['completed', 'aborted', 'not_continuing'].includes(ps)) return false;
         if (!p.lmp) return true;
         const lmpDate = new Date(p.lmp);
         if (isNaN(lmpDate.getTime())) return true;
@@ -1195,10 +1199,16 @@ Be thorough — extract every medication mentioned including supplements and vit
           title = 'Active Pregnancy Follow-ups';
           filtered = patients.filter((p: any) => {
             if (!pregnancyTypes.some(t => (p.type || '').toLowerCase().includes(t))) return false;
+            const ps = (p.pregnancyStatus || '').toLowerCase();
+            if (['completed', 'aborted', 'not_continuing'].includes(ps)) return false;
             const weeks = calcWeeks(p.lmp);
             if (weeks === null) return true;
             return weeks >= 1 && weeks <= 42;
           });
+          break;
+        case 'pregnancy-all':
+          title = 'All Pregnancy Patients';
+          filtered = patients.filter((p: any) => pregnancyTypes.some(t => (p.type || '').toLowerCase().includes(t)));
           break;
         case 'postpartum':
           title = 'Postpartum Active Patients';
@@ -1261,6 +1271,7 @@ Be thorough — extract every medication mentioned including supplements and vit
           lmp: p.lmp,
           bp: p.bp,
           gestationalWeeks: weeks,
+          pregnancyStatus: p.pregnancyStatus || (weeks !== null && weeks > 42 ? 'completed' : weeks !== null ? 'active' : null),
           riskLevel: p.riskLevel || p.risk,
           appointmentTime: p.appointmentTime,
           appointmentType: p.appointmentType,
@@ -1272,6 +1283,23 @@ Be thorough — extract every medication mentioned including supplements and vit
     } catch (err: any) {
       console.error("Patient category error:", err);
       res.status(500).json({ error: "Failed to fetch patients: " + err.message });
+    }
+  });
+
+  app.patch("/api/patients/:id/pregnancy-status", async (req: any, res: any) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { pregnancyStatus } = req.body;
+      const validStatuses = ['active', 'completed', 'aborted', 'not_continuing'];
+      if (!validStatuses.includes(pregnancyStatus)) {
+        return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+      }
+      const patient = await storage.getPatient(id);
+      if (!patient) return res.status(404).json({ error: "Patient not found" });
+      const updated = await storage.updatePatient(id, { pregnancyStatus });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
     }
   });
 

@@ -52,6 +52,7 @@ export const patients = pgTable("patients", {
   lmp: text("lmp"),
   height: text("height"),
   bp: text("bp"),
+  pregnancyStatus: text("pregnancy_status"),
 });
 
 export const insertPatientSchema = createInsertSchema(patients).omit({ id: true });
