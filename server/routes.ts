@@ -795,6 +795,131 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/patients/:id/extract-prescription", async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const patient = await storage.getPatient(patientId);
+      if (!patient) return res.status(404).json({ error: "Patient not found" });
+
+      const { fileData, mimeType, fileName } = req.body;
+      if (!fileData || !mimeType) {
+        return res.status(400).json({ error: "Missing fileData or mimeType" });
+      }
+
+      const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+      if (!allowedMimes.includes(mimeType)) {
+        return res.status(400).json({ error: "Unsupported file type. Please upload a PDF or image (JPEG, PNG)." });
+      }
+
+      const fileSizeBytes = Buffer.byteLength(fileData, 'base64');
+      if (fileSizeBytes > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "File too large. Maximum size is 10 MB." });
+      }
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                inlineData: {
+                  mimeType,
+                  data: fileData,
+                },
+              },
+              {
+                text: `Extract all prescribed medications from this prescription document (image or PDF). Return a JSON array of medications. Each element should have these fields:
+- "name": the medication/drug name (e.g., "Folic Acid", "Progesterone", "Metformin", "Letrozole")
+- "dose": the dosage (e.g., "5 mg", "200 mg", "500 mg", "2.5 mg")
+- "frequency": how often to take it (e.g., "Once daily", "Twice daily", "Three times a day", "At bedtime")
+- "route": route of administration (e.g., "Oral", "Vaginal", "Subcutaneous", "Intramuscular", "Topical"). Default to "Oral" if not specified.
+- "startDate": the prescription date or start date found on the document in YYYY-MM-DD format. If not found, use null.
+- "duration": duration mentioned (e.g., "30 days", "2 weeks", "until next visit"). If not found, use null.
+- "notes": any additional instructions (e.g., "Take with food", "Empty stomach", "After meals"). If none, use null.
+
+Be thorough — extract every medication mentioned including supplements and vitamins. If the prescription is handwritten, do your best to read it.`,
+              },
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: "application/json",
+        },
+      });
+
+      const text = response.text || "";
+      let parsed: any[];
+      try {
+        const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const result = JSON.parse(cleaned);
+        parsed = Array.isArray(result) ? result : [result];
+      } catch {
+        return res.status(422).json({ error: "Could not parse AI response", raw: text });
+      }
+
+      const existingMeds = await storage.getMedications(patientId);
+      const normalizeName = (n: string) => n.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const existingSet = new Set(
+        existingMeds.map((m: any) => `${normalizeName(m.name)}|${m.dose || ''}`)
+      );
+
+      let inserted = 0;
+      let skipped = 0;
+      const today = new Date().toISOString().split('T')[0];
+
+      for (const item of parsed) {
+        if (!item.name) continue;
+
+        const dupKey = `${normalizeName(item.name)}|${item.dose || ''}`;
+        if (existingSet.has(dupKey)) {
+          skipped++;
+          continue;
+        }
+
+        await storage.createMedication({
+          patientId,
+          name: item.name,
+          dose: item.dose || null,
+          frequency: item.frequency || null,
+          route: item.route || "Oral",
+          startDate: item.startDate || today,
+          endDate: null,
+          prescribedBy: null,
+          status: "Active",
+          notes: [item.notes, item.duration ? `Duration: ${item.duration}` : null].filter(Boolean).join('. ') || null,
+        });
+        existingSet.add(dupKey);
+        inserted++;
+      }
+
+      await storage.createDocument({
+        patientId,
+        name: fileName || 'Prescription',
+        type: 'prescription',
+        category: 'Prescription',
+        date: today,
+        description: `AI-extracted prescription: ${inserted} medication(s) found`,
+        metadata: { extractedMeds: inserted, skippedDuplicates: skipped, uploadedAt: new Date().toISOString() },
+      });
+
+      let message = '';
+      if (inserted > 0) {
+        message = `Extracted ${inserted} medication(s) from prescription`;
+      } else {
+        message = "No new medications extracted";
+      }
+      if (skipped > 0) {
+        message += ` (${skipped} duplicate${skipped > 1 ? 's' : ''} skipped)`;
+      }
+
+      res.json({ inserted, skipped, total: parsed.length, message });
+    } catch (err: any) {
+      console.error("Prescription extraction error:", err);
+      res.status(500).json({ error: "Failed to extract prescription: " + err.message });
+    }
+  });
+
   app.get("/api/google-drive/status", async (_req, res) => {
     try {
       const files = await listLabReportFiles();
