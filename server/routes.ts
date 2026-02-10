@@ -795,6 +795,28 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/medicine-catalog", async (_req, res) => {
+    const catalog = await storage.getMedicineCatalog();
+    res.json(catalog);
+  });
+
+  app.post("/api/medicine-catalog", async (req, res) => {
+    const entry = await storage.createMedicineCatalogEntry(req.body);
+    res.status(201).json(entry);
+  });
+
+  app.patch("/api/medicine-catalog/:id", async (req, res) => {
+    const updated = await storage.updateMedicineCatalogEntry(parseInt(req.params.id), req.body);
+    if (!updated) return res.status(404).json({ error: "Medicine not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/medicine-catalog/:id", async (req, res) => {
+    const deleted = await storage.deleteMedicineCatalogEntry(parseInt(req.params.id));
+    if (!deleted) return res.status(404).json({ error: "Medicine not found" });
+    res.status(204).send();
+  });
+
   app.post("/api/patients/:id/extract-prescription", async (req, res) => {
     try {
       const patientId = parseInt(req.params.id);
@@ -814,6 +836,15 @@ export async function registerRoutes(
       const fileSizeBytes = Buffer.byteLength(fileData, 'base64');
       if (fileSizeBytes > 10 * 1024 * 1024) {
         return res.status(400).json({ error: "File too large. Maximum size is 10 MB." });
+      }
+
+      const catalogEntries = await storage.getMedicineCatalog();
+      let catalogHint = '';
+      if (catalogEntries.length > 0) {
+        const catalogList = catalogEntries.map(m =>
+          `${m.name}${m.genericName ? ` (${m.genericName})` : ''}${m.defaultDose ? ` — ${m.defaultDose}` : ''}${m.defaultFrequency ? `, ${m.defaultFrequency}` : ''}`
+        ).join('\n');
+        catalogHint = `\n\nIMPORTANT — This clinic commonly prescribes the following medicines. When the handwriting is ambiguous, prefer matching to one of these known medicines:\n${catalogList}\n\nUse the exact name from this list when there is a match. If a medicine is not in this list, still extract it with your best reading.`;
       }
 
       const response = await ai.models.generateContent({
@@ -838,7 +869,7 @@ export async function registerRoutes(
 - "duration": duration mentioned (e.g., "30 days", "2 weeks", "until next visit"). If not found, use null.
 - "notes": any additional instructions (e.g., "Take with food", "Empty stomach", "After meals"). If none, use null.
 
-Be thorough — extract every medication mentioned including supplements and vitamins. If the prescription is handwritten, do your best to read it.`,
+Be thorough — extract every medication mentioned including supplements and vitamins. If the prescription is handwritten, do your best to read it.${catalogHint}`,
               },
             ],
           },

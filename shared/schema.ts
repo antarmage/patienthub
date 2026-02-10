@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, serial, integer, real, date, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, integer, real, date, jsonb, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -366,5 +366,21 @@ export const patientProtocols = pgTable("patient_protocols", {
 export const insertPatientProtocolSchema = createInsertSchema(patientProtocols).omit({ id: true });
 export type InsertPatientProtocol = z.infer<typeof insertPatientProtocolSchema>;
 export type PatientProtocol = typeof patientProtocols.$inferSelect;
+
+export const medicineCatalog = pgTable("medicine_catalog", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  genericName: text("generic_name"),
+  defaultDose: text("default_dose"),
+  doseOptions: text("dose_options").array(),
+  defaultFrequency: text("default_frequency"),
+  route: text("route"),
+  category: text("category"),
+  isActive: boolean("is_active").default(true),
+});
+
+export const insertMedicineCatalogSchema = createInsertSchema(medicineCatalog).omit({ id: true });
+export type InsertMedicineCatalog = z.infer<typeof insertMedicineCatalogSchema>;
+export type MedicineCatalog = typeof medicineCatalog.$inferSelect;
 
 export * from "./models/chat";

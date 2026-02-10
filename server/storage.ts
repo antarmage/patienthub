@@ -25,6 +25,8 @@ import {
   type ConsentForm, type InsertConsentForm,
   type Document, type InsertDocument,
   type PatientProtocol, type InsertPatientProtocol,
+  medicineCatalog,
+  type MedicineCatalog, type InsertMedicineCatalog,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -116,6 +118,11 @@ export interface IStorage {
 
   getPatientProtocol(patientId: number): Promise<PatientProtocol | undefined>;
   savePatientProtocol(protocol: InsertPatientProtocol): Promise<PatientProtocol>;
+
+  getMedicineCatalog(): Promise<MedicineCatalog[]>;
+  createMedicineCatalogEntry(entry: InsertMedicineCatalog): Promise<MedicineCatalog>;
+  updateMedicineCatalogEntry(id: number, data: Partial<InsertMedicineCatalog>): Promise<MedicineCatalog | undefined>;
+  deleteMedicineCatalogEntry(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -427,6 +434,25 @@ export class DatabaseStorage implements IStorage {
   async savePatientProtocol(protocol: InsertPatientProtocol): Promise<PatientProtocol> {
     const [saved] = await db.insert(patientProtocols).values(protocol).returning();
     return saved;
+  }
+
+  async getMedicineCatalog(): Promise<MedicineCatalog[]> {
+    return db.select().from(medicineCatalog).where(eq(medicineCatalog.isActive, true));
+  }
+
+  async createMedicineCatalogEntry(entry: InsertMedicineCatalog): Promise<MedicineCatalog> {
+    const [created] = await db.insert(medicineCatalog).values(entry).returning();
+    return created;
+  }
+
+  async updateMedicineCatalogEntry(id: number, data: Partial<InsertMedicineCatalog>): Promise<MedicineCatalog | undefined> {
+    const [updated] = await db.update(medicineCatalog).set(data).where(eq(medicineCatalog.id, id)).returning();
+    return updated;
+  }
+
+  async deleteMedicineCatalogEntry(id: number): Promise<boolean> {
+    const [deleted] = await db.update(medicineCatalog).set({ isActive: false }).where(eq(medicineCatalog.id, id)).returning();
+    return !!deleted;
   }
 }
 

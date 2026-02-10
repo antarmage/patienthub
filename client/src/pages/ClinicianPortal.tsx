@@ -345,6 +345,49 @@ export default function ClinicianPortal() {
   });
   const postpartumScoreData = postpartumQuery.data || [];
 
+  const medicineCatalogQuery = useQuery({
+    queryKey: ['/api/medicine-catalog'],
+    queryFn: async () => {
+      const res = await fetch('/api/medicine-catalog');
+      if (!res.ok) throw new Error('Failed to fetch medicine catalog');
+      return res.json();
+    }
+  });
+  const medicineCatalog = medicineCatalogQuery.data || [];
+  const [newMedName, setNewMedName] = useState('');
+  const [newMedGeneric, setNewMedGeneric] = useState('');
+  const [newMedDose, setNewMedDose] = useState('');
+  const [newMedFrequency, setNewMedFrequency] = useState('');
+  const [newMedRoute, setNewMedRoute] = useState('Oral');
+  const [newMedCategory, setNewMedCategory] = useState('');
+  const [catalogFilter, setCatalogFilter] = useState('');
+
+  const addCatalogMutation = useMutation({
+    mutationFn: async (entry: any) => {
+      const res = await fetch('/api/medicine-catalog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      });
+      if (!res.ok) throw new Error('Failed to add medicine');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/medicine-catalog'] });
+      setNewMedName(''); setNewMedGeneric(''); setNewMedDose(''); setNewMedFrequency(''); setNewMedRoute('Oral'); setNewMedCategory('');
+    },
+  });
+
+  const deleteCatalogMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/medicine-catalog/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to remove medicine');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/medicine-catalog'] });
+    },
+  });
+
   const pcosQuery = useQuery({
     queryKey: ['/api/analytics/pcos'],
     queryFn: async () => {
@@ -2083,6 +2126,13 @@ export default function ClinicianPortal() {
                             >
                                <Users className="w-4 h-4 mr-3" /> My Care Network
                             </Button>
+                            <Button 
+                               variant="ghost" 
+                               className={`w-full justify-start font-medium ${activeSettingsTab === 'medicine-catalog' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                               onClick={() => setActiveSettingsTab('medicine-catalog')}
+                            >
+                               <Pill className="w-4 h-4 mr-3" /> Medicine Catalog
+                            </Button>
                             <Button variant="ghost" className="w-full justify-start text-slate-500 hover:text-slate-900">
                                <Settings className="w-4 h-4 mr-3" /> System Preferences
                             </Button>
@@ -2424,6 +2474,113 @@ export default function ClinicianPortal() {
                                           </div>
                                       </div>
 
+                                  </CardContent>
+                              </Card>
+                          </div>
+                      )}
+
+                      {activeSettingsTab === 'medicine-catalog' && (
+                          <div className="space-y-4">
+                              <Card className="shadow-sm border-slate-200">
+                                  <CardHeader>
+                                      <CardTitle className="text-base font-bold text-slate-800">Clinic Medicine Catalog</CardTitle>
+                                      <p className="text-xs text-slate-500 mt-1">Medicines commonly prescribed at this clinic. This list helps AI read handwritten prescriptions more accurately.</p>
+                                  </CardHeader>
+                                  <CardContent className="space-y-4">
+                                      <div className="grid grid-cols-6 gap-2">
+                                          <Input placeholder="Medicine name *" value={newMedName} onChange={e => setNewMedName(e.target.value)} className="h-8 text-xs col-span-2" data-testid="input-catalog-name" />
+                                          <Input placeholder="Generic name" value={newMedGeneric} onChange={e => setNewMedGeneric(e.target.value)} className="h-8 text-xs" data-testid="input-catalog-generic" />
+                                          <Input placeholder="Default dose" value={newMedDose} onChange={e => setNewMedDose(e.target.value)} className="h-8 text-xs" data-testid="input-catalog-dose" />
+                                          <Input placeholder="Frequency" value={newMedFrequency} onChange={e => setNewMedFrequency(e.target.value)} className="h-8 text-xs" data-testid="input-catalog-frequency" />
+                                          <Button
+                                            size="sm"
+                                            className="h-8 text-xs bg-blue-600 hover:bg-blue-700 gap-1"
+                                            disabled={!newMedName.trim() || addCatalogMutation.isPending}
+                                            onClick={() => addCatalogMutation.mutate({
+                                              name: newMedName.trim(),
+                                              genericName: newMedGeneric.trim() || null,
+                                              defaultDose: newMedDose.trim() || null,
+                                              defaultFrequency: newMedFrequency.trim() || null,
+                                              route: newMedRoute,
+                                              category: newMedCategory.trim() || null,
+                                            })}
+                                            data-testid="button-add-catalog-medicine"
+                                          >
+                                            {addCatalogMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Add
+                                          </Button>
+                                      </div>
+                                      <div className="flex gap-2">
+                                          <Select value={newMedRoute} onValueChange={setNewMedRoute}>
+                                            <SelectTrigger className="h-8 text-xs w-32"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="Oral">Oral</SelectItem>
+                                              <SelectItem value="Vaginal">Vaginal</SelectItem>
+                                              <SelectItem value="Subcutaneous">Subcutaneous</SelectItem>
+                                              <SelectItem value="Intramuscular">Intramuscular</SelectItem>
+                                              <SelectItem value="Topical">Topical</SelectItem>
+                                              <SelectItem value="IV">IV</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                          <Input placeholder="Category (e.g. Hormone, Supplement)" value={newMedCategory} onChange={e => setNewMedCategory(e.target.value)} className="h-8 text-xs w-56" data-testid="input-catalog-category" />
+                                      </div>
+
+                                      <div className="border-t border-slate-200 pt-3">
+                                        <div className="flex items-center justify-between mb-3">
+                                          <span className="text-xs text-slate-500 font-semibold">{medicineCatalog.length} medicine(s) in catalog</span>
+                                          <Input placeholder="Search catalog..." value={catalogFilter} onChange={e => setCatalogFilter(e.target.value)} className="h-7 text-xs w-48" data-testid="input-catalog-search" />
+                                        </div>
+                                        <div className="border border-slate-200 rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+                                          <table className="w-full text-xs text-left">
+                                            <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0">
+                                              <tr>
+                                                <th className="px-3 py-2 font-medium">Medicine</th>
+                                                <th className="px-3 py-2 font-medium">Generic Name</th>
+                                                <th className="px-3 py-2 font-medium">Default Dose</th>
+                                                <th className="px-3 py-2 font-medium">Frequency</th>
+                                                <th className="px-3 py-2 font-medium">Route</th>
+                                                <th className="px-3 py-2 font-medium">Category</th>
+                                                <th className="px-2 py-2 font-medium w-10"></th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                              {medicineCatalog
+                                                .filter((m: any) => {
+                                                  if (!catalogFilter) return true;
+                                                  const q = catalogFilter.toLowerCase();
+                                                  return (m.name || '').toLowerCase().includes(q) || (m.genericName || '').toLowerCase().includes(q) || (m.category || '').toLowerCase().includes(q);
+                                                })
+                                                .map((med: any) => (
+                                                <tr key={med.id} className="hover:bg-slate-50" data-testid={`row-catalog-${med.id}`}>
+                                                  <td className="px-3 py-2 font-medium text-slate-800">{med.name}</td>
+                                                  <td className="px-3 py-2 text-slate-500">{med.genericName || '—'}</td>
+                                                  <td className="px-3 py-2 text-slate-600">{med.defaultDose || '—'}</td>
+                                                  <td className="px-3 py-2 text-slate-500">{med.defaultFrequency || '—'}</td>
+                                                  <td className="px-3 py-2 text-slate-500">{med.route || '—'}</td>
+                                                  <td className="px-3 py-2">
+                                                    {med.category && (
+                                                      <Badge variant="outline" className="text-[10px]">{med.category}</Badge>
+                                                    )}
+                                                  </td>
+                                                  <td className="px-2 py-2">
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
+                                                      onClick={() => deleteCatalogMutation.mutate(med.id)}
+                                                      data-testid={`button-delete-catalog-${med.id}`}
+                                                    >
+                                                      <X className="w-3 h-3" />
+                                                    </Button>
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                              {medicineCatalog.length === 0 && (
+                                                <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-400">No medicines in catalog yet. Add your first medicine above.</td></tr>
+                                              )}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
                                   </CardContent>
                               </Card>
                           </div>
