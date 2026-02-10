@@ -3235,7 +3235,7 @@ export default function ClinicianPortal() {
                                   </div>
 
                                   {/* Dynamic cycle info */}
-                                  <div className="grid grid-cols-3 gap-3 mb-3">
+                                  <div className={`grid ${careMode === 'pregnancy' ? 'grid-cols-3' : 'grid-cols-3'} gap-3 mb-3`}>
                                      <div className="bg-white p-2 rounded border border-slate-100">
                                         <span className="text-[10px] text-slate-400 uppercase font-bold block">Cycle Phase</span>
                                         <span className="text-xs font-semibold text-slate-700">
@@ -3273,6 +3273,74 @@ export default function ClinicianPortal() {
                                         <span className="text-xs font-semibold text-slate-700">{selectedPatient.condition || '—'}</span>
                                      </div>
                                   </div>
+
+                                  {careMode === 'pregnancy' && (
+                                    <div className="grid grid-cols-2 gap-3 mb-3">
+                                      <div className="bg-gradient-to-br from-pink-50 to-white p-2.5 rounded border border-pink-100">
+                                        <span className="text-[10px] text-pink-500 uppercase font-bold block mb-1">Fundal Height</span>
+                                        <div className="flex items-center gap-1.5">
+                                          <Input
+                                            type="number"
+                                            placeholder="—"
+                                            defaultValue={(latestVisit?.vitals as any)?.fundalHeight || ''}
+                                            className="h-7 text-sm font-bold text-slate-800 border-pink-200 focus-visible:ring-pink-300 w-20 px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            data-testid="input-fundal-height"
+                                            onBlur={(e) => {
+                                              const val = e.target.value;
+                                              if (latestVisit?.id && val) {
+                                                const currentVitals = (latestVisit.vitals as any) || {};
+                                                fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
+                                                  method: 'POST',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({
+                                                    ...latestVisit,
+                                                    vitals: { ...currentVitals, fundalHeight: val }
+                                                  })
+                                                }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
+                                              }
+                                            }}
+                                          />
+                                          <span className="text-[10px] text-pink-400 font-medium">cm</span>
+                                        </div>
+                                      </div>
+                                      <div className="bg-gradient-to-br from-rose-50 to-white p-2.5 rounded border border-rose-100">
+                                        <span className="text-[10px] text-rose-500 uppercase font-bold block mb-1">Fetal Heart Rate</span>
+                                        <div className="flex items-center gap-1.5">
+                                          <Input
+                                            type="number"
+                                            placeholder="—"
+                                            defaultValue={(latestVisit?.vitals as any)?.fetalHeartRate || ''}
+                                            className="h-7 text-sm font-bold text-slate-800 border-rose-200 focus-visible:ring-rose-300 w-20 px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            data-testid="input-fetal-heart-rate"
+                                            onBlur={(e) => {
+                                              const val = e.target.value;
+                                              if (latestVisit?.id && val) {
+                                                const currentVitals = (latestVisit.vitals as any) || {};
+                                                fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
+                                                  method: 'POST',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({
+                                                    ...latestVisit,
+                                                    vitals: { ...currentVitals, fetalHeartRate: val }
+                                                  })
+                                                }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
+                                              }
+                                            }}
+                                          />
+                                          <span className="text-[10px] text-rose-400 font-medium">bpm</span>
+                                          {(latestVisit?.vitals as any)?.fetalHeartRate && (
+                                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                                              Number((latestVisit?.vitals as any)?.fetalHeartRate) >= 110 && Number((latestVisit?.vitals as any)?.fetalHeartRate) <= 160
+                                                ? 'bg-emerald-100 text-emerald-700'
+                                                : 'bg-rose-100 text-rose-700'
+                                            }`}>
+                                              {Number((latestVisit?.vitals as any)?.fetalHeartRate) >= 110 && Number((latestVisit?.vitals as any)?.fetalHeartRate) <= 160 ? 'Normal' : 'Abnormal'}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
 
                                   {latestVisit?.objective ? (
                                     <p className="text-sm text-slate-700 leading-relaxed">{latestVisit.objective}</p>
@@ -3962,6 +4030,12 @@ export default function ClinicianPortal() {
                                        return '—';
                                      })() : `${selectedPatient.cycleDay || '—'}`}</span></div>
                                      <div className="flex justify-between"><span>Genomic Risk:</span> <span className={`font-medium ${selectedPatient.condition ? 'text-amber-600' : ''}`}>{selectedPatient.condition || '—'}</span></div>
+                                     {careMode === 'pregnancy' && (
+                                       <>
+                                         <div className="flex justify-between"><span>Fundal Height:</span> <span className="font-medium">{(latestVisit?.vitals as any)?.fundalHeight ? `${(latestVisit?.vitals as any).fundalHeight} cm` : '—'}</span></div>
+                                         <div className="flex justify-between"><span>Fetal HR:</span> <span className={`font-medium ${(latestVisit?.vitals as any)?.fetalHeartRate ? (Number((latestVisit?.vitals as any).fetalHeartRate) >= 110 && Number((latestVisit?.vitals as any).fetalHeartRate) <= 160 ? 'text-emerald-600' : 'text-rose-600') : ''}`}>{(latestVisit?.vitals as any)?.fetalHeartRate ? `${(latestVisit?.vitals as any).fetalHeartRate} bpm` : '—'}</span></div>
+                                       </>
+                                     )}
                                   </div>
                                </div>
                                {/* Assessment */}
