@@ -127,6 +127,8 @@ export default function ClinicianPortal() {
 
   const queryClient = useQueryClient();
 
+  const autoExtractTriggeredRef = React.useRef<Set<number>>(new Set());
+
   useEffect(() => {
     if (selectedPatient) {
       const mode = (selectedPatient.mode || '').toLowerCase();
@@ -298,6 +300,7 @@ export default function ClinicianPortal() {
     enabled: !!selectedPatient
   });
   const labResults = labResultsQuery.data || [];
+  const labResultsLoaded = labResultsQuery.isSuccess;
 
   const labDocumentsQuery = useQuery({
     queryKey: [`/api/patients/${selectedPatient?.id}/documents`, 'lab'],
@@ -310,6 +313,17 @@ export default function ClinicianPortal() {
     enabled: !!selectedPatient
   });
   const labDocuments = labDocumentsQuery.data || [];
+  const labDocumentsLoaded = labDocumentsQuery.isSuccess;
+
+  useEffect(() => {
+    if (selectedPatient && labDocumentsLoaded && labResultsLoaded && !extractLabMutation.isPending) {
+      const pid = selectedPatient.id;
+      if (labDocuments.length > 0 && labResults.length === 0 && !autoExtractTriggeredRef.current.has(pid)) {
+        autoExtractTriggeredRef.current.add(pid);
+        extractLabMutation.mutate(pid);
+      }
+    }
+  }, [selectedPatient?.id, labDocumentsLoaded, labResultsLoaded, labDocuments.length, labResults.length, extractLabMutation.isPending]);
 
   const fertilityAnalyticsQuery = useQuery({
     queryKey: ['/api/analytics/fertility'],
@@ -505,22 +519,44 @@ export default function ClinicianPortal() {
   };
 
   const investigationAliases: Record<string, string[]> = {
-    'cbc (complete blood count)': ['cbc', 'complete blood count', 'hemogram'],
-    'cbc (repeat)': ['cbc', 'complete blood count', 'hemogram'],
-    'cbc + coagulation profile': ['cbc', 'coagulation', 'pt inr', 'aptt'],
-    'tsh (thyroid stimulating hormone)': ['tsh', 'thyroid'],
-    'tsh (repeat if abnormal)': ['tsh'],
-    'tsh (repeat)': ['tsh'],
-    'random blood sugar (rbs)': ['rbs', 'random blood sugar', 'blood sugar'],
-    'ogtt (75g glucose tolerance test)': ['ogtt', 'glucose tolerance', 'gtt'],
-    'glucose tolerance test': ['ogtt', 'glucose tolerance', 'gtt'],
-    'hiv, hbsag, vdrl': ['hiv', 'hbsag', 'vdrl', 'hepatitis'],
+    'cbc (complete blood count)': ['cbc', 'complete blood count', 'hemogram', 'haemogram', 'hemoglobin', 'haemoglobin', 'wbc', 'platelet', 'rbc count', 'hematocrit', 'blood count'],
+    'cbc (repeat)': ['cbc', 'complete blood count', 'hemogram', 'haemogram', 'hemoglobin', 'haemoglobin'],
+    'cbc + coagulation profile': ['cbc', 'coagulation', 'pt inr', 'aptt', 'prothrombin', 'bleeding time', 'clotting time'],
+    'blood group & rh typing': ['blood group', 'rh typing', 'abo', 'rh factor', 'blood type'],
+    'tsh (thyroid stimulating hormone)': ['tsh', 'thyroid stimulating', 'thyroid function'],
+    'tsh (repeat if abnormal)': ['tsh', 'thyroid stimulating'],
+    'tsh (repeat)': ['tsh', 'thyroid stimulating'],
+    'random blood sugar (rbs)': ['rbs', 'random blood sugar', 'blood sugar', 'glucose random', 'blood glucose'],
+    'ogtt (75g glucose tolerance test)': ['ogtt', 'glucose tolerance', 'gtt', 'oral glucose', 'fasting glucose', 'post prandial'],
+    'glucose tolerance test': ['ogtt', 'glucose tolerance', 'gtt', 'oral glucose'],
+    'hiv, hbsag, vdrl': ['hiv', 'hbsag', 'vdrl', 'hepatitis', 'hbv', 'hcv', 'syphilis'],
+    'urine routine & microscopy': ['urine routine', 'urine microscopy', 'urinalysis', 'urine analysis', 'urine examination', 'urine test'],
+    'urine routine': ['urine routine', 'urine microscopy', 'urinalysis', 'urine analysis', 'proteinuria'],
+    'urine culture': ['urine culture', 'urine c/s', 'bacteriuria'],
+    'rubella igg': ['rubella', 'rubella igg', 'german measles'],
+    'blood pressure': ['blood pressure', 'bp recording'],
     'hormonal panel': ['fsh', 'lh', 'estradiol', 'e2', 'progesterone'],
-    'day 2/3 hormonal panel': ['fsh', 'lh', 'amh', 'estradiol'],
-    'lipid profile': ['lipid', 'cholesterol', 'triglycerides'],
-    'lft, kft': ['lft', 'kft', 'liver function', 'kidney function', 'sgot', 'sgpt', 'creatinine'],
-    'vitamin d, b12': ['vitamin d', 'vitamin b12'],
-    'vitamin d, b12, ferritin': ['vitamin d', 'vitamin b12', 'ferritin'],
+    'day 2/3 hormonal panel': ['fsh', 'lh', 'amh', 'estradiol', 'anti mullerian'],
+    'nt scan (nuchal translucency)': ['nt scan', 'nuchal translucency', 'nuchal fold'],
+    'dual marker (papp-a + free β-hcg)': ['dual marker', 'papp-a', 'papp a', 'free beta hcg', 'double marker', 'first trimester screening'],
+    'quadruple marker': ['quadruple marker', 'quad marker', 'afp', 'quad screen', 'triple marker'],
+    'anti-d injection': ['anti-d', 'anti d', 'rhogam', 'rh immunoglobulin'],
+    'gbs screening (vaginal swab)': ['gbs', 'group b strep', 'vaginal swab', 'streptococcus'],
+    'nst (non-stress test)': ['nst', 'non-stress', 'non stress', 'cardiotocograph', 'ctg'],
+    'nst (weekly)': ['nst', 'non-stress', 'non stress', 'ctg'],
+    'bpp (biophysical profile)': ['bpp', 'biophysical profile'],
+    'bishop score assessment': ['bishop score', 'cervical readiness'],
+    'lipid profile': ['lipid', 'cholesterol', 'triglycerides', 'hdl', 'ldl', 'vldl'],
+    'lft, kft': ['lft', 'kft', 'liver function', 'kidney function', 'sgot', 'sgpt', 'creatinine', 'bilirubin', 'albumin', 'ast', 'alt', 'bun', 'urea'],
+    'vitamin d, b12': ['vitamin d', 'vitamin b12', '25 hydroxy'],
+    'vitamin d, b12, ferritin': ['vitamin d', 'vitamin b12', 'ferritin', '25 hydroxy'],
+    'day 21 progesterone': ['progesterone', 'day 21'],
+    'semen analysis': ['semen analysis', 'sperm count', 'sperm motility'],
+    'hsg (hysterosalpingography)': ['hsg', 'hysterosalpingography', 'tubal patency'],
+    'karyotype': ['karyotype', 'chromosomal analysis'],
+    'fasting insulin + glucose': ['fasting insulin', 'fasting glucose', 'homa-ir', 'insulin resistance'],
+    'prolactin': ['prolactin', 'prl'],
+    'tsh, free t3, free t4': ['tsh', 'free t3', 'free t4', 'ft3', 'ft4', 'triiodothyronine', 'thyroxine'],
   };
 
   const isInvestigationCompleted = (testName: string, completedMap: Map<string, { date: string; source: string }>) => {
@@ -3680,11 +3716,46 @@ export default function ClinicianPortal() {
                                          {careMode === 'pregnancy' && pregnancyWeek > 0 && (
                                            <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-200">Week {pregnancyWeek}</Badge>
                                          )}
+                                         {labDocuments.length > 0 && (
+                                           <Badge className="text-[10px] bg-blue-100 text-blue-700 border-blue-200">{labDocuments.length} Report{labDocuments.length !== 1 ? 's' : ''}</Badge>
+                                         )}
                                        </div>
-                                       <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => setShowAddInvestigation(!showAddInvestigation)} data-testid="button-add-investigation">
-                                         <Plus className="w-3 h-3" /> Add
-                                       </Button>
+                                       <div className="flex items-center gap-1.5">
+                                         {labDocuments.length > 0 && (
+                                           <Button
+                                             variant="outline"
+                                             size="sm"
+                                             className="h-7 text-[11px] gap-1 border-purple-200 text-purple-700 hover:bg-purple-50"
+                                             disabled={extractLabMutation.isPending}
+                                             onClick={() => selectedPatient && extractLabMutation.mutate(selectedPatient.id)}
+                                             data-testid="button-read-reports-investigation"
+                                           >
+                                             {extractLabMutation.isPending ? (
+                                               <><Loader2 className="w-3 h-3 animate-spin" /> Reading...</>
+                                             ) : (
+                                               <><Sparkle className="w-3 h-3" /> Read Reports</>
+                                             )}
+                                           </Button>
+                                         )}
+                                         <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => setShowAddInvestigation(!showAddInvestigation)} data-testid="button-add-investigation">
+                                           <Plus className="w-3 h-3" /> Add
+                                         </Button>
+                                       </div>
                                      </div>
+
+                                     {extractionStatus && (
+                                       <div className={`mb-3 px-3 py-2 rounded-md text-xs flex items-center gap-2 ${extractionStatus.startsWith('Error') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                                         {extractionStatus.startsWith('Error') ? <AlertCircle className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
+                                         {extractionStatus}
+                                       </div>
+                                     )}
+
+                                     {extractLabMutation.isPending && (
+                                       <div className="mb-3 px-3 py-2 rounded-md text-xs bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-2">
+                                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                         Reading lab reports and matching to investigations...
+                                       </div>
+                                     )}
 
                                      {showAddInvestigation && (
                                        <div className="flex gap-2 mb-3 bg-white border border-indigo-200 rounded-md p-2">
