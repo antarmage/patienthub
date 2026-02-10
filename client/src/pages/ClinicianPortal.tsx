@@ -439,6 +439,36 @@ export default function ClinicianPortal() {
     },
   });
 
+  const [editingHistory, setEditingHistory] = useState(false);
+  const [editHistoryData, setEditHistoryData] = useState<{ medical: string[]; surgical: string[]; drug: string[]; allergies: string[] }>({ medical: [], surgical: [], drug: [], allergies: [] });
+  const [newHistoryItem, setNewHistoryItem] = useState({ medical: '', surgical: '', drug: '', allergies: '' });
+
+  const updateHistoryMutation = useMutation({
+    mutationFn: async (history: any) => {
+      const res = await fetch(`/api/patients/${selectedPatient!.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ history }),
+      });
+      if (!res.ok) throw new Error('Failed to update history');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+      setEditingHistory(false);
+    },
+  });
+
+  const [selectedInvestigations, setSelectedInvestigations] = useState<Set<string>>(new Set());
+
+  const toggleInvestigation = (name: string) => {
+    setSelectedInvestigations(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  };
+
   const [showAddMedRow, setShowAddMedRow] = useState(false);
   const [newMed, setNewMed] = useState({ name: '', dose: '', frequency: '', startDate: '', status: 'Active', notes: '' });
   const [medSuggestions, setMedSuggestions] = useState<any[]>([]);
@@ -2939,43 +2969,292 @@ export default function ClinicianPortal() {
                    
                    {/* PATIENT HISTORY SUMMARY */}
                    <Card className="shadow-sm border-slate-200">
-                      <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50 cursor-pointer group hover:bg-slate-50 transition-colors">
-                          <div className="flex items-center gap-2">
+                      <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
                               <History className="w-4 h-4 text-slate-500" />
                               <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wide">Patient History</CardTitle>
+                            </div>
+                            {!editingHistory ? (
+                              <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => { setEditingHistory(true); setEditHistoryData({ medical: [...(selectedPatient.history?.medical || [])], surgical: [...(selectedPatient.history?.surgical || [])], drug: [...(selectedPatient.history?.drug || [])], allergies: [...(selectedPatient.history?.allergies || [])] }); setNewHistoryItem({ medical: '', surgical: '', drug: '', allergies: '' }); }} data-testid="button-edit-history">
+                                <Pencil className="w-3 h-3" /> Edit
+                              </Button>
+                            ) : (
+                              <div className="flex gap-1.5">
+                                <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => updateHistoryMutation.mutate(editHistoryData)} disabled={updateHistoryMutation.isPending} data-testid="button-save-history">
+                                  <Check className="w-3 h-3" /> Save
+                                </Button>
+                                <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-slate-500 border-slate-200" onClick={() => setEditingHistory(false)}>
+                                  <X className="w-3 h-3" /> Cancel
+                                </Button>
+                              </div>
+                            )}
                           </div>
                       </CardHeader>
                       <CardContent className="p-4">
                           <div className="grid grid-cols-4 gap-6">
                               <div>
                                   <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Past Medical History</h4>
-                                  <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+                                  {editingHistory ? (
+                                    <div className="space-y-1">
+                                      {editHistoryData.medical.map((item, i) => (
+                                        <div key={i} className="flex items-center gap-1 group">
+                                          <span className="text-xs text-slate-700 flex-1">{item}</span>
+                                          <button className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity" onClick={() => setEditHistoryData({...editHistoryData, medical: editHistoryData.medical.filter((_, idx) => idx !== i)})} data-testid={`button-remove-medical-${i}`}><X className="w-3 h-3" /></button>
+                                        </div>
+                                      ))}
+                                      <div className="flex gap-1 mt-1">
+                                        <Input placeholder="Add item..." value={newHistoryItem.medical} onChange={e => setNewHistoryItem({...newHistoryItem, medical: e.target.value})} onKeyDown={e => { if (e.key === 'Enter' && newHistoryItem.medical.trim()) { setEditHistoryData({...editHistoryData, medical: [...editHistoryData.medical, newHistoryItem.medical.trim()]}); setNewHistoryItem({...newHistoryItem, medical: ''}); }}} className="h-6 text-xs flex-1" data-testid="input-add-medical" />
+                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-blue-500" disabled={!newHistoryItem.medical.trim()} onClick={() => { setEditHistoryData({...editHistoryData, medical: [...editHistoryData.medical, newHistoryItem.medical.trim()]}); setNewHistoryItem({...newHistoryItem, medical: ''}); }} data-testid="button-add-medical"><Plus className="w-3 h-3" /></Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
                                       {selectedPatient.history?.medical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic">None recorded</li>}
-                                  </ul>
+                                    </ul>
+                                  )}
                               </div>
                               <div>
                                   <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Past Surgical History</h4>
-                                  <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+                                  {editingHistory ? (
+                                    <div className="space-y-1">
+                                      {editHistoryData.surgical.map((item, i) => (
+                                        <div key={i} className="flex items-center gap-1 group">
+                                          <span className="text-xs text-slate-700 flex-1">{item}</span>
+                                          <button className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity" onClick={() => setEditHistoryData({...editHistoryData, surgical: editHistoryData.surgical.filter((_, idx) => idx !== i)})} data-testid={`button-remove-surgical-${i}`}><X className="w-3 h-3" /></button>
+                                        </div>
+                                      ))}
+                                      <div className="flex gap-1 mt-1">
+                                        <Input placeholder="Add item..." value={newHistoryItem.surgical} onChange={e => setNewHistoryItem({...newHistoryItem, surgical: e.target.value})} onKeyDown={e => { if (e.key === 'Enter' && newHistoryItem.surgical.trim()) { setEditHistoryData({...editHistoryData, surgical: [...editHistoryData.surgical, newHistoryItem.surgical.trim()]}); setNewHistoryItem({...newHistoryItem, surgical: ''}); }}} className="h-6 text-xs flex-1" data-testid="input-add-surgical" />
+                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-blue-500" disabled={!newHistoryItem.surgical.trim()} onClick={() => { setEditHistoryData({...editHistoryData, surgical: [...editHistoryData.surgical, newHistoryItem.surgical.trim()]}); setNewHistoryItem({...newHistoryItem, surgical: ''}); }} data-testid="button-add-surgical"><Plus className="w-3 h-3" /></Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
                                       {selectedPatient.history?.surgical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic">None recorded</li>}
-                                  </ul>
+                                    </ul>
+                                  )}
                               </div>
                               <div>
                                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Drug History</h4>
-                                   <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+                                   {editingHistory ? (
+                                    <div className="space-y-1">
+                                      {editHistoryData.drug.map((item, i) => (
+                                        <div key={i} className="flex items-center gap-1 group">
+                                          <span className="text-xs text-slate-700 flex-1">{item}</span>
+                                          <button className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity" onClick={() => setEditHistoryData({...editHistoryData, drug: editHistoryData.drug.filter((_, idx) => idx !== i)})} data-testid={`button-remove-drug-${i}`}><X className="w-3 h-3" /></button>
+                                        </div>
+                                      ))}
+                                      <div className="flex gap-1 mt-1">
+                                        <Input placeholder="Add item..." value={newHistoryItem.drug} onChange={e => setNewHistoryItem({...newHistoryItem, drug: e.target.value})} onKeyDown={e => { if (e.key === 'Enter' && newHistoryItem.drug.trim()) { setEditHistoryData({...editHistoryData, drug: [...editHistoryData.drug, newHistoryItem.drug.trim()]}); setNewHistoryItem({...newHistoryItem, drug: ''}); }}} className="h-6 text-xs flex-1" data-testid="input-add-drug" />
+                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-blue-500" disabled={!newHistoryItem.drug.trim()} onClick={() => { setEditHistoryData({...editHistoryData, drug: [...editHistoryData.drug, newHistoryItem.drug.trim()]}); setNewHistoryItem({...newHistoryItem, drug: ''}); }} data-testid="button-add-drug"><Plus className="w-3 h-3" /></Button>
+                                      </div>
+                                    </div>
+                                   ) : (
+                                    <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
                                       {selectedPatient.history?.drug?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic">None recorded</li>}
-                                  </ul>
+                                    </ul>
+                                   )}
                               </div>
                                <div>
                                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 text-rose-600 border-b border-rose-100 pb-1">Allergies</h4>
-                                   <div className="flex flex-wrap gap-2 pt-1">
+                                   {editingHistory ? (
+                                    <div className="space-y-1">
+                                      {editHistoryData.allergies.map((item, i) => (
+                                        <div key={i} className="flex items-center gap-1 group">
+                                          <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-[10px]">{item}</Badge>
+                                          <button className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity" onClick={() => setEditHistoryData({...editHistoryData, allergies: editHistoryData.allergies.filter((_, idx) => idx !== i)})} data-testid={`button-remove-allergy-${i}`}><X className="w-3 h-3" /></button>
+                                        </div>
+                                      ))}
+                                      <div className="flex gap-1 mt-1">
+                                        <Input placeholder="Add allergy..." value={newHistoryItem.allergies} onChange={e => setNewHistoryItem({...newHistoryItem, allergies: e.target.value})} onKeyDown={e => { if (e.key === 'Enter' && newHistoryItem.allergies.trim()) { setEditHistoryData({...editHistoryData, allergies: [...editHistoryData.allergies, newHistoryItem.allergies.trim()]}); setNewHistoryItem({...newHistoryItem, allergies: ''}); }}} className="h-6 text-xs flex-1" data-testid="input-add-allergy" />
+                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-blue-500" disabled={!newHistoryItem.allergies.trim()} onClick={() => { setEditHistoryData({...editHistoryData, allergies: [...editHistoryData.allergies, newHistoryItem.allergies.trim()]}); setNewHistoryItem({...newHistoryItem, allergies: ''}); }} data-testid="button-add-allergy"><Plus className="w-3 h-3" /></Button>
+                                      </div>
+                                    </div>
+                                   ) : (
+                                    <div className="flex flex-wrap gap-2 pt-1">
                                       {selectedPatient.history?.allergies?.map((item: string, i: number) => (
                                           <Badge key={i} variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-[10px]">{item}</Badge>
                                       )) || <span className="text-xs text-slate-400 italic">No known allergies</span>}
-                                  </div>
+                                    </div>
+                                   )}
                               </div>
                           </div>
                       </CardContent>
                    </Card>
+
+                   {/* INVESTIGATIONS SECTION */}
+                   {(() => {
+                     let pregnancyWeek = 0;
+                     if (selectedPatient.lmp) {
+                       pregnancyWeek = Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7)));
+                     }
+
+                     const investigationsByWeek: Record<string, { tests: { name: string; description: string }[]; weekRange: string }> = {
+                       'booking': {
+                         weekRange: '6-10 weeks (Booking Visit)',
+                         tests: [
+                           { name: 'CBC (Complete Blood Count)', description: 'Hemoglobin, WBC, platelets' },
+                           { name: 'Blood Group & Rh Typing', description: 'ABO and Rh factor' },
+                           { name: 'Random Blood Sugar (RBS)', description: 'Screen for diabetes' },
+                           { name: 'TSH (Thyroid Stimulating Hormone)', description: 'Thyroid function' },
+                           { name: 'Urine Routine & Microscopy', description: 'UTI screening, proteinuria' },
+                           { name: 'HIV, HBsAg, VDRL', description: 'Infectious disease screening' },
+                           { name: 'Rubella IgG', description: 'Immunity check' },
+                           { name: 'Blood Pressure', description: 'Baseline BP recording' },
+                         ]
+                       },
+                       'first_trimester': {
+                         weekRange: '11-14 weeks (First Trimester Screening)',
+                         tests: [
+                           { name: 'NT Scan (Nuchal Translucency)', description: 'Down syndrome screening ultrasound' },
+                           { name: 'Dual Marker (PAPP-A + Free β-hCG)', description: 'Combined first trimester screening' },
+                           { name: 'Urine Culture', description: 'Asymptomatic bacteriuria' },
+                           { name: 'TSH (repeat if abnormal)', description: 'Thyroid recheck' },
+                         ]
+                       },
+                       'second_trimester_early': {
+                         weekRange: '16-20 weeks',
+                         tests: [
+                           { name: 'Quadruple Marker', description: 'AFP, hCG, uE3, Inhibin A (if dual marker not done)' },
+                           { name: 'Anomaly Scan (TIFFA)', description: 'Detailed anatomy scan at 18-20 weeks' },
+                           { name: 'CBC (repeat)', description: 'Check for anemia' },
+                         ]
+                       },
+                       'second_trimester_mid': {
+                         weekRange: '24-28 weeks',
+                         tests: [
+                           { name: 'OGTT (75g Glucose Tolerance Test)', description: 'Gestational diabetes screening' },
+                           { name: 'CBC (repeat)', description: 'Hemoglobin check' },
+                           { name: 'Anti-D Injection', description: 'For Rh-negative mothers at 28 weeks' },
+                         ]
+                       },
+                       'third_trimester_early': {
+                         weekRange: '28-32 weeks',
+                         tests: [
+                           { name: 'Growth Scan', description: 'Fetal growth assessment' },
+                           { name: 'CBC (repeat)', description: 'Anemia screening' },
+                           { name: 'TSH (repeat)', description: 'Thyroid function check' },
+                           { name: 'Urine Routine', description: 'Proteinuria screening for preeclampsia' },
+                         ]
+                       },
+                       'third_trimester_late': {
+                         weekRange: '34-36 weeks',
+                         tests: [
+                           { name: 'Growth Scan (repeat)', description: 'Fetal weight estimation, AFI' },
+                           { name: 'GBS Screening (Vaginal Swab)', description: 'Group B Streptococcus at 35-37 weeks' },
+                           { name: 'CBC + Coagulation Profile', description: 'Pre-delivery workup' },
+                           { name: 'LFT, KFT', description: 'Liver and kidney function' },
+                           { name: 'NST (Non-Stress Test)', description: 'Fetal wellbeing' },
+                         ]
+                       },
+                       'term': {
+                         weekRange: '37-40 weeks (Term)',
+                         tests: [
+                           { name: 'NST (weekly)', description: 'Fetal heart rate monitoring' },
+                           { name: 'BPP (Biophysical Profile)', description: 'If indicated' },
+                           { name: 'AFI (Amniotic Fluid Index)', description: 'Fluid assessment' },
+                           { name: 'Bishop Score Assessment', description: 'Cervical readiness evaluation' },
+                         ]
+                       },
+                     };
+
+                     const fertilityInvestigations = [
+                       { name: 'Day 2/3 Hormonal Panel', description: 'FSH, LH, E2, Prolactin, TSH, AMH' },
+                       { name: 'Pelvic Ultrasound', description: 'Antral follicle count, uterine assessment' },
+                       { name: 'HSG (Hysterosalpingography)', description: 'Tubal patency test' },
+                       { name: 'Semen Analysis', description: 'Partner sperm evaluation' },
+                       { name: 'Day 21 Progesterone', description: 'Confirm ovulation' },
+                       { name: 'Karyotype', description: 'Chromosomal analysis if indicated' },
+                       { name: 'Vitamin D, B12, Ferritin', description: 'Nutritional status' },
+                       { name: 'Glucose Tolerance Test', description: 'PCOS/metabolic screening' },
+                     ];
+
+                     const cycleInvestigations = [
+                       { name: 'Hormonal Panel', description: 'FSH, LH, E2, Progesterone, Testosterone, DHEAS' },
+                       { name: 'TSH, Free T3, Free T4', description: 'Thyroid function' },
+                       { name: 'Pelvic Ultrasound', description: 'Ovarian morphology, endometrial thickness' },
+                       { name: 'Prolactin', description: 'Rule out hyperprolactinemia' },
+                       { name: 'Fasting Insulin + Glucose', description: 'Insulin resistance check' },
+                       { name: 'Lipid Profile', description: 'Metabolic health' },
+                       { name: 'Vitamin D, B12', description: 'Nutritional assessment' },
+                       { name: 'CBC', description: 'Anemia screening' },
+                     ];
+
+                     let currentTests: { name: string; description: string }[] = [];
+                     let sectionTitle = '';
+
+                     if (careMode === 'pregnancy' && pregnancyWeek > 0) {
+                       if (pregnancyWeek <= 10) { currentTests = investigationsByWeek.booking.tests; sectionTitle = investigationsByWeek.booking.weekRange; }
+                       else if (pregnancyWeek <= 14) { currentTests = investigationsByWeek.first_trimester.tests; sectionTitle = investigationsByWeek.first_trimester.weekRange; }
+                       else if (pregnancyWeek <= 20) { currentTests = investigationsByWeek.second_trimester_early.tests; sectionTitle = investigationsByWeek.second_trimester_early.weekRange; }
+                       else if (pregnancyWeek <= 28) { currentTests = investigationsByWeek.second_trimester_mid.tests; sectionTitle = investigationsByWeek.second_trimester_mid.weekRange; }
+                       else if (pregnancyWeek <= 32) { currentTests = investigationsByWeek.third_trimester_early.tests; sectionTitle = investigationsByWeek.third_trimester_early.weekRange; }
+                       else if (pregnancyWeek <= 36) { currentTests = investigationsByWeek.third_trimester_late.tests; sectionTitle = investigationsByWeek.third_trimester_late.weekRange; }
+                       else { currentTests = investigationsByWeek.term.tests; sectionTitle = investigationsByWeek.term.weekRange; }
+                     } else if (careMode === 'natural_conception' || careMode === 'iui' || careMode === 'ivf') {
+                       currentTests = fertilityInvestigations;
+                       sectionTitle = 'Fertility Workup';
+                     } else {
+                       currentTests = cycleInvestigations;
+                       sectionTitle = 'Cycle & Hormonal Workup';
+                     }
+
+                     return (
+                       <Card className="shadow-sm border-indigo-100" data-testid="card-investigations">
+                         <CardHeader className="py-3 px-4 border-b border-indigo-50 bg-indigo-50/30">
+                           <div className="flex items-center justify-between">
+                             <div className="flex items-center gap-2">
+                               <Stethoscope className="w-4 h-4 text-indigo-600" />
+                               <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wide">Investigations</CardTitle>
+                               <Badge variant="outline" className="text-[10px] text-indigo-600 border-indigo-200 bg-indigo-50">{sectionTitle}</Badge>
+                               {careMode === 'pregnancy' && pregnancyWeek > 0 && (
+                                 <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-200">Week {pregnancyWeek}</Badge>
+                               )}
+                             </div>
+                           </div>
+                         </CardHeader>
+                         <CardContent className="p-4">
+                           <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                             {currentTests.map((test, i) => (
+                               <label key={i} className={`flex items-start gap-2.5 py-1.5 px-2 rounded cursor-pointer group transition-colors ${selectedInvestigations.has(test.name) ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-slate-50 border border-transparent'}`} data-testid={`checkbox-investigation-${i}`}>
+                                 <Checkbox checked={selectedInvestigations.has(test.name)} onCheckedChange={() => toggleInvestigation(test.name)} className="mt-0.5 border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600" />
+                                 <div className="flex-1 min-w-0">
+                                   <span className={`text-xs font-medium block ${selectedInvestigations.has(test.name) ? 'text-indigo-800' : 'text-slate-800'}`}>{test.name}</span>
+                                   <span className="text-[10px] text-slate-400 block">{test.description}</span>
+                                 </div>
+                               </label>
+                             ))}
+                           </div>
+                           {selectedInvestigations.size > 0 && (
+                             <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                               <div className="flex flex-wrap gap-1.5">
+                                 {Array.from(selectedInvestigations).map(name => (
+                                   <Badge key={name} className="text-[10px] bg-indigo-100 text-indigo-700 border-indigo-200 gap-1">
+                                     {name}
+                                     <button onClick={() => toggleInvestigation(name)} className="ml-0.5 hover:text-indigo-900" data-testid={`button-remove-investigation-${name}`}><X className="w-2.5 h-2.5" /></button>
+                                   </Badge>
+                                 ))}
+                               </div>
+                               <span className="text-[10px] text-indigo-600 font-medium whitespace-nowrap ml-2">{selectedInvestigations.size} selected</span>
+                             </div>
+                           )}
+                           {careMode === 'pregnancy' && pregnancyWeek > 0 && (
+                             <div className="mt-3 pt-3 border-t border-slate-100">
+                               <span className="text-[10px] text-slate-400 uppercase font-bold block mb-2">All Pregnancy Investigation Milestones</span>
+                               <div className="flex flex-wrap gap-1.5">
+                                 {Object.entries(investigationsByWeek).map(([key, val]) => (
+                                   <Badge key={key} variant="outline" className={`text-[10px] cursor-default ${val.weekRange === sectionTitle ? 'bg-indigo-100 text-indigo-700 border-indigo-300 font-semibold' : 'text-slate-400 border-slate-200'}`}>
+                                     {val.weekRange.split('(')[0].trim()}
+                                   </Badge>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+                         </CardContent>
+                       </Card>
+                     );
+                   })()}
 
                    {/* 1. CURRENT VISIT CLINICAL WORKSPACE (SOAP) - DYNAMIC */}
                    <Card className="shadow-md border-blue-100 bg-white overflow-hidden">
