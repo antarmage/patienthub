@@ -3675,75 +3675,151 @@ export default function ClinicianPortal() {
                                     </div>
                                   )}
 
-                                  {/* Next Visit Date */}
-                                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 mt-3">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        <CalendarCheck className="w-4 h-4 text-blue-600" />
-                                        <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">Next Visit Date</span>
+                                  {/* Scheduling Section — Next Visit / Immunisation / Investigations */}
+                                  {(() => {
+                                    const schedVitals = (latestVisit?.vitals as any) || {};
+                                    const nextImmDate = schedVitals.nextImmunisationDate || '';
+                                    const nextInvDate = schedVitals.nextInvestigationDate || '';
+                                    const nextInvNotes = schedVitals.nextInvestigationNotes || '';
+
+                                    const formatCountdown = (dateStr: string) => {
+                                      if (!dateStr) return null;
+                                      const d = new Date(dateStr);
+                                      const today = new Date();
+                                      today.setHours(0,0,0,0);
+                                      d.setHours(0,0,0,0);
+                                      const diff = Math.ceil((d.getTime() - today.getTime()) / (1000*60*60*24));
+                                      if (diff === 0) return { text: 'Today', color: 'bg-blue-100 text-blue-700' };
+                                      if (diff === 1) return { text: 'Tomorrow', color: 'bg-blue-100 text-blue-700' };
+                                      if (diff < 0) return { text: `${Math.abs(diff)}d overdue`, color: 'bg-rose-100 text-rose-700' };
+                                      if (diff <= 7) return { text: `In ${diff} days`, color: 'bg-emerald-100 text-emerald-700' };
+                                      return { text: `In ${Math.ceil(diff/7)} weeks`, color: 'bg-slate-100 text-slate-600' };
+                                    };
+
+                                    const saveScheduleVitals = (field: string, val: string) => {
+                                      if (latestVisit?.id) {
+                                        const currentVitals = (latestVisit.vitals as any) || {};
+                                        fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ ...latestVisit, vitals: { ...currentVitals, [field]: val } })
+                                        }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
+                                      }
+                                    };
+
+                                    const visitCountdown = selectedPatient.nextReview ? formatCountdown(selectedPatient.nextReview) : null;
+                                    const immCountdown = nextImmDate ? formatCountdown(nextImmDate) : null;
+                                    const invCountdown = nextInvDate ? formatCountdown(nextInvDate) : null;
+
+                                    return (
+                                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 mt-3" data-testid="card-scheduling">
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <CalendarCheck className="w-4 h-4 text-blue-600" />
+                                          <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">Upcoming Schedule</span>
+                                        </div>
+
+                                        <div className="space-y-2.5">
+                                          {/* Next Visit */}
+                                          <div className="bg-white rounded-lg border border-blue-100 p-2.5">
+                                            <div className="flex items-center justify-between mb-1.5">
+                                              <span className="text-[11px] font-bold text-blue-700 flex items-center gap-1.5"><Stethoscope className="w-3 h-3" /> Next Visit / Follow-up</span>
+                                              {visitCountdown && <Badge className={`text-[9px] ${visitCountdown.color} border-0`}>{visitCountdown.text}</Badge>}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Input
+                                                type="date"
+                                                key={`visit-${selectedPatient.id}-${selectedPatient.nextReview}`}
+                                                defaultValue={selectedPatient.nextReview || ''}
+                                                min={new Date().toISOString().split('T')[0]}
+                                                className="h-7 text-xs border-blue-200 focus-visible:ring-blue-300 flex-1"
+                                                data-testid="input-next-visit-date"
+                                                onChange={(e) => {
+                                                  const val = e.target.value;
+                                                  if (val) {
+                                                    fetch(`/api/patients/${selectedPatient.id}`, {
+                                                      method: 'PATCH',
+                                                      headers: { 'Content-Type': 'application/json' },
+                                                      body: JSON.stringify({ nextReview: val })
+                                                    }).then(() => {
+                                                      queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+                                                      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+                                                    });
+                                                  }
+                                                }}
+                                              />
+                                              {selectedPatient.nextReview && (
+                                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-rose-400 hover:text-rose-600 hover:bg-rose-50" onClick={() => { fetch(`/api/patients/${selectedPatient.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nextReview: null }) }).then(() => queryClient.invalidateQueries({ queryKey: ['/api/patients'] })); }} data-testid="button-clear-next-visit"><X className="w-3 h-3" /></Button>
+                                              )}
+                                            </div>
+                                            {selectedPatient.nextReview && (
+                                              <p className="text-[10px] text-blue-500 mt-1">{new Date(selectedPatient.nextReview).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                            )}
+                                          </div>
+
+                                          {/* Next Immunisation */}
+                                          {careMode === 'pregnancy' && (
+                                            <div className="bg-white rounded-lg border border-teal-100 p-2.5">
+                                              <div className="flex items-center justify-between mb-1.5">
+                                                <span className="text-[11px] font-bold text-teal-700 flex items-center gap-1.5"><Shield className="w-3 h-3" /> Next Immunisation</span>
+                                                {immCountdown && <Badge className={`text-[9px] ${immCountdown.color} border-0`}>{immCountdown.text}</Badge>}
+                                              </div>
+                                              <div className="flex items-center gap-2">
+                                                <Input
+                                                  type="date"
+                                                  key={`imm-${selectedPatient.id}-${nextImmDate}`}
+                                                  defaultValue={nextImmDate}
+                                                  min={new Date().toISOString().split('T')[0]}
+                                                  className="h-7 text-xs border-teal-200 focus-visible:ring-teal-300 flex-1"
+                                                  data-testid="input-next-immunisation-date"
+                                                  onBlur={(e) => { if (e.target.value) saveScheduleVitals('nextImmunisationDate', e.target.value); }}
+                                                />
+                                                {nextImmDate && (
+                                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-rose-400 hover:text-rose-600 hover:bg-rose-50" onClick={() => saveScheduleVitals('nextImmunisationDate', '')} data-testid="button-clear-next-imm"><X className="w-3 h-3" /></Button>
+                                                )}
+                                              </div>
+                                              {nextImmDate && (
+                                                <p className="text-[10px] text-teal-500 mt-1">{new Date(nextImmDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                              )}
+                                            </div>
+                                          )}
+
+                                          {/* Next Blood Test / USG */}
+                                          <div className="bg-white rounded-lg border border-indigo-100 p-2.5">
+                                            <div className="flex items-center justify-between mb-1.5">
+                                              <span className="text-[11px] font-bold text-indigo-700 flex items-center gap-1.5"><FlaskConical className="w-3 h-3" /> Next Blood Test / USG</span>
+                                              {invCountdown && <Badge className={`text-[9px] ${invCountdown.color} border-0`}>{invCountdown.text}</Badge>}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Input
+                                                type="date"
+                                                key={`inv-${selectedPatient.id}-${nextInvDate}`}
+                                                defaultValue={nextInvDate}
+                                                min={new Date().toISOString().split('T')[0]}
+                                                className="h-7 text-xs border-indigo-200 focus-visible:ring-indigo-300 flex-1"
+                                                data-testid="input-next-investigation-date"
+                                                onBlur={(e) => { if (e.target.value) saveScheduleVitals('nextInvestigationDate', e.target.value); }}
+                                              />
+                                              {nextInvDate && (
+                                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-rose-400 hover:text-rose-600 hover:bg-rose-50" onClick={() => saveScheduleVitals('nextInvestigationDate', '')} data-testid="button-clear-next-inv"><X className="w-3 h-3" /></Button>
+                                              )}
+                                            </div>
+                                            <Input
+                                              type="text"
+                                              placeholder="e.g. CBC, TSH repeat, Growth Scan..."
+                                              key={`inv-notes-${selectedPatient.id}-${nextInvNotes}`}
+                                              defaultValue={nextInvNotes}
+                                              className="h-7 text-xs border-indigo-200 focus-visible:ring-indigo-300 mt-1.5"
+                                              data-testid="input-next-investigation-notes"
+                                              onBlur={(e) => { if (e.target.value) saveScheduleVitals('nextInvestigationNotes', e.target.value); }}
+                                            />
+                                            {nextInvDate && (
+                                              <p className="text-[10px] text-indigo-500 mt-1">{new Date(nextInvDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })}{nextInvNotes ? ` — ${nextInvNotes}` : ''}</p>
+                                            )}
+                                          </div>
+                                        </div>
                                       </div>
-                                      {selectedPatient.nextReview && (
-                                        <Badge className="text-[10px] bg-blue-100 text-blue-700 border-blue-200">
-                                          {(() => {
-                                            const d = new Date(selectedPatient.nextReview);
-                                            const today = new Date();
-                                            const diff = Math.ceil((d.getTime() - today.getTime()) / (1000*60*60*24));
-                                            if (diff === 0) return 'Today';
-                                            if (diff === 1) return 'Tomorrow';
-                                            if (diff < 0) return `${Math.abs(diff)}d overdue`;
-                                            if (diff <= 7) return `In ${diff} days`;
-                                            return `In ${Math.ceil(diff/7)} weeks`;
-                                          })()}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-2">
-                                      <Input
-                                        type="date"
-                                        defaultValue={selectedPatient.nextReview || ''}
-                                        min={new Date().toISOString().split('T')[0]}
-                                        className="h-8 text-sm border-blue-200 focus-visible:ring-blue-300 bg-white flex-1"
-                                        data-testid="input-next-visit-date"
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          if (val) {
-                                            fetch(`/api/patients/${selectedPatient.id}`, {
-                                              method: 'PATCH',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({ nextReview: val })
-                                            }).then(() => {
-                                              queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
-                                              queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
-                                            });
-                                          }
-                                        }}
-                                      />
-                                      {selectedPatient.nextReview && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-8 text-xs text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2"
-                                          onClick={() => {
-                                            fetch(`/api/patients/${selectedPatient.id}`, {
-                                              method: 'PATCH',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({ nextReview: null })
-                                            }).then(() => {
-                                              queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
-                                            });
-                                          }}
-                                          data-testid="button-clear-next-visit"
-                                        >
-                                          <X className="w-3.5 h-3.5" />
-                                        </Button>
-                                      )}
-                                    </div>
-                                    {selectedPatient.nextReview && (
-                                      <p className="text-[11px] text-blue-600 mt-1.5 font-medium">
-                                        Scheduled: {new Date(selectedPatient.nextReview).toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
-                                      </p>
-                                    )}
-                                  </div>
+                                    );
+                                  })()}
                                </div>
 
                                {/* INVESTIGATIONS SECTION */}
