@@ -1024,7 +1024,16 @@ Be thorough — extract every medication mentioned including supplements and vit
       const postpartumTypes = ['postpartum', 'postnatal'];
 
       const fertilityCount = patients.filter((p: any) => fertilityTypes.some(t => (p.type || '').toLowerCase().includes(t))).length;
-      const pregnancyCount = patients.filter((p: any) => pregnancyTypes.some(t => (p.type || '').toLowerCase().includes(t))).length;
+
+      const allPregnancyTypePatients = patients.filter((p: any) => pregnancyTypes.some(t => (p.type || '').toLowerCase().includes(t)));
+      const pregnancyCount = allPregnancyTypePatients.filter((p: any) => {
+        if (!p.lmp) return true;
+        const lmpDate = new Date(p.lmp);
+        if (isNaN(lmpDate.getTime())) return true;
+        const weeks = Math.floor((Date.now() - lmpDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+        return weeks >= 1 && weeks <= 42;
+      }).length;
+
       const postpartumCount = patients.filter((p: any) => postpartumTypes.some(t => (p.type || '').toLowerCase().includes(t))).length;
 
       const allReferrals: any[] = [];
@@ -1055,9 +1064,12 @@ Be thorough — extract every medication mentioned including supplements and vit
 
       const todayVisits = allVisitHistory.filter((v: any) => v.date === today).length;
 
-      const pregnantPatients = patients.filter((p: any) => {
-        const type = (p.type || '').toLowerCase();
-        return pregnancyTypes.some(t => type.includes(t));
+      const pregnantPatients = allPregnancyTypePatients.filter((p: any) => {
+        if (!p.lmp) return true;
+        const lmpDate = new Date(p.lmp);
+        if (isNaN(lmpDate.getTime())) return true;
+        const weeks = Math.floor((Date.now() - lmpDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+        return weeks >= 1 && weeks <= 42;
       });
       const highBpAlerts = pregnantPatients.filter((p: any) => {
         const bp = (p.bp || '').toString().trim();
