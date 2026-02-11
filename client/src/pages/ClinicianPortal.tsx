@@ -106,7 +106,7 @@ export default function ClinicianPortal() {
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [careMode, setCareMode] = useState("natural_conception"); 
   const [showDocumentation, setShowDocumentation] = useState(false);
-  const [showPastRecords, setShowPastRecords] = useState(false);
+  const [showPastRecords, setShowPastRecords] = useState(true);
   const [scheduleViewMode, setScheduleViewMode] = useState("appointments");
   const [calendarViewMode, setCalendarViewMode] = useState("month");
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
@@ -4647,19 +4647,19 @@ export default function ClinicianPortal() {
                       )}
                    </Card>
 
-                   {/* PAST VISIT RECORDS */}
+                   {/* TREATMENT TRAIL */}
                    {visitHistory.length > 0 && (
-                     <Card className="shadow-sm border-slate-200 bg-white overflow-hidden">
-                       <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center cursor-pointer" onClick={() => setShowPastRecords(!showPastRecords)} data-testid="toggle-past-records">
-                         <h3 className="font-bold text-sm text-slate-700 flex items-center gap-2">
-                           <History className="w-4 h-4 text-slate-500" />
-                           Past Records
-                           <Badge variant="outline" className="text-[10px] font-normal text-slate-500">{visitHistory.length} visit{visitHistory.length !== 1 ? 's' : ''}</Badge>
+                     <Card className="shadow-sm border-slate-200 bg-white overflow-hidden" data-testid="treatment-trail-card">
+                       <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 px-4 py-3 border-b border-indigo-100 flex justify-between items-center cursor-pointer" onClick={() => setShowPastRecords(!showPastRecords)} data-testid="toggle-past-records">
+                         <h3 className="font-bold text-sm text-indigo-800 flex items-center gap-2">
+                           <History className="w-4 h-4 text-indigo-600" />
+                           Treatment Trail
+                           <Badge className="text-[10px] bg-indigo-100 text-indigo-700 border-indigo-200">{visitHistory.length} visit{visitHistory.length !== 1 ? 's' : ''}</Badge>
                          </h3>
-                         <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${showPastRecords ? 'rotate-90' : ''}`} />
+                         <ChevronRight className={`w-4 h-4 text-indigo-400 transition-transform duration-200 ${showPastRecords ? 'rotate-90' : ''}`} />
                        </div>
                        {showPastRecords && (
-                         <CardContent className="p-0 max-h-[500px] overflow-y-auto">
+                         <CardContent className="p-0 max-h-[600px] overflow-y-auto">
                            {[...visitHistory].reverse().map((visit: any, idx: number) => {
                              const vitals = (visit.vitals as any) || {};
                              const vitalsList = [
@@ -4670,48 +4670,89 @@ export default function ClinicianPortal() {
                                vitals.fetalHeartRate && `FHR: ${vitals.fetalHeartRate}bpm`,
                                vitals.fundalHeight && `FH: ${vitals.fundalHeight}cm`,
                              ].filter(Boolean);
+                             const visitInvTests: string[] = vitals.nextInvestigationTests || [];
+                             const visitInvCustom: string = vitals.nextInvestigationCustom || '';
+                             const allVisitInv = [...visitInvTests, ...(visitInvCustom ? [visitInvCustom] : [])];
                              const isToday = new Date(visit.date).toDateString() === new Date().toDateString();
+                             const isLatest = idx === 0;
+                             const borderColor = isLatest && isToday ? 'border-l-blue-500' : isLatest ? 'border-l-indigo-500' : 'border-l-slate-200';
                              return (
-                               <div key={visit.id} className={`border-b border-slate-100 last:border-0 ${idx === 0 && isToday ? 'bg-blue-50/30' : ''}`} data-testid={`past-visit-${visit.id}`}>
-                                 <div className="px-4 py-3 flex items-start gap-3">
-                                   <div className="flex flex-col items-center pt-0.5">
-                                     <div className={`w-2.5 h-2.5 rounded-full ${idx === 0 && isToday ? 'bg-blue-500' : 'bg-slate-300'}`} />
-                                     {idx < visitHistory.length - 1 && <div className="w-px h-full bg-slate-200 mt-1" />}
-                                   </div>
-                                   <div className="flex-1 min-w-0">
-                                     <div className="flex items-center justify-between mb-1">
-                                       <div className="flex items-center gap-2">
-                                         <span className="text-xs font-bold text-slate-800">
-                                           {new Date(visit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                         </span>
-                                         {isToday && idx === 0 && <Badge className="text-[9px] bg-blue-100 text-blue-700 border-blue-200">Today</Badge>}
-                                         {visit.visitType && <Badge variant="outline" className="text-[9px] text-slate-500">{visit.visitType}</Badge>}
-                                       </div>
-                                       {visit.provider && <span className="text-[10px] text-slate-400">{visit.provider}</span>}
+                               <div key={visit.id} className={`border-b border-slate-100 last:border-0 border-l-[3px] ${borderColor} ${isToday && isLatest ? 'bg-blue-50/30' : isLatest ? 'bg-indigo-50/20' : ''}`} data-testid={`past-visit-${visit.id}`}>
+                                 <div className="px-4 py-3">
+                                   <div className="flex items-center justify-between mb-2">
+                                     <div className="flex items-center gap-2">
+                                       <span className="text-xs font-bold text-slate-800">
+                                         {new Date(visit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                       </span>
+                                       {isToday && isLatest && <Badge className="text-[9px] bg-blue-100 text-blue-700 border-blue-200">Today</Badge>}
+                                       {isLatest && !isToday && <Badge className="text-[9px] bg-indigo-100 text-indigo-600 border-indigo-200">Latest</Badge>}
+                                       {visit.visitType && <Badge variant="outline" className="text-[9px] text-slate-500">{visit.visitType}</Badge>}
                                      </div>
-                                     {visit.chiefComplaint && (
-                                       <p className="text-xs text-slate-700 mb-1"><span className="font-semibold text-slate-500">CC:</span> {visit.chiefComplaint}</p>
-                                     )}
-                                     {visit.subjective && !visit.chiefComplaint && (
-                                       <p className="text-xs text-slate-600 mb-1 line-clamp-2">{visit.subjective}</p>
-                                     )}
-                                     {vitalsList.length > 0 && (
-                                       <div className="flex flex-wrap gap-1.5 mb-1">
-                                         {vitalsList.map((v, i) => (
-                                           <span key={i} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{v}</span>
+                                     {visit.provider && <span className="text-[10px] text-slate-400">{visit.provider}</span>}
+                                   </div>
+
+                                   {visit.chiefComplaint && (
+                                     <p className="text-xs text-slate-700 mb-1.5"><span className="font-semibold text-slate-500">CC:</span> {visit.chiefComplaint}</p>
+                                   )}
+                                   {visit.subjective && !visit.chiefComplaint && (
+                                     <p className="text-xs text-slate-600 mb-1.5 line-clamp-2">{visit.subjective}</p>
+                                   )}
+                                   {visit.objective && (
+                                     <p className="text-[11px] text-slate-600 mb-1"><span className="font-semibold text-slate-500">O/E:</span> {visit.objective}</p>
+                                   )}
+
+                                   {vitalsList.length > 0 && (
+                                     <div className="flex flex-wrap gap-1.5 mb-1.5">
+                                       {vitalsList.map((v, i) => (
+                                         <span key={i} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{v}</span>
+                                       ))}
+                                     </div>
+                                   )}
+
+                                   {visit.diagnosis && (
+                                     <p className="text-[11px] text-slate-700 mb-1"><span className="font-semibold text-indigo-600">Dx:</span> <span className="font-medium">{visit.diagnosis}</span></p>
+                                   )}
+                                   {visit.assessment && !visit.diagnosis && (
+                                     <p className="text-[11px] text-slate-600 line-clamp-2 mb-1"><span className="font-semibold text-slate-500">Assessment:</span> {visit.assessment}</p>
+                                   )}
+                                   {visit.planNotes && (
+                                     <p className="text-[11px] text-slate-500 mb-1.5"><span className="font-semibold">Plan:</span> {visit.planNotes}</p>
+                                   )}
+
+                                   {/* Medications prescribed at this visit */}
+                                   {medications.filter((m: any) => {
+                                     if (!m.startDate) return false;
+                                     return new Date(m.startDate).toDateString() === new Date(visit.date).toDateString();
+                                   }).length > 0 && (
+                                     <div className="mt-2 pt-2 border-t border-slate-100">
+                                       <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wide flex items-center gap-1 mb-1">
+                                         <Pill className="w-3 h-3" /> Rx Prescribed
+                                       </span>
+                                       <div className="flex flex-wrap gap-1">
+                                         {medications.filter((m: any) => m.startDate && new Date(m.startDate).toDateString() === new Date(visit.date).toDateString()).map((m: any) => (
+                                           <span key={m.id} className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-100">
+                                             {m.name} {m.dose ? `(${m.dose})` : ''}
+                                           </span>
                                          ))}
                                        </div>
-                                     )}
-                                     {visit.diagnosis && (
-                                       <p className="text-[11px] text-slate-600"><span className="font-semibold text-slate-500">Dx:</span> {visit.diagnosis}</p>
-                                     )}
-                                     {visit.assessment && !visit.diagnosis && (
-                                       <p className="text-[11px] text-slate-600 line-clamp-2"><span className="font-semibold text-slate-500">Assessment:</span> {visit.assessment}</p>
-                                     )}
-                                     {visit.planNotes && (
-                                       <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2"><span className="font-semibold">Plan:</span> {visit.planNotes}</p>
-                                     )}
-                                   </div>
+                                     </div>
+                                   )}
+
+                                   {/* Investigations ordered at this visit */}
+                                   {allVisitInv.length > 0 && (
+                                     <div className="mt-2 pt-2 border-t border-slate-100">
+                                       <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wide flex items-center gap-1 mb-1">
+                                         <FlaskConical className="w-3 h-3" /> Investigations Ordered
+                                       </span>
+                                       <div className="flex flex-wrap gap-1">
+                                         {allVisitInv.map((inv, i) => (
+                                           <span key={i} className="text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full border border-purple-100">
+                                             {inv}
+                                           </span>
+                                         ))}
+                                       </div>
+                                     </div>
+                                   )}
                                  </div>
                                </div>
                              );
