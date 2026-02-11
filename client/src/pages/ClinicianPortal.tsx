@@ -3320,27 +3320,34 @@ export default function ClinicianPortal() {
                       </CardContent>
                    </Card>
 
-                   {/* LAST VISIT RECAP */}
-                   {latestVisit && (
+                   {/* LAST VISIT RECAP / PATIENT SNAPSHOT */}
+                   {(() => {
+                     const hasVisit = !!latestVisit;
+                     const activeMeds = medications.filter((m: any) => m.status === 'Active');
+                     const hasData = hasVisit || activeMeds.length > 0 || labResults.length > 0;
+                     if (!hasData) return null;
+                     return (
                      <Card className="shadow-sm border-amber-200 bg-gradient-to-br from-amber-50/60 to-orange-50/40 overflow-hidden" data-testid="last-visit-recap">
                        <div className="px-4 py-2.5 border-b border-amber-100 flex items-center justify-between">
                          <h3 className="font-bold text-sm text-amber-800 flex items-center gap-2">
                            <FileText className="w-4 h-4 text-amber-600" />
-                           Last Visit Recap
-                           <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200 font-normal">
-                             {new Date(latestVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                           </Badge>
+                           {hasVisit ? 'Last Visit Recap' : 'Patient Snapshot'}
+                           {hasVisit && (
+                             <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200 font-normal">
+                               {new Date(latestVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                             </Badge>
+                           )}
                          </h3>
                        </div>
                        <CardContent className="p-3">
                          <div className="space-y-2">
-                           {latestVisit.chiefComplaint && (
+                           {hasVisit && latestVisit.chiefComplaint && (
                              <div className="flex gap-2">
                                <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">CC</span>
                                <p className="text-xs text-slate-700">{latestVisit.chiefComplaint}</p>
                              </div>
                            )}
-                           {(() => {
+                           {hasVisit && (() => {
                              const v = (latestVisit.vitals as any) || {};
                              const items = [
                                v.bp && `BP: ${v.bp}`,
@@ -3362,7 +3369,7 @@ export default function ClinicianPortal() {
                                </div>
                              ) : null;
                            })()}
-                           {(latestVisit.objective || ((latestVisit.vitals as any)?.pvExam) || ((latestVisit.vitals as any)?.psExam)) && (
+                           {hasVisit && (latestVisit.objective || ((latestVisit.vitals as any)?.pvExam) || ((latestVisit.vitals as any)?.psExam)) && (
                              <div className="flex gap-2">
                                <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Obs</span>
                                <div className="text-xs text-slate-600 space-y-0.5">
@@ -3372,26 +3379,25 @@ export default function ClinicianPortal() {
                                </div>
                              </div>
                            )}
-                           {(latestVisit.diagnosis || latestVisit.assessment) && (
+                           {hasVisit && (latestVisit.diagnosis || latestVisit.assessment) && (
                              <div className="flex gap-2">
                                <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Dx</span>
                                <p className="text-xs font-medium text-slate-800">{latestVisit.diagnosis || latestVisit.assessment}</p>
                              </div>
                            )}
-                           {(() => {
-                             const visitMeds = medications.filter((m: any) => m.startDate && new Date(m.startDate).toDateString() === new Date(latestVisit.date).toDateString());
-                             return visitMeds.length > 0 ? (
-                               <div className="flex gap-2 items-start">
-                                 <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Rx</span>
-                                 <div className="flex flex-wrap gap-1">
-                                   {visitMeds.map((m: any, i: number) => (
-                                     <span key={i} className="text-[10px] bg-blue-50 border border-blue-200 text-blue-700 px-1.5 py-0.5 rounded">{m.name} {m.dose}</span>
-                                   ))}
-                                 </div>
+
+                           {activeMeds.length > 0 && (
+                             <div className="flex gap-2 items-start">
+                               <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Rx</span>
+                               <div className="flex flex-wrap gap-1">
+                                 {activeMeds.map((m: any, i: number) => (
+                                   <span key={i} className="text-[10px] bg-blue-50 border border-blue-200 text-blue-700 px-1.5 py-0.5 rounded">{m.name} {m.dose}{m.frequency ? ` (${m.frequency})` : ''}</span>
+                                 ))}
                                </div>
-                             ) : null;
-                           })()}
-                           {(() => {
+                             </div>
+                           )}
+
+                           {hasVisit && (() => {
                              const v = (latestVisit.vitals as any) || {};
                              const invTests: string[] = v.nextInvestigationTests || [];
                              const invCustom: string = v.nextInvestigationCustom || '';
@@ -3407,7 +3413,24 @@ export default function ClinicianPortal() {
                                </div>
                              ) : null;
                            })()}
-                           {latestVisit.planNotes && (
+
+                           {labResults.length > 0 && (
+                             <div className="flex gap-2 items-start">
+                               <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Labs</span>
+                               <div className="flex flex-wrap gap-1">
+                                 {labResults.slice(-8).map((lr: any, i: number) => (
+                                   <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                                     lr.status === 'High' || lr.status === 'Low' ? 'bg-red-50 border-red-200 text-red-700' :
+                                     lr.status === 'Borderline' ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                                     'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                   }`}>{lr.testName}: {lr.value}{lr.unit ? ` ${lr.unit}` : ''} {lr.status && `(${lr.status})`}</span>
+                                 ))}
+                                 {labResults.length > 8 && <span className="text-[10px] text-amber-500">+{labResults.length - 8} more</span>}
+                               </div>
+                             </div>
+                           )}
+
+                           {hasVisit && latestVisit.planNotes && (
                              <div className="flex gap-2">
                                <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Plan</span>
                                <p className="text-xs text-slate-600">{latestVisit.planNotes}</p>
@@ -3416,7 +3439,8 @@ export default function ClinicianPortal() {
                          </div>
                        </CardContent>
                      </Card>
-                   )}
+                     );
+                   })()}
 
                    {/* 1. CURRENT VISIT CLINICAL WORKSPACE (SOAP) - DYNAMIC */}
                    <Card className="shadow-md border-blue-100 bg-white overflow-hidden">
