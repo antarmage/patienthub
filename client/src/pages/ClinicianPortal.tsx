@@ -107,6 +107,7 @@ export default function ClinicianPortal() {
   const [careMode, setCareMode] = useState("natural_conception"); 
   const [showDocumentation, setShowDocumentation] = useState(false);
   const [showPastRecords, setShowPastRecords] = useState(true);
+  const [selectedTrailVisitId, setSelectedTrailVisitId] = useState<number | string | null>(null);
   const [scheduleViewMode, setScheduleViewMode] = useState("appointments");
   const [calendarViewMode, setCalendarViewMode] = useState("month");
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
@@ -777,6 +778,7 @@ export default function ClinicianPortal() {
 
   const navigateToPatient = (patient: typeof patients[0]) => {
     setSelectedPatient(patient);
+    setSelectedTrailVisitId(null);
     setActiveView("patient_detail");
   };
 
@@ -3150,7 +3152,7 @@ export default function ClinicianPortal() {
                         {searchResults.map((patient: any) => (
                           <div 
                             key={patient.id}
-                            onClick={() => { setSelectedPatient(patient); setPatientSearch(""); setIsSearching(false); }}
+                            onClick={() => { setSelectedPatient(patient); setSelectedTrailVisitId(null); setPatientSearch(""); setIsSearching(false); }}
                             className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-blue-50/40 group relative`}
                             data-testid={`search-result-${patient.id}`}
                           >
@@ -3176,7 +3178,7 @@ export default function ClinicianPortal() {
                         {queuePatients.map((patient: any) => (
                           <div 
                             key={patient.id}
-                            onClick={() => setSelectedPatient(patient)}
+                            onClick={() => { setSelectedPatient(patient); setSelectedTrailVisitId(null); }}
                             className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 group relative ${selectedPatient?.id === patient.id ? 'bg-blue-50/60' : ''}`}
                           >
                              {selectedPatient?.id === patient.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>}
@@ -4764,120 +4766,188 @@ export default function ClinicianPortal() {
                       )}
                    </Card>
 
-                   {/* TREATMENT TRAIL */}
-                   {visitHistory.length > 0 && (
+                   {/* TREATMENT TRAIL - Horizontal Progress Bar */}
+                   {(() => {
+                     const patientAppts = selectedPatient ? appointments.filter((a: any) => a.patientId === selectedPatient.id && a.status === 'Completed') : [];
+                     const visitDates = new Set(visitHistory.map((v: any) => new Date(v.date).toDateString()));
+                     const apptAsVisits = patientAppts
+                       .filter((a: any) => !visitDates.has(new Date(a.date).toDateString()))
+                       .map((a: any) => ({
+                         id: `appt-${a.id}`,
+                         date: a.date,
+                         visitType: a.visitType || a.type,
+                         chiefComplaint: a.chiefComplaint || null,
+                         subjective: a.notes || null,
+                         objective: null,
+                         diagnosis: null,
+                         assessment: null,
+                         planNotes: null,
+                         vitals: a.vitals || {},
+                         _isAppointment: true,
+                       }));
+                     const allTrailVisits = [...visitHistory, ...apptAsVisits];
+                     if (allTrailVisits.length === 0) return null;
+                     const sortedVisits = allTrailVisits.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                     const selectedVisit = selectedTrailVisitId ? sortedVisits.find((v: any) => v.id === selectedTrailVisitId) : null;
+                     const selectedVitals = selectedVisit ? ((selectedVisit as any).vitals as any) || {} : {};
+                     const selectedVitalsList = selectedVisit ? [
+                       selectedVitals.weight && `Wt: ${selectedVitals.weight}kg`,
+                       selectedVitals.bp && `BP: ${selectedVitals.bp}`,
+                       selectedVitals.pulse && `Pulse: ${selectedVitals.pulse}`,
+                       selectedVitals.hb && `Hb: ${selectedVitals.hb}`,
+                       selectedVitals.spo2 && `SpO2: ${selectedVitals.spo2}%`,
+                       selectedVitals.fetalHeartRate && `FHR: ${selectedVitals.fetalHeartRate}`,
+                       selectedVitals.fundalHeight && `FH: ${selectedVitals.fundalHeight}`,
+                       selectedVitals.temperature && `Temp: ${selectedVitals.temperature}°F`,
+                     ].filter(Boolean) : [];
+                     const selectedInvTests: string[] = selectedVitals.nextInvestigationTests || [];
+                     const selectedInvCustom: string = selectedVitals.nextInvestigationCustom || '';
+                     const allSelectedInv = [...selectedInvTests, ...(selectedInvCustom ? [selectedInvCustom] : [])];
+                     const selectedVisitMeds = selectedVisit ? medications.filter((m: any) => m.startDate && new Date(m.startDate).toDateString() === new Date((selectedVisit as any).date).toDateString()) : [];
+
+                     return (
                      <Card className="shadow-sm border-slate-200 bg-white overflow-hidden" data-testid="treatment-trail-card">
-                       <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 px-4 py-3 border-b border-indigo-100 flex justify-between items-center cursor-pointer" onClick={() => setShowPastRecords(!showPastRecords)} data-testid="toggle-past-records">
+                       <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 px-4 py-3 border-b border-indigo-100">
                          <h3 className="font-bold text-sm text-indigo-800 flex items-center gap-2">
                            <History className="w-4 h-4 text-indigo-600" />
                            Treatment Trail
                            <Badge className="text-[10px] bg-indigo-100 text-indigo-700 border-indigo-200">{visitHistory.length} visit{visitHistory.length !== 1 ? 's' : ''}</Badge>
+                           <span className="text-[10px] text-slate-400 font-normal ml-auto">Click a date to view details</span>
                          </h3>
-                         <ChevronRight className={`w-4 h-4 text-indigo-400 transition-transform duration-200 ${showPastRecords ? 'rotate-90' : ''}`} />
                        </div>
-                       {showPastRecords && (
-                         <CardContent className="p-0 max-h-[600px] overflow-y-auto">
-                           {[...visitHistory].reverse().map((visit: any, idx: number) => {
-                             const vitals = (visit.vitals as any) || {};
-                             const vitalsList = [
-                               vitals.weight && `Wt: ${vitals.weight}kg`,
-                               vitals.bp && `BP: ${vitals.bp}`,
-                               vitals.pulse && `Pulse: ${vitals.pulse}`,
-                               vitals.temperature && `Temp: ${vitals.temperature}°F`,
-                               vitals.fetalHeartRate && `FHR: ${vitals.fetalHeartRate}bpm`,
-                               vitals.fundalHeight && `FH: ${vitals.fundalHeight}cm`,
-                             ].filter(Boolean);
-                             const visitInvTests: string[] = vitals.nextInvestigationTests || [];
-                             const visitInvCustom: string = vitals.nextInvestigationCustom || '';
-                             const allVisitInv = [...visitInvTests, ...(visitInvCustom ? [visitInvCustom] : [])];
-                             const isToday = new Date(visit.date).toDateString() === new Date().toDateString();
-                             const isLatest = idx === 0;
-                             const borderColor = isLatest && isToday ? 'border-l-blue-500' : isLatest ? 'border-l-indigo-500' : 'border-l-slate-200';
-                             return (
-                               <div key={visit.id} className={`border-b border-slate-100 last:border-0 border-l-[3px] ${borderColor} ${isToday && isLatest ? 'bg-blue-50/30' : isLatest ? 'bg-indigo-50/20' : ''}`} data-testid={`past-visit-${visit.id}`}>
-                                 <div className="px-4 py-3">
-                                   <div className="flex items-center justify-between mb-2">
-                                     <div className="flex items-center gap-2">
-                                       <span className="text-xs font-bold text-slate-800">
-                                         {new Date(visit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                       </span>
-                                       {isToday && isLatest && <Badge className="text-[9px] bg-blue-100 text-blue-700 border-blue-200">Today</Badge>}
-                                       {isLatest && !isToday && <Badge className="text-[9px] bg-indigo-100 text-indigo-600 border-indigo-200">Latest</Badge>}
-                                       {visit.visitType && <Badge variant="outline" className="text-[9px] text-slate-500">{visit.visitType}</Badge>}
-                                     </div>
-                                     {visit.provider && <span className="text-[10px] text-slate-400">{visit.provider}</span>}
+
+                       <div className="px-4 py-4">
+                         <div className="relative">
+                           <div className="absolute top-[14px] left-0 right-0 h-[2px] bg-indigo-100" />
+                           <div className="flex justify-between items-start relative overflow-x-auto" style={{ minWidth: sortedVisits.length > 8 ? `${sortedVisits.length * 80}px` : 'auto' }}>
+                             {sortedVisits.map((visit: any, idx: number) => {
+                               const isSelected = selectedTrailVisitId === visit.id;
+                               const isToday = new Date(visit.date).toDateString() === new Date().toDateString();
+                               const isLatest = idx === sortedVisits.length - 1;
+                               return (
+                                 <div key={visit.id} className="flex flex-col items-center cursor-pointer group" style={{ minWidth: '60px' }}
+                                   onClick={() => setSelectedTrailVisitId(isSelected ? null : visit.id)}
+                                   data-testid={`trail-dot-${visit.id}`}>
+                                   <div className={`w-7 h-7 rounded-full flex items-center justify-center z-10 transition-all duration-200 border-2 ${
+                                     isSelected ? 'bg-indigo-600 border-indigo-600 text-white scale-110 shadow-lg shadow-indigo-200' :
+                                     isToday ? 'bg-blue-500 border-blue-500 text-white' :
+                                     isLatest ? 'bg-indigo-500 border-indigo-500 text-white' :
+                                     'bg-white border-indigo-300 text-indigo-500 group-hover:border-indigo-500 group-hover:bg-indigo-50'
+                                   }`}>
+                                     <span className="text-[8px] font-bold">{idx + 1}</span>
                                    </div>
-
-                                   {visit.chiefComplaint && (
-                                     <p className="text-xs text-slate-700 mb-1.5"><span className="font-semibold text-slate-500">CC:</span> {visit.chiefComplaint}</p>
-                                   )}
-                                   {visit.subjective && !visit.chiefComplaint && (
-                                     <p className="text-xs text-slate-600 mb-1.5 line-clamp-2">{visit.subjective}</p>
-                                   )}
-                                   {visit.objective && (
-                                     <p className="text-[11px] text-slate-600 mb-1"><span className="font-semibold text-slate-500">O/E:</span> {visit.objective}</p>
-                                   )}
-
-                                   {vitalsList.length > 0 && (
-                                     <div className="flex flex-wrap gap-1.5 mb-1.5">
-                                       {vitalsList.map((v, i) => (
-                                         <span key={i} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{v}</span>
-                                       ))}
-                                     </div>
-                                   )}
-
-                                   {visit.diagnosis && (
-                                     <p className="text-[11px] text-slate-700 mb-1"><span className="font-semibold text-indigo-600">Dx:</span> <span className="font-medium">{visit.diagnosis}</span></p>
-                                   )}
-                                   {visit.assessment && !visit.diagnosis && (
-                                     <p className="text-[11px] text-slate-600 line-clamp-2 mb-1"><span className="font-semibold text-slate-500">Assessment:</span> {visit.assessment}</p>
-                                   )}
-                                   {visit.planNotes && (
-                                     <p className="text-[11px] text-slate-500 mb-1.5"><span className="font-semibold">Plan:</span> {visit.planNotes}</p>
-                                   )}
-
-                                   {/* Medications prescribed at this visit */}
-                                   {medications.filter((m: any) => {
-                                     if (!m.startDate) return false;
-                                     return new Date(m.startDate).toDateString() === new Date(visit.date).toDateString();
-                                   }).length > 0 && (
-                                     <div className="mt-2 pt-2 border-t border-slate-100">
-                                       <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wide flex items-center gap-1 mb-1">
-                                         <Pill className="w-3 h-3" /> Rx Prescribed
-                                       </span>
-                                       <div className="flex flex-wrap gap-1">
-                                         {medications.filter((m: any) => m.startDate && new Date(m.startDate).toDateString() === new Date(visit.date).toDateString()).map((m: any) => (
-                                           <span key={m.id} className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-100">
-                                             {m.name} {m.dose ? `(${m.dose})` : ''}
-                                           </span>
-                                         ))}
-                                       </div>
-                                     </div>
-                                   )}
-
-                                   {/* Investigations ordered at this visit */}
-                                   {allVisitInv.length > 0 && (
-                                     <div className="mt-2 pt-2 border-t border-slate-100">
-                                       <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wide flex items-center gap-1 mb-1">
-                                         <FlaskConical className="w-3 h-3" /> Investigations Ordered
-                                       </span>
-                                       <div className="flex flex-wrap gap-1">
-                                         {allVisitInv.map((inv, i) => (
-                                           <span key={i} className="text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full border border-purple-100">
-                                             {inv}
-                                           </span>
-                                         ))}
-                                       </div>
-                                     </div>
-                                   )}
+                                   <span className={`text-[9px] mt-1.5 font-medium text-center leading-tight ${isSelected ? 'text-indigo-700 font-bold' : 'text-slate-500'}`}>
+                                     {new Date(visit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                                   </span>
+                                   {isToday && <span className="text-[7px] text-blue-500 font-bold">TODAY</span>}
                                  </div>
+                               );
+                             })}
+                           </div>
+                         </div>
+                       </div>
+
+                       {selectedVisit && (
+                         <div className="border-t border-indigo-100 bg-gradient-to-b from-indigo-50/30 to-white">
+                           <div className="px-4 py-3">
+                             <div className="flex items-center justify-between mb-3">
+                               <div className="flex items-center gap-2">
+                                 <span className="text-sm font-bold text-slate-800">
+                                   {new Date((selectedVisit as any).date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                 </span>
+                                 {(selectedVisit as any).visitType && <Badge variant="outline" className="text-[9px] text-slate-500">{(selectedVisit as any).visitType}</Badge>}
                                </div>
-                             );
-                           })}
-                         </CardContent>
+                               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setSelectedTrailVisitId(null)}>
+                                 <X className="w-3.5 h-3.5 text-slate-400" />
+                               </Button>
+                             </div>
+
+                             <div className="space-y-2">
+                               {(selectedVisit as any).chiefComplaint && (
+                                 <div className="flex gap-2">
+                                   <span className="text-[10px] font-bold text-indigo-600 uppercase min-w-[32px]">CC</span>
+                                   <p className="text-xs text-slate-700">{(selectedVisit as any).chiefComplaint}</p>
+                                 </div>
+                               )}
+                               {(selectedVisit as any).subjective && !(selectedVisit as any).chiefComplaint && (
+                                 <div className="flex gap-2">
+                                   <span className="text-[10px] font-bold text-indigo-600 uppercase min-w-[32px]">Subj</span>
+                                   <p className="text-xs text-slate-600">{(selectedVisit as any).subjective}</p>
+                                 </div>
+                               )}
+
+                               {selectedVitalsList.length > 0 && (
+                                 <div className="flex gap-2 items-start">
+                                   <span className="text-[10px] font-bold text-indigo-600 uppercase min-w-[32px]">O/E</span>
+                                   <div className="flex flex-wrap gap-1">
+                                     {selectedVitalsList.map((v, i) => (
+                                       <span key={i} className="text-[10px] bg-white border border-indigo-200 text-slate-700 px-1.5 py-0.5 rounded font-medium">{v}</span>
+                                     ))}
+                                   </div>
+                                 </div>
+                               )}
+
+                               {((selectedVisit as any).objective || selectedVitals.pvExam || selectedVitals.psExam) && (
+                                 <div className="flex gap-2">
+                                   <span className="text-[10px] font-bold text-indigo-600 uppercase min-w-[32px]">Obs</span>
+                                   <div className="text-xs text-slate-600 space-y-0.5">
+                                     {(selectedVisit as any).objective && <p>{(selectedVisit as any).objective}</p>}
+                                     {selectedVitals.pvExam && <p><span className="font-semibold">P/V:</span> {selectedVitals.pvExam}</p>}
+                                     {selectedVitals.psExam && <p><span className="font-semibold">P/S:</span> {selectedVitals.psExam}</p>}
+                                   </div>
+                                 </div>
+                               )}
+
+                               {((selectedVisit as any).diagnosis || (selectedVisit as any).assessment) && (
+                                 <div className="flex gap-2">
+                                   <span className="text-[10px] font-bold text-indigo-600 uppercase min-w-[32px]">Dx</span>
+                                   <p className="text-xs font-medium text-slate-800">{(selectedVisit as any).diagnosis || (selectedVisit as any).assessment}</p>
+                                 </div>
+                               )}
+
+                               {selectedVisitMeds.length > 0 && (
+                                 <div className="flex gap-2 items-start">
+                                   <span className="text-[10px] font-bold text-blue-600 uppercase min-w-[32px] flex items-center gap-1"><Pill className="w-3 h-3" />Rx</span>
+                                   <div className="flex flex-wrap gap-1">
+                                     {selectedVisitMeds.map((m: any) => (
+                                       <span key={m.id} className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-100">
+                                         {m.name} {m.dose ? `(${m.dose})` : ''}{m.frequency ? ` - ${m.frequency}` : ''}
+                                       </span>
+                                     ))}
+                                   </div>
+                                 </div>
+                               )}
+
+                               {allSelectedInv.length > 0 && (
+                                 <div className="flex gap-2 items-start">
+                                   <span className="text-[10px] font-bold text-purple-600 uppercase min-w-[32px] flex items-center gap-1"><FlaskConical className="w-3 h-3" />Inv</span>
+                                   <div className="flex flex-wrap gap-1">
+                                     {allSelectedInv.map((inv, i) => (
+                                       <span key={i} className="text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full border border-purple-100">
+                                         {inv}
+                                       </span>
+                                     ))}
+                                   </div>
+                                 </div>
+                               )}
+
+                               {(selectedVisit as any).planNotes && (
+                                 <div className="flex gap-2">
+                                   <span className="text-[10px] font-bold text-indigo-600 uppercase min-w-[32px]">Plan</span>
+                                   <p className="text-xs text-slate-600">{(selectedVisit as any).planNotes}</p>
+                                 </div>
+                               )}
+
+                               {!((selectedVisit as any).chiefComplaint || (selectedVisit as any).subjective || selectedVitalsList.length > 0 || (selectedVisit as any).diagnosis || selectedVisitMeds.length > 0 || allSelectedInv.length > 0 || (selectedVisit as any).planNotes) && (
+                                 <p className="text-xs text-slate-400 italic">No clinical details recorded for this visit.</p>
+                               )}
+                             </div>
+                           </div>
+                         </div>
                        )}
                      </Card>
-                   )}
+                     );
+                   })()}
 
                    {/* 1. DYNAMIC SUMMARY BAR BASED ON PATHWAY */}
                    {careMode === 'natural_conception' && (
