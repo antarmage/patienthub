@@ -243,7 +243,9 @@ export default function ClinicianPortal() {
       },
       pregnancyInfo,
       chiefComplaint: latestVisit?.chiefComplaint || latestVisit?.subjective || '',
-      clinicalFindings: latestVisit?.assessment || latestVisit?.objective || '',
+      clinicalFindings: latestVisit?.chiefComplaint || latestVisit?.subjective || '',
+      observation: latestVisit?.objective || '',
+      assessment: latestVisit?.assessment || '',
       diagnosis: latestVisit?.diagnosis || '',
       medications: medications.map((med: any) => ({
         name: med.name,
@@ -254,6 +256,7 @@ export default function ClinicianPortal() {
       investigations: allInv,
       advice: latestVisit?.planNotes || '',
       nextFollowUp: selectedPatient.nextReview || '',
+      nextVaccinationDate: ((latestVisit?.vitals as any) || {}).nextImmunisationDate || '',
     });
   };
 

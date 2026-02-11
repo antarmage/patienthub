@@ -20,6 +20,8 @@ export interface PrescriptionData {
   pregnancyInfo: string;
   chiefComplaint: string;
   clinicalFindings: string;
+  observation: string;
+  assessment: string;
   diagnosis: string;
   medications: {
     name: string;
@@ -30,6 +32,7 @@ export interface PrescriptionData {
   investigations: string[];
   advice: string;
   nextFollowUp: string;
+  nextVaccinationDate: string;
 }
 
 function computeBMI(weight?: string, height?: string): string {
@@ -154,6 +157,11 @@ const PRESCRIPTION_STYLES = `
   .cc-content { font-size: 11px; color: #333; white-space: pre-wrap; }
 
   .diagnosis-section { margin-bottom: 8px; }
+  .obs-assess-section { display: flex; gap: 12px; margin-bottom: 8px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+  .obs-assess-section > div { flex: 1; }
+  .obs-assess-label { font-size: 11px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .obs-assess-content { font-size: 12px; color: #333; white-space: pre-wrap; line-height: 1.4; }
+
   .diagnosis-label { font-size: 13px; font-weight: 700; }
   .diagnosis-text { font-size: 13px; color: #333; margin-left: 4px; }
 
@@ -180,6 +188,7 @@ const PRESCRIPTION_STYLES = `
   .advice-content { font-size: 11px; color: #333; margin-left: 4px; white-space: pre-wrap; line-height: 1.5; }
 
   .followup { font-size: 13px; font-weight: 700; margin: 10px 0; }
+  .vaccination-date { font-size: 12px; font-weight: 600; color: #2563eb; margin: 4px 0; }
 
   .footer-line { text-align: center; font-size: 9px; color: #999; margin-top: 16px; padding-top: 6px; border-top: 1px solid #ddd; font-style: italic; }
 
@@ -238,6 +247,16 @@ export function generatePrescriptionHTML(data: PrescriptionData): string {
   </div>
 
   ${
+    (data.observation || data.assessment)
+      ? `
+  <div class="obs-assess-section">
+    ${data.observation ? `<div><div class="obs-assess-label">Observation</div><div class="obs-assess-content">${data.observation}</div></div>` : ""}
+    ${data.assessment ? `<div><div class="obs-assess-label">Assessment</div><div class="obs-assess-content">${data.assessment}</div></div>` : ""}
+  </div>`
+      : ""
+  }
+
+  ${
     data.diagnosis
       ? `
   <div class="diagnosis-section">
@@ -267,6 +286,13 @@ export function generatePrescriptionHTML(data: PrescriptionData): string {
     data.nextFollowUp
       ? `
   <div class="followup">Follow Up: ${new Date(data.nextFollowUp).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })}</div>`
+      : ""
+  }
+
+  ${
+    data.nextVaccinationDate
+      ? `
+  <div class="vaccination-date">Next Vaccination: ${new Date(data.nextVaccinationDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>`
       : ""
   }
 
