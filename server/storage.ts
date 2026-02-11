@@ -42,6 +42,7 @@ export interface IStorage {
   getProviders(): Promise<Provider[]>;
   getProvider(id: number): Promise<Provider | undefined>;
   createProvider(provider: InsertProvider): Promise<Provider>;
+  updateProvider(id: number, data: Partial<InsertProvider>): Promise<Provider | undefined>;
 
   getServices(): Promise<Service[]>;
   createService(service: InsertService): Promise<Service>;
@@ -172,6 +173,11 @@ export class DatabaseStorage implements IStorage {
   async createProvider(provider: InsertProvider): Promise<Provider> {
     const [created] = await db.insert(providers).values(provider).returning();
     return created;
+  }
+
+  async updateProvider(id: number, data: Partial<InsertProvider>): Promise<Provider | undefined> {
+    const [updated] = await db.update(providers).set(data).where(eq(providers.id, id)).returning();
+    return updated;
   }
 
   async getServices(): Promise<Service[]> {

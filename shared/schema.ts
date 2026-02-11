@@ -65,6 +65,15 @@ export const providers = pgTable("providers", {
   role: text("role"),
   specialty: text("specialty"),
   availability: text("availability"),
+  qualification: text("qualification"),
+  regNumber: text("reg_number"),
+  regCouncil: text("reg_council"),
+  regYear: text("reg_year"),
+  additionalQualifications: text("additional_qualifications"),
+  clinicName: text("clinic_name"),
+  clinicAddress: text("clinic_address"),
+  clinicPhone: text("clinic_phone"),
+  clinicTiming: text("clinic_timing"),
 });
 
 export const insertProviderSchema = createInsertSchema(providers).omit({ id: true });

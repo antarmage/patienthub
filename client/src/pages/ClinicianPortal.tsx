@@ -2438,6 +2438,85 @@ export default function ClinicianPortal() {
                                 </CardContent>
                             </Card>
 
+                            {/* Qualification & Registration Card */}
+                            <Card className="shadow-sm border-slate-200">
+                                <CardHeader>
+                                    <CardTitle className="text-base font-bold text-slate-800">Qualification & Registration</CardTitle>
+                                    <p className="text-xs text-slate-500 mt-1">These details appear on your prescriptions and official documents.</p>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <Label htmlFor="qualification">Qualification / Degree</Label>
+                                        <Input id="qualification" placeholder="e.g. MBBS, MS (OBG), DNB" defaultValue={clinicianProvider?.qualification || ''} data-testid="input-qualification" />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label htmlFor="regNumber">Registration Number</Label>
+                                        <Input id="regNumber" placeholder="e.g. MMC 12345" defaultValue={clinicianProvider?.regNumber || ''} data-testid="input-reg-number" />
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <Label htmlFor="regCouncil">Registration Council</Label>
+                                        <Input id="regCouncil" placeholder="e.g. West Bengal Medical Council" defaultValue={clinicianProvider?.regCouncil || ''} data-testid="input-reg-council" />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label htmlFor="regYear">Registration Year</Label>
+                                        <Input id="regYear" placeholder="e.g. 2018" defaultValue={clinicianProvider?.regYear || ''} data-testid="input-reg-year" />
+                                      </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label htmlFor="additionalQualifications">Additional Qualifications / Fellowships</Label>
+                                      <Input id="additionalQualifications" placeholder="e.g. FRCOG, Fellowship in Reproductive Medicine" defaultValue={clinicianProvider?.additionalQualifications || ''} data-testid="input-additional-qualifications" />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label htmlFor="clinicName">Clinic / Hospital Name</Label>
+                                      <Input id="clinicName" placeholder="e.g. Saivie Women's Health Centre" defaultValue={clinicianProvider?.clinicName || ''} data-testid="input-clinic-name" />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label htmlFor="clinicAddress">Clinic Address</Label>
+                                      <Input id="clinicAddress" placeholder="Full clinic address for prescriptions" defaultValue={clinicianProvider?.clinicAddress || ''} data-testid="input-clinic-address" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <Label htmlFor="clinicPhone">Clinic Phone</Label>
+                                        <Input id="clinicPhone" placeholder="e.g. +91 98765 43210" defaultValue={clinicianProvider?.clinicPhone || ''} data-testid="input-clinic-phone" />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label htmlFor="clinicTiming">Clinic Timing</Label>
+                                        <Input id="clinicTiming" placeholder="e.g. Mon-Sat 10AM-2PM, 5PM-8PM" defaultValue={clinicianProvider?.clinicTiming || ''} data-testid="input-clinic-timing" />
+                                      </div>
+                                    </div>
+                                    <div className="pt-4 flex justify-end">
+                                      <Button className="bg-blue-600 hover:bg-blue-700" data-testid="button-save-qualifications" onClick={() => {
+                                        const getData = (id: string) => (document.getElementById(id) as HTMLInputElement)?.value || '';
+                                        const profileData = {
+                                          qualification: getData('qualification'),
+                                          regNumber: getData('regNumber'),
+                                          regCouncil: getData('regCouncil'),
+                                          regYear: getData('regYear'),
+                                          additionalQualifications: getData('additionalQualifications'),
+                                          clinicName: getData('clinicName'),
+                                          clinicAddress: getData('clinicAddress'),
+                                          clinicPhone: getData('clinicPhone'),
+                                          clinicTiming: getData('clinicTiming'),
+                                        };
+                                        if (clinicianProvider?.id) {
+                                          fetch(`/api/providers/${clinicianProvider.id}`, {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify(profileData),
+                                          }).then(() => {
+                                            const stored = JSON.parse(localStorage.getItem('clinicianProvider') || '{}');
+                                            localStorage.setItem('clinicianProvider', JSON.stringify({ ...stored, ...profileData }));
+                                            queryClient.invalidateQueries({ queryKey: ['/api/providers'] });
+                                          });
+                                        }
+                                      }}>Save Qualifications</Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
                             {/* Security Card */}
                             <Card className="shadow-sm border-slate-200">
                                 <CardHeader>

@@ -52,6 +52,13 @@ export async function registerRoutes(
     res.status(201).json(provider);
   });
 
+  app.patch("/api/providers/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const updated = await storage.updateProvider(id, req.body);
+    if (!updated) return res.status(404).json({ error: "Provider not found" });
+    res.json(updated);
+  });
+
   app.get("/api/services", async (_req, res) => {
     const services = await storage.getServices();
     res.json(services);
