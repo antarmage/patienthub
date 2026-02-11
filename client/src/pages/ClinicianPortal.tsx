@@ -243,7 +243,7 @@ export default function ClinicianPortal() {
       },
       pregnancyInfo,
       chiefComplaint: latestVisit?.chiefComplaint || latestVisit?.subjective || '',
-      clinicalFindings: latestVisit?.chiefComplaint || latestVisit?.subjective || '',
+      clinicalFindings: latestVisit?.objective || '',
       observation: latestVisit?.objective || '',
       assessment: latestVisit?.assessment || '',
       diagnosis: latestVisit?.diagnosis || '',
