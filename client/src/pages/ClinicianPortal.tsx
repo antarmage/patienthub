@@ -130,6 +130,8 @@ export default function ClinicianPortal() {
   const [patientSearch, setPatientSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [extractionStatus, setExtractionStatus] = useState<string | null>(null);
+  const [fundalHeightVal, setFundalHeightVal] = useState('');
+  const [fetalHeartRateVal, setFetalHeartRateVal] = useState('');
 
   const queryClient = useQueryClient();
 
@@ -345,6 +347,11 @@ export default function ClinicianPortal() {
   });
   const visitHistory = visitHistoryQuery.data || [];
   const latestVisit = visitHistory.length > 0 ? visitHistory[visitHistory.length - 1] : null;
+
+  React.useEffect(() => {
+    setFundalHeightVal((latestVisit?.vitals as any)?.fundalHeight || '');
+    setFetalHeartRateVal((latestVisit?.vitals as any)?.fetalHeartRate || '');
+  }, [latestVisit?.id]);
 
   const medicationsQuery = useQuery({
     queryKey: [`/api/patients/${selectedPatient?.id}/medications`],
@@ -3427,7 +3434,8 @@ export default function ClinicianPortal() {
                                           <Input
                                             type="number"
                                             placeholder="—"
-                                            defaultValue={(latestVisit?.vitals as any)?.fundalHeight || ''}
+                                            value={fundalHeightVal}
+                                            onChange={(e) => setFundalHeightVal(e.target.value)}
                                             className="h-7 text-sm font-bold text-slate-800 border-pink-200 focus-visible:ring-pink-300 w-20 px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             data-testid="input-fundal-height"
                                             onBlur={(e) => {
@@ -3453,7 +3461,8 @@ export default function ClinicianPortal() {
                                           <Input
                                             type="number"
                                             placeholder="—"
-                                            defaultValue={(latestVisit?.vitals as any)?.fetalHeartRate || ''}
+                                            value={fetalHeartRateVal}
+                                            onChange={(e) => setFetalHeartRateVal(e.target.value)}
                                             className="h-7 text-sm font-bold text-slate-800 border-rose-200 focus-visible:ring-rose-300 w-20 px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             data-testid="input-fetal-heart-rate"
                                             onBlur={(e) => {
