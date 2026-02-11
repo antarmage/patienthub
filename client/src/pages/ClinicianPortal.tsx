@@ -3426,73 +3426,93 @@ export default function ClinicianPortal() {
                                      </div>
                                   </div>
 
-                                  {careMode === 'pregnancy' && (
-                                    <div className="grid grid-cols-2 gap-3 mb-3">
-                                      <div className="bg-gradient-to-br from-pink-50 to-white p-2.5 rounded border border-pink-100">
-                                        <span className="text-[10px] text-pink-500 uppercase font-bold block mb-1">Fundal Height</span>
-                                        <div className="flex items-center gap-1.5">
-                                          <Input
-                                            type="number"
-                                            placeholder="—"
-                                            value={fundalHeightVal}
-                                            onChange={(e) => setFundalHeightVal(e.target.value)}
-                                            className="h-7 text-sm font-bold text-slate-800 border-pink-200 focus-visible:ring-pink-300 w-20 px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            data-testid="input-fundal-height"
-                                            onBlur={(e) => {
-                                              const val = e.target.value;
-                                              if (latestVisit?.id && val) {
-                                                const currentVitals = (latestVisit.vitals as any) || {};
-                                                fetch(`/api/visit-history/${latestVisit.id}`, {
-                                                  method: 'PATCH',
-                                                  headers: { 'Content-Type': 'application/json' },
-                                                  body: JSON.stringify({
-                                                    vitals: { ...currentVitals, fundalHeight: val }
-                                                  })
-                                                }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
-                                              }
-                                            }}
-                                          />
-                                          <span className="text-[10px] text-pink-400 font-medium">cm</span>
+                                  {careMode === 'pregnancy' && (() => {
+                                      const gestWeeks = selectedPatient.lmp ? Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24)) / 7) : null;
+                                      const fhByWeek = ((latestVisit?.vitals as any)?.fundalHeightByWeek || {}) as Record<string, number>;
+                                      const prevWeeks = Object.keys(fhByWeek).map(Number).sort((a, b) => a - b);
+                                      return (
+                                        <div className="grid grid-cols-2 gap-3 mb-3">
+                                          <div className="bg-gradient-to-br from-pink-50 to-white p-2.5 rounded border border-pink-100">
+                                            <div className="flex items-center justify-between mb-1">
+                                              <span className="text-[10px] text-pink-500 uppercase font-bold">Fundal Height</span>
+                                              {gestWeeks !== null && <span className="text-[10px] text-pink-400 font-medium">Wk {gestWeeks}</span>}
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                              <Input
+                                                type="number"
+                                                placeholder="—"
+                                                value={fundalHeightVal}
+                                                onChange={(e) => setFundalHeightVal(e.target.value)}
+                                                className="h-7 text-sm font-bold text-slate-800 border-pink-200 focus-visible:ring-pink-300 w-20 px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                data-testid="input-fundal-height"
+                                                onBlur={(e) => {
+                                                  const val = e.target.value;
+                                                  if (latestVisit?.id && val && gestWeeks !== null) {
+                                                    const currentVitals = (latestVisit.vitals as any) || {};
+                                                    const updatedByWeek = { ...(currentVitals.fundalHeightByWeek || {}), [gestWeeks]: Number(val) };
+                                                    fetch(`/api/visit-history/${latestVisit.id}`, {
+                                                      method: 'PATCH',
+                                                      headers: { 'Content-Type': 'application/json' },
+                                                      body: JSON.stringify({
+                                                        vitals: { ...currentVitals, fundalHeight: val, fundalHeightByWeek: updatedByWeek }
+                                                      })
+                                                    }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
+                                                  }
+                                                }}
+                                              />
+                                              <span className="text-[10px] text-pink-400 font-medium">cm</span>
+                                            </div>
+                                            {prevWeeks.length > 0 && (
+                                              <div className="mt-2 pt-1.5 border-t border-pink-100/60">
+                                                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                                                  {prevWeeks.map((wk) => (
+                                                    <span key={wk} className={`text-[10px] ${wk === gestWeeks ? 'text-pink-600 font-bold' : 'text-pink-400'}`}>
+                                                      W{wk}: {fhByWeek[wk]}cm
+                                                    </span>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="bg-gradient-to-br from-rose-50 to-white p-2.5 rounded border border-rose-100">
+                                            <span className="text-[10px] text-rose-500 uppercase font-bold block mb-1">Fetal Heart Rate</span>
+                                            <div className="flex items-center gap-1.5">
+                                              <Input
+                                                type="number"
+                                                placeholder="—"
+                                                value={fetalHeartRateVal}
+                                                onChange={(e) => setFetalHeartRateVal(e.target.value)}
+                                                className="h-7 text-sm font-bold text-slate-800 border-rose-200 focus-visible:ring-rose-300 w-20 px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                data-testid="input-fetal-heart-rate"
+                                                onBlur={(e) => {
+                                                  const val = e.target.value;
+                                                  if (latestVisit?.id && val) {
+                                                    const currentVitals = (latestVisit.vitals as any) || {};
+                                                    fetch(`/api/visit-history/${latestVisit.id}`, {
+                                                      method: 'PATCH',
+                                                      headers: { 'Content-Type': 'application/json' },
+                                                      body: JSON.stringify({
+                                                        vitals: { ...currentVitals, fetalHeartRate: val }
+                                                      })
+                                                    }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
+                                                  }
+                                                }}
+                                              />
+                                              <span className="text-[10px] text-rose-400 font-medium">bpm</span>
+                                              {fetalHeartRateVal && (
+                                                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                                                  Number(fetalHeartRateVal) >= 110 && Number(fetalHeartRateVal) <= 160
+                                                    ? 'bg-emerald-100 text-emerald-700'
+                                                    : 'bg-rose-100 text-rose-700'
+                                                }`}>
+                                                  {Number(fetalHeartRateVal) >= 110 && Number(fetalHeartRateVal) <= 160 ? 'Normal' : 'Abnormal'}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
                                         </div>
-                                      </div>
-                                      <div className="bg-gradient-to-br from-rose-50 to-white p-2.5 rounded border border-rose-100">
-                                        <span className="text-[10px] text-rose-500 uppercase font-bold block mb-1">Fetal Heart Rate</span>
-                                        <div className="flex items-center gap-1.5">
-                                          <Input
-                                            type="number"
-                                            placeholder="—"
-                                            value={fetalHeartRateVal}
-                                            onChange={(e) => setFetalHeartRateVal(e.target.value)}
-                                            className="h-7 text-sm font-bold text-slate-800 border-rose-200 focus-visible:ring-rose-300 w-20 px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            data-testid="input-fetal-heart-rate"
-                                            onBlur={(e) => {
-                                              const val = e.target.value;
-                                              if (latestVisit?.id && val) {
-                                                const currentVitals = (latestVisit.vitals as any) || {};
-                                                fetch(`/api/visit-history/${latestVisit.id}`, {
-                                                  method: 'PATCH',
-                                                  headers: { 'Content-Type': 'application/json' },
-                                                  body: JSON.stringify({
-                                                    vitals: { ...currentVitals, fetalHeartRate: val }
-                                                  })
-                                                }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
-                                              }
-                                            }}
-                                          />
-                                          <span className="text-[10px] text-rose-400 font-medium">bpm</span>
-                                          {(latestVisit?.vitals as any)?.fetalHeartRate && (
-                                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                                              Number((latestVisit?.vitals as any)?.fetalHeartRate) >= 110 && Number((latestVisit?.vitals as any)?.fetalHeartRate) <= 160
-                                                ? 'bg-emerald-100 text-emerald-700'
-                                                : 'bg-rose-100 text-rose-700'
-                                            }`}>
-                                              {Number((latestVisit?.vitals as any)?.fetalHeartRate) >= 110 && Number((latestVisit?.vitals as any)?.fetalHeartRate) <= 160 ? 'Normal' : 'Abnormal'}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
+                                      );
+                                    })()}
 
                                   {latestVisit?.objective ? (
                                     <p className="text-sm text-slate-700 leading-relaxed">{latestVisit.objective}</p>
