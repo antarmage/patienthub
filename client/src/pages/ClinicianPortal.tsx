@@ -3320,6 +3320,104 @@ export default function ClinicianPortal() {
                       </CardContent>
                    </Card>
 
+                   {/* LAST VISIT RECAP */}
+                   {latestVisit && (
+                     <Card className="shadow-sm border-amber-200 bg-gradient-to-br from-amber-50/60 to-orange-50/40 overflow-hidden" data-testid="last-visit-recap">
+                       <div className="px-4 py-2.5 border-b border-amber-100 flex items-center justify-between">
+                         <h3 className="font-bold text-sm text-amber-800 flex items-center gap-2">
+                           <FileText className="w-4 h-4 text-amber-600" />
+                           Last Visit Recap
+                           <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200 font-normal">
+                             {new Date(latestVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                           </Badge>
+                         </h3>
+                       </div>
+                       <CardContent className="p-3">
+                         <div className="space-y-2">
+                           {latestVisit.chiefComplaint && (
+                             <div className="flex gap-2">
+                               <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">CC</span>
+                               <p className="text-xs text-slate-700">{latestVisit.chiefComplaint}</p>
+                             </div>
+                           )}
+                           {(() => {
+                             const v = (latestVisit.vitals as any) || {};
+                             const items = [
+                               v.bp && `BP: ${v.bp}`,
+                               v.weight && `Wt: ${v.weight}kg`,
+                               v.pulse && `Pulse: ${v.pulse}`,
+                               v.hb && `Hb: ${v.hb}`,
+                               v.fundalHeight && `FH: ${v.fundalHeight}`,
+                               v.fetalHeartRate && `FHR: ${v.fetalHeartRate}`,
+                               v.spo2 && `SpO2: ${v.spo2}%`,
+                             ].filter(Boolean);
+                             return items.length > 0 ? (
+                               <div className="flex gap-2 items-start">
+                                 <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">O/E</span>
+                                 <div className="flex flex-wrap gap-1">
+                                   {items.map((item, i) => (
+                                     <span key={i} className="text-[10px] bg-white/80 border border-amber-200 text-slate-700 px-1.5 py-0.5 rounded font-medium">{item}</span>
+                                   ))}
+                                 </div>
+                               </div>
+                             ) : null;
+                           })()}
+                           {(latestVisit.objective || ((latestVisit.vitals as any)?.pvExam) || ((latestVisit.vitals as any)?.psExam)) && (
+                             <div className="flex gap-2">
+                               <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Obs</span>
+                               <div className="text-xs text-slate-600 space-y-0.5">
+                                 {latestVisit.objective && <p>{latestVisit.objective}</p>}
+                                 {(latestVisit.vitals as any)?.pvExam && <p><span className="font-semibold">P/V:</span> {(latestVisit.vitals as any).pvExam}</p>}
+                                 {(latestVisit.vitals as any)?.psExam && <p><span className="font-semibold">P/S:</span> {(latestVisit.vitals as any).psExam}</p>}
+                               </div>
+                             </div>
+                           )}
+                           {(latestVisit.diagnosis || latestVisit.assessment) && (
+                             <div className="flex gap-2">
+                               <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Dx</span>
+                               <p className="text-xs font-medium text-slate-800">{latestVisit.diagnosis || latestVisit.assessment}</p>
+                             </div>
+                           )}
+                           {(() => {
+                             const visitMeds = medications.filter((m: any) => m.startDate && new Date(m.startDate).toDateString() === new Date(latestVisit.date).toDateString());
+                             return visitMeds.length > 0 ? (
+                               <div className="flex gap-2 items-start">
+                                 <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Rx</span>
+                                 <div className="flex flex-wrap gap-1">
+                                   {visitMeds.map((m: any, i: number) => (
+                                     <span key={i} className="text-[10px] bg-blue-50 border border-blue-200 text-blue-700 px-1.5 py-0.5 rounded">{m.name} {m.dose}</span>
+                                   ))}
+                                 </div>
+                               </div>
+                             ) : null;
+                           })()}
+                           {(() => {
+                             const v = (latestVisit.vitals as any) || {};
+                             const invTests: string[] = v.nextInvestigationTests || [];
+                             const invCustom: string = v.nextInvestigationCustom || '';
+                             const allInv = [...invTests, ...(invCustom ? [invCustom] : [])];
+                             return allInv.length > 0 ? (
+                               <div className="flex gap-2 items-start">
+                                 <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Inv</span>
+                                 <div className="flex flex-wrap gap-1">
+                                   {allInv.map((inv, i) => (
+                                     <span key={i} className="text-[10px] bg-purple-50 border border-purple-200 text-purple-700 px-1.5 py-0.5 rounded">{inv}</span>
+                                   ))}
+                                 </div>
+                               </div>
+                             ) : null;
+                           })()}
+                           {latestVisit.planNotes && (
+                             <div className="flex gap-2">
+                               <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Plan</span>
+                               <p className="text-xs text-slate-600">{latestVisit.planNotes}</p>
+                             </div>
+                           )}
+                         </div>
+                       </CardContent>
+                     </Card>
+                   )}
+
                    {/* 1. CURRENT VISIT CLINICAL WORKSPACE (SOAP) - DYNAMIC */}
                    <Card className="shadow-md border-blue-100 bg-white overflow-hidden">
                       <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center cursor-pointer" onClick={() => setShowDocumentation(!showDocumentation)}>
