@@ -82,6 +82,7 @@ export interface IStorage {
   getVisitHistory(patientId: number): Promise<VisitHistory[]>;
   getAllVisitHistory(): Promise<VisitHistory[]>;
   createVisitHistory(visit: InsertVisitHistory): Promise<VisitHistory>;
+  updateVisitHistory(id: number, data: Partial<InsertVisitHistory>): Promise<VisitHistory | undefined>;
 
   getMedications(patientId: number): Promise<Medication[]>;
   createMedication(med: InsertMedication): Promise<Medication>;
@@ -303,6 +304,11 @@ export class DatabaseStorage implements IStorage {
   async createVisitHistory(visit: InsertVisitHistory): Promise<VisitHistory> {
     const [created] = await db.insert(visitHistory).values(visit).returning();
     return created;
+  }
+
+  async updateVisitHistory(id: number, data: Partial<InsertVisitHistory>): Promise<VisitHistory | undefined> {
+    const [updated] = await db.update(visitHistory).set(data).where(eq(visitHistory.id, id)).returning();
+    return updated;
   }
 
   async getMedications(patientId: number): Promise<Medication[]> {

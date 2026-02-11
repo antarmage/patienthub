@@ -3434,11 +3434,10 @@ export default function ClinicianPortal() {
                                               const val = e.target.value;
                                               if (latestVisit?.id && val) {
                                                 const currentVitals = (latestVisit.vitals as any) || {};
-                                                fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
-                                                  method: 'POST',
+                                                fetch(`/api/visit-history/${latestVisit.id}`, {
+                                                  method: 'PATCH',
                                                   headers: { 'Content-Type': 'application/json' },
                                                   body: JSON.stringify({
-                                                    ...latestVisit,
                                                     vitals: { ...currentVitals, fundalHeight: val }
                                                   })
                                                 }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
@@ -3461,11 +3460,10 @@ export default function ClinicianPortal() {
                                               const val = e.target.value;
                                               if (latestVisit?.id && val) {
                                                 const currentVitals = (latestVisit.vitals as any) || {};
-                                                fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
-                                                  method: 'POST',
+                                                fetch(`/api/visit-history/${latestVisit.id}`, {
+                                                  method: 'PATCH',
                                                   headers: { 'Content-Type': 'application/json' },
                                                   body: JSON.stringify({
-                                                    ...latestVisit,
                                                     vitals: { ...currentVitals, fetalHeartRate: val }
                                                   })
                                                 }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
@@ -3514,10 +3512,10 @@ export default function ClinicianPortal() {
                                             const val = e.target.value;
                                             if (latestVisit?.id) {
                                               const currentVitals = (latestVisit.vitals as any) || {};
-                                              fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
-                                                method: 'POST',
+                                              fetch(`/api/visit-history/${latestVisit.id}`, {
+                                                method: 'PATCH',
                                                 headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ ...latestVisit, vitals: { ...currentVitals, pvExam: val } })
+                                                body: JSON.stringify({ vitals: { ...currentVitals, pvExam: val } })
                                               }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
                                             }
                                           }}
@@ -3534,10 +3532,10 @@ export default function ClinicianPortal() {
                                             const val = e.target.value;
                                             if (latestVisit?.id) {
                                               const currentVitals = (latestVisit.vitals as any) || {};
-                                              fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
-                                                method: 'POST',
+                                              fetch(`/api/visit-history/${latestVisit.id}`, {
+                                                method: 'PATCH',
                                                 headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ ...latestVisit, vitals: { ...currentVitals, psExam: val } })
+                                                body: JSON.stringify({ vitals: { ...currentVitals, psExam: val } })
                                               }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
                                             }
                                           }}
@@ -3787,10 +3785,10 @@ export default function ClinicianPortal() {
                                         const currentVitals = (latestVisit.vitals as any) || {};
                                         let parsedVal: any = val;
                                         try { parsedVal = JSON.parse(val); } catch {}
-                                        fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
-                                          method: 'POST',
+                                        fetch(`/api/visit-history/${latestVisit.id}`, {
+                                          method: 'PATCH',
                                           headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({ ...latestVisit, vitals: { ...currentVitals, [field]: parsedVal } })
+                                          body: JSON.stringify({ vitals: { ...currentVitals, [field]: parsedVal } })
                                         }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
                                       }
                                     };
@@ -4381,10 +4379,10 @@ export default function ClinicianPortal() {
                                                      if (latestVisit?.id) {
                                                        const currentVitals = (latestVisit.vitals as any) || {};
                                                        const updatedImm = { ...(currentVitals.immunisations || {}), [vax.name]: { date: new Date().toISOString().split('T')[0] } };
-                                                       fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
-                                                         method: 'POST',
+                                                       fetch(`/api/visit-history/${latestVisit.id}`, {
+                                                         method: 'PATCH',
                                                          headers: { 'Content-Type': 'application/json' },
-                                                         body: JSON.stringify({ ...latestVisit, vitals: { ...currentVitals, immunisations: updatedImm } })
+                                                         body: JSON.stringify({ vitals: { ...currentVitals, immunisations: updatedImm } })
                                                        }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
                                                      }
                                                    }}

@@ -220,6 +220,13 @@ export async function registerRoutes(
     res.status(201).json(visit);
   });
 
+  app.patch("/api/visit-history/:visitId", async (req, res) => {
+    const visitId = parseInt(req.params.visitId);
+    const updated = await storage.updateVisitHistory(visitId, req.body);
+    if (!updated) return res.status(404).json({ error: "Visit not found" });
+    res.json(updated);
+  });
+
   app.get("/api/patients/:id/medications", async (req, res) => {
     const meds = await storage.getMedications(parseInt(req.params.id));
     res.json(meds);
