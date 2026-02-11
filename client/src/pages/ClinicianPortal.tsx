@@ -3876,7 +3876,7 @@ export default function ClinicianPortal() {
 
                                             const invMilestones: Record<string, { weekRange: string; tests: string[] }> = {
                                               'booking': { weekRange: '6-10 wks', tests: ['CBC', 'Blood Group & Rh', 'RBS', 'TSH', 'Urine R/M', 'HIV/HBsAg/VDRL', 'Rubella IgG', 'USG Dating Scan'] },
-                                              'first_trimester': { weekRange: '11-14 wks', tests: ['NT Scan', 'Dual Marker', 'Urine Culture', 'TSH (repeat)', 'USG NT Scan'] },
+                                              'first_trimester': { weekRange: '11-14 wks', tests: ['NT Scan (Nuchal Translucency)', 'Dual Marker', 'Urine Culture', 'TSH (repeat)'] },
                                               'second_trimester_early': { weekRange: '16-20 wks', tests: ['Quadruple Marker', 'USG Anomaly Scan (TIFFA)', 'CBC (repeat)'] },
                                               'second_trimester_mid': { weekRange: '24-28 wks', tests: ['OGTT (75g)', 'CBC (repeat)', 'Anti-D (if Rh-)', 'USG Fetal Echo'] },
                                               'third_trimester_early': { weekRange: '28-32 wks', tests: ['USG Growth Scan', 'CBC (repeat)', 'TSH (repeat)', 'Urine Routine', 'USG Doppler'] },
@@ -4007,11 +4007,10 @@ export default function ClinicianPortal() {
                                    'first_trimester': {
                                      weekRange: '11-14 weeks (First Trimester Screening)',
                                      tests: [
-                                       { name: 'NT Scan (Nuchal Translucency)', description: 'Down syndrome screening ultrasound' },
+                                       { name: 'NT Scan (Nuchal Translucency)', description: 'Down syndrome screening with nuchal translucency measurement & CRL' },
                                        { name: 'Dual Marker (PAPP-A + Free β-hCG)', description: 'Combined first trimester screening' },
                                        { name: 'Urine Culture', description: 'Asymptomatic bacteriuria' },
                                        { name: 'TSH (repeat if abnormal)', description: 'Thyroid recheck' },
-                                       { name: 'USG - NT Scan', description: 'Nuchal translucency measurement with CRL' },
                                      ]
                                    },
                                    'second_trimester_early': {
@@ -4413,7 +4412,7 @@ export default function ClinicianPortal() {
 
                                  const investigationsByWeekPT: Record<string, string[]> = {
                                    'booking': ['CBC (Complete Blood Count)', 'Blood Group & Rh Typing', 'Random Blood Sugar (RBS)', 'TSH (Thyroid Stimulating Hormone)', 'Urine Routine & Microscopy', 'HIV, HBsAg, VDRL', 'Rubella IgG', 'Blood Pressure', 'USG - Dating Scan'],
-                                   'first_trimester': ['NT Scan (Nuchal Translucency)', 'Dual Marker (PAPP-A + Free β-hCG)', 'Urine Culture', 'TSH (repeat if abnormal)', 'USG - NT Scan'],
+                                   'first_trimester': ['NT Scan (Nuchal Translucency)', 'Dual Marker (PAPP-A + Free β-hCG)', 'Urine Culture', 'TSH (repeat if abnormal)'],
                                    'second_trimester_early': ['Quadruple Marker', 'USG - Anomaly Scan (TIFFA)', 'CBC (repeat)'],
                                    'second_trimester_mid': ['OGTT (75g Glucose Tolerance Test)', 'CBC (repeat)', 'Anti-D Injection', 'USG - Fetal Echocardiography'],
                                    'third_trimester_early': ['USG - Growth Scan', 'CBC (repeat)', 'TSH (repeat)', 'Urine Routine', 'USG - Doppler Study'],
