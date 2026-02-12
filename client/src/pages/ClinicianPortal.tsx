@@ -251,6 +251,8 @@ export default function ClinicianPortal() {
         temperature: vitals.temperature,
         fetalHeartRate: fetalHeartRateVal || vitals.fetalHeartRate,
         fundalHeight: fundalHeightVal || vitals.fundalHeight,
+        pvExam: vitals.pvExam,
+        psExam: vitals.psExam,
       },
       pregnancyInfo,
       chiefComplaint: latestVisit?.chiefComplaint || latestVisit?.subjective || '',

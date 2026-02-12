@@ -16,6 +16,8 @@ export interface PrescriptionData {
     temperature?: string;
     fetalHeartRate?: string;
     fundalHeight?: string;
+    pvExam?: string;
+    psExam?: string;
   };
   pregnancyInfo: string;
   chiefComplaint: string;
@@ -216,6 +218,8 @@ export function generatePrescriptionHTML(data: PrescriptionData): string {
     data.vitals.fundalHeight ? `Fundal Height: ${data.vitals.fundalHeight}` : "",
     data.vitals.fetalHeartRate ? `Fetal Heart Rate: ${data.vitals.fetalHeartRate}` : "",
     data.pregnancyInfo ? `GA: ${data.pregnancyInfo}` : "",
+    data.vitals.pvExam ? `P/V: ${data.vitals.pvExam}` : "",
+    data.vitals.psExam ? `P/S: ${data.vitals.psExam}` : "",
   ].filter(Boolean);
   const clinicalFindingsContent = clinicalItems.length > 0 ? clinicalItems.join("\n") : "\u2014";
 
