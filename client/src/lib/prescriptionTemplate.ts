@@ -48,19 +48,19 @@ function formatVitals(
   bmi: string,
   pregnancyInfo: string,
 ): string {
-  return [
-    vitals.weight ? `Weight (Kg): ${vitals.weight}` : "",
-    vitals.height ? `Height (Cm): ${vitals.height}` : "",
-    bmi ? `B.M.I: ${bmi}` : "",
-    vitals.bp ? `BP: ${vitals.bp} mmHg` : "",
-    vitals.pulse ? `Pulse: ${vitals.pulse}` : "",
-    vitals.temperature ? `Temp: ${vitals.temperature}\u00B0F` : "",
-    vitals.fetalHeartRate ? `FHR: ${vitals.fetalHeartRate} bpm` : "",
-    vitals.fundalHeight ? `Fundal Ht: ${vitals.fundalHeight} cm` : "",
-    pregnancyInfo ? `GA: ${pregnancyInfo}` : "",
-  ]
-    .filter(Boolean)
-    .join(", ");
+  const items = [
+    vitals.weight ? `<span class="vital-item"><span class="vital-label">Weight:</span> <span class="vital-value">${vitals.weight} Kg</span></span>` : "",
+    vitals.height ? `<span class="vital-item"><span class="vital-label">Height:</span> <span class="vital-value">${vitals.height} Cm</span></span>` : "",
+    bmi ? `<span class="vital-item"><span class="vital-label">B.M.I:</span> <span class="vital-value">${bmi}</span></span>` : "",
+    vitals.bp ? `<span class="vital-item"><span class="vital-label">BP:</span> <span class="vital-value">${vitals.bp} mmHg</span></span>` : "",
+    vitals.pulse ? `<span class="vital-item"><span class="vital-label">Pulse:</span> <span class="vital-value">${vitals.pulse}</span></span>` : "",
+    vitals.temperature ? `<span class="vital-item"><span class="vital-label">Temp:</span> <span class="vital-value">${vitals.temperature}\u00B0F</span></span>` : "",
+    vitals.fundalHeight ? `<span class="vital-item"><span class="vital-label">Fundal Height:</span> <span class="vital-value">${vitals.fundalHeight}</span></span>` : "",
+    vitals.fetalHeartRate ? `<span class="vital-item"><span class="vital-label">Fetal Heart Rate:</span> <span class="vital-value">${vitals.fetalHeartRate}</span></span>` : "",
+    pregnancyInfo ? `<span class="vital-item"><span class="vital-label">GA:</span> <span class="vital-value">${pregnancyInfo}</span></span>` : "",
+  ].filter(Boolean);
+  if (items.length === 0) return "";
+  return `<div class="vitals-grid">${items.join("")}</div>`;
 }
 
 function formatChiefComplaints(cc: string): string {
@@ -148,7 +148,11 @@ const PRESCRIPTION_STYLES = `
   .patient-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
   .patient-id { font-size: 13px; font-weight: 600; }
   .date-display { font-size: 13px; font-weight: 700; text-align: right; }
-  .patient-vitals { font-size: 11px; color: #444; margin-top: 2px; }
+  .patient-vitals { font-size: 11px; color: #444; margin-top: 4px; }
+  .vitals-grid { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 3px; }
+  .vital-item { font-size: 11px; color: #333; }
+  .vital-label { font-weight: 700; color: #555; }
+  .vital-value { font-weight: 600; }
 
   .cc-section { display: flex; border: 1px solid #bbb; margin-bottom: 8px; }
   .cc-left, .cc-right { width: 50%; padding: 6px 10px; }

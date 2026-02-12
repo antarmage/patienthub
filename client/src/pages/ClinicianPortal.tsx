@@ -204,7 +204,15 @@ export default function ClinicianPortal() {
 
   const generatePrescription = () => {
     if (!selectedPatient) return;
-    const vitals = (latestVisit?.vitals as any) || {};
+    const visitVitals = (latestVisit?.vitals as any) || {};
+    const latestAppt = appointments
+      .filter((a: any) => a.patientId === selectedPatient.id && a.status === 'Completed')
+      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    const apptVitals = (latestAppt?.vitals as any) || {};
+    const vitals = {
+      ...apptVitals,
+      ...Object.fromEntries(Object.entries(visitVitals).filter(([_, v]) => v !== undefined && v !== null && v !== '')),
+    };
     const nextTests: string[] = vitals.nextInvestigationTests || [];
     const customInv = vitals.nextInvestigationCustom || '';
     const allInv = [...nextTests, ...(customInv ? [customInv] : [])];
@@ -241,8 +249,8 @@ export default function ClinicianPortal() {
         bp: vitals.bp,
         pulse: vitals.pulse,
         temperature: vitals.temperature,
-        fetalHeartRate: vitals.fetalHeartRate,
-        fundalHeight: vitals.fundalHeight,
+        fetalHeartRate: fetalHeartRateVal || vitals.fetalHeartRate,
+        fundalHeight: fundalHeightVal || vitals.fundalHeight,
       },
       pregnancyInfo,
       chiefComplaint: latestVisit?.chiefComplaint || latestVisit?.subjective || '',
