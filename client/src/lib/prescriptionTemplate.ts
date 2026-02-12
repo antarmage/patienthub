@@ -55,9 +55,6 @@ function formatVitals(
     vitals.bp ? `<span class="vital-item"><span class="vital-label">BP:</span> <span class="vital-value">${vitals.bp} mmHg</span></span>` : "",
     vitals.pulse ? `<span class="vital-item"><span class="vital-label">Pulse:</span> <span class="vital-value">${vitals.pulse}</span></span>` : "",
     vitals.temperature ? `<span class="vital-item"><span class="vital-label">Temp:</span> <span class="vital-value">${vitals.temperature}\u00B0F</span></span>` : "",
-    vitals.fundalHeight ? `<span class="vital-item"><span class="vital-label">Fundal Height:</span> <span class="vital-value">${vitals.fundalHeight}</span></span>` : "",
-    vitals.fetalHeartRate ? `<span class="vital-item"><span class="vital-label">Fetal Heart Rate:</span> <span class="vital-value">${vitals.fetalHeartRate}</span></span>` : "",
-    pregnancyInfo ? `<span class="vital-item"><span class="vital-label">GA:</span> <span class="vital-value">${pregnancyInfo}</span></span>` : "",
   ].filter(Boolean);
   if (items.length === 0) return "";
   return `<div class="vitals-grid">${items.join("")}</div>`;
@@ -214,6 +211,14 @@ export function generatePrescriptionHTML(data: PrescriptionData): string {
     year: "numeric",
   });
 
+  const clinicalItems = [
+    data.clinicalFindings || "",
+    data.vitals.fundalHeight ? `Fundal Height: ${data.vitals.fundalHeight}` : "",
+    data.vitals.fetalHeartRate ? `Fetal Heart Rate: ${data.vitals.fetalHeartRate}` : "",
+    data.pregnancyInfo ? `GA: ${data.pregnancyInfo}` : "",
+  ].filter(Boolean);
+  const clinicalFindingsContent = clinicalItems.length > 0 ? clinicalItems.join("\n") : "\u2014";
+
   return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Prescription - ${data.patient.name}</title>
 <style>${PRESCRIPTION_STYLES}</style></head><body>
@@ -246,7 +251,7 @@ export function generatePrescriptionHTML(data: PrescriptionData): string {
     </div>
     <div class="cc-right">
       <div class="cc-title">Clinical Findings</div>
-      <div class="cc-content">${data.clinicalFindings || "\u2014"}</div>
+      <div class="cc-content">${clinicalFindingsContent}</div>
     </div>
   </div>
 
