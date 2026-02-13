@@ -1870,7 +1870,7 @@ export default function StaffPortal() {
             )}
 
             {/* 2. PSYCHOLOGIST VIEW */}
-            {activeRole === 'psychologist' && (
+            {activeRole === 'psychologist' && activeView === 'dashboard' && (
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="grid grid-cols-4 gap-4">
                         <Card className="shadow-sm border-slate-200 col-span-1">
@@ -2046,7 +2046,7 @@ export default function StaffPortal() {
             )}
 
             {/* 5. PHLEBOTOMIST VIEW */}
-            {activeRole === 'phlebotomist' && (
+            {activeRole === 'phlebotomist' && activeView === 'dashboard' && (
                 <div className="max-w-6xl mx-auto space-y-6">
                     <Card className="shadow-sm border-slate-200">
                         <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
@@ -2104,7 +2104,7 @@ export default function StaffPortal() {
             )}
 
             {/* 6. RECEPTIONIST VIEW */}
-            {activeRole === 'receptionist' && (
+            {activeRole === 'receptionist' && activeView === 'dashboard' && (
                 <div className="max-w-6xl mx-auto space-y-6">
                     {/* Top Stats */}
                     <div className="grid grid-cols-4 gap-4">
