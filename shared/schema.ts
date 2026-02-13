@@ -393,4 +393,32 @@ export const insertMedicineCatalogSchema = createInsertSchema(medicineCatalog).o
 export type InsertMedicineCatalog = z.infer<typeof insertMedicineCatalogSchema>;
 export type MedicineCatalog = typeof medicineCatalog.$inferSelect;
 
+export const followUpCalls = pgTable("follow_up_calls", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  patientName: text("patient_name").notNull(),
+  phone: text("phone"),
+  patientType: text("patient_type"),
+  consultationDate: text("consultation_date"),
+  plannedDate: text("planned_date"),
+  actualDate: text("actual_date"),
+  lmp: text("lmp"),
+  notes: text("notes"),
+  feeling: text("feeling"),
+  gotMedicines: text("got_medicines"),
+  concerns: text("concerns"),
+  crossSell: text("cross_sell"),
+  nextVisit: text("next_visit"),
+  nextMilestone: text("next_milestone"),
+  didntPickCallTime: text("didnt_pick_call_time"),
+  followUp: text("follow_up"),
+  followUpDate: text("follow_up_date"),
+  status: text("status").default("pending"),
+  createdBy: text("created_by"),
+});
+
+export const insertFollowUpCallSchema = createInsertSchema(followUpCalls).omit({ id: true });
+export type InsertFollowUpCall = z.infer<typeof insertFollowUpCallSchema>;
+export type FollowUpCall = typeof followUpCalls.$inferSelect;
+
 export * from "./models/chat";

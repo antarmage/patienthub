@@ -657,6 +657,160 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/follow-up-calls", async (_req, res) => {
+    const calls = await storage.getFollowUpCalls();
+    res.json(calls);
+  });
+
+  app.post("/api/follow-up-calls", async (req, res) => {
+    const call = await storage.createFollowUpCall(req.body);
+    res.status(201).json(call);
+  });
+
+  app.patch("/api/follow-up-calls/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const updated = await storage.updateFollowUpCall(id, req.body);
+    if (!updated) return res.status(404).json({ error: "Not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/follow-up-calls/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const deleted = await storage.deleteFollowUpCall(id);
+    if (!deleted) return res.status(404).json({ error: "Not found" });
+    res.json({ success: true });
+  });
+
+  app.post("/api/follow-up-calls/import-sheet", async (_req, res) => {
+    try {
+      const sheets = await getUncachableGoogleSheetClient();
+      const spreadsheetId = "1y1siQnidCkQR1b3PcVJWtjleJ6AT4nsx9wCqcT_Bbxs";
+
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "'Followup'!A:Q",
+      });
+
+      const rows = response.data.values || [];
+      if (rows.length < 2) {
+        return res.json({ imported: 0, skipped: 0, message: "No data rows found" });
+      }
+
+      const headers = rows[0];
+      const dataRows = rows.slice(1);
+
+      const colIndex = (name: string) => {
+        const idx = headers.findIndex((h: string) => h.toLowerCase().trim().includes(name.toLowerCase()));
+        return idx;
+      };
+
+      const consultDateIdx = colIndex("consultation date");
+      const plannedIdx = colIndex("planned schedule");
+      const actualIdx = colIndex("actual date");
+      const nameIdx = colIndex("name");
+      const lmpIdx = colIndex("lmp");
+      const typeIdx = colIndex("patient type");
+      const phoneIdx = colIndex("phone");
+      const notesIdx = colIndex("notes");
+      const feelingIdx = colIndex("how are you feeling");
+      const medicineIdx = colIndex("did you get all your medicine");
+      const concernIdx = colIndex("let me know if any concern");
+      const crossSellIdx = colIndex("cross sell");
+      const nextVisitIdx = colIndex("next visit");
+      const nextMilestoneIdx = colIndex("next milestone");
+      const didntPickIdx = colIndex("didnt pick call time");
+      const followUpIdx = colIndex("follow up");
+      const followUpDateIdx = colIndex("follow up date");
+
+      const existingPatients = await storage.getPatients();
+      const patientByPhone = new Map<string, number>();
+      const patientByName = new Map<string, number>();
+      for (const p of existingPatients) {
+        if (p.phone) patientByPhone.set(p.phone.replace(/\D/g, ""), p.id);
+        patientByName.set(p.name.toLowerCase().trim(), p.id);
+      }
+
+      const existingCalls = await storage.getFollowUpCalls();
+      const existingKeys = new Set(existingCalls.map(c => `${c.patientName?.toLowerCase().trim()}_${c.actualDate || c.plannedDate}`));
+
+      let imported = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i];
+        const val = (idx: number) => (idx >= 0 && idx < row.length ? (row[idx] || "").trim() : "");
+
+        const name = val(nameIdx);
+        if (!name) { skipped++; continue; }
+
+        const phone = val(phoneIdx).replace(/\D/g, "");
+        const actualDate = val(actualIdx);
+        const plannedDate = val(plannedIdx);
+
+        const key = `${name.toLowerCase().trim()}_${actualDate || plannedDate}`;
+        if (existingKeys.has(key)) { skipped++; continue; }
+
+        let patientId: number | undefined = phone ? patientByPhone.get(phone) : undefined;
+        if (!patientId) patientId = patientByName.get(name.toLowerCase().trim());
+
+        try {
+          await storage.createFollowUpCall({
+            patientId: patientId ?? null,
+            patientName: name,
+            phone: phone || null,
+            patientType: val(typeIdx) || null,
+            consultationDate: val(consultDateIdx) || null,
+            plannedDate: plannedDate || null,
+            actualDate: actualDate || null,
+            lmp: val(lmpIdx) || null,
+            notes: val(notesIdx) || null,
+            feeling: val(feelingIdx) || null,
+            gotMedicines: val(medicineIdx) || null,
+            concerns: val(concernIdx) || null,
+            crossSell: val(crossSellIdx) || null,
+            nextVisit: val(nextVisitIdx) || null,
+            nextMilestone: val(nextMilestoneIdx) || null,
+            didntPickCallTime: val(didntPickIdx) || null,
+            followUp: val(followUpIdx) || null,
+            followUpDate: val(followUpDateIdx) || null,
+            status: val(notesIdx) ? "completed" : "pending",
+          });
+          existingKeys.add(key);
+          imported++;
+        } catch (err: any) {
+          errors.push(`Row ${i + 2}: ${name} - ${err.message}`);
+        }
+      }
+
+      res.json({
+        imported,
+        skipped,
+        total: dataRows.length,
+        errors: errors.slice(0, 10),
+        message: `Imported ${imported} follow-up call records, ${skipped} skipped`,
+      });
+    } catch (err: any) {
+      console.error("Follow-up sheet import error:", err);
+      res.status(500).json({ error: "Failed to import follow-up calls: " + err.message });
+    }
+  });
+
+  app.get("/api/follow-up-calls/sheet-status", async (_req, res) => {
+    try {
+      const sheets = await getUncachableGoogleSheetClient();
+      const spreadsheetId = "1y1siQnidCkQR1b3PcVJWtjleJ6AT4nsx9wCqcT_Bbxs";
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "'Followup'!A:A",
+      });
+      const rowCount = (response.data.values?.length || 1) - 1;
+      res.json({ connected: true, rowCount });
+    } catch (err: any) {
+      res.json({ connected: false, rowCount: 0, error: err.message });
+    }
+  });
+
   app.post("/api/google-drive/import-lab-reports", async (req, res) => {
     try {
       const autoCreate = req.body?.autoCreatePatients !== false;

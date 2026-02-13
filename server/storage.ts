@@ -27,6 +27,8 @@ import {
   type PatientProtocol, type InsertPatientProtocol,
   medicineCatalog,
   type MedicineCatalog, type InsertMedicineCatalog,
+  followUpCalls,
+  type FollowUpCall, type InsertFollowUpCall,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -125,6 +127,11 @@ export interface IStorage {
   createMedicineCatalogEntry(entry: InsertMedicineCatalog): Promise<MedicineCatalog>;
   updateMedicineCatalogEntry(id: number, data: Partial<InsertMedicineCatalog>): Promise<MedicineCatalog | undefined>;
   deleteMedicineCatalogEntry(id: number): Promise<boolean>;
+
+  getFollowUpCalls(): Promise<FollowUpCall[]>;
+  createFollowUpCall(call: InsertFollowUpCall): Promise<FollowUpCall>;
+  updateFollowUpCall(id: number, data: Partial<InsertFollowUpCall>): Promise<FollowUpCall | undefined>;
+  deleteFollowUpCall(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -465,6 +472,25 @@ export class DatabaseStorage implements IStorage {
   async deleteMedicineCatalogEntry(id: number): Promise<boolean> {
     const [deleted] = await db.update(medicineCatalog).set({ isActive: false }).where(eq(medicineCatalog.id, id)).returning();
     return !!deleted;
+  }
+
+  async getFollowUpCalls(): Promise<FollowUpCall[]> {
+    return db.select().from(followUpCalls);
+  }
+
+  async createFollowUpCall(call: InsertFollowUpCall): Promise<FollowUpCall> {
+    const [created] = await db.insert(followUpCalls).values(call).returning();
+    return created;
+  }
+
+  async updateFollowUpCall(id: number, data: Partial<InsertFollowUpCall>): Promise<FollowUpCall | undefined> {
+    const [updated] = await db.update(followUpCalls).set(data).where(eq(followUpCalls.id, id)).returning();
+    return updated;
+  }
+
+  async deleteFollowUpCall(id: number): Promise<boolean> {
+    const result = await db.delete(followUpCalls).where(eq(followUpCalls.id, id)).returning();
+    return result.length > 0;
   }
 }
 

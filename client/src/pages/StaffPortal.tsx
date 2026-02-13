@@ -641,6 +641,62 @@ export default function StaffPortal() {
   const [labImportResult, setLabImportResult] = useState<any>(null);
   const [driveStatus, setDriveStatus] = useState<any>(null);
 
+  const [isFollowUpCallOpen, setIsFollowUpCallOpen] = useState(false);
+  const [selectedCallPatient, setSelectedCallPatient] = useState<any>(null);
+  const [followUpCallForm, setFollowUpCallForm] = useState({
+    feeling: '', gotMedicines: '', concerns: '', crossSell: '', nextVisit: '', notes: '', nextMilestone: '', didntPickCallTime: '',
+  });
+  const [isImportingFollowUp, setIsImportingFollowUp] = useState(false);
+  const [followUpImportResult, setFollowUpImportResult] = useState<any>(null);
+  const [followUpSheetStatus, setFollowUpSheetStatus] = useState<any>(null);
+  const [followUpCallFilter, setFollowUpCallFilter] = useState<'pending' | 'completed' | 'all'>('pending');
+
+  const followUpCallsQuery = useQuery({
+    queryKey: ['/api/follow-up-calls'],
+    queryFn: async () => {
+      const res = await fetch('/api/follow-up-calls');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+  const followUpCalls = followUpCallsQuery.data || [];
+
+  const handleImportFollowUpSheet = async () => {
+    setIsImportingFollowUp(true);
+    setFollowUpImportResult(null);
+    try {
+      const res = await fetch('/api/follow-up-calls/import-sheet', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      setFollowUpImportResult(data);
+      followUpCallsQuery.refetch();
+    } catch (err: any) {
+      setFollowUpImportResult({ error: err.message });
+    } finally {
+      setIsImportingFollowUp(false);
+    }
+  };
+
+  const saveFollowUpCallMutation = useMutation({
+    mutationFn: async ({ id, data }: { id?: number; data: any }) => {
+      if (id) {
+        const res = await fetch(`/api/follow-up-calls/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        if (!res.ok) throw new Error('Failed to update');
+        return res.json();
+      } else {
+        const res = await fetch('/api/follow-up-calls', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        if (!res.ok) throw new Error('Failed to create');
+        return res.json();
+      }
+    },
+    onSuccess: () => {
+      followUpCallsQuery.refetch();
+      setIsFollowUpCallOpen(false);
+      setSelectedCallPatient(null);
+      setFollowUpCallForm({ feeling: '', gotMedicines: '', concerns: '', crossSell: '', nextVisit: '', notes: '', nextMilestone: '', didntPickCallTime: '' });
+    },
+  });
+
   useEffect(() => {
     fetch('/api/google-sheets/status')
       .then(r => r.json())
@@ -650,6 +706,10 @@ export default function StaffPortal() {
       .then(r => r.json())
       .then(data => setDriveStatus(data))
       .catch(() => setDriveStatus({ connected: false, totalFiles: 0 }));
+    fetch('/api/follow-up-calls/sheet-status')
+      .then(r => r.json())
+      .then(data => setFollowUpSheetStatus(data))
+      .catch(() => setFollowUpSheetStatus({ connected: false, rowCount: 0 }));
   }, []);
 
   const handleSheetSync = async () => {
@@ -2322,6 +2382,103 @@ export default function StaffPortal() {
                                 </CardContent>
                             </Card>
 
+                            {/* Follow-Up Call Tracker */}
+                            <Card className="shadow-sm border-slate-200">
+                                <CardHeader className="py-4 border-b border-slate-100 flex justify-between items-center bg-orange-50/30">
+                                    <div className="flex items-center gap-2">
+                                        <Phone className="w-5 h-5 text-orange-600" />
+                                        <CardTitle className="text-base font-bold text-slate-800">Follow-Up Cold Calls</CardTitle>
+                                        <Badge variant="secondary" className="bg-orange-100 text-orange-700 ml-2">{followUpCalls.filter((c: any) => c.status === 'pending').length} Pending</Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex border border-slate-200 rounded-md overflow-hidden text-xs">
+                                            {(['pending', 'completed', 'all'] as const).map(f => (
+                                                <button key={f} onClick={() => setFollowUpCallFilter(f)} className={`px-3 py-1.5 capitalize ${followUpCallFilter === f ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{f}</button>
+                                            ))}
+                                        </div>
+                                        <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white text-xs h-8" onClick={() => { setSelectedCallPatient(null); setFollowUpCallForm({ feeling: '', gotMedicines: '', concerns: '', crossSell: '', nextVisit: '', notes: '', nextMilestone: '', didntPickCallTime: '' }); setIsFollowUpCallOpen(true); }}>
+                                            <Plus className="w-3 h-3 mr-1" /> Log Call
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="max-h-[400px] overflow-y-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-slate-50 text-slate-500 uppercase text-xs border-b border-slate-100 sticky top-0">
+                                                <tr>
+                                                    <th className="px-3 py-2 font-medium">Date</th>
+                                                    <th className="px-3 py-2 font-medium">Patient</th>
+                                                    <th className="px-3 py-2 font-medium">Type</th>
+                                                    <th className="px-3 py-2 font-medium">Feeling</th>
+                                                    <th className="px-3 py-2 font-medium">Medicines</th>
+                                                    <th className="px-3 py-2 font-medium">Notes</th>
+                                                    <th className="px-3 py-2 font-medium">Next Visit</th>
+                                                    <th className="px-3 py-2 font-medium">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {followUpCalls
+                                                    .filter((c: any) => followUpCallFilter === 'all' ? true : c.status === followUpCallFilter)
+                                                    .sort((a: any, b: any) => {
+                                                        const dateA = a.actualDate || a.plannedDate || '';
+                                                        const dateB = b.actualDate || b.plannedDate || '';
+                                                        return dateB.localeCompare(dateA);
+                                                    })
+                                                    .map((call: any) => (
+                                                    <tr key={call.id} className="hover:bg-slate-50/50">
+                                                        <td className="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">{call.actualDate || call.plannedDate || '—'}</td>
+                                                        <td className="px-3 py-2">
+                                                            <div>
+                                                                <span className="font-semibold text-slate-900 text-xs">{call.patientName}</span>
+                                                                {call.phone && <span className="text-[10px] text-slate-400 ml-1">{call.phone}</span>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            <Badge variant="outline" className="text-[10px]">{call.patientType || '—'}</Badge>
+                                                        </td>
+                                                        <td className="px-3 py-2 text-xs">
+                                                            {call.feeling ? (
+                                                                <span className={`${call.feeling.toLowerCase() === 'good' ? 'text-emerald-600' : 'text-amber-600'}`}>{call.feeling}</span>
+                                                            ) : <span className="text-slate-300">—</span>}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-xs">
+                                                            {call.gotMedicines ? (
+                                                                <span className={`${call.gotMedicines.toLowerCase() === 'yes' ? 'text-emerald-600' : 'text-rose-600'}`}>{call.gotMedicines}</span>
+                                                            ) : <span className="text-slate-300">—</span>}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-xs text-slate-600 max-w-[200px] truncate" title={call.notes || ''}>{call.notes || '—'}</td>
+                                                        <td className="px-3 py-2 text-xs text-slate-500">{call.nextVisit || '—'}</td>
+                                                        <td className="px-3 py-2">
+                                                            <Button size="sm" variant="ghost" className="h-6 text-[10px] text-orange-600 hover:text-orange-800 hover:bg-orange-50 px-2" onClick={() => {
+                                                                setSelectedCallPatient(call);
+                                                                setFollowUpCallForm({
+                                                                    feeling: call.feeling || '',
+                                                                    gotMedicines: call.gotMedicines || '',
+                                                                    concerns: call.concerns || '',
+                                                                    crossSell: call.crossSell || '',
+                                                                    nextVisit: call.nextVisit || '',
+                                                                    notes: call.notes || '',
+                                                                    nextMilestone: call.nextMilestone || '',
+                                                                    didntPickCallTime: call.didntPickCallTime || '',
+                                                                });
+                                                                setIsFollowUpCallOpen(true);
+                                                            }}>
+                                                                {call.status === 'pending' ? 'Call Now' : 'View'}
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {followUpCalls.filter((c: any) => followUpCallFilter === 'all' ? true : c.status === followUpCallFilter).length === 0 && (
+                                                    <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-400">
+                                                        {followUpCallFilter === 'pending' ? 'No pending follow-up calls' : followUpCallFilter === 'completed' ? 'No completed calls yet' : 'No follow-up calls recorded'}
+                                                    </td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
                         </div>
 
                         {/* RIGHT COLUMN: Growth & Follow-up */}
@@ -2492,6 +2649,43 @@ export default function StaffPortal() {
                                             <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Importing...</>
                                         ) : (
                                             <><Upload className="w-3 h-3 mr-2" /> Import Lab Reports</>
+                                        )}
+                                    </Button>
+                                </CardContent>
+                            </Card>
+
+                             {/* Follow-Up Calls Sheet Import */}
+                             <Card className="shadow-sm border-slate-200 bg-orange-50/30">
+                                <CardHeader className="py-3 border-b border-orange-100 bg-orange-50/50">
+                                    <div className="flex items-center gap-2">
+                                        <Phone className="w-4 h-4 text-orange-600" />
+                                        <CardTitle className="text-sm font-bold text-orange-900 uppercase tracking-wide">Cold Call Sheet Import</CardTitle>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-4 space-y-3">
+                                    <div className="text-xs text-slate-600">
+                                        <p>Import follow-up cold call records from Google Sheet.</p>
+                                        {followUpSheetStatus && (
+                                            <div className="mt-2 flex items-center gap-2">
+                                                <span className={`w-2 h-2 rounded-full ${followUpSheetStatus.connected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                                                <span>{followUpSheetStatus.connected ? `${followUpSheetStatus.rowCount} call records available` : 'Not connected'}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {followUpImportResult && (
+                                        <div className={`p-2 rounded text-xs ${followUpImportResult.error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                                            {followUpImportResult.error ? followUpImportResult.error : followUpImportResult.message}
+                                        </div>
+                                    )}
+                                    <Button 
+                                        className="w-full bg-orange-600 hover:bg-orange-700 text-white text-xs h-9"
+                                        onClick={handleImportFollowUpSheet}
+                                        disabled={isImportingFollowUp}
+                                    >
+                                        {isImportingFollowUp ? (
+                                            <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Importing...</>
+                                        ) : (
+                                            <><RefreshCw className="w-3 h-3 mr-2" /> Import Call Records</>
                                         )}
                                     </Button>
                                 </CardContent>
@@ -2694,6 +2888,137 @@ export default function StaffPortal() {
                          </div>
                         <Button className="bg-rose-600 hover:bg-rose-700 text-white" onClick={() => setIsFollowUpOpen(false)}>
                             <CheckCircle2 className="w-4 h-4 mr-2" /> Mark Complete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Follow-Up Call Log Dialog */}
+            <Dialog open={isFollowUpCallOpen} onOpenChange={setIsFollowUpCallOpen}>
+                <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Phone className="w-5 h-5 text-orange-600" />
+                            {selectedCallPatient?.id ? 'Update Call Log' : 'Log New Follow-Up Call'}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {selectedCallPatient?.patientName ? (
+                                <span>Recording call with <span className="font-bold text-slate-900">{selectedCallPatient.patientName}</span> {selectedCallPatient.phone ? `(${selectedCallPatient.phone})` : ''}</span>
+                            ) : 'Select a patient and record the follow-up call details'}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                        {!selectedCallPatient?.id && (
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <Label className="text-xs font-medium">Patient Name</Label>
+                                    <Select onValueChange={(val) => {
+                                        const p = patients.find((pt: any) => pt.id === parseInt(val));
+                                        if (p) setSelectedCallPatient({ patientId: p.id, patientName: p.name, phone: p.phone || '', patientType: p.type || '' });
+                                    }}>
+                                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select patient" /></SelectTrigger>
+                                        <SelectContent>
+                                            {patients.map((p: any) => (
+                                                <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label className="text-xs font-medium">Phone</Label>
+                                    <Input className="h-9 text-xs" placeholder="Phone number" value={selectedCallPatient?.phone || ''} onChange={(e) => setSelectedCallPatient((prev: any) => ({ ...prev, phone: e.target.value }))} />
+                                </div>
+                            </div>
+                        )}
+
+                        <Separator />
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label className="text-xs font-medium">How are you feeling?</Label>
+                                <Select value={followUpCallForm.feeling} onValueChange={(val) => setFollowUpCallForm(f => ({ ...f, feeling: val }))}>
+                                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Good">Good</SelectItem>
+                                        <SelectItem value="Okay">Okay</SelectItem>
+                                        <SelectItem value="Not Well">Not Well</SelectItem>
+                                        <SelectItem value="No Response">No Response</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label className="text-xs font-medium">Got all medicines?</Label>
+                                <Select value={followUpCallForm.gotMedicines} onValueChange={(val) => setFollowUpCallForm(f => ({ ...f, gotMedicines: val }))}>
+                                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Yes">Yes</SelectItem>
+                                        <SelectItem value="No">No</SelectItem>
+                                        <SelectItem value="Partial">Partial</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <Label className="text-xs font-medium">Any concerns?</Label>
+                            <Input className="h-9 text-xs" placeholder="Patient concerns or issues..." value={followUpCallForm.concerns} onChange={(e) => setFollowUpCallForm(f => ({ ...f, concerns: e.target.value }))} />
+                        </div>
+
+                        <div>
+                            <Label className="text-xs font-medium">Call Notes</Label>
+                            <Textarea className="text-xs min-h-[80px]" placeholder="Detailed notes from the call..." value={followUpCallForm.notes} onChange={(e) => setFollowUpCallForm(f => ({ ...f, notes: e.target.value }))} />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label className="text-xs font-medium">Cross-sell / Recommend</Label>
+                                <Input className="h-9 text-xs" placeholder="e.g., Prenatal Yoga" value={followUpCallForm.crossSell} onChange={(e) => setFollowUpCallForm(f => ({ ...f, crossSell: e.target.value }))} />
+                            </div>
+                            <div>
+                                <Label className="text-xs font-medium">Next Visit</Label>
+                                <Input className="h-9 text-xs" placeholder="e.g., 15-Nov" value={followUpCallForm.nextVisit} onChange={(e) => setFollowUpCallForm(f => ({ ...f, nextVisit: e.target.value }))} />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label className="text-xs font-medium">Next Milestone</Label>
+                                <Input className="h-9 text-xs" placeholder="e.g., Postpartum yoga done" value={followUpCallForm.nextMilestone} onChange={(e) => setFollowUpCallForm(f => ({ ...f, nextMilestone: e.target.value }))} />
+                            </div>
+                            <div>
+                                <Label className="text-xs font-medium">Didn't pick - follow up in</Label>
+                                <Input className="h-9 text-xs" placeholder="e.g., 14 days" value={followUpCallForm.didntPickCallTime} onChange={(e) => setFollowUpCallForm(f => ({ ...f, didntPickCallTime: e.target.value }))} />
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="flex gap-2 pt-2">
+                        <Button variant="outline" onClick={() => setIsFollowUpCallOpen(false)}>Cancel</Button>
+                        <Button 
+                            className="bg-orange-600 hover:bg-orange-700 text-white"
+                            disabled={saveFollowUpCallMutation.isPending}
+                            onClick={() => {
+                                const today = new Date().toISOString().split('T')[0];
+                                const payload: any = {
+                                    ...followUpCallForm,
+                                    actualDate: today,
+                                    status: followUpCallForm.notes || followUpCallForm.feeling ? 'completed' : 'pending',
+                                };
+                                if (selectedCallPatient?.id) {
+                                    saveFollowUpCallMutation.mutate({ id: selectedCallPatient.id, data: payload });
+                                } else {
+                                    payload.patientName = selectedCallPatient?.patientName || 'Unknown';
+                                    payload.phone = selectedCallPatient?.phone || '';
+                                    payload.patientType = selectedCallPatient?.patientType || '';
+                                    payload.patientId = selectedCallPatient?.patientId || null;
+                                    payload.plannedDate = today;
+                                    saveFollowUpCallMutation.mutate({ data: payload });
+                                }
+                            }}
+                        >
+                            {saveFollowUpCallMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
+                            {selectedCallPatient?.id ? 'Update Call' : 'Save Call Log'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
