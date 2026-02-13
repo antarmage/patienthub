@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, desc, sql, gte, lte, and } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, patients, providers, services, appointments, labTasks,
@@ -29,6 +29,10 @@ import {
   type MedicineCatalog, type InsertMedicineCatalog,
   followUpCalls,
   type FollowUpCall, type InsertFollowUpCall,
+  attendance,
+  type Attendance, type InsertAttendance,
+  expenses,
+  type Expense, type InsertExpense,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -132,6 +136,14 @@ export interface IStorage {
   createFollowUpCall(call: InsertFollowUpCall): Promise<FollowUpCall>;
   updateFollowUpCall(id: number, data: Partial<InsertFollowUpCall>): Promise<FollowUpCall | undefined>;
   deleteFollowUpCall(id: number): Promise<boolean>;
+
+  getAttendance(startDate?: string, endDate?: string): Promise<Attendance[]>;
+  createAttendance(record: InsertAttendance): Promise<Attendance>;
+
+  getExpenses(startDate?: string, endDate?: string): Promise<Expense[]>;
+  createExpense(expense: InsertExpense): Promise<Expense>;
+
+  getAllInvoices(): Promise<Invoice[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -491,6 +503,40 @@ export class DatabaseStorage implements IStorage {
   async deleteFollowUpCall(id: number): Promise<boolean> {
     const result = await db.delete(followUpCalls).where(eq(followUpCalls.id, id)).returning();
     return result.length > 0;
+  }
+
+  async getAttendance(startDate?: string, endDate?: string): Promise<Attendance[]> {
+    const conditions = [];
+    if (startDate) conditions.push(gte(attendance.date, startDate));
+    if (endDate) conditions.push(lte(attendance.date, endDate));
+    if (conditions.length > 0) {
+      return db.select().from(attendance).where(and(...conditions)).orderBy(desc(attendance.date));
+    }
+    return db.select().from(attendance).orderBy(desc(attendance.date));
+  }
+
+  async createAttendance(record: InsertAttendance): Promise<Attendance> {
+    const [created] = await db.insert(attendance).values(record).returning();
+    return created;
+  }
+
+  async getExpenses(startDate?: string, endDate?: string): Promise<Expense[]> {
+    const conditions = [];
+    if (startDate) conditions.push(gte(expenses.date, startDate));
+    if (endDate) conditions.push(lte(expenses.date, endDate));
+    if (conditions.length > 0) {
+      return db.select().from(expenses).where(and(...conditions)).orderBy(desc(expenses.date));
+    }
+    return db.select().from(expenses).orderBy(desc(expenses.date));
+  }
+
+  async createExpense(expense: InsertExpense): Promise<Expense> {
+    const [created] = await db.insert(expenses).values(expense).returning();
+    return created;
+  }
+
+  async getAllInvoices(): Promise<Invoice[]> {
+    return db.select().from(invoices);
   }
 }
 

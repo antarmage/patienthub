@@ -1473,5 +1473,84 @@ Be thorough — extract every medication mentioned including supplements and vit
     }
   });
 
+  app.get("/api/owner/attendance", async (req: any, res: any) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const records = await storage.getAttendance(startDate, endDate);
+      res.json(records);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/owner/attendance", async (req: any, res: any) => {
+    try {
+      const record = await storage.createAttendance(req.body);
+      res.json(record);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/owner/expenses", async (req: any, res: any) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const records = await storage.getExpenses(startDate, endDate);
+      res.json(records);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/owner/expenses", async (req: any, res: any) => {
+    try {
+      const record = await storage.createExpense(req.body);
+      res.json(record);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/owner/dashboard", async (req: any, res: any) => {
+    try {
+      const allPatients = await storage.getPatients();
+      const allAppointments = await storage.getAppointments();
+      const allInvoices = await storage.getAllInvoices();
+      const allExpenses = await storage.getExpenses();
+      const allAttendance = await storage.getAttendance();
+      const allLabResults = await storage.getAllDocuments();
+
+      const today = new Date().toISOString().split("T")[0];
+      const todayAttendance = allAttendance.filter(a => a.date === today);
+      const presentToday = todayAttendance.filter(a => a.status === "present" || a.status === "half-day").length;
+      const totalStaff = new Set(allAttendance.map(a => a.employeeName)).size;
+
+      const totalRevenue = allInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+      const totalExpensesAmt = allExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+
+      const thisMonth = new Date().toISOString().slice(0, 7);
+      const monthlyRevenue = allInvoices.filter(inv => inv.date?.startsWith(thisMonth)).reduce((sum, inv) => sum + (inv.amount || 0), 0);
+      const monthlyExpenses = allExpenses.filter(exp => exp.date?.startsWith(thisMonth)).reduce((sum, exp) => sum + (exp.amount || 0), 0);
+
+      const todayAppointments = allAppointments.filter(a => a.date === today);
+
+      res.json({
+        totalPatients: allPatients.length,
+        totalStaff,
+        presentToday,
+        absentToday: totalStaff - presentToday,
+        totalRevenue,
+        totalExpenses: totalExpensesAmt,
+        monthlyRevenue,
+        monthlyExpenses,
+        netProfit: monthlyRevenue - monthlyExpenses,
+        todayAppointments: todayAppointments.length,
+        totalAppointments: allAppointments.length,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return httpServer;
 }

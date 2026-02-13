@@ -43,6 +43,8 @@ export default function Landing() {
         setLocation("/clinician");
       } else if (data.role === "staff") {
         setLocation("/staff");
+      } else if (data.role === "owner") {
+        setLocation("/owner");
       } else {
         setError("Unknown role. Contact admin.");
       }

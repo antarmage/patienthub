@@ -13,6 +13,7 @@ import StaffCarePlan from "@/pages/StaffCarePlan";
 import CheckIn from "@/pages/CheckIn";
 import NewBooking from "@/pages/NewBooking";
 import PatientListByCategory from "@/pages/PatientListByCategory";
+import OwnerPortal from "@/pages/OwnerPortal";
 
 function Router() {
   return (
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/staff/booking" component={NewBooking} />
       <Route path="/staff/protocol/:id" component={StaffPatientProtocol} />
       <Route path="/staff/create-plan/:id?" component={StaffCarePlan} />
+      <Route path="/owner" component={OwnerPortal} />
       <Route component={NotFound} />
     </Switch>
   );
