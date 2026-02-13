@@ -54,7 +54,8 @@ import {
   Shield,
   Milestone,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  LogOut
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -857,10 +858,18 @@ export default function ClinicianPortal() {
              <Avatar className="h-9 w-9 border border-slate-600">
                 <AvatarFallback className="bg-slate-700 text-slate-300">{providerInitials}</AvatarFallback>
              </Avatar>
-             <div className="text-sm">
-                <p className="text-white font-medium">{providerName}</p>
-                <p className="text-xs text-slate-500">{providerSpecialty}</p>
+             <div className="text-sm flex-1 min-w-0">
+                <p className="text-white font-medium truncate">{providerName}</p>
+                <p className="text-xs text-slate-500 truncate">{providerSpecialty}</p>
              </div>
+             <button
+               onClick={() => { localStorage.removeItem("clinicianProvider"); navigate("/"); }}
+               className="p-1.5 rounded-md hover:bg-slate-700 text-slate-400 hover:text-red-400 transition-colors"
+               title="Sign Out"
+               data-testid="button-signout"
+             >
+               <LogOut className="w-4 h-4" />
+             </button>
           </div>
         </div>
       </aside>
