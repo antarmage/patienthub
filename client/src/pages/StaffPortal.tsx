@@ -903,6 +903,16 @@ export default function StaffPortal() {
                     <FileText className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
                     {sidebarOpen && "Notes & Reports"}
                  </Button>
+                 {activeRole === 'receptionist' && (
+                 <Button 
+                    variant={activeView === 'followup' ? 'secondary' : 'ghost'} 
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'followup' ? 'bg-orange-50 text-orange-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    onClick={() => setActiveView('followup')}
+                 >
+                    <Phone className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
+                    {sidebarOpen && "Follow-Up Calls"}
+                 </Button>
+                 )}
             </div>
         </div>
 
@@ -2382,102 +2392,6 @@ export default function StaffPortal() {
                                 </CardContent>
                             </Card>
 
-                            {/* Follow-Up Call Tracker */}
-                            <Card className="shadow-sm border-slate-200">
-                                <CardHeader className="py-4 border-b border-slate-100 flex justify-between items-center bg-orange-50/30">
-                                    <div className="flex items-center gap-2">
-                                        <Phone className="w-5 h-5 text-orange-600" />
-                                        <CardTitle className="text-base font-bold text-slate-800">Follow-Up Cold Calls</CardTitle>
-                                        <Badge variant="secondary" className="bg-orange-100 text-orange-700 ml-2">{followUpCalls.filter((c: any) => c.status === 'pending').length} Pending</Badge>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex border border-slate-200 rounded-md overflow-hidden text-xs">
-                                            {(['pending', 'completed', 'all'] as const).map(f => (
-                                                <button key={f} onClick={() => setFollowUpCallFilter(f)} className={`px-3 py-1.5 capitalize ${followUpCallFilter === f ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{f}</button>
-                                            ))}
-                                        </div>
-                                        <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white text-xs h-8" onClick={() => { setSelectedCallPatient(null); setFollowUpCallForm({ feeling: '', gotMedicines: '', concerns: '', crossSell: '', nextVisit: '', notes: '', nextMilestone: '', didntPickCallTime: '' }); setIsFollowUpCallOpen(true); }}>
-                                            <Plus className="w-3 h-3 mr-1" /> Log Call
-                                        </Button>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    <div className="max-h-[400px] overflow-y-auto">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="bg-slate-50 text-slate-500 uppercase text-xs border-b border-slate-100 sticky top-0">
-                                                <tr>
-                                                    <th className="px-3 py-2 font-medium">Date</th>
-                                                    <th className="px-3 py-2 font-medium">Patient</th>
-                                                    <th className="px-3 py-2 font-medium">Type</th>
-                                                    <th className="px-3 py-2 font-medium">Feeling</th>
-                                                    <th className="px-3 py-2 font-medium">Medicines</th>
-                                                    <th className="px-3 py-2 font-medium">Notes</th>
-                                                    <th className="px-3 py-2 font-medium">Next Visit</th>
-                                                    <th className="px-3 py-2 font-medium">Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100">
-                                                {followUpCalls
-                                                    .filter((c: any) => followUpCallFilter === 'all' ? true : c.status === followUpCallFilter)
-                                                    .sort((a: any, b: any) => {
-                                                        const dateA = a.actualDate || a.plannedDate || '';
-                                                        const dateB = b.actualDate || b.plannedDate || '';
-                                                        return dateB.localeCompare(dateA);
-                                                    })
-                                                    .map((call: any) => (
-                                                    <tr key={call.id} className="hover:bg-slate-50/50">
-                                                        <td className="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">{call.actualDate || call.plannedDate || '—'}</td>
-                                                        <td className="px-3 py-2">
-                                                            <div>
-                                                                <span className="font-semibold text-slate-900 text-xs">{call.patientName}</span>
-                                                                {call.phone && <span className="text-[10px] text-slate-400 ml-1">{call.phone}</span>}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-3 py-2">
-                                                            <Badge variant="outline" className="text-[10px]">{call.patientType || '—'}</Badge>
-                                                        </td>
-                                                        <td className="px-3 py-2 text-xs">
-                                                            {call.feeling ? (
-                                                                <span className={`${call.feeling.toLowerCase() === 'good' ? 'text-emerald-600' : 'text-amber-600'}`}>{call.feeling}</span>
-                                                            ) : <span className="text-slate-300">—</span>}
-                                                        </td>
-                                                        <td className="px-3 py-2 text-xs">
-                                                            {call.gotMedicines ? (
-                                                                <span className={`${call.gotMedicines.toLowerCase() === 'yes' ? 'text-emerald-600' : 'text-rose-600'}`}>{call.gotMedicines}</span>
-                                                            ) : <span className="text-slate-300">—</span>}
-                                                        </td>
-                                                        <td className="px-3 py-2 text-xs text-slate-600 max-w-[200px] truncate" title={call.notes || ''}>{call.notes || '—'}</td>
-                                                        <td className="px-3 py-2 text-xs text-slate-500">{call.nextVisit || '—'}</td>
-                                                        <td className="px-3 py-2">
-                                                            <Button size="sm" variant="ghost" className="h-6 text-[10px] text-orange-600 hover:text-orange-800 hover:bg-orange-50 px-2" onClick={() => {
-                                                                setSelectedCallPatient(call);
-                                                                setFollowUpCallForm({
-                                                                    feeling: call.feeling || '',
-                                                                    gotMedicines: call.gotMedicines || '',
-                                                                    concerns: call.concerns || '',
-                                                                    crossSell: call.crossSell || '',
-                                                                    nextVisit: call.nextVisit || '',
-                                                                    notes: call.notes || '',
-                                                                    nextMilestone: call.nextMilestone || '',
-                                                                    didntPickCallTime: call.didntPickCallTime || '',
-                                                                });
-                                                                setIsFollowUpCallOpen(true);
-                                                            }}>
-                                                                {call.status === 'pending' ? 'Call Now' : 'View'}
-                                                            </Button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                                {followUpCalls.filter((c: any) => followUpCallFilter === 'all' ? true : c.status === followUpCallFilter).length === 0 && (
-                                                    <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-400">
-                                                        {followUpCallFilter === 'pending' ? 'No pending follow-up calls' : followUpCallFilter === 'completed' ? 'No completed calls yet' : 'No follow-up calls recorded'}
-                                                    </td></tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </CardContent>
-                            </Card>
 
                         </div>
 
@@ -2654,43 +2568,6 @@ export default function StaffPortal() {
                                 </CardContent>
                             </Card>
 
-                             {/* Follow-Up Calls Sheet Import */}
-                             <Card className="shadow-sm border-slate-200 bg-orange-50/30">
-                                <CardHeader className="py-3 border-b border-orange-100 bg-orange-50/50">
-                                    <div className="flex items-center gap-2">
-                                        <Phone className="w-4 h-4 text-orange-600" />
-                                        <CardTitle className="text-sm font-bold text-orange-900 uppercase tracking-wide">Cold Call Sheet Import</CardTitle>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-4 space-y-3">
-                                    <div className="text-xs text-slate-600">
-                                        <p>Import follow-up cold call records from Google Sheet.</p>
-                                        {followUpSheetStatus && (
-                                            <div className="mt-2 flex items-center gap-2">
-                                                <span className={`w-2 h-2 rounded-full ${followUpSheetStatus.connected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                                                <span>{followUpSheetStatus.connected ? `${followUpSheetStatus.rowCount} call records available` : 'Not connected'}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    {followUpImportResult && (
-                                        <div className={`p-2 rounded text-xs ${followUpImportResult.error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                                            {followUpImportResult.error ? followUpImportResult.error : followUpImportResult.message}
-                                        </div>
-                                    )}
-                                    <Button 
-                                        className="w-full bg-orange-600 hover:bg-orange-700 text-white text-xs h-9"
-                                        onClick={handleImportFollowUpSheet}
-                                        disabled={isImportingFollowUp}
-                                    >
-                                        {isImportingFollowUp ? (
-                                            <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Importing...</>
-                                        ) : (
-                                            <><RefreshCw className="w-3 h-3 mr-2" /> Import Call Records</>
-                                        )}
-                                    </Button>
-                                </CardContent>
-                            </Card>
-
                              {/* Quick Actions */}
                              <Card className="shadow-sm border-slate-200">
                                 <CardHeader className="py-3 border-b border-slate-100">
@@ -2716,6 +2593,199 @@ export default function StaffPortal() {
                                 </CardContent>
                             </Card>
 
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* FOLLOW-UP CALLS TAB (Receptionist only) */}
+            {activeRole === 'receptionist' && activeView === 'followup' && (
+                <div className="max-w-7xl mx-auto space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Phone className="w-6 h-6 text-orange-600" />
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-900">Follow-Up Cold Calls</h2>
+                                <p className="text-sm text-slate-500">Track and manage patient follow-up calls</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 text-sm">
+                                <Badge className="bg-orange-100 text-orange-700 border-orange-200">{followUpCalls.filter((c: any) => c.status === 'pending').length} Pending</Badge>
+                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">{followUpCalls.filter((c: any) => c.status === 'completed').length} Completed</Badge>
+                                <Badge variant="outline" className="text-slate-500">{followUpCalls.length} Total</Badge>
+                            </div>
+                            <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white text-xs h-8" onClick={() => { setSelectedCallPatient(null); setFollowUpCallForm({ feeling: '', gotMedicines: '', concerns: '', crossSell: '', nextVisit: '', notes: '', nextMilestone: '', didntPickCallTime: '' }); setIsFollowUpCallOpen(true); }}>
+                                <Plus className="w-3 h-3 mr-1" /> Log Call
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-12 gap-6">
+                        <div className="col-span-9">
+                            <Card className="shadow-sm border-slate-200">
+                                <CardHeader className="py-3 border-b border-slate-100 flex justify-between items-center">
+                                    <div className="flex border border-slate-200 rounded-md overflow-hidden text-xs">
+                                        {(['pending', 'completed', 'all'] as const).map(f => (
+                                            <button key={f} onClick={() => setFollowUpCallFilter(f)} className={`px-4 py-2 capitalize ${followUpCallFilter === f ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{f}</button>
+                                        ))}
+                                    </div>
+                                    <div className="text-xs text-slate-400">
+                                        Showing {followUpCalls.filter((c: any) => followUpCallFilter === 'all' ? true : c.status === followUpCallFilter).length} records
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="max-h-[calc(100vh-280px)] overflow-y-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-slate-50 text-slate-500 uppercase text-xs border-b border-slate-100 sticky top-0 z-10">
+                                                <tr>
+                                                    <th className="px-3 py-2.5 font-medium">Date</th>
+                                                    <th className="px-3 py-2.5 font-medium">Patient</th>
+                                                    <th className="px-3 py-2.5 font-medium">Type</th>
+                                                    <th className="px-3 py-2.5 font-medium">Feeling</th>
+                                                    <th className="px-3 py-2.5 font-medium">Medicines</th>
+                                                    <th className="px-3 py-2.5 font-medium">Concerns</th>
+                                                    <th className="px-3 py-2.5 font-medium">Notes</th>
+                                                    <th className="px-3 py-2.5 font-medium">Cross-sell</th>
+                                                    <th className="px-3 py-2.5 font-medium">Next Visit</th>
+                                                    <th className="px-3 py-2.5 font-medium">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {followUpCalls
+                                                    .filter((c: any) => followUpCallFilter === 'all' ? true : c.status === followUpCallFilter)
+                                                    .sort((a: any, b: any) => {
+                                                        const dateA = a.actualDate || a.plannedDate || '';
+                                                        const dateB = b.actualDate || b.plannedDate || '';
+                                                        return dateB.localeCompare(dateA);
+                                                    })
+                                                    .map((call: any) => (
+                                                    <tr key={call.id} className="hover:bg-slate-50/50">
+                                                        <td className="px-3 py-2.5 text-xs text-slate-500 whitespace-nowrap">{call.actualDate || call.plannedDate || '—'}</td>
+                                                        <td className="px-3 py-2.5">
+                                                            <div>
+                                                                <span className="font-semibold text-slate-900 text-xs">{call.patientName}</span>
+                                                                {call.phone && <div className="text-[10px] text-slate-400">{call.phone}</div>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-3 py-2.5">
+                                                            <Badge variant="outline" className="text-[10px]">{call.patientType || '—'}</Badge>
+                                                        </td>
+                                                        <td className="px-3 py-2.5 text-xs">
+                                                            {call.feeling ? (
+                                                                <span className={`font-medium ${call.feeling.toLowerCase() === 'good' ? 'text-emerald-600' : call.feeling.toLowerCase() === 'not well' ? 'text-rose-600' : 'text-amber-600'}`}>{call.feeling}</span>
+                                                            ) : <span className="text-slate-300">—</span>}
+                                                        </td>
+                                                        <td className="px-3 py-2.5 text-xs">
+                                                            {call.gotMedicines ? (
+                                                                <span className={`font-medium ${call.gotMedicines.toLowerCase() === 'yes' ? 'text-emerald-600' : 'text-rose-600'}`}>{call.gotMedicines}</span>
+                                                            ) : <span className="text-slate-300">—</span>}
+                                                        </td>
+                                                        <td className="px-3 py-2.5 text-xs text-slate-600 max-w-[120px] truncate" title={call.concerns || ''}>{call.concerns || '—'}</td>
+                                                        <td className="px-3 py-2.5 text-xs text-slate-600 max-w-[180px] truncate" title={call.notes || ''}>{call.notes || '—'}</td>
+                                                        <td className="px-3 py-2.5 text-xs text-slate-500">{call.crossSell || '—'}</td>
+                                                        <td className="px-3 py-2.5 text-xs text-slate-500">{call.nextVisit || '—'}</td>
+                                                        <td className="px-3 py-2.5">
+                                                            <Button size="sm" variant="ghost" className="h-7 text-xs text-orange-600 hover:text-orange-800 hover:bg-orange-50 px-2" onClick={() => {
+                                                                setSelectedCallPatient(call);
+                                                                setFollowUpCallForm({
+                                                                    feeling: call.feeling || '',
+                                                                    gotMedicines: call.gotMedicines || '',
+                                                                    concerns: call.concerns || '',
+                                                                    crossSell: call.crossSell || '',
+                                                                    nextVisit: call.nextVisit || '',
+                                                                    notes: call.notes || '',
+                                                                    nextMilestone: call.nextMilestone || '',
+                                                                    didntPickCallTime: call.didntPickCallTime || '',
+                                                                });
+                                                                setIsFollowUpCallOpen(true);
+                                                            }}>
+                                                                {call.status === 'pending' ? 'Call Now' : 'View'}
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {followUpCalls.filter((c: any) => followUpCallFilter === 'all' ? true : c.status === followUpCallFilter).length === 0 && (
+                                                    <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-slate-400">
+                                                        {followUpCallFilter === 'pending' ? 'No pending follow-up calls' : followUpCallFilter === 'completed' ? 'No completed calls yet' : 'No follow-up calls recorded'}
+                                                    </td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        <div className="col-span-3 space-y-4">
+                            <Card className="shadow-sm border-slate-200 bg-orange-50/30">
+                                <CardHeader className="py-3 border-b border-orange-100 bg-orange-50/50">
+                                    <div className="flex items-center gap-2">
+                                        <RefreshCw className="w-4 h-4 text-orange-600" />
+                                        <CardTitle className="text-sm font-bold text-orange-900">Sheet Import</CardTitle>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-4 space-y-3">
+                                    <div className="text-xs text-slate-600">
+                                        <p>Import follow-up records from the Google Sheet.</p>
+                                        {followUpSheetStatus && (
+                                            <div className="mt-2 flex items-center gap-2">
+                                                <span className={`w-2 h-2 rounded-full ${followUpSheetStatus.connected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                                                <span>{followUpSheetStatus.connected ? `${followUpSheetStatus.rowCount} records available` : 'Not connected'}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {followUpImportResult && (
+                                        <div className={`p-2 rounded text-xs ${followUpImportResult.error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                                            {followUpImportResult.error ? followUpImportResult.error : followUpImportResult.message}
+                                        </div>
+                                    )}
+                                    <Button 
+                                        className="w-full bg-orange-600 hover:bg-orange-700 text-white text-xs h-9"
+                                        onClick={handleImportFollowUpSheet}
+                                        disabled={isImportingFollowUp}
+                                    >
+                                        {isImportingFollowUp ? (
+                                            <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Importing...</>
+                                        ) : (
+                                            <><Upload className="w-3 h-3 mr-2" /> Import Call Records</>
+                                        )}
+                                    </Button>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="shadow-sm border-slate-200">
+                                <CardHeader className="py-3 border-b border-slate-100">
+                                    <CardTitle className="text-sm font-bold text-slate-800">Quick Stats</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-3 space-y-3">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-500">Feeling Good</span>
+                                        <span className="font-bold text-emerald-600">{followUpCalls.filter((c: any) => c.feeling?.toLowerCase() === 'good').length}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-500">Not Well</span>
+                                        <span className="font-bold text-rose-600">{followUpCalls.filter((c: any) => c.feeling?.toLowerCase() === 'not well').length}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-500">Got Medicines</span>
+                                        <span className="font-bold text-emerald-600">{followUpCalls.filter((c: any) => c.gotMedicines?.toLowerCase() === 'yes').length}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-500">Didn't Get Medicines</span>
+                                        <span className="font-bold text-rose-600">{followUpCalls.filter((c: any) => c.gotMedicines?.toLowerCase() === 'no').length}</span>
+                                    </div>
+                                    <Separator />
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-500">With Cross-sell</span>
+                                        <span className="font-bold text-slate-700">{followUpCalls.filter((c: any) => c.crossSell && c.crossSell !== 'NA' && c.crossSell !== 'na').length}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-500">Didn't Pick Up</span>
+                                        <span className="font-bold text-amber-600">{followUpCalls.filter((c: any) => c.didntPickCallTime).length}</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
                     </div>
                 </div>
