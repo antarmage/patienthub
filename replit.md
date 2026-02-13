@@ -80,7 +80,7 @@ All routes are registered in `server/routes.ts`. Key endpoints:
 - Unified passcode-based login on the Landing page for Clinician and Staff portals
 - Users enter a passcode; API returns their role (clinician/staff) and the frontend redirects accordingly
 - Patient Portal remains open (no passcode required)
-- Default passcodes: dr.priya=1234, dr.ramesh=5678, staff.reception=0000, staff.nurse=1111
+- Default passcodes: dr.priya=1234, dr.ramesh=5678, staff.reception=0000, staff.nurse=1111, owner=9999
 
 ### Storage Layer
 - Abstracted through `IStorage` interface in `server/storage.ts`
@@ -98,6 +98,7 @@ All routes are registered in `server/routes.ts`. Key endpoints:
 | `/staff/booking` | NewBooking | Appointment scheduling |
 | `/staff/protocol/:id` | StaffPatientProtocol | Patient-specific protocols |
 | `/staff/create-plan/:id?` | StaffCarePlan | Care plan creation |
+| `/owner` | OwnerPortal | Business intelligence dashboard |
 
 ### Key Design Patterns
 - **Shared Schema**: The `shared/` directory contains Drizzle schema definitions and Zod validation schemas used by both client and server
