@@ -1473,6 +1473,36 @@ Be thorough — extract every medication mentioned including supplements and vit
     }
   });
 
+  app.patch("/api/patients/:id/prime-member", async (req: any, res: any) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { isPrimeMember } = req.body;
+      const patient = await storage.getPatient(id);
+      if (!patient) return res.status(404).json({ error: "Patient not found" });
+      const updateData: any = { isPrimeMember: !!isPrimeMember };
+      if (isPrimeMember && !patient.isPrimeMember) {
+        updateData.primeMemberSince = new Date().toISOString().split("T")[0];
+      }
+      if (!isPrimeMember) {
+        updateData.primeMemberSince = null;
+      }
+      const updated = await storage.updatePatient(id, updateData);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/prime-members", async (req: any, res: any) => {
+    try {
+      const allPatients = await storage.getPatients();
+      const primeMembers = allPatients.filter(p => p.isPrimeMember);
+      res.json(primeMembers);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/owner/attendance", async (req: any, res: any) => {
     try {
       const { startDate, endDate } = req.query;
@@ -1525,11 +1555,11 @@ Be thorough — extract every medication mentioned including supplements and vit
       const presentToday = todayAttendance.filter(a => a.status === "present" || a.status === "half-day").length;
       const totalStaff = new Set(allAttendance.map(a => a.employeeName)).size;
 
-      const totalRevenue = allInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+      const totalRevenue = allInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
       const totalExpensesAmt = allExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
       const thisMonth = new Date().toISOString().slice(0, 7);
-      const monthlyRevenue = allInvoices.filter(inv => inv.date?.startsWith(thisMonth)).reduce((sum, inv) => sum + (inv.amount || 0), 0);
+      const monthlyRevenue = allInvoices.filter(inv => inv.date?.startsWith(thisMonth)).reduce((sum, inv) => sum + (inv.total || 0), 0);
       const monthlyExpenses = allExpenses.filter(exp => exp.date?.startsWith(thisMonth)).reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
       const todayAppointments = allAppointments.filter(a => a.date === today);

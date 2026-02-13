@@ -40,7 +40,9 @@ import {
   Loader2,
   X,
   Image as ImageIcon,
-  RefreshCw
+  RefreshCw,
+  Star,
+  Crown
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -64,6 +66,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 
 
@@ -340,6 +343,227 @@ function UploadRecordsDialog({ isOpen, onClose, patient }: { isOpen: boolean; on
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PrimeMembersView({ patients }: { patients: any[] }) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [addSearchTerm, setAddSearchTerm] = useState("");
+
+  const primeMembers = useMemo(() => patients.filter((p: any) => p.isPrimeMember), [patients]);
+  const nonPrimePatients = useMemo(() => {
+    const term = addSearchTerm.toLowerCase();
+    return patients.filter((p: any) => !p.isPrimeMember && (
+      p.name.toLowerCase().includes(term) || (p.phone && p.phone.includes(term))
+    ));
+  }, [patients, addSearchTerm]);
+
+  const filteredPrime = useMemo(() => {
+    if (!searchTerm) return primeMembers;
+    const term = searchTerm.toLowerCase();
+    return primeMembers.filter((p: any) => p.name.toLowerCase().includes(term) || (p.phone && p.phone.includes(term)));
+  }, [primeMembers, searchTerm]);
+
+  const togglePrimeMutation = useMutation({
+    mutationFn: async ({ patientId, isPrimeMember }: { patientId: number; isPrimeMember: boolean }) => {
+      const res = await fetch(`/api/patients/${patientId}/prime-member`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPrimeMember }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      return res.json();
+    },
+    onSuccess: () => {
+      window.location.reload();
+    },
+  });
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Crown className="w-6 h-6 text-amber-500" />
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">Prime Members</h2>
+            <p className="text-sm text-slate-500">Manage premium membership for patients</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge className="bg-amber-100 text-amber-700 border-amber-200" data-testid="badge-prime-count">
+            <Star className="w-3 h-3 mr-1" /> {primeMembers.length} Prime Members
+          </Badge>
+          <Button 
+            size="sm" 
+            className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-8"
+            onClick={() => { setShowAddDialog(true); setAddSearchTerm(""); }}
+            data-testid="btn-add-prime-member"
+          >
+            <Plus className="w-3 h-3 mr-1" /> Add Prime Member
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-12 gap-6">
+        <div className="col-span-9">
+          <Card className="shadow-sm border-slate-200">
+            <CardHeader className="py-3 border-b border-slate-100 flex justify-between items-center">
+              <CardTitle className="text-sm font-bold text-slate-700">Prime Members List</CardTitle>
+              <div className="relative w-64">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder="Search by name or phone..."
+                  value={searchTerm}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                  className="pl-9 h-8 text-xs"
+                  data-testid="input-prime-search"
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/50">
+                    <TableHead className="text-[10px] uppercase font-bold text-slate-500 w-10">#</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-slate-500">Patient</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-slate-500">Phone</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-slate-500">Type</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-slate-500">Since</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-slate-500 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPrime.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-sm text-slate-400">
+                        {searchTerm ? "No matching prime members found" : "No prime members yet. Add patients as prime members using the button above."}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {filteredPrime.map((p: any, idx: number) => (
+                    <TableRow key={p.id} className="hover:bg-amber-50/30" data-testid={`row-prime-${p.id}`}>
+                      <TableCell className="text-xs text-slate-400">{idx + 1}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-amber-700 font-bold text-xs">
+                            {p.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-slate-900 flex items-center gap-1">
+                              {p.name} <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                            </p>
+                            <p className="text-[10px] text-slate-500">ID: {p.id} • Age: {p.age}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-600">{p.phone || "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px]">{p.type || p.condition || "General"}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-600">{p.primeMemberSince || "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[10px] text-rose-600 border-rose-200 hover:bg-rose-50"
+                          onClick={() => togglePrimeMutation.mutate({ patientId: p.id, isPrimeMember: false })}
+                          disabled={togglePrimeMutation.isPending}
+                          data-testid={`btn-remove-prime-${p.id}`}
+                        >
+                          Remove
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="col-span-3 space-y-4">
+          <Card className="shadow-sm border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-amber-600" />
+                <h3 className="font-bold text-sm text-amber-900">Prime Stats</h3>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-amber-700">Total Members</span>
+                  <span className="font-bold text-amber-900">{primeMembers.length}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-amber-700">Total Patients</span>
+                  <span className="font-bold text-amber-900">{patients.length}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-amber-700">Prime Rate</span>
+                  <span className="font-bold text-amber-900">{patients.length > 0 ? ((primeMembers.length / patients.length) * 100).toFixed(1) : 0}%</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="sm:max-w-[500px] max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-amber-500" /> Add Prime Member
+            </DialogTitle>
+            <DialogDescription>Search for a patient and add them as a prime member</DialogDescription>
+          </DialogHeader>
+          <div className="relative mb-3">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Search patient by name or phone..."
+              value={addSearchTerm}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAddSearchTerm(e.target.value)}
+              className="pl-9"
+              data-testid="input-add-prime-search"
+            />
+          </div>
+          <ScrollArea className="max-h-[400px]">
+            <div className="divide-y divide-slate-100">
+              {addSearchTerm.length < 2 && (
+                <div className="py-6 text-center text-sm text-slate-400">Type at least 2 characters to search</div>
+              )}
+              {addSearchTerm.length >= 2 && nonPrimePatients.length === 0 && (
+                <div className="py-6 text-center text-sm text-slate-400">No matching patients found</div>
+              )}
+              {addSearchTerm.length >= 2 && nonPrimePatients.slice(0, 20).map((p: any) => (
+                <div key={p.id} className="flex items-center justify-between py-3 px-2 hover:bg-slate-50 rounded" data-testid={`add-prime-row-${p.id}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-700 font-bold text-xs">
+                      {p.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm text-slate-900">{p.name}</p>
+                      <p className="text-[10px] text-slate-500">ID: {p.id} • {p.phone || 'No phone'} • {p.type || 'General'}</p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-7 text-[10px] bg-amber-600 hover:bg-amber-700 text-white"
+                    onClick={() => {
+                      togglePrimeMutation.mutate({ patientId: p.id, isPrimeMember: true });
+                      setShowAddDialog(false);
+                    }}
+                    disabled={togglePrimeMutation.isPending}
+                    data-testid={`btn-make-prime-${p.id}`}
+                  >
+                    <Star className="w-3 h-3 mr-1" /> Make Prime
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 
@@ -911,6 +1135,17 @@ export default function StaffPortal() {
                  >
                     <Phone className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
                     {sidebarOpen && "Follow-Up Calls"}
+                 </Button>
+                 )}
+                 {activeRole === 'receptionist' && (
+                 <Button 
+                    variant={activeView === 'prime' ? 'secondary' : 'ghost'} 
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'prime' ? 'bg-amber-50 text-amber-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    onClick={() => setActiveView('prime')}
+                    data-testid="btn-prime-members"
+                 >
+                    <Star className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
+                    {sidebarOpen && "Prime Members"}
                  </Button>
                  )}
             </div>
@@ -2789,6 +3024,10 @@ export default function StaffPortal() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {activeRole === 'receptionist' && activeView === 'prime' && (
+                <PrimeMembersView patients={patients} />
             )}
 
             {/* Checkout / Post-Consultation Dialog */}

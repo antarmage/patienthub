@@ -53,6 +53,8 @@ export const patients = pgTable("patients", {
   height: text("height"),
   bp: text("bp"),
   pregnancyStatus: text("pregnancy_status"),
+  isPrimeMember: boolean("is_prime_member").default(false),
+  primeMemberSince: text("prime_member_since"),
 });
 
 export const insertPatientSchema = createInsertSchema(patients).omit({ id: true });
