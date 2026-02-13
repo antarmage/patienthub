@@ -421,4 +421,36 @@ export const insertFollowUpCallSchema = createInsertSchema(followUpCalls).omit({
 export type InsertFollowUpCall = z.infer<typeof insertFollowUpCallSchema>;
 export type FollowUpCall = typeof followUpCalls.$inferSelect;
 
+export const attendance = pgTable("attendance", {
+  id: serial("id").primaryKey(),
+  employeeName: text("employee_name").notNull(),
+  role: text("role"),
+  date: date("date").notNull(),
+  clockIn: text("clock_in"),
+  clockOut: text("clock_out"),
+  status: text("status").default("present"),
+  hoursWorked: real("hours_worked"),
+  notes: text("notes"),
+});
+
+export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: true });
+export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
+export type Attendance = typeof attendance.$inferSelect;
+
+export const expenses = pgTable("expenses", {
+  id: serial("id").primaryKey(),
+  date: date("date").notNull(),
+  category: text("category").notNull(),
+  description: text("description"),
+  amount: real("amount").notNull(),
+  vendor: text("vendor"),
+  paymentMethod: text("payment_method"),
+  approvedBy: text("approved_by"),
+  notes: text("notes"),
+});
+
+export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true });
+export type InsertExpense = z.infer<typeof insertExpenseSchema>;
+export type Expense = typeof expenses.$inferSelect;
+
 export * from "./models/chat";
