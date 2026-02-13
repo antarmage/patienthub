@@ -3130,19 +3130,19 @@ export default function ClinicianPortal() {
                     {!isSearching && (
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-1">
-                          <Input
+                          <input
                             type="date"
                             value={queueDateFrom}
                             onChange={(e) => { setQueueDateFrom(e.target.value); if (e.target.value > queueDateTo) setQueueDateTo(e.target.value); }}
-                            className="h-7 text-[11px] border-slate-200 flex-1 min-w-0 px-1.5"
+                            className="h-8 text-xs border border-slate-200 rounded-md flex-1 min-w-[120px] px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
                             data-testid="input-queue-date-from-sidebar"
                           />
                           <span className="text-[10px] text-slate-400 shrink-0">to</span>
-                          <Input
+                          <input
                             type="date"
                             value={queueDateTo}
                             onChange={(e) => { setQueueDateTo(e.target.value); if (e.target.value < queueDateFrom) setQueueDateFrom(e.target.value); }}
-                            className="h-7 text-[11px] border-slate-200 flex-1 min-w-0 px-1.5"
+                            className="h-8 text-xs border border-slate-200 rounded-md flex-1 min-w-[120px] px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
                             data-testid="input-queue-date-to-sidebar"
                           />
                           <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-medium shrink-0">{queuePatients.length}</span>
