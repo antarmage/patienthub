@@ -880,11 +880,79 @@ export default function StaffPortal() {
   const [followUpCallFilter, setFollowUpCallFilter] = useState<'pending' | 'completed' | 'all'>('pending');
 
   const [billingPatientId, setBillingPatientId] = useState<number | null>(null);
-  const [billingItems, setBillingItems] = useState<{catalogItemId: number; name: string; price: number; quantity: number; taxRate: number}[]>([]);
+  const [billingItems, setBillingItems] = useState<{catalogItemId: number; name: string; price: number; quantity: number; taxRate: number; isEstimated?: boolean}[]>([]);
   const [billingPaymentMethod, setBillingPaymentMethod] = useState("cash");
   const [billingNotes, setBillingNotes] = useState("");
+  const [billingIsEstimate, setBillingIsEstimate] = useState(false);
+  const [billingEstimateSource, setBillingEstimateSource] = useState("");
   const billingCatalogQuery = useQuery<any[]>({ queryKey: ["/api/billing-catalog"] });
   const billingCatalogItems = billingCatalogQuery.data || [];
+
+  const estimationTemplates: Record<string, { label: string; items: string[] }> = {
+    "gynec_initial": { label: "Gynec Initial Consultation", items: ["Initial Consultation", "Complete Blood Count (CBC)", "Thyroid Profile (TSH, T3, T4)", "Urine Routine & Culture"] },
+    "gynec_followup": { label: "Gynec Follow-up", items: ["Follow-up Consultation"] },
+    "pcos": { label: "PCOS Consultation", items: ["Initial Consultation", "Thyroid Profile (TSH, T3, T4)", "FSH & LH", "Ultrasound (USG)", "Prolactin"] },
+    "fertility": { label: "Fertility Workup", items: ["Initial Consultation", "FSH & LH", "Thyroid Profile (TSH, T3, T4)", "Ultrasound (USG)", "Prolactin"] },
+    "pregnancy_initial": { label: "Pregnancy First Visit", items: ["Prenatal Check-up", "Antenatal Profile", "Ultrasound (USG)", "Thyroid Profile (TSH, T3, T4)"] },
+    "pregnancy_followup": { label: "Pregnancy Follow-up", items: ["Prenatal Check-up", "Ultrasound (USG)"] },
+    "pregnancy_scan": { label: "Pregnancy Scan Visit", items: ["Growth Scan"] },
+    "postpartum": { label: "Postpartum Visit", items: ["Postpartum Check-up", "Complete Blood Count (CBC)", "Thyroid Profile (TSH, T3, T4)"] },
+    "scan_only": { label: "Ultrasound Only", items: ["Ultrasound (USG)"] },
+    "lab_only": { label: "Lab Work Only", items: ["Complete Blood Count (CBC)"] },
+    "wellness": { label: "Wellness Session", items: ["Nutritional Counseling"] },
+  };
+
+  const getAutoEstimate = useCallback((patientId: number) => {
+    const patient = patients.find((p: any) => p.id === patientId);
+    if (!patient || billingCatalogItems.length === 0) return null;
+
+    const patientAppts = (appointments || []).filter((a: any) => a.patientId === patientId);
+    const latestAppt = patientAppts.sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())[0];
+
+    const patientType = (patient.type || "").toLowerCase();
+    const visitType = (latestAppt?.visitType || "").toLowerCase();
+    const apptType = (latestAppt?.type || latestAppt?.reason || "").toLowerCase();
+    const serviceName = (latestAppt?.serviceName || latestAppt?.service || "").toLowerCase();
+    const allTerms = `${apptType} ${serviceName} ${visitType}`;
+    const isScan = allTerms.includes("scan") || allTerms.includes("ultrasound") || allTerms.includes("usg");
+    const isLab = allTerms.includes("lab") || allTerms.includes("blood");
+    const isFollowup = allTerms.includes("follow");
+
+    const effectiveType = patientType || visitType;
+    let templateKey = "gynec_initial";
+    if (effectiveType.includes("pcos")) templateKey = "pcos";
+    else if (effectiveType.includes("fertil")) templateKey = "fertility";
+    else if (effectiveType.includes("pregnan") || visitType.includes("pregnan") || patientType.includes("pregnan")) templateKey = isScan ? "pregnancy_scan" : isFollowup ? "pregnancy_followup" : "pregnancy_initial";
+    else if (effectiveType.includes("postpartum")) templateKey = "postpartum";
+    else if (isScan) templateKey = "scan_only";
+    else if (isLab) templateKey = "lab_only";
+    else if (isFollowup) templateKey = "gynec_followup";
+    else templateKey = "gynec_initial";
+
+    const template = estimationTemplates[templateKey];
+    if (!template) return null;
+
+    const matchedItems = template.items.map(name => {
+      const catalogItem = billingCatalogItems.find((c: any) => c.name === name && c.isActive !== false);
+      if (!catalogItem) return null;
+      return { catalogItemId: catalogItem.id, name: catalogItem.name, price: catalogItem.price, quantity: 1, taxRate: catalogItem.taxRate || 0, isEstimated: true };
+    }).filter(Boolean);
+
+    return { items: matchedItems, label: template.label, patientType: patient.type || "General" };
+  }, [patients, appointments, billingCatalogItems]);
+
+  const prevBillingPatientRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!billingPatientId || billingCatalogItems.length === 0 || patients.length === 0) return;
+    if (prevBillingPatientRef.current === billingPatientId && billingItems.length > 0) return;
+    prevBillingPatientRef.current = billingPatientId;
+    const estimate = getAutoEstimate(billingPatientId);
+    if (estimate && estimate.items.length > 0) {
+      setBillingItems(estimate.items as any[]);
+      setBillingIsEstimate(true);
+      setBillingEstimateSource(`${estimate.label} (${estimate.patientType})`);
+    }
+  }, [billingPatientId, billingCatalogItems, patients, appointments, getAutoEstimate]);
 
   const createInvoiceMutation = useMutation({
     mutationFn: async (data: { patientId: number; items: any[]; subtotal: number; tax: number; total: number; paymentMethod: string; notes: string }) => {
@@ -911,6 +979,8 @@ export default function StaffPortal() {
       setBillingPatientId(null);
       setBillingNotes("");
       setBillingPaymentMethod("cash");
+      setBillingIsEstimate(false);
+      setBillingEstimateSource("");
     },
   });
 
@@ -3085,7 +3155,7 @@ export default function StaffPortal() {
                 <div className="flex justify-between items-center">
                   <div>
                     <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-billing-title">Patient Billing</h2>
-                    <p className="text-sm text-slate-500 mt-1">Create invoices from the service catalog</p>
+                    <p className="text-sm text-slate-500 mt-1">Select a patient to auto-estimate, then review and confirm</p>
                   </div>
                 </div>
 
@@ -3094,89 +3164,172 @@ export default function StaffPortal() {
                     <Card className="border-slate-200 shadow-sm">
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">
-                          Step 1: Select Patient
+                          Select Patient
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <Select value={billingPatientId?.toString() || ""} onValueChange={(v) => setBillingPatientId(parseInt(v))}>
+                        <Select value={billingPatientId?.toString() || ""} onValueChange={(v) => {
+                          const id = parseInt(v);
+                          prevBillingPatientRef.current = null;
+                          setBillingPatientId(id);
+                          setBillingItems([]);
+                          setBillingIsEstimate(false);
+                          setBillingEstimateSource("");
+                          createInvoiceMutation.reset();
+                        }}>
                           <SelectTrigger data-testid="select-billing-patient">
-                            <SelectValue placeholder="Choose a patient..." />
+                            <SelectValue placeholder="Choose a patient to get auto-estimate..." />
                           </SelectTrigger>
                           <SelectContent>
                             {patients.map((p: any) => (
-                              <SelectItem key={p.id} value={p.id.toString()}>{p.name} {p.isPrimeMember ? '⭐' : ''}</SelectItem>
+                              <SelectItem key={p.id} value={p.id.toString()}>
+                                {p.name} {p.isPrimeMember ? '⭐' : ''} <span className="text-slate-400 ml-1">({p.type || 'General'})</span>
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </CardContent>
                     </Card>
 
-                    <Card className="border-slate-200 shadow-sm">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">
-                          Step 2: Add Services from Catalog
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {Object.entries(
-                          billingCatalogItems
-                            .filter((c: any) => c.isActive !== false)
-                            .reduce((acc: any, item: any) => {
-                              const cat = item.category || "Other";
-                              if (!acc[cat]) acc[cat] = [];
-                              acc[cat].push(item);
-                              return acc;
-                            }, {})
-                        ).map(([category, items]: [string, any]) => (
-                          <div key={category}>
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{category}</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {items.map((item: any) => {
-                                const alreadyAdded = billingItems.some((b: any) => b.catalogItemId === item.id);
-                                return (
-                                  <div key={item.id} className={`flex items-center justify-between p-2.5 rounded-lg border ${alreadyAdded ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'} transition-colors`} data-testid={`catalog-item-${item.id}`}>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-slate-900 truncate">{item.name}</p>
-                                      <p className="text-xs text-slate-500">₹{item.price?.toLocaleString('en-IN')} {item.taxRate > 0 ? `+ ${item.taxRate}% GST` : '(No GST)'}</p>
-                                    </div>
-                                    <Button
-                                      size="sm"
-                                      variant={alreadyAdded ? "outline" : "default"}
-                                      className={`h-7 text-xs ml-2 shrink-0 ${alreadyAdded ? 'border-emerald-300 text-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
-                                      onClick={() => {
-                                        if (alreadyAdded) {
-                                          setBillingItems(billingItems.filter((b: any) => b.catalogItemId !== item.id));
-                                        } else {
-                                          setBillingItems([...billingItems, { catalogItemId: item.id, name: item.name, price: item.price, quantity: 1, taxRate: item.taxRate || 0 }]);
-                                        }
-                                      }}
-                                      data-testid={`btn-add-item-${item.id}`}
-                                    >
-                                      {alreadyAdded ? '✓ Added' : '+ Add'}
-                                    </Button>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                    {billingPatientId && (
+                      <Card className="border-slate-200 shadow-sm">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">Quick Estimate Templates</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(estimationTemplates).map(([key, tmpl]) => (
+                              <Button
+                                key={key}
+                                size="sm"
+                                variant="outline"
+                                className={`h-7 text-xs ${billingEstimateSource.includes(tmpl.label) ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-slate-200 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200'}`}
+                                onClick={() => {
+                                  const matchedItems = tmpl.items.map(name => {
+                                    const catalogItem = billingCatalogItems.find((c: any) => c.name === name && c.isActive !== false);
+                                    if (!catalogItem) return null;
+                                    return { catalogItemId: catalogItem.id, name: catalogItem.name, price: catalogItem.price, quantity: 1, taxRate: catalogItem.taxRate || 0, isEstimated: true };
+                                  }).filter(Boolean);
+                                  if (matchedItems.length > 0) {
+                                    setBillingItems(matchedItems as any[]);
+                                    setBillingIsEstimate(true);
+                                    setBillingEstimateSource(tmpl.label);
+                                  }
+                                }}
+                                data-testid={`btn-template-${key}`}
+                              >
+                                {tmpl.label}
+                              </Button>
+                            ))}
                           </div>
-                        ))}
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {billingIsEstimate && billingItems.length > 0 && (
+                      <Card className="border-amber-200 shadow-sm bg-amber-50/50 border-l-4 border-l-amber-400">
+                        <CardContent className="py-3 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                            <Sparkles className="w-4 h-4 text-amber-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-bold text-amber-900">Auto-Estimated: {billingEstimateSource}</p>
+                            <p className="text-xs text-amber-700 mt-0.5">Items below are suggested based on the patient's type and visit. Review, add or remove items, then confirm the bill.</p>
+                          </div>
+                          <Badge className="bg-amber-200 text-amber-800 border-amber-300 shrink-0">Estimated</Badge>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {billingPatientId && (
+                      <Card className="border-slate-200 shadow-sm">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                            <span>{billingIsEstimate ? 'Adjust Estimated Items' : 'Add Services from Catalog'}</span>
+                            {billingIsEstimate && (
+                              <Button variant="ghost" size="sm" className="text-xs text-slate-500 h-6" onClick={() => { setBillingItems([]); setBillingIsEstimate(false); }} data-testid="btn-clear-estimate">
+                                Clear All
+                              </Button>
+                            )}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {Object.entries(
+                            billingCatalogItems
+                              .filter((c: any) => c.isActive !== false)
+                              .reduce((acc: any, item: any) => {
+                                const cat = item.category || "Other";
+                                if (!acc[cat]) acc[cat] = [];
+                                acc[cat].push(item);
+                                return acc;
+                              }, {})
+                          ).map(([category, items]: [string, any]) => (
+                            <div key={category}>
+                              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{category}</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {items.map((item: any) => {
+                                  const alreadyAdded = billingItems.some((b: any) => b.catalogItemId === item.id);
+                                  const wasEstimated = alreadyAdded && billingItems.find((b: any) => b.catalogItemId === item.id)?.isEstimated;
+                                  return (
+                                    <div key={item.id} className={`flex items-center justify-between p-2.5 rounded-lg border transition-colors ${alreadyAdded ? (wasEstimated ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50') : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'}`} data-testid={`catalog-item-${item.id}`}>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                          <p className="text-sm font-medium text-slate-900 truncate">{item.name}</p>
+                                          {wasEstimated && <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] px-1.5 py-0">Auto</Badge>}
+                                        </div>
+                                        <p className="text-xs text-slate-500">₹{item.price?.toLocaleString('en-IN')} {item.taxRate > 0 ? `+ ${item.taxRate}% GST` : '(No GST)'}</p>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant={alreadyAdded ? "outline" : "default"}
+                                        className={`h-7 text-xs ml-2 shrink-0 ${alreadyAdded ? 'border-emerald-300 text-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                                        onClick={() => {
+                                          if (alreadyAdded) {
+                                            setBillingItems(billingItems.filter((b: any) => b.catalogItemId !== item.id));
+                                          } else {
+                                            setBillingItems([...billingItems, { catalogItemId: item.id, name: item.name, price: item.price, quantity: 1, taxRate: item.taxRate || 0, isEstimated: false }]);
+                                          }
+                                        }}
+                                        data-testid={`btn-add-item-${item.id}`}
+                                      >
+                                        {alreadyAdded ? '✓ Added' : '+ Add'}
+                                      </Button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {!billingPatientId && (
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+                          <Receipt className="w-7 h-7 text-slate-400" />
+                        </div>
+                        <p className="text-slate-500 font-medium">Select a patient to start billing</p>
+                        <p className="text-xs text-slate-400 mt-1">The system will auto-estimate charges based on their visit type</p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-4">
-                    <Card className="border-slate-200 shadow-sm sticky top-6">
+                    <Card className={`shadow-sm sticky top-6 ${billingIsEstimate ? 'border-amber-200 border-2' : 'border-slate-200'}`}>
                       <CardHeader className="pb-3 border-b border-slate-100">
                         <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
                           <Receipt className="w-4 h-4 text-emerald-600" />
-                          Invoice Summary
+                          {billingIsEstimate ? 'Estimated Bill' : 'Invoice Summary'}
+                          {billingIsEstimate && <Badge className="bg-amber-100 text-amber-700 border-amber-200 ml-auto text-[10px]">Est.</Badge>}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4 pt-4">
                         {billingPatientId && (
-                          <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
-                            <p className="text-xs text-indigo-600 font-medium">Patient</p>
-                            <p className="text-sm font-bold text-indigo-900">{patients.find((p: any) => p.id === billingPatientId)?.name || 'Unknown'}</p>
+                          <div className={`p-3 rounded-lg border ${billingIsEstimate ? 'bg-amber-50 border-amber-100' : 'bg-indigo-50 border-indigo-100'}`}>
+                            <p className={`text-xs font-medium ${billingIsEstimate ? 'text-amber-600' : 'text-indigo-600'}`}>Patient</p>
+                            <p className={`text-sm font-bold ${billingIsEstimate ? 'text-amber-900' : 'text-indigo-900'}`}>{patients.find((p: any) => p.id === billingPatientId)?.name || 'Unknown'}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">{patients.find((p: any) => p.id === billingPatientId)?.type || 'General'}</p>
                           </div>
                         )}
 
@@ -3190,7 +3343,10 @@ export default function StaffPortal() {
                               return (
                                 <div key={idx} className="flex items-start justify-between py-2 border-b border-slate-100 last:border-0" data-testid={`billing-line-${idx}`}>
                                   <div className="flex-1">
-                                    <p className="text-sm font-medium text-slate-900">{item.name}</p>
+                                    <div className="flex items-center gap-1.5">
+                                      <p className="text-sm font-medium text-slate-900">{item.name}</p>
+                                      {item.isEstimated && <span className="text-[10px] text-amber-600 font-medium">•auto</span>}
+                                    </div>
                                     <div className="flex items-center gap-2 mt-1">
                                       <button className="text-xs text-slate-400 hover:text-slate-600" onClick={() => { if (item.quantity > 1) { const updated = [...billingItems]; updated[idx] = { ...item, quantity: item.quantity - 1 }; setBillingItems(updated); } }}>−</button>
                                       <span className="text-xs font-medium text-slate-600">Qty: {item.quantity}</span>
@@ -3199,9 +3355,7 @@ export default function StaffPortal() {
                                     {item.taxRate > 0 && <p className="text-xs text-slate-400 mt-0.5">GST {item.taxRate}%: ₹{itemTax.toLocaleString('en-IN')}</p>}
                                   </div>
                                   <div className="text-right flex items-start gap-2">
-                                    <div>
-                                      <p className="text-sm font-bold text-slate-900">₹{itemSubtotal.toLocaleString('en-IN')}</p>
-                                    </div>
+                                    <p className="text-sm font-bold text-slate-900">₹{itemSubtotal.toLocaleString('en-IN')}</p>
                                     <button className="text-slate-400 hover:text-red-500 mt-0.5" onClick={() => setBillingItems(billingItems.filter((_: any, i: number) => i !== idx))} data-testid={`btn-remove-item-${idx}`}>
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
@@ -3223,7 +3377,10 @@ export default function StaffPortal() {
                                 <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>₹{subtotal.toLocaleString('en-IN')}</span></div>
                                 <div className="flex justify-between text-slate-600"><span>GST</span><span>₹{Math.round(tax).toLocaleString('en-IN')}</span></div>
                                 <Separator />
-                                <div className="flex justify-between font-bold text-lg text-slate-900"><span>Total</span><span>₹{Math.round(total).toLocaleString('en-IN')}</span></div>
+                                <div className="flex justify-between font-bold text-lg text-slate-900">
+                                  <span>{billingIsEstimate ? 'Estimated Total' : 'Total'}</span>
+                                  <span>₹{Math.round(total).toLocaleString('en-IN')}</span>
+                                </div>
                               </div>
 
                               <div>
@@ -3246,26 +3403,41 @@ export default function StaffPortal() {
                                 <Textarea value={billingNotes} onChange={(e) => setBillingNotes(e.target.value)} placeholder="Add notes..." className="mt-1 min-h-[60px]" data-testid="input-billing-notes" />
                               </div>
 
-                              <Button
-                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-                                disabled={!billingPatientId || createInvoiceMutation.isPending}
-                                onClick={() => {
-                                  if (!billingPatientId) return;
-                                  createInvoiceMutation.mutate({
-                                    patientId: billingPatientId,
-                                    items: billingItems,
-                                    subtotal,
-                                    tax: Math.round(tax),
-                                    total: Math.round(total),
-                                    paymentMethod: billingPaymentMethod,
-                                    notes: billingNotes,
-                                  });
-                                }}
-                                data-testid="btn-generate-invoice"
-                              >
-                                {createInvoiceMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Receipt className="w-4 h-4 mr-2" />}
-                                Generate Invoice
-                              </Button>
+                              {billingIsEstimate ? (
+                                <Button
+                                  className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold"
+                                  disabled={!billingPatientId}
+                                  onClick={() => {
+                                    setBillingIsEstimate(false);
+                                    setBillingItems(billingItems.map(item => ({ ...item, isEstimated: false })));
+                                  }}
+                                  data-testid="btn-confirm-estimate"
+                                >
+                                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                                  Confirm Estimate & Finalize
+                                </Button>
+                              ) : (
+                                <Button
+                                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                                  disabled={!billingPatientId || createInvoiceMutation.isPending}
+                                  onClick={() => {
+                                    if (!billingPatientId) return;
+                                    createInvoiceMutation.mutate({
+                                      patientId: billingPatientId,
+                                      items: billingItems,
+                                      subtotal,
+                                      tax: Math.round(tax),
+                                      total: Math.round(total),
+                                      paymentMethod: billingPaymentMethod,
+                                      notes: billingNotes,
+                                    });
+                                  }}
+                                  data-testid="btn-generate-invoice"
+                                >
+                                  {createInvoiceMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Receipt className="w-4 h-4 mr-2" />}
+                                  Generate Invoice
+                                </Button>
+                              )}
 
                               {createInvoiceMutation.isSuccess && (
                                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
