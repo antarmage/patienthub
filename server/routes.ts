@@ -6,6 +6,11 @@ import { getUncachableGoogleSheetClient } from "./google-sheets";
 import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "./google-drive";
 import { ai } from "./replit_integrations/image/client";
 
+function parseId(val: string): number | null {
+  const n = parseInt(val);
+  return isNaN(n) ? null : n;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -26,18 +31,23 @@ export async function registerRoutes(
   });
 
   app.get("/api/patients/:id", async (req, res) => {
-    const patient = await storage.getPatient(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid patient ID" });
+    const patient = await storage.getPatient(id);
     if (!patient) return res.status(404).json({ error: "Patient not found" });
     res.json(patient);
   });
 
   app.post("/api/patients", async (req, res) => {
+    if (!req.body.name) return res.status(400).json({ error: "Patient name is required" });
     const patient = await storage.createPatient(req.body);
     res.status(201).json(patient);
   });
 
   app.patch("/api/patients/:id", async (req, res) => {
-    const updated = await storage.updatePatient(parseInt(req.params.id), req.body);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid patient ID" });
+    const updated = await storage.updatePatient(id, req.body);
     if (!updated) return res.status(404).json({ error: "Patient not found" });
     res.json(updated);
   });
@@ -53,7 +63,8 @@ export async function registerRoutes(
   });
 
   app.patch("/api/providers/:id", async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
     const updated = await storage.updateProvider(id, req.body);
     if (!updated) return res.status(404).json({ error: "Provider not found" });
     res.json(updated);
@@ -91,7 +102,9 @@ export async function registerRoutes(
   });
 
   app.patch("/api/appointments/:id", async (req, res) => {
-    const updated = await storage.updateAppointment(parseInt(req.params.id), req.body);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const updated = await storage.updateAppointment(id, req.body);
     if (!updated) return res.status(404).json({ error: "Appointment not found" });
     res.json(updated);
   });
@@ -107,7 +120,9 @@ export async function registerRoutes(
   });
 
   app.patch("/api/lab-tasks/:id", async (req, res) => {
-    const updated = await storage.updateLabTask(parseInt(req.params.id), req.body);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const updated = await storage.updateLabTask(id, req.body);
     if (!updated) return res.status(404).json({ error: "Lab task not found" });
     res.json(updated);
   });
@@ -133,72 +148,94 @@ export async function registerRoutes(
   });
 
   app.get("/api/patients/:id/hormones", async (req, res) => {
-    const readings = await storage.getHormoneReadings(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const readings = await storage.getHormoneReadings(id);
     res.json(readings);
   });
 
   app.post("/api/patients/:id/hormones", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
     const reading = await storage.createHormoneReading({
       ...req.body,
-      patientId: parseInt(req.params.id),
+      patientId: id,
     });
     res.status(201).json(reading);
   });
 
   app.get("/api/patients/:id/pregnancy-metrics", async (req, res) => {
-    const metrics = await storage.getPregnancyMetrics(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const metrics = await storage.getPregnancyMetrics(id);
     res.json(metrics);
   });
 
   app.post("/api/patients/:id/pregnancy-metrics", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
     const metric = await storage.createPregnancyMetric({
       ...req.body,
-      patientId: parseInt(req.params.id),
+      patientId: id,
     });
     res.status(201).json(metric);
   });
 
   app.get("/api/patients/:id/follicle-data", async (req, res) => {
-    const data = await storage.getFollicleData(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const data = await storage.getFollicleData(id);
     res.json(data);
   });
 
   app.post("/api/patients/:id/follicle-data", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
     const data = await storage.createFollicleData({
       ...req.body,
-      patientId: parseInt(req.params.id),
+      patientId: id,
     });
     res.status(201).json(data);
   });
 
   app.get("/api/patients/:id/usg-data", async (req, res) => {
-    const data = await storage.getUsgData(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const data = await storage.getUsgData(id);
     res.json(data);
   });
 
   app.post("/api/patients/:id/usg-data", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
     const data = await storage.createUsgData({
       ...req.body,
-      patientId: parseInt(req.params.id),
+      patientId: id,
     });
     res.status(201).json(data);
   });
 
   app.get("/api/patients/:id/lab-results", async (req, res) => {
-    const results = await storage.getLabResults(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const results = await storage.getLabResults(id);
     res.json(results);
   });
 
   app.post("/api/patients/:id/lab-results", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
     const result = await storage.createLabResult({
       ...req.body,
-      patientId: parseInt(req.params.id),
+      patientId: id,
     });
     res.status(201).json(result);
   });
 
   app.get("/api/lab-tasks/:id/results", async (req, res) => {
-    const results = await storage.getLabResultsByTask(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const results = await storage.getLabResultsByTask(id);
     res.json(results);
   });
 
@@ -208,43 +245,56 @@ export async function registerRoutes(
   });
 
   app.get("/api/patients/:id/visit-history", async (req, res) => {
-    const visits = await storage.getVisitHistory(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const visits = await storage.getVisitHistory(id);
     res.json(visits);
   });
 
   app.post("/api/patients/:id/visit-history", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
     const visit = await storage.createVisitHistory({
       ...req.body,
-      patientId: parseInt(req.params.id),
+      patientId: id,
     });
     res.status(201).json(visit);
   });
 
   app.patch("/api/visit-history/:visitId", async (req, res) => {
-    const visitId = parseInt(req.params.visitId);
+    const visitId = parseId(req.params.visitId);
+    if (!visitId) return res.status(400).json({ error: "Invalid ID" });
     const updated = await storage.updateVisitHistory(visitId, req.body);
     if (!updated) return res.status(404).json({ error: "Visit not found" });
     res.json(updated);
   });
 
   app.get("/api/patients/:id/medications", async (req, res) => {
-    const meds = await storage.getMedications(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const meds = await storage.getMedications(id);
     res.json(meds);
   });
 
   app.post("/api/patients/:id/medications", async (req, res) => {
-    const med = await storage.createMedication({ ...req.body, patientId: parseInt(req.params.id) });
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const med = await storage.createMedication({ ...req.body, patientId: id });
     res.status(201).json(med);
   });
 
   app.patch("/api/medications/:id", async (req, res) => {
-    const updated = await storage.updateMedication(parseInt(req.params.id), req.body);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const updated = await storage.updateMedication(id, req.body);
     if (!updated) return res.status(404).json({ error: "Medication not found" });
     res.json(updated);
   });
 
   app.delete("/api/medications/:id", async (req, res) => {
-    const deleted = await storage.deleteMedication(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const deleted = await storage.deleteMedication(id);
     if (!deleted) return res.status(404).json({ error: "Medication not found" });
     res.status(204).send();
   });
@@ -255,111 +305,151 @@ export async function registerRoutes(
   });
 
   app.get("/api/patients/:id/clinical-notes", async (req, res) => {
-    const notes = await storage.getClinicalNotes(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const notes = await storage.getClinicalNotes(id);
     res.json(notes);
   });
 
   app.post("/api/patients/:id/clinical-notes", async (req, res) => {
-    const note = await storage.createClinicalNote({ ...req.body, patientId: parseInt(req.params.id) });
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const note = await storage.createClinicalNote({ ...req.body, patientId: id });
     res.status(201).json(note);
   });
 
   app.patch("/api/clinical-notes/:id", async (req, res) => {
-    const updated = await storage.updateClinicalNote(parseInt(req.params.id), req.body);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const updated = await storage.updateClinicalNote(id, req.body);
     if (!updated) return res.status(404).json({ error: "Clinical note not found" });
     res.json(updated);
   });
 
   app.delete("/api/clinical-notes/:id", async (req, res) => {
-    const deleted = await storage.deleteClinicalNote(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const deleted = await storage.deleteClinicalNote(id);
     if (!deleted) return res.status(404).json({ error: "Clinical note not found" });
     res.status(204).send();
   });
 
   app.get("/api/patients/:id/referrals", async (req, res) => {
-    const refs = await storage.getReferrals(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const refs = await storage.getReferrals(id);
     res.json(refs);
   });
 
   app.post("/api/patients/:id/referrals", async (req, res) => {
-    const ref = await storage.createReferral({ ...req.body, patientId: parseInt(req.params.id) });
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const ref = await storage.createReferral({ ...req.body, patientId: id });
     res.status(201).json(ref);
   });
 
   app.patch("/api/referrals/:id", async (req, res) => {
-    const updated = await storage.updateReferral(parseInt(req.params.id), req.body);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const updated = await storage.updateReferral(id, req.body);
     if (!updated) return res.status(404).json({ error: "Referral not found" });
     res.json(updated);
   });
 
   app.delete("/api/referrals/:id", async (req, res) => {
-    const deleted = await storage.deleteReferral(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const deleted = await storage.deleteReferral(id);
     if (!deleted) return res.status(404).json({ error: "Referral not found" });
     res.status(204).send();
   });
 
   app.get("/api/patients/:id/invoices", async (req, res) => {
-    const inv = await storage.getInvoices(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const inv = await storage.getInvoices(id);
     res.json(inv);
   });
 
   app.post("/api/patients/:id/invoices", async (req, res) => {
-    const inv = await storage.createInvoice({ ...req.body, patientId: parseInt(req.params.id) });
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid patient ID" });
+    const inv = await storage.createInvoice({ ...req.body, patientId: id, date: req.body.date || new Date().toISOString().split("T")[0] });
     res.status(201).json(inv);
   });
 
   app.patch("/api/invoices/:id", async (req, res) => {
-    const updated = await storage.updateInvoice(parseInt(req.params.id), req.body);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const updated = await storage.updateInvoice(id, req.body);
     if (!updated) return res.status(404).json({ error: "Invoice not found" });
     res.json(updated);
   });
 
   app.delete("/api/invoices/:id", async (req, res) => {
-    const deleted = await storage.deleteInvoice(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const deleted = await storage.deleteInvoice(id);
     if (!deleted) return res.status(404).json({ error: "Invoice not found" });
     res.status(204).send();
   });
 
   app.get("/api/patients/:id/consent-forms", async (req, res) => {
-    const forms = await storage.getConsentForms(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const forms = await storage.getConsentForms(id);
     res.json(forms);
   });
 
   app.post("/api/patients/:id/consent-forms", async (req, res) => {
-    const form = await storage.createConsentForm({ ...req.body, patientId: parseInt(req.params.id) });
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const form = await storage.createConsentForm({ ...req.body, patientId: id });
     res.status(201).json(form);
   });
 
   app.patch("/api/consent-forms/:id", async (req, res) => {
-    const updated = await storage.updateConsentForm(parseInt(req.params.id), req.body);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const updated = await storage.updateConsentForm(id, req.body);
     if (!updated) return res.status(404).json({ error: "Consent form not found" });
     res.json(updated);
   });
 
   app.delete("/api/consent-forms/:id", async (req, res) => {
-    const deleted = await storage.deleteConsentForm(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const deleted = await storage.deleteConsentForm(id);
     if (!deleted) return res.status(404).json({ error: "Consent form not found" });
     res.status(204).send();
   });
 
   app.get("/api/patients/:id/documents", async (req, res) => {
-    const docs = await storage.getDocuments(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const docs = await storage.getDocuments(id);
     res.json(docs);
   });
 
   app.post("/api/patients/:id/documents", async (req, res) => {
-    const doc = await storage.createDocument({ ...req.body, patientId: parseInt(req.params.id) });
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const doc = await storage.createDocument({ ...req.body, patientId: id });
     res.status(201).json(doc);
   });
 
   app.patch("/api/documents/:id", async (req, res) => {
-    const updated = await storage.updateDocument(parseInt(req.params.id), req.body);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const updated = await storage.updateDocument(id, req.body);
     if (!updated) return res.status(404).json({ error: "Document not found" });
     res.json(updated);
   });
 
   app.delete("/api/documents/:id", async (req, res) => {
-    const deleted = await storage.deleteDocument(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const deleted = await storage.deleteDocument(id);
     if (!deleted) return res.status(404).json({ error: "Document not found" });
     res.status(204).send();
   });
@@ -393,7 +483,8 @@ export async function registerRoutes(
   });
 
   app.get("/api/patient-protocols/:patientId", async (req, res) => {
-    const patientId = parseInt(req.params.patientId);
+    const patientId = parseId(req.params.patientId);
+    if (!patientId) return res.status(400).json({ error: "Invalid ID" });
     const protocol = await storage.getPatientProtocol(patientId);
     res.json(protocol || null);
   });
@@ -668,14 +759,16 @@ export async function registerRoutes(
   });
 
   app.patch("/api/follow-up-calls/:id", async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
     const updated = await storage.updateFollowUpCall(id, req.body);
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.json(updated);
   });
 
   app.delete("/api/follow-up-calls/:id", async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
     const deleted = await storage.deleteFollowUpCall(id);
     if (!deleted) return res.status(404).json({ error: "Not found" });
     res.json({ success: true });
@@ -862,7 +955,8 @@ export async function registerRoutes(
 
   app.post("/api/patients/:id/extract-lab-results", async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
+      const patientId = parseId(req.params.id);
+      if (!patientId) return res.status(400).json({ error: "Invalid ID" });
       const patient = await storage.getPatient(patientId);
       if (!patient) return res.status(404).json({ error: "Patient not found" });
 
@@ -1005,13 +1099,17 @@ export async function registerRoutes(
   });
 
   app.patch("/api/billing-catalog/:id", async (req, res) => {
-    const updated = await storage.updateBillingCatalogItem(parseInt(req.params.id), req.body);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const updated = await storage.updateBillingCatalogItem(id, req.body);
     if (!updated) return res.status(404).json({ error: "Item not found" });
     res.json(updated);
   });
 
   app.delete("/api/billing-catalog/:id", async (req, res) => {
-    const deleted = await storage.deleteBillingCatalogItem(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const deleted = await storage.deleteBillingCatalogItem(id);
     if (!deleted) return res.status(404).json({ error: "Item not found" });
     res.status(204).send();
   });
@@ -1027,20 +1125,25 @@ export async function registerRoutes(
   });
 
   app.patch("/api/medicine-catalog/:id", async (req, res) => {
-    const updated = await storage.updateMedicineCatalogEntry(parseInt(req.params.id), req.body);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const updated = await storage.updateMedicineCatalogEntry(id, req.body);
     if (!updated) return res.status(404).json({ error: "Medicine not found" });
     res.json(updated);
   });
 
   app.delete("/api/medicine-catalog/:id", async (req, res) => {
-    const deleted = await storage.deleteMedicineCatalogEntry(parseInt(req.params.id));
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const deleted = await storage.deleteMedicineCatalogEntry(id);
     if (!deleted) return res.status(404).json({ error: "Medicine not found" });
     res.status(204).send();
   });
 
   app.post("/api/patients/:id/extract-prescription", async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
+      const patientId = parseId(req.params.id);
+      if (!patientId) return res.status(400).json({ error: "Invalid ID" });
       const patient = await storage.getPatient(patientId);
       if (!patient) return res.status(404).json({ error: "Patient not found" });
 
@@ -1480,7 +1583,8 @@ Be thorough — extract every medication mentioned including supplements and vit
 
   app.patch("/api/patients/:id/pregnancy-status", async (req: any, res: any) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const { pregnancyStatus } = req.body;
       const validStatuses = ['active', 'completed', 'aborted', 'not_continuing'];
       if (!validStatuses.includes(pregnancyStatus)) {
@@ -1497,7 +1601,8 @@ Be thorough — extract every medication mentioned including supplements and vit
 
   app.patch("/api/patients/:id/prime-member", async (req: any, res: any) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const { isPrimeMember } = req.body;
       const patient = await storage.getPatient(id);
       if (!patient) return res.status(404).json({ error: "Patient not found" });
@@ -1602,6 +1707,11 @@ Be thorough — extract every medication mentioned including supplements and vit
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
+  });
+
+  app.use("/api", (err: any, _req: any, res: any, _next: any) => {
+    console.error("API Error:", err.message);
+    res.status(500).json({ error: err.message || "Internal server error" });
   });
 
   return httpServer;

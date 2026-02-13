@@ -80,7 +80,7 @@ export async function seedDatabase() {
         drug: ["Insulin", "Iron Supplements", "Calcium"],
         allergies: ["None"]
       },
-      type: "Pregnancy",
+      type: "Pregnant",
       mood: "Stable",
       weight: 72,
       hb: 10.5,
@@ -222,7 +222,7 @@ export async function seedDatabase() {
       insurance: "Corporate",
       contraception: "N/A",
       history: null,
-      type: "Pregnancy",
+      type: "Pregnant",
       mood: "Stable",
       weight: 64,
       hb: 11.5,

@@ -2407,7 +2407,7 @@ export default function StaffPortal() {
                                             { color: 'bg-rose-500', title: 'Sudden Activity Drop', suffix: 'has 0 activity mins for 3 days.' },
                                             { color: 'bg-amber-500', title: 'Weight Plateau', suffix: 'weight stable for 4 weeks despite plan.' },
                                         ];
-                                        const alertPatients = patients.filter((p: any) => p.type === 'Pregnancy' || p.type === 'PCOS').slice(0, 2);
+                                        const alertPatients = patients.filter((p: any) => p.type === 'Pregnant' || p.type === 'Pregnancy' || p.type === 'PCOS').slice(0, 2);
                                         return alertTemplates.map((tmpl, idx) => {
                                             const p = alertPatients[idx];
                                             const patientLabel = p ? `${p.name} (${p.type})` : `Patient ${idx + 1}`;
@@ -2433,7 +2433,7 @@ export default function StaffPortal() {
             {activeRole === 'dermatologist' && (
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="grid grid-cols-3 gap-6">
-                         {patients.filter((p: any) => p.type === 'PCOS' || p.type === 'Pregnancy').map((p: any) => (
+                         {patients.filter((p: any) => p.type === 'PCOS' || p.type === 'Pregnant' || p.type === 'Pregnancy').map((p: any) => (
                              <Card key={p.id} className="shadow-sm border-slate-200">
                                  <CardHeader className="pb-2">
                                      <div className="flex justify-between items-start">
