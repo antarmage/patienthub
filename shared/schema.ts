@@ -423,6 +423,21 @@ export const insertFollowUpCallSchema = createInsertSchema(followUpCalls).omit({
 export type InsertFollowUpCall = z.infer<typeof insertFollowUpCallSchema>;
 export type FollowUpCall = typeof followUpCalls.$inferSelect;
 
+export const billingCatalog = pgTable("billing_catalog", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  category: text("category").notNull(),
+  price: real("price").notNull(),
+  taxRate: real("tax_rate").default(0),
+  hsnCode: text("hsn_code"),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+});
+
+export const insertBillingCatalogSchema = createInsertSchema(billingCatalog).omit({ id: true });
+export type InsertBillingCatalog = z.infer<typeof insertBillingCatalogSchema>;
+export type BillingCatalog = typeof billingCatalog.$inferSelect;
+
 export const attendance = pgTable("attendance", {
   id: serial("id").primaryKey(),
   employeeName: text("employee_name").notNull(),

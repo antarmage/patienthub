@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -23,6 +23,14 @@ import {
   Shield,
   Stethoscope,
   Briefcase,
+  Plus,
+  Pencil,
+  Trash2,
+  Package,
+  Search,
+  X,
+  Check,
+  Save,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +46,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 function formatINR(amount: number): string {
   if (amount === undefined || amount === null || isNaN(amount)) return "₹0";
@@ -108,6 +118,55 @@ export default function OwnerPortal() {
   });
   const patients = patientsQuery.data || [];
 
+  const catalogQuery = useQuery<any[]>({ queryKey: ["/api/billing-catalog"] });
+  const catalogItems = catalogQuery.data || [];
+
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogCategoryFilter, setCatalogCategoryFilter] = useState("all");
+  const [newItemTaxRate, setNewItemTaxRate] = useState("0");
+
+  const queryClient = useQueryClient();
+
+  const createCatalogItem = useMutation({
+    mutationFn: async (item: any) => {
+      const res = await fetch("/api/billing-catalog", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(item) });
+      if (!res.ok) throw new Error("Failed to create");
+      return res.json();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/billing-catalog"] }); setShowAddForm(false); },
+  });
+
+  const updateCatalogItem = useMutation({
+    mutationFn: async ({ id, ...data }: any) => {
+      const res = await fetch(`/api/billing-catalog/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to update");
+      return res.json();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/billing-catalog"] }); setEditingItem(null); },
+  });
+
+  const deleteCatalogItem = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/billing-catalog/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/billing-catalog"] }),
+  });
+
+  const catalogCategories = useMemo(() => {
+    const cats = new Set(catalogItems.map((c: any) => c.category));
+    return Array.from(cats).sort();
+  }, [catalogItems]);
+
+  const filteredCatalog = useMemo(() => {
+    let items = catalogItems;
+    if (catalogCategoryFilter !== "all") items = items.filter((c: any) => c.category === catalogCategoryFilter);
+    if (catalogSearch) items = items.filter((c: any) => c.name.toLowerCase().includes(catalogSearch.toLowerCase()) || (c.description || "").toLowerCase().includes(catalogSearch.toLowerCase()));
+    return items;
+  }, [catalogItems, catalogCategoryFilter, catalogSearch]);
+
   const todayAttendance = useMemo(() => {
     return attendance.filter((a: any) => a.date === today);
   }, [attendance, today]);
@@ -157,6 +216,7 @@ export default function OwnerPortal() {
     { id: "finance", label: "Finance", icon: IndianRupee },
     { id: "alerts", label: "Alerts", icon: AlertTriangle },
     { id: "performance", label: "Performance", icon: BarChart3 },
+    { id: "catalog", label: "Service Catalog", icon: Package },
   ];
 
   const statusBadge = (status: string) => {
@@ -730,6 +790,325 @@ export default function OwnerPortal() {
                     </CardContent>
                   </Card>
                 </motion.div>
+              </div>
+            )}
+
+            {activeView === "catalog" && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-catalog-title">Service Catalog</h2>
+                    <p className="text-sm text-slate-500 mt-1">{catalogItems.length} total items in catalog</p>
+                  </div>
+                  <Button onClick={() => { setShowAddForm(true); }} className="bg-indigo-600 hover:bg-indigo-700" data-testid="btn-add-catalog-item">
+                    <Plus className="w-4 h-4 mr-2" /> Add Item
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {[
+                    { label: "Total Items", value: catalogItems.length, icon: Package, color: "text-indigo-600", bg: "bg-indigo-50" },
+                    { label: "Categories", value: catalogCategories.length, icon: BarChart3, color: "text-violet-600", bg: "bg-violet-50" },
+                    { label: "Average Price", value: formatINR(catalogItems.length > 0 ? catalogItems.reduce((s: number, c: any) => s + (c.price || 0), 0) / catalogItems.length : 0), icon: IndianRupee, color: "text-emerald-600", bg: "bg-emerald-50", isString: true },
+                    { label: "Active Items", value: catalogItems.filter((c: any) => c.isActive !== false).length, icon: Check, color: "text-cyan-600", bg: "bg-cyan-50" },
+                  ].map((stat, i) => (
+                    <motion.div key={stat.label} custom={i} variants={cardVariants} initial="hidden" animate="visible">
+                      <Card className="border-slate-200 shadow-sm" data-testid={`card-catalog-stat-${i}`}>
+                        <CardContent className="p-4 flex items-center gap-4">
+                          <div className={`p-2.5 rounded-xl ${stat.bg}`}>
+                            <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500">{stat.label}</p>
+                            <p className={`text-lg font-bold ${stat.color}`}>{stat.isString ? stat.value : stat.value}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      placeholder="Search catalog items..."
+                      value={catalogSearch}
+                      onChange={(e) => setCatalogSearch(e.target.value)}
+                      className="pl-10"
+                      data-testid="input-catalog-search"
+                    />
+                  </div>
+                  <Select value={catalogCategoryFilter} onValueChange={setCatalogCategoryFilter}>
+                    <SelectTrigger className="w-48" data-testid="select-catalog-category-filter">
+                      <SelectValue placeholder="All Categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {catalogCategories.map((cat: any) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {showAddForm && (
+                  <motion.div custom={0} variants={cardVariants} initial="hidden" animate="visible">
+                    <Card className="border-slate-200 shadow-sm border-l-4 border-l-indigo-400" data-testid="card-add-catalog-item">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">Add New Item</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const form = e.target as HTMLFormElement;
+                            const formData = new FormData(form);
+                            createCatalogItem.mutate({
+                              name: formData.get("name") as string,
+                              category: formData.get("category") as string,
+                              price: parseFloat(formData.get("price") as string) || 0,
+                              taxRate: parseFloat(newItemTaxRate) || 0,
+                              hsnCode: formData.get("hsnCode") as string,
+                              description: formData.get("description") as string,
+                              isActive: true,
+                            });
+                            setNewItemTaxRate("0");
+                          }}
+                          className="space-y-4"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="text-xs font-medium text-slate-500 mb-1 block">Name *</label>
+                              <Input name="name" required placeholder="Service name" data-testid="input-catalog-name" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-slate-500 mb-1 block">Category *</label>
+                              <Input name="category" required placeholder="e.g. Consultation, Lab Test" list="catalog-categories" data-testid="input-catalog-category" />
+                              <datalist id="catalog-categories">
+                                {catalogCategories.map((cat: any) => (
+                                  <option key={cat} value={cat} />
+                                ))}
+                              </datalist>
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-slate-500 mb-1 block">Price (₹) *</label>
+                              <Input name="price" type="number" step="0.01" required placeholder="0.00" data-testid="input-catalog-price" />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="text-xs font-medium text-slate-500 mb-1 block">Tax Rate</label>
+                              <Select value={newItemTaxRate} onValueChange={setNewItemTaxRate}>
+                                <SelectTrigger data-testid="select-catalog-tax-rate">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="0">0%</SelectItem>
+                                  <SelectItem value="5">5%</SelectItem>
+                                  <SelectItem value="18">18%</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-slate-500 mb-1 block">HSN Code</label>
+                              <Input name="hsnCode" placeholder="HSN/SAC Code" data-testid="input-catalog-hsn" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-slate-500 mb-1 block">Description</label>
+                              <Input name="description" placeholder="Brief description" data-testid="input-catalog-description" />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 justify-end">
+                            <Button type="button" variant="ghost" onClick={() => setShowAddForm(false)} data-testid="btn-cancel-add-catalog">
+                              <X className="w-4 h-4 mr-1" /> Cancel
+                            </Button>
+                            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={createCatalogItem.isPending} data-testid="btn-save-catalog-item">
+                              <Save className="w-4 h-4 mr-1" /> Save
+                            </Button>
+                          </div>
+                        </form>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+
+                <Card className="border-slate-200 shadow-sm" data-testid="card-catalog-table">
+                  <CardContent className="p-0">
+                    <div className="rounded-lg border border-slate-200 overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50">
+                            <TableHead className="text-xs font-bold text-slate-500">Name</TableHead>
+                            <TableHead className="text-xs font-bold text-slate-500">Category</TableHead>
+                            <TableHead className="text-xs font-bold text-slate-500">Price</TableHead>
+                            <TableHead className="text-xs font-bold text-slate-500">Tax Rate</TableHead>
+                            <TableHead className="text-xs font-bold text-slate-500">HSN Code</TableHead>
+                            <TableHead className="text-xs font-bold text-slate-500">Active</TableHead>
+                            <TableHead className="text-xs font-bold text-slate-500">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredCatalog.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center py-8 text-slate-400">No catalog items found.</TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredCatalog.map((item: any, idx: number) => {
+                              const isEditing = editingItem?.id === item.id;
+                              const catalogCategoryColors: Record<string, string> = {
+                                "Consultation": "bg-indigo-100 text-indigo-700",
+                                "Imaging": "bg-cyan-100 text-cyan-700",
+                                "Lab Test": "bg-emerald-100 text-emerald-700",
+                                "Wellness": "bg-pink-100 text-pink-700",
+                                "Procedure": "bg-violet-100 text-violet-700",
+                              };
+                              const taxBadgeColor = (rate: number) => {
+                                if (rate === 0) return "bg-green-100 text-green-700";
+                                if (rate === 5) return "bg-amber-100 text-amber-700";
+                                if (rate === 18) return "bg-rose-100 text-rose-700";
+                                return "bg-slate-100 text-slate-700";
+                              };
+
+                              if (isEditing) {
+                                return (
+                                  <TableRow key={item.id} className="bg-indigo-50/30" data-testid={`row-catalog-edit-${idx}`}>
+                                    <TableCell>
+                                      <Input
+                                        value={editingItem.name}
+                                        onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                                        className="h-8 text-sm"
+                                        data-testid="input-edit-name"
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Input
+                                        value={editingItem.category}
+                                        onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
+                                        className="h-8 text-sm"
+                                        list="catalog-categories-edit"
+                                        data-testid="input-edit-category"
+                                      />
+                                      <datalist id="catalog-categories-edit">
+                                        {catalogCategories.map((cat: any) => (
+                                          <option key={cat} value={cat} />
+                                        ))}
+                                      </datalist>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={editingItem.price}
+                                        onChange={(e) => setEditingItem({ ...editingItem, price: parseFloat(e.target.value) || 0 })}
+                                        className="h-8 text-sm w-24"
+                                        data-testid="input-edit-price"
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Select value={String(editingItem.taxRate || 0)} onValueChange={(v) => setEditingItem({ ...editingItem, taxRate: parseFloat(v) })}>
+                                        <SelectTrigger className="h-8 text-sm w-20" data-testid="select-edit-tax-rate">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="0">0%</SelectItem>
+                                          <SelectItem value="5">5%</SelectItem>
+                                          <SelectItem value="18">18%</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Input
+                                        value={editingItem.hsnCode || ""}
+                                        onChange={(e) => setEditingItem({ ...editingItem, hsnCode: e.target.value })}
+                                        className="h-8 text-sm w-24"
+                                        data-testid="input-edit-hsn"
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge className={editingItem.isActive !== false ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}>
+                                        {editingItem.isActive !== false ? "Active" : "Inactive"}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7 text-emerald-600 hover:text-emerald-700"
+                                          onClick={() => updateCatalogItem.mutate(editingItem)}
+                                          disabled={updateCatalogItem.isPending}
+                                          data-testid="btn-save-edit"
+                                        >
+                                          <Check className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7 text-slate-400 hover:text-slate-600"
+                                          onClick={() => setEditingItem(null)}
+                                          data-testid="btn-cancel-edit"
+                                        >
+                                          <X className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              }
+
+                              return (
+                                <TableRow key={item.id} className="hover:bg-slate-50/50" data-testid={`row-catalog-${idx}`}>
+                                  <TableCell>
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-900">{item.name}</p>
+                                      {item.description && <p className="text-xs text-slate-400 mt-0.5">{item.description}</p>}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge className={catalogCategoryColors[item.category] || "bg-slate-100 text-slate-700"}>{item.category}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-sm font-bold text-slate-900">{formatINR(item.price)}</TableCell>
+                                  <TableCell>
+                                    <Badge className={taxBadgeColor(item.taxRate || 0)}>{item.taxRate || 0}%</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-sm text-slate-600">{item.hsnCode || "—"}</TableCell>
+                                  <TableCell>
+                                    <Badge className={item.isActive !== false ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}>
+                                      {item.isActive !== false ? "Active" : "Inactive"}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-slate-400 hover:text-indigo-600"
+                                        onClick={() => setEditingItem({ ...item })}
+                                        data-testid={`btn-edit-catalog-${idx}`}
+                                      >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-slate-400 hover:text-rose-600"
+                                        onClick={() => { if (confirm("Delete this item?")) deleteCatalogItem.mutate(item.id); }}
+                                        data-testid={`btn-delete-catalog-${idx}`}
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
 

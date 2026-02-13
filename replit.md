@@ -42,7 +42,7 @@ Preferred communication style: Simple, everyday language.
 - **Schema Location**: `shared/schema.ts` (shared between client and server)
 - **Migrations**: Drizzle Kit with `drizzle-kit push` for schema sync
 - **Connection**: `pg` Pool via `DATABASE_URL` environment variable
-- **Key Tables**: `users`, `patients`, `providers`, `services`, `appointments`, `labTasks`, `nutritionPlans`, `workouts`, `hormoneReadings`, `pregnancyMetrics`, `follicleData`, `usgData`, `labResults`, `visitHistory`, `medications`, `clinicalNotes`, `referrals`, `invoices`, `consentForms`, `documents`
+- **Key Tables**: `users`, `patients`, `providers`, `services`, `appointments`, `labTasks`, `nutritionPlans`, `workouts`, `hormoneReadings`, `pregnancyMetrics`, `follicleData`, `usgData`, `labResults`, `visitHistory`, `medications`, `clinicalNotes`, `referrals`, `invoices`, `consentForms`, `documents`, `billingCatalog`
 - **JSON Storage**: Extensive use of `jsonb` columns for flexible medical data (genomics, functional assessments, intervention plans, medical history)
 - **Google Sheets Integration**: Connected to spreadsheet ID `1mj3hkqjoQFrckIGC9Y0Jjlh6kYIYPHBVuPKAl7k-bxo`, reads "Form Responses 1" sheet (patient registration form data). Sync matches patients by phone number or name to avoid duplicates. Patients table extended with phone, email, address, lmp, height, bp columns.
 - **Google Drive Integration**: Connected to folder ID `1eCMJNf-kzwMfovvuVedCwAWECsKr7XVA` for lab report PDF imports. Files follow naming convention `TestReport_PATIENT NAME_ID_UUID.pdf`. Patient names are extracted from filenames and matched to database patients using fuzzy scoring (handles spelling variants like Mondal/Mandal, Sarma/Sharma). Reports stored in `documents` table with `metadata.driveFileId` for deduplication. Client module in `server/google-drive.ts`.
@@ -68,6 +68,7 @@ All routes are registered in `server/routes.ts`. Key endpoints:
 - `GET/POST/PATCH/DELETE /api/patients/:id/clinical-notes` — Clinical notes
 - `GET/POST/PATCH/DELETE /api/patients/:id/referrals` — Referral tracking
 - `GET/POST /api/patients/:id/invoices`, `PATCH/DELETE /api/invoices/:id` — Billing
+- `GET/POST/PATCH/DELETE /api/billing-catalog` — Billing catalog (owner-managed service pricing with GST)
 - `GET/POST/PATCH/DELETE /api/patients/:id/consent-forms` — Consent form tracking
 - `GET/POST/PATCH/DELETE /api/patients/:id/documents` — Document metadata
 - `POST /api/auth/passcode` — Unified passcode login (returns role + redirects to appropriate portal)

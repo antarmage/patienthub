@@ -42,7 +42,11 @@ import {
   Image as ImageIcon,
   RefreshCw,
   Star,
-  Crown
+  Crown,
+  IndianRupee,
+  Receipt,
+  Printer,
+  Trash2
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -875,6 +879,41 @@ export default function StaffPortal() {
   const [followUpSheetStatus, setFollowUpSheetStatus] = useState<any>(null);
   const [followUpCallFilter, setFollowUpCallFilter] = useState<'pending' | 'completed' | 'all'>('pending');
 
+  const [billingPatientId, setBillingPatientId] = useState<number | null>(null);
+  const [billingItems, setBillingItems] = useState<{catalogItemId: number; name: string; price: number; quantity: number; taxRate: number}[]>([]);
+  const [billingPaymentMethod, setBillingPaymentMethod] = useState("cash");
+  const [billingNotes, setBillingNotes] = useState("");
+  const billingCatalogQuery = useQuery<any[]>({ queryKey: ["/api/billing-catalog"] });
+  const billingCatalogItems = billingCatalogQuery.data || [];
+
+  const createInvoiceMutation = useMutation({
+    mutationFn: async (data: { patientId: number; items: any[]; subtotal: number; tax: number; total: number; paymentMethod: string; notes: string }) => {
+      const res = await fetch(`/api/patients/${data.patientId}/invoices`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: data.patientId,
+          date: new Date().toISOString().split("T")[0],
+          items: data.items,
+          subtotal: data.subtotal,
+          tax: data.tax,
+          total: data.total,
+          paymentMethod: data.paymentMethod,
+          paymentStatus: "paid",
+          notes: data.notes,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create invoice");
+      return res.json();
+    },
+    onSuccess: () => {
+      setBillingItems([]);
+      setBillingPatientId(null);
+      setBillingNotes("");
+      setBillingPaymentMethod("cash");
+    },
+  });
+
   const followUpCallsQuery = useQuery({
     queryKey: ['/api/follow-up-calls'],
     queryFn: async () => {
@@ -1146,6 +1185,17 @@ export default function StaffPortal() {
                  >
                     <Star className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
                     {sidebarOpen && "Prime Members"}
+                 </Button>
+                 )}
+                 {activeRole === 'receptionist' && (
+                 <Button 
+                    variant={activeView === 'billing' ? 'secondary' : 'ghost'} 
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'billing' ? 'bg-emerald-50 text-emerald-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    onClick={() => setActiveView('billing')}
+                    data-testid="btn-billing"
+                 >
+                    <IndianRupee className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
+                    {sidebarOpen && "Billing"}
                  </Button>
                  )}
             </div>
@@ -3028,6 +3078,210 @@ export default function StaffPortal() {
 
             {activeRole === 'receptionist' && activeView === 'prime' && (
                 <PrimeMembersView patients={patients} />
+            )}
+
+            {activeRole === 'receptionist' && activeView === 'billing' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-billing-title">Patient Billing</h2>
+                    <p className="text-sm text-slate-500 mt-1">Create invoices from the service catalog</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 space-y-4">
+                    <Card className="border-slate-200 shadow-sm">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                          Step 1: Select Patient
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Select value={billingPatientId?.toString() || ""} onValueChange={(v) => setBillingPatientId(parseInt(v))}>
+                          <SelectTrigger data-testid="select-billing-patient">
+                            <SelectValue placeholder="Choose a patient..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {patients.map((p: any) => (
+                              <SelectItem key={p.id} value={p.id.toString()}>{p.name} {p.isPrimeMember ? '⭐' : ''}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-slate-200 shadow-sm">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                          Step 2: Add Services from Catalog
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {Object.entries(
+                          billingCatalogItems
+                            .filter((c: any) => c.isActive !== false)
+                            .reduce((acc: any, item: any) => {
+                              const cat = item.category || "Other";
+                              if (!acc[cat]) acc[cat] = [];
+                              acc[cat].push(item);
+                              return acc;
+                            }, {})
+                        ).map(([category, items]: [string, any]) => (
+                          <div key={category}>
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{category}</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {items.map((item: any) => {
+                                const alreadyAdded = billingItems.some((b: any) => b.catalogItemId === item.id);
+                                return (
+                                  <div key={item.id} className={`flex items-center justify-between p-2.5 rounded-lg border ${alreadyAdded ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'} transition-colors`} data-testid={`catalog-item-${item.id}`}>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-slate-900 truncate">{item.name}</p>
+                                      <p className="text-xs text-slate-500">₹{item.price?.toLocaleString('en-IN')} {item.taxRate > 0 ? `+ ${item.taxRate}% GST` : '(No GST)'}</p>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant={alreadyAdded ? "outline" : "default"}
+                                      className={`h-7 text-xs ml-2 shrink-0 ${alreadyAdded ? 'border-emerald-300 text-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                                      onClick={() => {
+                                        if (alreadyAdded) {
+                                          setBillingItems(billingItems.filter((b: any) => b.catalogItemId !== item.id));
+                                        } else {
+                                          setBillingItems([...billingItems, { catalogItemId: item.id, name: item.name, price: item.price, quantity: 1, taxRate: item.taxRate || 0 }]);
+                                        }
+                                      }}
+                                      data-testid={`btn-add-item-${item.id}`}
+                                    >
+                                      {alreadyAdded ? '✓ Added' : '+ Add'}
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Card className="border-slate-200 shadow-sm sticky top-6">
+                      <CardHeader className="pb-3 border-b border-slate-100">
+                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                          <Receipt className="w-4 h-4 text-emerald-600" />
+                          Invoice Summary
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4 pt-4">
+                        {billingPatientId && (
+                          <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                            <p className="text-xs text-indigo-600 font-medium">Patient</p>
+                            <p className="text-sm font-bold text-indigo-900">{patients.find((p: any) => p.id === billingPatientId)?.name || 'Unknown'}</p>
+                          </div>
+                        )}
+
+                        {billingItems.length === 0 ? (
+                          <p className="text-sm text-slate-400 text-center py-6">No items added yet</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {billingItems.map((item: any, idx: number) => {
+                              const itemSubtotal = item.price * item.quantity;
+                              const itemTax = itemSubtotal * (item.taxRate / 100);
+                              return (
+                                <div key={idx} className="flex items-start justify-between py-2 border-b border-slate-100 last:border-0" data-testid={`billing-line-${idx}`}>
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-slate-900">{item.name}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <button className="text-xs text-slate-400 hover:text-slate-600" onClick={() => { if (item.quantity > 1) { const updated = [...billingItems]; updated[idx] = { ...item, quantity: item.quantity - 1 }; setBillingItems(updated); } }}>−</button>
+                                      <span className="text-xs font-medium text-slate-600">Qty: {item.quantity}</span>
+                                      <button className="text-xs text-slate-400 hover:text-slate-600" onClick={() => { const updated = [...billingItems]; updated[idx] = { ...item, quantity: item.quantity + 1 }; setBillingItems(updated); }}>+</button>
+                                    </div>
+                                    {item.taxRate > 0 && <p className="text-xs text-slate-400 mt-0.5">GST {item.taxRate}%: ₹{itemTax.toLocaleString('en-IN')}</p>}
+                                  </div>
+                                  <div className="text-right flex items-start gap-2">
+                                    <div>
+                                      <p className="text-sm font-bold text-slate-900">₹{itemSubtotal.toLocaleString('en-IN')}</p>
+                                    </div>
+                                    <button className="text-slate-400 hover:text-red-500 mt-0.5" onClick={() => setBillingItems(billingItems.filter((_: any, i: number) => i !== idx))} data-testid={`btn-remove-item-${idx}`}>
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {billingItems.length > 0 && (() => {
+                          const subtotal = billingItems.reduce((s: number, item: any) => s + item.price * item.quantity, 0);
+                          const tax = billingItems.reduce((s: number, item: any) => s + (item.price * item.quantity * (item.taxRate / 100)), 0);
+                          const total = subtotal + tax;
+
+                          return (
+                            <div className="space-y-3 pt-2">
+                              <div className="space-y-1 text-sm">
+                                <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>₹{subtotal.toLocaleString('en-IN')}</span></div>
+                                <div className="flex justify-between text-slate-600"><span>GST</span><span>₹{Math.round(tax).toLocaleString('en-IN')}</span></div>
+                                <Separator />
+                                <div className="flex justify-between font-bold text-lg text-slate-900"><span>Total</span><span>₹{Math.round(total).toLocaleString('en-IN')}</span></div>
+                              </div>
+
+                              <div>
+                                <Label className="text-xs font-medium text-slate-600">Payment Method</Label>
+                                <Select value={billingPaymentMethod} onValueChange={setBillingPaymentMethod}>
+                                  <SelectTrigger className="mt-1" data-testid="select-payment-method">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="cash">Cash</SelectItem>
+                                    <SelectItem value="card">Card</SelectItem>
+                                    <SelectItem value="upi">UPI</SelectItem>
+                                    <SelectItem value="insurance">Insurance</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div>
+                                <Label className="text-xs font-medium text-slate-600">Notes (optional)</Label>
+                                <Textarea value={billingNotes} onChange={(e) => setBillingNotes(e.target.value)} placeholder="Add notes..." className="mt-1 min-h-[60px]" data-testid="input-billing-notes" />
+                              </div>
+
+                              <Button
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                                disabled={!billingPatientId || createInvoiceMutation.isPending}
+                                onClick={() => {
+                                  if (!billingPatientId) return;
+                                  createInvoiceMutation.mutate({
+                                    patientId: billingPatientId,
+                                    items: billingItems,
+                                    subtotal,
+                                    tax: Math.round(tax),
+                                    total: Math.round(total),
+                                    paymentMethod: billingPaymentMethod,
+                                    notes: billingNotes,
+                                  });
+                                }}
+                                data-testid="btn-generate-invoice"
+                              >
+                                {createInvoiceMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Receipt className="w-4 h-4 mr-2" />}
+                                Generate Invoice
+                              </Button>
+
+                              {createInvoiceMutation.isSuccess && (
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto mb-1" />
+                                  <p className="text-sm font-bold text-emerald-800">Invoice Created!</p>
+                                  <p className="text-xs text-emerald-600 mt-1">Total: ₹{Math.round(total).toLocaleString('en-IN')}</p>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Checkout / Post-Consultation Dialog */}

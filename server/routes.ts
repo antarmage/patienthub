@@ -994,6 +994,28 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/billing-catalog", async (_req, res) => {
+    const catalog = await storage.getBillingCatalog();
+    res.json(catalog);
+  });
+
+  app.post("/api/billing-catalog", async (req, res) => {
+    const item = await storage.createBillingCatalogItem(req.body);
+    res.status(201).json(item);
+  });
+
+  app.patch("/api/billing-catalog/:id", async (req, res) => {
+    const updated = await storage.updateBillingCatalogItem(parseInt(req.params.id), req.body);
+    if (!updated) return res.status(404).json({ error: "Item not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/billing-catalog/:id", async (req, res) => {
+    const deleted = await storage.deleteBillingCatalogItem(parseInt(req.params.id));
+    if (!deleted) return res.status(404).json({ error: "Item not found" });
+    res.status(204).send();
+  });
+
   app.get("/api/medicine-catalog", async (_req, res) => {
     const catalog = await storage.getMedicineCatalog();
     res.json(catalog);

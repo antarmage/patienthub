@@ -33,6 +33,8 @@ import {
   type Attendance, type InsertAttendance,
   expenses,
   type Expense, type InsertExpense,
+  billingCatalog,
+  type BillingCatalog, type InsertBillingCatalog,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -144,6 +146,11 @@ export interface IStorage {
   createExpense(expense: InsertExpense): Promise<Expense>;
 
   getAllInvoices(): Promise<Invoice[]>;
+
+  getBillingCatalog(): Promise<BillingCatalog[]>;
+  createBillingCatalogItem(item: InsertBillingCatalog): Promise<BillingCatalog>;
+  updateBillingCatalogItem(id: number, data: Partial<InsertBillingCatalog>): Promise<BillingCatalog | undefined>;
+  deleteBillingCatalogItem(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -537,6 +544,25 @@ export class DatabaseStorage implements IStorage {
 
   async getAllInvoices(): Promise<Invoice[]> {
     return db.select().from(invoices);
+  }
+
+  async getBillingCatalog(): Promise<BillingCatalog[]> {
+    return db.select().from(billingCatalog).orderBy(billingCatalog.category, billingCatalog.name);
+  }
+
+  async createBillingCatalogItem(item: InsertBillingCatalog): Promise<BillingCatalog> {
+    const [created] = await db.insert(billingCatalog).values(item).returning();
+    return created;
+  }
+
+  async updateBillingCatalogItem(id: number, data: Partial<InsertBillingCatalog>): Promise<BillingCatalog | undefined> {
+    const [updated] = await db.update(billingCatalog).set(data).where(eq(billingCatalog.id, id)).returning();
+    return updated;
+  }
+
+  async deleteBillingCatalogItem(id: number): Promise<boolean> {
+    const result = await db.delete(billingCatalog).where(eq(billingCatalog.id, id)).returning();
+    return result.length > 0;
   }
 }
 
