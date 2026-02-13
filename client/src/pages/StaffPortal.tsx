@@ -494,23 +494,29 @@ export default function StaffPortal() {
     });
   }, [appointmentsRaw, patients, providers]);
 
-  const patientQueue = useMemo(() => {
+  const todayAppointments = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
-    return appointments
-      .filter((apt: any) => apt.date === todayStr || apt.status === 'On Time' || apt.status === 'Late')
-      .map((apt: any, idx: number) => {
+    return appointments.filter((apt: any) => apt.date === todayStr);
+  }, [appointments]);
+
+  const patientQueue = useMemo(() => {
+    return todayAppointments
+      .filter((apt: any) => apt.status !== 'Completed')
+      .map((apt: any) => {
         const statusMap: Record<string, string> = { 'On Time': 'Waiting', 'Late': 'Check-in', 'Completed': 'Completed' };
         const queueStatus = statusMap[apt.status] || 'Arriving';
         const actionMap: Record<string, string> = { 'Waiting': 'Take Vitals', 'Check-in': 'Upload Records', 'Arriving': 'Onboard', 'Completed': 'Checkout' };
         return {
           id: apt.id,
           name: apt.patient,
+          patientId: apt.patientId,
           time: apt.time || '—',
           status: queueStatus,
           action: actionMap[queueStatus] || 'Take Vitals',
+          type: apt.type || '',
         };
       });
-  }, [appointments]);
+  }, [todayAppointments]);
 
   const receptionistTasks = useMemo(() => {
     return labTasks
@@ -526,28 +532,65 @@ export default function StaffPortal() {
   }, [labTasks]);
 
   const crossSellOpportunities = useMemo(() => {
-    return patients.slice(0, 3).map((p: any, idx: number) => {
-      const services = [
-        { service: "Nutrigenomics Panel", reason: "Has genomic data available" },
-        { service: "Prenatal Yoga Class", reason: "Could benefit from guided exercise" },
-        { service: "Gut Microbiome Test", reason: "Recommended for hormonal balance" },
-      ];
-      return { id: p.id, patient: p.name, ...services[idx % services.length] };
+    const opportunities: any[] = [];
+    patients.forEach((p: any) => {
+      if (opportunities.length >= 5) return;
+      const patientType = (p.type || '').toLowerCase();
+      const patientStatus = (p.status || '').toLowerCase();
+
+      if (patientType === 'pcos' || patientType === 'fertility') {
+        if (p.genomics) {
+          opportunities.push({ id: `${p.id}-nutri`, patient: p.name, service: "Nutrigenomics Consultation", reason: `Genomic data available — personalized nutrition plan recommended` });
+        } else {
+          opportunities.push({ id: `${p.id}-gut`, patient: p.name, service: "Gut Microbiome Test", reason: `${p.type || 'Hormonal'} care can benefit from gut health optimization` });
+        }
+      } else if (patientType === 'pregnancy') {
+        if (patientStatus === 'high risk') {
+          opportunities.push({ id: `${p.id}-highrisk`, patient: p.name, service: "High-Risk Prenatal Program", reason: "High-risk status — advanced monitoring recommended" });
+        } else {
+          opportunities.push({ id: `${p.id}-yoga`, patient: p.name, service: "Prenatal Yoga & Wellness", reason: "Prenatal wellness program supports healthy pregnancy" });
+        }
+      } else if (patientType === 'postpartum') {
+        opportunities.push({ id: `${p.id}-postpartum`, patient: p.name, service: "Postpartum Recovery Program", reason: "Postpartum care — nutrition & mental health support" });
+      } else if (p.mood === 'Depressed' || p.mood === 'Anxious' || p.mood === 'Stressed') {
+        opportunities.push({ id: `${p.id}-psych`, patient: p.name, service: "Counseling Sessions", reason: `${p.mood} mood reported — psychological support recommended` });
+      } else if (p.hb && p.hb < 11) {
+        opportunities.push({ id: `${p.id}-anemia`, patient: p.name, service: "Iron Therapy & Diet Plan", reason: `Low Hb (${p.hb}) — anemia management program` });
+      }
     });
+    return opportunities.slice(0, 5);
   }, [patients]);
 
   const followUpList = useMemo(() => {
-    return patients
-      .filter((p: any) => p.status === 'High Risk' || p.mood === 'Depressed' || p.mood === 'Anxious')
-      .slice(0, 3)
-      .map((p: any, idx: number) => ({
-        id: p.id,
-        patient: p.name,
-        type: p.status === 'High Risk' ? 'High Risk Follow-up' : 'Mood Check-in',
-        daysAgo: idx + 1,
-        action: p.status === 'High Risk' ? 'Schedule Priority Visit' : 'Call to Check-in',
-      }));
-  }, [patients]);
+    const today = new Date();
+    const patientsNeedingFollowUp = patients
+      .filter((p: any) => p.status === 'High Risk' || p.mood === 'Depressed' || p.mood === 'Anxious' || p.mood === 'Stressed')
+      .map((p: any) => {
+        const patientAppts = appointments
+          .filter((a: any) => a.patientId === p.id)
+          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const patientVisits = allVisits
+          .filter((v: any) => v.patientId === p.id)
+          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        const lastContactDate = patientAppts[0]?.date || patientVisits[0]?.date || null;
+        let daysAgo = null;
+        if (lastContactDate) {
+          daysAgo = Math.floor((today.getTime() - new Date(lastContactDate).getTime()) / (1000 * 60 * 60 * 24));
+        }
+
+        return {
+          id: p.id,
+          patient: p.name,
+          type: p.status === 'High Risk' ? 'High Risk Follow-up' : `${p.mood || 'Mood'} Check-in`,
+          daysAgo,
+          lastVisitDate: lastContactDate,
+          action: p.status === 'High Risk' ? 'Schedule Priority Visit' : 'Call to Check-in',
+        };
+      })
+      .sort((a: any, b: any) => (b.daysAgo ?? 999) - (a.daysAgo ?? 999));
+    return patientsNeedingFollowUp.slice(0, 5);
+  }, [patients, appointments, allVisits]);
 
   const staffUsername = typeof window !== 'undefined' ? localStorage.getItem("staffUsername") || "" : "";
   const defaultRole = staffUsername.includes("reception") ? "receptionist" 
@@ -2065,25 +2108,25 @@ export default function StaffPortal() {
                 <div className="max-w-6xl mx-auto space-y-6">
                     {/* Top Stats */}
                     <div className="grid grid-cols-4 gap-4">
-                        <Card className="shadow-sm border-slate-200">
+                        <Card className="shadow-sm border-slate-200" data-testid="stat-today-visits">
                             <CardContent className="p-4">
                                 <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Today's Visits</p>
-                                <p className="text-2xl font-bold text-slate-900">{appointments.length}</p>
+                                <p className="text-2xl font-bold text-slate-900">{todayAppointments.length}</p>
                             </CardContent>
                         </Card>
-                        <Card className="shadow-sm border-slate-200">
+                        <Card className="shadow-sm border-slate-200" data-testid="stat-checked-in">
                             <CardContent className="p-4">
                                 <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Checked In</p>
-                                <p className="text-2xl font-bold text-emerald-600">{appointments.filter((a: any) => a.status === 'On Time').length}</p>
+                                <p className="text-2xl font-bold text-emerald-600">{todayAppointments.filter((a: any) => a.status === 'On Time' || a.status === 'Completed').length}</p>
                             </CardContent>
                         </Card>
-                        <Card className="shadow-sm border-slate-200">
+                        <Card className="shadow-sm border-slate-200" data-testid="stat-late">
                             <CardContent className="p-4">
                                 <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Late</p>
-                                <p className="text-2xl font-bold text-rose-600">{appointments.filter((a: any) => a.status === 'Late').length}</p>
+                                <p className="text-2xl font-bold text-rose-600">{todayAppointments.filter((a: any) => a.status === 'Late').length}</p>
                             </CardContent>
                         </Card>
-                        <Card className="shadow-sm border-slate-200">
+                        <Card className="shadow-sm border-slate-200" data-testid="stat-pending-tasks">
                             <CardContent className="p-4">
                                 <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Pending Tasks</p>
                                 <p className="text-2xl font-bold text-amber-600">{labTasks.filter((t: any) => t.status === 'Pending' || t.status === 'Delayed').length}</p>
@@ -2106,6 +2149,9 @@ export default function StaffPortal() {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="divide-y divide-slate-100">
+                                        {patientQueue.length === 0 && (
+                                            <div className="p-6 text-center text-sm text-slate-400">No patients currently waiting</div>
+                                        )}
                                         {patientQueue.map((p: any) => (
                                             <div key={p.id} className="p-4 flex items-center justify-between hover:bg-slate-50">
                                                 <div className="flex items-center gap-4">
@@ -2115,7 +2161,7 @@ export default function StaffPortal() {
                                                     <div>
                                                         <p className="font-bold text-slate-900 text-sm">{p.name}</p>
                                                         <p className="text-xs text-slate-500 flex items-center gap-1">
-                                                            <Clock className="w-3 h-3" /> Arrived at {p.time}
+                                                            <Clock className="w-3 h-3" /> {p.time} — {p.type || 'Appointment'}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -2249,19 +2295,28 @@ export default function StaffPortal() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {appointments.map((apt: any, i: number) => (
+                                            {todayAppointments.map((apt: any, i: number) => (
                                                 <tr key={i} className="hover:bg-slate-50/50">
                                                     <td className="px-4 py-3 font-medium text-slate-500">{apt.time}</td>
                                                     <td className="px-4 py-3 font-semibold text-slate-900">{apt.patient}</td>
                                                     <td className="px-4 py-3 text-slate-600">{apt.type}</td>
                                                     <td className="px-4 py-3 text-slate-500">{apt.doctor}</td>
                                                     <td className="px-4 py-3 flex gap-2">
-                                                        <Link href="/staff/check-in">
-                                                            <Button size="sm" variant="outline" className="h-7 text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100">Check In</Button>
-                                                        </Link>
+                                                        {apt.status === 'Completed' ? (
+                                                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">Done</Badge>
+                                                        ) : (
+                                                            <Link href="/staff/check-in">
+                                                                <Button size="sm" variant="outline" className="h-7 text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100">Check In</Button>
+                                                            </Link>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
+                                            {todayAppointments.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">No appointments scheduled for today</td>
+                                                </tr>
+                                            )}
                                         </tbody>
                                      </table>
                                 </CardContent>
@@ -2288,7 +2343,7 @@ export default function StaffPortal() {
                                                     <span className="text-sm font-bold text-slate-800">{item.patient}</span>
                                                     <Badge variant="outline" className="text-[10px] bg-white border-rose-200 text-rose-600">{item.type}</Badge>
                                                 </div>
-                                                <p className="text-xs text-slate-500 mb-2">{item.daysAgo ? `${item.daysAgo} days ago` : item.amount}</p>
+                                                <p className="text-xs text-slate-500 mb-2">{item.daysAgo !== null ? (item.daysAgo === 0 ? 'Today' : `${item.daysAgo} day${item.daysAgo !== 1 ? 's' : ''} since last visit`) : 'No visit on record'}</p>
                                                 <Button 
                                                     size="sm" 
                                                     variant="ghost" 
