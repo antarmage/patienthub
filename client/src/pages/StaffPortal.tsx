@@ -3163,31 +3163,78 @@ export default function StaffPortal() {
                   <div className="lg:col-span-2 space-y-4">
                     <Card className="border-slate-200 shadow-sm">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">
-                          Select Patient
+                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                          <Users className="w-4 h-4 text-indigo-500" />
+                          Today's Queue
                         </CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <Select value={billingPatientId?.toString() || ""} onValueChange={(v) => {
-                          const id = parseInt(v);
-                          prevBillingPatientRef.current = null;
-                          setBillingPatientId(id);
-                          setBillingItems([]);
-                          setBillingIsEstimate(false);
-                          setBillingEstimateSource("");
-                          createInvoiceMutation.reset();
-                        }}>
-                          <SelectTrigger data-testid="select-billing-patient">
-                            <SelectValue placeholder="Choose a patient to get auto-estimate..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {patients.map((p: any) => (
-                              <SelectItem key={p.id} value={p.id.toString()}>
-                                {p.name} {p.isPrimeMember ? '⭐' : ''} <span className="text-slate-400 ml-1">({p.type || 'General'})</span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                      <CardContent className="space-y-3">
+                        {(() => {
+                          const todayStr = new Date().toISOString().split('T')[0];
+                          const todayAppts = appointments.filter((a: any) => a.date === todayStr);
+                          const todayPatientIds = Array.from(new Set(todayAppts.map((a: any) => a.patientId)));
+                          const todayPatients = todayPatientIds.map(id => patients.find((p: any) => p.id === id)).filter(Boolean);
+                          const selectPatient = (id: number) => {
+                            prevBillingPatientRef.current = null;
+                            setBillingPatientId(id);
+                            setBillingItems([]);
+                            setBillingIsEstimate(false);
+                            setBillingEstimateSource("");
+                            createInvoiceMutation.reset();
+                          };
+
+                          return (
+                            <>
+                              {todayPatients.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {todayPatients.map((p: any) => {
+                                    const appt = todayAppts.find((a: any) => a.patientId === p.id);
+                                    const isSelected = billingPatientId === p.id;
+                                    return (
+                                      <button
+                                        key={p.id}
+                                        onClick={() => selectPatient(p.id)}
+                                        className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${isSelected ? 'border-indigo-400 bg-indigo-50 ring-2 ring-indigo-200' : 'border-slate-200 hover:border-indigo-200 hover:bg-slate-50'}`}
+                                        data-testid={`btn-queue-patient-${p.id}`}
+                                      >
+                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${isSelected ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                          {p.name?.charAt(0)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-sm font-semibold text-slate-800 truncate">
+                                            {p.name} {p.isPrimeMember ? '⭐' : ''}
+                                          </div>
+                                          <div className="text-xs text-slate-500 truncate">
+                                            {appt?.time || ''} · {p.type || appt?.visitType || 'General'}
+                                          </div>
+                                        </div>
+                                        {isSelected && <CheckCircle2 className="w-4 h-4 text-indigo-500 flex-shrink-0" />}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="text-center py-4 text-sm text-slate-400">No appointments scheduled for today</div>
+                              )}
+
+                              <div className="pt-2 border-t border-slate-100">
+                                <p className="text-xs text-slate-400 mb-2">Or search all patients</p>
+                                <Select value={billingPatientId?.toString() || ""} onValueChange={(v) => selectPatient(parseInt(v))}>
+                                  <SelectTrigger data-testid="select-billing-patient" className="h-9">
+                                    <SelectValue placeholder="Search other patients..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {patients.map((p: any) => (
+                                      <SelectItem key={p.id} value={p.id.toString()}>
+                                        {p.name} {p.isPrimeMember ? '⭐' : ''} ({p.type || 'General'})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </>
+                          );
+                        })()}
                       </CardContent>
                     </Card>
 
