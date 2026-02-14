@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Users, 
   Activity, 
@@ -80,7 +80,11 @@ function UploadRecordsDialog({ isOpen, onClose, patient }: { isOpen: boolean; on
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string; preview: string; type: string } | null>(null);
   const [ocrResult, setOcrResult] = useState<any>(null);
   const [activeDocTab, setActiveDocTab] = useState("prescription");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [uploadNotes, setUploadNotes] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
 
   const ocrMutation = useMutation({
     mutationFn: async (imageData: { image: string; mimeType: string }) => {
@@ -96,6 +100,94 @@ function UploadRecordsDialog({ isOpen, onClose, patient }: { isOpen: boolean; on
       setOcrResult(data.data);
     },
   });
+
+  const handleSaveToPatient = async () => {
+    if (!patient?.id || !uploadedFile) return;
+    setIsSaving(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const savedMeds: string[] = [];
+
+      if (activeDocTab === 'prescription' && ocrResult?.medications?.length > 0) {
+        for (const med of ocrResult.medications) {
+          const medRes = await fetch(`/api/patients/${patient.id}/medications`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: med.name,
+              dose: med.dosage || med.dose || null,
+              frequency: med.frequency || null,
+              route: med.route || null,
+              startDate: ocrResult.date || today,
+              status: 'active',
+              notes: [med.duration ? `Duration: ${med.duration}` : '', med.instructions || ''].filter(Boolean).join('. ') || null,
+            }),
+          });
+          if (medRes.ok) savedMeds.push(med.name);
+          else console.warn(`Failed to save medication: ${med.name}`);
+        }
+      }
+
+      const docName = activeDocTab === 'prescription'
+        ? `Prescription - ${ocrResult?.doctorName || uploadedFile.name}`
+        : activeDocTab === 'blood'
+        ? `Blood Report - ${uploadedFile.name}`
+        : `USG/Scan - ${uploadedFile.name}`;
+
+      const docRes = await fetch(`/api/patients/${patient.id}/documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: docName,
+          type: activeDocTab === 'prescription' ? 'Prescription' : activeDocTab === 'blood' ? 'Lab Report' : 'USG Report',
+          category: activeDocTab,
+          date: ocrResult?.date || today,
+          description: uploadNotes || null,
+          metadata: {
+            fileName: uploadedFile.name,
+            fileSize: uploadedFile.size,
+            ocrResult: ocrResult || null,
+            savedMedications: savedMeds,
+          },
+        }),
+      });
+      if (!docRes.ok) console.warn('Failed to save document metadata');
+
+      if (activeDocTab === 'prescription' && ocrResult) {
+        const noteContent = [
+          ocrResult.doctorName ? `Prescribed by: ${ocrResult.doctorName}` : '',
+          ocrResult.diagnosis ? `Diagnosis: ${ocrResult.diagnosis}` : '',
+          savedMeds.length > 0 ? `Medications: ${savedMeds.join(', ')}` : '',
+          ocrResult.notes ? `Notes: ${ocrResult.notes}` : '',
+          uploadNotes ? `Staff notes: ${uploadNotes}` : '',
+        ].filter(Boolean).join('\n');
+
+        if (noteContent) {
+          const noteRes = await fetch(`/api/patients/${patient.id}/clinical-notes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date: today,
+              type: 'Prescription Upload',
+              title: `Prescription${ocrResult.doctorName ? ` - ${ocrResult.doctorName}` : ''}`,
+              content: noteContent,
+            }),
+          });
+          if (!noteRes.ok) console.warn('Failed to save clinical note');
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+      setSaveSuccess(true);
+      setTimeout(() => {
+        resetDialog();
+      }, 1500);
+    } catch (err) {
+      alert('Failed to save prescription data. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleFileSelect = useCallback((file: File) => {
     const maxSize = 10 * 1024 * 1024;
@@ -141,6 +233,9 @@ function UploadRecordsDialog({ isOpen, onClose, patient }: { isOpen: boolean; on
     setUploadedFile(null);
     setOcrResult(null);
     setActiveDocTab("prescription");
+    setIsSaving(false);
+    setSaveSuccess(false);
+    setUploadNotes("");
     onClose();
   };
 
@@ -330,19 +425,35 @@ function UploadRecordsDialog({ isOpen, onClose, patient }: { isOpen: boolean; on
 
           <div className="mt-4">
             <Label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Notes / Description</Label>
-            <Textarea placeholder="Add any relevant details about these documents..." className="h-20" data-testid="input-upload-notes" />
+            <Textarea
+              placeholder="Add any relevant details about these documents..."
+              className="h-20"
+              value={uploadNotes}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setUploadNotes(e.target.value)}
+              data-testid="input-upload-notes"
+            />
           </div>
         </Tabs>
+
+        {saveSuccess && (
+          <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            <p className="text-sm font-medium text-emerald-700">
+              Saved to {patient?.name}'s records!
+              {activeDocTab === 'prescription' && ocrResult?.medications?.length > 0 && ` ${ocrResult.medications.length} medication(s) added.`}
+            </p>
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={resetDialog} data-testid="btn-cancel-upload">Cancel</Button>
           <Button
             className="bg-indigo-600 hover:bg-indigo-700 text-white"
-            disabled={!uploadedFile || ocrMutation.isPending}
-            onClick={resetDialog}
+            disabled={!uploadedFile || ocrMutation.isPending || isSaving || saveSuccess}
+            onClick={handleSaveToPatient}
             data-testid="btn-confirm-upload"
           >
-            {ocrMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</> : 'Upload Documents'}
+            {isSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving to Patient Record...</> : ocrMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</> : 'Save & Upload to Patient'}
           </Button>
         </DialogFooter>
       </DialogContent>
