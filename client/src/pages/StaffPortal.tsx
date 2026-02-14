@@ -110,33 +110,42 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
     let savedDoc = false;
     let savedNote = false;
 
-    let existingMeds: any[] = [];
+    const visitDate = ocrResult?.date || null;
+    const hasValidDate = visitDate && /^\d{4}-\d{2}-\d{2}$/.test(visitDate);
+    const effectiveVisitDate = hasValidDate ? visitDate : today;
+    const dateTag = hasValidDate ? '' : ' [Date to be confirmed]';
+
     let existingDocs: any[] = [];
-    let existingNotes: any[] = [];
+    let existingVisits: any[] = [];
     try {
-      const [medsRes, docsRes, notesRes] = await Promise.all([
-        fetch(`/api/patients/${patient.id}/medications`),
+      const [docsRes, visitsRes] = await Promise.all([
         fetch(`/api/patients/${patient.id}/documents`),
-        fetch(`/api/patients/${patient.id}/clinical-notes`),
+        fetch(`/api/patients/${patient.id}/visit-history`),
       ]);
-      if (medsRes.ok) existingMeds = await medsRes.json();
       if (docsRes.ok) existingDocs = await docsRes.json();
-      if (notesRes.ok) existingNotes = await notesRes.json();
+      if (visitsRes.ok) existingVisits = await visitsRes.json();
     } catch (e) {
       console.error('Error fetching existing records for dedup:', e);
+    }
+
+    const contentFingerprint = ocrResult?.rawText
+      ? ocrResult.rawText.replace(/\s+/g, '').toLowerCase().slice(0, 200)
+      : uploadedFile.name + uploadedFile.size;
+
+    const isDuplicateUpload = existingDocs.some((d: any) => {
+      const existingFp = d.metadata?.contentFingerprint;
+      return existingFp && existingFp === contentFingerprint;
+    });
+
+    if (isDuplicateUpload) {
+      setIsSaving(false);
+      alert('This prescription has already been uploaded for this patient.');
+      return;
     }
 
     try {
       if (activeDocTab === 'prescription' && ocrResult?.medications?.length > 0) {
         for (const med of ocrResult.medications) {
-          const isDuplicate = existingMeds.some((m: any) =>
-            m.name?.toLowerCase().trim() === med.name?.toLowerCase().trim() && m.status === 'active'
-          );
-          if (isDuplicate) {
-            console.log(`Skipping duplicate medication: ${med.name}`);
-            savedMeds.push(med.name);
-            continue;
-          }
           try {
             const medRes = await fetch(`/api/patients/${patient.id}/medications`, {
               method: 'POST',
@@ -146,9 +155,9 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                 dose: med.dosage || med.dose || null,
                 frequency: med.frequency || null,
                 route: med.route || null,
-                startDate: today,
+                startDate: effectiveVisitDate,
                 status: 'active',
-                notes: [med.duration ? `Duration: ${med.duration}` : '', med.instructions || ''].filter(Boolean).join('. ') || null,
+                notes: [med.duration ? `Duration: ${med.duration}` : '', med.instructions || '', dateTag ? dateTag.trim() : ''].filter(Boolean).join('. ') || null,
               }),
             });
             if (medRes.ok) savedMeds.push(med.name);
@@ -163,86 +172,76 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
 
     try {
       const docName = activeDocTab === 'prescription'
-        ? `Prescription - ${ocrResult?.doctorName || uploadedFile.name}`
+        ? `Prescription - ${ocrResult?.doctorName || uploadedFile.name}${dateTag} (${effectiveVisitDate})`
         : activeDocTab === 'blood'
-        ? `Blood Report - ${uploadedFile.name}`
-        : `USG/Scan - ${uploadedFile.name}`;
+        ? `Blood Report - ${uploadedFile.name} (${effectiveVisitDate})`
+        : `USG/Scan - ${uploadedFile.name} (${effectiveVisitDate})`;
 
-      const isDuplicateDoc = existingDocs.some((d: any) => d.name === docName);
-      if (isDuplicateDoc) {
-        console.log(`Skipping duplicate document: ${docName}`);
-        savedDoc = true;
-      } else {
-        const ocrSummary = ocrResult ? {
-          doctorName: ocrResult.doctorName || null,
-          patientName: ocrResult.patientName || null,
-          date: ocrResult.date || null,
-          diagnosis: ocrResult.diagnosis || null,
-          confidence: ocrResult.confidence || null,
-          medicationCount: ocrResult.medications?.length || 0,
-        } : null;
+      const ocrSummary = ocrResult ? {
+        doctorName: ocrResult.doctorName || null,
+        patientName: ocrResult.patientName || null,
+        date: ocrResult.date || null,
+        diagnosis: ocrResult.diagnosis || null,
+        confidence: ocrResult.confidence || null,
+        medicationCount: ocrResult.medications?.length || 0,
+      } : null;
 
-        const docRes = await fetch(`/api/patients/${patient.id}/documents`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: docName,
-            type: activeDocTab === 'prescription' ? 'Prescription' : activeDocTab === 'blood' ? 'Lab Report' : 'USG Report',
-            category: activeDocTab,
-            date: today,
-            description: uploadNotes || null,
-            metadata: {
-              fileName: uploadedFile.name,
-              fileSize: uploadedFile.size,
-              ocrSummary,
-              savedMedications: savedMeds,
-            },
-          }),
-        });
-        if (docRes.ok) savedDoc = true;
-        else console.error('Document save failed:', await docRes.text());
-      }
+      const docRes = await fetch(`/api/patients/${patient.id}/documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: docName,
+          type: activeDocTab === 'prescription' ? 'Prescription' : activeDocTab === 'blood' ? 'Lab Report' : 'USG Report',
+          category: activeDocTab,
+          date: effectiveVisitDate,
+          description: uploadNotes || null,
+          metadata: {
+            fileName: uploadedFile.name,
+            fileSize: uploadedFile.size,
+            ocrSummary,
+            savedMedications: savedMeds,
+            contentFingerprint,
+            dateConfirmed: hasValidDate,
+          },
+        }),
+      });
+      if (docRes.ok) savedDoc = true;
+      else console.error('Document save failed:', await docRes.text());
     } catch (e) {
       console.error('Error saving document:', e);
     }
 
     try {
       if (activeDocTab === 'prescription' && ocrResult) {
-        const noteTitle = `Prescription${ocrResult.doctorName ? ` - ${ocrResult.doctorName}` : ''}`;
-        const isDuplicateNote = existingNotes.some((n: any) =>
-          n.type === 'Prescription Upload' && (n.title === noteTitle || n.date === today)
-        );
-        if (isDuplicateNote) {
-          console.log(`Skipping duplicate clinical note: ${noteTitle}`);
-          savedNote = true;
-        } else {
-          const noteContent = [
-            ocrResult.doctorName ? `Prescribed by: ${ocrResult.doctorName}` : '',
-            ocrResult.chiefComplaint ? `Chief Complaint: ${ocrResult.chiefComplaint}` : '',
-            ocrResult.diagnosis ? `Diagnosis: ${ocrResult.diagnosis}` : '',
-            ocrResult.examination ? `Examination: ${ocrResult.examination}` : '',
-            savedMeds.length > 0 ? `Medications: ${savedMeds.join(', ')}` : '',
-            ocrResult.investigations?.length > 0 ? `Investigations: ${ocrResult.investigations.map((inv: any) => `${inv.name}${inv.result ? ` = ${inv.result}` : ''}${inv.date ? ` (${inv.date})` : ''}`).join('; ')}` : '',
-            ocrResult.advice ? `Advice: ${ocrResult.advice}` : '',
-            ocrResult.followUp ? `Follow-up: ${ocrResult.followUp}` : '',
-            ocrResult.notes ? `Notes: ${ocrResult.notes}` : '',
-            uploadNotes ? `Staff notes: ${uploadNotes}` : '',
-          ].filter(Boolean).join('\n');
+        const noteTitle = `Prescription${ocrResult.doctorName ? ` - ${ocrResult.doctorName}` : ''}${dateTag}`;
 
-          if (noteContent) {
-            const noteRes = await fetch(`/api/patients/${patient.id}/clinical-notes`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                date: today,
-                type: 'Prescription Upload',
-                title: noteTitle,
-                content: noteContent,
-              }),
-            });
-            if (noteRes.ok) savedNote = true;
-            else console.error('Clinical note save failed:', await noteRes.text());
-          }
+        const noteContent = [
+          ocrResult.doctorName ? `Prescribed by: ${ocrResult.doctorName}` : '',
+          !hasValidDate ? '⚠ Date to be confirmed (date not found on prescription)' : '',
+          ocrResult.chiefComplaint ? `Chief Complaint: ${ocrResult.chiefComplaint}` : '',
+          ocrResult.diagnosis ? `Diagnosis: ${ocrResult.diagnosis}` : '',
+          ocrResult.examination ? `Examination: ${ocrResult.examination}` : '',
+          savedMeds.length > 0 ? `Medications: ${savedMeds.join(', ')}` : '',
+          ocrResult.investigations?.length > 0 ? `Investigations: ${ocrResult.investigations.map((inv: any) => `${inv.name}${inv.result ? ` = ${inv.result}` : ''}${inv.date ? ` (${inv.date})` : ''}`).join('; ')}` : '',
+          ocrResult.advice ? `Advice: ${ocrResult.advice}` : '',
+          ocrResult.followUp ? `Follow-up: ${ocrResult.followUp}` : '',
+          ocrResult.notes ? `Notes: ${ocrResult.notes}` : '',
+          uploadNotes ? `Staff notes: ${uploadNotes}` : '',
+        ].filter(Boolean).join('\n');
+
+        if (noteContent) {
+          const noteRes = await fetch(`/api/patients/${patient.id}/clinical-notes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date: effectiveVisitDate,
+              type: 'Prescription Upload',
+              title: noteTitle,
+              content: noteContent,
+            }),
+          });
+          if (noteRes.ok) savedNote = true;
+          else console.error('Clinical note save failed:', await noteRes.text());
         }
       }
     } catch (e) {
@@ -251,20 +250,21 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
 
     let savedVisit = false;
     try {
-      const visitDate = ocrResult?.date || today;
-      const existingVisitsRes = await fetch(`/api/patients/${patient.id}/visit-history`);
-      const existingVisits = existingVisitsRes.ok ? await existingVisitsRes.json() : [];
-      const hasSameDateVisit = existingVisits.some((v: any) => v.date === visitDate);
+      const isDuplicateVisit = existingVisits.some((v: any) =>
+        v.date === effectiveVisitDate && v.outcome === 'Prescription uploaded via document scan' &&
+        v.diagnosis === (ocrResult?.diagnosis || null) &&
+        v.chiefComplaint === (ocrResult?.chiefComplaint || ocrResult?.diagnosis || null)
+      );
 
-      if (hasSameDateVisit) {
-        console.log(`Visit already exists for ${visitDate}, skipping duplicate`);
+      if (isDuplicateVisit) {
+        console.log(`Identical visit already exists for ${effectiveVisitDate}, skipping exact duplicate`);
         savedVisit = true;
       } else {
         const visitRes = await fetch(`/api/patients/${patient.id}/visit-history`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            date: visitDate,
+            date: effectiveVisitDate,
             visitType: activeDocTab === 'prescription' ? 'Consultation' : activeDocTab === 'blood' ? 'Lab Visit' : 'Scan/USG',
             chiefComplaint: ocrResult?.chiefComplaint || ocrResult?.diagnosis || null,
             diagnosis: ocrResult?.diagnosis || null,
@@ -276,7 +276,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
               name: inv.name, result: inv.result, date: inv.date
             })) : null,
             followUpPlan: ocrResult?.followUp || null,
-            planNotes: ocrResult?.advice || null,
+            planNotes: [ocrResult?.advice || '', !hasValidDate ? 'Date to be confirmed' : ''].filter(Boolean).join('. ') || null,
             subjective: ocrResult?.chiefComplaint || null,
             objective: ocrResult?.examination || null,
             assessment: ocrResult?.diagnosis || null,
