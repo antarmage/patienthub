@@ -1291,6 +1291,17 @@ export default function StaffPortal() {
                     {sidebarOpen && "Billing"}
                  </Button>
                  )}
+                 {activeRole === 'receptionist' && (
+                 <Button 
+                    variant={activeView === 'sync' ? 'secondary' : 'ghost'} 
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'sync' ? 'bg-blue-50 text-blue-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    onClick={() => setActiveView('sync')}
+                    data-testid="btn-sync-import"
+                 >
+                    <RefreshCw className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
+                    {sidebarOpen && "Sync & Import"}
+                 </Button>
+                 )}
             </div>
         </div>
 
@@ -1343,29 +1354,50 @@ export default function StaffPortal() {
                           <div className="p-4 text-center text-sm text-slate-400">No patients found</div>
                         ) : (
                           headerSearchResults.map((p: any) => (
-                            <button
+                            <div
                               key={p.id}
-                              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 text-left border-b border-slate-50 last:border-0"
+                              className="px-4 py-3 flex items-center gap-3 hover:bg-slate-50 border-b border-slate-50 last:border-0"
                               data-testid={`header-search-result-${p.id}`}
-                              onClick={() => {
-                                openViewLog(p);
-                                setHeaderSearchTerm("");
-                                setHeaderSearchOpen(false);
-                              }}
                             >
-                              <Avatar className="h-8 w-8 text-xs shrink-0">
-                                <AvatarFallback className="bg-indigo-100 text-indigo-700">{p.name?.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium text-slate-900 truncate">{p.name}</p>
-                                <div className="flex items-center gap-2 text-xs text-slate-500">
-                                  <span>ID: {p.id}</span>
-                                  {p.phone && <span>| {p.phone}</span>}
-                                  {p.type && <span>| {p.type}</span>}
+                              <button
+                                className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                                onClick={() => {
+                                  openViewLog(p);
+                                  setHeaderSearchTerm("");
+                                  setHeaderSearchOpen(false);
+                                }}
+                              >
+                                <Avatar className="h-8 w-8 text-xs shrink-0">
+                                  <AvatarFallback className="bg-indigo-100 text-indigo-700">{p.name?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-slate-900 truncate">{p.name}</p>
+                                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                                    <span>ID: {p.id}</span>
+                                    {p.phone && <span>| {p.phone}</span>}
+                                    {p.type && <span>| {p.type}</span>}
+                                  </div>
                                 </div>
+                              </button>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-[10px] px-2 border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
+                                  data-testid={`btn-upload-prescription-${p.id}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedPatientForUpload(p);
+                                    setIsUploadOpen(true);
+                                    setHeaderSearchTerm("");
+                                    setHeaderSearchOpen(false);
+                                  }}
+                                >
+                                  <Upload className="w-3 h-3 mr-1" /> Upload Rx
+                                </Button>
+                                <ChevronRight className="w-4 h-4 text-slate-300" />
                               </div>
-                              <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
-                            </button>
+                            </div>
                           ))
                         )}
                       </div>
@@ -3565,6 +3597,151 @@ export default function StaffPortal() {
                       </CardContent>
                     </Card>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeRole === 'receptionist' && activeView === 'sync' && (
+              <div className="max-w-4xl mx-auto space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900 font-serif">Sync & Import Data</h2>
+                  <p className="text-sm text-slate-500 mt-1">Import patient records from Google Sheets, lab reports from Google Drive, or upload prescriptions for any patient.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="shadow-sm border-blue-200 bg-blue-50/20">
+                    <CardHeader className="py-4 border-b border-blue-100 bg-blue-50/50">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-blue-600" />
+                        <CardTitle className="text-base font-bold text-blue-900">Google Sheets Import</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-5 space-y-4">
+                      <p className="text-sm text-slate-600">Import patient registration data from the clinic's Google Sheet form. This syncs old and new patient records into the system.</p>
+                      {sheetStatus && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className={`w-2.5 h-2.5 rounded-full ${sheetStatus.connected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                          <span className="text-slate-700">{sheetStatus.connected ? `${sheetStatus.rowCount} records available in sheet` : 'Not connected'}</span>
+                        </div>
+                      )}
+                      {syncResult && (
+                        <div className={`p-3 rounded-lg text-sm ${syncResult.error ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`} data-testid="sync-result-full">
+                          {syncResult.error ? syncResult.error : syncResult.message}
+                          {syncResult.errors && syncResult.errors.length > 0 && (
+                            <div className="mt-2 text-xs text-amber-700 space-y-0.5">
+                              {syncResult.errors.slice(0, 5).map((e: string, i: number) => <div key={i}>{e}</div>)}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <Button
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={handleSheetSync}
+                        disabled={isSyncing}
+                        data-testid="btn-sync-sheets-full"
+                      >
+                        {isSyncing ? (
+                          <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Syncing Patient Data...</>
+                        ) : (
+                          <><RefreshCw className="w-4 h-4 mr-2" /> Sync All Patient Data</>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm border-purple-200 bg-purple-50/20">
+                    <CardHeader className="py-4 border-b border-purple-100 bg-purple-50/50">
+                      <div className="flex items-center gap-2">
+                        <FlaskConical className="w-5 h-5 text-purple-600" />
+                        <CardTitle className="text-base font-bold text-purple-900">Lab Reports Import</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-5 space-y-4">
+                      <p className="text-sm text-slate-600">Import lab report PDFs from Google Drive and automatically map them to patients by name.</p>
+                      {driveStatus && (
+                        <div className="space-y-1 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2.5 h-2.5 rounded-full ${driveStatus.connected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                            <span className="text-slate-700">{driveStatus.connected ? `${driveStatus.testReports} lab reports found` : 'Not connected'}</span>
+                          </div>
+                          {driveStatus.connected && driveStatus.alreadyImported > 0 && (
+                            <div className="flex items-center gap-2 text-emerald-600 ml-4">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>{driveStatus.alreadyImported} already imported</span>
+                            </div>
+                          )}
+                          {driveStatus.connected && driveStatus.pendingImport > 0 && (
+                            <div className="flex items-center gap-2 text-amber-600 ml-4">
+                              <AlertCircle className="w-3.5 h-3.5" />
+                              <span>{driveStatus.pendingImport} pending import</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {labImportResult && (
+                        <div className={`p-3 rounded-lg text-sm ${labImportResult.error ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`} data-testid="lab-import-result-full">
+                          {labImportResult.error ? labImportResult.error : (
+                            <div className="space-y-1">
+                              <div className="font-medium">{labImportResult.imported} reports imported, {labImportResult.skipped} skipped</div>
+                              {labImportResult.unmatched?.length > 0 && (
+                                <div className="text-amber-700 text-xs mt-1">
+                                  <div className="font-medium">Unmatched patients:</div>
+                                  {labImportResult.unmatched.map((name: string, i: number) => <div key={i}>{name}</div>)}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <Button
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                        onClick={handleLabImport}
+                        disabled={isImportingLabs}
+                        data-testid="btn-import-labs-full"
+                      >
+                        {isImportingLabs ? (
+                          <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Importing Lab Reports...</>
+                        ) : (
+                          <><Upload className="w-4 h-4 mr-2" /> Import Lab Reports</>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm border-indigo-200 bg-indigo-50/20 md:col-span-2">
+                    <CardHeader className="py-4 border-b border-indigo-100 bg-indigo-50/50">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-indigo-600" />
+                        <CardTitle className="text-base font-bold text-indigo-900">Upload Prescription for Patient</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-5 space-y-4">
+                      <p className="text-sm text-slate-600">Search for any patient and upload their prescription. AI will automatically read handwritten prescriptions.</p>
+                      <div className="flex gap-3 items-end">
+                        <div className="flex-1">
+                          <Label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Select Patient</Label>
+                          <Select onValueChange={(val) => {
+                            const p = (patients || []).find((pt: any) => String(pt.id) === val);
+                            if (p) {
+                              setSelectedPatientForUpload(p);
+                              setIsUploadOpen(true);
+                            }
+                          }}>
+                            <SelectTrigger className="bg-white" data-testid="select-upload-patient">
+                              <SelectValue placeholder="Search and select patient..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(patients || []).slice(0, 50).map((p: any) => (
+                                <SelectItem key={p.id} value={String(p.id)}>
+                                  {p.name} {p.phone ? `(${p.phone})` : ''} — ID: {p.id}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             )}
