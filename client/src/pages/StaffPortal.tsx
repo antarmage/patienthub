@@ -76,7 +76,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 import { Link, useLocation } from "wouter";
 
-function UploadRecordsDialog({ isOpen, onClose, patient }: { isOpen: boolean; onClose: () => void; patient: any }) {
+function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isOpen: boolean; onClose: () => void; patient: any; onSaveComplete?: () => void }) {
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string; preview: string; type: string } | null>(null);
   const [ocrResult, setOcrResult] = useState<any>(null);
   const [activeDocTab, setActiveDocTab] = useState("prescription");
@@ -178,9 +178,14 @@ function UploadRecordsDialog({ isOpen, onClose, patient }: { isOpen: boolean; on
       }
 
       queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/medications`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/clinical-notes`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/documents`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/visit-history`] });
       setSaveSuccess(true);
       setTimeout(() => {
         resetDialog();
+        if (onSaveComplete) onSaveComplete();
       }, 1500);
     } catch (err) {
       alert('Failed to save prescription data. Please try again.');
@@ -4254,6 +4259,12 @@ export default function StaffPortal() {
                 isOpen={isUploadOpen}
                 onClose={() => { setIsUploadOpen(false); }}
                 patient={selectedPatientForUpload}
+                onSaveComplete={() => {
+                  if (selectedPatientForUpload) {
+                    setIsUploadOpen(false);
+                    openViewLog(selectedPatientForUpload);
+                  }
+                }}
             />
 
             {/* Onboarding Dialog */}
@@ -4578,7 +4589,7 @@ export default function StaffPortal() {
                                                             {m.status || 'active'}
                                                         </Badge>
                                                     </div>
-                                                    <p className="text-xs text-slate-600 mt-1">{m.dosage} — {m.frequency}</p>
+                                                    <p className="text-xs text-slate-600 mt-1">{m.dose || m.dosage || ''} — {m.frequency || ''}</p>
                                                     {m.prescribedBy && <p className="text-[10px] text-slate-400 mt-1">Prescribed by: {m.prescribedBy}</p>}
                                                 </div>
                                             ))}
@@ -4613,10 +4624,10 @@ export default function StaffPortal() {
                                             {logData.notes.map((n: any, i: number) => (
                                                 <div key={i} className="bg-amber-50/50 rounded-lg p-3 border border-amber-100" data-testid={`log-note-${i}`}>
                                                     <div className="flex items-center justify-between mb-1">
-                                                        <span className="font-semibold text-sm text-slate-800">{n.noteType || 'Note'}</span>
-                                                        <span className="text-[10px] text-slate-400">{n.createdAt || ''}</span>
+                                                        <span className="font-semibold text-sm text-slate-800">{n.title || n.type || n.noteType || 'Note'}</span>
+                                                        <span className="text-[10px] text-slate-400">{n.date || n.createdAt || ''}</span>
                                                     </div>
-                                                    <p className="text-xs text-slate-600">{n.content}</p>
+                                                    <p className="text-xs text-slate-600 whitespace-pre-line">{n.content}</p>
                                                     {n.author && <p className="text-[10px] text-slate-400 mt-1">By: {n.author}</p>}
                                                 </div>
                                             ))}
