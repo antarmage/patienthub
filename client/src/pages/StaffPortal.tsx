@@ -88,7 +88,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
   const queryClient = useQueryClient();
 
   const ocrMutation = useMutation({
-    mutationFn: async (imageData: { image: string; mimeType: string }) => {
+    mutationFn: async (imageData: { image: string; mimeType: string; docType: string }) => {
       const res = await fetch('/api/ocr/prescription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -171,6 +171,85 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
     }
 
     try {
+      if (activeDocTab === 'blood' && ocrResult?.results?.length > 0) {
+        for (const r of ocrResult.results) {
+          try {
+            const numValue = parseFloat(String(r.value).replace(/[^0-9.\-]/g, ''));
+            const refParts = r.referenceRange?.match(/([\d.]+)\s*[-–]\s*([\d.]+)/);
+            await fetch(`/api/patients/${patient.id}/lab-results`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                date: effectiveVisitDate,
+                testName: r.testName,
+                value: isNaN(numValue) ? null : numValue,
+                unit: r.unit || null,
+                referenceMin: refParts ? parseFloat(refParts[1]) : null,
+                referenceMax: refParts ? parseFloat(refParts[2]) : null,
+                status: r.status || 'Normal',
+                results: { rawValue: r.value, referenceRange: r.referenceRange, flag: r.flag, labName: ocrResult.labName },
+                notes: [r.flag ? `Flag: ${r.flag}` : '', r.referenceRange ? `Ref: ${r.referenceRange}` : '', ocrResult.labName ? `Lab: ${ocrResult.labName}` : ''].filter(Boolean).join('. ') || null,
+              }),
+            });
+          } catch (e) {
+            console.error(`Failed to save lab result: ${r.testName}`, e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error saving lab results:', e);
+    }
+
+    try {
+      if (activeDocTab === 'usg' && ocrResult) {
+        const fp = ocrResult.fetalParameters;
+        if (fp && (fp.hc || fp.ac || fp.fl)) {
+          const weekMatch = ocrResult.gestationalAge?.match(/(\d+)\s*week/i);
+          const week = weekMatch ? parseInt(weekMatch[1]) : null;
+          try {
+            await fetch(`/api/usg-data`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                patientId: patient.id,
+                week,
+                hc: fp.hc ? parseFloat(String(fp.hc).replace(/[^0-9.]/g, '')) || null : null,
+                ac: fp.ac ? parseFloat(String(fp.ac).replace(/[^0-9.]/g, '')) || null : null,
+                fl: fp.fl ? parseFloat(String(fp.fl).replace(/[^0-9.]/g, '')) || null : null,
+              }),
+            });
+          } catch (e) {
+            console.error('Failed to save USG data:', e);
+          }
+        }
+
+        if (ocrResult.follicles?.length > 0) {
+          const leftSizes = ocrResult.follicles.filter((f: any) => f.side?.toLowerCase().includes('left')).map((f: any) => parseFloat(String(f.size).replace(/[^0-9.]/g, ''))).filter((v: number) => !isNaN(v));
+          const rightSizes = ocrResult.follicles.filter((f: any) => f.side?.toLowerCase().includes('right')).map((f: any) => parseFloat(String(f.size).replace(/[^0-9.]/g, ''))).filter((v: number) => !isNaN(v));
+          const etVal = ocrResult.endometrialThickness ? parseFloat(String(ocrResult.endometrialThickness).replace(/[^0-9.]/g, '')) : null;
+
+          try {
+            await fetch(`/api/follicle-data`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                patientId: patient.id,
+                day: null,
+                left: leftSizes.length > 0 ? Math.max(...leftSizes) : null,
+                right: rightSizes.length > 0 ? Math.max(...rightSizes) : null,
+                endometrium: etVal && !isNaN(etVal) ? etVal : null,
+              }),
+            });
+          } catch (e) {
+            console.error('Failed to save follicle data:', e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error saving USG data:', e);
+    }
+
+    try {
       const docName = activeDocTab === 'prescription'
         ? `Prescription - ${ocrResult?.doctorName || uploadedFile.name}${dateTag} (${effectiveVisitDate})`
         : activeDocTab === 'blood'
@@ -212,22 +291,57 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
     }
 
     try {
-      if (activeDocTab === 'prescription' && ocrResult) {
-        const noteTitle = `Prescription${ocrResult.doctorName ? ` - ${ocrResult.doctorName}` : ''}${dateTag}`;
+      if (ocrResult) {
+        const noteTypeLabel = activeDocTab === 'prescription' ? 'Prescription Upload' : activeDocTab === 'blood' ? 'Lab Report Upload' : 'USG/Scan Upload';
+        const noteTitle = activeDocTab === 'prescription'
+          ? `Prescription${ocrResult.doctorName ? ` - ${ocrResult.doctorName}` : ''}${dateTag}`
+          : activeDocTab === 'blood'
+          ? `Lab Report${ocrResult.reportType ? ` - ${ocrResult.reportType}` : ''}${ocrResult.labName ? ` (${ocrResult.labName})` : ''}${dateTag}`
+          : `USG/Scan${ocrResult.reportType ? ` - ${ocrResult.reportType}` : ''}${ocrResult.doctorName ? ` (${ocrResult.doctorName})` : ''}${dateTag}`;
 
-        const noteContent = [
-          ocrResult.doctorName ? `Prescribed by: ${ocrResult.doctorName}` : '',
-          !hasValidDate ? '⚠ Date to be confirmed (date not found on prescription)' : '',
-          ocrResult.chiefComplaint ? `Chief Complaint: ${ocrResult.chiefComplaint}` : '',
-          ocrResult.diagnosis ? `Diagnosis: ${ocrResult.diagnosis}` : '',
-          ocrResult.examination ? `Examination: ${ocrResult.examination}` : '',
-          savedMeds.length > 0 ? `Medications: ${savedMeds.join(', ')}` : '',
-          ocrResult.investigations?.length > 0 ? `Investigations: ${ocrResult.investigations.map((inv: any) => `${inv.name}${inv.result ? ` = ${inv.result}` : ''}${inv.date ? ` (${inv.date})` : ''}`).join('; ')}` : '',
-          ocrResult.advice ? `Advice: ${ocrResult.advice}` : '',
-          ocrResult.followUp ? `Follow-up: ${ocrResult.followUp}` : '',
-          ocrResult.notes ? `Notes: ${ocrResult.notes}` : '',
-          uploadNotes ? `Staff notes: ${uploadNotes}` : '',
-        ].filter(Boolean).join('\n');
+        let noteContent = '';
+        if (activeDocTab === 'prescription') {
+          noteContent = [
+            ocrResult.doctorName ? `Prescribed by: ${ocrResult.doctorName}` : '',
+            !hasValidDate ? '⚠ Date to be confirmed (date not found on prescription)' : '',
+            ocrResult.chiefComplaint ? `Chief Complaint: ${ocrResult.chiefComplaint}` : '',
+            ocrResult.diagnosis ? `Diagnosis: ${ocrResult.diagnosis}` : '',
+            ocrResult.examination ? `Examination: ${ocrResult.examination}` : '',
+            savedMeds.length > 0 ? `Medications: ${savedMeds.join(', ')}` : '',
+            ocrResult.investigations?.length > 0 ? `Investigations: ${ocrResult.investigations.map((inv: any) => `${inv.name}${inv.result ? ` = ${inv.result}` : ''}${inv.date ? ` (${inv.date})` : ''}`).join('; ')}` : '',
+            ocrResult.advice ? `Advice: ${ocrResult.advice}` : '',
+            ocrResult.followUp ? `Follow-up: ${ocrResult.followUp}` : '',
+            ocrResult.notes ? `Notes: ${ocrResult.notes}` : '',
+            uploadNotes ? `Staff notes: ${uploadNotes}` : '',
+          ].filter(Boolean).join('\n');
+        } else if (activeDocTab === 'blood') {
+          noteContent = [
+            ocrResult.labName ? `Lab: ${ocrResult.labName}` : '',
+            ocrResult.reportType ? `Test: ${ocrResult.reportType}` : '',
+            !hasValidDate ? '⚠ Date to be confirmed' : '',
+            ocrResult.results?.length > 0 ? `Results:\n${ocrResult.results.map((r: any) => `  ${r.testName}: ${r.value}${r.unit ? ` ${r.unit}` : ''}${r.status && r.status !== 'Normal' ? ` [${r.status}]` : ''}${r.referenceRange ? ` (Ref: ${r.referenceRange})` : ''}`).join('\n')}` : '',
+            ocrResult.impression ? `Impression: ${ocrResult.impression}` : '',
+            ocrResult.diagnosis ? `Clinical Indication: ${ocrResult.diagnosis}` : '',
+            ocrResult.notes ? `Notes: ${ocrResult.notes}` : '',
+            uploadNotes ? `Staff notes: ${uploadNotes}` : '',
+          ].filter(Boolean).join('\n');
+        } else {
+          noteContent = [
+            ocrResult.doctorName ? `Sonologist: ${ocrResult.doctorName}` : '',
+            ocrResult.reportType ? `Scan Type: ${ocrResult.reportType}` : '',
+            !hasValidDate ? '⚠ Date to be confirmed' : '',
+            ocrResult.gestationalAge ? `Gestational Age: ${ocrResult.gestationalAge}` : '',
+            ocrResult.edd ? `EDD: ${ocrResult.edd}` : '',
+            ocrResult.endometrialThickness ? `Endometrial Thickness: ${ocrResult.endometrialThickness}` : '',
+            ocrResult.findings?.length > 0 ? `Findings:\n${ocrResult.findings.map((f: any) => `  ${f.organ}: ${f.description || ''}${f.measurement ? ` (${f.measurement})` : ''} [${f.status || 'N/A'}]`).join('\n')}` : '',
+            ocrResult.follicles?.length > 0 ? `Follicles:\n${ocrResult.follicles.map((f: any) => `  ${f.side}: ${f.size || ''}${f.count ? ` (${f.count} follicles)` : ''}`).join('\n')}` : '',
+            ocrResult.fetalParameters && Object.values(ocrResult.fetalParameters).some(Boolean) ? `Fetal Parameters:\n${Object.entries(ocrResult.fetalParameters).filter(([,v]) => v).map(([k,v]) => `  ${k.toUpperCase()}: ${v}`).join('\n')}` : '',
+            ocrResult.impression ? `Impression: ${ocrResult.impression}` : '',
+            ocrResult.advice ? `Advice: ${ocrResult.advice}` : '',
+            ocrResult.notes ? `Notes: ${ocrResult.notes}` : '',
+            uploadNotes ? `Staff notes: ${uploadNotes}` : '',
+          ].filter(Boolean).join('\n');
+        }
 
         if (noteContent) {
           const noteRes = await fetch(`/api/patients/${patient.id}/clinical-notes`, {
@@ -235,7 +349,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               date: effectiveVisitDate,
-              type: 'Prescription Upload',
+              type: noteTypeLabel,
               title: noteTitle,
               content: noteContent,
             }),
@@ -250,37 +364,53 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
 
     let savedVisit = false;
     try {
+      const visitOutcome = activeDocTab === 'prescription' ? 'Prescription uploaded via document scan' : activeDocTab === 'blood' ? 'Lab report uploaded via document scan' : 'USG/Scan uploaded via document scan';
+
       const isDuplicateVisit = existingVisits.some((v: any) =>
-        v.date === effectiveVisitDate && v.outcome === 'Prescription uploaded via document scan' &&
-        v.diagnosis === (ocrResult?.diagnosis || null) &&
-        v.chiefComplaint === (ocrResult?.chiefComplaint || ocrResult?.diagnosis || null)
+        v.date === effectiveVisitDate && v.outcome === visitOutcome &&
+        v.diagnosis === (ocrResult?.diagnosis || ocrResult?.impression || null)
       );
 
       if (isDuplicateVisit) {
         console.log(`Identical visit already exists for ${effectiveVisitDate}, skipping exact duplicate`);
         savedVisit = true;
       } else {
+        const labResults = activeDocTab === 'blood' && ocrResult?.results?.length > 0
+          ? ocrResult.results.map((r: any) => ({ name: r.testName, result: `${r.value}${r.unit ? ` ${r.unit}` : ''}`, status: r.status, referenceRange: r.referenceRange }))
+          : ocrResult?.investigations?.length > 0
+          ? ocrResult.investigations.map((inv: any) => ({ name: inv.name, result: inv.result, date: inv.date }))
+          : null;
+
+        const usgData = activeDocTab === 'usg' && ocrResult ? {
+          reportType: ocrResult.reportType,
+          gestationalAge: ocrResult.gestationalAge,
+          edd: ocrResult.edd,
+          endometrialThickness: ocrResult.endometrialThickness,
+          findings: ocrResult.findings,
+          follicles: ocrResult.follicles,
+          fetalParameters: ocrResult.fetalParameters,
+          impression: ocrResult.impression,
+        } : null;
+
         const visitRes = await fetch(`/api/patients/${patient.id}/visit-history`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             date: effectiveVisitDate,
             visitType: activeDocTab === 'prescription' ? 'Consultation' : activeDocTab === 'blood' ? 'Lab Visit' : 'Scan/USG',
-            chiefComplaint: ocrResult?.chiefComplaint || ocrResult?.diagnosis || null,
-            diagnosis: ocrResult?.diagnosis || null,
-            examination: ocrResult?.examination ? { findings: ocrResult.examination } : null,
+            chiefComplaint: ocrResult?.chiefComplaint || ocrResult?.diagnosis || ocrResult?.impression || null,
+            diagnosis: ocrResult?.diagnosis || ocrResult?.impression || null,
+            examination: usgData ? usgData : ocrResult?.examination ? { findings: ocrResult.examination } : null,
             prescriptions: savedMeds.length > 0 ? ocrResult?.medications?.map((m: any) => ({
               name: m.name, dosage: m.dosage, frequency: m.frequency, duration: m.duration, instructions: m.instructions
             })) : null,
-            labsOrdered: ocrResult?.investigations?.length > 0 ? ocrResult.investigations.map((inv: any) => ({
-              name: inv.name, result: inv.result, date: inv.date
-            })) : null,
+            labsOrdered: labResults,
             followUpPlan: ocrResult?.followUp || null,
             planNotes: [ocrResult?.advice || '', !hasValidDate ? 'Date to be confirmed' : ''].filter(Boolean).join('. ') || null,
             subjective: ocrResult?.chiefComplaint || null,
-            objective: ocrResult?.examination || null,
-            assessment: ocrResult?.diagnosis || null,
-            outcome: 'Prescription uploaded via document scan',
+            objective: activeDocTab === 'usg' ? (ocrResult?.impression || ocrResult?.rawText?.slice(0, 500) || null) : (ocrResult?.examination || null),
+            assessment: ocrResult?.diagnosis || ocrResult?.impression || null,
+            outcome: visitOutcome,
           }),
         });
         if (visitRes.ok) savedVisit = true;
@@ -336,9 +466,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
       });
       setOcrResult(null);
       
-      if (activeDocTab === 'prescription') {
-        ocrMutation.mutate({ image: base64, mimeType: file.type });
-      }
+      ocrMutation.mutate({ image: base64, mimeType: file.type, docType: activeDocTab });
     };
     reader.readAsDataURL(file);
   }, [activeDocTab]);
@@ -445,150 +573,263 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                 )}
               </div>
 
-              {activeDocTab === 'prescription' && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-indigo-600" />
-                    <Label className="text-xs font-bold text-indigo-700 uppercase tracking-wider">AI Prescription Reading</Label>
-                    {ocrMutation.isPending && <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />}
-                  </div>
-
-                  {ocrMutation.isPending && (
-                    <div className="p-6 bg-indigo-50/50 border border-indigo-100 rounded-lg flex flex-col items-center gap-3">
-                      <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-                      <p className="text-sm font-medium text-indigo-700">Reading handwritten prescription...</p>
-                      <p className="text-xs text-indigo-500">AI is analyzing the document</p>
-                    </div>
-                  )}
-
-                  {ocrMutation.isError && (
-                    <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg">
-                      <p className="text-sm font-medium text-rose-700">Could not read the prescription. Please try a clearer image.</p>
-                      <Button size="sm" variant="outline" className="mt-2 text-xs border-rose-200 text-rose-600" onClick={() => ocrMutation.mutate({ image: uploadedFile.preview, mimeType: uploadedFile.type })} data-testid="btn-retry-ocr">
-                        Try Again
-                      </Button>
-                    </div>
-                  )}
-
-                  {ocrResult && (
-                    <div className="bg-white border border-indigo-100 rounded-lg overflow-hidden">
-                      <div className="p-3 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
-                        <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Extracted Information</span>
-                        <Badge className={`text-[10px] ${ocrResult.confidence === 'high' ? 'bg-emerald-100 text-emerald-700' : ocrResult.confidence === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>
-                          {ocrResult.confidence === 'high' ? 'High Confidence' : ocrResult.confidence === 'medium' ? 'Medium Confidence' : 'Low Confidence'}
-                        </Badge>
-                      </div>
-
-                      <div className="p-4 space-y-4">
-                        {ocrResult.doctorName && (
-                          <div className="flex gap-3">
-                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Doctor</span>
-                            <span className="text-sm text-slate-800">{ocrResult.doctorName}</span>
-                          </div>
-                        )}
-                        {ocrResult.date && (
-                          <div className="flex gap-3">
-                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Date</span>
-                            <span className="text-sm text-slate-800">{ocrResult.date}</span>
-                          </div>
-                        )}
-                        {ocrResult.diagnosis && (
-                          <div className="flex gap-3">
-                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Diagnosis</span>
-                            <span className="text-sm text-slate-800 font-medium">{ocrResult.diagnosis}</span>
-                          </div>
-                        )}
-
-                        {ocrResult.medications?.length > 0 && (
-                          <div className="space-y-2">
-                            <span className="text-xs font-bold text-slate-500 uppercase">Medications</span>
-                            <div className="space-y-2">
-                              {ocrResult.medications.map((med: any, i: number) => (
-                                <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-100" data-testid={`medication-item-${i}`}>
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <Pill className="w-4 h-4 text-indigo-500 shrink-0" />
-                                      <span className="text-sm font-bold text-slate-900">{med.name}</span>
-                                    </div>
-                                    {med.dosage && <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">{med.dosage}</Badge>}
-                                  </div>
-                                  <div className="ml-6 mt-1.5 space-y-0.5">
-                                    {med.frequency && <p className="text-xs text-slate-600"><span className="font-medium">Frequency:</span> {med.frequency}</p>}
-                                    {med.duration && <p className="text-xs text-slate-600"><span className="font-medium">Duration:</span> {med.duration}</p>}
-                                    {med.instructions && <p className="text-xs text-slate-500 italic">{med.instructions}</p>}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {ocrResult.chiefComplaint && (
-                          <div className="flex gap-3">
-                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Complaint</span>
-                            <span className="text-sm text-slate-800">{ocrResult.chiefComplaint}</span>
-                          </div>
-                        )}
-
-                        {ocrResult.examination && (
-                          <div className="flex gap-3">
-                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Exam</span>
-                            <span className="text-sm text-slate-800">{ocrResult.examination}</span>
-                          </div>
-                        )}
-
-                        {ocrResult.investigations?.length > 0 && (
-                          <div className="space-y-2">
-                            <span className="text-xs font-bold text-slate-500 uppercase">Investigations</span>
-                            <div className="space-y-1.5">
-                              {ocrResult.investigations.map((inv: any, i: number) => (
-                                <div key={i} className="p-2.5 bg-amber-50/50 rounded-lg border border-amber-100 flex items-center justify-between" data-testid={`investigation-item-${i}`}>
-                                  <div className="flex items-center gap-2">
-                                    <FlaskConical className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                    <span className="text-sm font-medium text-slate-800">{inv.name}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {inv.result && <Badge variant="outline" className="text-[10px] bg-white border-amber-200 text-amber-700">{inv.result}</Badge>}
-                                    {inv.date && <span className="text-[10px] text-slate-400">{inv.date}</span>}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {ocrResult.advice && (
-                          <div className="flex gap-3">
-                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Advice</span>
-                            <span className="text-sm text-slate-700">{ocrResult.advice}</span>
-                          </div>
-                        )}
-
-                        {ocrResult.followUp && (
-                          <div className="flex gap-3">
-                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Follow-up</span>
-                            <span className="text-sm text-slate-700 font-medium">{ocrResult.followUp}</span>
-                          </div>
-                        )}
-
-                        {ocrResult.notes && (
-                          <div className="flex gap-3">
-                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Notes</span>
-                            <span className="text-sm text-slate-700">{ocrResult.notes}</span>
-                          </div>
-                        )}
-
-                        {ocrResult.rawText && (
-                          <details className="mt-2">
-                            <summary className="text-xs font-bold text-slate-400 uppercase cursor-pointer hover:text-slate-600">Raw Text</summary>
-                            <pre className="mt-2 p-3 bg-slate-50 rounded text-xs text-slate-600 whitespace-pre-wrap border border-slate-100 max-h-32 overflow-y-auto">{ocrResult.rawText}</pre>
-                          </details>
-                        )}
-                      </div>
-                    </div>
-                  )}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-indigo-600" />
+                  <Label className="text-xs font-bold text-indigo-700 uppercase tracking-wider">
+                    {activeDocTab === 'prescription' ? 'AI Prescription Reading' : activeDocTab === 'blood' ? 'AI Lab Report Reading' : 'AI Scan/USG Reading'}
+                  </Label>
+                  {ocrMutation.isPending && <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />}
                 </div>
-              )}
+
+                {ocrMutation.isPending && (
+                  <div className="p-6 bg-indigo-50/50 border border-indigo-100 rounded-lg flex flex-col items-center gap-3">
+                    <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                    <p className="text-sm font-medium text-indigo-700">
+                      {activeDocTab === 'prescription' ? 'Reading handwritten prescription...' : activeDocTab === 'blood' ? 'Reading lab report...' : 'Reading scan/USG report...'}
+                    </p>
+                    <p className="text-xs text-indigo-500">AI is analyzing the document</p>
+                  </div>
+                )}
+
+                {ocrMutation.isError && (
+                  <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg">
+                    <p className="text-sm font-medium text-rose-700">Could not read the document. Please try a clearer image.</p>
+                    <Button size="sm" variant="outline" className="mt-2 text-xs border-rose-200 text-rose-600" onClick={() => ocrMutation.mutate({ image: uploadedFile.preview, mimeType: uploadedFile.type, docType: activeDocTab })} data-testid="btn-retry-ocr">
+                      Try Again
+                    </Button>
+                  </div>
+                )}
+
+                {ocrResult && (
+                  <div className="bg-white border border-indigo-100 rounded-lg overflow-hidden">
+                    <div className="p-3 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
+                      <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Extracted Information</span>
+                      <Badge className={`text-[10px] ${ocrResult.confidence === 'high' ? 'bg-emerald-100 text-emerald-700' : ocrResult.confidence === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>
+                        {ocrResult.confidence === 'high' ? 'High Confidence' : ocrResult.confidence === 'medium' ? 'Medium Confidence' : 'Low Confidence'}
+                      </Badge>
+                    </div>
+
+                    <div className="p-4 space-y-4">
+                      {(ocrResult.doctorName || ocrResult.labName) && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">{ocrResult.labName ? 'Lab' : 'Doctor'}</span>
+                          <span className="text-sm text-slate-800">{ocrResult.labName || ocrResult.doctorName}</span>
+                        </div>
+                      )}
+                      {ocrResult.patientName && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Patient</span>
+                          <span className="text-sm text-slate-800">{ocrResult.patientName}</span>
+                        </div>
+                      )}
+                      {ocrResult.date && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Date</span>
+                          <span className="text-sm text-slate-800">{ocrResult.date}</span>
+                        </div>
+                      )}
+                      {(ocrResult.reportType) && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Report Type</span>
+                          <span className="text-sm text-slate-800 font-medium">{ocrResult.reportType}</span>
+                        </div>
+                      )}
+                      {ocrResult.diagnosis && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Diagnosis</span>
+                          <span className="text-sm text-slate-800 font-medium">{ocrResult.diagnosis}</span>
+                        </div>
+                      )}
+
+                      {ocrResult.gestationalAge && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Gest. Age</span>
+                          <span className="text-sm text-slate-800 font-medium">{ocrResult.gestationalAge}</span>
+                        </div>
+                      )}
+                      {ocrResult.edd && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">EDD</span>
+                          <span className="text-sm text-slate-800">{ocrResult.edd}</span>
+                        </div>
+                      )}
+                      {ocrResult.endometrialThickness && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">ET</span>
+                          <span className="text-sm text-slate-800 font-medium">{ocrResult.endometrialThickness}</span>
+                        </div>
+                      )}
+
+                      {ocrResult.findings?.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-bold text-slate-500 uppercase">USG Findings</span>
+                          <div className="space-y-1.5">
+                            {ocrResult.findings.map((f: any, i: number) => (
+                              <div key={i} className="p-2.5 bg-blue-50/50 rounded-lg border border-blue-100" data-testid={`finding-item-${i}`}>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-slate-800">{f.organ}</span>
+                                  {f.status && <Badge variant="outline" className={`text-[10px] ${f.status === 'Normal' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>{f.status}</Badge>}
+                                </div>
+                                {f.measurement && <p className="text-xs text-slate-600 mt-1"><span className="font-medium">Size:</span> {f.measurement}</p>}
+                                {f.description && <p className="text-xs text-slate-600 mt-0.5">{f.description}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {ocrResult.follicles?.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-bold text-slate-500 uppercase">Follicles</span>
+                          <div className="space-y-1.5">
+                            {ocrResult.follicles.map((f: any, i: number) => (
+                              <div key={i} className="p-2 bg-purple-50/50 rounded-lg border border-purple-100 flex items-center justify-between" data-testid={`follicle-item-${i}`}>
+                                <span className="text-sm text-slate-800">{f.side} Ovary</span>
+                                <div className="flex items-center gap-2">
+                                  {f.size && <Badge variant="outline" className="text-[10px] bg-white border-purple-200 text-purple-700">{f.size}</Badge>}
+                                  {f.count && <span className="text-xs text-slate-500">({f.count} follicles)</span>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {ocrResult.fetalParameters && Object.values(ocrResult.fetalParameters).some(Boolean) && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-bold text-slate-500 uppercase">Fetal Parameters</span>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {Object.entries(ocrResult.fetalParameters).filter(([, v]) => v).map(([key, val]: [string, any]) => (
+                              <div key={key} className="p-2 bg-pink-50/50 rounded border border-pink-100 flex justify-between">
+                                <span className="text-xs font-medium text-slate-600 uppercase">{key}</span>
+                                <span className="text-xs text-slate-800 font-medium">{val}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {ocrResult.results?.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-bold text-slate-500 uppercase">Lab Results</span>
+                          <div className="space-y-1.5">
+                            {ocrResult.results.map((r: any, i: number) => (
+                              <div key={i} className="p-2.5 bg-emerald-50/30 rounded-lg border border-emerald-100 flex items-center justify-between" data-testid={`lab-result-item-${i}`}>
+                                <div className="flex items-center gap-2">
+                                  <FlaskConical className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                  <span className="text-sm font-medium text-slate-800">{r.testName}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-bold text-slate-900">{r.value}</span>
+                                  {r.status && r.status !== 'Normal' && (
+                                    <Badge variant="outline" className={`text-[10px] ${r.status === 'High' ? 'bg-rose-50 text-rose-700 border-rose-200' : r.status === 'Low' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                      {r.status}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {ocrResult.medications?.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-bold text-slate-500 uppercase">Medications</span>
+                          <div className="space-y-2">
+                            {ocrResult.medications.map((med: any, i: number) => (
+                              <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-100" data-testid={`medication-item-${i}`}>
+                                <div className="flex items-start justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Pill className="w-4 h-4 text-indigo-500 shrink-0" />
+                                    <span className="text-sm font-bold text-slate-900">{med.name}</span>
+                                  </div>
+                                  {med.dosage && <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">{med.dosage}</Badge>}
+                                </div>
+                                <div className="ml-6 mt-1.5 space-y-0.5">
+                                  {med.frequency && <p className="text-xs text-slate-600"><span className="font-medium">Frequency:</span> {med.frequency}</p>}
+                                  {med.duration && <p className="text-xs text-slate-600"><span className="font-medium">Duration:</span> {med.duration}</p>}
+                                  {med.instructions && <p className="text-xs text-slate-500 italic">{med.instructions}</p>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {ocrResult.chiefComplaint && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Complaint</span>
+                          <span className="text-sm text-slate-800">{ocrResult.chiefComplaint}</span>
+                        </div>
+                      )}
+
+                      {ocrResult.examination && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Exam</span>
+                          <span className="text-sm text-slate-800">{ocrResult.examination}</span>
+                        </div>
+                      )}
+
+                      {ocrResult.investigations?.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-bold text-slate-500 uppercase">Investigations</span>
+                          <div className="space-y-1.5">
+                            {ocrResult.investigations.map((inv: any, i: number) => (
+                              <div key={i} className="p-2.5 bg-amber-50/50 rounded-lg border border-amber-100 flex items-center justify-between" data-testid={`investigation-item-${i}`}>
+                                <div className="flex items-center gap-2">
+                                  <FlaskConical className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                  <span className="text-sm font-medium text-slate-800">{inv.name}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {inv.result && <Badge variant="outline" className="text-[10px] bg-white border-amber-200 text-amber-700">{inv.result}</Badge>}
+                                  {inv.date && <span className="text-[10px] text-slate-400">{inv.date}</span>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {(ocrResult.impression) && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Impression</span>
+                          <span className="text-sm text-slate-800 font-medium">{ocrResult.impression}</span>
+                        </div>
+                      )}
+
+                      {ocrResult.advice && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Advice</span>
+                          <span className="text-sm text-slate-700">{ocrResult.advice}</span>
+                        </div>
+                      )}
+
+                      {ocrResult.followUp && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Follow-up</span>
+                          <span className="text-sm text-slate-700 font-medium">{ocrResult.followUp}</span>
+                        </div>
+                      )}
+
+                      {ocrResult.notes && (
+                        <div className="flex gap-3">
+                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Notes</span>
+                          <span className="text-sm text-slate-700">{ocrResult.notes}</span>
+                        </div>
+                      )}
+
+                      {ocrResult.rawText && (
+                        <details className="mt-2">
+                          <summary className="text-xs font-bold text-slate-400 uppercase cursor-pointer hover:text-slate-600">Raw Text</summary>
+                          <pre className="mt-2 p-3 bg-slate-50 rounded text-xs text-slate-600 whitespace-pre-wrap border border-slate-100 max-h-32 overflow-y-auto">{ocrResult.rawText}</pre>
+                        </details>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -610,7 +851,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
             <p className="text-sm font-medium text-emerald-700">
               Saved to {patient?.name}'s records!
               {savedMedCount > 0 && ` ${savedMedCount} medication(s) added.`}
-              {savedMedCount === 0 && activeDocTab === 'prescription' && ' Document & clinical note saved.'}
+              {savedMedCount === 0 && ` ${activeDocTab === 'prescription' ? 'Document & clinical note saved.' : activeDocTab === 'blood' ? 'Lab report & clinical note saved.' : 'USG/Scan report & clinical note saved.'}`}
             </p>
           </div>
         )}

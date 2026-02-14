@@ -9,31 +9,116 @@ const ai = new GoogleGenAI({
   },
 });
 
-export function registerOcrRoutes(app: Express): void {
-  app.post("/api/ocr/prescription", async (req: Request, res: Response) => {
-    try {
-      const { image, mimeType } = req.body;
+function getPromptForDocType(docType: string): string {
+  if (docType === 'usg' || docType === 'scan') {
+    return `You are an expert medical imaging report OCR specialist for Indian gynecology/obstetrics/fertility clinics. You specialize in reading USG (ultrasound), scan reports, and imaging documents.
 
-      if (!image) {
-        return res.status(400).json({ error: "Image data is required" });
-      }
+Carefully analyze this medical imaging/USG report image. Extract ALL findings, measurements, and clinical details.
 
-      const base64Data = image.replace(/^data:[^;]+;base64,/, "");
+Return a JSON object with these fields:
+{
+  "doctorName": "Name of the reporting doctor/sonologist if visible",
+  "patientName": "Name of the patient if visible",
+  "date": "Date of the scan/report (format as YYYY-MM-DD if possible)",
+  "reportType": "Type of scan (e.g., USG Pelvis, TVS, NT Scan, Anomaly Scan, Growth Scan, Folliculometry, Obstetric USG, Transvaginal USG, Abdominal USG)",
+  "gestationalAge": "Gestational age if mentioned (e.g., 12 weeks 3 days)",
+  "edd": "Expected date of delivery if mentioned",
+  "findings": [
+    {
+      "organ": "Organ or structure examined (e.g., Uterus, Right Ovary, Left Ovary, Endometrium, Cervix, Fetus, Placenta, Amniotic Fluid)",
+      "measurement": "Size/measurements if given",
+      "description": "Finding description",
+      "status": "Normal/Abnormal/Notable"
+    }
+  ],
+  "follicles": [
+    {
+      "side": "Right/Left",
+      "size": "Size in mm",
+      "count": "Number of follicles if mentioned"
+    }
+  ],
+  "endometrialThickness": "ET measurement if mentioned (e.g., 8.2mm)",
+  "fetalParameters": {
+    "crl": "Crown-Rump Length",
+    "bpd": "Biparietal Diameter",
+    "hc": "Head Circumference",
+    "ac": "Abdominal Circumference",
+    "fl": "Femur Length",
+    "efw": "Estimated Fetal Weight",
+    "heartRate": "Fetal Heart Rate",
+    "presentation": "Cephalic/Breech/Transverse",
+    "placenta": "Placenta location and grade",
+    "afi": "Amniotic Fluid Index",
+    "doppler": "Any Doppler findings"
+  },
+  "impression": "Overall impression/conclusion of the report",
+  "diagnosis": "Any diagnosis mentioned",
+  "advice": "Any recommendations or advice",
+  "notes": "Any other relevant notes, comments, or additional text",
+  "rawText": "Complete raw text transcription of everything readable on the document",
+  "confidence": "high/medium/low - your confidence in the accuracy of the reading"
+}
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                inlineData: {
-                  data: base64Data,
-                  mimeType: mimeType || "image/jpeg",
-                },
-              },
-              {
-                text: `You are an expert medical prescription and consultation note OCR specialist for Indian gynecology/obstetrics/fertility clinics. You specialize in reading difficult handwritten prescriptions from Indian doctors.
+IMPORTANT RULES:
+1. Extract ALL measurements precisely with units (mm, cm, weeks, days)
+2. For folliculometry reports, extract EVERY follicle with side and size
+3. For obstetric scans, extract ALL fetal biometry parameters
+4. Look for: CRL, BPD, HC, AC, FL, EFW, AFI, Placenta grade, Presentation
+5. For NT scans, extract NT measurement, nasal bone status, and any markers
+6. Common Indian USG abbreviations: ET=Endometrial Thickness, TVS=Transvaginal Scan, TAS=Transabdominal Scan, POD=Pouch of Douglas, B/L=Bilateral, RT=Right, LT=Left, FHR=Fetal Heart Rate, EDD=Expected Date of Delivery, GA=Gestational Age, LMP=Last Menstrual Period, GS=Gestational Sac, YS=Yolk Sac, FP=Fetal Pole, CRL=Crown Rump Length
+7. If handwriting is difficult, provide your BEST GUESS rather than skipping
+8. Always provide rawText with everything you can read`;
+  }
+
+  if (docType === 'blood') {
+    return `You are an expert medical lab report OCR specialist for Indian gynecology/obstetrics/fertility clinics. You specialize in reading blood test reports, lab results, and pathology documents.
+
+Carefully analyze this lab/blood report image. Extract ALL test results, values, and reference ranges.
+
+Return a JSON object with these fields:
+{
+  "labName": "Name of the laboratory if visible",
+  "doctorName": "Referring doctor name if visible",
+  "patientName": "Name of the patient if visible",
+  "date": "Date of the report/sample collection (format as YYYY-MM-DD if possible)",
+  "reportType": "Type of test panel (e.g., CBC, Thyroid Profile, Hormone Panel, ANC Profile, Lipid Profile, etc.)",
+  "results": [
+    {
+      "testName": "Name of the test parameter",
+      "value": "Result value with units",
+      "unit": "Unit of measurement",
+      "referenceRange": "Normal reference range if shown",
+      "status": "Normal/High/Low/Critical based on reference range",
+      "flag": "Any flag like H, L, *, or abnormal marker"
+    }
+  ],
+  "impression": "Overall impression or interpretation if provided by pathologist",
+  "diagnosis": "Any diagnosis or clinical indication mentioned",
+  "notes": "Any other relevant notes, methodology, or additional text",
+  "rawText": "Complete raw text transcription of everything readable on the document",
+  "confidence": "high/medium/low - your confidence in the accuracy of the reading"
+}
+
+IMPORTANT RULES:
+1. Extract EVERY test parameter with its exact value, unit, and reference range
+2. Mark each result as Normal/High/Low based on the reference range shown
+3. Common gynecology/fertility lab tests to look for:
+   - Hormones: FSH, LH, Estradiol (E2), Progesterone, Prolactin, AMH, TSH, FT3, FT4, Beta-HCG, Testosterone, DHEAS, 17-OH Progesterone, Cortisol, Inhibin B
+   - Blood: CBC (Hb, WBC, RBC, Platelets, PCV, MCV, MCH, MCHC), ESR, Blood Group, Rh Factor
+   - Diabetes: FBS, PPBS, RBS, HbA1c, OGTT, GTT (Fasting, 1hr, 2hr values)
+   - Thyroid: TSH, FT3, FT4, Anti-TPO, Anti-TG
+   - Infection: HIV, HBsAg, HCV, VDRL, TORCH panel (Rubella IgG/IgM, CMV, Toxoplasma, HSV)
+   - Prenatal: Dual Marker (PAPP-A, Free Beta-HCG), Triple/Quadruple test, AFP, Inhibin
+   - Coagulation: PT, INR, APTT
+   - Urine: Routine (pH, Specific Gravity, Protein, Sugar, WBC, RBC, Epithelial cells), Culture & Sensitivity
+   - Other: Vitamin D, Vitamin B12, Ferritin, Iron studies, Lipid profile, LFT, KFT, Uric Acid, CRP, ANA, Anti-CCP, HPLC
+4. For OGTT/GTT reports, extract ALL time-point values (Fasting, 1-hour, 2-hour, etc.)
+5. If values are flagged as High (H) or Low (L), capture those flags
+6. Always provide rawText with everything you can read`;
+  }
+
+  return `You are an expert medical prescription and consultation note OCR specialist for Indian gynecology/obstetrics/fertility clinics. You specialize in reading difficult handwritten prescriptions from Indian doctors.
 
 Carefully analyze this handwritten medical document image. Your PRIMARY goal is to extract EVERY MEDICATION mentioned, even if the handwriting is difficult. Also extract all other clinical information.
 
@@ -100,7 +185,35 @@ INVESTIGATION NAMES TO LOOK FOR:
 USG (Ultrasound), TSH, FT3, FT4, AMH (Anti-Mullerian Hormone), FSH, LH, Prolactin, Estradiol (E2), Progesterone, Beta-HCG, CBC, HbA1c, OGTT, GTT, HPLC, HSG (Hysterosalpingography), Pap smear, HPV, HIV, HBsAg, VDRL, Blood group, Rh factor, Urine R/E, Urine C/S, Rubella IgG/IgM, TORCH panel, Dual marker, Triple test, Quadruple test, NT scan, Anomaly scan, Growth scan, Doppler, AFP, Inhibin, PAPP-A, Karyotype, Semen analysis, Anti-CCP, ANA, Anti-TPO, Vitamin D, Vitamin B12, Ferritin, Iron studies, Lipid profile, LFT, KFT, RBS, FBS, PPBS
 
 - Always provide rawText with everything you can read from the document
-- If handwriting is ambiguous, provide your BEST GUESS for medication names rather than skipping them`,
+- If handwriting is ambiguous, provide your BEST GUESS for medication names rather than skipping them`;
+}
+
+export function registerOcrRoutes(app: Express): void {
+  app.post("/api/ocr/prescription", async (req: Request, res: Response) => {
+    try {
+      const { image, mimeType, docType } = req.body;
+
+      if (!image) {
+        return res.status(400).json({ error: "Image data is required" });
+      }
+
+      const base64Data = image.replace(/^data:[^;]+;base64,/, "");
+      const prompt = getPromptForDocType(docType || "prescription");
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                inlineData: {
+                  data: base64Data,
+                  mimeType: mimeType || "image/jpeg",
+                },
+              },
+              {
+                text: prompt,
               },
             ],
           },
@@ -120,7 +233,7 @@ USG (Ultrasound), TSH, FT3, FT4, AMH (Anti-Mullerian Hormone), FSH, LH, Prolacti
           rawText: text,
           medications: [],
           confidence: "low",
-          notes: "Could not parse structured data from the prescription.",
+          notes: "Could not parse structured data from the document.",
         };
       }
 
@@ -131,7 +244,7 @@ USG (Ultrasound), TSH, FT3, FT4, AMH (Anti-Mullerian Hormone), FSH, LH, Prolacti
     } catch (error: any) {
       console.error("OCR Error:", error);
       res.status(500).json({
-        error: "Failed to process prescription image",
+        error: "Failed to process document image",
         details: error.message,
       });
     }
