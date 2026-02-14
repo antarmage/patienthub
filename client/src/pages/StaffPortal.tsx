@@ -862,6 +862,29 @@ export default function StaffPortal() {
   const [logTab, setLogTab] = useState("all");
 
   const [isSyncing, setIsSyncing] = useState(false);
+  const [headerSearchTerm, setHeaderSearchTerm] = useState("");
+  const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
+  const headerSearchRef = useRef<HTMLDivElement>(null);
+
+  const headerSearchResults = useMemo(() => {
+    if (!headerSearchTerm || headerSearchTerm.length < 2) return [];
+    const term = headerSearchTerm.toLowerCase();
+    return (patients || []).filter((p: any) =>
+      p.name?.toLowerCase().includes(term) ||
+      p.phone?.includes(term) ||
+      String(p.id).includes(term)
+    ).slice(0, 8);
+  }, [patients, headerSearchTerm]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (headerSearchRef.current && !headerSearchRef.current.contains(e.target as Node)) {
+        setHeaderSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
   const [syncResult, setSyncResult] = useState<any>(null);
   const [sheetStatus, setSheetStatus] = useState<any>(null);
 
@@ -1301,9 +1324,52 @@ export default function StaffPortal() {
                 </div>
             </div>
             <div className="flex items-center gap-3">
-                <div className="relative">
-                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                    <Input placeholder="Search patient..." className="pl-9 w-64 h-9 bg-slate-50 border-slate-200" />
+                <div className="relative" ref={headerSearchRef}>
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 z-10" />
+                    <Input
+                      placeholder="Search patient by name, phone, ID..."
+                      className="pl-9 w-72 h-9 bg-slate-50 border-slate-200"
+                      value={headerSearchTerm}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        setHeaderSearchTerm(e.target.value);
+                        setHeaderSearchOpen(true);
+                      }}
+                      onFocus={() => { if (headerSearchTerm.length >= 2) setHeaderSearchOpen(true); }}
+                      data-testid="input-header-patient-search"
+                    />
+                    {headerSearchOpen && headerSearchTerm.length >= 2 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+                        {headerSearchResults.length === 0 ? (
+                          <div className="p-4 text-center text-sm text-slate-400">No patients found</div>
+                        ) : (
+                          headerSearchResults.map((p: any) => (
+                            <button
+                              key={p.id}
+                              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 text-left border-b border-slate-50 last:border-0"
+                              data-testid={`header-search-result-${p.id}`}
+                              onClick={() => {
+                                openViewLog(p);
+                                setHeaderSearchTerm("");
+                                setHeaderSearchOpen(false);
+                              }}
+                            >
+                              <Avatar className="h-8 w-8 text-xs shrink-0">
+                                <AvatarFallback className="bg-indigo-100 text-indigo-700">{p.name?.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-slate-900 truncate">{p.name}</p>
+                                <div className="flex items-center gap-2 text-xs text-slate-500">
+                                  <span>ID: {p.id}</span>
+                                  {p.phone && <span>| {p.phone}</span>}
+                                  {p.type && <span>| {p.type}</span>}
+                                </div>
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
                 </div>
                 <Button variant="outline" size="icon" className="h-9 w-9 rounded-full border-slate-200 relative">
                     <Bell className="w-4 h-4 text-slate-500" />
