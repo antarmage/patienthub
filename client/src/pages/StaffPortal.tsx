@@ -210,13 +210,45 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
       console.error('Error saving clinical note:', e);
     }
 
+    let savedVisit = false;
+    try {
+      const visitDate = ocrResult?.date || today;
+      const visitRes = await fetch(`/api/patients/${patient.id}/visit-history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: visitDate,
+          visitType: activeDocTab === 'prescription' ? 'Consultation' : activeDocTab === 'blood' ? 'Lab Visit' : 'Scan/USG',
+          chiefComplaint: ocrResult?.chiefComplaint || ocrResult?.diagnosis || null,
+          diagnosis: ocrResult?.diagnosis || null,
+          examination: ocrResult?.examination ? { findings: ocrResult.examination } : null,
+          prescriptions: savedMeds.length > 0 ? ocrResult?.medications?.map((m: any) => ({
+            name: m.name, dosage: m.dosage, frequency: m.frequency, duration: m.duration, instructions: m.instructions
+          })) : null,
+          labsOrdered: ocrResult?.investigations?.length > 0 ? ocrResult.investigations.map((inv: any) => ({
+            name: inv.name, result: inv.result, date: inv.date
+          })) : null,
+          followUpPlan: ocrResult?.followUp || null,
+          planNotes: ocrResult?.advice || null,
+          subjective: ocrResult?.chiefComplaint || null,
+          objective: ocrResult?.examination || null,
+          assessment: ocrResult?.diagnosis || null,
+          outcome: 'Prescription uploaded via document scan',
+        }),
+      });
+      if (visitRes.ok) savedVisit = true;
+      else console.error('Visit history save failed:', await visitRes.text());
+    } catch (e) {
+      console.error('Error saving visit history:', e);
+    }
+
     queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
     queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/medications`] });
     queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/clinical-notes`] });
     queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/documents`] });
     queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/visit-history`] });
 
-    if (savedDoc || savedNote || savedMeds.length > 0) {
+    if (savedDoc || savedNote || savedMeds.length > 0 || savedVisit) {
       setSavedMedCount(savedMeds.length);
       setSaveSuccess(true);
       setTimeout(() => {
