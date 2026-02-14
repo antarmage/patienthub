@@ -5286,55 +5286,11 @@ export default function ClinicianPortal() {
                                      </tbody>
                                   </table>
                                ) : (
-                                  <table className="w-full text-sm text-left">
-                                     <thead className="text-xs text-slate-500 bg-slate-50 uppercase">
-                                        <tr>
-                                           <th className="px-4 py-2 font-medium">Test</th>
-                                           <th className="px-4 py-2 font-medium">Value</th>
-                                           <th className="px-4 py-2 font-medium">Trend</th>
-                                           <th className="px-4 py-2 font-medium">Status</th>
-                                        </tr>
-                                     </thead>
-                                     <tbody className="divide-y divide-slate-100">
-                                        {careMode === 'pregnancy' ? (
-                                           <>
-                                              <tr>
-                                                 <td className="px-4 py-3 font-medium text-slate-700">Fasting Glucose</td>
-                                                 <td className="px-4 py-3">88 mg/dL</td>
-                                                 <td className="px-4 py-3 text-emerald-500">Stable</td>
-                                                 <td className="px-4 py-3"><Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50">Normal</Badge></td>
-                                              </tr>
-                                              <tr>
-                                                 <td className="px-4 py-3 font-medium text-slate-700">OGTT (1hr)</td>
-                                                 <td className="px-4 py-3">135 mg/dL</td>
-                                                 <td className="px-4 py-3 text-amber-500">Borderline</td>
-                                                 <td className="px-4 py-3"><Badge variant="outline" className="border-amber-200 text-amber-700 bg-amber-50">Monitor</Badge></td>
-                                              </tr>
-                                              <tr>
-                                                 <td className="px-4 py-3 font-medium text-slate-700">Hemoglobin</td>
-                                                 <td className="px-4 py-3">11.2 g/dL</td>
-                                                 <td className="px-4 py-3 text-slate-400">Stable</td>
-                                                 <td className="px-4 py-3"><Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50">Normal</Badge></td>
-                                              </tr>
-                                           </>
-                                        ) : (
-                                           <>
-                                              <tr>
-                                                 <td className="px-4 py-3 font-medium text-slate-700">Progesterone (D21)</td>
-                                                 <td className="px-4 py-3">8.2 ng/mL</td>
-                                                 <td className="px-4 py-3 text-rose-500 flex items-center gap-1"><TrendingUp className="w-3 h-3 rotate-180" /> Dropping</td>
-                                                 <td className="px-4 py-3"><Badge variant="outline" className="border-rose-200 text-rose-700 bg-rose-50">Low</Badge></td>
-                                              </tr>
-                                              <tr>
-                                                 <td className="px-4 py-3 font-medium text-slate-700">AMH</td>
-                                                 <td className="px-4 py-3">2.1 ng/mL</td>
-                                                 <td className="px-4 py-3 text-slate-400">- Stable</td>
-                                                 <td className="px-4 py-3"><Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50">Normal</Badge></td>
-                                              </tr>
-                                           </>
-                                        )}
-                                     </tbody>
-                                  </table>
+                                  <div className="p-6 text-center">
+                                     <FlaskConical className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                     <p className="text-sm text-slate-500">No lab results yet</p>
+                                     <p className="text-xs text-slate-400 mt-1">Upload blood reports from Staff Portal or extract from imported lab reports</p>
+                                  </div>
                                )}
                             </CardContent>
                          </Card>
