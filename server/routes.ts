@@ -482,6 +482,39 @@ export async function registerRoutes(
     });
   });
 
+  app.post("/api/auth/patient-login", async (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: "Phone number is required" });
+
+    const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '').replace(/^\+91/, '').slice(-10);
+    if (normalizedPhone.length !== 10 || !/^\d{10}$/.test(normalizedPhone)) {
+      return res.status(400).json({ error: "Please enter a valid 10-digit phone number" });
+    }
+
+    const allPatients = await storage.getPatients();
+    const patient = allPatients.find((p: any) => {
+      if (!p.phone) return false;
+      const pPhone = p.phone.replace(/[\s\-\(\)]/g, '').replace(/^\+91/, '').slice(-10);
+      return pPhone === normalizedPhone;
+    });
+
+    if (!patient) {
+      return res.status(404).json({ error: "No patient found with this phone number. Please contact the clinic." });
+    }
+
+    res.json({
+      success: true,
+      patient: {
+        id: patient.id,
+        name: patient.name,
+        phone: patient.phone,
+        age: patient.age,
+        status: patient.status,
+        condition: patient.condition,
+      },
+    });
+  });
+
   app.get("/api/patient-protocols/:patientId", async (req, res) => {
     const patientId = parseId(req.params.patientId);
     if (!patientId) return res.status(400).json({ error: "Invalid ID" });

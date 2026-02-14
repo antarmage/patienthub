@@ -39,7 +39,13 @@ export default function PatientPortal() {
   const [activeTab, setActiveTab] = useState("home");
   const [mode, setMode] = useState("general"); // general, ttc, ivf
 
-  const patientId = new URLSearchParams(window.location.search).get('patientId') || '1';
+  const storedPatient = (() => {
+    try {
+      const raw = localStorage.getItem("patientUser");
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  })();
+  const patientId = storedPatient?.id?.toString() || new URLSearchParams(window.location.search).get('patientId') || '1';
 
   const { data: patients } = useQuery({
     queryKey: ['/api/patients'],
@@ -88,7 +94,12 @@ export default function PatientPortal() {
              animate={{ opacity: 1, x: 0 }}
              transition={{ duration: 0.5 }}
           >
-            <h1 className="text-3xl font-serif text-foreground font-medium tracking-tight">Good Morning</h1>
+            <h1 className="text-3xl font-serif text-foreground font-medium tracking-tight">
+              {(() => {
+                const h = new Date().getHours();
+                return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
+              })()}{patient?.name ? `, ${patient.name.split(' ')[0]}` : ''}
+            </h1>
             <p className="text-muted-foreground text-sm mt-1 font-medium tracking-wide opacity-80 uppercase">Day 14 • Ovulation Phase</p>
           </motion.div>
           

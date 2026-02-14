@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, User, ShieldCheck, Lock, Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowRight, User, ShieldCheck, Lock, Eye, EyeOff, AlertCircle, Loader2, Phone } from "lucide-react";
 import calmGradient from "../assets/images/calm-gradient.png";
 
 export default function Landing() {
@@ -13,6 +13,11 @@ export default function Landing() {
   const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [showPatientLogin, setShowPatientLogin] = useState(false);
+  const [patientPhone, setPatientPhone] = useState("");
+  const [patientError, setPatientError] = useState("");
+  const [patientLoading, setPatientLoading] = useState(false);
 
   const handlePasscodeSubmit = async () => {
     if (!passcode.trim()) {
@@ -54,8 +59,40 @@ export default function Landing() {
     setLoading(false);
   };
 
+  const handlePatientLogin = async () => {
+    const cleaned = patientPhone.replace(/[\s\-\(\)]/g, '');
+    if (!cleaned || cleaned.length < 10) {
+      setPatientError("Please enter your 10-digit phone number");
+      return;
+    }
+    setPatientError("");
+    setPatientLoading(true);
+    try {
+      const res = await fetch("/api/auth/patient-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: cleaned }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPatientError(data.error || "Could not verify phone number.");
+        setPatientLoading(false);
+        return;
+      }
+      localStorage.setItem("patientUser", JSON.stringify(data.patient));
+      setLocation("/patient");
+    } catch {
+      setPatientError("Connection error. Please try again.");
+    }
+    setPatientLoading(false);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handlePasscodeSubmit();
+  };
+
+  const handlePatientKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handlePatientLogin();
   };
 
   return (
@@ -92,8 +129,14 @@ export default function Landing() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2, duration: 0.5 }}
           >
-            <Link href="/patient">
-              <div className="group bg-white/60 backdrop-blur-md border border-white/50 p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all cursor-pointer flex items-center gap-6" data-testid="link-patient-portal">
+            <div
+              className={`group bg-white/60 backdrop-blur-md border p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all cursor-pointer ${
+                showPatientLogin ? 'border-primary/30 ring-2 ring-primary/10' : 'border-white/50'
+              }`}
+              onClick={() => { if (!showPatientLogin) setShowPatientLogin(true); }}
+              data-testid="link-patient-portal"
+            >
+              <div className="flex items-center gap-6">
                 <div className="bg-primary/10 p-4 rounded-full group-hover:bg-primary/20 transition-colors">
                   <User className="w-8 h-8 text-primary" />
                 </div>
@@ -101,9 +144,70 @@ export default function Landing() {
                   <h3 className="text-2xl font-serif text-foreground group-hover:text-primary transition-colors">Patient Portal</h3>
                   <p className="text-muted-foreground">My insights, cycle map, and daily guide.</p>
                 </div>
-                <ArrowRight className="ml-auto w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                {!showPatientLogin && (
+                  <ArrowRight className="ml-auto w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                )}
               </div>
-            </Link>
+
+              <AnimatePresence>
+                {showPatientLogin && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-6 pt-5 border-t border-primary/10 space-y-3" onClick={(e) => e.stopPropagation()}>
+                      <p className="text-sm text-slate-600 font-medium flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-primary" />
+                        Enter your registered phone number
+                      </p>
+                      <Input
+                        type="tel"
+                        value={patientPhone}
+                        onChange={(e) => { setPatientPhone(e.target.value); setPatientError(""); }}
+                        onKeyDown={handlePatientKeyDown}
+                        placeholder="10-digit phone number"
+                        className="h-12 text-lg tracking-wider bg-white border-slate-200 focus:border-primary focus:ring-primary/20"
+                        autoFocus
+                        maxLength={13}
+                        data-testid="input-patient-phone"
+                      />
+                      {patientError && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-sm text-red-500 flex items-center gap-1.5"
+                          data-testid="text-patient-error"
+                        >
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          {patientError}
+                        </motion.p>
+                      )}
+                      <Button
+                        onClick={handlePatientLogin}
+                        disabled={patientLoading}
+                        className="w-full h-11 bg-primary hover:bg-primary/90 text-white"
+                        data-testid="button-patient-login"
+                      >
+                        {patientLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            Continue
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </>
+                        )}
+                      </Button>
+                      <p className="text-xs text-slate-400 text-center">
+                        Use the phone number registered with your clinic.
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </motion.div>
 
           <motion.div
