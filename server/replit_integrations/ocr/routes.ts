@@ -33,29 +33,48 @@ export function registerOcrRoutes(app: Express): void {
                 },
               },
               {
-                text: `You are a medical prescription OCR specialist. Carefully analyze this handwritten medical prescription image and extract ALL information you can read.
+                text: `You are a medical prescription and consultation note OCR specialist for Indian gynecology/obstetrics clinics. Carefully analyze this handwritten medical document image and extract ALL information you can read.
+
+This could be a medication prescription, a consultation note, a follow-up note, or a combination. Extract everything.
 
 Return a JSON object with these fields:
 {
   "doctorName": "Name of the prescribing doctor if visible",
   "patientName": "Name of the patient if visible",
-  "date": "Date on the prescription if visible",
+  "date": "Date on the prescription (format as YYYY-MM-DD if possible)",
   "medications": [
     {
-      "name": "Medicine name",
-      "dosage": "Dosage (e.g., 500mg)",
-      "frequency": "How often (e.g., twice daily)",
-      "duration": "For how long (e.g., 7 days)",
-      "instructions": "Any special instructions (e.g., after meals)"
+      "name": "Medicine/tablet/supplement name",
+      "dosage": "Dosage (e.g., 500mg, 1 tablet)",
+      "frequency": "How often (e.g., twice daily, OD, BD, TDS)",
+      "duration": "For how long (e.g., 7 days, 1 month)",
+      "route": "Route if specified (oral, injection, topical, etc.)",
+      "instructions": "Any special instructions (e.g., after meals, before bed)"
     }
   ],
-  "diagnosis": "Any diagnosis mentioned",
-  "notes": "Any other notes, follow-up instructions, or additional text",
-  "rawText": "Complete raw text transcription of everything readable on the prescription",
+  "investigations": [
+    {
+      "name": "Test or investigation name (e.g., USG, TSH, AMH, HSG, CBC, HPLC)",
+      "result": "Result value if mentioned",
+      "date": "Date of investigation if mentioned"
+    }
+  ],
+  "diagnosis": "Any diagnosis, chief complaint, or condition mentioned",
+  "chiefComplaint": "Patient's main complaint or reason for visit",
+  "examination": "Any examination findings (O/E, P/A, P/V etc.)",
+  "advice": "Any advice, instructions, diet/exercise recommendations",
+  "followUp": "Follow-up instructions or next visit date",
+  "notes": "Any other relevant notes, medical history, or additional text",
+  "rawText": "Complete raw text transcription of everything readable on the document",
   "confidence": "high/medium/low - your confidence in the accuracy of the reading"
 }
 
-Be thorough - extract every medication and instruction you can read. If a field is not visible or readable, set it to null. Always provide the rawText field with everything you can read.`,
+IMPORTANT: 
+- Include ALL medications even if partially readable. Common Indian brand names include Folic Acid, Thyronorm, Ecosprin, Progesterone, Iron supplements, etc.
+- Look for abbreviated medication notations like "Tab.", "Cap.", "Inj.", "Syr."
+- Extract investigation results with their values and dates
+- If no structured medications are found but there are treatment recommendations, still extract them
+- Always provide rawText with everything you can read`,
               },
             ],
           },

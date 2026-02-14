@@ -82,6 +82,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
   const [activeDocTab, setActiveDocTab] = useState("prescription");
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [savedMedCount, setSavedMedCount] = useState(0);
   const [uploadNotes, setUploadNotes] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -104,35 +105,53 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
   const handleSaveToPatient = async () => {
     if (!patient?.id || !uploadedFile) return;
     setIsSaving(true);
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const savedMeds: string[] = [];
+    const today = new Date().toISOString().split('T')[0];
+    const savedMeds: string[] = [];
+    let savedDoc = false;
+    let savedNote = false;
 
+    try {
       if (activeDocTab === 'prescription' && ocrResult?.medications?.length > 0) {
         for (const med of ocrResult.medications) {
-          const medRes = await fetch(`/api/patients/${patient.id}/medications`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: med.name,
-              dose: med.dosage || med.dose || null,
-              frequency: med.frequency || null,
-              route: med.route || null,
-              startDate: ocrResult.date || today,
-              status: 'active',
-              notes: [med.duration ? `Duration: ${med.duration}` : '', med.instructions || ''].filter(Boolean).join('. ') || null,
-            }),
-          });
-          if (medRes.ok) savedMeds.push(med.name);
-          else console.warn(`Failed to save medication: ${med.name}`);
+          try {
+            const medRes = await fetch(`/api/patients/${patient.id}/medications`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: med.name,
+                dose: med.dosage || med.dose || null,
+                frequency: med.frequency || null,
+                route: med.route || null,
+                startDate: today,
+                status: 'active',
+                notes: [med.duration ? `Duration: ${med.duration}` : '', med.instructions || ''].filter(Boolean).join('. ') || null,
+              }),
+            });
+            if (medRes.ok) savedMeds.push(med.name);
+          } catch (e) {
+            console.error(`Failed to save medication: ${med.name}`, e);
+          }
         }
       }
+    } catch (e) {
+      console.error('Error saving medications:', e);
+    }
 
+    try {
       const docName = activeDocTab === 'prescription'
         ? `Prescription - ${ocrResult?.doctorName || uploadedFile.name}`
         : activeDocTab === 'blood'
         ? `Blood Report - ${uploadedFile.name}`
         : `USG/Scan - ${uploadedFile.name}`;
+
+      const ocrSummary = ocrResult ? {
+        doctorName: ocrResult.doctorName || null,
+        patientName: ocrResult.patientName || null,
+        date: ocrResult.date || null,
+        diagnosis: ocrResult.diagnosis || null,
+        confidence: ocrResult.confidence || null,
+        medicationCount: ocrResult.medications?.length || 0,
+      } : null;
 
       const docRes = await fetch(`/api/patients/${patient.id}/documents`, {
         method: 'POST',
@@ -141,23 +160,33 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
           name: docName,
           type: activeDocTab === 'prescription' ? 'Prescription' : activeDocTab === 'blood' ? 'Lab Report' : 'USG Report',
           category: activeDocTab,
-          date: ocrResult?.date || today,
+          date: today,
           description: uploadNotes || null,
           metadata: {
             fileName: uploadedFile.name,
             fileSize: uploadedFile.size,
-            ocrResult: ocrResult || null,
+            ocrSummary,
             savedMedications: savedMeds,
           },
         }),
       });
-      if (!docRes.ok) console.warn('Failed to save document metadata');
+      if (docRes.ok) savedDoc = true;
+      else console.error('Document save failed:', await docRes.text());
+    } catch (e) {
+      console.error('Error saving document:', e);
+    }
 
+    try {
       if (activeDocTab === 'prescription' && ocrResult) {
         const noteContent = [
           ocrResult.doctorName ? `Prescribed by: ${ocrResult.doctorName}` : '',
+          ocrResult.chiefComplaint ? `Chief Complaint: ${ocrResult.chiefComplaint}` : '',
           ocrResult.diagnosis ? `Diagnosis: ${ocrResult.diagnosis}` : '',
+          ocrResult.examination ? `Examination: ${ocrResult.examination}` : '',
           savedMeds.length > 0 ? `Medications: ${savedMeds.join(', ')}` : '',
+          ocrResult.investigations?.length > 0 ? `Investigations: ${ocrResult.investigations.map((inv: any) => `${inv.name}${inv.result ? ` = ${inv.result}` : ''}${inv.date ? ` (${inv.date})` : ''}`).join('; ')}` : '',
+          ocrResult.advice ? `Advice: ${ocrResult.advice}` : '',
+          ocrResult.followUp ? `Follow-up: ${ocrResult.followUp}` : '',
           ocrResult.notes ? `Notes: ${ocrResult.notes}` : '',
           uploadNotes ? `Staff notes: ${uploadNotes}` : '',
         ].filter(Boolean).join('\n');
@@ -173,25 +202,31 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
               content: noteContent,
             }),
           });
-          if (!noteRes.ok) console.warn('Failed to save clinical note');
+          if (noteRes.ok) savedNote = true;
+          else console.error('Clinical note save failed:', await noteRes.text());
         }
       }
+    } catch (e) {
+      console.error('Error saving clinical note:', e);
+    }
 
-      queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
-      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/medications`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/clinical-notes`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/documents`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/visit-history`] });
+    queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+    queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/medications`] });
+    queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/clinical-notes`] });
+    queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/documents`] });
+    queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/visit-history`] });
+
+    if (savedDoc || savedNote || savedMeds.length > 0) {
+      setSavedMedCount(savedMeds.length);
       setSaveSuccess(true);
       setTimeout(() => {
         resetDialog();
         if (onSaveComplete) onSaveComplete();
       }, 1500);
-    } catch (err) {
-      alert('Failed to save prescription data. Please try again.');
-    } finally {
-      setIsSaving(false);
+    } else {
+      alert('Could not save data to patient record. Please try again.');
     }
+    setIsSaving(false);
   };
 
   const handleFileSelect = useCallback((file: File) => {
@@ -240,6 +275,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
     setActiveDocTab("prescription");
     setIsSaving(false);
     setSaveSuccess(false);
+    setSavedMedCount(0);
     setUploadNotes("");
     onClose();
   };
@@ -407,6 +443,54 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                           </div>
                         )}
 
+                        {ocrResult.chiefComplaint && (
+                          <div className="flex gap-3">
+                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Complaint</span>
+                            <span className="text-sm text-slate-800">{ocrResult.chiefComplaint}</span>
+                          </div>
+                        )}
+
+                        {ocrResult.examination && (
+                          <div className="flex gap-3">
+                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Exam</span>
+                            <span className="text-sm text-slate-800">{ocrResult.examination}</span>
+                          </div>
+                        )}
+
+                        {ocrResult.investigations?.length > 0 && (
+                          <div className="space-y-2">
+                            <span className="text-xs font-bold text-slate-500 uppercase">Investigations</span>
+                            <div className="space-y-1.5">
+                              {ocrResult.investigations.map((inv: any, i: number) => (
+                                <div key={i} className="p-2.5 bg-amber-50/50 rounded-lg border border-amber-100 flex items-center justify-between" data-testid={`investigation-item-${i}`}>
+                                  <div className="flex items-center gap-2">
+                                    <FlaskConical className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                    <span className="text-sm font-medium text-slate-800">{inv.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {inv.result && <Badge variant="outline" className="text-[10px] bg-white border-amber-200 text-amber-700">{inv.result}</Badge>}
+                                    {inv.date && <span className="text-[10px] text-slate-400">{inv.date}</span>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {ocrResult.advice && (
+                          <div className="flex gap-3">
+                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Advice</span>
+                            <span className="text-sm text-slate-700">{ocrResult.advice}</span>
+                          </div>
+                        )}
+
+                        {ocrResult.followUp && (
+                          <div className="flex gap-3">
+                            <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Follow-up</span>
+                            <span className="text-sm text-slate-700 font-medium">{ocrResult.followUp}</span>
+                          </div>
+                        )}
+
                         {ocrResult.notes && (
                           <div className="flex gap-3">
                             <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Notes</span>
@@ -445,7 +529,8 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
             <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             <p className="text-sm font-medium text-emerald-700">
               Saved to {patient?.name}'s records!
-              {activeDocTab === 'prescription' && ocrResult?.medications?.length > 0 && ` ${ocrResult.medications.length} medication(s) added.`}
+              {savedMedCount > 0 && ` ${savedMedCount} medication(s) added.`}
+              {savedMedCount === 0 && activeDocTab === 'prescription' && ' Document & clinical note saved.'}
             </p>
           </div>
         )}
