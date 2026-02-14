@@ -68,7 +68,8 @@ IMPORTANT RULES:
 5. For NT scans, extract NT measurement, nasal bone status, and any markers
 6. Common Indian USG abbreviations: ET=Endometrial Thickness, TVS=Transvaginal Scan, TAS=Transabdominal Scan, POD=Pouch of Douglas, B/L=Bilateral, RT=Right, LT=Left, FHR=Fetal Heart Rate, EDD=Expected Date of Delivery, GA=Gestational Age, LMP=Last Menstrual Period, GS=Gestational Sac, YS=Yolk Sac, FP=Fetal Pole, CRL=Crown Rump Length
 7. If handwriting is difficult, provide your BEST GUESS rather than skipping
-8. Always provide rawText with everything you can read`;
+8. STOP reading and extracting after you encounter "End Of Report", "End of Report", or any similar end-of-report marker. Ignore everything printed below that line (disclaimers, terms, ads, etc.)
+9. Always provide rawText with everything you can read UP TO the End Of Report marker`;
   }
 
   if (docType === 'blood') {
