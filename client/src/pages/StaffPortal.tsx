@@ -4452,11 +4452,12 @@ export default function StaffPortal() {
                                     </div>
                                 )}
 
-                                {(logTab === "all" || logTab === "medications") && logData.medications.length > 0 && (
+                                {(logTab === "all" || logTab === "medications") && (
                                     <div>
                                         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
                                             <Pill className="w-3.5 h-3.5" /> Medications
                                         </h4>
+                                        {logData.medications.length > 0 ? (
                                         <div className="space-y-2">
                                             {logData.medications.map((m: any, i: number) => (
                                                 <div key={i} className="bg-blue-50/50 rounded-lg p-3 border border-blue-100" data-testid={`log-med-${i}`}>
@@ -4471,6 +4472,24 @@ export default function StaffPortal() {
                                                 </div>
                                             ))}
                                         </div>
+                                        ) : (
+                                        <div className="text-center py-6 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
+                                            <Pill className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                            <p className="text-sm text-slate-500">No medications found for this patient.</p>
+                                            <Button
+                                              size="sm"
+                                              className="mt-3 bg-indigo-600 hover:bg-indigo-700 text-white"
+                                              data-testid="btn-upload-rx-no-meds"
+                                              onClick={() => {
+                                                setIsViewLogOpen(false);
+                                                setSelectedPatientForUpload(selectedPatientForLog);
+                                                setIsUploadOpen(true);
+                                              }}
+                                            >
+                                              <Upload className="w-4 h-4 mr-2" /> Upload Prescription
+                                            </Button>
+                                        </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -4560,6 +4579,18 @@ export default function StaffPortal() {
                                                 <div className="text-center py-12">
                                                     <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                                                     <p className="text-sm text-slate-500">No {logTab === 'all' ? 'records' : logTab} found for this patient.</p>
+                                                    <Button
+                                                      size="sm"
+                                                      className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white"
+                                                      data-testid="btn-upload-rx-empty"
+                                                      onClick={() => {
+                                                        setIsViewLogOpen(false);
+                                                        setSelectedPatientForUpload(selectedPatientForLog);
+                                                        setIsUploadOpen(true);
+                                                      }}
+                                                    >
+                                                      <Upload className="w-4 h-4 mr-2" /> Upload Prescription
+                                                    </Button>
                                                 </div>
                                             );
                                         }
