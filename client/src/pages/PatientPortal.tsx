@@ -37,7 +37,7 @@ import InsightsTab from "@/components/InsightsTab";
 
 export default function PatientPortal() {
   const [activeTab, setActiveTab] = useState("home");
-  const [mode, setMode] = useState("general"); // general, ttc, ivf
+  const [mode, setMode] = useState("general"); // general, ttc, ivf, pregnancy
 
   const storedPatient = (() => {
     try {
@@ -53,6 +53,26 @@ export default function PatientPortal() {
   });
   const patient = patients?.find((p: any) => p.id === parseInt(patientId)) || patients?.[0];
 
+  const isPregnant = (() => {
+    if (!patient) return false;
+    const ps = (patient.pregnancyStatus || '').toLowerCase();
+    const cond = (patient.condition || '').toLowerCase();
+    const status = (patient.status || '').toLowerCase();
+    return ps.includes('pregnant') || ps.includes('active') || ps.includes('antenatal') ||
+           cond.includes('pregnan') || cond.includes('antenatal') || cond.includes('anc') || cond.includes('gestational') ||
+           status.includes('pregnant');
+  })();
+
+  const [modeInitialized, setModeInitialized] = useState(false);
+  useEffect(() => {
+    if (patient && !modeInitialized) {
+      if (isPregnant) {
+        setMode("pregnancy");
+      }
+      setModeInitialized(true);
+    }
+  }, [patient, isPregnant, modeInitialized]);
+
   const { data: visitHistory } = useQuery({
     queryKey: [`/api/patients/${patient?.id}/visit-history`],
     queryFn: async () => { const r = await fetch(`/api/patients/${patient?.id}/visit-history`); return r.json(); },
@@ -62,6 +82,18 @@ export default function PatientPortal() {
   const { data: medications } = useQuery({
     queryKey: [`/api/patients/${patient?.id}/medications`],
     queryFn: async () => { const r = await fetch(`/api/patients/${patient?.id}/medications`); return r.json(); },
+    enabled: !!patient?.id,
+  });
+
+  const { data: pregnancyData } = useQuery({
+    queryKey: [`/api/pregnancy-metrics?patientId=${patient?.id}`],
+    queryFn: async () => { const r = await fetch(`/api/pregnancy-metrics?patientId=${patient?.id}`); return r.json(); },
+    enabled: !!patient?.id && mode === 'pregnancy',
+  });
+
+  const { data: labResults } = useQuery({
+    queryKey: [`/api/patients/${patient?.id}/lab-results`],
+    queryFn: async () => { const r = await fetch(`/api/patients/${patient?.id}/lab-results`); return r.json(); },
     enabled: !!patient?.id,
   });
 
@@ -100,7 +132,15 @@ export default function PatientPortal() {
                 return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
               })()}{patient?.name ? `, ${patient.name.split(' ')[0]}` : ''}
             </h1>
-            <p className="text-muted-foreground text-sm mt-1 font-medium tracking-wide opacity-80 uppercase">Day 14 • Ovulation Phase</p>
+            <p className="text-muted-foreground text-sm mt-1 font-medium tracking-wide opacity-80 uppercase">
+              {mode === 'pregnancy' ? (() => {
+                const lmp = patient?.lmp;
+                if (!lmp) return 'Pregnancy Mode';
+                const weeks = Math.floor((new Date().getTime() - new Date(lmp).getTime()) / (1000 * 60 * 60 * 24 * 7));
+                const trimester = weeks < 13 ? '1st Trimester' : weeks < 27 ? '2nd Trimester' : '3rd Trimester';
+                return `Week ${weeks} • ${trimester}`;
+              })() : 'Day 14 • Ovulation Phase'}
+            </p>
           </motion.div>
           
           <div className="relative group z-50">
@@ -112,12 +152,16 @@ export default function PatientPortal() {
                 {mode === "general" && <><Leaf className="w-3.5 h-3.5 text-emerald-600" /> Cycle Health</>}
                 {mode === "ttc" && <><Baby className="w-3.5 h-3.5 text-rose-500" /> Trying to Conceive</>}
                 {mode === "ivf" && <><TestTube className="w-3.5 h-3.5 text-purple-500" /> IVF Support</>}
+                {mode === "pregnancy" && <><Heart className="w-3.5 h-3.5 text-pink-500" /> Pregnancy</>}
              </motion.button>
              
              {/* Dropdown */}
              <div className="absolute right-0 top-full mt-2 w-52 bg-white/90 backdrop-blur-xl rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-white/60 p-1.5 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all transform origin-top-right scale-95 group-hover:scale-100">
                 <button onClick={() => setMode("general")} className={`w-full text-left px-3 py-2.5 rounded-xl hover:bg-black/5 flex items-center gap-3 text-sm transition-colors ${mode === 'general' ? 'bg-black/5 font-medium' : ''}`}>
                    <div className="p-1.5 bg-emerald-100 rounded-full"><Leaf className="w-3.5 h-3.5 text-emerald-600" /></div> Cycle Health
+                </button>
+                <button onClick={() => setMode("pregnancy")} className={`w-full text-left px-3 py-2.5 rounded-xl hover:bg-black/5 flex items-center gap-3 text-sm transition-colors ${mode === 'pregnancy' ? 'bg-black/5 font-medium' : ''}`}>
+                   <div className="p-1.5 bg-pink-100 rounded-full"><Heart className="w-3.5 h-3.5 text-pink-600" /></div> Pregnancy
                 </button>
                 <button onClick={() => setMode("ttc")} className={`w-full text-left px-3 py-2.5 rounded-xl hover:bg-black/5 flex items-center gap-3 text-sm transition-colors ${mode === 'ttc' ? 'bg-black/5 font-medium' : ''}`}>
                    <div className="p-1.5 bg-rose-100 rounded-full"><Baby className="w-3.5 h-3.5 text-rose-600" /></div> TTC
@@ -133,94 +177,245 @@ export default function PatientPortal() {
           
           <TabsContent value="home" className="space-y-10 animate-in fade-in duration-700">
             
-            {/* HERO: Cycle Wheel - The Emotional Anchor */}
-            <div className="relative">
-               <CycleWheel mode={mode} />
-            </div>
+            {mode === 'pregnancy' ? (
+              <>
+                {/* Pregnancy Week Tracker */}
+                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+                  <Card className="glass-panel border-pink-200/40 overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-pink-50/80 via-rose-50/40 to-white/60" />
+                    <CardContent className="relative p-6 z-10">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Heart className="w-5 h-5 text-pink-500" />
+                        <h3 className="text-lg font-serif text-foreground">Your Pregnancy Journey</h3>
+                      </div>
+                      {(() => {
+                        const lmp = patient?.lmp;
+                        if (lmp) {
+                          const lmpDate = new Date(lmp);
+                          const today = new Date();
+                          const diffDays = Math.floor((today.getTime() - lmpDate.getTime()) / (1000 * 60 * 60 * 24));
+                          const weeks = Math.floor(diffDays / 7);
+                          const days = diffDays % 7;
+                          const trimester = weeks < 13 ? '1st' : weeks < 27 ? '2nd' : '3rd';
+                          const edd = new Date(lmpDate);
+                          edd.setDate(edd.getDate() + 280);
+                          const daysLeft = Math.max(0, Math.floor((edd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+                          const progress = Math.min(100, Math.round((diffDays / 280) * 100));
 
-            {/* Insight Cards Section - "What this means for you today" */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.1 }}
-               >
-                  <Card className="glass-panel border-white/60 hover:border-primary/20 transition-colors h-full overflow-hidden group">
-                     <div 
-                        className="absolute inset-0 opacity-40 group-hover:scale-105 transition-transform duration-700"
-                        style={{ backgroundImage: `url(${softCardBg})`, backgroundSize: 'cover' }}
-                     />
-                     <CardContent className="relative p-6 flex flex-col h-full justify-between z-10">
+                          return (
+                            <div className="space-y-4">
+                              <div className="flex items-end gap-3">
+                                <div>
+                                  <p className="text-4xl font-serif text-pink-700 font-medium">{weeks}<span className="text-lg text-pink-400 ml-1">w</span> {days}<span className="text-lg text-pink-400 ml-1">d</span></p>
+                                  <p className="text-xs text-muted-foreground mt-1">{trimester} Trimester</p>
+                                </div>
+                                <div className="ml-auto text-right">
+                                  <p className="text-sm text-muted-foreground">Due Date</p>
+                                  <p className="text-sm font-medium text-foreground">{edd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                  <p className="text-xs text-pink-500 font-medium">{daysLeft} days to go</p>
+                                </div>
+                              </div>
+                              <div className="w-full bg-pink-100 rounded-full h-2">
+                                <div className="bg-gradient-to-r from-pink-400 to-rose-500 h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                              </div>
+                              <p className="text-xs text-center text-muted-foreground">{progress}% of your journey completed</p>
+                            </div>
+                          );
+                        }
+                        return (
+                          <p className="text-sm text-muted-foreground">Your pregnancy details will appear here once your LMP is recorded.</p>
+                        );
+                      })()}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                {/* Pregnancy Insight Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}>
+                    <Card className="glass-panel border-white/60 hover:border-pink-200 transition-colors h-full overflow-hidden group">
+                      <div className="absolute inset-0 opacity-40 group-hover:scale-105 transition-transform duration-700" style={{ backgroundImage: `url(${softCardBg})`, backgroundSize: 'cover' }} />
+                      <CardContent className="relative p-6 flex flex-col h-full justify-between z-10">
                         <div>
-                           <div className="flex items-center gap-2 mb-3">
-                              <span className="p-1.5 bg-amber-100/50 rounded-full text-amber-700"><Sun className="w-3.5 h-3.5" /></span>
-                              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Best use of energy</h4>
-                           </div>
-                           <p className="text-lg font-serif text-foreground leading-relaxed">
-                              Your verbal skills and confidence are peaking. Schedule presentations or difficult conversations today.
-                           </p>
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="p-1.5 bg-pink-100/50 rounded-full text-pink-700"><Heart className="w-3.5 h-3.5" /></span>
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Baby's Growth</h4>
+                          </div>
+                          <p className="text-lg font-serif text-foreground leading-relaxed">
+                            {(() => {
+                              const lmp = patient?.lmp;
+                              if (!lmp) return "Track your baby's growth milestones as your pregnancy progresses.";
+                              const weeks = Math.floor((new Date().getTime() - new Date(lmp).getTime()) / (1000 * 60 * 60 * 24 * 7));
+                              if (weeks < 8) return "Your baby's heart is starting to beat. All major organs are beginning to form.";
+                              if (weeks < 13) return "Your baby can now move and stretch. Fingers and toes are forming. First trimester screening time.";
+                              if (weeks < 20) return "Your baby can hear sounds now. You may start feeling gentle kicks and movements.";
+                              if (weeks < 28) return "Your baby is growing rapidly, developing fat layers. Eyes can open and respond to light.";
+                              if (weeks < 36) return "Your baby is gaining weight and practicing breathing. Getting into position for birth.";
+                              return "Your baby is fully developed and ready to meet you. Stay relaxed and prepared.";
+                            })()}
+                          </p>
                         </div>
                         <div className="mt-4 pt-4 border-t border-black/5 flex justify-between items-center">
-                           <span className="text-xs font-medium text-primary">Read Biology</span>
-                           <ChevronRight className="w-4 h-4 text-primary/50 group-hover:translate-x-1 transition-transform" />
+                          <span className="text-xs font-medium text-pink-600">View Details</span>
+                          <ChevronRight className="w-4 h-4 text-pink-400 group-hover:translate-x-1 transition-transform" />
                         </div>
-                     </CardContent>
-                  </Card>
-               </motion.div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
 
-               <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.2 }}
-               >
-                  <Card className="glass-panel border-white/60 hover:border-primary/20 transition-colors h-full overflow-hidden group">
-                     <div 
-                        className="absolute inset-0 opacity-40 group-hover:scale-105 transition-transform duration-700"
-                        style={{ backgroundImage: `url(${softCardBg})`, backgroundSize: 'cover' }}
-                     />
-                     <CardContent className="relative p-6 flex flex-col h-full justify-between z-10">
+                  <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
+                    <Card className="glass-panel border-white/60 hover:border-pink-200 transition-colors h-full overflow-hidden group">
+                      <div className="absolute inset-0 opacity-40 group-hover:scale-105 transition-transform duration-700" style={{ backgroundImage: `url(${softCardBg})`, backgroundSize: 'cover' }} />
+                      <CardContent className="relative p-6 flex flex-col h-full justify-between z-10">
                         <div>
-                           <div className="flex items-center gap-2 mb-3">
-                              <span className="p-1.5 bg-blue-100/50 rounded-full text-blue-700"><Wind className="w-3.5 h-3.5" /></span>
-                              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Body Tip</h4>
-                           </div>
-                           <p className="text-lg font-serif text-foreground leading-relaxed">
-                              Estrogen is high, helping you recover faster. You can push harder in your workout today.
-                           </p>
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="p-1.5 bg-amber-100/50 rounded-full text-amber-700"><Info className="w-3.5 h-3.5" /></span>
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">What to Expect</h4>
+                          </div>
+                          <p className="text-lg font-serif text-foreground leading-relaxed">
+                            {(() => {
+                              const lmp = patient?.lmp;
+                              if (!lmp) return "Personalized pregnancy tips will appear based on your trimester.";
+                              const weeks = Math.floor((new Date().getTime() - new Date(lmp).getTime()) / (1000 * 60 * 60 * 24 * 7));
+                              if (weeks < 13) return "Nausea and fatigue are common now. Small, frequent meals and plenty of rest will help.";
+                              if (weeks < 27) return "Energy levels are usually better now. A good time for gentle exercise and prenatal classes.";
+                              return "You may feel Braxton Hicks contractions. Keep your hospital bag ready and rest well.";
+                            })()}
+                          </p>
                         </div>
                         <div className="mt-4 pt-4 border-t border-black/5 flex justify-between items-center">
-                           <span className="text-xs font-medium text-primary">See Workout Plan</span>
-                           <ChevronRight className="w-4 h-4 text-primary/50 group-hover:translate-x-1 transition-transform" />
+                          <span className="text-xs font-medium text-amber-600">Learn More</span>
+                          <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
                         </div>
-                     </CardContent>
-                  </Card>
-               </motion.div>
-            </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </div>
 
-            {/* Daily Guidance Feed - Styled more cleanly */}
-            <div className="space-y-5 pb-8">
-               <div className="flex items-center justify-between px-1">
-                  <h3 className="text-lg font-serif text-foreground">Aligned With You</h3>
-                  <button className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors">View All</button>
-               </div>
-               
-               <div className="space-y-3">
-                  <GuidanceItem 
-                     icon={<Utensils className="w-4 h-4" />} 
-                     color="bg-orange-100 text-orange-700"
-                     title="Nutrition Optimization"
-                     desc="Your body is using protein efficiently. Try adding lentils, eggs, or paneer to your lunch."
-                  />
-                  <GuidanceItem 
-                     icon={<Moon className="w-4 h-4" />} 
-                     color="bg-indigo-100 text-indigo-700"
-                     title="Sleep Temperature"
-                     desc="Basal temperature is rising slightly. Keep your bedroom cool and dark tonight."
-                  />
-               </div>
-            </div>
+                {/* Pregnancy Guidance Feed */}
+                <div className="space-y-5 pb-8">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-lg font-serif text-foreground">Pregnancy Care Tips</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <GuidanceItem 
+                      icon={<Utensils className="w-4 h-4" />} 
+                      color="bg-orange-100 text-orange-700"
+                      title="Nutrition for Two"
+                      desc="Focus on iron-rich foods like spinach, dates, and jaggery. Take your folic acid and iron supplements as prescribed."
+                    />
+                    <GuidanceItem 
+                      icon={<Activity className="w-4 h-4" />} 
+                      color="bg-emerald-100 text-emerald-700"
+                      title="Gentle Movement"
+                      desc="A 20-minute walk after meals helps with digestion and blood sugar. Avoid heavy lifting and high-impact exercises."
+                    />
+                    <GuidanceItem 
+                      icon={<Moon className="w-4 h-4" />} 
+                      color="bg-indigo-100 text-indigo-700"
+                      title="Rest & Sleep"
+                      desc="Sleep on your left side for better blood flow. Use a pillow between your knees for comfort."
+                    />
+                    <GuidanceItem 
+                      icon={<Brain className="w-4 h-4" />} 
+                      color="bg-purple-100 text-purple-700"
+                      title="Mental Wellbeing"
+                      desc="Hormonal changes may affect your mood. Deep breathing, journaling, or talking to a loved one can help."
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* HERO: Cycle Wheel - The Emotional Anchor */}
+                <div className="relative">
+                   <CycleWheel mode={mode} />
+                </div>
+
+                {/* Insight Cards Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.1 }}
+                   >
+                      <Card className="glass-panel border-white/60 hover:border-primary/20 transition-colors h-full overflow-hidden group">
+                         <div 
+                            className="absolute inset-0 opacity-40 group-hover:scale-105 transition-transform duration-700"
+                            style={{ backgroundImage: `url(${softCardBg})`, backgroundSize: 'cover' }}
+                         />
+                         <CardContent className="relative p-6 flex flex-col h-full justify-between z-10">
+                            <div>
+                               <div className="flex items-center gap-2 mb-3">
+                                  <span className="p-1.5 bg-amber-100/50 rounded-full text-amber-700"><Sun className="w-3.5 h-3.5" /></span>
+                                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Best use of energy</h4>
+                               </div>
+                               <p className="text-lg font-serif text-foreground leading-relaxed">
+                                  Your verbal skills and confidence are peaking. Schedule presentations or difficult conversations today.
+                               </p>
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-black/5 flex justify-between items-center">
+                               <span className="text-xs font-medium text-primary">Read Biology</span>
+                               <ChevronRight className="w-4 h-4 text-primary/50 group-hover:translate-x-1 transition-transform" />
+                            </div>
+                         </CardContent>
+                      </Card>
+                   </motion.div>
+
+                   <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.2 }}
+                   >
+                      <Card className="glass-panel border-white/60 hover:border-primary/20 transition-colors h-full overflow-hidden group">
+                         <div 
+                            className="absolute inset-0 opacity-40 group-hover:scale-105 transition-transform duration-700"
+                            style={{ backgroundImage: `url(${softCardBg})`, backgroundSize: 'cover' }}
+                         />
+                         <CardContent className="relative p-6 flex flex-col h-full justify-between z-10">
+                            <div>
+                               <div className="flex items-center gap-2 mb-3">
+                                  <span className="p-1.5 bg-blue-100/50 rounded-full text-blue-700"><Wind className="w-3.5 h-3.5" /></span>
+                                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Body Tip</h4>
+                               </div>
+                               <p className="text-lg font-serif text-foreground leading-relaxed">
+                                  Estrogen is high, helping you recover faster. You can push harder in your workout today.
+                               </p>
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-black/5 flex justify-between items-center">
+                               <span className="text-xs font-medium text-primary">See Workout Plan</span>
+                               <ChevronRight className="w-4 h-4 text-primary/50 group-hover:translate-x-1 transition-transform" />
+                            </div>
+                         </CardContent>
+                      </Card>
+                   </motion.div>
+                </div>
+
+                {/* Daily Guidance Feed */}
+                <div className="space-y-5 pb-8">
+                   <div className="flex items-center justify-between px-1">
+                      <h3 className="text-lg font-serif text-foreground">Aligned With You</h3>
+                      <button className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors">View All</button>
+                   </div>
+                   <div className="space-y-3">
+                      <GuidanceItem 
+                         icon={<Utensils className="w-4 h-4" />} 
+                         color="bg-orange-100 text-orange-700"
+                         title="Nutrition Optimization"
+                         desc="Your body is using protein efficiently. Try adding lentils, eggs, or paneer to your lunch."
+                      />
+                      <GuidanceItem 
+                         icon={<Moon className="w-4 h-4" />} 
+                         color="bg-indigo-100 text-indigo-700"
+                         title="Sleep Temperature"
+                         desc="Basal temperature is rising slightly. Keep your bedroom cool and dark tonight."
+                      />
+                   </div>
+                </div>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="biology" className="animate-in slide-in-from-bottom-4 duration-500">
