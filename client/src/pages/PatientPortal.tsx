@@ -428,44 +428,142 @@ export default function PatientPortal() {
 
           <TabsContent value="care" className="animate-in slide-in-from-bottom-4 duration-500 space-y-6 pb-8">
             
+            {mode === 'pregnancy' && (
+              <>
+                {/* Next Appointment */}
+                {patient?.nextReview && (
+                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+                    <Card className="border-none bg-gradient-to-br from-pink-50 to-rose-50 shadow-sm overflow-hidden">
+                      <CardContent className="p-5 flex items-center gap-4">
+                        <div className="p-3 bg-pink-100 rounded-2xl shrink-0">
+                          <CalendarDays className="w-6 h-6 text-pink-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Next Appointment</p>
+                          <p className="text-lg font-serif text-pink-800 font-medium mt-0.5">
+                            {new Date(patient.nextReview).toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })}
+                          </p>
+                          {(() => {
+                            const daysUntil = Math.ceil((new Date(patient.nextReview).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                            return daysUntil > 0 
+                              ? <p className="text-xs text-pink-600 font-medium mt-0.5">{daysUntil} days from now</p>
+                              : daysUntil === 0 
+                              ? <Badge className="bg-pink-200 text-pink-800 border-none text-[10px] mt-1">Today</Badge>
+                              : null;
+                          })()}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+
+                {/* Pregnancy Vitals Trend */}
+                {visitHistory && visitHistory.length > 0 && (
+                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+                    <div className="flex items-center gap-2 mb-3 px-1">
+                      <Activity className="w-4 h-4 text-pink-600" />
+                      <h3 className="text-lg font-serif text-foreground">Pregnancy Vitals Trend</h3>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(() => {
+                        const sorted = [...visitHistory].sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+                        const latest = (sorted[0]?.vitals as any) || {};
+                        const prev = sorted.length > 1 ? ((sorted[1]?.vitals as any) || {}) : null;
+                        return (
+                          <>
+                            <Card className="glass-panel border-white/60">
+                              <CardContent className="p-3 text-center">
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Weight</p>
+                                <p className="text-lg font-semibold text-foreground">{latest.weight || patient?.weight || '—'}</p>
+                                <p className="text-[10px] text-muted-foreground">kg</p>
+                                {prev?.weight && latest.weight && (
+                                  <p className={`text-[10px] font-medium mt-1 ${(latest.weight - prev.weight) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                    {(latest.weight - prev.weight) > 0 ? '+' : ''}{(latest.weight - prev.weight).toFixed(1)} kg
+                                  </p>
+                                )}
+                              </CardContent>
+                            </Card>
+                            <Card className="glass-panel border-white/60">
+                              <CardContent className="p-3 text-center">
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">BP</p>
+                                <p className="text-lg font-semibold text-foreground">{latest.bp || patient?.bp || '—'}</p>
+                                <p className="text-[10px] text-muted-foreground">mmHg</p>
+                              </CardContent>
+                            </Card>
+                            <Card className="glass-panel border-white/60">
+                              <CardContent className="p-3 text-center">
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Pulse</p>
+                                <p className="text-lg font-semibold text-foreground">{latest.pulse || '—'}</p>
+                                <p className="text-[10px] text-muted-foreground">bpm</p>
+                              </CardContent>
+                            </Card>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </motion.div>
+                )}
+              </>
+            )}
+
             {/* Active Medications */}
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
               <div className="flex items-center gap-2 mb-3 px-1">
                 <Pill className="w-4 h-4 text-blue-600" />
-                <h3 className="text-lg font-serif text-foreground">My Medicines</h3>
+                <h3 className="text-lg font-serif text-foreground">
+                  {mode === 'pregnancy' ? 'Prenatal Medications' : 'My Medicines'}
+                </h3>
               </div>
               {medications && medications.length > 0 ? (
                 <div className="space-y-2">
-                  {medications.filter((m: any) => m.status === 'active').map((med: any) => (
-                    <Card key={med.id} className="glass-panel border-white/60" data-testid={`patient-med-${med.id}`}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-medium text-sm text-foreground">{med.name}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {[med.dose, med.frequency].filter(Boolean).join(' — ')}
-                            </p>
-                            {med.notes && <p className="text-xs text-muted-foreground/70 mt-1 italic">{med.notes}</p>}
+                  {medications.filter((m: any) => (m.status || '').toLowerCase() === 'active').map((med: any) => {
+                    const isPrenatal = mode === 'pregnancy';
+                    const medName = (med.name || '').toLowerCase();
+                    const isVitamin = medName.includes('vitamin') || medName.includes('folic') || medName.includes('iron') || medName.includes('calcium') || medName.includes('shelcal') || medName.includes('orofer') || medName.includes('uprise');
+                    const isInjection = (med.route || '').toLowerCase().includes('intramuscular') || (med.route || '').toLowerCase().includes('injection') || medName.includes('injection') || medName.includes('proluton');
+                    return (
+                      <Card key={med.id} className={`glass-panel ${isPrenatal && isInjection ? 'border-amber-200/60' : 'border-white/60'}`} data-testid={`patient-med-${med.id}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3">
+                              {isPrenatal && (
+                                <div className={`p-1.5 rounded-lg mt-0.5 shrink-0 ${isVitamin ? 'bg-emerald-100' : isInjection ? 'bg-amber-100' : 'bg-blue-100'}`}>
+                                  {isVitamin ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : isInjection ? <Activity className="w-3.5 h-3.5 text-amber-600" /> : <Pill className="w-3.5 h-3.5 text-blue-600" />}
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-medium text-sm text-foreground">{med.name}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {[med.dose, med.frequency].filter(Boolean).join(' — ')}
+                                </p>
+                                {med.route && isPrenatal && (
+                                  <p className="text-[10px] text-muted-foreground/70 mt-0.5">{med.route}</p>
+                                )}
+                                {med.notes && <p className="text-xs text-muted-foreground/70 mt-1 italic">{med.notes}</p>}
+                              </div>
+                            </div>
+                            <Badge className={`text-[10px] ${isPrenatal && isVitamin ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : isPrenatal && isInjection ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}>
+                              {isPrenatal && isVitamin ? 'Supplement' : isPrenatal && isInjection ? 'Injection' : 'Active'}
+                            </Badge>
                           </div>
-                          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">Active</Badge>
-                        </div>
-                        {med.startDate && (
-                          <p className="text-[10px] text-muted-foreground mt-2">
-                            Started: {new Date(med.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            {med.endDate && ` — Until: ${new Date(med.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`}
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                  {medications.filter((m: any) => m.status !== 'active').length > 0 && (
+                          {med.startDate && (
+                            <p className="text-[10px] text-muted-foreground mt-2">
+                              Started: {new Date(med.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              {med.endDate && ` — Until: ${new Date(med.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`}
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  {medications.filter((m: any) => (m.status || '').toLowerCase() !== 'active').length > 0 && (
                     <Accordion type="single" collapsible>
                       <AccordionItem value="past-meds" className="border-0">
                         <AccordionTrigger className="text-xs text-muted-foreground hover:no-underline py-2 px-1">
-                          Past Medications ({medications.filter((m: any) => m.status !== 'active').length})
+                          Past Medications ({medications.filter((m: any) => (m.status || '').toLowerCase() !== 'active').length})
                         </AccordionTrigger>
                         <AccordionContent className="space-y-2">
-                          {medications.filter((m: any) => m.status !== 'active').map((med: any) => (
+                          {medications.filter((m: any) => (m.status || '').toLowerCase() !== 'active').map((med: any) => (
                             <Card key={med.id} className="glass-panel border-white/40 opacity-70" data-testid={`patient-past-med-${med.id}`}>
                               <CardContent className="p-3">
                                 <p className="font-medium text-xs text-foreground">{med.name}</p>
@@ -482,7 +580,9 @@ export default function PatientPortal() {
                 <Card className="glass-panel border-white/60">
                   <CardContent className="p-6 text-center">
                     <Pill className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No medications prescribed yet</p>
+                    <p className="text-sm text-muted-foreground">
+                      {mode === 'pregnancy' ? 'No prenatal medications prescribed yet' : 'No medications prescribed yet'}
+                    </p>
                   </CardContent>
                 </Card>
               )}
@@ -492,7 +592,9 @@ export default function PatientPortal() {
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
               <div className="flex items-center gap-2 mb-3 px-1">
                 <FlaskConical className="w-4 h-4 text-purple-600" />
-                <h3 className="text-lg font-serif text-foreground">Investigations & Tests</h3>
+                <h3 className="text-lg font-serif text-foreground">
+                  {mode === 'pregnancy' ? 'Prenatal Tests' : 'Investigations & Tests'}
+                </h3>
               </div>
               {(() => {
                 const latestVisit = visitHistory?.[0];
@@ -506,7 +608,9 @@ export default function PatientPortal() {
                     <Card className="glass-panel border-white/60">
                       <CardContent className="p-6 text-center">
                         <FlaskConical className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">No investigations ordered currently</p>
+                        <p className="text-sm text-muted-foreground">
+                          {mode === 'pregnancy' ? 'No prenatal tests ordered currently' : 'No investigations ordered currently'}
+                        </p>
                       </CardContent>
                     </Card>
                   );
@@ -516,8 +620,8 @@ export default function PatientPortal() {
                     {allTests.map((test, i) => (
                       <Card key={i} className="glass-panel border-white/60" data-testid={`patient-investigation-${i}`}>
                         <CardContent className="p-4 flex items-center gap-3">
-                          <div className="p-2 bg-purple-100/50 rounded-xl shrink-0">
-                            <FileText className="w-4 h-4 text-purple-600" />
+                          <div className={`p-2 rounded-xl shrink-0 ${mode === 'pregnancy' ? 'bg-pink-100/50' : 'bg-purple-100/50'}`}>
+                            <FileText className={`w-4 h-4 ${mode === 'pregnancy' ? 'text-pink-600' : 'text-purple-600'}`} />
                           </div>
                           <div className="flex-1">
                             <p className="font-medium text-sm text-foreground">{test}</p>
@@ -534,11 +638,81 @@ export default function PatientPortal() {
               })()}
             </motion.div>
 
+            {/* Lab Results Summary for pregnancy */}
+            {mode === 'pregnancy' && labResults && labResults.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+                <div className="flex items-center gap-2 mb-3 px-1">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <h3 className="text-lg font-serif text-foreground">Completed Lab Results</h3>
+                  <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-100 ml-auto">{labResults.length} results</Badge>
+                </div>
+                <div className="space-y-2">
+                  {(() => {
+                    const flagged = labResults.filter((r: any) => {
+                      const s = (r.status || '').toLowerCase();
+                      return s === 'high' || s === 'low' || s === 'critical' || s === 'borderline';
+                    });
+                    const normal = labResults.filter((r: any) => {
+                      const s = (r.status || '').toLowerCase();
+                      return s === 'normal' || s === 'low' || (!s && r.value != null);
+                    }).filter((r: any) => !flagged.includes(r));
+                    
+                    return (
+                      <>
+                        {flagged.length > 0 && (
+                          <div className="space-y-2">
+                            {flagged.slice(0, 4).map((r: any, i: number) => {
+                              const s = (r.status || '').toLowerCase();
+                              const color = s === 'high' || s === 'critical' ? 'border-rose-200/60' : s === 'borderline' ? 'border-amber-200/60' : 'border-white/60';
+                              const badgeColor = s === 'high' || s === 'critical' ? 'bg-rose-100 text-rose-700 border-rose-200' : s === 'borderline' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-blue-100 text-blue-700 border-blue-200';
+                              return (
+                                <Card key={i} className={`glass-panel ${color}`}>
+                                  <CardContent className="p-3 flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-foreground">{r.testName}</p>
+                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                        {r.value != null ? `${r.value} ${r.unit || ''}` : '—'}
+                                        {r.date && ` • ${new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`}
+                                      </p>
+                                    </div>
+                                    <Badge className={`text-[10px] ${badgeColor}`}>{r.status}</Badge>
+                                  </CardContent>
+                                </Card>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {normal.length > 0 && (
+                          <Accordion type="single" collapsible>
+                            <AccordionItem value="normal-labs" className="border-0">
+                              <AccordionTrigger className="text-xs text-muted-foreground hover:no-underline py-2 px-1">
+                                Normal Results ({normal.length})
+                              </AccordionTrigger>
+                              <AccordionContent className="space-y-1.5">
+                                {normal.map((r: any, i: number) => (
+                                  <div key={i} className="flex items-center justify-between bg-white/40 rounded-lg px-3 py-2">
+                                    <span className="text-xs text-foreground">{r.testName}</span>
+                                    <span className="text-xs text-muted-foreground">{r.value != null ? `${r.value} ${r.unit || ''}` : '—'}</span>
+                                  </div>
+                                ))}
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </motion.div>
+            )}
+
             {/* Treatment Trail / Visit History */}
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
               <div className="flex items-center gap-2 mb-3 px-1">
                 <Stethoscope className="w-4 h-4 text-rose-500" />
-                <h3 className="text-lg font-serif text-foreground">Treatment Trail</h3>
+                <h3 className="text-lg font-serif text-foreground">
+                  {mode === 'pregnancy' ? 'Prenatal Visit History' : 'Treatment Trail'}
+                </h3>
               </div>
               {visitHistory && visitHistory.length > 0 ? (
                 <div className="relative">
@@ -547,6 +721,9 @@ export default function PatientPortal() {
                     {[...visitHistory].sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 10).map((visit: any, idx: number) => {
                       const visitVitals = (visit.vitals as any) || {};
                       const visitDate = visit.date ? new Date(visit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unknown date';
+                      const weeksAtVisit = patient?.lmp && visit.date && mode === 'pregnancy'
+                        ? Math.floor((new Date(visit.date).getTime() - new Date(patient.lmp).getTime()) / (1000 * 60 * 60 * 24 * 7))
+                        : null;
                       return (
                         <div key={visit.id || idx} className="flex gap-3" data-testid={`patient-visit-${idx}`}>
                           <div className="relative z-10 mt-4">
@@ -558,6 +735,9 @@ export default function PatientPortal() {
                                 <div className="flex items-center gap-2">
                                   <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" />
                                   <span className="text-xs font-medium text-muted-foreground">{visitDate}</span>
+                                  {weeksAtVisit != null && weeksAtVisit > 0 && (
+                                    <Badge variant="outline" className="text-[10px] bg-pink-50 text-pink-600 border-pink-200">Wk {weeksAtVisit}</Badge>
+                                  )}
                                 </div>
                                 {idx === 0 && <Badge className="bg-rose-100 text-rose-700 border-rose-200 text-[10px]">Latest</Badge>}
                               </div>
@@ -592,7 +772,9 @@ export default function PatientPortal() {
                 <Card className="glass-panel border-white/60">
                   <CardContent className="p-6 text-center">
                     <Stethoscope className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No visits recorded yet</p>
+                    <p className="text-sm text-muted-foreground">
+                      {mode === 'pregnancy' ? 'No prenatal visits recorded yet' : 'No visits recorded yet'}
+                    </p>
                   </CardContent>
                 </Card>
               )}
