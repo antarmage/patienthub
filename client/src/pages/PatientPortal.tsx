@@ -423,7 +423,7 @@ export default function PatientPortal() {
           </TabsContent>
 
           <TabsContent value="insights" className="animate-in slide-in-from-bottom-4 duration-500">
-             <InsightsTab />
+             <InsightsTab mode={mode} patient={patient} />
           </TabsContent>
 
           <TabsContent value="care" className="animate-in slide-in-from-bottom-4 duration-500 space-y-6 pb-8">

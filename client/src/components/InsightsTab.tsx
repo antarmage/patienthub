@@ -13,15 +13,23 @@ import {
   AlertCircle,
   ArrowRight,
   Flame,
-  Coffee
+  Coffee,
+  Baby,
+  ShieldCheck,
+  Apple,
+  Stethoscope,
+  Clock,
+  CheckCircle2,
+  Star,
+  BookOpen,
+  Activity,
+  Droplets
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Calendar } from "@/components/ui/calendar";
-import forecastGradient from "../assets/images/forecast-gradient.png";
 
-// Mock Forecast Data
 const upcomingShifts = [
   { days: 4, event: "Progesterone Rise", icon: <Moon className="w-4 h-4 text-indigo-500"/>, impact: ["Lower social drive", "Deeper sleep", "Increased hunger"] },
   { days: 12, event: "Period Expected", icon: <AlertCircle className="w-4 h-4 text-rose-500"/>, impact: ["Reduce high-stress", "Iron-rich meals"] }
@@ -33,26 +41,253 @@ const planningWindows = [
   { activity: "Deep Solo Work", window: "Late Luteal", reason: "Focused inward energy", icon: <Coffee className="w-4 h-4 text-amber-700"/>, best: false },
 ];
 
-export default function InsightsTab() {
+interface InsightsTabProps {
+  mode?: string;
+  patient?: any;
+}
+
+function getPregnancyWeek(lmp: string | undefined) {
+  if (!lmp) return 0;
+  const diffDays = Math.floor((new Date().getTime() - new Date(lmp).getTime()) / (1000 * 60 * 60 * 24));
+  return Math.floor(diffDays / 7);
+}
+
+function PregnancyInsights({ patient }: { patient: any }) {
+  const weeks = getPregnancyWeek(patient?.lmp);
+  const trimester = weeks < 13 ? 1 : weeks < 27 ? 2 : 3;
+  const dueDate = patient?.lmp ? new Date(new Date(patient.lmp).getTime() + 280 * 24 * 60 * 60 * 1000) : null;
+  const weeksLeft = dueDate ? Math.max(0, Math.ceil((dueDate.getTime() - new Date().getTime()) / (7 * 24 * 60 * 60 * 1000))) : 0;
+
+  const milestones = trimester === 1
+    ? [
+        { week: weeks + 1, event: "Heartbeat Visible", icon: <Heart className="w-4 h-4 text-rose-500" />, tips: ["Avoid heavy lifting", "Continue folic acid", "Stay hydrated"] },
+        { week: weeks + 3, event: "First Ultrasound", icon: <Stethoscope className="w-4 h-4 text-blue-500" />, tips: ["Prepare questions for doctor", "Drink water before scan"] },
+      ]
+    : trimester === 2
+    ? [
+        { week: weeks + 2, event: "Anatomy Scan", icon: <Baby className="w-4 h-4 text-pink-500" />, tips: ["Full bladder may be needed", "You might learn the gender"] },
+        { week: weeks + 4, event: "Glucose Test", icon: <Droplets className="w-4 h-4 text-amber-500" />, tips: ["Fasting may be required", "Results check for gestational diabetes"] },
+      ]
+    : [
+        { week: weeks + 2, event: "Growth Scan", icon: <Baby className="w-4 h-4 text-pink-500" />, tips: ["Check baby's position", "Monitor amniotic fluid"] },
+        { week: Math.min(weeks + 4, 40), event: "Prepare Hospital Bag", icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />, tips: ["Pack essentials for you and baby", "Keep documents ready"] },
+      ];
+
+  const weeklyTimeline = Array.from({ length: Math.min(8, weeksLeft + 1) }, (_, i) => {
+    const w = weeks + i;
+    const isNow = i === 0;
+    const hasMilestone = w === 12 || w === 20 || w === 28 || w === 36 || w === 40;
+    const milestoneLabel = w === 12 ? 'NT Scan' : w === 20 ? 'Anomaly Scan' : w === 28 ? 'Anti-D' : w === 36 ? 'GBS Test' : w === 40 ? 'Due Date' : null;
+    return { week: w, isNow, hasMilestone, milestoneLabel };
+  });
+
+  const todayTips = trimester === 1
+    ? [
+        { tip: "Take your prenatal vitamins with food to reduce nausea", icon: <Apple className="w-4 h-4 text-emerald-500" />, category: "Nutrition" },
+        { tip: "Gentle walking for 20 minutes helps with fatigue", icon: <Activity className="w-4 h-4 text-blue-500" />, category: "Exercise" },
+        { tip: "Avoid raw or undercooked foods — your immunity is lower now", icon: <ShieldCheck className="w-4 h-4 text-amber-500" />, category: "Safety" },
+      ]
+    : trimester === 2
+    ? [
+        { tip: "Start sleeping on your left side for better blood flow to baby", icon: <Moon className="w-4 h-4 text-indigo-500" />, category: "Sleep" },
+        { tip: "Include iron-rich foods — your blood volume is increasing rapidly", icon: <Droplets className="w-4 h-4 text-rose-500" />, category: "Nutrition" },
+        { tip: "Kegel exercises now will help with delivery later", icon: <Activity className="w-4 h-4 text-purple-500" />, category: "Exercise" },
+      ]
+    : [
+        { tip: "Practice breathing exercises daily — they help during labour", icon: <Brain className="w-4 h-4 text-purple-500" />, category: "Preparation" },
+        { tip: "Eat 6 dates per day from week 36 — studies show it may ease labour", icon: <Apple className="w-4 h-4 text-amber-500" />, category: "Nutrition" },
+        { tip: "Keep your hospital bag packed and ready by the door", icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />, category: "Preparation" },
+      ];
+
+  const babyDevelopment = trimester === 1
+    ? ["Brain and spinal cord forming", "Heart starts beating", "Tiny limb buds appear", "Facial features developing"]
+    : trimester === 2
+    ? ["Baby can hear your voice", "Fingerprints are forming", "Eyes can sense light", "Baby practices swallowing"]
+    : ["Lungs maturing for breathing", "Baby gains weight rapidly", "Sleep-wake cycles established", "Baby moves into head-down position"];
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-700 pb-24">
+
+      <div className="relative">
+        <div className="flex items-center justify-between mb-4 px-1">
+          <h2 className="text-xl font-serif text-foreground">Pregnancy Timeline</h2>
+          <Badge variant="outline" className="bg-pink-50/60 border-pink-200 text-pink-700">
+            {weeksLeft} weeks to go
+          </Badge>
+        </div>
+
+        <ScrollArea className="w-full whitespace-nowrap rounded-2xl border border-white/40 bg-white/30 backdrop-blur-md p-4">
+          <div className="flex w-max space-x-3">
+            {weeklyTimeline.map((item, i) => (
+              <motion.div
+                key={i}
+                whileHover={{ y: -4 }}
+                className={`flex flex-col items-center gap-2 p-3 rounded-xl min-w-[70px] cursor-pointer transition-all border ${item.isNow ? 'bg-white border-pink-300 shadow-md' : item.hasMilestone ? 'bg-pink-50/60 border-pink-100 hover:bg-pink-50' : 'bg-white/40 border-white/40 hover:bg-white/60'}`}
+              >
+                <span className="text-[10px] uppercase font-semibold text-muted-foreground">
+                  {item.isNow ? 'Now' : `+${i}w`}
+                </span>
+                <div className={`text-lg font-serif font-medium ${item.isNow ? 'text-pink-600' : 'text-foreground'}`}>
+                  W{item.week}
+                </div>
+                {item.hasMilestone && (
+                  <div className="flex flex-col items-center gap-1 mt-1">
+                    <div className="w-2 h-2 rounded-full bg-pink-400 animate-pulse" />
+                    <span className="text-[9px] text-pink-600 font-medium whitespace-nowrap">{item.milestoneLabel}</span>
+                  </div>
+                )}
+                {item.isNow && !item.hasMilestone && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-pink-500 mt-1" />
+                )}
+              </motion.div>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" className="hidden" />
+        </ScrollArea>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <h3 className="text-lg font-serif text-foreground px-1">Upcoming Milestones</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {milestones.map((milestone, i) => (
+            <Card key={i} className="glass-panel border-none relative overflow-hidden group">
+              <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-pink-100 to-transparent rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110" />
+              <CardContent className="p-5 relative z-10">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="bg-white p-2 rounded-full shadow-sm">
+                    {milestone.icon}
+                  </div>
+                  <Badge variant="secondary" className="bg-pink-50 text-pink-600 font-normal">
+                    ~Week {milestone.week}
+                  </Badge>
+                </div>
+                <h4 className="font-medium text-foreground text-base mb-2">{milestone.event}</h4>
+                <ul className="space-y-1.5">
+                  {milestone.tips.map((tip, idx) => (
+                    <li key={idx} className="text-xs text-muted-foreground flex items-center gap-2">
+                      <div className="w-1 h-1 rounded-full bg-pink-400" /> {tip}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-pink-50 to-rose-50 rounded-3xl -z-10 opacity-60" />
+        <div className="p-6 rounded-3xl border border-white/40">
+          <div className="flex items-center gap-2 mb-6">
+            <Sparkles className="w-5 h-5 text-pink-500" />
+            <h3 className="text-lg font-serif text-foreground">Today's Tips For You</h3>
+          </div>
+          <div className="space-y-3">
+            {todayTips.map((item, i) => (
+              <div key={i} className="flex items-center gap-4 bg-white/60 p-4 rounded-xl border border-white/60">
+                <div className="p-2.5 bg-white rounded-lg shadow-sm shrink-0">
+                  {item.icon}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-sm text-foreground">{item.tip}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{item.category}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-serif text-foreground px-1 mb-4">Baby's Development</h3>
+        <Card className="glass-panel border-none p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="p-2 bg-pink-50 rounded-full">
+              <Baby className="w-5 h-5 text-pink-500" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground text-sm">
+                {trimester === 1 ? 'Foundations Being Built' : trimester === 2 ? 'Growing & Exploring' : 'Getting Ready'}
+              </p>
+              <p className="text-xs text-muted-foreground">What's happening inside right now</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {babyDevelopment.map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="flex items-center gap-3"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center shrink-0">
+                  <Star className="w-3.5 h-3.5 text-pink-500" />
+                </div>
+                <p className="text-sm text-foreground">{item}</p>
+              </motion.div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-serif text-foreground px-1 mb-4">Weekly Checklist</h3>
+        <div className="space-y-2.5">
+          {(trimester === 1
+            ? ["Take folic acid supplement", "Drink 8+ glasses of water", "Avoid caffeine over 200mg", "Rest when you feel tired"]
+            : trimester === 2
+            ? ["Monitor baby movements daily", "Do pelvic floor exercises", "Eat calcium-rich foods", "Stay active with gentle exercise"]
+            : ["Practice breathing techniques", "Monitor kick counts", "Prepare hospital bag", "Rest and conserve energy"]
+          ).map((item, i) => (
+            <div key={i} className="flex items-center gap-3 bg-white/50 p-3.5 rounded-xl border border-white/40">
+              <div className="w-5 h-5 rounded-full border-2 border-pink-300 shrink-0" />
+              <p className="text-sm text-foreground">{item}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-pink-900 text-pink-100 p-4 rounded-xl flex items-start gap-4 shadow-lg">
+        <Brain className="w-5 h-5 text-pink-300 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium leading-relaxed mb-1">
+            {trimester === 1 ? 'First Trimester Reminder' : trimester === 2 ? 'Second Trimester Note' : 'Final Stretch'}
+          </p>
+          <p className="text-xs text-pink-300">
+            {trimester === 1
+              ? "Nausea usually peaks around week 8-10 and improves by week 12-14. Hang in there — it's a sign of strong pregnancy hormones."
+              : trimester === 2
+              ? "You might feel baby's first movements (quickening) between weeks 18-22. It often feels like gentle flutters or bubbles."
+              : `Only ${weeksLeft} weeks to go! Your baby is gaining about 200g per week now. Make sure to attend all check-ups and rest well.`}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function InsightsTab({ mode, patient }: InsightsTabProps) {
+  if (mode === 'pregnancy') {
+    return <PregnancyInsights patient={patient} />;
+  }
+
   const [date, setDate] = useState<Date | undefined>(new Date());
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-24">
       
-      {/* 1. HERO: Cycle Timeline Forecast */}
       <div className="relative">
          <div className="flex items-center justify-between mb-4 px-1">
             <h2 className="text-xl font-serif text-foreground">Cycle Forecast</h2>
             <Badge variant="outline" className="bg-white/40 border-primary/20 text-primary">Next 14 Days</Badge>
          </div>
 
-         {/* Horizontal Scrollable Timeline Strip */}
          <ScrollArea className="w-full whitespace-nowrap rounded-2xl border border-white/40 bg-white/30 backdrop-blur-md p-4">
             <div className="flex w-max space-x-3">
                {Array.from({ length: 14 }).map((_, i) => {
                   const dayNum = 14 + i;
                   const isToday = i === 0;
-                  // Mock phases
                   const isHighEnergy = dayNum >= 14 && dayNum <= 16;
                   const isLuteal = dayNum > 16;
                   
@@ -66,7 +301,6 @@ export default function InsightsTab() {
                         <div className={`text-lg font-serif font-medium ${isToday ? 'text-primary' : 'text-foreground'}`}>
                            {dayNum > 28 ? dayNum - 28 : dayNum}
                         </div>
-                        {/* Phase Marker */}
                         <div className="flex flex-col items-center gap-1 mt-1">
                            {isHighEnergy && <div className="w-1.5 h-1.5 rounded-full bg-orange-400"></div>}
                            {isLuteal && <div className="w-1.5 h-1.5 rounded-full bg-indigo-300"></div>}
@@ -82,7 +316,6 @@ export default function InsightsTab() {
          </ScrollArea>
       </div>
 
-      {/* 2. UPCOMING BIOLOGY SHIFTS */}
       <div className="grid grid-cols-1 gap-4">
          <h3 className="text-lg font-serif text-foreground px-1">Next Biological Changes</h3>
          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -110,7 +343,6 @@ export default function InsightsTab() {
          </div>
       </div>
 
-      {/* 3. LIFE PLANNING OPTIMIZER */}
       <div className="relative">
          <div className="absolute inset-0 bg-gradient-to-r from-purple-50 to-pink-50 rounded-3xl -z-10 opacity-60"></div>
          <div className="p-6 rounded-3xl border border-white/40">
@@ -142,12 +374,10 @@ export default function InsightsTab() {
          </div>
       </div>
 
-      {/* 4. MOOD & NERVOUS SYSTEM FORECAST */}
       <div>
          <h3 className="text-lg font-serif text-foreground px-1 mb-4">Emotional Rhythm Ahead</h3>
          <Card className="glass-panel border-none p-6">
             <div className="flex items-end gap-2 h-32 mb-4 px-2">
-               {/* Mock Bar Chart using divs for custom aesthetic */}
                {[40, 50, 70, 85, 90, 80, 60].map((height, i) => (
                   <div key={i} className="flex-1 flex flex-col justify-end gap-2 group cursor-pointer">
                      <div 
@@ -175,7 +405,6 @@ export default function InsightsTab() {
          </Card>
       </div>
       
-      {/* 8. SMART PREPARATION ALERTS */}
       <div className="bg-slate-900 text-slate-200 p-4 rounded-xl flex items-start gap-4 shadow-lg">
          <Brain className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
          <div>
