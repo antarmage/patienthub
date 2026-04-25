@@ -2,10 +2,23 @@ import { db } from "./db";
 import {
   patients, providers, services, appointments, labTasks,
   nutritionPlans, workouts, hormoneReadings, pregnancyMetrics,
-  follicleData, usgData,
+  follicleData, usgData, users
 } from "@shared/schema";
 
 export async function seedDatabase() {
+  const existingUsers = await db.select().from(users);
+  if (existingUsers.length === 0) {
+    console.log("Seeding users...");
+    await db.insert(users).values([
+      { username: "dr.sai", password: "123", role: "clinician" },
+      { username: "dr.priya", password: "1234", role: "clinician" },
+      { username: "dr.ramesh", password: "5678", role: "clinician" },
+      { username: "staff.reception", password: "0000", role: "staff" },
+      { username: "staff.nurse", password: "1111", role: "staff" },
+      { username: "owner", password: "9999", role: "staff" },
+    ]);
+  }
+
   const existingPatients = await db.select().from(patients);
   if (existingPatients.length > 0) {
     console.log("Database already seeded, skipping...");
@@ -250,9 +263,9 @@ export async function seedDatabase() {
   ]).returning();
 
   const [prov1, prov2, prov3] = await db.insert(providers).values([
-    { name: "Dr. Reynolds", role: "Reproductive Specialist", availability: "High" },
-    { name: "Ms. Gupta", role: "Nutritionist", availability: "Medium" },
-    { name: "Dr. Chen", role: "Endocrinologist", availability: "Low" },
+    { name: "Dr. Sai Dibyadarshini Bhuyan", role: "Reproductive Specialist", availability: "High" },
+    { name: "Dr. Priya", role: "Nutritionist", availability: "Medium" },
+    { name: "Dr. Ramesh", role: "Endocrinologist", availability: "Low" },
   ]).returning();
 
   const [svc1, svc2, svc3, svc4] = await db.insert(services).values([

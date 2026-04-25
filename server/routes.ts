@@ -5,6 +5,7 @@ import { registerOcrRoutes } from "./replit_integrations/ocr";
 import { getUncachableGoogleSheetClient } from "./google-sheets";
 import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "./google-drive";
 import { ai } from "./replit_integrations/image/client";
+import { whatsapp } from "./whatsapp";
 
 function parseId(val: string): number | null {
   const n = parseInt(val);
@@ -98,6 +99,24 @@ export async function registerRoutes(
 
   app.post("/api/appointments", async (req, res) => {
     const appt = await storage.createAppointment(req.body);
+
+    // Optional: Send WhatsApp confirmation
+    if (appt.patientId) {
+      const patient = await storage.getPatient(appt.patientId);
+      if (patient?.phone) {
+        try {
+          // You can send a template or a text message
+          // For now, sending a free-form text message if configured
+          await whatsapp.sendTextMessage(
+            patient.phone,
+            `Hello ${patient.name}, your appointment is confirmed for ${appt.date} at ${appt.time}. See you then!`
+          );
+        } catch (err) {
+          console.error("Failed to send WhatsApp confirmation:", err);
+        }
+      }
+    }
+
     res.status(201).json(appt);
   });
 
@@ -107,6 +126,57 @@ export async function registerRoutes(
     const updated = await storage.updateAppointment(id, req.body);
     if (!updated) return res.status(404).json({ error: "Appointment not found" });
     res.json(updated);
+  });
+
+  // Pre-appointment onboarding endpoints
+  app.get("/api/onboarding/:appointmentId", async (req, res) => {
+    const appointmentId = parseId(req.params.appointmentId);
+    if (!appointmentId) return res.status(400).json({ error: "Invalid appointment ID" });
+
+    const appt = await storage.getAppointments().then(all => all.find(a => a.id === appointmentId));
+    if (!appt) return res.status(404).json({ error: "Appointment not found" });
+
+    const patient = await storage.getPatient(appt.patientId!);
+    if (!patient) return res.status(404).json({ error: "Patient not found" });
+
+    res.json({
+      appointment: { id: appt.id, date: appt.date, time: appt.time },
+      patient: { id: patient.id, name: patient.name, history: patient.history }
+    });
+  });
+
+  // WhatsApp Test Endpoint
+  app.post("/api/whatsapp/test", async (req, res) => {
+    const { phone, message } = req.body;
+    if (!phone || !message) {
+      return res.status(400).json({ error: "Phone and message are required" });
+    }
+    try {
+      const result = await whatsapp.sendTextMessage(phone, message);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/onboarding/:appointmentId", async (req, res) => {
+    const appointmentId = parseId(req.params.appointmentId);
+    if (!appointmentId) return res.status(400).json({ error: "Invalid appointment ID" });
+
+    const { chiefComplaint, history } = req.body;
+
+    const appt = await storage.getAppointments().then(all => all.find(a => a.id === appointmentId));
+    if (!appt) return res.status(404).json({ error: "Appointment not found" });
+
+    // Update appointment chief complaint
+    await storage.updateAppointment(appointmentId, { chiefComplaint });
+
+    // Update patient history
+    if (history) {
+      await storage.updatePatient(appt.patientId!, { history });
+    }
+
+    res.json({ success: true });
   });
 
   app.get("/api/lab-tasks", async (_req, res) => {
@@ -601,25 +671,28 @@ export async function registerRoutes(
       const headers = rows[0];
       const dataRows = rows.slice(1);
 
-      const colIndex = (name: string) => {
-        const idx = headers.findIndex((h: string) => h.toLowerCase().trim().includes(name.toLowerCase()));
-        return idx;
+      const colIndex = (aliases: string[]) => {
+        return headers.findIndex((h: string) => {
+          const header = h.toLowerCase().trim();
+          return aliases.some(alias => header === alias || (alias.length > 3 && header.includes(alias)));
+        });
       };
 
-      const nameIdx = colIndex("name");
-      const phoneIdx = colIndex("phone");
-      const emailIdx = colIndex("email");
-      const addressIdx = colIndex("address");
-      const itemsIdx = colIndex("items");
-      const typeIdx = colIndex("patient type");
-      const lmpIdx = colIndex("lmp");
-      const heightIdx = colIndex("height");
-      const bpIdx = colIndex("bp");
-      const weightIdx = colIndex("weight");
-      const ageIdx = colIndex("age");
-      const timestampIdx = colIndex("timestamp");
+      const nameIdx = colIndex(["patient name", "full name", "name"]);
+      const phoneIdx = colIndex(["phone number", "mobile number", "whatsapp number", "phone", "mobile", "whatsapp"]);
+      const emailIdx = colIndex(["email address", "email"]);
+      const addressIdx = colIndex(["address", "location", "city"]);
+      const itemsIdx = colIndex(["items", "services", "consultation details", "doctor name"]);
+      const typeIdx = colIndex(["patient type"]);
+      const lmpIdx = colIndex(["lmp", "last menstrual period"]);
+      const heightIdx = colIndex(["height"]);
+      const bpIdx = colIndex(["bp", "blood pressure"]);
+      const weightIdx = colIndex(["weight"]);
+      const ageIdx = colIndex(["age"]);
+      const timestampIdx = colIndex(["timestamp"]);
 
       const existingPatients = await storage.getPatients();
+      const existingProviders = await storage.getProviders(); // Automatically fetch available doctors
       const existingByPhone = new Map<string, number>();
       const existingByName = new Map<string, number>();
       for (const p of existingPatients) {
@@ -636,11 +709,19 @@ export async function registerRoutes(
         if (!ts) return null;
         try {
           const parts = ts.split(" ");
-          const dateParts = parts[0].split("/");
+          const dateParts = parts[0].split(/[/\-]/);
           if (dateParts.length !== 3) return null;
-          const month = dateParts[0].padStart(2, "0");
-          const day = dateParts[1].padStart(2, "0");
-          const year = dateParts[2].length === 2 ? "20" + dateParts[2] : dateParts[2];
+          let month, day, year;
+          // Check if it's MM/DD/YYYY or DD/MM/YYYY
+          if (parseInt(dateParts[1]) > 12 || parseInt(dateParts[0]) > 31) {
+            month = dateParts[0].padStart(2, "0");
+            day = dateParts[1].padStart(2, "0");
+          } else {
+            // Assume DD/MM/YYYY for Indian locale
+            day = dateParts[0].padStart(2, "0");
+            month = dateParts[1].padStart(2, "0");
+          }
+          year = dateParts[2].length === 2 ? "20" + dateParts[2] : dateParts[2];
           const date = `${year}-${month}-${day}`;
           const timePart = parts[1] || "00:00:00";
           const timePieces = timePart.split(":");
@@ -667,7 +748,10 @@ export async function registerRoutes(
           continue;
         }
 
-        const phone = val(phoneIdx).replace(/\D/g, "");
+        const phoneRaw = val(phoneIdx).replace(/\D/g, "");
+        // Strip country code if it's there
+        const phone = (phoneRaw.length > 10 && phoneRaw.startsWith("91")) ? phoneRaw.slice(-10) : phoneRaw;
+        
         const email = val(emailIdx);
         const address = val(addressIdx);
         const patientType = val(typeIdx);
@@ -682,6 +766,25 @@ export async function registerRoutes(
         const weight = weightStr ? parseFloat(weightStr.replace(/[^\d.]/g, "")) : undefined;
         const age = ageStr ? parseInt(ageStr.replace(/\D/g, ""), 10) : undefined;
         const parsed = parseTimestamp(timestamp);
+        
+        let providerId: number | undefined = undefined;
+        let appointmentReason = items;
+
+        if (items) {
+          // Look for "Dr. Divya", "Dr Divya", "Dr. Priya", etc.
+          const drMatch = items.match(/Dr\.?\s*([A-Za-z]+)/i);
+          if (drMatch) {
+            const drName = drMatch[1].toLowerCase();
+            // Map "Divya" to "Sai Dibyadarshini Bhuyan" manually since it's an alias in the sheet
+            const provider = existingProviders.find(p => 
+              p.name.toLowerCase().includes(drName) || 
+              (drName === "divya" && p.name.toLowerCase().includes("sai"))
+            );
+            if (provider) {
+              providerId = provider.id;
+            }
+          }
+        }
 
         let existingId = phone ? existingByPhone.get(phone) : undefined;
         if (!existingId) {
@@ -702,7 +805,7 @@ export async function registerRoutes(
               bp: bp || undefined,
               weight: weight && !isNaN(weight) ? weight : undefined,
               lastVisit: parsed?.date || undefined,
-              focus: items || undefined,
+              // Intentionally NOT putting doctor names in patient's focus field anymore
             });
             patientId = existingId;
             updated++;
@@ -719,7 +822,6 @@ export async function registerRoutes(
               bp: bp || undefined,
               weight: weight && !isNaN(weight) ? weight : undefined,
               lastVisit: parsed?.date || undefined,
-              focus: items || undefined,
               status: "active",
             });
             patientId = patient.id;
@@ -733,11 +835,12 @@ export async function registerRoutes(
             if (!appointmentKeys.has(apptKey)) {
               await storage.createAppointment({
                 patientId,
+                providerId,
                 date: parsed.date,
                 time: parsed.time,
-                type: items || "Consultation",
+                type: "Consultation",
                 status: "Completed",
-                reason: items || undefined,
+                reason: appointmentReason || undefined,
                 visitType: patientType || undefined,
                 notes: bp ? `BP: ${bp}` : undefined,
                 vitals: bp || weight ? { bp: bp || undefined, weight: weight || undefined, height: height || undefined } as any : undefined,
@@ -1369,7 +1472,7 @@ Be thorough — extract every medication mentioned including supplements and vit
         try {
           const refs = await storage.getReferrals(p.id);
           allReferrals.push(...refs);
-        } catch {}
+        } catch { }
       }
       const referralsIn = allReferrals.filter((r: any) => (r.direction || '').toLowerCase() === 'in' || (r.type || '').toLowerCase().includes('incoming')).length;
       const referralsOut = allReferrals.filter((r: any) => (r.direction || '').toLowerCase() === 'out' || (r.type || '').toLowerCase().includes('outgoing')).length;
@@ -1448,7 +1551,7 @@ Be thorough — extract every medication mentioned including supplements and vit
         if (fertilityTypes.some(t => type.includes(t))) usgType = 'Follicular Study';
         else if (pregnancyTypes.some(t => type.includes(t))) {
           if (p.lmp) {
-            const weeks = Math.floor((Date.now() - new Date(p.lmp).getTime()) / (7*24*60*60*1000));
+            const weeks = Math.floor((Date.now() - new Date(p.lmp).getTime()) / (7 * 24 * 60 * 60 * 1000));
             if (weeks <= 10) usgType = 'Early Pregnancy Scan';
             else if (weeks <= 14) usgType = 'NT Scan';
             else if (weeks <= 22) usgType = 'Anomaly Scan';
@@ -1564,7 +1667,7 @@ Be thorough — extract every medication mentioned including supplements and vit
             try {
               const refs = await storage.getReferrals(p.id);
               if (refs.length > 0) refPatients.push({ ...p, referralCount: refs.length });
-            } catch {}
+            } catch { }
           }
           filtered = refPatients;
           break;

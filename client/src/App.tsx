@@ -14,12 +14,14 @@ import CheckIn from "@/pages/CheckIn";
 import NewBooking from "@/pages/NewBooking";
 import PatientListByCategory from "@/pages/PatientListByCategory";
 import OwnerPortal from "@/pages/OwnerPortal";
+import PatientOnboarding from "@/pages/PatientOnboarding";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/patient" component={PatientPortal} />
+      <Route path="/onboarding/:id" component={PatientOnboarding} />
       <Route path="/clinician" component={ClinicianPortal} />
       <Route path="/clinician/patients/:category" component={PatientListByCategory} />
       <Route path="/staff" component={StaffPortal} />

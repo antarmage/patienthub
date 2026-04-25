@@ -1,51 +1,22 @@
-// Google Drive integration - Replit connector
+// Google Drive integration
 import { google } from 'googleapis';
 
-let connectionSettings: any;
-
-async function getAccessToken() {
-  if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
-    return connectionSettings.settings.access_token;
-  }
-  
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
-  }
-
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-drive',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
-
-  const accessToken = connectionSettings?.settings?.access_token || connectionSettings.settings?.oauth?.credentials?.access_token;
-
-  if (!connectionSettings || !accessToken) {
-    throw new Error('Google Drive not connected');
-  }
-  return accessToken;
-}
-
 export async function getUncachableGoogleDriveClient() {
-  const accessToken = await getAccessToken();
+  const credentials = {
+    client_email: process.env.GOOGLE_CLIENT_EMAIL,
+    private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  };
 
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({
-    access_token: accessToken
+  if (!credentials.client_email || !credentials.private_key) {
+    throw new Error('Google Service Account credentials missing in environment variables (GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY)');
+  }
+
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/drive'],
   });
 
-  return google.drive({ version: 'v3', auth: oauth2Client });
+  return google.drive({ version: 'v3', auth });
 }
 
 const LAB_REPORTS_FOLDER_ID = '1eCMJNf-kzwMfovvuVedCwAWECsKr7XVA';
