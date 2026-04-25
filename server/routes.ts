@@ -766,6 +766,20 @@ export async function registerRoutes(
         const weight = weightStr ? parseFloat(weightStr.replace(/[^\d.]/g, "")) : undefined;
         const age = ageStr ? parseInt(ageStr.replace(/\D/g, ""), 10) : undefined;
         const parsed = parseTimestamp(timestamp);
+
+        // Fix LMP year: Google Sheets sometimes gives "2/7/0026" for "2/7/26" → fix to 2-digit → 20xx
+        const fixLmpYear = (raw: string): string => {
+          if (!raw) return raw;
+          const parts = raw.split("/");
+          if (parts.length === 3) {
+            let year = parts[2].replace(/\D/g, "");
+            if (year.length <= 2) year = "20" + year.padStart(2, "0");
+            else if (year.length === 4 && parseInt(year) < 100) year = "20" + year.slice(-2);
+            return `${parts[0]}/${parts[1]}/${year}`;
+          }
+          return raw;
+        };
+        const lmpFixed = fixLmpYear(lmp);
         
         let providerId: number | undefined = undefined;
         let appointmentReason = items;
@@ -795,18 +809,18 @@ export async function registerRoutes(
           let patientId: number;
 
           if (existingId) {
-            await storage.updatePatient(existingId, {
-              phone: phone || undefined,
-              email: email || undefined,
-              address: address || undefined,
-              type: patientType || undefined,
-              lmp: lmp || undefined,
-              height: height || undefined,
-              bp: bp || undefined,
-              weight: weight && !isNaN(weight) ? weight : undefined,
-              lastVisit: parsed?.date || undefined,
-              // Intentionally NOT putting doctor names in patient's focus field anymore
-            });
+            // Only update fields that have actual values — never blank out existing good data
+            const updateData: any = {};
+            if (phone) updateData.phone = phone;
+            if (email) updateData.email = email;
+            if (address) updateData.address = address;
+            if (patientType) updateData.type = patientType;
+            if (lmpFixed) updateData.lmp = lmpFixed;
+            if (height) updateData.height = height;
+            if (bp) updateData.bp = bp;
+            if (weight && !isNaN(weight)) updateData.weight = weight;
+            if (parsed?.date) updateData.lastVisit = parsed.date;
+            await storage.updatePatient(existingId, updateData);
             patientId = existingId;
             updated++;
           } else {
@@ -817,7 +831,7 @@ export async function registerRoutes(
               email: email || undefined,
               address: address || undefined,
               type: patientType || undefined,
-              lmp: lmp || undefined,
+              lmp: lmpFixed || undefined,
               height: height || undefined,
               bp: bp || undefined,
               weight: weight && !isNaN(weight) ? weight : undefined,
