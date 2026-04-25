@@ -711,17 +711,10 @@ export async function registerRoutes(
           const parts = ts.split(" ");
           const dateParts = parts[0].split(/[/\-]/);
           if (dateParts.length !== 3) return null;
-          let month, day, year;
-          // Check if it's MM/DD/YYYY or DD/MM/YYYY
-          if (parseInt(dateParts[1]) > 12 || parseInt(dateParts[0]) > 31) {
-            month = dateParts[0].padStart(2, "0");
-            day = dateParts[1].padStart(2, "0");
-          } else {
-            // Assume DD/MM/YYYY for Indian locale
-            day = dateParts[0].padStart(2, "0");
-            month = dateParts[1].padStart(2, "0");
-          }
-          year = dateParts[2].length === 2 ? "20" + dateParts[2] : dateParts[2];
+          // Google Forms always outputs MM/DD/YYYY — treat first part as month
+          const month = dateParts[0].padStart(2, "0");
+          const day = dateParts[1].padStart(2, "0");
+          const year = dateParts[2].length === 2 ? "20" + dateParts[2] : dateParts[2];
           const date = `${year}-${month}-${day}`;
           const timePart = parts[1] || "00:00:00";
           const timePieces = timePart.split(":");
