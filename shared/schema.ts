@@ -126,6 +126,9 @@ export const appointments = pgTable("appointments", {
   vitals: jsonb("vitals"),
   telemedicineLink: text("telemedicine_link"),
   whatsappReminderSent: text("whatsapp_reminder_sent"),
+  triageScore: integer("triage_score"),
+  triageReason: text("triage_reason"),
+  triageScoredAt: text("triage_scored_at"),
 });
 
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true });
@@ -474,5 +477,20 @@ export const expenses = pgTable("expenses", {
 export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true });
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
+
+export const scheduleOptimisations = pgTable("schedule_optimisations", {
+  id: serial("id").primaryKey(),
+  date: date("date").notNull(),
+  suggestions: jsonb("suggestions"),
+  summary: text("summary"),
+  estimatedTimeSaved: text("estimated_time_saved"),
+  totalAppointments: integer("total_appointments"),
+  suggestionsCount: integer("suggestions_count"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertScheduleOptimisationSchema = createInsertSchema(scheduleOptimisations).omit({ id: true });
+export type InsertScheduleOptimisation = z.infer<typeof insertScheduleOptimisationSchema>;
+export type ScheduleOptimisation = typeof scheduleOptimisations.$inferSelect;
 
 export * from "./models/chat";

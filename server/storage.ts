@@ -35,6 +35,8 @@ import {
   type Expense, type InsertExpense,
   billingCatalog,
   type BillingCatalog, type InsertBillingCatalog,
+  scheduleOptimisations,
+  type ScheduleOptimisation, type InsertScheduleOptimisation,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -61,6 +63,9 @@ export interface IStorage {
   getAppointmentsByPatient(patientId: number): Promise<Appointment[]>;
   createAppointment(appt: InsertAppointment): Promise<Appointment>;
   updateAppointment(id: number, data: Partial<InsertAppointment>): Promise<Appointment | undefined>;
+
+  getScheduleOptimisations(limit?: number): Promise<ScheduleOptimisation[]>;
+  createScheduleOptimisation(record: InsertScheduleOptimisation): Promise<ScheduleOptimisation>;
 
   getLabTasks(): Promise<LabTask[]>;
   createLabTask(task: InsertLabTask): Promise<LabTask>;
@@ -580,6 +585,17 @@ export class DatabaseStorage implements IStorage {
   async deleteBillingCatalogItem(id: number): Promise<boolean> {
     const result = await db.delete(billingCatalog).where(eq(billingCatalog.id, id)).returning();
     return result.length > 0;
+  }
+
+  async getScheduleOptimisations(limit = 50): Promise<ScheduleOptimisation[]> {
+    return db.select().from(scheduleOptimisations)
+      .orderBy(desc(scheduleOptimisations.createdAt))
+      .limit(limit);
+  }
+
+  async createScheduleOptimisation(record: InsertScheduleOptimisation): Promise<ScheduleOptimisation> {
+    const [created] = await db.insert(scheduleOptimisations).values(record).returning();
+    return created;
   }
 }
 

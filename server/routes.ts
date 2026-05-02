@@ -2453,6 +2453,17 @@ Be thorough — extract every medication mentioned including supplements and vit
         topPatient: enriched[0]?.patientName || null,
         topScore: enriched[0]?.triageScore || null,
       });
+
+      // Stamp triage scores onto appointment records for retrospective querying
+      const now = new Date().toISOString();
+      for (const item of enriched as any[]) {
+        storage.updateAppointment(item.appointmentId, {
+          triageScore: item.triageScore,
+          triageReason: item.triageReason,
+          triageScoredAt: now,
+        } as any).catch(() => {});
+      }
+
       res.json({ date: today, count: enriched.length, appointments: enriched });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -2682,6 +2693,18 @@ Only include appointments that should move. If schedule is already optimal, retu
         estimatedTimeSaved: parsed.estimatedTimeSaved || null,
         summary: parsed.summary || null,
       });
+
+      // Persist to DB for retrospective owner queries
+      storage.createScheduleOptimisation({
+        date: targetDate,
+        suggestions: parsed.suggestions || [],
+        summary: parsed.summary || null,
+        estimatedTimeSaved: parsed.estimatedTimeSaved || null,
+        totalAppointments: enriched.length,
+        suggestionsCount: parsed.suggestions?.length || 0,
+        createdAt: new Date().toISOString(),
+      }).catch((e: any) => console.error("[optimise-schedule] DB persist failed:", e.message));
+
       res.json({ date: targetDate, ...parsed, totalAppointments: enriched.length });
     } catch (err: any) {
       console.error("[optimise-schedule] Error:", err.message);
@@ -2693,6 +2716,16 @@ Only include appointments that should move. If schedule is already optimal, retu
   app.get("/api/owner/audit-log", (_req: any, res: any) => {
     const entries = readAuditLog(200);
     res.json({ entries, count: entries.length });
+  });
+
+  // 5b. Schedule Optimisation History — DB-backed, newest-first
+  app.get("/api/owner/optimisation-history", async (_req: any, res: any) => {
+    try {
+      const records = await storage.getScheduleOptimisations(100);
+      res.json({ records, count: records.length });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // 5. Owner AI Weekly Insights
