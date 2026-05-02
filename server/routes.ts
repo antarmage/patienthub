@@ -18,6 +18,15 @@ function parseId(val: string): number | null {
 // (prevents duplicate sends if appointment is PATCH'd to "completed" more than once)
 const postVisitSummarySentIds = new Set<number>();
 
+// Tracks patients mid-booking-conversation on WhatsApp
+// key: patient phone (formatted), value: pending booking context
+interface PendingBooking {
+  type: "doctor" | "nutritionist" | "blood_test";
+  label: string;
+  askedAt: number; // timestamp
+}
+const pendingBookings = new Map<string, PendingBooking>();
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -370,84 +379,218 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
           .sort((a, b) => a.date.localeCompare(b.date));
         const next = upcoming[0];
 
-        if (!next) {
-          // No upcoming appointment — still try AI assistant for general queries
-          if (patient.phone) {
+        const originalText = msg.text?.body || text;
+        const formattedPhone = whatsapp.formatPhoneNumber(patient.phone!);
+
+        // ── CONFIRM / CANCEL ─────────────────────────────────────────────
+        if (text === "CONFIRM" && next) {
+          await storage.updateAppointment(next.id, { status: "confirmed" });
+          await whatsapp.sendTextMessage(
+            patient.phone!,
+            `✅ Confirmed! Your appointment on ${next.date} at ${next.time || "10:00"} is confirmed. See you then! 💜\n\n_Saivie Reproductive Intelligence_`
+          );
+          console.log(`Appointment ${next.id} confirmed by patient ${patient.name} via WhatsApp`);
+          continue;
+        }
+
+        if (text === "CANCEL" && next) {
+          await storage.updateAppointment(next.id, { status: "cancelled" });
+          pendingBookings.delete(formattedPhone);
+          await whatsapp.sendTextMessage(
+            patient.phone!,
+            `Your appointment on ${next.date} at ${next.time || "10:00"} has been cancelled.\n\nTo book a new appointment reply:\n• *BOOK DOCTOR* — Doctor consultation\n• *BOOK NUTRITION* — Nutritionist session\n• *BOOK LAB* — Blood test / lab work\n\nWe hope to see you soon. 💜\n\n_Saivie Reproductive Intelligence_`
+          );
+          console.log(`Appointment ${next.id} cancelled by patient ${patient.name} via WhatsApp`);
+          continue;
+        }
+
+        // ── PENDING BOOKING FLOW: patient replied with a date ────────────
+        const pending = pendingBookings.get(formattedPhone);
+        if (pending && (Date.now() - pending.askedAt) < 10 * 60 * 1000) {
+          // Try to parse a date from the patient's reply using Gemini
+          try {
+            const dateParseResp = await ai.models.generateContent({
+              model: "gemini-2.5-flash",
+              contents: [{ role: "user", parts: [{ text: `Today is ${today}. A patient said: "${originalText}". Extract the date they want their appointment. Return JSON: { "date": "YYYY-MM-DD" | null, "intelligible": true|false }. If no clear date can be inferred, set date to null.` }] }],
+              config: { responseMimeType: "application/json" },
+            });
+            let parsed: { date: string | null; intelligible: boolean } = { date: null, intelligible: false };
             try {
-              const aiResp = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: [{ role: "user", parts: [{ text: `You are a friendly WhatsApp assistant for Saivie, a women's reproductive health clinic in India. A patient named ${patient.name} sent this message: "${msg.text?.body || text}"\n\nThey currently have no upcoming appointment.\n\nRespond warmly and helpfully in 2-3 sentences. Suggest they call the clinic to book an appointment if relevant. End with "_Saivie Reproductive Intelligence_". Keep it brief and supportive.` }] }],
-              });
-              await whatsapp.sendTextMessage(patient.phone, aiResp.text || `Hi ${patient.name}! Please call us to schedule your appointment. 💜\n\n_Saivie Reproductive Intelligence_`);
-            } catch (_) {}
+              const raw = (dateParseResp.text || "{}").replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+              parsed = { ...parsed, ...JSON.parse(raw) };
+            } catch {}
+
+            if (parsed.date && parsed.date >= today) {
+              // Create the appointment
+              const typeMap: Record<string, string> = {
+                doctor: "Consultation",
+                nutritionist: "Nutrition Consultation",
+                blood_test: "Blood Test / Lab Work",
+              };
+              const allProviders = await storage.getProviders();
+              const provider = pending.type === "nutritionist"
+                ? allProviders.find(p => (p.specialization || "").toLowerCase().includes("nutri")) || allProviders[0]
+                : allProviders[0];
+
+              const newAppt = await storage.createAppointment({
+                patientId: patient.id,
+                providerId: provider?.id || null,
+                date: parsed.date,
+                time: "10:00",
+                type: typeMap[pending.type],
+                status: "Pending",
+              } as any);
+
+              pendingBookings.delete(formattedPhone);
+              const friendlyDate = new Date(parsed.date).toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+              await whatsapp.sendTextMessage(
+                patient.phone!,
+                `✅ *Appointment Request Received!*\n\nHi ${patient.name}, your *${pending.label}* has been requested for *${friendlyDate}*.\n\nThe clinic will confirm the exact time and send you a reminder. Reply *CONFIRM* once you receive your confirmation, or *CANCEL* to cancel.\n\n_Saivie Reproductive Intelligence_`
+              );
+              console.log(`[WhatsApp Booking] Created appt #${newAppt.id} for ${patient.name} on ${parsed.date}`);
+            } else {
+              await whatsapp.sendTextMessage(
+                patient.phone!,
+                `I couldn't quite catch the date, ${patient.name}. Could you please share your preferred date like this: *DD Month YYYY* (e.g. 15 June 2026)? 💜\n\n_Saivie Reproductive Intelligence_`
+              );
+            }
+          } catch (err: any) {
+            console.error("[WhatsApp Booking] Date parse error:", err.message);
           }
           continue;
         }
 
-        if (text === "CONFIRM") {
-          await storage.updateAppointment(next.id, { status: "confirmed" });
+        // ── QUICK BOOKING SHORTCUTS ──────────────────────────────────────
+        const upperText = text.toUpperCase();
+        const bookingShortcut: { type: "doctor" | "nutritionist" | "blood_test"; label: string } | null =
+          (upperText.includes("BOOK DOCTOR") || upperText.includes("BOOK CONSULTATION") || upperText === "BOOK")
+            ? { type: "doctor", label: "Doctor Consultation" }
+          : (upperText.includes("BOOK NUTRI") || upperText.includes("BOOK DIET"))
+            ? { type: "nutritionist", label: "Nutritionist Session" }
+          : (upperText.includes("BOOK LAB") || upperText.includes("BOOK BLOOD") || upperText.includes("BOOK TEST"))
+            ? { type: "blood_test", label: "Blood Test / Lab Work" }
+          : null;
+
+        if (bookingShortcut) {
+          pendingBookings.set(formattedPhone, { ...bookingShortcut, askedAt: Date.now() });
           await whatsapp.sendTextMessage(
             patient.phone!,
-            `✅ Confirmed! Your appointment on ${next.date} at ${next.time} is confirmed. See you then! 💜\n\n_Saivie Reproductive Intelligence_`
+            `Great, ${patient.name}! 📅 To book your *${bookingShortcut.label}*, please share your preferred date.\n\nYou can say something like:\n• *15 June 2026*\n• *Next Monday*\n• *This Friday*\n\n_Saivie Reproductive Intelligence_`
           );
-          console.log(`Appointment ${next.id} confirmed by patient ${patient.name} via WhatsApp`);
-        } else if (text === "CANCEL") {
-          await storage.updateAppointment(next.id, { status: "cancelled" });
-          await whatsapp.sendTextMessage(
-            patient.phone!,
-            `Your appointment on ${next.date} at ${next.time} has been cancelled. To reschedule, please call us or book online. We hope to see you soon. 💜\n\n_Saivie Reproductive Intelligence_`
-          );
-          console.log(`Appointment ${next.id} cancelled by patient ${patient.name} via WhatsApp`);
-        } else {
-          // AI virtual assistant — classify, detect urgency, respond using Gemini
-          try {
-            const originalText = msg.text?.body || text;
-            const meds = await storage.getMedications(patient.id);
-            const activeMeds = meds.filter(m => m.status === "active" || m.status === "Active" || !m.status).map(m => m.name);
-            const aiResp = await ai.models.generateContent({
-              model: "gemini-2.5-flash",
-              contents: [{
-                role: "user",
-                parts: [{
-                  text: `You are a helpful WhatsApp assistant for Saivie, a women's reproductive health clinic in India. A patient named ${patient.name} (Age: ${patient.age}, Next appointment: ${next.date} at ${next.time}) sent this message:\n\n"${originalText}"\n\nPatient's active medications: ${activeMeds.join(", ") || "None on record"}\n\nFirst, classify the message:\n- type: appointment_query | medication_question | symptom_query | result_query | general\n- urgent: true if message contains symptoms that need SAME DAY clinical attention (e.g. severe pain, heavy bleeding, fever >38.5°C, fetal movement change, chest pain, breathlessness) — false otherwise\n\nThen write a reply.\nRules:\n- Appointment queries: confirm their next appointment date/time\n- Medication questions: answer about their listed medications only; advise consulting doctor for dosage changes\n- Symptom queries: provide general supportive information; always recommend contacting the clinic if concerned\n- Never provide specific medical diagnoses\n- Keep response under 100 words, warm and supportive\n- End with "_Saivie Reproductive Intelligence_"\n- If urgent=true, start with "⚠️ *Please contact our clinic immediately or go to the nearest emergency room.*"\n\nReturn JSON: { "type": "...", "urgent": true|false, "reply": "..." }`,
-                }],
+          continue;
+        }
+
+        // ── AI VIRTUAL ASSISTANT ─────────────────────────────────────────
+        try {
+          const meds = await storage.getMedications(patient.id);
+          const activeMeds = meds.filter(m => m.status === "active" || m.status === "Active" || !m.status).map(m => m.name);
+          const nextApptInfo = next ? `${next.date} at ${next.time || "10:00"} (${next.type || "Consultation"})` : "No upcoming appointment";
+
+          const aiResp = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{
+              role: "user",
+              parts: [{
+                text: `You are a helpful WhatsApp assistant for Saivie, a women's reproductive health clinic in India.
+Patient: ${patient.name}, Age: ${patient.age}
+Next appointment: ${nextApptInfo}
+Active medications: ${activeMeds.join(", ") || "None on record"}
+
+Patient's message: "${originalText}"
+
+Classify and respond:
+- type: booking_request | reschedule_request | appointment_query | medication_question | symptom_query | result_query | general
+- urgent: true ONLY for same-day emergencies (severe pain, heavy bleeding, fever >38.5°C, fetal movement change, chest pain)
+- For booking_request: extract { requestedDate: "YYYY-MM-DD" | null, appointmentType: "doctor" | "nutritionist" | "blood_test" }
+- For reschedule_request: extract { newDate: "YYYY-MM-DD" | null } (today = ${today})
+- reply: warm, supportive WhatsApp message under 120 words. End with "_Saivie Reproductive Intelligence_"
+  - If booking_request with a date → confirm you'll process it
+  - If booking_request without a date → ask for their preferred date and mention the shortcuts: BOOK DOCTOR, BOOK NUTRITION, BOOK LAB
+  - If reschedule_request → confirm the change or ask for new date
+  - If urgent=true → start with "⚠️ *Please contact our clinic immediately.*"
+  - Never give medical diagnoses
+
+Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointmentType": null, "newDate": null, "reply": "..." }`,
               }],
-              config: { responseMimeType: "application/json" },
-            });
+            }],
+            config: { responseMimeType: "application/json" },
+          });
 
-            let classification: { type: string; urgent: boolean; reply: string } = {
-              type: "general",
-              urgent: false,
-              reply: `Thank you for your message, ${patient.name}! For queries, please call us. Your next appointment is on ${next.date} at ${next.time}. 💜\n\n_Saivie Reproductive Intelligence_`,
-            };
-            try {
-              const rawText = aiResp.text || "{}";
-              const cleaned = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-              classification = { ...classification, ...JSON.parse(cleaned) };
-            } catch {}
+          let cl: {
+            type: string; urgent: boolean;
+            requestedDate: string | null; appointmentType: string | null;
+            newDate: string | null; reply: string;
+          } = { type: "general", urgent: false, requestedDate: null, appointmentType: null, newDate: null, reply: `Thank you for your message, ${patient.name}! 💜 Your next appointment is ${nextApptInfo}.\n\n_Saivie Reproductive Intelligence_` };
+          try {
+            const raw = (aiResp.text || "{}").replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+            cl = { ...cl, ...JSON.parse(raw) };
+          } catch {}
 
-            await whatsapp.sendTextMessage(patient.phone!, classification.reply);
-            console.log(`[WhatsApp AI] type=${classification.type} urgent=${classification.urgent} patient=${patient.name}`);
+          // Handle booking intent from AI classification
+          if (cl.type === "booking_request") {
+            const apptType = (cl.appointmentType as any) || "doctor";
+            const labelMap: Record<string, string> = { doctor: "Doctor Consultation", nutritionist: "Nutritionist Session", blood_test: "Blood Test / Lab Work" };
+            const typeMap: Record<string, string> = { doctor: "Consultation", nutritionist: "Nutrition Consultation", blood_test: "Blood Test / Lab Work" };
 
-            // If urgent, create a clinical note to flag for staff review
-            if (classification.urgent) {
-              try {
-                await storage.createClinicalNote({
-                  patientId: patient.id,
-                  date: today,
-                  type: "alert",
-                  content: `⚠️ URGENT WhatsApp message from ${patient.name}: "${originalText.slice(0, 300)}"`,
-                  author: "WhatsApp AI",
-                  tags: ["urgent", "whatsapp", "needs-review"],
-                } as any);
-                console.log(`[WhatsApp AI] Urgent flag created for ${patient.name}`);
-              } catch (flagErr: any) {
-                console.error("[WhatsApp AI] Could not create urgent flag:", flagErr.message);
-              }
+            if (cl.requestedDate && cl.requestedDate >= today) {
+              const allProviders = await storage.getProviders();
+              const provider = apptType === "nutritionist"
+                ? allProviders.find(p => (p.specialization || "").toLowerCase().includes("nutri")) || allProviders[0]
+                : allProviders[0];
+              const newAppt = await storage.createAppointment({
+                patientId: patient.id,
+                providerId: provider?.id || null,
+                date: cl.requestedDate,
+                time: "10:00",
+                type: typeMap[apptType] || "Consultation",
+                status: "Pending",
+              } as any);
+              const friendlyDate = new Date(cl.requestedDate).toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+              await whatsapp.sendTextMessage(patient.phone!, `✅ *Appointment Request Received!*\n\nYour *${labelMap[apptType] || "appointment"}* has been requested for *${friendlyDate}*. The clinic will confirm the time and send a reminder.\n\n_Saivie Reproductive Intelligence_`);
+              console.log(`[WhatsApp AI Booking] Created appt #${newAppt.id} for ${patient.name}`);
+            } else {
+              // No date — set pending state and ask
+              pendingBookings.set(formattedPhone, { type: apptType as any, label: labelMap[apptType] || "appointment", askedAt: Date.now() });
+              await whatsapp.sendTextMessage(patient.phone!, cl.reply);
             }
-          } catch (aiErr: any) {
-            console.error("[WhatsApp AI] Failed to generate response:", aiErr.message);
+            continue;
           }
+
+          // Handle reschedule intent from AI classification
+          if (cl.type === "reschedule_request" && next) {
+            if (cl.newDate && cl.newDate >= today) {
+              await storage.updateAppointment(next.id, { date: cl.newDate, status: "Pending" });
+              const friendlyDate = new Date(cl.newDate).toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+              await whatsapp.sendTextMessage(patient.phone!, `✅ Done! Your appointment has been rescheduled to *${friendlyDate}*. We'll confirm the exact time shortly. 💜\n\n_Saivie Reproductive Intelligence_`);
+              console.log(`[WhatsApp AI Reschedule] Appt #${next.id} rescheduled to ${cl.newDate} for ${patient.name}`);
+            } else {
+              await whatsapp.sendTextMessage(patient.phone!, cl.reply);
+            }
+            continue;
+          }
+
+          // General AI reply
+          await whatsapp.sendTextMessage(patient.phone!, cl.reply);
+          console.log(`[WhatsApp AI] type=${cl.type} urgent=${cl.urgent} patient=${patient.name}`);
+
+          // Urgent clinical alert
+          if (cl.urgent) {
+            try {
+              await storage.createClinicalNote({
+                patientId: patient.id,
+                date: today,
+                type: "alert",
+                content: `⚠️ URGENT WhatsApp message from ${patient.name}: "${originalText.slice(0, 300)}"`,
+                author: "WhatsApp AI",
+                tags: ["urgent", "whatsapp", "needs-review"],
+              } as any);
+              console.log(`[WhatsApp AI] Urgent flag created for ${patient.name}`);
+            } catch (flagErr: any) {
+              console.error("[WhatsApp AI] Could not create urgent flag:", flagErr.message);
+            }
+          }
+        } catch (aiErr: any) {
+          console.error("[WhatsApp AI] Failed to generate response:", aiErr.message);
         }
       }
 
