@@ -6,27 +6,24 @@ import { Badge } from "@/components/ui/badge";
 import {
   Droplets, Scale, Activity, Pill,
   Plus, CheckCircle2, Circle, Trash2, Upload, FileText,
-  Image, X, Baby, ShieldCheck, AlertTriangle, Info
+  Image, X, ShieldCheck, AlertTriangle, Info, TrendingUp
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip
 } from "recharts";
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-function calcCurrentWeek(lmp: string | undefined): number {
+// ── Gestational week from LMP ─────────────────────────────────────────────────
+function getGestationalWeek(lmp?: string): number {
   if (!lmp) return 20;
-  return Math.min(40, Math.max(1, Math.floor((new Date().getTime() - new Date(lmp).getTime()) / (7 * 24 * 60 * 60 * 1000))));
+  return Math.max(4, Math.min(42, Math.floor((new Date().getTime() - new Date(lmp).getTime()) / (7 * 24 * 60 * 60 * 1000))));
 }
 
-// Healthy weight gain ranges (IOM 2009) by pre-pregnancy BMI
-function getGainRange(preWeight?: number, heightCm?: number) {
-  if (!preWeight || !heightCm) return { min: 11.5, max: 16 }; // normal BMI default
-  const h = heightCm / 100;
-  const bmi = preWeight / (h * h);
-  if (bmi < 18.5) return { min: 12.5, max: 18 };
-  if (bmi < 25) return { min: 11.5, max: 16 };
-  if (bmi < 30) return { min: 7, max: 11.5 };
-  return { min: 5, max: 9 };
+// Recommended total weight gain by pre-pregnancy BMI (IOM guidelines)
+function getWeightGainTarget(bmi?: number) {
+  if (!bmi || bmi < 18.5) return { min: 12.5, max: 18, label: "Underweight" };
+  if (bmi < 25) return { min: 11.5, max: 16, label: "Normal weight" };
+  if (bmi < 30) return { min: 7, max: 11.5, label: "Overweight" };
+  return { min: 5, max: 9, label: "Obese" };
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -45,8 +42,11 @@ export default function PregnancyTrackersTab({ patient, medications, patientId }
       {/* Section Switcher */}
       <div className="flex gap-2 bg-white/30 backdrop-blur-sm rounded-2xl p-1.5">
         {(["trackers", "records"] as const).map(s => (
-          <button key={s} onClick={() => setSection(s)}
-            className={`flex-1 text-xs font-semibold py-2 rounded-xl transition-all ${section === s ? "bg-white shadow text-pink-700" : "text-slate-500 hover:text-slate-700"}`}>
+          <button
+            key={s}
+            onClick={() => setSection(s)}
+            className={`flex-1 text-xs font-semibold py-2 rounded-xl transition-all ${section === s ? "bg-white shadow text-pink-700" : "text-slate-500 hover:text-slate-700"}`}
+          >
             {s === "trackers" ? "My Trackers" : "My Records"}
           </button>
         ))}
@@ -86,7 +86,6 @@ function WaterTracker({ patientId }: { patientId: number }) {
 
   const totalMl = logs.reduce((s: number, l: any) => s + (l.amountMl || 0), 0);
   const pct = Math.min(100, Math.round((totalMl / goal) * 100));
-  const ringColor = pct >= 100 ? "#10b981" : pct >= 60 ? "#3b82f6" : "#f59e0b";
 
   const addLog = useMutation({
     mutationFn: async (amountMl: number) => {
@@ -106,6 +105,9 @@ function WaterTracker({ patientId }: { patientId: number }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/water-logs?patientId=${patientId}&date=${today}`] }),
   });
 
+  const ringColor = pct >= 100 ? "#10b981" : pct >= 60 ? "#3b82f6" : "#f59e0b";
+  const statusColor = pct >= 100 ? "text-emerald-600" : pct >= 60 ? "text-blue-600" : "text-amber-600";
+
   return (
     <Card className="glass-panel border-blue-200/40 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/60 via-sky-50/30 to-white/40" />
@@ -119,7 +121,7 @@ function WaterTracker({ patientId }: { patientId: number }) {
             </div>
           </div>
           <div className="text-right">
-            <span className="text-2xl font-bold" style={{ color: ringColor }}>{totalMl}</span>
+            <span className={`text-2xl font-bold ${statusColor}`}>{totalMl}</span>
             <span className="text-xs text-slate-400 ml-1">/ {goal} ml</span>
           </div>
         </div>
@@ -183,8 +185,6 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [weight, setWeight] = useState("");
-  const currentWeek = calcCurrentWeek(patient?.lmp);
-  const gainRange = getGainRange(patient?.prePregnancyWeight, patient?.height);
 
   const { data: metrics = [] } = useQuery<any[]>({
     queryKey: [`/api/pregnancy-metrics?patientId=${patientId}`],
@@ -195,24 +195,23 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
   });
 
   const sorted = [...metrics].filter((m: any) => m.weight != null).sort((a: any, b: any) => a.week - b.week);
-  const first = sorted[0];
   const latest = sorted[sorted.length - 1];
-  const totalGain = first && latest ? +(latest.weight - first.weight).toFixed(1) : null;
-  const chartData = sorted.slice(-8).map((m: any) => ({ week: `W${m.week}`, weight: +m.weight }));
+  const chartData = sorted.slice(-8).map((m: any) => ({ week: `W${m.week}`, weight: m.weight }));
 
-  const gainStatus = (() => {
-    if (totalGain == null) return null;
-    if (totalGain < gainRange.min) return { label: "Below target", color: "text-amber-600 bg-amber-50 border-amber-200" };
-    if (totalGain > gainRange.max) return { label: "Above target", color: "text-rose-600 bg-rose-50 border-rose-200" };
-    return { label: "On track", color: "text-emerald-600 bg-emerald-50 border-emerald-200" };
-  })();
+  // Healthy gain indicator: compare latest weight to pre-pregnancy estimate
+  const prePregnancyWeight = patient?.weight || patient?.vitals?.weight;
+  const gainKg = latest && prePregnancyWeight ? (latest.weight - parseFloat(prePregnancyWeight)).toFixed(1) : null;
+  const gainTarget = patient?.bmi ? getWeightGainTarget(parseFloat(patient.bmi)) : getWeightGainTarget(undefined);
+  const currentWeek = getGestationalWeek(patient?.lmp);
+  const expectedGainAtWeek = gainTarget.min + ((gainTarget.max - gainTarget.min) / 2) * (currentWeek / 40);
 
   const addWeight = useMutation({
     mutationFn: async () => {
+      const week = getGestationalWeek(patient?.lmp);
       const r = await fetch("/api/pregnancy-metrics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId, week: currentWeek, weight: parseFloat(weight), enteredBy: "patient" }),
+        body: JSON.stringify({ patientId, week, weight: parseFloat(weight), enteredBy: "patient" }),
       });
       if (!r.ok) throw new Error((await r.json()).error);
       return r.json();
@@ -233,7 +232,7 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
             <div className="p-2 bg-amber-100 rounded-xl"><Scale className="w-4 h-4 text-amber-600" /></div>
             <div>
               <h3 className="text-sm font-semibold text-slate-800">Weight</h3>
-              <p className="text-[10px] text-muted-foreground">Track your pregnancy weight gain</p>
+              <p className="text-[10px] text-muted-foreground">Pregnancy weight tracker</p>
             </div>
           </div>
           <button onClick={() => setShowForm(!showForm)} className="p-1.5 bg-amber-100 hover:bg-amber-200 rounded-full transition-colors">
@@ -242,34 +241,39 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
         </div>
 
         {latest && (
-          <div className="flex items-center gap-3 flex-wrap bg-white/50 rounded-xl px-4 py-3">
+          <div className="flex items-center gap-3 bg-white/50 rounded-xl px-4 py-3">
             <div>
               <p className="text-[10px] text-slate-400 uppercase tracking-wider">Latest</p>
-              <p className="text-2xl font-bold text-amber-700">{latest.weight} <span className="text-sm font-normal text-slate-500">kg</span></p>
+              <p className="text-2xl font-bold text-amber-700">
+                {latest.weight} <span className="text-sm font-normal text-slate-500">kg</span>
+              </p>
+              <p className="text-[10px] text-slate-400">Week {latest.week}{latest.enteredBy === "patient" ? " · Self-reported" : ""}</p>
             </div>
-            <div className="h-8 w-px bg-slate-200" />
-            <div>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Week</p>
-              <p className="text-lg font-semibold text-slate-700">W{latest.week}</p>
-            </div>
-            {totalGain != null && gainStatus && (
+            {gainKg !== null && (
               <>
-                <div className="h-8 w-px bg-slate-200" />
+                <div className="h-10 w-px bg-slate-200" />
                 <div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wider">Total gain</p>
-                  <p className="text-lg font-semibold text-slate-700">{totalGain > 0 ? "+" : ""}{totalGain} kg</p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wider">Gained</p>
+                  <p className="text-lg font-semibold text-slate-700">+{gainKg} kg</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <TrendingUp className="w-3 h-3 text-slate-400" />
+                    <p className="text-[10px] text-slate-400">
+                      Expected ~{expectedGainAtWeek.toFixed(1)} kg by W{currentWeek}
+                    </p>
+                  </div>
                 </div>
-                <Badge className={`text-[10px] border ${gainStatus.color}`}>{gainStatus.label}</Badge>
               </>
             )}
           </div>
         )}
 
-        {gainRange && (
-          <p className="text-[10px] text-slate-400 px-1">
-            Recommended total gain: <span className="text-slate-600 font-medium">{gainRange.min}–{gainRange.max} kg</span>
+        {/* Healthy gain range */}
+        <div className="bg-amber-50 rounded-xl px-3 py-2 flex items-start gap-2">
+          <Info className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
+          <p className="text-[11px] text-amber-800">
+            Recommended total gain ({gainTarget.label}): <strong>{gainTarget.min}–{gainTarget.max} kg</strong> over 40 weeks.
           </p>
-        )}
+        </div>
 
         {showForm && (
           <div className="flex gap-2 items-center">
@@ -310,7 +314,6 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
   const [showForm, setShowForm] = useState(false);
   const [systolic, setSystolic] = useState("");
   const [diastolic, setDiastolic] = useState("");
-  const currentWeek = calcCurrentWeek(patient?.lmp);
 
   const { data: metrics = [] } = useQuery<any[]>({
     queryKey: [`/api/pregnancy-metrics?patientId=${patientId}`],
@@ -320,7 +323,9 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
     },
   });
 
-  const bpLogs = [...metrics].filter((m: any) => m.systolic != null && m.diastolic != null).sort((a: any, b: any) => b.week - a.week);
+  const bpLogs = [...metrics]
+    .filter((m: any) => m.systolic != null && m.diastolic != null)
+    .sort((a: any, b: any) => b.week - a.week);
   const latest = bpLogs[0];
 
   const getBPStatus = (sys: number, dia: number) => {
@@ -334,17 +339,20 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
 
   const addBP = useMutation({
     mutationFn: async () => {
+      const week = getGestationalWeek(patient?.lmp);
       const r = await fetch("/api/pregnancy-metrics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId, week: currentWeek, systolic: parseInt(systolic), diastolic: parseInt(diastolic), enteredBy: "patient" }),
+        body: JSON.stringify({ patientId, week, systolic: parseInt(systolic), diastolic: parseInt(diastolic), enteredBy: "patient" }),
       });
       if (!r.ok) throw new Error((await r.json()).error);
       return r.json();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [`/api/pregnancy-metrics?patientId=${patientId}`] });
-      setShowForm(false); setSystolic(""); setDiastolic("");
+      setShowForm(false);
+      setSystolic("");
+      setDiastolic("");
     },
   });
 
@@ -357,7 +365,7 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
             <div className="p-2 bg-rose-100 rounded-xl"><Activity className="w-4 h-4 text-rose-600" /></div>
             <div>
               <h3 className="text-sm font-semibold text-slate-800">Blood Pressure</h3>
-              <p className="text-[10px] text-muted-foreground">Systolic / Diastolic</p>
+              <p className="text-[10px] text-muted-foreground">Systolic / Diastolic mmHg</p>
             </div>
           </div>
           <button onClick={() => setShowForm(!showForm)} className="p-1.5 bg-rose-100 hover:bg-rose-200 rounded-full transition-colors">
@@ -366,15 +374,17 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
         </div>
 
         {latest && status && (
-          <div className="flex items-center gap-4 flex-wrap bg-white/50 rounded-xl px-4 py-3">
+          <div className="flex items-center gap-4 bg-white/50 rounded-xl px-4 py-3">
             <div>
               <p className="text-[10px] text-slate-400 uppercase tracking-wider">Latest Reading</p>
               <p className="text-2xl font-bold text-rose-700">
                 {latest.systolic}<span className="text-base text-slate-400 font-normal">/{latest.diastolic}</span>
               </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">mmHg • Week {latest.week}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                mmHg · Week {latest.week}{latest.enteredBy === "patient" ? " · Self-reported" : ""}
+              </p>
             </div>
-            <Badge className={`text-[10px] flex items-center gap-1 border ${status.color}`}>
+            <Badge className={`text-[10px] flex items-center gap-1 border ml-auto ${status.color}`}>
               {status.icon}{status.label}
             </Badge>
           </div>
@@ -391,9 +401,7 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
               className="flex-1 bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold px-3 py-2 rounded-xl transition-colors disabled:opacity-50">
               Save
             </button>
-            <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600">
-              <X className="w-4 h-4" />
-            </button>
+            <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
           </div>
         )}
 
@@ -451,7 +459,7 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
       });
       if (!r.ok) {
         const err = await r.json();
-        if (r.status === 409) return; // already taken — silently ignore
+        if (r.status === 409) return; // already taken — ignore
         throw new Error(err.error);
       }
       return r.json();
@@ -489,8 +497,10 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
 
         {activeMeds.length > 0 && (
           <div className="w-full bg-violet-100 rounded-full h-1.5">
-            <div className="bg-gradient-to-r from-violet-400 to-purple-500 h-1.5 rounded-full transition-all duration-500"
-              style={{ width: `${(takenCount / activeMeds.length) * 100}%` }} />
+            <div
+              className="bg-gradient-to-r from-violet-400 to-purple-500 h-1.5 rounded-full transition-all duration-500"
+              style={{ width: `${activeMeds.length > 0 ? (takenCount / activeMeds.length) * 100 : 0}%` }}
+            />
           </div>
         )}
 
@@ -501,9 +511,11 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
             {activeMeds.map((med: any) => {
               const taken = takenIds.has(med.id);
               return (
-                <button key={med.id}
+                <button
+                  key={med.id}
                   onClick={() => taken ? unmarkTaken.mutate(med.id) : markTaken.mutate(med.id)}
-                  className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 border transition-all text-left ${taken ? "bg-emerald-50 border-emerald-200" : "bg-white/60 border-white/60 hover:border-violet-200"}`}>
+                  className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 border transition-all text-left ${taken ? "bg-emerald-50 border-emerald-200" : "bg-white/60 border-white/60 hover:border-violet-200"}`}
+                >
                   <div className={`shrink-0 ${taken ? "text-emerald-500" : "text-slate-300"}`}>
                     {taken ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
                   </div>
@@ -531,12 +543,13 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
   const [docType, setDocType] = useState<"Diagnostic" | "Prescription">("Diagnostic");
   const [label, setLabel] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const currentTrimester = patient?.lmp
-    ? (calcCurrentWeek(patient.lmp) < 13 ? 1 : calcCurrentWeek(patient.lmp) < 27 ? 2 : 3)
+    ? (getGestationalWeek(patient.lmp) < 13 ? 1 : getGestationalWeek(patient.lmp) < 27 ? 2 : 3)
     : undefined;
 
+  // Patient-uploaded documents
   const { data: patientDocs = [] } = useQuery<any[]>({
     queryKey: [`/api/patient-documents?patientId=${patientId}`],
     queryFn: async () => {
@@ -545,7 +558,8 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
     },
   });
 
-  const { data: clinicDocs = [] } = useQuery<any[]>({
+  // Clinician-uploaded documents (read-only)
+  const { data: clinicianDocs = [] } = useQuery<any[]>({
     queryKey: [`/api/patients/${patientId}/documents`],
     queryFn: async () => {
       const r = await fetch(`/api/patients/${patientId}/documents`);
@@ -553,41 +567,46 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
     },
   });
 
-  // Merged and tagged
-  const allDiagnostic = [
-    ...patientDocs.filter((d: any) => d.docType === "Diagnostic").map((d: any) => ({ ...d, source: "patient" })),
-    ...clinicDocs.filter((d: any) => (d.type || "").toLowerCase().includes("diagn") || (d.type || "") === "").map((d: any) => ({ ...d, label: d.name || d.fileName, source: "clinic" })),
-  ];
-  const allPrescription = [
-    ...patientDocs.filter((d: any) => d.docType === "Prescription").map((d: any) => ({ ...d, source: "patient" })),
-    ...clinicDocs.filter((d: any) => (d.type || "").toLowerCase().includes("presc")).map((d: any) => ({ ...d, label: d.name || d.fileName, source: "clinic" })),
-  ];
-
   const uploadDoc = async (file: File) => {
-    setUploadError("");
-    if (file.size > 5 * 1024 * 1024) { setUploadError("File exceeds 5 MB limit."); return; }
-    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "image/heic", "image/heif"];
-    if (!allowed.includes(file.type)) { setUploadError("Unsupported file type. Use JPG, PNG, or PDF."); return; }
     setUploading(true);
+    setUploadError(null);
     try {
+      if (file.size > 5 * 1024 * 1024) { setUploadError("File must be under 5 MB."); setUploading(false); return; }
+      const allowedMime = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "image/heic", "image/heif"];
+      if (!allowedMime.includes(file.type)) { setUploadError("Unsupported file type. Use JPG, PNG, or PDF."); setUploading(false); return; }
+
       const reader = new FileReader();
       reader.onload = async (e) => {
-        const fileData = (e.target?.result as string).split(",")[1];
+        const dataUrl = e.target?.result as string;
+        const fileData = dataUrl.split(",")[1];
         const r = await fetch("/api/patient-documents", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            patientId, fileName: file.name, fileData, mimeType: file.type,
-            docType, trimester: currentTrimester, label: label || file.name,
+            patientId,
+            fileName: file.name,
+            fileData,
+            mimeType: file.type,
+            docType,
+            trimester: currentTrimester,
+            label: label || file.name,
             uploadedAt: new Date().toISOString(),
           }),
         });
-        if (!r.ok) { setUploadError((await r.json()).error || "Upload failed"); setUploading(false); return; }
-        qc.invalidateQueries({ queryKey: [`/api/patient-documents?patientId=${patientId}`] });
-        setLabel(""); setUploading(false);
+        if (r.ok) {
+          qc.invalidateQueries({ queryKey: [`/api/patient-documents?patientId=${patientId}`] });
+          setLabel("");
+        } else {
+          const err = await r.json();
+          setUploadError(err.error || "Upload failed");
+        }
+        setUploading(false);
       };
       reader.readAsDataURL(file);
-    } catch { setUploading(false); setUploadError("Upload failed. Please try again."); }
+    } catch (e: any) {
+      setUploadError(e.message);
+      setUploading(false);
+    }
   };
 
   const deleteDoc = useMutation({
@@ -595,8 +614,12 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
     onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/patient-documents?patientId=${patientId}`] }),
   });
 
+  const patientDiag = patientDocs.filter((d: any) => d.docType === "Diagnostic");
+  const patientPrx = patientDocs.filter((d: any) => d.docType === "Prescription");
+
   return (
     <div className="space-y-5 animate-in fade-in duration-500">
+      {/* Upload Section */}
       <Card className="glass-panel border-indigo-200/40 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 via-blue-50/30 to-white/40" />
         <CardContent className="relative p-5 z-10 space-y-4">
@@ -604,7 +627,7 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
             <div className="p-2 bg-indigo-100 rounded-xl"><Upload className="w-4 h-4 text-indigo-600" /></div>
             <div>
               <h3 className="text-sm font-semibold text-slate-800">Upload Report</h3>
-              <p className="text-[10px] text-muted-foreground">JPG, PNG or PDF · Max 5 MB</p>
+              <p className="text-[10px] text-muted-foreground">JPG, PNG, PDF · Max 5 MB</p>
             </div>
           </div>
 
@@ -620,31 +643,71 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
           <input placeholder="Label (e.g. Anomaly Scan W20)" value={label} onChange={e => setLabel(e.target.value)}
             className="w-full border border-indigo-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 bg-white/70" />
 
-          {uploadError && <p className="text-xs text-rose-600">{uploadError}</p>}
+          {uploadError && <p className="text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2">{uploadError}</p>}
 
           <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden"
             onChange={e => { const f = e.target.files?.[0]; if (f) uploadDoc(f); e.target.value = ""; }} />
 
           <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="w-full border-2 border-dashed border-indigo-200 hover:border-indigo-400 rounded-2xl py-4 flex flex-col items-center gap-2 transition-colors disabled:opacity-50">
+            className="w-full border-2 border-dashed border-indigo-200 hover:border-indigo-400 rounded-2xl py-4 flex flex-col items-center gap-2 transition-colors group disabled:opacity-50">
             {uploading
               ? <div className="w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-              : <Upload className="w-5 h-5 text-indigo-400" />}
+              : <Upload className="w-5 h-5 text-indigo-400 group-hover:text-indigo-600 transition-colors" />}
             <p className="text-xs text-slate-500">{uploading ? "Uploading…" : "Tap to choose file"}</p>
           </button>
         </CardContent>
       </Card>
 
-      {/* Unified Document Lists */}
-      <DocList title="Diagnostic Reports" icon={<FileText className="w-4 h-4 text-purple-600" />}
-        docs={allDiagnostic} onDelete={id => deleteDoc.mutate(id)} />
-      <DocList title="Prescriptions" icon={<Image className="w-4 h-4 text-blue-600" />}
-        docs={allPrescription} onDelete={id => deleteDoc.mutate(id)} />
+      {/* Clinician-uploaded docs (read-only) */}
+      {clinicianDocs.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <FileText className="w-4 h-4 text-slate-500" />
+            <h4 className="text-sm font-semibold text-slate-700">From Your Clinic</h4>
+            <Badge variant="outline" className="text-[10px] ml-auto">{clinicianDocs.length}</Badge>
+          </div>
+          <div className="space-y-2">
+            {clinicianDocs.map((doc: any) => (
+              <Card key={doc.id} className="glass-panel border-white/60">
+                <CardContent className="p-3 flex items-center gap-3">
+                  <div className="p-2 bg-slate-100 rounded-lg shrink-0">
+                    <FileText className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-700 truncate">{doc.name || doc.type || "Document"}</p>
+                    <p className="text-[10px] text-slate-400">
+                      {doc.date ? new Date(doc.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : ""}
+                      {doc.type ? ` · ${doc.type}` : ""}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] shrink-0 text-slate-400">Clinic</Badge>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
-      {allDiagnostic.length === 0 && allPrescription.length === 0 && (
-        <div className="text-center py-8">
-          <FileText className="w-10 h-10 text-slate-200 mx-auto mb-2" />
-          <p className="text-sm text-slate-400">No documents yet. Upload your first report above.</p>
+      {/* Patient-uploaded: Diagnostic */}
+      <DocList
+        title="My Diagnostic Reports"
+        icon={<FileText className="w-4 h-4 text-purple-600" />}
+        docs={patientDiag}
+        onDelete={id => deleteDoc.mutate(id)}
+      />
+
+      {/* Patient-uploaded: Prescriptions */}
+      <DocList
+        title="My Prescriptions"
+        icon={<Image className="w-4 h-4 text-blue-600" />}
+        docs={patientPrx}
+        onDelete={id => deleteDoc.mutate(id)}
+      />
+
+      {patientDocs.length === 0 && clinicianDocs.length === 0 && (
+        <div className="text-center py-8 text-slate-400">
+          <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">No documents yet. Upload your first report above.</p>
         </div>
       )}
     </div>
@@ -665,22 +728,19 @@ function DocList({ title, icon, docs, onDelete }: { title: string; icon: React.R
           <Card key={doc.id} className="glass-panel border-white/60">
             <CardContent className="p-3 flex items-center gap-3">
               <div className="p-2 bg-slate-100 rounded-lg shrink-0">
-                {(doc.mimeType || "").includes("image") ? <Image className="w-4 h-4 text-slate-500" /> : <FileText className="w-4 h-4 text-slate-500" />}
+                {doc.mimeType?.includes("image") ? <Image className="w-4 h-4 text-slate-500" /> : <FileText className="w-4 h-4 text-slate-500" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-700 truncate">{doc.label || doc.fileName || doc.name}</p>
-                <p className="text-[10px] text-slate-400 flex items-center gap-1.5">
-                  {doc.source === "clinic" && <Badge className="text-[9px] bg-blue-50 text-blue-600 border-blue-100 py-0">Clinic</Badge>}
-                  {doc.trimester && `T${doc.trimester}`}
+                <p className="text-sm font-medium text-slate-700 truncate">{doc.label || doc.fileName}</p>
+                <p className="text-[10px] text-slate-400">
+                  {doc.trimester ? `Trimester ${doc.trimester}` : ""}
                   {doc.trimester && doc.uploadedAt ? " · " : ""}
-                  {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : doc.createdAt ? new Date(doc.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : ""}
+                  {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : ""}
                 </p>
               </div>
-              {doc.source !== "clinic" && (
-                <button onClick={() => onDelete(doc.id)} className="text-slate-300 hover:text-rose-400 transition-colors shrink-0">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
+              <button onClick={() => onDelete(doc.id)} className="text-slate-300 hover:text-rose-400 transition-colors shrink-0">
+                <Trash2 className="w-4 h-4" />
+              </button>
             </CardContent>
           </Card>
         ))}

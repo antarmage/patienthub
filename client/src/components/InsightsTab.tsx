@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import WeekByWeekTimeline from "@/components/WeekByWeekTimeline";
+import { motion } from "framer-motion";
 import { 
   Sparkles, 
   TrendingUp, 
@@ -293,6 +293,13 @@ function PregnancyInsights({ patient }: { patient: any }) {
           </p>
         </div>
       </div>
+
+      {/* Week-by-Week Browsable Timeline */}
+      <div>
+        <h3 className="text-lg font-serif text-foreground px-1 mb-4">Week by Week Guide</h3>
+        <WeekByWeekTimeline patient={patient} compact />
+      </div>
+
     </div>
   );
 }
