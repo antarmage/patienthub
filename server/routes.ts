@@ -2384,80 +2384,95 @@ Be thorough — extract every medication mentioned including supplements and vit
       const allPatients = await storage.getPatients();
       const allVisits = await storage.getAllVisitHistory();
 
-      const enriched = appts
-        .filter(a => a.status !== "cancelled" && a.status !== "Cancelled")
-        .map(a => {
-          const patient = allPatients.find(p => p.id === a.patientId);
-          if (!patient) return null;
+      interface TriageRow {
+        appointmentId: number;
+        patientId: number;
+        patientName: string;
+        patientType: string | null;
+        time: string;
+        date: string;
+        status: string | null;
+        visitMode: string | null;
+        riskLevel: string;
+        riskScore: number;
+        triageScore: number;
+        triageReason: string;
+        daysSinceVisit: number | null;
+        gestWeeks: number | null;
+      }
 
-          const riskScore = (patient as any).riskScore as any;
-          const riskLevel = riskScore?.level || "Low";
-          const riskNum = riskScore?.score || 0;
+      const enriched: TriageRow[] = [];
+      for (const a of appts.filter(a => a.status !== "cancelled" && a.status !== "Cancelled")) {
+        const patient = allPatients.find(p => p.id === a.patientId);
+        if (!patient) continue;
 
-          // Days since last visit
-          const patientVisits = allVisits.filter(v => v.patientId === patient.id);
-          const lastVisitDate = patientVisits.length > 0
-            ? patientVisits.sort((x, y) => y.date.localeCompare(x.date))[0].date
-            : null;
-          const daysSinceVisit = lastVisitDate
-            ? Math.floor((Date.now() - new Date(lastVisitDate).getTime()) / (1000 * 60 * 60 * 24))
-            : 999;
+        const riskScore = (patient as any).riskScore as { level?: string; score?: number; factors?: { factor: string }[] } | undefined;
+        const riskLevel = riskScore?.level || "Low";
+        const riskNum = riskScore?.score || 0;
 
-          // Gestational week if pregnant
-          const lmpDate = patient.lmp ? new Date(patient.lmp) : null;
-          const gestWeeks = lmpDate
-            ? Math.floor((Date.now() - lmpDate.getTime()) / (1000 * 60 * 60 * 24 * 7))
-            : null;
+        // Days since last visit
+        const patientVisits = allVisits.filter(v => v.patientId === patient.id);
+        const lastVisitDate = patientVisits.length > 0
+          ? patientVisits.sort((x, y) => y.date.localeCompare(x.date))[0].date
+          : null;
+        const daysSinceVisit = lastVisitDate
+          ? Math.floor((Date.now() - new Date(lastVisitDate).getTime()) / (1000 * 60 * 60 * 24))
+          : 999;
 
-          // Triage score: risk (0-100) + overdue bonus + trimester urgency
-          let triageScore = riskNum;
-          if (daysSinceVisit > 30) triageScore += 20;
-          if (daysSinceVisit > 60) triageScore += 10;
-          if (gestWeeks !== null && (gestWeeks >= 36 || gestWeeks <= 10)) triageScore += 15;
+        // Gestational week if pregnant
+        const lmpDate = patient.lmp ? new Date(patient.lmp) : null;
+        const gestWeeks = lmpDate
+          ? Math.floor((Date.now() - lmpDate.getTime()) / (1000 * 60 * 60 * 24 * 7))
+          : null;
 
-          // One-line triage reason
-          const reasons: string[] = [];
-          if (riskLevel === "Critical" || riskLevel === "High") reasons.push(`${riskLevel} risk`);
-          if (daysSinceVisit > 30) reasons.push(`${daysSinceVisit}d since last visit`);
-          if (gestWeeks !== null) reasons.push(`${gestWeeks}w pregnant`);
-          if (patient.bp) {
-            const sys = parseInt((patient.bp || "").split("/")[0]);
-            if (!isNaN(sys) && sys >= 140) reasons.push("BP elevated");
-          }
-          if (riskScore?.factors?.[0]?.factor) reasons.push(riskScore.factors[0].factor);
+        // Triage score: risk (0-100) + overdue bonus + trimester urgency
+        let triageScore = riskNum;
+        if (daysSinceVisit > 30) triageScore += 20;
+        if (daysSinceVisit > 60) triageScore += 10;
+        if (gestWeeks !== null && (gestWeeks >= 36 || gestWeeks <= 10)) triageScore += 15;
 
-          return {
-            appointmentId: a.id,
-            patientId: patient.id,
-            patientName: patient.name,
-            patientType: patient.type,
-            time: a.time,
-            date: a.date,
-            status: a.status,
-            visitMode: a.visitMode,
-            riskLevel,
-            riskScore: riskNum,
-            triageScore,
-            triageReason: reasons.slice(0, 2).join(", ") || "Routine visit",
-            daysSinceVisit: daysSinceVisit === 999 ? null : daysSinceVisit,
-            gestWeeks,
-          };
-        })
-        .filter(Boolean)
-        .sort((a: any, b: any) => b.triageScore - a.triageScore);
+        // One-line triage reason
+        const reasons: string[] = [];
+        if (riskLevel === "Critical" || riskLevel === "High") reasons.push(`${riskLevel} risk`);
+        if (daysSinceVisit > 30) reasons.push(`${daysSinceVisit}d since last visit`);
+        if (gestWeeks !== null) reasons.push(`${gestWeeks}w pregnant`);
+        if (patient.bp) {
+          const sys = parseInt((patient.bp || "").split("/")[0]);
+          if (!isNaN(sys) && sys >= 140) reasons.push("BP elevated");
+        }
+        if (riskScore?.factors?.[0]?.factor) reasons.push(riskScore.factors[0].factor);
+
+        enriched.push({
+          appointmentId: a.id,
+          patientId: patient.id,
+          patientName: patient.name,
+          patientType: patient.type ?? null,
+          time: a.time,
+          date: a.date,
+          status: a.status ?? null,
+          visitMode: a.visitMode ?? null,
+          riskLevel,
+          riskScore: riskNum,
+          triageScore,
+          triageReason: reasons.slice(0, 2).join(", ") || "Routine visit",
+          daysSinceVisit: daysSinceVisit === 999 ? null : daysSinceVisit,
+          gestWeeks,
+        });
+      }
+      enriched.sort((a, b) => b.triageScore - a.triageScore);
 
       appendAuditLog({
         event: "triage_run",
         date: today,
         appointmentCount: enriched.length,
-        topPatient: enriched[0]?.patientName || null,
-        topScore: enriched[0]?.triageScore || null,
+        topPatient: enriched[0]?.patientName ?? null,
+        topScore: enriched[0]?.triageScore ?? null,
       });
 
       // Stamp triage scores onto appointment records for retrospective querying
       const now = new Date().toISOString();
       const stampResults = await Promise.allSettled(
-        (enriched as any[]).map(item =>
+        enriched.map(item =>
           storage.updateAppointment(item.appointmentId, {
             triageScore: item.triageScore,
             triageReason: item.triageReason,
@@ -2467,7 +2482,7 @@ Be thorough — extract every medication mentioned including supplements and vit
       );
       stampResults.forEach((result, i) => {
         if (result.status === "rejected") {
-          console.error(`[triage] Failed to stamp score for appt ${(enriched as any[])[i]?.appointmentId}:`, result.reason?.message);
+          console.error(`[triage] Failed to stamp score for appt ${enriched[i]?.appointmentId}:`, result.reason?.message);
         }
       });
 
