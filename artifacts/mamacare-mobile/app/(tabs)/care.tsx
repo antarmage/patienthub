@@ -1,107 +1,475 @@
 import React, { useState, useCallback } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
-import { CareCard } from "@/components/CareCard";
-import { getAppointments, getMedicines, getTodayMedicineStats, Appointment, Medicine } from "@/utils/careStorage";
-import { COLORS, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
+import {
+  getAppointments,
+  getMedicines,
+  getTodayMedicineStats,
+  Appointment,
+  Medicine,
+} from "@/utils/careStorage";
+
+interface CareTeamMember {
+  id: string;
+  name: string;
+  image: string | null;
+  color: string;
+}
+
+const careTeam: CareTeamMember[] = [
+  { id: "1", name: "Dr. Smith", image: null, color: "#F5F3FF" },
+  { id: "2", name: "Nurse Joy", image: null, color: "#FCE7F3" },
+];
 
 export default function CareScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const router = useRouter();
-  const [nextAppt, setNextAppt] = useState<Appointment | null>(null);
-  const [medicines, setMedicines] = useState<Medicine[]>([]);
-  const [stats, setStats] = useState({ total: 0, taken: 0, pending: 0 });
 
-  useFocusEffect(useCallback(() => { loadData(); }, []));
+  const [nextAppointment, setNextAppointment] = useState<Appointment | null>(null);
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [medicineStats, setMedicineStats] = useState({ total: 0, taken: 0, pending: 0 });
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const loadData = async () => {
-    const [appts, meds, s] = await Promise.all([getAppointments(), getMedicines(), getTodayMedicineStats()]);
-    const upcoming = appts.filter(a => new Date(a.dateTime) > new Date()).sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())[0];
-    setNextAppt(upcoming || null);
-    setMedicines(meds.slice(0, 3));
-    setStats(s);
+    try {
+      const [appointments, meds, stats] = await Promise.all([
+        getAppointments(),
+        getMedicines(),
+        getTodayMedicineStats(),
+      ]);
+
+      const upcoming = appointments
+        .filter(a => new Date(a.dateTime) > new Date())
+        .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())[0];
+      setNextAppointment(upcoming || null);
+      setMedicines(meds.slice(0, 3));
+      setMedicineStats(stats);
+    } catch (error) {
+      console.error("Failed to load care data:", error);
+    }
   };
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top + Spacing.lg;
+  const formatAppointmentDate = (dateTime: string) => {
+    const date = new Date(dateTime);
+    const endTime = new Date(date.getTime() + 30 * 60000);
+    return {
+      day: date.getDate(),
+      month: date.toLocaleDateString("en-US", { month: "short" }).toUpperCase(),
+      startTime: date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+      endTime: endTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+    };
+  };
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={{ paddingTop: topPad, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-      <View style={{ paddingHorizontal: Spacing.lg }}>
-        <ThemedText type="h2" style={styles.title}>Care Plan</ThemedText>
-        <ThemedText type="small" style={styles.subtitle}>Your health, organised</ThemedText>
-
-        {/* Next appointment */}
-        <View style={styles.sectionHeader}>
-          <ThemedText type="h4">Next Appointment</ThemedText>
-          <Pressable onPress={() => router.push("/(trackers)/appointments")}>
-            <Feather name="plus" size={20} color={COLORS.primary} />
-          </Pressable>
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={{
+          paddingTop: insets.top + Spacing.xl,
+          paddingBottom: tabBarHeight + Spacing["2xl"],
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <ThemedText style={styles.title}>Care Plan</ThemedText>
+          <ThemedText style={styles.subtitle}>Manage appointments & team</ThemedText>
         </View>
 
-        {nextAppt ? (
-          <Pressable style={[styles.apptCard, Shadows.card]} onPress={() => router.push("/(trackers)/appointments")}>
-            <View style={[styles.apptDate, { backgroundColor: COLORS.lavender }]}>
-              <ThemedText type="h3" style={{ color: COLORS.primary, fontWeight: "700" }}>{new Date(nextAppt.dateTime).getDate()}</ThemedText>
-              <ThemedText type="small" style={{ color: COLORS.primary }}>{new Date(nextAppt.dateTime).toLocaleDateString("en-US", { month: "short" }).toUpperCase()}</ThemedText>
-            </View>
-            <View style={{ flex: 1 }}>
-              <ThemedText type="h4">{nextAppt.doctorName}</ThemedText>
-              <ThemedText type="small" style={{ color: COLORS.textMuted }}>{nextAppt.clinicName} · {new Date(nextAppt.dateTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</ThemedText>
-            </View>
-          </Pressable>
-        ) : (
-          <Pressable style={[styles.addCard, Shadows.card]} onPress={() => router.push("/(trackers)/appointments")}>
-            <Feather name="plus-circle" size={20} color={COLORS.primary} />
-            <ThemedText type="body" style={{ color: COLORS.primary }}>Add Appointment</ThemedText>
-          </Pressable>
-        )}
-
-        {/* Medicines */}
-        <View style={styles.sectionHeader}>
-          <ThemedText type="h4">Medicines Today</ThemedText>
-          <ThemedText type="small" style={{ color: COLORS.textMuted }}>{stats.taken}/{stats.total} taken</ThemedText>
-        </View>
-
-        {medicines.length > 0 ? medicines.map(m => (
-          <View key={m.id} style={[styles.medItem, Shadows.card]}>
-            <View style={[styles.medIcon, { backgroundColor: COLORS.softPurple }]}>
-              <Feather name="package" size={16} color={COLORS.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <ThemedText type="h4">{m.name}</ThemedText>
-              <ThemedText type="small" style={{ color: COLORS.textMuted }}>{m.dosage} · {m.frequency}</ThemedText>
-            </View>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionTitle}>Next Appointment</ThemedText>
+            <Pressable
+              style={styles.addButton}
+              onPress={() => router.push("/(trackers)/appointments")}
+            >
+              <Feather name="plus" size={14} color="#6C63FF" />
+              <ThemedText style={styles.addButtonText}>New</ThemedText>
+            </Pressable>
           </View>
-        )) : (
-          <Pressable style={[styles.addCard, Shadows.card]} onPress={() => router.push("/(trackers)/medicines")}>
-            <Feather name="plus-circle" size={20} color={COLORS.primary} />
-            <ThemedText type="body" style={{ color: COLORS.primary }}>Add Medicine</ThemedText>
-          </Pressable>
-        )}
 
-        {/* Trackers */}
-        <ThemedText type="h4" style={[styles.sectionHeader, { marginTop: Spacing.xl }]}>Self-Trackers</ThemedText>
-        <CareCard title="Medicines" subtitle="Track your daily medications" icon="package" iconBg={COLORS.softPurple} iconColor={COLORS.primary} badge={stats.pending > 0 ? String(stats.pending) : undefined} onPress={() => router.push("/(trackers)/medicines")} />
-        <CareCard title="Water Intake" subtitle="Stay hydrated daily" icon="droplet" iconBg={COLORS.lightBlue} iconColor="#3B82F6" onPress={() => router.push("/(trackers)/water")} />
-        <CareCard title="Weight" subtitle="Monitor your weight gain" icon="activity" iconBg={COLORS.softGreen} iconColor={COLORS.success} onPress={() => router.push("/(trackers)/weight")} />
-        <CareCard title="Blood Pressure" subtitle="Track your BP readings" icon="heart" iconBg={COLORS.softPink} iconColor="#EC4899" onPress={() => router.push("/(trackers)/bp")} />
-        <CareCard title="Appointments" subtitle="Manage your schedule" icon="calendar" iconBg={COLORS.softAmber} iconColor={COLORS.warning} onPress={() => router.push("/(trackers)/appointments")} />
-      </View>
-    </ScrollView>
+          {nextAppointment ? (
+            <View style={styles.appointmentCard}>
+              <View style={styles.appointmentTop}>
+                <View style={styles.appointmentDateBadge}>
+                  <ThemedText style={styles.appointmentDay}>
+                    {formatAppointmentDate(nextAppointment.dateTime).day}
+                  </ThemedText>
+                  <ThemedText style={styles.appointmentMonth}>
+                    {formatAppointmentDate(nextAppointment.dateTime).month}
+                  </ThemedText>
+                </View>
+                <View style={styles.appointmentDetails}>
+                  <ThemedText style={styles.appointmentTitle}>
+                    Routine Checkup
+                  </ThemedText>
+                  <ThemedText style={styles.appointmentDoctor}>
+                    {nextAppointment.doctorName} · OBGYN
+                  </ThemedText>
+                  <View style={styles.appointmentTimeRow}>
+                    <Feather name="clock" size={12} color={COLORS.textMuted} />
+                    <ThemedText style={styles.appointmentTime}>
+                      {formatAppointmentDate(nextAppointment.dateTime).startTime} - {formatAppointmentDate(nextAppointment.dateTime).endTime}
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.appointmentButtons}>
+                <Pressable style={styles.rescheduleButton}>
+                  <ThemedText style={styles.rescheduleButtonText}>Reschedule</ThemedText>
+                </Pressable>
+                <Pressable style={styles.detailsButton}>
+                  <ThemedText style={styles.detailsButtonText}>Details</ThemedText>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.emptyCard}>
+              <Feather name="calendar" size={24} color={COLORS.textMuted} />
+              <ThemedText style={styles.emptyText}>No upcoming appointments</ThemedText>
+              <Pressable
+                style={styles.emptyButton}
+                onPress={() => router.push("/(trackers)/appointments")}
+              >
+                <ThemedText style={styles.emptyButtonText}>Add Appointment</ThemedText>
+              </Pressable>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>My Care Team</ThemedText>
+          <View style={styles.careTeamRow}>
+            {careTeam.map((member) => (
+              <View key={member.id} style={styles.careTeamMember}>
+                <View style={[styles.careTeamAvatar, { backgroundColor: member.color }]}>
+                  <Feather name="user" size={24} color={member.color === "#F5F3FF" ? "#6C63FF" : "#EC4899"} />
+                </View>
+                <ThemedText style={styles.careTeamName}>{member.name}</ThemedText>
+              </View>
+            ))}
+            <Pressable style={styles.careTeamMember}>
+              <View style={styles.addTeamMember}>
+                <Feather name="plus" size={20} color="#9CA3AF" />
+              </View>
+              <ThemedText style={styles.careTeamNameMuted}>Add</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionTitle}>Daily Intake</ThemedText>
+            <Pressable onPress={() => router.push("/(trackers)/medicines")}>
+              <ThemedText style={styles.viewAllText}>View All</ThemedText>
+            </Pressable>
+          </View>
+
+          {medicines.length > 0 ? (
+            medicines.map((medicine, index) => (
+              <View key={medicine.id} style={styles.medicineCard}>
+                <View style={styles.medicineIcon}>
+                  <Feather name="circle" size={16} color={COLORS.primary} />
+                </View>
+                <View style={styles.medicineDetails}>
+                  <ThemedText style={styles.medicineName}>{medicine.name}</ThemedText>
+                  <ThemedText style={styles.medicineDosage}>
+                    {medicine.dosage} · {medicine.frequency}
+                  </ThemedText>
+                </View>
+                <View style={[
+                  styles.medicineStatus,
+                  { backgroundColor: index === 1 ? "#DCFCE7" : "#F3F4F6" }
+                ]}>
+                  <ThemedText style={[
+                    styles.medicineStatusText,
+                    { color: index === 1 ? "#16A34A" : "#6B7280" }
+                  ]}>
+                    {index === 1 ? "Taken" : "Pending"}
+                  </ThemedText>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyCard}>
+              <Feather name="heart" size={24} color={COLORS.textMuted} />
+              <ThemedText style={styles.emptyText}>No medicines added</ThemedText>
+              <Pressable
+                style={styles.emptyButton}
+                onPress={() => router.push("/(trackers)/medicines")}
+              >
+                <ThemedText style={styles.emptyButtonText}>Add Medicine</ThemedText>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#FAFAFC" },
-  title: { marginBottom: 2 },
-  subtitle: { color: COLORS.textMuted, marginBottom: Spacing.xl },
-  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md, marginTop: Spacing.lg },
-  apptCard: { flexDirection: "row", alignItems: "center", gap: Spacing.md, backgroundColor: "#FFF", borderRadius: BorderRadius.xl, padding: Spacing.lg, marginBottom: Spacing.md },
-  apptDate: { width: 56, height: 56, borderRadius: BorderRadius.md, alignItems: "center", justifyContent: "center" },
-  addCard: { flexDirection: "row", gap: Spacing.sm, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.lavender, borderRadius: BorderRadius.xl, padding: Spacing.lg, marginBottom: Spacing.md },
-  medItem: { flexDirection: "row", alignItems: "center", gap: Spacing.md, backgroundColor: "#FFF", borderRadius: BorderRadius.xl, padding: Spacing.lg, marginBottom: Spacing.sm },
-  medIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  container: {
+    flex: 1,
+    backgroundColor: "#FAFAFC",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.lg,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: "600",
+    color: COLORS.textPrimary,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  section: {
+    paddingHorizontal: Spacing.xl,
+    marginBottom: Spacing.xl,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: COLORS.textPrimary,
+  },
+  addButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    backgroundColor: "#F5F3FF",
+    borderRadius: BorderRadius.full,
+  },
+  addButtonText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#6C63FF",
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: "500",
+  },
+  appointmentCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  appointmentTop: {
+    flexDirection: "row",
+    marginBottom: Spacing.lg,
+  },
+  appointmentDateBadge: {
+    width: 56,
+    height: 56,
+    backgroundColor: "#F5F3FF",
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.md,
+  },
+  appointmentDay: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#6C63FF",
+    lineHeight: 22,
+  },
+  appointmentMonth: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#6C63FF",
+    letterSpacing: 0.5,
+  },
+  appointmentDetails: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  appointmentTitle: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: COLORS.textPrimary,
+    marginBottom: 2,
+  },
+  appointmentDoctor: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: 6,
+  },
+  appointmentTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  appointmentTime: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+  },
+  appointmentButtons: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  rescheduleButton: {
+    flex: 1,
+    backgroundColor: "#6C63FF",
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  rescheduleButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  detailsButton: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  detailsButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.textPrimary,
+  },
+  emptyCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: Spacing.xl,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+  },
+  emptyText: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  emptyButton: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    backgroundColor: "#F5F3FF",
+    borderRadius: BorderRadius.full,
+  },
+  emptyButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: COLORS.primary,
+  },
+  careTeamRow: {
+    flexDirection: "row",
+    marginTop: Spacing.md,
+    gap: Spacing.xl,
+  },
+  careTeamMember: {
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  careTeamAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addTeamMember: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  careTeamName: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: COLORS.textPrimary,
+  },
+  careTeamNameMuted: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: COLORS.textMuted,
+  },
+  medicineCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: Spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  medicineIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F5F3FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.md,
+  },
+  medicineDetails: {
+    flex: 1,
+  },
+  medicineName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: COLORS.textPrimary,
+  },
+  medicineDosage: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  medicineStatus: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  medicineStatusText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
 });

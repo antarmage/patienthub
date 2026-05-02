@@ -56,6 +56,10 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "@react-native-community/datetimepicker": "^9.1.0",
+    "@react-native-community/slider": "^5.2.0",
+    "@react-navigation/bottom-tabs": "^7.15.11",
+    "@react-navigation/elements": "^2.9.15",
     "expo-document-picker": "^14.0.8",
     "expo-notifications": "^0.32.17"
   }

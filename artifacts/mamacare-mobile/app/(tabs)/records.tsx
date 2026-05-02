@@ -1,94 +1,338 @@
 import React, { useState, useCallback } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Platform } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  TextInput,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
-import { CareCard } from "@/components/CareCard";
+import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
 import { getDiagnostics, Diagnostic } from "@/utils/careStorage";
-import { COLORS, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
-const categories = [
-  { id: "lab", title: "Lab Results", icon: "edit-3" as const, bg: "#EFF6FF", color: "#3B82F6" },
-  { id: "ultrasound", title: "Ultrasounds", icon: "image" as const, bg: "#F5F3FF", color: "#8B5CF6" },
-  { id: "vaccines", title: "Vaccines", icon: "shield" as const, bg: "#ECFDF5", color: "#10B981" },
-  { id: "insurance", title: "Insurance", icon: "file-text" as const, bg: "#F3F4F6", color: "#6B7280" },
+interface CategoryItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Feather.glyphMap;
+  iconBg: string;
+  iconColor: string;
+}
+
+const categories: CategoryItem[] = [
+  {
+    id: "lab",
+    title: "Lab Results",
+    subtitle: "4 New Files",
+    icon: "edit-3",
+    iconBg: "#EFF6FF",
+    iconColor: "#3B82F6",
+  },
+  {
+    id: "ultrasound",
+    title: "Ultrasounds",
+    subtitle: "8 Images",
+    icon: "image",
+    iconBg: "#F5F3FF",
+    iconColor: "#8B5CF6",
+  },
+  {
+    id: "vaccines",
+    title: "Vaccines",
+    subtitle: "Up to date",
+    icon: "edit-2",
+    iconBg: "#ECFDF5",
+    iconColor: "#10B981",
+  },
+  {
+    id: "insurance",
+    title: "Insurance",
+    subtitle: "Active ID",
+    icon: "shield",
+    iconBg: "#F3F4F6",
+    iconColor: "#6B7280",
+  },
 ];
+
+interface RecentDocument {
+  id: string;
+  title: string;
+  date: string;
+  icon: keyof typeof Feather.glyphMap;
+  iconBg: string;
+  iconColor: string;
+}
 
 export default function RecordsScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const router = useRouter();
-  const [recentDocs, setRecentDocs] = useState<Diagnostic[]>([]);
 
-  useFocusEffect(useCallback(() => { loadData(); }, []));
+  const [searchQuery, setSearchQuery] = useState("");
+  const [recentDocs, setRecentDocs] = useState<RecentDocument[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, []),
+  );
 
   const loadData = async () => {
-    const diags = await getDiagnostics();
-    setRecentDocs(diags.slice(0, 5));
+    try {
+      const diagnostics = await getDiagnostics();
+      const docs: RecentDocument[] = diagnostics.slice(0, 5).map((d, i) => ({
+        id: d.id,
+        title:
+          d.type === "blood"
+            ? "Blood Test Results (CBC)"
+            : d.type === "usg"
+              ? "Growth Scan Report"
+              : "Medical Report",
+        date: new Date(d.date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+        icon: i % 2 === 0 ? "file-text" : "image",
+        iconBg: i % 2 === 0 ? "#FEF3C7" : "#F5F3FF",
+        iconColor: i % 2 === 0 ? "#F59E0B" : "#8B5CF6",
+      }));
+
+      if (docs.length === 0) {
+        setRecentDocs([
+          {
+            id: "1",
+            title: "Blood Test Results (CBC)",
+            date: "Oct 10, 2030",
+            icon: "file-text",
+            iconBg: "#FEF3C7",
+            iconColor: "#F59E0B",
+          },
+          {
+            id: "2",
+            title: "Growth Scan Report",
+            date: "Oct 03, 2030",
+            icon: "image",
+            iconBg: "#F5F3FF",
+            iconColor: "#8B5CF6",
+          },
+        ]);
+      } else {
+        setRecentDocs(docs);
+      }
+    } catch (error) {
+      console.error("Failed to load records:", error);
+    }
   };
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top + Spacing.lg;
-
   return (
-    <ScrollView style={styles.root} contentContainerStyle={{ paddingTop: topPad, paddingBottom: 100, paddingHorizontal: Spacing.lg }} showsVerticalScrollIndicator={false}>
-      <ThemedText type="h2" style={styles.title}>Medical Records</ThemedText>
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={{
+          paddingTop: insets.top + Spacing.xl,
+          paddingBottom: tabBarHeight + Spacing["2xl"],
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <ThemedText style={styles.title}>Medical Records</ThemedText>
+        </View>
 
-      {/* Categories */}
-      <View style={styles.catGrid}>
-        {categories.map(c => (
-          <Pressable key={c.id} style={[styles.catCard, Shadows.card]} onPress={() => router.push("/(trackers)/diagnostics")}>
-            <View style={[styles.catIcon, { backgroundColor: c.bg }]}>
-              <Feather name={c.icon} size={22} color={c.color} />
-            </View>
-            <ThemedText type="small" style={styles.catLabel}>{c.title}</ThemedText>
-          </Pressable>
-        ))}
-      </View>
-
-      {/* Recent */}
-      <View style={styles.sectionHeader}>
-        <ThemedText type="h4">Recent Documents</ThemedText>
-        <Pressable onPress={() => router.push("/(trackers)/diagnostics")}>
-          <ThemedText type="small" style={{ color: COLORS.primary }}>View All</ThemedText>
-        </Pressable>
-      </View>
-
-      {recentDocs.length > 0 ? recentDocs.map(d => (
-        <View key={d.id} style={[styles.docItem, Shadows.card]}>
-          <View style={[styles.docIcon, { backgroundColor: d.type === "blood" ? "#EFF6FF" : d.type === "usg" ? "#F5F3FF" : "#ECFDF5" }]}>
-            <Feather name={d.type === "blood" ? "droplet" : d.type === "usg" ? "image" : "file-text"} size={18} color={d.type === "blood" ? "#3B82F6" : d.type === "usg" ? "#8B5CF6" : "#10B981"} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <ThemedText type="h4">{d.fileName}</ThemedText>
-            <ThemedText type="small" style={{ color: COLORS.textMuted }}>{new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</ThemedText>
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Feather name="search" size={18} color={COLORS.textMuted} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search labs, scans, reports..."
+              placeholderTextColor={COLORS.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
           </View>
         </View>
-      )) : (
-        <View style={[styles.emptyCard, Shadows.card]}>
-          <Feather name="folder" size={32} color={COLORS.textMuted} />
-          <ThemedText type="body" style={{ color: COLORS.textMuted, marginTop: Spacing.md }}>No documents yet</ThemedText>
-          <Pressable style={styles.addBtn} onPress={() => router.push("/(trackers)/diagnostics")}>
-            <ThemedText type="small" style={{ color: COLORS.primary, fontWeight: "600" }}>Upload a document</ThemedText>
-          </Pressable>
-        </View>
-      )}
 
-      <CareCard title="Upload Report" subtitle="Add your latest test results" icon="upload" iconBg={COLORS.lavender} iconColor={COLORS.primary} onPress={() => router.push("/(trackers)/diagnostics")} />
-      <CareCard title="Prescriptions" subtitle="Your medication prescriptions" icon="file-text" iconBg={COLORS.softAmber} iconColor={COLORS.warning} onPress={() => router.push("/(trackers)/diagnostics")} />
-    </ScrollView>
+        <View style={styles.categoriesGrid}>
+          {categories.map((category, index) => (
+            <Pressable
+              key={category.id}
+              style={[
+                styles.categoryCard,
+                index % 2 === 0
+                  ? styles.categoryCardLeft
+                  : styles.categoryCardRight,
+              ]}
+              onPress={() => router.push("/(trackers)/diagnostics")}
+            >
+              <View
+                style={[
+                  styles.categoryIcon,
+                  { backgroundColor: category.iconBg },
+                ]}
+              >
+                <Feather
+                  name={category.icon}
+                  size={18}
+                  color={category.iconColor}
+                />
+              </View>
+              <ThemedText style={styles.categoryTitle}>
+                {category.title}
+              </ThemedText>
+              <ThemedText style={styles.categorySubtitle}>
+                {category.subtitle}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Recent Documents</ThemedText>
+
+          {recentDocs.map((doc) => (
+            <Pressable key={doc.id} style={styles.documentCard}>
+              <View
+                style={[styles.documentIcon, { backgroundColor: doc.iconBg }]}
+              >
+                <Feather name={doc.icon} size={18} color={doc.iconColor} />
+              </View>
+              <View style={styles.documentDetails}>
+                <ThemedText style={styles.documentTitle}>
+                  {doc.title}
+                </ThemedText>
+                <ThemedText style={styles.documentDate}>{doc.date}</ThemedText>
+              </View>
+              <Feather
+                name="chevron-right"
+                size={20}
+                color={COLORS.textMuted}
+              />
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#FAFAFC" },
-  title: { marginBottom: Spacing.xl },
-  catGrid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.md, marginBottom: Spacing.xl },
-  catCard: { width: "47%", backgroundColor: "#FFF", borderRadius: BorderRadius.xl, padding: Spacing.lg, alignItems: "center", gap: Spacing.sm },
-  catIcon: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center" },
-  catLabel: { color: COLORS.textPrimary, fontWeight: "600", textAlign: "center" },
-  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md },
-  docItem: { flexDirection: "row", alignItems: "center", gap: Spacing.md, backgroundColor: "#FFF", borderRadius: BorderRadius.xl, padding: Spacing.lg, marginBottom: Spacing.sm },
-  docIcon: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  emptyCard: { backgroundColor: "#FFF", borderRadius: BorderRadius.xl, padding: Spacing["3xl"], alignItems: "center", marginBottom: Spacing.md },
-  addBtn: { marginTop: Spacing.md, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm, backgroundColor: COLORS.lavender, borderRadius: BorderRadius.full },
+  container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.lg,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: COLORS.textPrimary,
+  },
+  searchContainer: {
+    paddingHorizontal: Spacing.xl,
+    marginBottom: Spacing.lg,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+    gap: Spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: COLORS.textPrimary,
+  },
+  categoriesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: Spacing.xl,
+    marginBottom: Spacing.lg,
+  },
+  categoryCard: {
+    width: "48%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: Spacing.lg,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+  },
+  categoryCardLeft: {
+    marginRight: "4%",
+  },
+  categoryCardRight: {
+    marginRight: 0,
+  },
+  categoryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.md,
+  },
+  categoryTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: COLORS.textPrimary,
+    marginBottom: 2,
+  },
+  categorySubtitle: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+  section: {
+    paddingHorizontal: Spacing.xl,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.textPrimary,
+    marginBottom: Spacing.md,
+  },
+  documentCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: Spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+  },
+  documentIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.md,
+  },
+  documentDetails: {
+    flex: 1,
+  },
+  documentTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: COLORS.textPrimary,
+    marginBottom: 2,
+  },
+  documentDate: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
 });

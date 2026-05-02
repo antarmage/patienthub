@@ -1,120 +1,317 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Platform } from "react-native";
+import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { useFocusEffect, useRouter } from "expo-router";
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring } from "react-native-reanimated";
-import { ThemedText } from "@/components/ThemedText";
-import { WaterIntake, getWaterIntakeToday, addWaterIntake, getWaterGoal } from "@/utils/careStorage";
-import { COLORS, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { useFocusEffect } from "expo-router";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 
-const QUICK_ADD = [
-  { ml: 150, label: "Sip", icon: "droplet" as const },
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { Card } from "@/components/Card";
+import { useTheme } from "@/hooks/useTheme";
+import {
+  WaterIntake,
+  getWaterIntakeToday,
+  addWaterIntake,
+  getWaterGoal,
+} from "@/utils/careStorage";
+import {
+  requestNotificationPermissions,
+  scheduleWaterReminders,
+} from "@/utils/notifications";
+import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
+
+const QUICK_ADD_OPTIONS = [
   { ml: 250, label: "Glass", icon: "droplet" as const },
   { ml: 500, label: "Bottle", icon: "droplet" as const },
   { ml: 750, label: "Large", icon: "droplet" as const },
 ];
 
 export default function WaterTrackerScreen() {
+  const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const { theme } = useTheme();
+
   const [intake, setIntake] = useState<WaterIntake>({ date: "", totalMl: 0, entries: [] });
   const [goal, setGoal] = useState(2500);
-  const progress = useSharedValue(0);
+  const [remindersEnabled, setRemindersEnabled] = useState(false);
 
-  useFocusEffect(useCallback(() => { loadData(); }, []));
+  const progress = useSharedValue(0);
+  const ringScale = useSharedValue(1);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   useEffect(() => {
-    progress.value = withTiming(Math.min(intake.totalMl / goal, 1), { duration: 600 });
+    const targetProgress = Math.min(intake.totalMl / goal, 1);
+    progress.value = withTiming(targetProgress, { duration: 500 });
   }, [intake.totalMl, goal]);
 
   const loadData = async () => {
-    const [w, g] = await Promise.all([getWaterIntakeToday(), getWaterGoal()]);
-    setIntake(w);
-    setGoal(g);
+    const todayIntake = await getWaterIntakeToday();
+    setIntake(todayIntake);
+    const waterGoal = await getWaterGoal();
+    setGoal(waterGoal);
   };
 
-  const handleAdd = async (ml: number) => {
+  const handleAddWater = async (ml: number) => {
+    ringScale.value = withSpring(1.05, { damping: 10 }, () => {
+      ringScale.value = withSpring(1);
+    });
     const updated = await addWaterIntake(ml);
     setIntake(updated);
   };
 
-  const pct = Math.round((intake.totalMl / goal) * 100);
-  const remaining = Math.max(goal - intake.totalMl, 0);
-  const topPad = Platform.OS === "web" ? 67 : insets.top + Spacing.lg;
+  const handleEnableReminders = async () => {
+    const hasPermission = await requestNotificationPermissions();
+    if (hasPermission) {
+      await scheduleWaterReminders();
+      setRemindersEnabled(true);
+    }
+  };
 
-  const barStyle = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` as any }));
+  const progressPercent = Math.round((intake.totalMl / goal) * 100);
+  const remaining = Math.max(goal - intake.totalMl, 0);
+
+  const animatedRingStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: ringScale.value }],
+  }));
+
+  const animatedProgressStyle = useAnimatedStyle(() => ({
+    height: `${progress.value * 100}%`,
+  }));
+
+  const formatTime = (isoString: string) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return "";
+    return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  };
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={{ paddingTop: topPad, paddingBottom: 100, paddingHorizontal: Spacing.lg }} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={22} color={COLORS.textPrimary} />
-        </Pressable>
-        <ThemedText type="h3">Water Tracker</ThemedText>
-        <View style={{ width: 40 }} />
-      </View>
-
-      {/* Ring */}
-      <View style={[styles.ringCard, Shadows.cardElevated]}>
-        <View style={[styles.ring, { borderColor: COLORS.lavender }]}>
-          <Feather name="droplet" size={36} color={COLORS.primary} />
-          <ThemedText type="h1" style={{ color: COLORS.primary }}>{pct}%</ThemedText>
-          <ThemedText type="small" style={{ color: COLORS.textMuted }}>{intake.totalMl} / {goal} ml</ThemedText>
-        </View>
-        <View style={styles.progressBarWrap}>
-          <View style={styles.progressBg}>
-            <Animated.View style={[styles.progressFill, { backgroundColor: pct >= 80 ? COLORS.success : pct >= 40 ? COLORS.primary : COLORS.warning }, barStyle]} />
+    <ScrollView
+      style={[styles.container, { backgroundColor: "#FFFFFF" }]}
+      contentContainerStyle={{
+        paddingTop: headerHeight + Spacing.lg,
+        paddingBottom: insets.bottom + Spacing.xl,
+        paddingHorizontal: Spacing.lg,
+      }}
+    >
+      <View style={styles.progressContainer}>
+        <Animated.View style={[styles.progressRing, animatedRingStyle]}>
+          <View style={[styles.progressRingBg, { borderColor: theme.primaryLight }]}>
+            <Animated.View
+              style={[
+                styles.progressFill,
+                { backgroundColor: theme.primary },
+                animatedProgressStyle,
+              ]}
+            />
           </View>
-          <ThemedText type="small" style={{ color: COLORS.textMuted, marginTop: Spacing.xs }}>{remaining} ml remaining</ThemedText>
+          <View style={styles.progressContent}>
+            <Feather name="droplet" size={32} color={theme.primary} />
+            <ThemedText type="h1" style={[styles.progressPercent, { color: COLORS.textPrimary }]}>
+              {progressPercent}%
+            </ThemedText>
+            <ThemedText type="body" style={{ color: COLORS.textSecondary }}>
+              {intake.totalMl} / {goal} ml
+            </ThemedText>
+          </View>
+        </Animated.View>
+      </View>
+
+      {remaining > 0 ? (
+        <ThemedText type="body" style={[styles.encouragement, { color: COLORS.textSecondary }]}>
+          {remaining >= 1000
+            ? `${(remaining / 1000).toFixed(1)}L more to reach your goal!`
+            : `${remaining}ml more to reach your goal!`}
+        </ThemedText>
+      ) : (
+        <ThemedText type="body" style={[styles.encouragement, { color: theme.success }]}>
+          Great job! You've reached your daily goal!
+        </ThemedText>
+      )}
+
+      <Card style={styles.quickAddCard}>
+        <ThemedText type="h4" style={{ color: COLORS.textPrimary, marginBottom: Spacing.lg }}>
+          Quick Add
+        </ThemedText>
+        <View style={styles.quickAddButtons}>
+          {QUICK_ADD_OPTIONS.map((option) => (
+            <Pressable
+              key={option.ml}
+              style={[styles.quickAddButton, { backgroundColor: theme.primaryLight }]}
+              onPress={() => handleAddWater(option.ml)}
+            >
+              <Feather name={option.icon} size={24} color={theme.primary} />
+              <ThemedText type="h4" style={{ color: theme.primary }}>
+                +{option.ml}ml
+              </ThemedText>
+              <ThemedText type="small" style={{ color: COLORS.textSecondary }}>
+                {option.label}
+              </ThemedText>
+            </Pressable>
+          ))}
         </View>
-      </View>
+      </Card>
 
-      {/* Quick add */}
-      <ThemedText type="h4" style={styles.sectionTitle}>Quick Add</ThemedText>
-      <View style={styles.quickRow}>
-        {QUICK_ADD.map(q => (
-          <Pressable key={q.ml} onPress={() => handleAdd(q.ml)} style={[styles.quickBtn, Shadows.card]}>
-            <Feather name={q.icon} size={20} color={COLORS.primary} />
-            <ThemedText type="small" style={{ color: COLORS.primary, fontWeight: "700" }}>{q.ml}ml</ThemedText>
-            <ThemedText type="small" style={{ color: COLORS.textMuted }}>{q.label}</ThemedText>
-          </Pressable>
-        ))}
-      </View>
-
-      {/* History */}
-      {intake.entries.length > 0 ? (
-        <>
-          <ThemedText type="h4" style={styles.sectionTitle}>Today's Log</ThemedText>
-          {[...intake.entries].reverse().map((e, i) => (
-            <View key={i} style={[styles.logItem, Shadows.card]}>
-              <View style={[styles.logIcon, { backgroundColor: COLORS.lavender }]}>
-                <Feather name="droplet" size={16} color={COLORS.primary} />
-              </View>
-              <ThemedText type="body" style={{ flex: 1 }}>{e.amountMl} ml</ThemedText>
-              <ThemedText type="small" style={{ color: COLORS.textMuted }}>
-                {new Date(e.time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+      {Platform.OS !== "web" && !remindersEnabled ? (
+        <Card style={styles.reminderCard}>
+          <View style={styles.reminderContent}>
+            <View style={[styles.reminderIcon, { backgroundColor: theme.primaryLight }]}>
+              <Feather name="bell" size={24} color={theme.primary} />
+            </View>
+            <View style={styles.reminderText}>
+              <ThemedText type="h4" style={{ color: COLORS.textPrimary }}>
+                Stay on Track
+              </ThemedText>
+              <ThemedText type="small" style={{ color: COLORS.textSecondary }}>
+                Get gentle reminders throughout the day
               </ThemedText>
             </View>
-          ))}
-        </>
+          </View>
+          <Pressable
+            style={[styles.enableButton, { backgroundColor: theme.primary }]}
+            onPress={handleEnableReminders}
+          >
+            <ThemedText type="small" style={{ color: COLORS.white, fontWeight: "600" }}>
+              Enable
+            </ThemedText>
+          </Pressable>
+        </Card>
+      ) : null}
+
+      {intake.entries.length > 0 ? (
+        <View style={styles.historySection}>
+          <ThemedText type="h4" style={{ color: COLORS.textPrimary, marginBottom: Spacing.md }}>
+            Today's Log
+          </ThemedText>
+          {intake.entries
+            .slice()
+            .reverse()
+            .slice(0, 10)
+            .map((entry, index) => (
+              <View key={index} style={styles.historyItem}>
+                <View style={styles.historyLeft}>
+                  <Feather name="droplet" size={16} color={theme.primary} />
+                  <ThemedText type="body" style={{ color: COLORS.textPrimary, marginLeft: Spacing.sm }}>
+                    {entry.amountMl}ml
+                  </ThemedText>
+                </View>
+                <ThemedText type="small" style={{ color: COLORS.textMuted }}>
+                  {formatTime(entry.time)}
+                </ThemedText>
+              </View>
+            ))}
+        </View>
       ) : null}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#FAFAFC" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.xl },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#F0F0F3", alignItems: "center", justifyContent: "center" },
-  ringCard: { backgroundColor: "#FFF", borderRadius: BorderRadius["2xl"], padding: Spacing.xl, alignItems: "center", marginBottom: Spacing.xl },
-  ring: { width: 140, height: 140, borderRadius: 70, borderWidth: 8, alignItems: "center", justifyContent: "center", marginBottom: Spacing.xl, gap: 2 },
-  progressBarWrap: { width: "100%", alignItems: "center" },
-  progressBg: { height: 10, backgroundColor: "#F0F0F3", borderRadius: 5, width: "100%", overflow: "hidden" },
-  progressFill: { height: "100%", borderRadius: 5 },
-  sectionTitle: { marginBottom: Spacing.md },
-  quickRow: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.xl },
-  quickBtn: { flex: 1, backgroundColor: "#FFF", borderRadius: BorderRadius.xl, paddingVertical: Spacing.lg, alignItems: "center", gap: Spacing.xs },
-  logItem: { flexDirection: "row", alignItems: "center", gap: Spacing.md, backgroundColor: "#FFF", borderRadius: BorderRadius.xl, padding: Spacing.md, marginBottom: Spacing.sm },
-  logIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  container: {
+    flex: 1,
+  },
+  progressContainer: {
+    alignItems: "center",
+    marginBottom: Spacing.xl,
+  },
+  progressRing: {
+    width: 200,
+    height: 200,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  progressRingBg: {
+    position: "absolute",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 12,
+    overflow: "hidden",
+  },
+  progressFill: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderRadius: 100,
+  },
+  progressContent: {
+    alignItems: "center",
+  },
+  progressPercent: {
+    marginTop: Spacing.sm,
+  },
+  encouragement: {
+    textAlign: "center",
+    marginBottom: Spacing.xl,
+  },
+  quickAddCard: {
+    marginBottom: Spacing.lg,
+  },
+  quickAddButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: Spacing.md,
+  },
+  quickAddButton: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.xs,
+  },
+  reminderCard: {
+    marginBottom: Spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  reminderContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  reminderIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reminderText: {
+    marginLeft: Spacing.md,
+    flex: 1,
+  },
+  enableButton: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+  },
+  historySection: {
+    marginTop: Spacing.md,
+  },
+  historyItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  historyLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
 });

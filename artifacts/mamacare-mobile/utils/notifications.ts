@@ -15,11 +15,22 @@ export async function scheduleWaterReminders(): Promise<void> {
   return;
 }
 
-export async function scheduleMedicineReminders(_medicineId: string, _times: string[]): Promise<string[]> {
+export async function scheduleMedicineReminders(
+  _medicineId: string,
+  _name: string,
+  _dosage: string,
+  _times: string[],
+  _durationDays: number,
+): Promise<string[]> {
   return [];
 }
 
-export async function scheduleAppointmentReminders(_appointmentId: string, _dateTime: string): Promise<string[]> {
+export async function scheduleAppointmentReminders(
+  _appointmentId: string,
+  _doctorName: string,
+  _clinicName: string,
+  _dateTime: Date,
+): Promise<string[]> {
   return [];
 }
 

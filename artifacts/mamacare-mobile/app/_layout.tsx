@@ -46,7 +46,11 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
-  if (!fontsLoaded && !fontError) return null;
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
 
   return (
     <SafeAreaProvider>
