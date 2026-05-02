@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Image } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -14,17 +14,14 @@ import {
   Medicine,
 } from "@/utils/careStorage";
 
-interface CareTeamMember {
-  id: string;
-  name: string;
-  image: string | null;
-  color: string;
-}
+const PROVIDER_COLORS = ["#F5F3FF", "#FCE7F3", "#ECFDF5", "#EFF6FF", "#FEF3C7"];
+const PROVIDER_TEXT_COLORS = ["#6C63FF", "#EC4899", "#10B981", "#3B82F6", "#F59E0B"];
 
-const careTeam: CareTeamMember[] = [
-  { id: "1", name: "Dr. Smith", image: null, color: "#F5F3FF" },
-  { id: "2", name: "Nurse Joy", image: null, color: "#FCE7F3" },
-];
+interface Provider {
+  id: number;
+  name: string;
+  role: string;
+}
 
 export default function CareScreen() {
   const insets = useSafeAreaInsets();
@@ -34,6 +31,8 @@ export default function CareScreen() {
   const [nextAppointment, setNextAppointment] = useState<Appointment | null>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [medicineStats, setMedicineStats] = useState({ total: 0, taken: 0, pending: 0 });
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [loadingProviders, setLoadingProviders] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
@@ -58,7 +57,21 @@ export default function CareScreen() {
     } catch (error) {
       console.error("Failed to load care data:", error);
     }
+
+    try {
+      const res = await fetch("/api/mobile/providers");
+      if (res.ok) {
+        const data: Provider[] = await res.json();
+        setProviders(data);
+      }
+    } catch {
+    } finally {
+      setLoadingProviders(false);
+    }
   };
+
+  const getInitials = (name: string) =>
+    name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
 
   const formatAppointmentDate = (dateTime: string) => {
     const date = new Date(dateTime);
@@ -149,22 +162,29 @@ export default function CareScreen() {
 
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>My Care Team</ThemedText>
-          <View style={styles.careTeamRow}>
-            {careTeam.map((member) => (
-              <View key={member.id} style={styles.careTeamMember}>
-                <View style={[styles.careTeamAvatar, { backgroundColor: member.color }]}>
-                  <Feather name="user" size={24} color={member.color === "#F5F3FF" ? "#6C63FF" : "#EC4899"} />
+          {loadingProviders ? (
+            <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: Spacing.md }} />
+          ) : providers.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Feather name="users" size={24} color={COLORS.textMuted} />
+              <ThemedText style={styles.emptyText}>No providers assigned yet</ThemedText>
+            </View>
+          ) : (
+            <View style={styles.careTeamRow}>
+              {providers.slice(0, 4).map((provider, idx) => (
+                <View key={provider.id} style={styles.careTeamMember}>
+                  <View style={[styles.careTeamAvatar, { backgroundColor: PROVIDER_COLORS[idx % PROVIDER_COLORS.length] }]}>
+                    <ThemedText style={[styles.careTeamInitials, { color: PROVIDER_TEXT_COLORS[idx % PROVIDER_TEXT_COLORS.length] }]}>
+                      {getInitials(provider.name)}
+                    </ThemedText>
+                  </View>
+                  <ThemedText style={styles.careTeamName} numberOfLines={1}>
+                    {provider.name.split(" ").slice(-1)[0]}
+                  </ThemedText>
                 </View>
-                <ThemedText style={styles.careTeamName}>{member.name}</ThemedText>
-              </View>
-            ))}
-            <Pressable style={styles.careTeamMember}>
-              <View style={styles.addTeamMember}>
-                <Feather name="plus" size={20} color="#9CA3AF" />
-              </View>
-              <ThemedText style={styles.careTeamNameMuted}>Add</ThemedText>
-            </Pressable>
-          </View>
+              ))}
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -416,15 +436,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  careTeamInitials: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
   careTeamName: {
     fontSize: 13,
     fontWeight: "500",
     color: COLORS.textPrimary,
-  },
-  careTeamNameMuted: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: COLORS.textMuted,
+    maxWidth: 64,
+    textAlign: "center",
   },
   medicineCard: {
     backgroundColor: "#FFFFFF",

@@ -32,17 +32,21 @@ import {
 } from "@/utils/careStorage";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
 
-type ReportType = "blood" | "usg" | "other";
+type ReportType = "blood" | "usg" | "vaccine" | "insurance" | "other";
 
 const reportTypeLabels: Record<ReportType, string> = {
   blood: "Blood Test",
   usg: "USG / Ultrasound",
+  vaccine: "Vaccine Record",
+  insurance: "Insurance Document",
   other: "Other Report",
 };
 
 const reportTypeIcons: Record<ReportType, keyof typeof Feather.glyphMap> = {
   blood: "droplet",
   usg: "image",
+  vaccine: "shield",
+  insurance: "file-text",
   other: "file-text",
 };
 

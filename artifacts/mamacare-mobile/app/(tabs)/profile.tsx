@@ -165,10 +165,6 @@ export default function ProfileScreen() {
         <ThemedText style={styles.userSubtitle}>
           {eddDisplay ? `Due ${eddDisplay}` : `Week ${selectedWeek}`} · {trimester === 1 ? "First" : trimester === 2 ? "Second" : "Third"} Baby
         </ThemedText>
-        <View style={styles.premiumBadge}>
-          <Feather name="star" size={12} color="#F59E0B" />
-          <ThemedText style={styles.premiumText}>Premium Plan</ThemedText>
-        </View>
       </View>
 
       {showEditProfile && (

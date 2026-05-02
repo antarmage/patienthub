@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   PATIENT_ID: "@saiviemom_patient_id",
   USER_PROFILE: "@saiviemom_user_profile",
   SELECTED_WEEK: "@saiviemom_selected_week",
+  MOBILE_TOKEN: "@saiviemom_mobile_token",
 };
 
 export interface UserProfile {
@@ -48,21 +49,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const loadState = async () => {
     try {
-      const [ob, auth, profile, week, patientIdStr] = await Promise.all([
+      const [ob, auth, profile, week, patientIdStr, storedToken] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE),
         AsyncStorage.getItem(STORAGE_KEYS.AUTH_COMPLETE),
         AsyncStorage.getItem(STORAGE_KEYS.USER_PROFILE),
         AsyncStorage.getItem(STORAGE_KEYS.SELECTED_WEEK),
         AsyncStorage.getItem(STORAGE_KEYS.PATIENT_ID),
+        AsyncStorage.getItem(STORAGE_KEYS.MOBILE_TOKEN),
       ]);
       const parsedWeek = week ? parseInt(week, 10) : 1;
       setOnboardingComplete(ob === "true");
       setAuthComplete(auth === "true");
       setUserProfile(profile ? JSON.parse(profile) : null);
       setSelectedWeek(parsedWeek);
-      if (patientIdStr) {
-        const baseUrl = process.env.EXPO_PUBLIC_API_URL || "";
-        initMobileApi(parseInt(patientIdStr, 10), baseUrl, parsedWeek);
+      if (patientIdStr && storedToken) {
+        const baseUrl =
+          process.env.EXPO_PUBLIC_API_URL ||
+          (process.env.EXPO_PUBLIC_DOMAIN
+            ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+            : "");
+        initMobileApi(parseInt(patientIdStr, 10), baseUrl, parsedWeek, storedToken);
       }
     } catch (e) {
       if (Platform.OS !== "web") {
@@ -79,7 +85,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const completeAuth = useCallback(async (phone: string): Promise<void> => {
-    const baseUrl = process.env.EXPO_PUBLIC_API_URL || "";
+    const baseUrl =
+      process.env.EXPO_PUBLIC_API_URL ||
+      (process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : "");
     let res: Response;
     try {
       res = await fetch(`${baseUrl}/api/mobile/auth/login`, {
@@ -102,6 +112,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const data = await res.json();
     const patient = data.patient;
+    const mobileToken: string = data.mobileToken ?? "";
     const lmpDate = patient.lmpDate ?? patient.lmp_date ?? patient.lmp ?? null;
     const eddDate = patient.eddDate ?? patient.edd_date ?? null;
 
@@ -125,7 +136,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(STORAGE_KEYS.SELECTED_WEEK, String(week));
     await AsyncStorage.setItem(STORAGE_KEYS.AUTH_COMPLETE, "true");
     await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_ID, String(patient.id));
-    initMobileApi(patient.id, baseUrl, week);
+    await AsyncStorage.setItem(STORAGE_KEYS.MOBILE_TOKEN, mobileToken);
+    initMobileApi(patient.id, baseUrl, week, mobileToken);
     setUserProfile(profile);
     setSelectedWeek(week);
     setAuthComplete(true);

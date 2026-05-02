@@ -26,21 +26,34 @@ function today(): string {
 let _patientId: number | null = null;
 let _apiBase: string = "";
 let _currentWeek: number = 1;
+let _mobileToken: string = "";
 
-export function initMobileApi(patientId: number, apiBase: string, week: number) {
+export function initMobileApi(
+  patientId: number,
+  apiBase: string,
+  week: number,
+  token: string
+) {
   _patientId = patientId;
   _apiBase = apiBase;
   _currentWeek = week;
+  _mobileToken = token;
 }
 
 export function updateCurrentWeek(week: number) {
   _currentWeek = week;
 }
 
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (_mobileToken) headers["Authorization"] = `Bearer ${_mobileToken}`;
+  return headers;
+}
+
 async function apiGet<T>(path: string): Promise<T | null> {
-  if (!_patientId || !_apiBase) return null;
+  if (!_patientId) return null;
   try {
-    const res = await fetch(`${_apiBase}${path}`);
+    const res = await fetch(`${_apiBase}${path}`, { headers: authHeaders() });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
@@ -49,11 +62,11 @@ async function apiGet<T>(path: string): Promise<T | null> {
 }
 
 async function apiPost<T>(path: string, body: object): Promise<T | null> {
-  if (!_patientId || !_apiBase) return null;
+  if (!_patientId) return null;
   try {
     const res = await fetch(`${_apiBase}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(body),
     });
     if (!res.ok) return null;
@@ -64,9 +77,12 @@ async function apiPost<T>(path: string, body: object): Promise<T | null> {
 }
 
 async function apiDelete(path: string): Promise<boolean> {
-  if (!_patientId || !_apiBase) return false;
+  if (!_patientId) return false;
   try {
-    const res = await fetch(`${_apiBase}${path}`, { method: "DELETE" });
+    const res = await fetch(`${_apiBase}${path}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
     return res.ok || res.status === 204;
   } catch {
     return false;
@@ -114,7 +130,7 @@ export interface WaterIntake {
 
 export interface Diagnostic {
   id: string;
-  type: "blood" | "usg" | "other";
+  type: "blood" | "usg" | "vaccine" | "insurance" | "other";
   date: string;
   trimester?: string;
   fileUri: string;
@@ -523,8 +539,9 @@ function mapApiDocument(d: ApiDocument): Diagnostic {
   const typeMap: Record<string, Diagnostic["type"]> = {
     blood: "blood",
     usg: "usg",
+    vaccine: "vaccine",
+    insurance: "insurance",
     other: "other",
-    Diagnostic: "other",
   };
   return {
     id: String(d.id),
@@ -562,7 +579,7 @@ export async function saveDiagnostic(
   if (data.fileUri && _patientId) {
     try {
       fileData = await FileSystem.readAsStringAsync(data.fileUri, {
-        encoding: "base64" as any,
+        encoding: "base64",
       });
       const ext = data.fileName.split(".").pop()?.toLowerCase();
       const mimeMap: Record<string, string> = {

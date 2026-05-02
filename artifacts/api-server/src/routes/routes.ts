@@ -29,6 +29,47 @@ interface PendingBooking {
 }
 const pendingBookings = new Map<string, PendingBooking>();
 
+// ── Mobile auth tokens ────────────────────────────────────────────────────────
+// In-memory store mapping random tokens to patient IDs.
+// Tokens are issued at mobile login and must be sent as `Authorization: Bearer <token>`.
+const mobileAuthTokens = new Map<string, { patientId: number; expiresAt: number }>();
+const MOBILE_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function issueMobileToken(patientId: number): string {
+  const token = crypto.randomBytes(32).toString("hex");
+  mobileAuthTokens.set(token, { patientId, expiresAt: Date.now() + MOBILE_TOKEN_TTL_MS });
+  return token;
+}
+
+/**
+ * Validates the mobile Bearer token. If `expectedPatientId` is given, also checks
+ * that the token belongs to that patient (IDOR guard).
+ * Returns the bound patientId on success, or sends a 401/403 and returns null.
+ */
+function getMobilePatientId(req: any, res: any, expectedPatientId?: number): number | null {
+  const auth = (req.headers["authorization"] ?? "") as string;
+  if (!auth.startsWith("Bearer ")) {
+    res.status(401).json({ error: "Mobile token required" });
+    return null;
+  }
+  const token = auth.slice(7);
+  const entry = mobileAuthTokens.get(token);
+  if (!entry) {
+    res.status(401).json({ error: "Invalid mobile token" });
+    return null;
+  }
+  if (entry.expiresAt < Date.now()) {
+    mobileAuthTokens.delete(token);
+    res.status(401).json({ error: "Mobile token expired, please log in again" });
+    return null;
+  }
+  if (expectedPatientId !== undefined && entry.patientId !== expectedPatientId) {
+    res.status(403).json({ error: "Forbidden" });
+    return null;
+  }
+  return entry.patientId;
+}
+
 // ── AI Audit Log ──────────────────────────────────────────────────────────────
 const AUDIT_LOG_PATH = path.join(process.cwd(), "data", "ai_audit_log.jsonl");
 
@@ -78,12 +119,14 @@ export async function registerRoutes(
       return p.phone.replace(/\D/g, "").endsWith(normalized) || normalized.endsWith(p.phone.replace(/\D/g, ""));
     });
     if (!patient) return res.status(404).json({ error: "No patient found for this phone number" });
-    res.json({ patient });
+    const mobileToken = issueMobileToken(patient.id);
+    res.json({ patient, mobileToken });
   });
 
-  // ── Mobile self-tracking routes (no session required) ────────────────────
-  // These routes accept patientId in the URL and do not require a cookie session,
-  // because native Expo apps cannot maintain cookie sessions like a browser.
+  // ── Mobile self-tracking routes ────────────────────────────────────────────
+  // All patient-specific routes require a Bearer token issued by /api/mobile/auth/login.
+  // getMobilePatientId validates the token and (when expectedPatientId is given) guards
+  // against IDOR — a token for patient A cannot access patient B's data.
 
   app.get("/api/mobile/providers", async (_req, res) => {
     const providers = await storage.getProviders();
@@ -93,6 +136,7 @@ export async function registerRoutes(
   app.get("/api/mobile/patients/:id/water-logs", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!getMobilePatientId(req, res, id)) return;
     const date = req.query.date as string | undefined;
     const logs = await storage.getWaterLogs(id, date);
     res.json(logs);
@@ -101,6 +145,7 @@ export async function registerRoutes(
   app.post("/api/mobile/patients/:id/water-logs", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!getMobilePatientId(req, res, id)) return;
     const { amountMl, date } = req.body;
     if (!amountMl || !date) return res.status(400).json({ error: "amountMl and date required" });
     const ml = parseInt(amountMl);
@@ -114,6 +159,7 @@ export async function registerRoutes(
   app.get("/api/mobile/patients/:id/pregnancy-metrics", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!getMobilePatientId(req, res, id)) return;
     const metrics = await storage.getPregnancyMetrics(id);
     res.json(metrics);
   });
@@ -121,6 +167,7 @@ export async function registerRoutes(
   app.post("/api/mobile/patients/:id/pregnancy-metrics", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!getMobilePatientId(req, res, id)) return;
     const { week, weight, systolic, diastolic } = req.body;
     if (week == null || isNaN(Number(week))) return res.status(400).json({ error: "week is required" });
     try {
@@ -139,6 +186,7 @@ export async function registerRoutes(
   app.get("/api/mobile/patients/:id/medications", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!getMobilePatientId(req, res, id)) return;
     const meds = await storage.getMedications(id);
     res.json(meds);
   });
@@ -146,6 +194,7 @@ export async function registerRoutes(
   app.post("/api/mobile/patients/:id/medications", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!getMobilePatientId(req, res, id)) return;
     const { name, dose, frequency, startDate, endDate, notes } = req.body;
     if (!name) return res.status(400).json({ error: "name required" });
     try {
@@ -157,6 +206,10 @@ export async function registerRoutes(
   app.delete("/api/mobile/medications/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const patientId = getMobilePatientId(req, res);
+    if (!patientId) return;
+    const patientMeds = await storage.getMedications(patientId);
+    if (!patientMeds.some(m => m.id === id)) return res.status(403).json({ error: "Forbidden" });
     const deleted = await storage.deleteMedication(id);
     if (!deleted) return res.status(404).json({ error: "Not found" });
     res.status(204).send();
@@ -165,6 +218,7 @@ export async function registerRoutes(
   app.get("/api/mobile/patients/:id/medication-logs", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!getMobilePatientId(req, res, id)) return;
     const date = req.query.date as string | undefined;
     const logs = await storage.getMedicationLogs(id, date);
     res.json(logs);
@@ -173,6 +227,7 @@ export async function registerRoutes(
   app.post("/api/mobile/patients/:id/medication-logs", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!getMobilePatientId(req, res, id)) return;
     const { medicationId, takenDate } = req.body;
     if (!medicationId || !takenDate) return res.status(400).json({ error: "medicationId and takenDate required" });
     const mid = parseInt(medicationId);
@@ -190,6 +245,7 @@ export async function registerRoutes(
   app.get("/api/mobile/patients/:id/appointments", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!getMobilePatientId(req, res, id)) return;
     const appts = await storage.getAppointmentsByPatient(id);
     res.json(appts);
   });
@@ -197,14 +253,16 @@ export async function registerRoutes(
   app.post("/api/mobile/appointments", async (req, res) => {
     const { patientId, date, time, type, status } = req.body;
     if (!patientId || !date) return res.status(400).json({ error: "patientId and date required" });
+    const pid = parseInt(String(patientId));
+    if (!getMobilePatientId(req, res, pid)) return;
     try {
       const appt = await storage.createAppointment({
-        patientId: parseInt(patientId),
-        date,
-        time: time || "10:00",
-        type: type || "Consultation",
-        status: status || "Pending",
-      } as any);
+        patientId: pid,
+        date: String(date),
+        time: String(time || "10:00"),
+        type: String(type || "Consultation"),
+        status: String(status || "Pending"),
+      });
       res.status(201).json(appt);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   });
@@ -212,6 +270,10 @@ export async function registerRoutes(
   app.delete("/api/mobile/appointments/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const patientId = getMobilePatientId(req, res);
+    if (!patientId) return;
+    const appts = await storage.getAppointmentsByPatient(patientId);
+    if (!appts.some((a: any) => a.id === id)) return res.status(403).json({ error: "Forbidden" });
     const updated = await storage.updateAppointment(id, { status: "cancelled" });
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.status(204).send();
@@ -220,6 +282,7 @@ export async function registerRoutes(
   app.get("/api/mobile/patients/:id/documents", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!getMobilePatientId(req, res, id)) return;
     const docs = await storage.getPatientDocuments(id);
     res.json(docs.map((d: any) => ({ ...d, fileData: undefined })));
   });
@@ -227,6 +290,7 @@ export async function registerRoutes(
   app.post("/api/mobile/patients/:id/documents", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!getMobilePatientId(req, res, id)) return;
     const { fileName, fileData, mimeType, docType, label } = req.body;
     if (!fileName) return res.status(400).json({ error: "fileName required" });
     const allowedMime = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
@@ -247,6 +311,10 @@ export async function registerRoutes(
   app.delete("/api/mobile/patient-documents/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const patientId = getMobilePatientId(req, res);
+    if (!patientId) return;
+    const docs = await storage.getPatientDocuments(patientId);
+    if (!docs.some((d: any) => d.id === id)) return res.status(403).json({ error: "Forbidden" });
     const deleted = await storage.deletePatientDocument(id);
     if (!deleted) return res.status(404).json({ error: "Not found" });
     res.status(204).send();

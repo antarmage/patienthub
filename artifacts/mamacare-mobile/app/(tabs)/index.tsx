@@ -154,35 +154,6 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.section}>
-          <LinearGradient
-            colors={["#EEF0FF", "#E9F2FF"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.bloodTestCard}
-          >
-            <View style={styles.cardGlow} />
-            <View style={styles.bloodTestContent}>
-              <View style={styles.bloodTestIconWrap}>
-                <Feather name="droplet" size={18} color="#6C63FF" />
-              </View>
-              <View style={styles.bloodTestTextWrap}>
-                <ThemedText style={styles.bloodTestTitle}>Blood tests due in 5 days</ThemedText>
-                <ThemedText style={styles.bloodTestSubtitle}>Best window: Morning, empty stomach</ThemedText>
-              </View>
-            </View>
-            <View style={styles.bloodTestCtaWrap}>
-              <Pressable
-                style={styles.bloodTestCta}
-                onPress={() => router.push("/(trackers)/diagnostics")}
-              >
-                <Feather name="calendar" size={14} color="#FFFFFF" />
-                <ThemedText style={styles.bloodTestCtaText}>Book / Remind Me</ThemedText>
-              </Pressable>
-            </View>
-          </LinearGradient>
-        </View>
-
-        <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
           <View style={styles.quickActionsGrid}>
             {quickActions.map((action) => (
@@ -249,18 +220,6 @@ export default function HomeScreen() {
               </ThemedText>
             </Pressable>
           </ScrollView>
-        </View>
-
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Body & Energy</ThemedText>
-          <View style={styles.bodyEnergyCard}>
-            {selectedWeek >= 20 && (
-              <ThemedText style={styles.bodyEnergyText}>Back Pain · Normal</ThemedText>
-            )}
-            <ThemedText style={styles.bodyEnergyText}>
-              Energy · {trimester === 1 || trimester === 3 ? "Low Today" : "Normal"}
-            </ThemedText>
-          </View>
         </View>
 
         <ThemedText style={styles.milestoneText}>

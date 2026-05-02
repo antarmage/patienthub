@@ -17,46 +17,11 @@ import { getDiagnostics, Diagnostic } from "@/utils/careStorage";
 interface CategoryItem {
   id: string;
   title: string;
-  subtitle: string;
   icon: keyof typeof Feather.glyphMap;
   iconBg: string;
   iconColor: string;
+  docType: string;
 }
-
-const categories: CategoryItem[] = [
-  {
-    id: "lab",
-    title: "Lab Results",
-    subtitle: "4 New Files",
-    icon: "edit-3",
-    iconBg: "#EFF6FF",
-    iconColor: "#3B82F6",
-  },
-  {
-    id: "ultrasound",
-    title: "Ultrasounds",
-    subtitle: "8 Images",
-    icon: "image",
-    iconBg: "#F5F3FF",
-    iconColor: "#8B5CF6",
-  },
-  {
-    id: "vaccines",
-    title: "Vaccines",
-    subtitle: "Up to date",
-    icon: "edit-2",
-    iconBg: "#ECFDF5",
-    iconColor: "#10B981",
-  },
-  {
-    id: "insurance",
-    title: "Insurance",
-    subtitle: "Active ID",
-    icon: "shield",
-    iconBg: "#F3F4F6",
-    iconColor: "#6B7280",
-  },
-];
 
 interface RecentDocument {
   id: string;
@@ -67,6 +32,13 @@ interface RecentDocument {
   iconColor: string;
 }
 
+const CATEGORY_DEFS: Omit<CategoryItem, "id">[] = [
+  { title: "Lab Results",  icon: "edit-3",  iconBg: "#EFF6FF", iconColor: "#3B82F6", docType: "blood" },
+  { title: "Ultrasounds",  icon: "image",   iconBg: "#F5F3FF", iconColor: "#8B5CF6", docType: "usg" },
+  { title: "Vaccines",     icon: "edit-2",  iconBg: "#ECFDF5", iconColor: "#10B981", docType: "vaccine" },
+  { title: "Insurance",    icon: "shield",  iconBg: "#F3F4F6", iconColor: "#6B7280", docType: "insurance" },
+];
+
 export default function RecordsScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
@@ -74,6 +46,9 @@ export default function RecordsScreen() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [recentDocs, setRecentDocs] = useState<RecentDocument[]>([]);
+  const [categories, setCategories] = useState<(CategoryItem & { count: number })[]>(
+    CATEGORY_DEFS.map((c, i) => ({ ...c, id: String(i), count: 0 }))
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -84,46 +59,39 @@ export default function RecordsScreen() {
   const loadData = async () => {
     try {
       const diagnostics = await getDiagnostics();
+
+      const countByType: Record<string, number> = {};
+      for (const d of diagnostics) {
+        countByType[d.type] = (countByType[d.type] ?? 0) + 1;
+      }
+      setCategories(
+        CATEGORY_DEFS.map((c, i) => ({
+          ...c,
+          id: String(i),
+          count: countByType[c.docType] ?? 0,
+        }))
+      );
+
       const docs: RecentDocument[] = diagnostics.slice(0, 5).map((d, i) => ({
         id: d.id,
         title:
           d.type === "blood"
-            ? "Blood Test Results (CBC)"
+            ? "Blood Test Results"
             : d.type === "usg"
-              ? "Growth Scan Report"
-              : "Medical Report",
+              ? "Ultrasound Report"
+              : d.type === "vaccine"
+                ? "Vaccine Record"
+                : "Medical Document",
         date: new Date(d.date).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
           year: "numeric",
         }),
-        icon: i % 2 === 0 ? "file-text" : "image",
+        icon: d.type === "usg" ? "image" : "file-text",
         iconBg: i % 2 === 0 ? "#FEF3C7" : "#F5F3FF",
         iconColor: i % 2 === 0 ? "#F59E0B" : "#8B5CF6",
       }));
-
-      if (docs.length === 0) {
-        setRecentDocs([
-          {
-            id: "1",
-            title: "Blood Test Results (CBC)",
-            date: "Oct 10, 2030",
-            icon: "file-text",
-            iconBg: "#FEF3C7",
-            iconColor: "#F59E0B",
-          },
-          {
-            id: "2",
-            title: "Growth Scan Report",
-            date: "Oct 03, 2030",
-            icon: "image",
-            iconBg: "#F5F3FF",
-            iconColor: "#8B5CF6",
-          },
-        ]);
-      } else {
-        setRecentDocs(docs);
-      }
+      setRecentDocs(docs);
     } catch (error) {
       console.error("Failed to load records:", error);
     }
@@ -184,7 +152,7 @@ export default function RecordsScreen() {
                 {category.title}
               </ThemedText>
               <ThemedText style={styles.categorySubtitle}>
-                {category.subtitle}
+                {category.count > 0 ? `${category.count} file${category.count !== 1 ? "s" : ""}` : "No files"}
               </ThemedText>
             </Pressable>
           ))}
@@ -193,6 +161,12 @@ export default function RecordsScreen() {
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Recent Documents</ThemedText>
 
+          {recentDocs.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Feather name="folder" size={32} color="#D1D5DB" />
+              <ThemedText style={styles.emptyStateText}>No documents uploaded yet</ThemedText>
+            </View>
+          ) : null}
           {recentDocs.map((doc) => (
             <Pressable key={doc.id} style={styles.documentCard}>
               <View
@@ -334,5 +308,14 @@ const styles = StyleSheet.create({
   documentDate: {
     fontSize: 13,
     color: COLORS.textSecondary,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: COLORS.textMuted,
   },
 });
