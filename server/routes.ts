@@ -2461,7 +2461,7 @@ Be thorough — extract every medication mentioned including supplements and vit
           triageScore: item.triageScore,
           triageReason: item.triageReason,
           triageScoredAt: now,
-        } as any).catch(() => {});
+        }).catch((e: any) => console.error(`[triage] Failed to stamp score for appt ${item.appointmentId}:`, e.message));
       }
 
       res.json({ date: today, count: enriched.length, appointments: enriched });
