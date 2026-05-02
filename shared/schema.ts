@@ -506,6 +506,48 @@ export const insertPackageItemSchema = createInsertSchema(packageItems).omit({ i
 export type InsertPackageItem = z.infer<typeof insertPackageItemSchema>;
 export type PackageItem = typeof packageItems.$inferSelect;
 
+// ── Pregnancy Hub self-tracking tables ───────────────────────────────────────
+
+export const waterLogs = pgTable("water_logs", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id).notNull(),
+  date: date("date").notNull(),
+  amountMl: integer("amount_ml").notNull(),
+  loggedAt: text("logged_at"),
+});
+
+export const insertWaterLogSchema = createInsertSchema(waterLogs).omit({ id: true });
+export type InsertWaterLog = z.infer<typeof insertWaterLogSchema>;
+export type WaterLog = typeof waterLogs.$inferSelect;
+
+export const medicationLogs = pgTable("medication_logs", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id).notNull(),
+  medicationId: integer("medication_id").references(() => medications.id).notNull(),
+  takenDate: date("taken_date").notNull(),
+  takenAt: text("taken_at"),
+});
+
+export const insertMedicationLogSchema = createInsertSchema(medicationLogs).omit({ id: true });
+export type InsertMedicationLog = z.infer<typeof insertMedicationLogSchema>;
+export type MedicationLog = typeof medicationLogs.$inferSelect;
+
+export const patientDocuments = pgTable("patient_documents", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id).notNull(),
+  fileName: text("file_name").notNull(),
+  fileData: text("file_data"),
+  mimeType: text("mime_type"),
+  docType: text("doc_type"),
+  trimester: integer("trimester"),
+  label: text("label"),
+  uploadedAt: text("uploaded_at").notNull(),
+});
+
+export const insertPatientDocumentSchema = createInsertSchema(patientDocuments).omit({ id: true });
+export type InsertPatientDocument = z.infer<typeof insertPatientDocumentSchema>;
+export type PatientDocument = typeof patientDocuments.$inferSelect;
+
 export const scheduleOptimisations = pgTable("schedule_optimisations", {
   id: serial("id").primaryKey(),
   date: date("date").notNull(),

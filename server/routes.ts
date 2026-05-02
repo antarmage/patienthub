@@ -1842,6 +1842,74 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.json(items);
   });
 
+  // ── Pregnancy Hub: Water Logs ──────────────────────────────────────────────
+  app.get("/api/water-logs", async (req, res) => {
+    const patientId = parseId(req.query.patientId as string);
+    if (!patientId) return res.status(400).json({ error: "patientId required" });
+    const date = req.query.date as string | undefined;
+    const logs = await storage.getWaterLogs(patientId, date);
+    res.json(logs);
+  });
+
+  app.post("/api/water-logs", async (req, res) => {
+    try {
+      const log = await storage.addWaterLog(req.body);
+      res.status(201).json(log);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
+  app.delete("/api/water-logs/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    await storage.deleteWaterLog(id);
+    res.status(204).send();
+  });
+
+  // ── Pregnancy Hub: Medication Logs ────────────────────────────────────────
+  app.get("/api/medication-logs", async (req, res) => {
+    const patientId = parseId(req.query.patientId as string);
+    if (!patientId) return res.status(400).json({ error: "patientId required" });
+    const date = req.query.date as string | undefined;
+    const logs = await storage.getMedicationLogs(patientId, date);
+    res.json(logs);
+  });
+
+  app.post("/api/medication-logs", async (req, res) => {
+    try {
+      const log = await storage.addMedicationLog(req.body);
+      res.status(201).json(log);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
+  app.post("/api/medication-logs/unmark", async (req, res) => {
+    const { patientId, medicationId, takenDate } = req.body;
+    if (!patientId || !medicationId || !takenDate) return res.status(400).json({ error: "patientId, medicationId, takenDate required" });
+    await storage.deleteMedicationLog(patientId, medicationId, takenDate);
+    res.status(204).send();
+  });
+
+  // ── Pregnancy Hub: Patient Documents ──────────────────────────────────────
+  app.get("/api/patient-documents", async (req, res) => {
+    const patientId = parseId(req.query.patientId as string);
+    if (!patientId) return res.status(400).json({ error: "patientId required" });
+    const docs = await storage.getPatientDocuments(patientId);
+    res.json(docs);
+  });
+
+  app.post("/api/patient-documents", async (req, res) => {
+    try {
+      const doc = await storage.createPatientDocument(req.body);
+      res.status(201).json(doc);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
+  app.delete("/api/patient-documents/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    await storage.deletePatientDocument(id);
+    res.status(204).send();
+  });
+
   app.get("/api/medicine-catalog", async (_req, res) => {
     const catalog = await storage.getMedicineCatalog();
     res.json(catalog);

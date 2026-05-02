@@ -42,6 +42,7 @@ import softCardBg from "../assets/images/soft-card-bg.png";
 
 import BiologyTab from "@/components/BiologyTab";
 import InsightsTab from "@/components/InsightsTab";
+import PregnancyTrackersTab from "@/components/PregnancyTrackersTab";
 
 export default function PatientPortal() {
   const [activeTab, setActiveTab] = useState("home");
@@ -1076,6 +1077,17 @@ export default function PatientPortal() {
 
           </TabsContent>
 
+          {/* ── Pregnancy Hub Track Tab ─────────────────────────────────────── */}
+          <TabsContent value="track" className="animate-in fade-in duration-700">
+            {patient?.id && (
+              <PregnancyTrackersTab
+                patient={patient}
+                medications={(medications as any[]) || []}
+                patientId={patient.id}
+              />
+            )}
+          </TabsContent>
+
         </Tabs>
 
         {/* Book Appointment Dialog */}
@@ -1242,7 +1254,7 @@ export default function PatientPortal() {
 
         {/* Premium Floating Navigation */}
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
-           <div className="bg-white/80 backdrop-blur-2xl border border-white/50 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] rounded-full px-8 py-4 flex items-center gap-10 transition-all hover:bg-white/90">
+           <div className="bg-white/80 backdrop-blur-2xl border border-white/50 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] rounded-full px-6 py-4 flex items-center gap-8 transition-all hover:bg-white/90">
              <NavButton 
                active={activeTab === 'home'} 
                onClick={() => setActiveTab('home')} 
@@ -1261,6 +1273,14 @@ export default function PatientPortal() {
                icon={<Sparkles className="w-5 h-5" />} 
                label="Insights" 
              />
+             {(mode === 'pregnancy' || mode === 'ttc') && (
+               <NavButton 
+                 active={activeTab === 'track'} 
+                 onClick={() => setActiveTab('track')} 
+                 icon={<Pill className="w-5 h-5" />} 
+                 label="Track" 
+               />
+             )}
              <NavButton 
                active={activeTab === 'care'} 
                onClick={() => setActiveTab('care')} 

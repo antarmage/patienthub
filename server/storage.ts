@@ -41,6 +41,12 @@ import {
   type ServicePackage, type InsertServicePackage,
   packageItems,
   type PackageItem, type InsertPackageItem,
+  waterLogs,
+  type WaterLog, type InsertWaterLog,
+  medicationLogs,
+  type MedicationLog, type InsertMedicationLog,
+  patientDocuments,
+  type PatientDocument, type InsertPatientDocument,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -171,6 +177,19 @@ export interface IStorage {
   addPackageItem(item: InsertPackageItem): Promise<PackageItem>;
   deletePackageItem(id: number): Promise<boolean>;
   replacePackageItems(packageId: number, items: Omit<InsertPackageItem, "packageId">[]): Promise<PackageItem[]>;
+
+  // Pregnancy Hub self-tracking
+  getWaterLogs(patientId: number, date?: string): Promise<WaterLog[]>;
+  addWaterLog(log: InsertWaterLog): Promise<WaterLog>;
+  deleteWaterLog(id: number): Promise<boolean>;
+
+  getMedicationLogs(patientId: number, date?: string): Promise<MedicationLog[]>;
+  addMedicationLog(log: InsertMedicationLog): Promise<MedicationLog>;
+  deleteMedicationLog(patientId: number, medicationId: number, takenDate: string): Promise<boolean>;
+
+  getPatientDocuments(patientId: number): Promise<PatientDocument[]>;
+  createPatientDocument(doc: InsertPatientDocument): Promise<PatientDocument>;
+  deletePatientDocument(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -657,6 +676,57 @@ export class DatabaseStorage implements IStorage {
   async createScheduleOptimisation(record: InsertScheduleOptimisation): Promise<ScheduleOptimisation> {
     const [created] = await db.insert(scheduleOptimisations).values(record).returning();
     return created;
+  }
+
+  // ── Pregnancy Hub self-tracking ────────────────────────────────────────────
+  async getWaterLogs(patientId: number, date?: string): Promise<WaterLog[]> {
+    if (date) {
+      return db.select().from(waterLogs).where(and(eq(waterLogs.patientId, patientId), eq(waterLogs.date, date)));
+    }
+    return db.select().from(waterLogs).where(eq(waterLogs.patientId, patientId)).orderBy(desc(waterLogs.date));
+  }
+
+  async addWaterLog(log: InsertWaterLog): Promise<WaterLog> {
+    const [created] = await db.insert(waterLogs).values(log).returning();
+    return created;
+  }
+
+  async deleteWaterLog(id: number): Promise<boolean> {
+    const result = await db.delete(waterLogs).where(eq(waterLogs.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getMedicationLogs(patientId: number, date?: string): Promise<MedicationLog[]> {
+    if (date) {
+      return db.select().from(medicationLogs).where(and(eq(medicationLogs.patientId, patientId), eq(medicationLogs.takenDate, date)));
+    }
+    return db.select().from(medicationLogs).where(eq(medicationLogs.patientId, patientId)).orderBy(desc(medicationLogs.takenDate));
+  }
+
+  async addMedicationLog(log: InsertMedicationLog): Promise<MedicationLog> {
+    const [created] = await db.insert(medicationLogs).values(log).returning();
+    return created;
+  }
+
+  async deleteMedicationLog(patientId: number, medicationId: number, takenDate: string): Promise<boolean> {
+    const result = await db.delete(medicationLogs).where(
+      and(eq(medicationLogs.patientId, patientId), eq(medicationLogs.medicationId, medicationId), eq(medicationLogs.takenDate, takenDate))
+    ).returning();
+    return result.length > 0;
+  }
+
+  async getPatientDocuments(patientId: number): Promise<PatientDocument[]> {
+    return db.select().from(patientDocuments).where(eq(patientDocuments.patientId, patientId)).orderBy(desc(patientDocuments.uploadedAt));
+  }
+
+  async createPatientDocument(doc: InsertPatientDocument): Promise<PatientDocument> {
+    const [created] = await db.insert(patientDocuments).values(doc).returning();
+    return created;
+  }
+
+  async deletePatientDocument(id: number): Promise<boolean> {
+    const result = await db.delete(patientDocuments).where(eq(patientDocuments.id, id)).returning();
+    return result.length > 0;
   }
 }
 

@@ -60,6 +60,9 @@ Main portals include `/patient`, `/clinician`, `/staff`, and `/owner`, with sub-
 - **AI Schedule Optimisation**: Gemini analyzes appointments to suggest optimized schedules for staff.
 - **Owner AI Insights**: Aggregates clinic metrics for Gemini-generated structured insights reports.
 - **AI Audit Log**: Records AI-driven actions for transparency and review.
+- **Pregnancy Hub (Patient Self-Trackers)**: Patients in pregnancy/TTC mode get a dedicated "Track" tab with Water Intake tracker (circular ring, quick-add 250/500/750ml, daily goal 2500ml), Weight tracker (bar chart history), Blood Pressure tracker (severity badges, history), and Medicine taken checklist (mark/unmark today's meds). All backed by `water_logs`, `medication_logs` tables.
+- **Week-by-Week Timeline**: 40-week browsable pregnancy timeline (weeks 4–40) with fruit size comparison, development milestones, symptoms, dos & don'ts, and nutrition tip per week. Auto-scrolls to current gestational week.
+- **Patient Document Upload**: Patients can upload diagnostic reports and prescriptions (stored as base64 in `patient_documents` table), with trimester tagging and delete.
 
 ## External Dependencies
 

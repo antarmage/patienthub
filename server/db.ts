@@ -48,6 +48,35 @@ export async function ensureSchema(): Promise<void> {
         notes text
       );
 
+      -- Pregnancy Hub self-tracking tables (Task #10)
+      CREATE TABLE IF NOT EXISTS water_logs (
+        id serial PRIMARY KEY,
+        patient_id integer NOT NULL REFERENCES patients(id),
+        date date NOT NULL,
+        amount_ml integer NOT NULL,
+        logged_at text
+      );
+
+      CREATE TABLE IF NOT EXISTS medication_logs (
+        id serial PRIMARY KEY,
+        patient_id integer NOT NULL REFERENCES patients(id),
+        medication_id integer NOT NULL REFERENCES medications(id),
+        taken_date date NOT NULL,
+        taken_at text
+      );
+
+      CREATE TABLE IF NOT EXISTS patient_documents (
+        id serial PRIMARY KEY,
+        patient_id integer NOT NULL REFERENCES patients(id),
+        file_name text NOT NULL,
+        file_data text,
+        mime_type text,
+        doc_type text,
+        trimester integer,
+        label text,
+        uploaded_at text NOT NULL
+      );
+
       -- Schedule optimisation history table (Task #8)
       CREATE TABLE IF NOT EXISTS schedule_optimisations (
         id serial PRIMARY KEY,
