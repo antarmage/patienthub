@@ -192,6 +192,52 @@ export async function registerRoutes(
     const updated = await storage.updateAppointment(id, req.body);
     if (!updated) return res.status(404).json({ error: "Appointment not found" });
     res.json(updated);
+
+    // Auto-trigger post-visit WhatsApp summary when appointment is marked Completed
+    const newStatus = (req.body.status || "").toLowerCase();
+    if (newStatus === "completed") {
+      (async () => {
+        try {
+          const patient = updated.patientId ? await storage.getPatient(updated.patientId) : null;
+          if (!patient?.phone) return;
+
+          const visits = await storage.getVisitHistory(patient.id);
+          const latestVisit = visits.sort((a, b) => b.date.localeCompare(a.date))[0];
+          const meds = await storage.getMedications(patient.id);
+          const activeMeds = meds.filter(m => m.status === "active" || m.status === "Active" || !m.status);
+
+          const summaryResponse = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{
+              role: "user",
+              parts: [{
+                text: `Generate a warm, friendly post-visit WhatsApp summary for a patient of a women's reproductive health clinic in India.
+
+Patient: ${patient.name}, Age: ${patient.age}
+Today's visit diagnosis/assessment: ${latestVisit?.diagnosis || latestVisit?.assessment || "General consultation"}
+Plan notes: ${latestVisit?.planNotes || ""}
+Active medications: ${activeMeds.slice(0, 5).map(m => `${m.name}${m.dose ? ` ${m.dose}` : ""}${m.frequency ? ` (${m.frequency})` : ""}`).join(", ") || "None prescribed"}
+Next appointment: ${patient.nextReview || "To be scheduled"}
+
+Write a WhatsApp message (max 180 words) in a warm, supportive tone. Include:
+1. A brief summary of today's visit
+2. Key medications to take (if any)
+3. Important instructions or things to watch for
+4. Next steps / follow-up
+
+Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_". Use WhatsApp formatting (bold with *text*).`,
+              }],
+            }],
+          });
+
+          const summaryText = summaryResponse.text || "";
+          await whatsapp.sendTextMessage(patient.phone, summaryText);
+          console.log(`[post-visit-auto] Summary sent to ${patient.name} (appt #${id})`);
+        } catch (err: any) {
+          console.error(`[post-visit-auto] Failed for appt #${id}:`, err.message);
+        }
+      })();
+    }
   });
 
   // Pre-appointment onboarding endpoints
@@ -347,7 +393,7 @@ export async function registerRoutes(
           );
           console.log(`Appointment ${next.id} cancelled by patient ${patient.name} via WhatsApp`);
         } else {
-          // AI virtual assistant — classify and respond using Gemini
+          // AI virtual assistant — classify, detect urgency, respond using Gemini
           try {
             const originalText = msg.text?.body || text;
             const meds = await storage.getMedications(patient.id);
@@ -357,13 +403,42 @@ export async function registerRoutes(
               contents: [{
                 role: "user",
                 parts: [{
-                  text: `You are a helpful WhatsApp assistant for Saivie, a women's reproductive health clinic in India. A patient named ${patient.name} (Age: ${patient.age}, Next appointment: ${next.date} at ${next.time}) sent this message:\n\n"${originalText}"\n\nPatient's active medications: ${activeMeds.join(", ") || "None on record"}\n\nClassify the message type (appointment_query, medication_question, symptom_query, result_query, general) and respond appropriately.\n\nRules:\n- Appointment queries: confirm their next appointment date/time\n- Medication questions: answer about their listed medications only, advise consulting doctor for dosage changes\n- Symptom queries: provide general supportive information, always recommend contacting the clinic if concerned\n- Never provide specific medical diagnoses\n- Keep response under 100 words, warm and supportive\n- End with "_Saivie Reproductive Intelligence_"\n- If the query seems urgent or clinical, add "⚠️ Please call our clinic directly for urgent concerns."`,
+                  text: `You are a helpful WhatsApp assistant for Saivie, a women's reproductive health clinic in India. A patient named ${patient.name} (Age: ${patient.age}, Next appointment: ${next.date} at ${next.time}) sent this message:\n\n"${originalText}"\n\nPatient's active medications: ${activeMeds.join(", ") || "None on record"}\n\nFirst, classify the message:\n- type: appointment_query | medication_question | symptom_query | result_query | general\n- urgent: true if message contains symptoms that need SAME DAY clinical attention (e.g. severe pain, heavy bleeding, fever >38.5°C, fetal movement change, chest pain, breathlessness) — false otherwise\n\nThen write a reply.\nRules:\n- Appointment queries: confirm their next appointment date/time\n- Medication questions: answer about their listed medications only; advise consulting doctor for dosage changes\n- Symptom queries: provide general supportive information; always recommend contacting the clinic if concerned\n- Never provide specific medical diagnoses\n- Keep response under 100 words, warm and supportive\n- End with "_Saivie Reproductive Intelligence_"\n- If urgent=true, start with "⚠️ *Please contact our clinic immediately or go to the nearest emergency room.*"\n\nReturn JSON: { "type": "...", "urgent": true|false, "reply": "..." }`,
                 }],
               }],
+              config: { responseMimeType: "application/json" },
             });
-            const reply = aiResp.text || `Thank you for your message, ${patient.name}! For queries, please call us. Your next appointment is on ${next.date} at ${next.time}. 💜\n\n_Saivie Reproductive Intelligence_`;
-            await whatsapp.sendTextMessage(patient.phone!, reply);
-            console.log(`[WhatsApp AI] Replied to ${patient.name}: ${originalText.slice(0, 50)}...`);
+
+            let classification: { type: string; urgent: boolean; reply: string } = {
+              type: "general",
+              urgent: false,
+              reply: `Thank you for your message, ${patient.name}! For queries, please call us. Your next appointment is on ${next.date} at ${next.time}. 💜\n\n_Saivie Reproductive Intelligence_`,
+            };
+            try {
+              const rawText = aiResp.text || "{}";
+              const cleaned = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+              classification = { ...classification, ...JSON.parse(cleaned) };
+            } catch {}
+
+            await whatsapp.sendTextMessage(patient.phone!, classification.reply);
+            console.log(`[WhatsApp AI] type=${classification.type} urgent=${classification.urgent} patient=${patient.name}`);
+
+            // If urgent, create a clinical note to flag for staff review
+            if (classification.urgent) {
+              try {
+                await storage.createClinicalNote({
+                  patientId: patient.id,
+                  date: today,
+                  type: "alert",
+                  content: `⚠️ URGENT WhatsApp message from ${patient.name}: "${originalText.slice(0, 300)}"`,
+                  author: "WhatsApp AI",
+                  tags: ["urgent", "whatsapp", "needs-review"],
+                } as any);
+                console.log(`[WhatsApp AI] Urgent flag created for ${patient.name}`);
+              } catch (flagErr: any) {
+                console.error("[WhatsApp AI] Could not create urgent flag:", flagErr.message);
+              }
+            }
           } catch (aiErr: any) {
             console.error("[WhatsApp AI] Failed to generate response:", aiErr.message);
           }

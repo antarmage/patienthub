@@ -131,7 +131,7 @@ export default function ClinicianPortal() {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [queueDateFrom, setQueueDateFrom] = useState(() => new Date().toISOString().split('T')[0]);
   const [queueDateTo, setQueueDateTo] = useState(() => new Date().toISOString().split('T')[0]);
-  const [queueTriageSort, setQueueTriageSort] = useState(false);
+  const [queueTriageSort, setQueueTriageSort] = useState(true);
   const [patientSearch, setPatientSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
