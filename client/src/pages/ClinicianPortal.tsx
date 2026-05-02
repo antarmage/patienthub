@@ -5429,17 +5429,25 @@ export default function ClinicianPortal() {
                                    visitApptId ? n.appointmentId === visitApptId : n.date === visitDate
                                  );
                                  if (matchingNotes.length === 0) return null;
+                                 const sortedMatchingNotes = [...matchingNotes].sort((a: any, b: any) =>
+                                   new Date(a.date).getTime() - new Date(b.date).getTime() || a.id - b.id
+                                 );
                                  return (
                                    <div className="mt-2 space-y-1.5">
-                                     {matchingNotes.map((note: any) => (
-                                       <div key={note.id} className="rounded border px-3 py-2 bg-green-50 border-green-200">
-                                         <div className="flex items-center gap-1.5 mb-1">
-                                           <MessageCircle className="w-3 h-3 text-green-600" />
-                                           <span className="text-[10px] font-bold uppercase text-green-700">Post-Visit Summary Sent</span>
+                                     {sortedMatchingNotes.map((note: any) => {
+                                       const wasSent = Array.isArray(note.tags) ? note.tags.includes("whatsapp") : false;
+                                       return (
+                                         <div key={note.id} className="rounded border px-3 py-2 bg-green-50 border-green-200">
+                                           <div className="flex items-center gap-1.5 mb-1">
+                                             <MessageCircle className="w-3 h-3 text-green-600" />
+                                             <span className="text-[10px] font-bold uppercase text-green-700">
+                                               {wasSent ? "Post-Visit Summary Sent" : "Post-Visit Summary Generated"}
+                                             </span>
+                                           </div>
+                                           <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{note.content}</p>
                                          </div>
-                                         <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{note.content}</p>
-                                       </div>
-                                     ))}
+                                       );
+                                     })}
                                    </div>
                                  );
                                })()}
