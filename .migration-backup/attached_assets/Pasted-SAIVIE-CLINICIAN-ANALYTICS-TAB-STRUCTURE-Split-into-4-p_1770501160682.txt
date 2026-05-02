@@ -1,0 +1,170 @@
+SAIVIE CLINICIAN — ANALYTICS TAB STRUCTURE
+
+Split into 4 powerful layers
+
+🧬 1️⃣ Fertility Analytics
+
+This is your signature strength, so it should be detailed.
+
+Key Metrics
+
+📈 Cycle Outcomes
+
+Total active fertility patients
+
+Ovulation success rate (% cycles with confirmed ovulation)
+
+Average follicle size at trigger
+
+Average luteal phase length
+
+🤰 Conception Metrics
+
+Pregnancy rate per cycle
+
+Pregnancy rate per IUI
+
+Natural conception vs induced vs IUI success comparison
+
+Average time-to-conception (in cycles)
+
+🎯 Probability Intelligence
+
+Avg predicted conception probability vs actual outcomes
+
+Patients with <15% probability for 3+ cycles
+
+Cycles missed in ovulation window (late visit, poor timing)
+
+👉 This shows whether protocols are working.
+
+🤰 2️⃣ Pregnancy Care Analytics
+
+Shows quality of antenatal care.
+
+🩺 Risk Monitoring
+
+% patients with anemia
+
+% high BP cases
+
+% GDM cases
+
+Avg weight gain by trimester
+
+📅 Compliance Tracking
+
+Scan completion rate
+
+Lab completion rate
+
+Missed follow-ups
+
+👶 Outcome Metrics (long term)
+
+Preterm rate
+
+Average birth weight
+
+C-section vs vaginal %
+
+This helps improve pregnancy protocols.
+
+🧑‍🍼 3️⃣ Postpartum Recovery Analytics
+
+Very rare in clinics — huge differentiator.
+
+🧠 Mental Health
+
+% high EPDS scores
+
+Improvement after counseling (%)
+
+🤱 Lactation
+
+% mothers with feeding difficulty at week 2
+
+Improvement after lactation consult
+
+💪 Physical Recovery
+
+Avg weight recovery trend
+
+C-section wound complication rate
+
+Saivie becomes known for after-birth care, not just delivery.
+
+🌿 4️⃣ PCOS & Hormone Health Analytics
+
+For long-term women’s wellness programs.
+
+🔄 Cycle Regularity
+
+Avg cycle length improvement
+
+Ovulatory cycles % increase
+
+⚖ Metabolic Health
+
+Avg weight reduction
+
+Insulin resistance improvement markers
+
+🌸 Symptom Tracking
+
+Acne score improvement
+
+Hirsutism score trend
+
+PMS severity reduction
+
+Shows success of your lifestyle + medical model.
+
+👩‍⚕️ 5️⃣ Clinic Performance Insights
+
+Business + medical quality combined.
+
+📅 Patient Flow
+
+New vs returning patients
+
+Drop-off after first visit
+
+Avg follow-up adherence
+
+👥 Care Team Impact
+
+Pregnancy rate in patients with nutrition consult vs without
+
+Mood improvement with psychologist support
+
+Weight outcomes with trainer involvement
+
+This proves multidisciplinary care works.
+
+🎯 6️⃣ Predictive & Preventive Insights (Advanced)
+
+This is your futuristic edge.
+
+Patients at risk of IVF need in next 6 months
+
+PCOS patients at diabetes risk
+
+Pregnancy patients trending toward anemia
+
+Postpartum patients at depression risk
+
+Now analytics becomes preventive medicine, not just reporting.
+
+💡 UX STYLE
+
+Analytics tab should have:
+
+✔ Filter by: Fertility / Pregnancy / Postpartum / PCOS
+✔ Time range selector: This month / 3 months / 1 year
+✔ Graphs > Tables
+✔ Color-coded trends (green improving, red worsening)
+
+This tab should make a doctor feel:
+
+“I’m not just treating patients. I’m improving women’s health outcomes at scale.”

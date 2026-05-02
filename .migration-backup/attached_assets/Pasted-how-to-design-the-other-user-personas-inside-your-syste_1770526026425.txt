@@ -1,0 +1,258 @@
+how to design the other user personas inside your system:
+
+🧍‍♀️ 1️⃣ Nutritionist Persona – “Hormone Fuel Specialist”
+🎯 Role
+
+Improves:
+
+Fertility outcomes
+
+PCOS reversal
+
+Pregnancy nutrition
+
+Postpartum recovery
+
+🖥 Dashboard Should Show
+
+Patients assigned to nutrition care
+
+Patient type tag: Fertility / Pregnant / Postpartum / PCOS
+
+Latest weight trend
+
+Hemoglobin / Vitamin D flags
+
+Insulin resistance risk (for PCOS)
+
+🛠 Key Features
+
+Upload meal plans
+
+Tag plans by goal: “Ovulation Support”, “GDM Diet”, “Postpartum Healing”
+
+Track:
+
+Weight changes
+
+Bloating
+
+Cravings
+
+Sugar control logs
+
+Adherence tracker (patient logs meals in app)
+
+💡 Smart Alerts
+
+“Low Hb + poor diet compliance”
+
+“PCOS patient weight increasing for 2 cycles”
+
+“Pregnancy patient inadequate weight gain”
+
+🧠 2️⃣ Psychologist Persona – “Emotional Hormone Guardian”
+🎯 Role
+
+Supports:
+
+Fertility stress
+
+Pregnancy anxiety
+
+Postpartum depression
+
+Relationship strain during TTC
+
+🖥 Dashboard
+
+Patients with high stress scores
+
+EPDS (postpartum depression scale) alerts
+
+Fertility patients with repeated failed cycles
+
+Patients marked “emotionally overwhelmed” by doctor
+
+🛠 Key Features
+
+Session notes
+
+Mood score tracking over time
+
+Stress triggers log
+
+Couple counseling flag
+
+💡 Smart Alerts
+
+“Postpartum mood score worsening”
+
+“Fertility patient with 3 failed cycles + high stress”
+
+“Sleep deprivation flagged”
+
+🏋️ 3️⃣ Physical Trainer Persona – “Cycle Fitness Coach”
+🎯 Role
+
+Aligns workouts with:
+
+Cycle phase
+
+PCOS weight goals
+
+Pregnancy-safe movement
+
+Postpartum recovery
+
+🖥 Dashboard
+
+Assigned patients
+
+Current cycle phase (for fertility/PCOS)
+
+Trimester (for pregnancy)
+
+Weeks postpartum
+
+🛠 Features
+
+Assign workout plans by:
+
+Follicular phase
+
+Luteal phase
+
+Trimester-safe exercises
+
+Diastasis recti recovery
+
+Track:
+
+Steps
+
+Activity minutes
+
+Pain flags
+
+💡 Alerts
+
+“PCOS weight plateau”
+
+“Postpartum back pain reported”
+
+“Pregnancy patient reduced activity suddenly”
+
+💆‍♀️ 4️⃣ Dermatologist Persona – “Hormone Skin Specialist”
+🎯 Role
+
+Manages:
+
+PCOS acne
+
+Hair fall
+
+Pigmentation in pregnancy
+
+Postpartum skin issues
+
+🖥 Dashboard
+
+PCOS patients with acne scores
+
+Patients reporting hair fall
+
+Hormonal flare alerts
+
+🛠 Features
+
+Acne severity scoring
+
+Hair fall grading
+
+Skin treatment plans
+
+Medication safety check (pregnancy-safe tagging)
+
+💡 Alerts
+
+“PCOS acne worsening”
+
+“Postpartum hair fall severe”
+
+“Pregnant patient using unsafe product”
+
+🩸 5️⃣ Phlebotomist Persona – “Diagnostic Flow Manager”
+🎯 Role
+
+Ensures lab tracking is smooth.
+
+🖥 Dashboard
+
+Today’s sample collections
+
+Pending investigations
+
+Repeat hormone test reminders (cycle day-based)
+
+🛠 Features
+
+Mark sample collected
+
+Upload reports
+
+Flag delayed reports
+
+💡 Alerts
+
+“Day 2 hormones not done”
+
+“OGTT overdue”
+
+“Progesterone test missed in luteal phase”
+
+🧑‍💼 6️⃣ Receptionist Persona – “Care Journey Coordinator”
+🎯 Role
+
+Manages patient movement & scheduling.
+
+🖥 Dashboard
+
+Today’s appointments
+
+Patient type (Fertility / Pregnancy / etc.)
+
+Next visit due alerts
+
+Program enrollments (Saivie Care Plans)
+
+🛠 Features
+
+Book follow-ups based on doctor plan
+
+Trigger reminders
+
+Track payments / packages
+
+Mark no-shows
+
+💡 Alerts
+
+“Fertility scan window tomorrow”
+
+“Pregnancy scan due this week”
+
+“Postpartum visit overdue”
+
+🌟 BIG DIFFERENCE THIS CREATES
+
+Each persona sees:
+❌ Not full EMR clutter
+✅ Only what they need to act
+
+But the doctor sees everything confident that care continues even outside consultation.
+
+That’s how Saivie becomes:
+
+A coordinated women’s health system
+Not just a doctor’s clinic.

@@ -1,0 +1,808 @@
+import React, { useState, useMemo } from "react";
+import { Link, useRoute } from "wouter";
+import { 
+  ArrowLeft,
+  Info,
+  Dna,
+  Clock,
+  Plus,
+  Minus,
+  Save,
+  FlaskConical,
+  Users,
+  Activity,
+  Brain,
+  Dumbbell,
+  FileText,
+  Stethoscope,
+  Utensils,
+  AlertCircle,
+  Heart,
+  MinusCircle,
+  Coffee
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ListPlus, Trash2, Sparkles } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+
+export default function StaffCarePlan() {
+  const patientsQuery = useQuery({
+    queryKey: ['/api/patients'],
+    queryFn: async () => {
+      const res = await fetch('/api/patients');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const nutritionPlansQuery = useQuery({
+    queryKey: ['/api/nutrition-plans'],
+    queryFn: async () => {
+      const res = await fetch('/api/nutrition-plans');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const workoutsQuery = useQuery({
+    queryKey: ['/api/workouts'],
+    queryFn: async () => {
+      const res = await fetch('/api/workouts');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+
+  const allPatients = patientsQuery.data || [];
+  const nutritionPlans = nutritionPlansQuery.data || [];
+  const workouts = workoutsQuery.data || [];
+
+  const functionalMedicinePatients = useMemo(
+    () => allPatients.filter((p: any) => p.genomics != null),
+    [allPatients]
+  );
+  const [match, params] = useRoute("/staff/create-plan/:id?");
+  const patientId = params?.id ? parseInt(params.id) : null;
+  const initialPatient = patientId ? functionalMedicinePatients.find((p: any) => p.id === patientId) : null;
+  
+  const [selectedPatient, setSelectedPatient] = useState<any>(initialPatient);
+  
+    const [viewMode, setViewMode] = useState<"intake" | "planning">("intake");
+  
+  const [mealPlanItems, setMealPlanItems] = useState([
+    { id: 1, time: "08:00", name: "Breakfast", item: "", qty: "", macros: "" },
+    { id: 2, time: "11:00", name: "Morning Snack", item: "", qty: "", macros: "" },
+    { id: 3, time: "13:00", name: "Lunch", item: "", qty: "", macros: "" },
+    { id: 4, time: "16:00", name: "Afternoon Snack", item: "", qty: "", macros: "" },
+    { id: 5, time: "19:30", name: "Dinner", item: "", qty: "", macros: "" }
+  ]);
+
+  const addMealItem = () => {
+    const newItem = { 
+        id: Date.now(), 
+        time: "00:00", 
+        name: "Meal/Snack", 
+        item: "", 
+        qty: "", 
+        macros: "" 
+    };
+    setMealPlanItems([...mealPlanItems, newItem]);
+  };
+
+  const removeMealItem = (id: number) => {
+    setMealPlanItems(mealPlanItems.filter(item => item.id !== id));
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+      
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center gap-4">
+            <Link href="/staff">
+                <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2 text-slate-500 hover:text-slate-900">
+                    <ArrowLeft className="w-5 h-5" />
+                </Button>
+            </Link>
+            <div>
+                <h1 className="text-lg font-bold text-slate-900">Create Personalized Nutrition Plan</h1>
+                <p className="text-xs text-slate-500">Design a functional nutrition protocol based on patient's genomic and metabolic profile.</p>
+            </div>
+        </div>
+        <div className="flex gap-2">
+             <Link href="/staff">
+                <Button variant="outline" size="sm" className="bg-white border-slate-200">
+                    Cancel
+                </Button>
+             </Link>
+             {viewMode === "intake" ? (
+                 <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" size="sm" onClick={() => setViewMode("planning")}>
+                    Proceed to Planning
+                 </Button>
+             ) : (
+                 <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" size="sm">
+                    <Save className="w-4 h-4 mr-2" /> Save & Assign Plan
+                 </Button>
+             )}
+        </div>
+      </header>
+
+      <main className="flex-1 p-6 max-w-5xl mx-auto w-full space-y-6">
+        
+        {viewMode === "intake" ? (
+            <>
+                {/* 1. Patient & Goal Selection */}
+        <Card className="shadow-sm border-slate-200">
+            <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                <CardTitle className="text-base font-bold text-slate-900">Patient Context</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Label>Select Patient</Label>
+                        <Select 
+                            value={selectedPatient?.id.toString()} 
+                            onValueChange={(val) => {
+                                const p = functionalMedicinePatients.find((pat: any) => pat.id.toString() === val);
+                                setSelectedPatient(p);
+                            }}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Search patient..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {functionalMedicinePatients.map((p: any) => (
+                                    <SelectItem key={p.id} value={p.id.toString()}>{p.name} ({p.condition})</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Plan Goal</Label>
+                        <Select>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Primary Outcome..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="inflammation">Reduce Inflammation (hs-CRP)</SelectItem>
+                                <SelectItem value="fertility">Boost Egg Quality</SelectItem>
+                                <SelectItem value="gut">Gut Repair (4R Protocol)</SelectItem>
+                                <SelectItem value="bloodsugar">Insulin Sensitivity</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                {/* Clinician Instructions (Dynamic) */}
+                {selectedPatient && selectedPatient.clinicianNote && (
+                    <div className="mt-4 bg-blue-50 border border-blue-100 p-3 rounded-lg flex gap-3 items-start">
+                        <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                        <div>
+                            <p className="text-xs font-bold text-blue-800 uppercase mb-0.5">Clinician Instruction</p>
+                            <p className="text-sm text-blue-700 leading-snug">{selectedPatient.clinicianNote}</p>
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+
+        {/* 2. Patient History & Clinical Intake */}
+        <Card className="shadow-sm border-slate-200">
+            <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                    <Stethoscope className="w-4 h-4 text-slate-600" />
+                    <CardTitle className="text-base font-bold text-slate-900">Clinical Intake & History</CardTitle>
+                </div>
+            </CardHeader>
+            <CardContent className="p-6">
+                {selectedPatient?.history ? (
+                    <div className="grid grid-cols-2 gap-6 mb-6">
+                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 space-y-3">
+                            <h4 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-2">Medical History (Pre-filled)</h4>
+                            <div className="grid grid-cols-1 gap-2">
+                                <div>
+                                    <span className="text-xs font-medium text-slate-500 block">Diagnosis</span>
+                                    <span className="text-sm text-slate-800">{selectedPatient.history.diagnosis}</span>
+                                </div>
+                                <div>
+                                    <span className="text-xs font-medium text-slate-500 block">Current Medications</span>
+                                    <span className="text-sm text-slate-800">{selectedPatient.history.medications}</span>
+                                </div>
+                                <div>
+                                    <span className="text-xs font-medium text-slate-500 block">Allergies/Intolerances</span>
+                                    <span className="text-sm text-slate-800">{selectedPatient.history.allergies}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Dietary Recall (24h)</Label>
+                                <Textarea placeholder="Note what the patient ate yesterday..." className="h-24 resize-none" />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Weight History</Label>
+                                    <Input placeholder="When did weight gain start?" className="bg-white" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Anxiety & Mood Meds</Label>
+                                    <Select>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Taking any anxiety meds?" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No, none</SelectItem>
+                                            <SelectItem value="ssri">Yes, SSRIs</SelectItem>
+                                            <SelectItem value="benzo">Yes, Benzodiazepines</SelectItem>
+                                            <SelectItem value="herbal">Herbal / Natural Only</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Current Symptoms (Reported)</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox id="sym-bloating" />
+                                        <label htmlFor="sym-bloating" className="text-sm text-slate-600">Bloating/Gas</label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox id="sym-fatigue" />
+                                        <label htmlFor="sym-fatigue" className="text-sm text-slate-600">Chronic Fatigue</label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox id="sym-brainfog" />
+                                        <label htmlFor="sym-brainfog" className="text-sm text-slate-600">Brain Fog</label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox id="sym-cravings" />
+                                        <label htmlFor="sym-cravings" className="text-sm text-slate-600">Sugar Cravings</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-slate-500 text-sm">
+                        Please select a patient to view and document their clinical history.
+                    </div>
+                )}
+                
+                <div className="space-y-2">
+                    <Label>Consultation Notes</Label>
+                    <Textarea placeholder="Key takeaways from today's session, specific goals discussed..." className="h-20" />
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* 3. Lifestyle & Routine Assessment */}
+        <Card className="shadow-sm border-slate-200">
+            <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-slate-600" />
+                    <CardTitle className="text-base font-bold text-slate-900">Lifestyle & Routine Assessment</CardTitle>
+                </div>
+            </CardHeader>
+            <CardContent className="p-6">
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Activity Level</Label>
+                            <Select>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select activity level..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="sedentary">Sedentary (Office Job)</SelectItem>
+                                    <SelectItem value="light">Lightly Active (1-3 days/week)</SelectItem>
+                                    <SelectItem value="moderate">Moderately Active (3-5 days/week)</SelectItem>
+                                    <SelectItem value="active">Very Active (6-7 days/week)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Work Schedule</Label>
+                            <Select>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select work pattern..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="9-5">Standard 9-5</SelectItem>
+                                    <SelectItem value="shift">Shift Work / Night Shifts</SelectItem>
+                                    <SelectItem value="flexible">Flexible / Remote</SelectItem>
+                                    <SelectItem value="student">Student Schedule</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Typical Wake Time</Label>
+                                <Input type="time" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Typical Bedtime</Label>
+                                <Input type="time" />
+                            </div>
+                        </div>
+                         <div className="space-y-2">
+                            <Label>Sleep Quality</Label>
+                            <Select>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="How do you sleep?" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="good">Good (Uninterrupted)</SelectItem>
+                                    <SelectItem value="fair">Fair (Waking up 1-2 times)</SelectItem>
+                                    <SelectItem value="poor">Poor (Insomnia / Restless)</SelectItem>
+                                    <SelectItem value="apnea">Sleep Apnea (Diagnosed)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* 4. Dietary Preferences & Constraints */}
+        <Card className="shadow-sm border-slate-200">
+            <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                    <Utensils className="w-4 h-4 text-slate-600" />
+                    <CardTitle className="text-base font-bold text-slate-900">Dietary Preferences & Constraints</CardTitle>
+                </div>
+            </CardHeader>
+            <CardContent className="p-6">
+                <div className="space-y-6">
+                    {/* Allergies & Sensitivities */}
+                    <div className="space-y-3">
+                        <Label className="flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-rose-500" />
+                            Known Allergies & Sensitivities
+                        </Label>
+                        <Textarea 
+                            placeholder="List confirmed allergies (e.g. Peanuts) or sensitivities (e.g. Dairy causes bloating)..." 
+                            className="h-20 bg-rose-50/30 border-rose-100 focus:border-rose-300" 
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                        {/* Favorites & Non-Negotiables */}
+                        <div className="space-y-3">
+                            <Label className="flex items-center gap-2">
+                                <Heart className="w-4 h-4 text-pink-500" />
+                                Favorites & Non-Negotiables
+                            </Label>
+                            <div className="space-y-2">
+                                <Input placeholder="Must-have comfort foods..." className="bg-slate-50" />
+                                <p className="text-[10px] text-slate-400">Foods the patient is unwilling to give up.</p>
+                            </div>
+                        </div>
+
+                        {/* Aversions (Hates) */}
+                        <div className="space-y-3">
+                            <Label className="flex items-center gap-2">
+                                <MinusCircle className="w-4 h-4 text-slate-500" />
+                                Food Aversions (Dislikes)
+                            </Label>
+                            <div className="space-y-2">
+                                <Input placeholder="Foods they absolutely hate..." className="bg-slate-50" />
+                                <p className="text-[10px] text-slate-400">Foods to avoid in the meal plan.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Cravings & Addictions */}
+                    <div className="space-y-3">
+                         <Label className="flex items-center gap-2">
+                            <Coffee className="w-4 h-4 text-amber-600" />
+                            Cravings & Habits
+                        </Label>
+                        <div className="grid grid-cols-4 gap-3">
+                            <div className="flex items-center space-x-2 border border-slate-200 rounded p-3 hover:bg-slate-50 cursor-pointer">
+                                <Checkbox id="crave-sugar" />
+                                <label htmlFor="crave-sugar" className="text-sm font-medium leading-none cursor-pointer text-slate-700">Sugar / Sweets</label>
+                            </div>
+                            <div className="flex items-center space-x-2 border border-slate-200 rounded p-3 hover:bg-slate-50 cursor-pointer">
+                                <Checkbox id="crave-caffeine" />
+                                <label htmlFor="crave-caffeine" className="text-sm font-medium leading-none cursor-pointer text-slate-700">Caffeine</label>
+                            </div>
+                            <div className="flex items-center space-x-2 border border-slate-200 rounded p-3 hover:bg-slate-50 cursor-pointer">
+                                <Checkbox id="crave-salty" />
+                                <label htmlFor="crave-salty" className="text-sm font-medium leading-none cursor-pointer text-slate-700">Salty Snacks</label>
+                            </div>
+                             <div className="flex items-center space-x-2 border border-slate-200 rounded p-3 hover:bg-slate-50 cursor-pointer">
+                                <Checkbox id="crave-soda" />
+                                <label htmlFor="crave-soda" className="text-sm font-medium leading-none cursor-pointer text-slate-700">Soda / Fizzy</label>
+                            </div>
+                            <div className="col-span-2 flex items-center space-x-2 border border-slate-200 rounded p-3 hover:bg-slate-50">
+                                <Checkbox id="habit-alcohol" className="mt-0.5" />
+                                <div className="flex-1">
+                                    <label htmlFor="habit-alcohol" className="text-sm font-medium leading-none cursor-pointer text-slate-700 block mb-1">Alcohol</label>
+                                    <Input placeholder="How often? (e.g. 2x/week)" className="h-6 text-[10px] bg-white" />
+                                </div>
+                            </div>
+                            <div className="col-span-2 flex items-center space-x-2 border border-slate-200 rounded p-3 hover:bg-slate-50">
+                                <Checkbox id="habit-nicotine" className="mt-0.5" />
+                                <div className="flex-1">
+                                    <label htmlFor="habit-nicotine" className="text-sm font-medium leading-none cursor-pointer text-slate-700 block mb-1">Nicotine</label>
+                                    <Input placeholder="How often? (e.g. 5/day)" className="h-6 text-[10px] bg-white" />
+                                </div>
+                            </div>
+                        </div>
+                        <Input placeholder="Other specific cravings or addictions..." className="mt-2" />
+                    </div>
+                </div>
+                
+                <div className="mt-6 flex justify-end border-t border-slate-100 pt-4">
+                    <Button className="bg-slate-900 text-white hover:bg-slate-800" onClick={() => setViewMode("planning")}>
+                        <Save className="w-4 h-4 mr-2" /> Save Intake & Proceed to Planning
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+        </>
+        ) : (
+        <>
+        {/* PLANNING PHASE DASHBOARD */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card className="col-span-1 shadow-sm border-blue-200 bg-blue-50">
+                 <CardContent className="p-4">
+                     <h3 className="text-xs font-bold text-blue-800 uppercase mb-2 flex items-center gap-2">
+                         <Info className="w-3.5 h-3.5" /> Clinician Instructions
+                     </h3>
+                     <p className="text-sm text-blue-700 leading-snug">
+                         {selectedPatient?.clinicianNote || "No specific instructions provided."}
+                     </p>
+                 </CardContent>
+            </Card>
+
+            <div className="col-span-3 grid grid-cols-4 gap-4">
+                 <Card className="shadow-sm border-slate-200 p-4 flex flex-col justify-center">
+                     <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Current Phase</p>
+                     <div className="flex items-center gap-2 text-purple-600">
+                         <Activity className="w-4 h-4" />
+                         <span className="font-bold text-lg">Luteal</span>
+                     </div>
+                     <p className="text-xs text-slate-400">Day 22</p>
+                 </Card>
+                 <Card className="shadow-sm border-slate-200 p-4 flex flex-col justify-center">
+                     <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Energy Exp (TDEE)</p>
+                     <div className="flex items-center gap-2 text-amber-600">
+                         <span className="font-bold text-lg">1850</span> <span className="text-xs text-slate-500">kcal</span>
+                     </div>
+                     <p className="text-xs text-slate-400">Activity: Moderate</p>
+                 </Card>
+                 <Card className="shadow-sm border-slate-200 p-4 flex flex-col justify-center">
+                     <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Target Intake</p>
+                     <div className="flex items-center gap-2 text-emerald-600">
+                         <span className="font-bold text-lg">1550</span> <span className="text-xs text-slate-500">kcal</span>
+                     </div>
+                     <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-200 bg-emerald-50 w-fit mt-1">-300 deficit</Badge>
+                 </Card>
+                 <Card className="shadow-sm border-slate-200 p-4 flex flex-col justify-center">
+                     <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Biometrics</p>
+                     <div className="flex justify-between items-end">
+                         <div>
+                             <span className="font-bold text-lg text-slate-900">68.2</span> <span className="text-xs text-slate-500">kg</span>
+                             <p className="text-[10px] text-slate-400">Weight</p>
+                         </div>
+                         <div className="text-right">
+                             <span className="font-bold text-lg text-slate-900">25.0</span>
+                             <p className="text-[10px] text-slate-400">BMI</p>
+                         </div>
+                     </div>
+                 </Card>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <Card className="shadow-sm border-slate-200">
+                 <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50 flex flex-row justify-between items-center">
+                     <CardTitle className="text-base font-bold text-slate-900">Recent Lab Biomarkers</CardTitle>
+                     <div className="flex gap-2">
+                         <Button variant="outline" size="sm" className="h-7 text-xs bg-white">+ Request Labs</Button>
+                         <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-600">View Full Report</Button>
+                     </div>
+                 </CardHeader>
+                 <CardContent className="p-6">
+                     <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                         <div className="flex justify-between items-center">
+                             <div>
+                                 <p className="text-xs font-bold text-slate-500 uppercase">HS-CRP</p>
+                                 <div className="flex items-baseline gap-1">
+                                     <span className="text-lg font-bold text-rose-600">3.2</span>
+                                     <span className="text-[10px] text-slate-400">Ref: &lt; 1.0</span>
+                                 </div>
+                             </div>
+                             <Badge variant="secondary" className="bg-rose-100 text-rose-700 hover:bg-rose-100">High</Badge>
+                         </div>
+                         <div className="flex justify-between items-center">
+                             <div>
+                                 <p className="text-xs font-bold text-slate-500 uppercase">Fasting Insulin</p>
+                                 <div className="flex items-baseline gap-1">
+                                     <span className="text-lg font-bold text-slate-900">12.5</span>
+                                     <span className="text-[10px] text-slate-400">Ref: &lt; 10.0</span>
+                                 </div>
+                             </div>
+                             <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-100">Elevated</Badge>
+                         </div>
+                         <div className="flex justify-between items-center">
+                             <div>
+                                 <p className="text-xs font-bold text-slate-500 uppercase">HbA1c</p>
+                                 <div className="flex items-baseline gap-1">
+                                     <span className="text-lg font-bold text-slate-900">5.7</span>
+                                     <span className="text-[10px] text-slate-400">Ref: &lt; 5.7</span>
+                                 </div>
+                             </div>
+                             <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-100">Borderline</Badge>
+                         </div>
+                         <div className="flex justify-between items-center">
+                             <div>
+                                 <p className="text-xs font-bold text-slate-500 uppercase">Vitamin D</p>
+                                 <div className="flex items-baseline gap-1">
+                                     <span className="text-lg font-bold text-rose-600">22</span>
+                                     <span className="text-[10px] text-slate-400">Ref: 30-100</span>
+                                 </div>
+                             </div>
+                             <Badge variant="secondary" className="bg-rose-100 text-rose-700 hover:bg-rose-100">Low</Badge>
+                         </div>
+                     </div>
+                 </CardContent>
+             </Card>
+
+             <Card className="shadow-sm border-slate-200">
+                 <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                     <CardTitle className="text-base font-bold text-slate-900">Protocol Focus</CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-6 space-y-4">
+                     <div className="space-y-2">
+                         <Label className="text-xs font-bold text-slate-500 uppercase">Primary Goal</Label>
+                         <Select defaultValue="inflammation">
+                             <SelectTrigger className="bg-white">
+                                 <SelectValue placeholder="Select primary goal..." />
+                             </SelectTrigger>
+                             <SelectContent>
+                                 <SelectItem value="inflammation">Reduce Inflammation (hs-CRP)</SelectItem>
+                                 <SelectItem value="insulin">Improve Insulin Sensitivity</SelectItem>
+                                 <SelectItem value="fertility">Enhance Fertility</SelectItem>
+                             </SelectContent>
+                         </Select>
+                     </div>
+                     <div className="space-y-2">
+                         <Label className="text-xs font-bold text-slate-500 uppercase">Dietary Strategy</Label>
+                         <Select defaultValue="anti-inflammatory">
+                             <SelectTrigger className="bg-white">
+                                 <SelectValue placeholder="Select dietary strategy..." />
+                             </SelectTrigger>
+                             <SelectContent>
+                                 <SelectItem value="anti-inflammatory">Anti-Inflammatory & Low GI</SelectItem>
+                                 <SelectItem value="mediterranean">Mediterranean Diet</SelectItem>
+                                 <SelectItem value="keto">Ketogenic Diet</SelectItem>
+                             </SelectContent>
+                         </Select>
+                     </div>
+                 </CardContent>
+             </Card>
+        </div>
+
+        {/* 5. Genomic Modifiers */}
+        <Card className="shadow-sm border-slate-200 bg-purple-50/30">
+            <CardHeader className="py-4 border-b border-purple-100 bg-purple-50">
+                <div className="flex items-center gap-2">
+                    <Dna className="w-4 h-4 text-purple-600" />
+                    <CardTitle className="text-base font-bold text-purple-900">Genomic Adjustments</CardTitle>
+                </div>
+            </CardHeader>
+            <CardContent className="p-6">
+                <div className="grid grid-cols-3 gap-6">
+                    <div className="flex items-start space-x-2">
+                        <Checkbox id="mthfr" />
+                        <div className="grid gap-0.5 leading-none">
+                            <label htmlFor="mthfr" className="text-sm font-medium text-slate-700 cursor-pointer">Methylation Support</label>
+                            <p className="text-xs text-slate-500">For MTHFR variants</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                        <Checkbox id="caffeine" />
+                        <div className="grid gap-0.5 leading-none">
+                            <label htmlFor="caffeine" className="text-sm font-medium text-slate-700 cursor-pointer">Caffeine Protocol</label>
+                            <p className="text-xs text-slate-500">Slow metabolizer limit</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                        <Checkbox id="gluten" />
+                        <div className="grid gap-0.5 leading-none">
+                            <label htmlFor="gluten" className="text-sm font-medium text-slate-700 cursor-pointer">Gluten Elimination</label>
+                            <p className="text-xs text-slate-500">HLA-DQ2/DQ8</p>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* 6. Macronutrient Targets */}
+        <Card className="shadow-sm border-slate-200">
+            <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                <CardTitle className="text-base font-bold text-slate-900">Macronutrient Distribution</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+                <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-slate-50 p-4 rounded border border-slate-200 text-center">
+                        <p className="text-xs text-slate-500 mb-1 font-bold uppercase">Protein</p>
+                        <p className="font-bold text-slate-900 text-2xl">30%</p>
+                        <div className="w-full bg-slate-200 h-1.5 mt-3 rounded-full overflow-hidden">
+                            <div className="bg-emerald-500 h-full w-[30%]"></div>
+                        </div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded border border-slate-200 text-center">
+                        <p className="text-xs text-slate-500 mb-1 font-bold uppercase">Fats</p>
+                        <p className="font-bold text-slate-900 text-2xl">40%</p>
+                        <div className="w-full bg-slate-200 h-1.5 mt-3 rounded-full overflow-hidden">
+                            <div className="bg-amber-500 h-full w-[40%]"></div>
+                        </div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded border border-slate-200 text-center">
+                        <p className="text-xs text-slate-500 mb-1 font-bold uppercase">Carbs</p>
+                        <p className="font-bold text-slate-900 text-2xl">30%</p>
+                        <div className="w-full bg-slate-200 h-1.5 mt-3 rounded-full overflow-hidden">
+                            <div className="bg-blue-500 h-full w-[30%]"></div>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* 7. Daily Schedule */}
+        <div className="space-y-6">
+            <Card className="shadow-sm border-slate-200">
+                <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                    <CardTitle className="text-sm font-bold text-slate-900 uppercase">Sleep Schedule</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-500 uppercase">Wake Up Time</Label>
+                            <div className="relative">
+                                <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                                <Input type="time" className="pl-9 bg-white" defaultValue="07:00" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-500 uppercase">Bedtime</Label>
+                            <div className="relative">
+                                <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                                <Input type="time" className="pl-9 bg-white" defaultValue="22:30" />
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-slate-200">
+                <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                     <div className="flex justify-between items-center">
+                        <CardTitle className="text-base font-bold text-slate-900">Daily Meal Structure</CardTitle>
+                        <div className="flex items-center gap-4">
+                            <div className="text-right">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase block">Planned</span>
+                                <span className="text-sm font-bold text-slate-900">1320 / 1550 kcal</span>
+                            </div>
+                            <Button variant="outline" size="sm" className="bg-white text-slate-600 border-slate-200">
+                                <FileText className="w-3.5 h-3.5 mr-2" /> Copy Monday to All
+                            </Button>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <Tabs defaultValue="monday" className="w-full">
+                        <TabsList className="w-full justify-start h-auto p-0 bg-transparent border-b border-slate-200 rounded-none mb-6">
+                            {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                                <TabsTrigger 
+                                    key={day} 
+                                    value={day.toLowerCase()}
+                                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 rounded-none px-4 py-2 text-slate-500"
+                                >
+                                    {day}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                        
+                        <div className="space-y-8">
+                            {mealPlanItems.map((meal, index) => (
+                                <div key={meal.id} className="space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="font-bold text-slate-900 text-sm">{meal.name}</h4>
+                                        <div className="flex items-center text-slate-500 bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                                            <Clock className="w-3.5 h-3.5 mr-1.5" />
+                                            <span className="text-xs font-medium">{meal.time}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex gap-3 items-center">
+                                        <div className="flex-1">
+                                            <Input 
+                                                defaultValue={meal.item || (index === 0 ? "Oatmeal with Flax & Berries" : index === 2 ? "Quinoa Salad with Chickpeas" : "")} 
+                                                placeholder="Enter meal item..."
+                                                className="rounded-full bg-white border-slate-200 text-sm h-10 px-4"
+                                            />
+                                        </div>
+                                        <div className="w-32">
+                                            <Input 
+                                                defaultValue={meal.qty || (index === 0 ? "1 bowl" : index === 2 ? "1 plate" : "")} 
+                                                placeholder="Qty"
+                                                className="rounded-full bg-white border-slate-200 text-sm h-10 px-4"
+                                            />
+                                        </div>
+                                        <div className="w-40">
+                                            <Input 
+                                                defaultValue={meal.macros || (index === 0 ? "350kcal, 12g P" : index === 2 ? "450kcal, 18g P" : "")} 
+                                                placeholder="Macros"
+                                                className="rounded-full bg-white border-slate-200 text-sm h-10 px-4 text-slate-500"
+                                            />
+                                        </div>
+                                        <div className="flex gap-1 ml-1">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50">
+                                                <ListPlus className="w-4 h-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-rose-500 hover:bg-rose-50" onClick={() => removeMealItem(meal.id)}>
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </Tabs>
+                    
+                    <div className="mt-8 pt-6 border-t border-slate-100 flex justify-center gap-4">
+                        <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50" onClick={addMealItem}>
+                            <Plus className="w-4 h-4 mr-2" /> Add Meal Slot
+                        </Button>
+                        <span className="text-slate-300 py-1">|</span>
+                        <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                            <Sparkles className="w-4 h-4 mr-2" /> Create Custom Item
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-slate-200">
+                 <CardHeader className="py-4 border-b border-slate-100 bg-slate-50/50">
+                    <div className="flex justify-between items-center">
+                         <CardTitle className="text-sm font-bold text-slate-900 uppercase">Functional Supplements</CardTitle>
+                         <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-600">+ Add Item</Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <div className="border border-slate-200 rounded-md divide-y divide-slate-100">
+                        <div className="p-3 flex items-center justify-between bg-slate-50">
+                            <span className="text-sm font-medium">Magnesium Glycinate</span>
+                            <span className="text-xs text-slate-500">400mg • Bedtime</span>
+                        </div>
+                        <div className="p-3 flex items-center justify-between bg-slate-50">
+                            <span className="text-sm font-medium">Omega-3 (EPA/DHA)</span>
+                            <span className="text-xs text-slate-500">2g • With Lunch</span>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+        </>
+        )}
+      </main>
+    </div>
+  );
+}

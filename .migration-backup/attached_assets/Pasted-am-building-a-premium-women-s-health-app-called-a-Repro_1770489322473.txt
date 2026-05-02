@@ -1,0 +1,111 @@
+am building a premium women's health app called a Reproductive Biology Intelligence System.
+This is NOT just a period tracker — it visualizes cycle phases, hormones, metabolism, and personalized biology in a calm, elegant, and empowering way.
+
+I need you to improve the UI design, layout hierarchy, and interaction experience of my current screen while keeping it soft, modern, and science-backed.
+
+🧠 Design Goals
+
+Feel like Apple Health meets a luxury wellness brand
+
+Emotionally safe, non-clinical, reassuring
+
+Feminine but not stereotypical (no overly bright pinks)
+
+Soft gradients, subtle depth, glassmorphism or neumorphism welcome
+
+Clear information hierarchy: State → Meaning → Action
+
+🌸 Screen Context
+
+This is the patient home screen.
+The center shows:
+
+Current cycle day and phase (e.g., Day 14 – Ovulation)
+
+A short insight like “Peak fertility window. Energy high.”
+
+Around it is a circular Cycle Rhythm Map that represents the full menstrual cycle.
+
+There are toggle buttons for:
+
+Focus (brain)
+
+Temp
+
+Metabolism
+
+Hormones
+
+There are also modes the user can switch between:
+
+Cycle Health
+
+TTC (Trying to Conceive)
+
+IVF Support
+
+Bottom navigation includes:
+
+Today
+
+Biology
+
+Insights
+
+✨ What I Want You To Improve
+
+1️⃣ Visual Hierarchy
+
+Make the central insight feel like the emotional anchor of the screen
+
+Improve spacing and balance so the UI breathes more
+
+Use size, contrast, and typography to guide attention naturally
+
+2️⃣ Cycle Ring Interaction
+
+Make the circular rhythm map feel interactive and alive
+
+Add subtle hover/slide animations
+
+Show future phase transitions softly (faded or dotted arc)
+
+3️⃣ Insight Cards
+Add a section under the circle with 1–2 smart daily cards like:
+
+“Best use of today’s energy”
+
+“Body tip for this phase”
+
+These should feel like personalized biological guidance, not generic tips.
+
+4️⃣ Mode Awareness
+When user switches between Cycle Health / TTC / IVF:
+
+Slightly change color accent
+
+Update wording tone (general wellness vs fertility-focused)
+
+5️⃣ Micro-Interactions
+
+Soft glow when selecting a body system (Metabolism, Hormones, etc.)
+
+Gentle animation when the day changes
+
+Smooth transitions, not abrupt screen changes
+
+6️⃣ Premium Feel
+
+Use soft shadows and layered cards
+
+Avoid harsh borders
+
+Use rounded corners generously
+
+Maintain accessibility and readability
+
+🎨 Style Reference Words
+
+Calm, intelligent, nurturing, rhythmic, futuristic wellness, biological harmony
+
+Now redesign the layout and component styling to feel like a next-generation women’s health intelligence platform, not a basic tracking app.

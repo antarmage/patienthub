@@ -1,0 +1,98 @@
+🌸 PATIENT PORTAL — “Understand My Body”
+Design vibe: Calm, reassuring, visual, non-technical Goal: Turn complex genomics + biology into clear life guidance
+
+🏠 1. Home Screen — “Your Body Today”
+First thing she sees when opening the app
+Top Card (Dynamic)
+“You’re in your Late Follicular Phase Estrogen rising • Energy building • Body preparing for ovulation”
+Color shifts by phase (soft gradient system)
+Below that: 3 Insight Cards
+1️⃣ Body Mode
+“Your metabolism is handling carbs efficiently today.”
+2️⃣ Brain & Mood
+“You may feel more social and mentally sharp.”
+3️⃣ Reproductive Focus
+“Fertility window approaching in ~3 days.”
+CTA: “See Why” → opens science made simple
+
+🔬 2. “My Biology” Tab (The Magic Layer)
+This is where genomics + AI insights live.
+🧬 Section: My Reproductive Blueprint
+Simple language:
+* “You may have a higher tendency for insulin resistance → lifestyle tips shown in luteal phase”
+* “Your body may use antioxidants faster → ovulation support tips”
+Each has: What this means → What you can do → When it matters in your cycle
+No gene names upfront. Tap to expand for deeper science.
+
+🌙 Section: Cycle Rhythm Map
+A circular interactive wheel:
+* Hormones
+* Metabolism
+* Brain mode
+* Uterine lining
+User slides across days → sees internal changes like a weather forecast for her body.
+
+🥗 3. Daily Guidance Feed — “Aligned With You”
+Instead of generic tips:
+Today’s suggestions are phase + genome aware
+Example:
+🍳 Nutrition: Your body uses protein efficiently today. Add lentils, eggs, paneer. 🧘 Recovery: Magnesium may help with late-luteal tension. 💤 Sleep: Your temperature is rising — cool, dark sleep environment helps.
+Feels like Spotify Discover Weekly for your biology
+
+📈 4. Insights & Patterns
+AI shows discoveries over time:
+“You report anxiety mostly when progesterone is high.” “Your energy improves when sleep >7h in follicular phase.”
+Visual correlations, not medical diagnosis.
+
+🤰 5. Modes She Can Switch
+* 🌿 General Cycle Health
+* 🤍 Trying to Conceive
+* 🪺 IVF Support Mode
+* 🌸 Perimenopause Prep (future)
+UI adapts guidance + dashboards accordingly.
+
+🩺 CLINICIAN PORTAL — “See the System, Not Just the Symptoms”
+Design vibe: Structured, analytical, fast to scan Goal: Clinical decision support, not fluff
+
+🖥️ 1. Patient Overview Dashboard
+At login, doctor sees patient tiles with risk flags:
+Patient	Cycle Pattern	Genomic Risk	Current Focus
+Ananya S	Short luteal	↑ PCOS PRS	TTC 6 months
+Meera D	Irregular	Normal PRS	PMS severe
+Color-coded alerts: 🔴 High concern 🟡 Monitor 🟢 Stable
+
+📊 2. Individual Patient Deep View
+A. Cycle Physiology Timeline
+Graph overlays:
+* Cycle phase detection
+* Basal temp / wearables
+* Reported symptoms
+* Predicted hormone curves (model-based)
+Doctor sees pattern, not just dates
+
+B. Genomic & Risk Panel
+Structured, clinical:
+Domain	Finding	Clinical Relevance
+Ovarian reserve genetics	Slight early decline tendency	Consider AMH monitoring earlier
+Insulin sensitivity	Elevated risk	Screen for metabolic markers
+Inflammation pathways	Moderate	May relate to PMS severity
+Not deterministic — risk-informed guidance
+
+C. AI Insight Box
+“Patient’s severe PMS clusters in high-progesterone phases. Lifestyle adherence during luteal phase correlates with 32% symptom reduction.”
+Action buttons:
+* Add note to chart
+* Share simplified insight with patient
+* Adjust care pathway
+
+🧪 3. Fertility / IVF Mode (If Activated)
+Doctor sees:
+* Predicted implantation environment trends
+* Luteal phase adequacy model
+* Lifestyle correlation with stimulation cycles (future dataset growth)
+This becomes longitudinal reproductive intelligence
+
+💬 4. Shared Insight Layer
+Doctor can send to patient:
+✔ Simplified explanation ✔ Lifestyle focus ✔ When to follow up
+Bridges clinical science → patient understanding

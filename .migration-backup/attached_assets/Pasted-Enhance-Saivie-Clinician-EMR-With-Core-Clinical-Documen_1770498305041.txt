@@ -1,0 +1,164 @@
+Enhance Saivie Clinician EMR With Core Clinical Documentation
+
+Improve the existing Saivie Clinician EMR Workspace by adding structured medical documentation sections that work across all patient types (Wellness, Fertility, Pregnancy, Postpartum).
+
+Do not remove any current features like cycle tracking, pregnancy monitoring, hormone insights, or team inputs. This is an enhancement to the consultation workflow.
+
+🩺 Add SOAP-Based Clinical Documentation Panel
+
+Inside the Current Visit Workspace, add a new collapsible section called:
+
+🩺 Clinical Notes & Orders
+
+This section should include:
+
+1️⃣ Chief Complaints (CC)
+
+Purpose: Capture patient’s primary concerns in their own words.
+
+UI Design:
+
+Free text input box
+
+Smart suggestions based on patient type:
+
+Fertility: “Unable to conceive”, “Irregular ovulation”, “Failed IUI”
+
+Pregnancy: “Back pain”, “Decreased fetal movement”, “Vomiting”
+
+Postpartum: “Low milk supply”, “Mood swings”, “Pain at stitch site”
+
+PCOS/Wellness: “Irregular periods”, “Weight gain”, “Acne”
+
+2️⃣ O/E – On Examination
+
+Purpose: Structured physical and clinical findings
+
+UI Layout: Card-style structured inputs
+
+Vitals Row
+
+BP
+
+Pulse
+
+Weight
+
+BMI (auto-calculated)
+
+Temperature (optional)
+
+Systemic / Relevant Exam Fields
+Dynamic based on patient type:
+
+Patient Type	O/E Fields
+Fertility	Thyroid enlargement, Hirsutism score, Pelvic tenderness
+Pregnancy	Fundal height, FHR, Edema, Presentation
+Postpartum	Uterine involution, Lochia status, Breast exam
+PCOS	Acne grade, Hair growth, Acanthosis
+
+Use checkboxes + short note fields.
+
+3️⃣ Medicines / Treatment Plan
+
+Add a structured Medication Prescribing Module:
+
+Features:
+
+Drug name (searchable)
+
+Dose
+
+Frequency
+
+Duration
+
+Route (Oral / Vaginal / Injection)
+
+Cycle-specific tagging (e.g., “Luteal Support”, “Ovulation Induction”)
+
+Smart Suggestions by Patient Type:
+
+Fertility → Letrozole, Progesterone, HCG trigger
+
+Pregnancy → Iron, Calcium, Folic acid
+
+Postpartum → Pain relief, Lactation support meds
+
+PCOS → Metformin, OCPs, Inositol
+
+4️⃣ Investigation Suggestions
+
+Add an “Order Investigations” panel with quick-select buttons.
+
+Tabs:
+🔬 Hormones
+🩸 Routine Bloods
+🧬 Fertility Tests
+🤰 Pregnancy Tests
+🖥 Imaging
+
+Examples of Smart Suggestions:
+
+Scenario	Suggested Tests
+Fertility	AMH, TSH, Prolactin, Semen analysis
+Pregnancy	CBC, OGTT, TSH, Urine routine
+PCOS	LH/FSH, Insulin, Lipid profile
+Postpartum	Hb, Thyroid, Vitamin D
+
+Allow:
+☑ Checkboxes
+📅 Schedule date
+🔁 Repeat cycle option
+
+5️⃣ 🧾 Prescription Generator Button
+
+Add a prominent button:
+
+🖨 Generate Prescription
+
+Functionality:
+
+Pulls:
+
+Patient details
+
+Chief complaints
+
+O/E findings
+
+Medicines
+
+Investigations
+
+Doctor notes
+
+Formats into a clean printable prescription
+
+Includes Saivie Clinic branding
+
+Option to:
+
+Print
+
+Download PDF
+
+Send to patient app
+
+🎯 UX Rules
+
+This section should feel like a natural extension of the current workspace, not a hospital-style cluttered EMR
+
+Use cards, spacing, and icons
+
+Keep it minimal, elegant, and fast to fill
+
+Allow voice-to-text for notes (future-ready)
+
+Outcome
+
+This upgrade should transform Saivie’s system into a:
+
+✨ Intelligent Women’s Health EMR
+That combines:
+AI insights + cycle intelligence + structured medical documentation + instant prescription generation
