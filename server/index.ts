@@ -25,6 +25,10 @@ declare module "express-session" {
   }
 }
 
+if (!process.env.SESSION_SECRET) {
+  throw new Error("SESSION_SECRET environment variable is required but not set");
+}
+
 const PgSession = connectPgSimple(session);
 app.use(
   session({
@@ -33,12 +37,13 @@ app.use(
       tableName: "patient_sessions",
       createTableIfMissing: true,
     }),
-    secret: process.env.SESSION_SECRET || "saivie-patient-session-secret-2026",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
     },
   })

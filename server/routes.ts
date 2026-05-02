@@ -987,6 +987,11 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.get("/api/patients/:id/documents", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    // When a patient session is active, only allow reading their own documents.
+    const sid = req.session?.patientId;
+    if (sid != null && sid !== id) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
     const docs = await storage.getDocuments(id);
     res.json(docs);
   });
