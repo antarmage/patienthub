@@ -2456,13 +2456,20 @@ Be thorough — extract every medication mentioned including supplements and vit
 
       // Stamp triage scores onto appointment records for retrospective querying
       const now = new Date().toISOString();
-      for (const item of enriched as any[]) {
-        storage.updateAppointment(item.appointmentId, {
-          triageScore: item.triageScore,
-          triageReason: item.triageReason,
-          triageScoredAt: now,
-        }).catch((e: any) => console.error(`[triage] Failed to stamp score for appt ${item.appointmentId}:`, e.message));
-      }
+      const stampResults = await Promise.allSettled(
+        (enriched as any[]).map(item =>
+          storage.updateAppointment(item.appointmentId, {
+            triageScore: item.triageScore,
+            triageReason: item.triageReason,
+            triageScoredAt: now,
+          })
+        )
+      );
+      stampResults.forEach((result, i) => {
+        if (result.status === "rejected") {
+          console.error(`[triage] Failed to stamp score for appt ${(enriched as any[])[i]?.appointmentId}:`, result.reason?.message);
+        }
+      });
 
       res.json({ date: today, count: enriched.length, appointments: enriched });
     } catch (err: any) {
@@ -2638,6 +2645,17 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
         });
 
       if (enriched.length === 0) {
+        // Still persist the run so the owner can see it was attempted
+        await storage.createScheduleOptimisation({
+          date: targetDate,
+          suggestions: [],
+          summary: "No appointments found for this date.",
+          estimatedTimeSaved: null,
+          totalAppointments: 0,
+          suggestionsCount: 0,
+          createdAt: new Date().toISOString(),
+        });
+        appendAuditLog({ event: "schedule_optimised", date: targetDate, totalAppointments: 0, suggestionsCount: 0 });
         return res.json({ date: targetDate, suggestions: [], message: "No appointments to optimise." });
       }
 
@@ -2694,8 +2712,8 @@ Only include appointments that should move. If schedule is already optimal, retu
         summary: parsed.summary || null,
       });
 
-      // Persist to DB for retrospective owner queries
-      storage.createScheduleOptimisation({
+      // Persist to DB for retrospective owner queries (awaited so failures surface)
+      await storage.createScheduleOptimisation({
         date: targetDate,
         suggestions: parsed.suggestions || [],
         summary: parsed.summary || null,
@@ -2703,7 +2721,7 @@ Only include appointments that should move. If schedule is already optimal, retu
         totalAppointments: enriched.length,
         suggestionsCount: parsed.suggestions?.length || 0,
         createdAt: new Date().toISOString(),
-      }).catch((e: any) => console.error("[optimise-schedule] DB persist failed:", e.message));
+      });
 
       res.json({ date: targetDate, ...parsed, totalAppointments: enriched.length });
     } catch (err: any) {

@@ -4,6 +4,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { seedDatabase } from "./seed";
 import { storage } from "./storage";
+import { ensureSchema } from "./db";
 import { whatsapp } from "./whatsapp";
 import { scorePatient, generateTrimesterChecklist } from "./risk-engine";
 
@@ -158,6 +159,7 @@ function convertTo24h(time12: string): string {
 }
 
 (async () => {
+  await ensureSchema();
   await seedDatabase();
   await registerRoutes(httpServer, app);
   startReminderScheduler();
