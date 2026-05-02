@@ -2,15 +2,7 @@
 
 ## Overview
 
-Saivie is a premium women's health platform (called a "Reproductive Biology Intelligence System") that serves three user personas through distinct portals:
-
-1. **Patient Portal** — A calm, visual interface that translates complex genomics and biology into clear daily life guidance. Includes cycle tracking, hormone visualization, metabolic insights, and personalized recommendations across modes (Cycle Health, TTC/Trying to Conceive, IVF Support).
-
-2. **Clinician Portal (EMR)** — A full clinician workspace supporting fertility care, pregnancy monitoring, and postpartum recovery. Features include SOAP-based clinical documentation, patient queues with risk flags, hormone/cycle intelligence graphs, AI clinical insights, genomic risk panels, care pathway routing (Hormone & Cycle, Natural Conception, IUI, Pregnancy, Postpartum), and analytics dashboards.
-
-3. **Staff Portal** — Supports allied health professionals (nutritionists, psychologists, fitness coaches) with patient protocol management, care plan creation, check-in workflows, and appointment booking.
-
-The design philosophy prioritizes emotional safety, non-clinical language for patients, and reduced cognitive overload for clinicians. The aesthetic is "Apple Health meets luxury wellness brand" — soft gradients, glassmorphism, feminine but not stereotypical.
+Saivie is a premium "Reproductive Biology Intelligence System" designed for women's health. It provides distinct portals for three user types: Patients, Clinicians, and Staff. The platform aims to translate complex biological data into actionable daily guidance for patients, offer a comprehensive EMR for clinicians focusing on fertility, pregnancy, and postpartum care, and support allied health professionals with patient protocol and care plan management. The core vision is to offer emotional safety, reduce cognitive overload, and present a sophisticated, non-clinical user experience.
 
 ## User Preferences
 
@@ -18,146 +10,86 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend Architecture
+### Frontend
 - **Framework**: React 18 with TypeScript
-- **Routing**: Wouter (lightweight client-side router)
-- **State Management**: TanStack React Query for server state; local React state for UI
-- **Styling**: Tailwind CSS v4 with CSS variables for theming, using `@tailwindcss/vite` plugin
-- **UI Components**: shadcn/ui (new-york style) built on Radix UI primitives
-- **Animations**: Framer Motion for transitions and micro-interactions
-- **Charts**: Recharts for hormone graphs, cycle analytics, and clinical data visualization
-- **Fonts**: DM Sans (body) and Lora (serif headings)
-- **Build Tool**: Vite with path aliases (`@/` → `client/src/`, `@shared/` → `shared/`)
+- **Routing**: Wouter
+- **State Management**: TanStack React Query (server state), React local state (UI)
+- **Styling**: Tailwind CSS v4 with CSS variables, shadcn/ui components (Radix UI primitives)
+- **Animations**: Framer Motion
+- **Charts**: Recharts
+- **Fonts**: DM Sans, Lora
+- **Build Tool**: Vite
 
-### Backend Architecture
+### Backend
 - **Runtime**: Node.js with Express 5
-- **Language**: TypeScript, executed via tsx
-- **API Pattern**: RESTful JSON API under `/api/` prefix
-- **Development**: Vite dev server proxied through Express with HMR support
-- **Production**: Client built to `dist/public/`, server bundled with esbuild to `dist/index.cjs`
+- **Language**: TypeScript
+- **API**: RESTful JSON API
+- **Development**: Vite dev server proxied through Express with HMR
+- **Production**: Client served from `dist/public/`, server bundled to `dist/index.cjs`
 
 ### Data Storage
 - **Database**: PostgreSQL
-- **ORM**: Drizzle ORM with `drizzle-zod` for schema validation
-- **Schema Location**: `shared/schema.ts` (shared between client and server)
-- **Migrations**: Drizzle Kit with `drizzle-kit push` for schema sync
-- **Connection**: `pg` Pool via `DATABASE_URL` environment variable
-- **Key Tables**: `users`, `patients`, `providers`, `services`, `appointments`, `labTasks`, `nutritionPlans`, `workouts`, `hormoneReadings`, `pregnancyMetrics`, `follicleData`, `usgData`, `labResults`, `visitHistory`, `medications`, `clinicalNotes`, `referrals`, `invoices`, `consentForms`, `documents`, `billingCatalog`
-- **JSON Storage**: Extensive use of `jsonb` columns for flexible medical data (genomics, functional assessments, intervention plans, medical history)
-- **Google Sheets Integration**: Connected to spreadsheet ID `1mj3hkqjoQFrckIGC9Y0Jjlh6kYIYPHBVuPKAl7k-bxo`, reads "Form Responses 1" sheet (patient registration form data). Sync matches patients by phone number or name to avoid duplicates. Patients table extended with phone, email, address, lmp, height, bp columns.
-- **Google Drive Integration**: Connected to folder ID `1eCMJNf-kzwMfovvuVedCwAWECsKr7XVA` for lab report PDF imports. Files follow naming convention `TestReport_PATIENT NAME_ID_UUID.pdf`. Patient names are extracted from filenames and matched to database patients using fuzzy scoring (handles spelling variants like Mondal/Mandal, Sarma/Sharma). Reports stored in `documents` table with `metadata.driveFileId` for deduplication. Client module in `server/google-drive.ts`.
+- **ORM**: Drizzle ORM with `drizzle-zod`
+- **Schema**: Shared between client and server in `shared/schema.ts`
+- **Migrations**: Drizzle Kit
+- **Key Tables**: `users`, `patients`, `providers`, `services`, `appointments`, `labTasks`, `nutritionPlans`, `workouts`, `hormoneReadings`, `pregnancyMetrics`, `follicleData`, `usgData`, `labResults`, `visitHistory`, `medications`, `clinicalNotes`, `referrals`, `invoices`, `consentForms`, `documents`, `billingCatalog`.
+- **Flexible Data**: `jsonb` columns for genomics, functional assessments, intervention plans.
 
 ### API Structure
-All routes are registered in `server/routes.ts`. Key endpoints:
-- `GET/POST /api/patients` — Patient CRUD
-- `GET/PATCH /api/patients/:id` — Individual patient operations
-- `GET/POST /api/providers` — Provider management
-- `GET/POST /api/services` — Service catalog
-- `GET/POST /api/appointments` — Appointment scheduling
-- `GET /api/appointments?date=` — Date-filtered appointments
-- `GET /api/appointments?patientId=` — Patient-specific appointments
-- `GET/POST /api/lab-tasks` — Lab order management
-- `GET/POST /api/nutrition-plans` — Nutrition plan management
-- `GET/POST /api/workouts` — Workout plan management
-- `GET/POST /api/hormone-readings` — Hormone data tracking
-- `GET/POST /api/pregnancy-metrics` — Pregnancy monitoring data
-- `GET/POST /api/follicle-data` — Fertility tracking (follicle scans)
-- `GET/POST /api/usg-data` — Ultrasound data
-- `GET/POST /api/patients/:id/visit-history` — Patient visit history with SOAP notes
-- `GET/POST/PATCH/DELETE /api/patients/:id/medications` — Medication management
-- `GET/POST/PATCH/DELETE /api/patients/:id/clinical-notes` — Clinical notes
-- `GET/POST/PATCH/DELETE /api/patients/:id/referrals` — Referral tracking
-- `GET/POST /api/patients/:id/invoices`, `PATCH/DELETE /api/invoices/:id` — Billing
-- `GET/POST/PATCH/DELETE /api/billing-catalog` — Billing catalog (owner-managed service pricing with GST)
-- `GET/POST/PATCH/DELETE /api/patients/:id/consent-forms` — Consent form tracking
-- `POST /api/appointments/:id/telemedicine` — Generate Jitsi Meet video link for an appointment; notifies patient via WhatsApp
-- `POST /api/whatsapp/send-patient` — Send custom WhatsApp message to a patient by ID (receptionist panel)
-- `GET /api/whatsapp/webhook` — WhatsApp webhook verification handshake (Meta)
-- `POST /api/whatsapp/webhook` — Inbound WhatsApp messages; maps CONFIRM/CANCEL replies to appointment status updates
-- `GET/POST/PATCH/DELETE /api/patients/:id/documents` — Document metadata
-- `POST /api/auth/passcode` — Unified passcode login (returns role + redirects to appropriate portal)
-- `POST /api/google-sheets/sync` — Import/sync patient data from Google Sheet (Form Responses 1)
-- `GET /api/google-sheets/status` — Check Google Sheet connection status and row count
-- `POST /api/google-drive/import-lab-reports` — Import lab report PDFs from Google Drive folder, match to patients by name
-- `GET /api/google-drive/status` — Check Google Drive connection status and file counts
+Comprehensive RESTful API for managing patients, providers, appointments, services, lab tasks, care plans (nutrition, workout), medical data (hormones, pregnancy, follicle, USG), clinical documentation (SOAP notes, medications, referrals), billing, consent forms, and document management. Includes endpoints for Google Sheets/Drive integration, WhatsApp communication, and AI features.
 
 ### Authentication
-- Unified passcode-based login on the Landing page for Clinician and Staff portals
-- Users enter a passcode; API returns their role (clinician/staff) and the frontend redirects accordingly
-- Patient Portal remains open (no passcode required)
-- Default passcodes: dr.priya=1234, dr.ramesh=5678, staff.reception=0000, staff.nurse=1111, owner=9999
-
-### Storage Layer
-- Abstracted through `IStorage` interface in `server/storage.ts`
-- Database implementation using Drizzle ORM queries
-- Seed data in `server/seed.ts` populates demo patients with rich clinical data
+Unified passcode-based login for Clinician and Staff portals. Patient portal is open access.
 
 ### Client Pages & Routing
-| Route | Page | Purpose |
-|-------|------|---------|
-| `/` | Landing | Portal selection (Patient/Clinician/Staff) |
-| `/patient` | PatientPortal | Home, Biology, Insights tabs with cycle wheel |
-| `/clinician` | ClinicianPortal | Full EMR workspace with dashboards |
-| `/staff` | StaffPortal | Allied health professional dashboard |
-| `/staff/check-in` | CheckIn | Patient check-in workflow |
-| `/staff/booking` | NewBooking | Appointment scheduling |
-| `/staff/protocol/:id` | StaffPatientProtocol | Patient-specific protocols |
-| `/staff/create-plan/:id?` | StaffCarePlan | Care plan creation |
-| `/owner` | OwnerPortal | Business intelligence dashboard |
+Main portals include `/patient`, `/clinician`, `/staff`, and `/owner`, with sub-routes for specific functionalities like check-in, booking, patient protocols, and care plan creation.
 
 ### Key Design Patterns
-- **Shared Schema**: The `shared/` directory contains Drizzle schema definitions and Zod validation schemas used by both client and server
-- **Glass Morphism UI**: Extensive use of `backdrop-blur`, translucent backgrounds, and soft gradients
-- **Mode-Aware Rendering**: Patient portal adapts visuals based on selected mode (Cycle Health, TTC, IVF)
-- **Phase-Aware Content**: Dynamic content changes based on menstrual cycle phase (colors, recommendations, insights)
-- **Collapsible Card System**: Clinical data organized in priority-colored cards (red=critical, orange=attention, green=stable)
+- **Shared Schema**: Centralized Drizzle and Zod schemas.
+- **Glass Morphism UI**: Utilizes `backdrop-blur`, translucent backgrounds, and soft gradients.
+- **Mode-Aware Rendering**: Patient portal adapts content and visuals based on health mode (Cycle Health, TTC, IVF).
+- **Phase-Aware Content**: Dynamic content based on menstrual cycle phase.
+- **Collapsible Card System**: Clinical data organized with priority-colored cards.
 
-### Risk Intelligence (Phase 2)
-- **Risk Engine**: `server/risk-engine.ts` — Gemini 2.5 Flash powered patient risk scoring and trimester checklist generation
-- **Risk Score Shape**: `{ level: Low|Medium|High|Critical, score: 0-100, factors: [{factor, severity, detail}], recommendations: string[], patientSummary: string, updatedAt: ISO }`
-- **Trimester Checklist Shape**: `{ trimester: 1|2|3, weekRange, currentWeek, items: [{category, task, dueWeek, done, urgent}], generatedAt }`
-- **Schema**: `patients` table extended with `risk_score jsonb` and `trimester_checklist jsonb` columns
-- **Auto-trigger**: Risk re-scoring fires automatically (fire-and-forget) after new lab results are posted or after lab extraction from Drive
-- **API Endpoints**: `POST /api/patients/:id/risk-score`, `POST /api/patients/batch-risk-score`, `POST /api/patients/:id/trimester-checklist`
-- **Clinician Portal**: Risk column in Patient Flow queue table with color-coded badges (Critical=red, High=orange, Medium=amber, Low=green); Risk Alerts panel in right column showing High/Critical patients sorted by score; Risk Assessment dialog with factors breakdown, recommendations, and re-score button
-- **Patient Portal**: "What to watch this week" AI card in InsightsTab (all modes) showing `patient.riskScore.patientSummary` in plain language with risk level badge
-
-### AI-Augmented Workforce (Phase 3)
-- **AI Triage Queue**: `GET /api/appointments/triage?date=` — computes a `triageScore` per appointment from risk score + days-since-visit bonus + gestational urgency. Returns sorted list with a `triageReason` one-liner. Toggle in Patient Flow header activates triage sort mode with a "Priority Reason" column.
-- **WhatsApp Virtual Assistant + Booking**: Inbound WhatsApp messages handled by Gemini with full appointment booking and rescheduling capability. Classification types: `booking_request`, `reschedule_request`, `appointment_query`, `medication_question`, `symptom_query`, `result_query`, `general`. Booking shortcuts: `BOOK DOCTOR`, `BOOK NUTRITION`, `BOOK LAB`. Stateful two-step flow: if patient doesn't provide a date, a `pendingBookings` Map stores context (10-min TTL) and Gemini extracts the date from their follow-up. Auto-creates appointment in DB and confirms back. Reschedule: detects new date from message, updates existing appointment. Urgent messages still create a `ClinicalNote` tagged `["urgent","whatsapp","needs-review"]`.
-- **Voice-to-SOAP Documentation**: `POST /api/voice/soap-transcribe` — accepts `{ audioData: base64, mimeType, patientContext }`, sends audio to Gemini multimodal model, returns structured `{ subjective, objective, assessment, plan, rawTranscript }`. Clinician Portal has a "Voice" button in the SOAP workspace header that records microphone audio (MediaRecorder API), sends to backend, and auto-populates the S/O/A/P draft fields. Drafts reset on patient navigation.
-- **Post-Visit WhatsApp Summary**: `POST /api/appointments/:id/post-visit-summary` — generates a warm plain-language WhatsApp summary using Gemini (latest visit + active meds), sends via WhatsApp if patient has a phone number. "Post-Visit" button in SOAP workspace header triggers this.
-- **AI Schedule Optimisation**: `POST /api/appointments/optimise-schedule` body `{ date }` — Gemini analyses appointments by risk level, visit mode, and duration to suggest an optimised order. Returns `{ suggestions, summary, estimatedTimeSaved }`. "Optimise Schedule" button in Staff Portal schedule view opens a result dialog.
-- **Owner AI Insights**: `POST /api/owner/ai-insights` — aggregates weekly clinic metrics (appointments, revenue, diagnoses, staff utilisation, high-risk count) and sends to Gemini for a structured insights report with 4 sections (Patient Volume, Finance, Clinical Focus, Staff & Operations) plus action items. "AI Insights" nav item in Owner Portal triggers generation.
-- **API Endpoints**: `GET /api/appointments/triage`, `POST /api/voice/soap-transcribe`, `POST /api/appointments/:id/post-visit-summary`, `POST /api/appointments/optimise-schedule`, `POST /api/owner/ai-insights`
+### AI Features
+- **Risk Intelligence**: Gemini 2.5 Flash-powered patient risk scoring and trimester checklist generation, triggering automatically on new data. Integrates into Clinician Portal with risk alerts and assessment dialogs. Patient Portal provides AI-generated summaries.
+- **AI Triage Queue**: Sorts appointments by `triageScore` based on risk, visit history, and gestational urgency.
+- **WhatsApp Virtual Assistant**: Handles inbound messages for booking, rescheduling, and queries using Gemini, creating appointments and clinical notes as needed.
+- **Voice-to-SOAP Documentation**: Transcribes audio to structured SOAP notes using Gemini multimodal model, auto-populating fields in the Clinician Portal.
+- **Post-Visit WhatsApp Summary**: Generates and sends plain-language visit summaries via WhatsApp using Gemini.
+- **AI Schedule Optimisation**: Gemini analyzes appointments to suggest optimized schedules for staff.
+- **Owner AI Insights**: Aggregates clinic metrics for Gemini-generated structured insights reports.
+- **AI Audit Log**: Records AI-driven actions for transparency and review.
 
 ## External Dependencies
 
 ### Database
-- **PostgreSQL** — Primary data store, connected via `DATABASE_URL` environment variable
-- **connect-pg-simple** — PostgreSQL session store (available for session management)
+- PostgreSQL
+- connect-pg-simple (for session store)
 
 ### Key NPM Packages
-- **drizzle-orm** + **drizzle-kit** — Database ORM and migration tooling
-- **express** v5 — HTTP server framework
-- **@tanstack/react-query** — Async state management
-- **framer-motion** — Animation library
-- **recharts** — Chart/graph rendering
-- **react-day-picker** — Calendar component
-- **wouter** — Client-side routing
-- **zod** — Runtime type validation
-- **embla-carousel-react** — Carousel component
-- **vaul** — Drawer component
-- **cmdk** — Command palette
-- **date-fns** — Date manipulation
+- drizzle-orm, drizzle-kit
+- express
+- @tanstack/react-query
+- framer-motion
+- recharts
+- react-day-picker
+- wouter
+- zod
+- embla-carousel-react
+- vaul
+- cmdk
+- date-fns
 
 ### Replit-Specific
-- **@replit/vite-plugin-runtime-error-modal** — Development error overlay
-- **@replit/vite-plugin-cartographer** — Development tooling (dev only)
-- **@replit/vite-plugin-dev-banner** — Development banner (dev only)
-- Custom `vite-plugin-meta-images` for OpenGraph image handling on Replit deployments
+- @replit/vite-plugin-runtime-error-modal
+- @replit/vite-plugin-cartographer
+- @replit/vite-plugin-dev-banner
+- Custom `vite-plugin-meta-images`
 
-### Asset Pipeline
-- Static images stored in `client/src/assets/images/` (imported as modules)
-- Design specification documents in `attached_assets/` directory
-- Google Fonts loaded via CDN (DM Sans, Lora)
+### Integrations
+- **Google Sheets**: Reads patient registration data from a specified sheet.
+- **Google Drive**: Imports lab report PDFs from a designated folder, matching to patients.
+- **Jitsi Meet**: Generates video links for telemedicine appointments.
+- **WhatsApp**: Used for patient notifications, custom messages, and virtual assistant interactions (via Meta's WhatsApp Business Platform).
+- **Gemini 2.5 Flash**: Powers AI features for risk intelligence, WhatsApp virtual assistant, voice-to-SOAP, post-visit summaries, schedule optimization, and owner insights.

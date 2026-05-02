@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 import { storage } from "./storage";
 import { registerOcrRoutes } from "./replit_integrations/ocr";
 import { getUncachableGoogleSheetClient } from "./google-sheets";
@@ -26,6 +28,39 @@ interface PendingBooking {
   askedAt: number; // timestamp
 }
 const pendingBookings = new Map<string, PendingBooking>();
+
+// ── AI Audit Log ──────────────────────────────────────────────────────────────
+const AUDIT_LOG_PATH = path.join(process.cwd(), "data", "ai_audit_log.jsonl");
+
+function ensureAuditDir() {
+  const dir = path.dirname(AUDIT_LOG_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+function appendAuditLog(entry: { event: string; [key: string]: any }) {
+  try {
+    ensureAuditDir();
+    const line = JSON.stringify({ ...entry, timestamp: new Date().toISOString() }) + "\n";
+    fs.appendFileSync(AUDIT_LOG_PATH, line, "utf8");
+  } catch (e: any) {
+    console.error("[audit-log] Failed to write:", e.message);
+  }
+}
+
+function readAuditLog(limit = 200): any[] {
+  try {
+    ensureAuditDir();
+    if (!fs.existsSync(AUDIT_LOG_PATH)) return [];
+    const lines = fs.readFileSync(AUDIT_LOG_PATH, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map(l => { try { return JSON.parse(l); } catch { return null; } })
+      .filter(Boolean);
+    return lines.slice(-limit).reverse(); // newest first
+  } catch {
+    return [];
+  }
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -2411,6 +2446,13 @@ Be thorough — extract every medication mentioned including supplements and vit
         .filter(Boolean)
         .sort((a: any, b: any) => b.triageScore - a.triageScore);
 
+      appendAuditLog({
+        event: "triage_run",
+        date: today,
+        appointmentCount: enriched.length,
+        topPatient: enriched[0]?.patientName || null,
+        topScore: enriched[0]?.triageScore || null,
+      });
       res.json({ date: today, count: enriched.length, appointments: enriched });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -2420,7 +2462,7 @@ Be thorough — extract every medication mentioned including supplements and vit
   // 2. Voice-to-SOAP transcription — accept base64 audio, return structured SOAP
   app.post("/api/voice/soap-transcribe", async (req: any, res: any) => {
     try {
-      const { audioData, mimeType, patientContext } = req.body;
+      const { audioData, mimeType, patientContext, patientId } = req.body;
       if (!audioData) return res.status(400).json({ error: "audioData is required" });
 
       const response = await ai.models.generateContent({
@@ -2458,6 +2500,23 @@ Be concise and clinically accurate. Convert spoken language to structured clinic
       const text = response.text || "{}";
       const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       const parsed = JSON.parse(cleaned);
+
+      // Save SOAP draft as a permanent clinical note on the patient record
+      if (patientId) {
+        const pid = parseInt(patientId);
+        if (!isNaN(pid)) {
+          storage.createClinicalNote({
+            patientId: pid,
+            date: new Date().toISOString().split("T")[0],
+            type: "voice_soap",
+            title: "Voice SOAP Draft",
+            content: `Subjective: ${parsed.subjective || ""}\n\nObjective: ${parsed.objective || ""}\n\nAssessment: ${parsed.assessment || ""}\n\nPlan: ${parsed.plan || ""}`,
+            tags: ["voice", "soap-draft"],
+            isPrivate: 0,
+          }).catch((e: any) => console.error("[voice-soap] ClinicalNote save failed:", e.message));
+        }
+      }
+
       res.json({ success: true, soap: parsed });
     } catch (err: any) {
       console.error("[voice-soap] Error:", err.message);
@@ -2516,6 +2575,17 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
       if (patient.phone) {
         await whatsapp.sendTextMessage(patient.phone, summaryText);
       }
+
+      // Save post-visit summary as a permanent clinical note on the patient record
+      storage.createClinicalNote({
+        patientId: patient.id,
+        date: new Date().toISOString().split("T")[0],
+        type: "visit_summary",
+        title: "Post-Visit WhatsApp Summary",
+        content: summaryText,
+        tags: ["whatsapp", "post-visit-summary"],
+        isPrivate: 0,
+      }).catch((e: any) => console.error("[post-visit-summary] ClinicalNote save failed:", e.message));
 
       res.json({
         success: true,
@@ -2604,11 +2674,25 @@ Only include appointments that should move. If schedule is already optimal, retu
       const text = response.text || "{}";
       const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       const parsed = JSON.parse(cleaned);
+      appendAuditLog({
+        event: "schedule_optimised",
+        date: targetDate,
+        totalAppointments: enriched.length,
+        suggestionsCount: parsed.suggestions?.length || 0,
+        estimatedTimeSaved: parsed.estimatedTimeSaved || null,
+        summary: parsed.summary || null,
+      });
       res.json({ date: targetDate, ...parsed, totalAppointments: enriched.length });
     } catch (err: any) {
       console.error("[optimise-schedule] Error:", err.message);
       res.status(500).json({ error: err.message });
     }
+  });
+
+  // 5a. AI Audit Log — returns all logged AI events newest-first
+  app.get("/api/owner/audit-log", (_req: any, res: any) => {
+    const entries = readAuditLog(200);
+    res.json({ entries, count: entries.length });
   });
 
   // 5. Owner AI Weekly Insights

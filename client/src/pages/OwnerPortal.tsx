@@ -224,6 +224,7 @@ export default function OwnerPortal() {
     { id: "performance", label: "Performance", icon: BarChart3 },
     { id: "catalog", label: "Service Catalog", icon: Package },
     { id: "ai-insights", label: "AI Insights", icon: Sparkles },
+    { id: "ai-audit-log", label: "AI Audit Log", icon: Activity },
   ];
 
   const statusBadge = (status: string) => {
@@ -1229,9 +1230,117 @@ export default function OwnerPortal() {
               </div>
             )}
 
+            {/* AI AUDIT LOG SECTION */}
+            {activeView === "ai-audit-log" && (
+              <AiAuditLogView />
+            )}
+
           </div>
         </ScrollArea>
       </main>
+    </div>
+  );
+}
+
+function AiAuditLogView() {
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["/api/owner/audit-log"],
+    queryFn: async () => {
+      const res = await fetch("/api/owner/audit-log");
+      return res.json();
+    },
+    refetchInterval: 30000,
+  });
+
+  const entries: any[] = data?.entries || [];
+
+  const eventLabel: Record<string, { label: string; color: string; icon: string }> = {
+    triage_run:         { label: "Triage Sort", color: "bg-violet-100 text-violet-700", icon: "⚡" },
+    schedule_optimised: { label: "Schedule Optimise", color: "bg-blue-100 text-blue-700", icon: "🗓️" },
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 font-serif">AI Audit Log</h2>
+          <p className="text-sm text-slate-500 mt-0.5">History of all AI-driven triage sorts and schedule optimisations</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="btn-refresh-audit-log">
+          <RefreshCw className="w-4 h-4 mr-1.5" /> Refresh
+        </Button>
+      </div>
+
+      {isLoading && (
+        <Card className="border-slate-200">
+          <CardContent className="flex items-center justify-center py-12 gap-3">
+            <RefreshCw className="w-5 h-5 text-slate-400 animate-spin" />
+            <p className="text-slate-500">Loading audit log…</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isLoading && entries.length === 0 && (
+        <Card className="border-dashed border-2 border-slate-200 bg-slate-50">
+          <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-2xl">📋</div>
+            <p className="font-semibold text-slate-700">No AI events recorded yet</p>
+            <p className="text-sm text-slate-400 text-center max-w-sm">Events are logged whenever the Triage Sort or Schedule Optimise features are used from the Staff or Clinician portals.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isLoading && entries.length > 0 && (
+        <Card className="border-slate-200 shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50">
+                <TableHead className="text-xs font-semibold text-slate-600 w-44">Timestamp</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600 w-40">Event</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600 w-28">Date</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600">Details</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry: any, i: number) => {
+                const meta = eventLabel[entry.event] || { label: entry.event, color: "bg-slate-100 text-slate-600", icon: "🤖" };
+                return (
+                  <TableRow key={i} data-testid={`row-audit-${i}`} className="hover:bg-slate-50/60">
+                    <TableCell className="text-xs text-slate-500 tabular-nums whitespace-nowrap">
+                      {entry.timestamp ? new Date(entry.timestamp).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true }) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${meta.color}`}>
+                        <span>{meta.icon}</span> {meta.label}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-600">{entry.date || "—"}</TableCell>
+                    <TableCell className="text-xs text-slate-600 max-w-sm">
+                      {entry.event === "triage_run" && (
+                        <span>
+                          {entry.appointmentCount} appointment{entry.appointmentCount !== 1 ? "s" : ""} sorted
+                          {entry.topPatient ? ` · Top: ${entry.topPatient} (score ${entry.topScore})` : ""}
+                        </span>
+                      )}
+                      {entry.event === "schedule_optimised" && (
+                        <span>
+                          {entry.totalAppointments} appointments · {entry.suggestionsCount} change{entry.suggestionsCount !== 1 ? "s" : ""} suggested
+                          {entry.estimatedTimeSaved ? ` · ${entry.estimatedTimeSaved}` : ""}
+                          {entry.summary ? <span className="block text-slate-400 mt-0.5 truncate max-w-xs">{entry.summary}</span> : null}
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+
+      {!isLoading && entries.length > 0 && (
+        <p className="text-xs text-slate-400 text-center">{entries.length} event{entries.length !== 1 ? "s" : ""} recorded</p>
+      )}
     </div>
   );
 }

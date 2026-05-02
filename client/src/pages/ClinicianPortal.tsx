@@ -3758,6 +3758,7 @@ export default function ClinicianPortal() {
                                               audioData: base64,
                                               mimeType: 'audio/webm',
                                               patientContext: `${selectedPatient?.name}, ${selectedPatient?.age}y, ${selectedPatient?.type || ''}`,
+                                              patientId: selectedPatient?.id,
                                             }),
                                           });
                                           const data = await resp.json();
