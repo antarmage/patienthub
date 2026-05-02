@@ -57,7 +57,8 @@ import {
   ChevronUp,
   LogOut,
   Mic,
-  MessageCircle
+  MessageCircle,
+  Save
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -145,6 +146,8 @@ export default function ClinicianPortal() {
   const audioChunksRef = React.useRef<Blob[]>([]);
   const [postVisitSummarySending, setPostVisitSummarySending] = useState(false);
   const [postVisitSummaryResult, setPostVisitSummaryResult] = useState<string | null>(null);
+  const [soapSaving, setSoapSaving] = useState(false);
+  const [soapSavedMsg, setSoapSavedMsg] = useState<string | null>(null);
   const [extractionStatus, setExtractionStatus] = useState<string | null>(null);
   const [fundalHeightVal, setFundalHeightVal] = useState('');
   const [fetalHeartRateVal, setFetalHeartRateVal] = useState('');
@@ -373,6 +376,18 @@ export default function ClinicianPortal() {
   });
   const visitHistory = visitHistoryQuery.data || [];
   const latestVisit = visitHistory.length > 0 ? visitHistory[visitHistory.length - 1] : null;
+
+  const clinicalNotesQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/clinical-notes`],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${selectedPatient?.id}/clinical-notes`);
+      if (!res.ok) throw new Error('Failed to fetch clinical notes');
+      return res.json();
+    },
+    enabled: !!selectedPatient
+  });
+  const clinicalNotes: any[] = clinicalNotesQuery.data || [];
+  const postVisitSummaryNotes = clinicalNotes.filter((n: any) => n.type === 'visit_summary' || n.type === 'voice_soap');
 
   React.useEffect(() => {
     setFundalHeightVal((latestVisit?.vitals as any)?.fundalHeight || '');
@@ -4083,6 +4098,76 @@ export default function ClinicianPortal() {
                                     />
                                   )}
 
+                                  {/* Save SOAP to Visit action bar — visible when any draft field is populated */}
+                                  {(soapSubjectiveDraft || soapObjectiveDraft || soapAssessmentDraft || soapPlanDraft) && (
+                                    <div className="mb-3 flex items-center gap-2">
+                                      <button
+                                        data-testid="btn-save-soap-to-visit"
+                                        disabled={soapSaving}
+                                        onClick={async () => {
+                                          setSoapSaving(true);
+                                          setSoapSavedMsg(null);
+                                          try {
+                                            if (latestVisit?.id) {
+                                              await fetch(`/api/visit-history/${latestVisit.id}`, {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                  ...(soapSubjectiveDraft ? { subjective: soapSubjectiveDraft } : {}),
+                                                  ...(soapObjectiveDraft ? { objective: soapObjectiveDraft } : {}),
+                                                  ...(soapAssessmentDraft ? { assessment: soapAssessmentDraft } : {}),
+                                                  ...(soapPlanDraft ? { planNotes: soapPlanDraft } : {}),
+                                                }),
+                                              });
+                                            } else {
+                                              await fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                  date: new Date().toISOString().split('T')[0],
+                                                  visitType: 'consultation',
+                                                  subjective: soapSubjectiveDraft,
+                                                  objective: soapObjectiveDraft,
+                                                  assessment: soapAssessmentDraft,
+                                                  planNotes: soapPlanDraft,
+                                                }),
+                                              });
+                                            }
+                                            setSoapSubjectiveDraft('');
+                                            setSoapObjectiveDraft('');
+                                            setSoapAssessmentDraft('');
+                                            setSoapPlanDraft('');
+                                            setSoapTranscript(null);
+                                            setSoapSavedMsg('SOAP notes saved to visit record.');
+                                            queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] });
+                                            setTimeout(() => setSoapSavedMsg(null), 4000);
+                                          } catch {
+                                            setSoapSavedMsg('Failed to save. Please try again.');
+                                          } finally {
+                                            setSoapSaving(false);
+                                          }
+                                        }}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60 transition-colors"
+                                      >
+                                        {soapSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                        {soapSaving ? 'Saving…' : 'Save SOAP to Visit Record'}
+                                      </button>
+                                      <button
+                                        onClick={() => { setSoapSubjectiveDraft(''); setSoapObjectiveDraft(''); setSoapAssessmentDraft(''); setSoapPlanDraft(''); setSoapTranscript(null); }}
+                                        className="text-xs text-slate-400 hover:text-slate-600"
+                                        data-testid="btn-discard-soap-draft"
+                                      >
+                                        Discard draft
+                                      </button>
+                                    </div>
+                                  )}
+                                  {soapSavedMsg && (
+                                    <div className={`flex items-center gap-2 mb-3 px-3 py-2 rounded text-xs font-medium ${soapSavedMsg.startsWith('Failed') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                                      {soapSavedMsg.startsWith('Failed') ? <AlertCircle className="w-3 h-3" /> : <Check className="w-3 h-3" />}
+                                      {soapSavedMsg}
+                                    </div>
+                                  )}
+
                                   {/* Dynamic medications table */}
                                   {(medications.length > 0 || showAddMedRow) && (
                                     <div className="mb-3">
@@ -5324,6 +5409,30 @@ export default function ClinicianPortal() {
                                    <p className="text-xs text-slate-600">{(selectedVisit as any).planNotes}</p>
                                  </div>
                                )}
+
+                               {/* Post-visit summary & voice SOAP notes for this date */}
+                               {(() => {
+                                 const visitDate = (selectedVisit as any).date;
+                                 const matchingNotes = postVisitSummaryNotes.filter((n: any) => n.date === visitDate);
+                                 if (matchingNotes.length === 0) return null;
+                                 return (
+                                   <div className="mt-2 space-y-1.5">
+                                     {matchingNotes.map((note: any) => (
+                                       <div key={note.id} className={`rounded border px-3 py-2 ${note.type === 'visit_summary' ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'}`}>
+                                         <div className="flex items-center gap-1.5 mb-1">
+                                           {note.type === 'visit_summary'
+                                             ? <MessageCircle className="w-3 h-3 text-green-600" />
+                                             : <Mic className="w-3 h-3 text-blue-600" />}
+                                           <span className={`text-[10px] font-bold uppercase ${note.type === 'visit_summary' ? 'text-green-700' : 'text-blue-700'}`}>
+                                             {note.type === 'visit_summary' ? 'Post-Visit Summary' : 'Voice SOAP Draft'}
+                                           </span>
+                                         </div>
+                                         <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                                       </div>
+                                     ))}
+                                   </div>
+                                 );
+                               })()}
 
                                {!((selectedVisit as any).chiefComplaint || (selectedVisit as any).subjective || selectedVitalsList.length > 0 || (selectedVisit as any).diagnosis || selectedVisitMeds.length > 0 || allSelectedInv.length > 0 || (selectedVisit as any).planNotes) && (
                                  <p className="text-xs text-slate-400 italic">No clinical details recorded for this visit.</p>
