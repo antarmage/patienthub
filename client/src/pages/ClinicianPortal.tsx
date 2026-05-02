@@ -741,11 +741,23 @@ export default function ClinicianPortal() {
   const invoices = invoicesQuery.data || [];
 
   const queuePatients = useMemo(() => {
-    const dateAppts = appointments.filter((a: any) => a.date >= queueDateFrom && a.date <= queueDateTo);
+    const dateAppts = appointments.filter((a: any) =>
+      a.date >= queueDateFrom && a.date <= queueDateTo &&
+      a.status !== 'cancelled' && a.status !== 'Cancelled'
+    );
     dateAppts.sort((a: any, b: any) => (a.date || '').localeCompare(b.date || '') || (a.time || '').localeCompare(b.time || ''));
     return dateAppts.map((apt: any) => {
       const patient = patients.find((p: any) => p.id === apt.patientId);
-      return patient ? { ...patient, appointmentDate: apt.date, appointmentTime: apt.time, appointmentType: apt.type, appointmentId: apt.id, appointmentStatus: apt.status } : null;
+      return patient ? {
+        ...patient,
+        appointmentDate: apt.date,
+        appointmentTime: apt.time,
+        appointmentType: apt.type,
+        appointmentId: apt.id,
+        appointmentStatus: apt.status,
+        appointmentVisitMode: apt.visitMode,
+        appointmentTelemedicineLink: apt.telemedicineLink,
+      } : null;
     }).filter(Boolean);
   }, [appointments, patients, queueDateFrom, queueDateTo]);
 
@@ -1037,9 +1049,26 @@ export default function ClinicianPortal() {
                                        <tr key={`${p.appointmentId}-${p.id}`} data-testid={`row-patient-${p.id}`} className="hover:bg-slate-50 cursor-pointer" onClick={() => navigateToPatient(p)}>
                                           {queueDateFrom !== queueDateTo && <td className="px-3 py-3 text-slate-500 text-xs font-medium">{p.appointmentDate ? new Date(p.appointmentDate + 'T00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}</td>}
                                           <td className="px-3 py-3 text-slate-500 font-medium">{p.appointmentTime || '--:--'}</td>
-                                          <td className="px-3 py-3 font-semibold text-slate-900" data-testid={`text-patient-name-${p.id}`}>{p.name}</td>
+                                          <td className="px-3 py-3" data-testid={`text-patient-name-${p.id}`}>
+                                             <div className="font-semibold text-slate-900">{p.name}</div>
+                                             {p.appointmentVisitMode === 'home-visit' && p.address && (
+                                               <div className="text-xs text-amber-600 flex items-center gap-1 mt-0.5">
+                                                 <span>🏠</span>
+                                                 <span className="truncate max-w-[160px]" title={p.address}>{p.address}</span>
+                                               </div>
+                                             )}
+                                             {p.appointmentVisitMode === 'telemedicine' && (
+                                               <div className="text-xs text-blue-600 flex items-center gap-1 mt-0.5">
+                                                 <span>📹</span>
+                                                 {p.appointmentTelemedicineLink
+                                                   ? <a href={p.appointmentTelemedicineLink} target="_blank" rel="noopener noreferrer" className="underline" onClick={e => e.stopPropagation()}>Join Call</a>
+                                                   : <span>Telemedicine</span>
+                                                 }
+                                               </div>
+                                             )}
+                                          </td>
                                           <td className="px-3 py-3"><Badge variant="outline" className={typeColors[p.type] || 'border-slate-200 text-slate-700 bg-slate-50'}>{p.type || 'General'}</Badge></td>
-                                          <td className="px-3 py-3 text-slate-600 text-xs">{p.appointmentStatus || 'Scheduled'}</td>
+                                          <td className="px-3 py-3 text-slate-600 text-xs capitalize">{p.appointmentStatus || 'Scheduled'}</td>
                                           <td className="px-3 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
                                        </tr>
                                     );

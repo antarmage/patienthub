@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import crypto from "crypto";
 import { storage } from "./storage";
 import { registerOcrRoutes } from "./replit_integrations/ocr";
 import { getUncachableGoogleSheetClient } from "./google-sheets";
@@ -241,6 +242,22 @@ export async function registerRoutes(
   // WhatsApp Inbound Webhook — receive messages
   app.post("/api/whatsapp/webhook", async (req, res) => {
     try {
+      // Verify Meta webhook signature if app secret is configured
+      const appSecret = process.env.WHATSAPP_APP_SECRET;
+      if (appSecret) {
+        const signature = req.headers["x-hub-signature-256"] as string | undefined;
+        if (!signature) {
+          console.warn("WhatsApp webhook: missing signature header — request rejected");
+          return res.sendStatus(403);
+        }
+        const rawBody = JSON.stringify(req.body);
+        const expected = "sha256=" + crypto.createHmac("sha256", appSecret).update(rawBody).digest("hex");
+        if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+          console.warn("WhatsApp webhook: signature mismatch — request rejected");
+          return res.sendStatus(403);
+        }
+      }
+
       const body = req.body;
       const entry = body?.entry?.[0];
       const changes = entry?.changes?.[0];
@@ -980,6 +997,10 @@ export async function registerRoutes(
             if (phone) existingByPhone.set(phone, patient.id);
             existingByName.set(name.toLowerCase().trim(), patient.id);
             imported++;
+            // Send welcome WhatsApp for new patients synced from Google Sheets
+            if (phone) {
+              whatsapp.sendWelcomeMessage(phone, name).catch(() => {});
+            }
           }
 
           if (parsed) {
