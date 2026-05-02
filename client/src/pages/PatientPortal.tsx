@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { 
   Leaf, 
   Baby, 
@@ -26,7 +28,13 @@ import {
   FileText,
   CheckCircle2,
   Clock,
-  Stethoscope
+  Stethoscope,
+  CalendarPlus,
+  X,
+  ChevronLeft,
+  User,
+  Apple,
+  Microscope
 } from "lucide-react";
 import { CycleWheel } from "@/components/CycleWheel";
 import calmGradient from "../assets/images/calm-gradient.png";
@@ -38,6 +46,12 @@ import InsightsTab from "@/components/InsightsTab";
 export default function PatientPortal() {
   const [activeTab, setActiveTab] = useState("home");
   const [mode, setMode] = useState("general"); // general, ttc, ivf, pregnancy
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingStep, setBookingStep] = useState<'type'|'date'|'confirm'|'done'>('type');
+  const [bookingType, setBookingType] = useState<'doctor'|'nutritionist'|'blood_test'|null>(null);
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingNote, setBookingNote] = useState('');
+  const queryClient = useQueryClient();
 
   const storedPatient = (() => {
     try {
@@ -96,6 +110,62 @@ export default function PatientPortal() {
     queryFn: async () => { const r = await fetch(`/api/patients/${patient?.id}/lab-results`); return r.json(); },
     enabled: !!patient?.id,
   });
+
+  const { data: providers } = useQuery({
+    queryKey: ['/api/providers'],
+    queryFn: async () => { const r = await fetch('/api/providers'); return r.json(); },
+  });
+
+  const { data: patientAppointments } = useQuery({
+    queryKey: [`/api/appointments?patientId=${patient?.id}`],
+    queryFn: async () => { const r = await fetch(`/api/appointments?patientId=${patient?.id}`); return r.json(); },
+    enabled: !!patient?.id,
+  });
+
+  const bookingMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const r = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      return r.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/appointments?patientId=${patient?.id}`] });
+    },
+  });
+
+  const openBooking = () => {
+    setBookingStep('type');
+    setBookingType(null);
+    setBookingDate('');
+    setBookingNote('');
+    setBookingOpen(true);
+  };
+
+  const handleBookingConfirm = async () => {
+    if (!patient?.id || !bookingDate || !bookingType) return;
+    const typeMap: Record<string, string> = {
+      doctor: 'Consultation',
+      nutritionist: 'Nutrition Consultation',
+      blood_test: 'Blood Test / Lab Work',
+    };
+    const doctor = providers?.find((p: any) => {
+      if (bookingType === 'nutritionist') return (p.specialization || '').toLowerCase().includes('nutri');
+      return true;
+    });
+    await bookingMutation.mutateAsync({
+      patientId: patient.id,
+      providerId: doctor?.id || providers?.[0]?.id || null,
+      date: bookingDate,
+      time: '10:00',
+      type: typeMap[bookingType],
+      status: 'Pending',
+      notes: bookingNote || undefined,
+    });
+    setBookingStep('done');
+  };
 
   useEffect(() => {
      document.documentElement.setAttribute('data-mode', mode);
@@ -392,6 +462,100 @@ export default function PatientPortal() {
                       </Card>
                    </motion.div>
                 </div>
+
+                {/* Last Visit Summary Card */}
+                {visitHistory && visitHistory.length > 0 && (() => {
+                  const lastVisit = [...visitHistory].sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())[0];
+                  const daysSince = lastVisit?.date ? Math.floor((new Date().getTime() - new Date(lastVisit.date).getTime()) / (1000 * 60 * 60 * 24)) : null;
+                  return (
+                    <motion.div initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+                      <Card className="glass-panel border-white/60 overflow-hidden" data-testid="last-visit-card">
+                        <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-purple-50/30 to-white/40" />
+                        <CardContent className="relative p-5 z-10">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <span className="p-1.5 bg-violet-100 rounded-full"><Stethoscope className="w-3.5 h-3.5 text-violet-600" /></span>
+                              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Visit</h4>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {daysSince === 0 ? 'Today' : daysSince === 1 ? 'Yesterday' : daysSince != null ? `${daysSince} days ago` : ''}
+                            </span>
+                          </div>
+                          {lastVisit?.diagnosis && (
+                            <p className="text-base font-serif text-foreground mb-1">{lastVisit.diagnosis}</p>
+                          )}
+                          {(lastVisit?.chiefComplaint || lastVisit?.subjective) && (
+                            <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
+                              {lastVisit.chiefComplaint || lastVisit.subjective}
+                            </p>
+                          )}
+                          {lastVisit?.planNotes && (
+                            <div className="bg-white/50 rounded-xl px-3 py-2 mt-2">
+                              <p className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">Doctor's plan: </span>{lastVisit.planNotes}</p>
+                            </div>
+                          )}
+                          <button
+                            onClick={() => setActiveTab('care')}
+                            className="mt-3 flex items-center gap-1 text-xs text-violet-600 font-medium hover:text-violet-800 transition-colors"
+                          >
+                            Full visit history <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })()}
+
+                {/* Upcoming Appointment Banner */}
+                {patientAppointments && (() => {
+                  const upcoming = [...(patientAppointments as any[])].filter((a: any) => {
+                    const s = (a.status || '').toLowerCase();
+                    return s !== 'cancelled' && s !== 'completed' && a.date && new Date(a.date) >= new Date(new Date().toDateString());
+                  }).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+                  if (!upcoming) return null;
+                  const daysUntil = Math.ceil((new Date(upcoming.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                  return (
+                    <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+                      <Card className="glass-panel border-emerald-200/50 overflow-hidden" data-testid="upcoming-appt-card">
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-white/40" />
+                        <CardContent className="relative p-4 z-10 flex items-center gap-4">
+                          <div className="p-2.5 bg-emerald-100 rounded-2xl shrink-0">
+                            <CalendarDays className="w-5 h-5 text-emerald-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Upcoming Appointment</p>
+                            <p className="text-sm font-medium text-foreground mt-0.5">
+                              {new Date(upcoming.date).toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'short' })}
+                              {upcoming.time ? ` • ${upcoming.time}` : ''}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{upcoming.type || 'Consultation'}</p>
+                          </div>
+                          <Badge className={`text-[10px] shrink-0 ${daysUntil <= 1 ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}>
+                            {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil}d`}
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })()}
+
+                {/* Quick Book CTA */}
+                <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+                  <button
+                    onClick={openBooking}
+                    className="w-full glass-panel border-white/60 rounded-2xl p-4 flex items-center gap-4 hover:border-primary/30 hover:bg-white/60 transition-all text-left group"
+                    data-testid="book-appointment-cta"
+                  >
+                    <div className="p-3 bg-primary/10 rounded-xl shrink-0 group-hover:bg-primary/15 transition-colors">
+                      <CalendarPlus className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">Book an Appointment</p>
+                      <p className="text-xs text-muted-foreground">Doctor · Nutritionist · Blood Test</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                  </button>
+                </motion.div>
 
                 {/* Daily Guidance Feed */}
                 <div className="space-y-5 pb-8">
