@@ -77,6 +77,7 @@ function WaterTracker({ patientId }: { patientId: number }) {
     queryKey: [`/api/water-logs?patientId=${patientId}&date=${today}`],
     queryFn: async () => {
       const r = await fetch(`/api/water-logs?patientId=${patientId}&date=${today}`, { credentials: "include" });
+      if (!r.ok) return [];
       return r.json();
     },
   });
@@ -187,6 +188,7 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
     queryKey: [`/api/pregnancy-metrics?patientId=${patientId}`],
     queryFn: async () => {
       const r = await fetch(`/api/pregnancy-metrics?patientId=${patientId}`, { credentials: "include" });
+      if (!r.ok) return [];
       return r.json();
     },
   });
@@ -316,6 +318,7 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
     queryKey: [`/api/pregnancy-metrics?patientId=${patientId}`],
     queryFn: async () => {
       const r = await fetch(`/api/pregnancy-metrics?patientId=${patientId}`, { credentials: "include" });
+      if (!r.ok) return [];
       return r.json();
     },
   });
@@ -440,6 +443,7 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
     queryKey: [`/api/medication-logs?patientId=${patientId}&date=${today}`],
     queryFn: async () => {
       const r = await fetch(`/api/medication-logs?patientId=${patientId}&date=${today}`, { credentials: "include" });
+      if (!r.ok) return [];
       return r.json();
     },
   });
@@ -552,6 +556,7 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
     queryKey: [`/api/patient-documents?patientId=${patientId}`],
     queryFn: async () => {
       const r = await fetch(`/api/patient-documents?patientId=${patientId}`, { credentials: "include" });
+      if (!r.ok) return [];
       return r.json();
     },
   });
@@ -561,6 +566,7 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
     queryKey: [`/api/patients/${patientId}/documents`],
     queryFn: async () => {
       const r = await fetch(`/api/patients/${patientId}/documents`);
+      if (!r.ok) return [];
       return r.json();
     },
   });

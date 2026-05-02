@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -32,6 +32,7 @@ import {
   CalendarPlus,
   X,
   ChevronLeft,
+  ChevronDown,
   User,
   Apple,
   Microscope
@@ -111,6 +112,19 @@ export default function PatientPortal() {
       setModeInitialized(true);
     }
   }, [patient, modeInitialized]);
+
+  const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
+  const modeDropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!modeDropdownOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(e.target as Node)) {
+        setModeDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [modeDropdownOpen]);
 
   const { data: visitHistory } = useQuery({
     queryKey: [`/api/patients/${patient?.id}/visit-history`],
@@ -238,33 +252,53 @@ export default function PatientPortal() {
             </p>
           </motion.div>
           
-          <div className="relative group z-50">
-             <motion.button 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-2 bg-white/40 hover:bg-white/60 transition-colors backdrop-blur-xl px-4 py-2 rounded-full border border-white/40 text-xs font-medium text-foreground shadow-sm"
+          <div className="relative z-50" ref={modeDropdownRef}>
+             <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setModeDropdownOpen(o => !o)}
+                className="flex items-center gap-2 bg-white/40 hover:bg-white/60 active:bg-white/70 transition-colors backdrop-blur-xl px-4 py-2 rounded-full border border-white/40 text-xs font-medium text-foreground shadow-sm"
              >
-                {mode === "general" && <><Leaf className="w-3.5 h-3.5 text-emerald-600" /> Cycle Health</>}
-                {mode === "ttc" && <><Baby className="w-3.5 h-3.5 text-rose-500" /> Trying to Conceive</>}
-                {mode === "ivf" && <><TestTube className="w-3.5 h-3.5 text-purple-500" /> IVF Support</>}
-                {mode === "pregnancy" && <><Heart className="w-3.5 h-3.5 text-pink-500" /> Pregnancy</>}
+                {mode === "general" && <Leaf className="w-3.5 h-3.5 text-emerald-600" />}
+                {mode === "ttc" && <Baby className="w-3.5 h-3.5 text-rose-500" />}
+                {mode === "ivf" && <TestTube className="w-3.5 h-3.5 text-purple-500" />}
+                {mode === "pregnancy" && <Heart className="w-3.5 h-3.5 text-pink-500" />}
+                <span>
+                  {mode === "general" && "Cycle Health"}
+                  {mode === "ttc" && "Trying to Conceive"}
+                  {mode === "ivf" && "IVF Support"}
+                  {mode === "pregnancy" && "Pregnancy"}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-foreground/50 transition-transform duration-200 ${modeDropdownOpen ? "rotate-180" : ""}`} />
              </motion.button>
-             
-             {/* Dropdown */}
-             <div className="absolute right-0 top-full mt-2 w-52 bg-white/90 backdrop-blur-xl rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-white/60 p-1.5 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all transform origin-top-right scale-95 group-hover:scale-100">
-                <button onClick={() => setMode("general")} className={`w-full text-left px-3 py-2.5 rounded-xl hover:bg-black/5 flex items-center gap-3 text-sm transition-colors ${mode === 'general' ? 'bg-black/5 font-medium' : ''}`}>
-                   <div className="p-1.5 bg-emerald-100 rounded-full"><Leaf className="w-3.5 h-3.5 text-emerald-600" /></div> Cycle Health
-                </button>
-                <button onClick={() => setMode("pregnancy")} className={`w-full text-left px-3 py-2.5 rounded-xl hover:bg-black/5 flex items-center gap-3 text-sm transition-colors ${mode === 'pregnancy' ? 'bg-black/5 font-medium' : ''}`}>
-                   <div className="p-1.5 bg-pink-100 rounded-full"><Heart className="w-3.5 h-3.5 text-pink-600" /></div> Pregnancy
-                </button>
-                <button onClick={() => setMode("ttc")} className={`w-full text-left px-3 py-2.5 rounded-xl hover:bg-black/5 flex items-center gap-3 text-sm transition-colors ${mode === 'ttc' ? 'bg-black/5 font-medium' : ''}`}>
-                   <div className="p-1.5 bg-rose-100 rounded-full"><Baby className="w-3.5 h-3.5 text-rose-600" /></div> TTC
-                </button>
-                <button onClick={() => setMode("ivf")} className={`w-full text-left px-3 py-2.5 rounded-xl hover:bg-black/5 flex items-center gap-3 text-sm transition-colors ${mode === 'ivf' ? 'bg-black/5 font-medium' : ''}`}>
-                   <div className="p-1.5 bg-purple-100 rounded-full"><TestTube className="w-3.5 h-3.5 text-purple-600" /></div> IVF Support
-                </button>
-             </div>
+
+             <AnimatePresence>
+               {modeDropdownOpen && (
+                 <motion.div
+                   initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                   animate={{ opacity: 1, scale: 1, y: 0 }}
+                   exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                   transition={{ duration: 0.15 }}
+                   className="absolute right-0 top-full mt-2 w-52 bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-white/60 p-1.5 origin-top-right"
+                 >
+                   {([
+                     { key: "general", icon: <Leaf className="w-3.5 h-3.5 text-emerald-600" />, bg: "bg-emerald-100", label: "Cycle Health" },
+                     { key: "pregnancy", icon: <Heart className="w-3.5 h-3.5 text-pink-600" />, bg: "bg-pink-100", label: "Pregnancy" },
+                     { key: "ttc", icon: <Baby className="w-3.5 h-3.5 text-rose-600" />, bg: "bg-rose-100", label: "Trying to Conceive" },
+                     { key: "ivf", icon: <TestTube className="w-3.5 h-3.5 text-purple-600" />, bg: "bg-purple-100", label: "IVF Support" },
+                   ] as const).map(({ key, icon, bg, label }) => (
+                     <button
+                       key={key}
+                       onClick={() => { setMode(key); setModeDropdownOpen(false); }}
+                       className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 text-sm transition-colors ${mode === key ? "bg-black/5 font-semibold" : "hover:bg-black/5"}`}
+                     >
+                       <div className={`p-1.5 ${bg} rounded-full shrink-0`}>{icon}</div>
+                       {label}
+                       {mode === key && <CheckCircle2 className="w-3.5 h-3.5 text-primary ml-auto" />}
+                     </button>
+                   ))}
+                 </motion.div>
+               )}
+             </AnimatePresence>
           </div>
         </header>
 
