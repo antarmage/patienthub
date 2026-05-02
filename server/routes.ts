@@ -250,9 +250,15 @@ export async function registerRoutes(
           console.warn("WhatsApp webhook: missing signature header — request rejected");
           return res.sendStatus(403);
         }
-        const rawBody = JSON.stringify(req.body);
+        const rawBody = (req as any).rawBody as Buffer | undefined;
+        if (!rawBody) {
+          console.warn("WhatsApp webhook: raw body unavailable — request rejected");
+          return res.sendStatus(403);
+        }
         const expected = "sha256=" + crypto.createHmac("sha256", appSecret).update(rawBody).digest("hex");
-        if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+        const sigBuf = Buffer.from(signature);
+        const expBuf = Buffer.from(expected);
+        if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
           console.warn("WhatsApp webhook: signature mismatch — request rejected");
           return res.sendStatus(403);
         }
