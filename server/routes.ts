@@ -282,7 +282,18 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
 
           const summaryText = summaryResponse.text || "";
           await whatsapp.sendTextMessage(patient.phone, summaryText);
-          console.log(`[post-visit-auto] Summary sent to ${patient.name} (appt #${id})`);
+          // Persist so the clinician can see this summary in the patient timeline
+          await storage.createClinicalNote({
+            patientId: patient.id,
+            appointmentId: id,
+            date: new Date().toISOString().split("T")[0],
+            type: "visit_summary",
+            title: "Post-Visit WhatsApp Summary (Auto)",
+            content: summaryText,
+            tags: ["whatsapp", "post-visit-summary", "auto"],
+            isPrivate: 0,
+          });
+          console.log(`[post-visit-auto] Summary sent and saved for ${patient.name} (appt #${id})`);
         } catch (err: any) {
           console.error(`[post-visit-auto] Failed for appt #${id}:`, err.message);
         }
@@ -2610,15 +2621,16 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
       }
 
       // Save post-visit summary as a permanent clinical note on the patient record
-      storage.createClinicalNote({
+      await storage.createClinicalNote({
         patientId: patient.id,
+        appointmentId: id,
         date: new Date().toISOString().split("T")[0],
         type: "visit_summary",
         title: "Post-Visit WhatsApp Summary",
         content: summaryText,
         tags: ["whatsapp", "post-visit-summary"],
         isPrivate: 0,
-      }).catch((e: any) => console.error("[post-visit-summary] ClinicalNote save failed:", e.message));
+      });
 
       res.json({
         success: true,

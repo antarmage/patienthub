@@ -292,6 +292,7 @@ export const clinicalNotes = pgTable("clinical_notes", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").references(() => patients.id),
   providerId: integer("provider_id").references(() => providers.id),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
   date: date("date").notNull(),
   type: text("type"),
   title: text("title"),

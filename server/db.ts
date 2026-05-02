@@ -25,6 +25,9 @@ export async function ensureSchema(): Promise<void> {
       ALTER TABLE appointments ADD COLUMN IF NOT EXISTS triage_reason text;
       ALTER TABLE appointments ADD COLUMN IF NOT EXISTS triage_scored_at text;
 
+      -- appointment_id association on clinical_notes (Task #7)
+      ALTER TABLE clinical_notes ADD COLUMN IF NOT EXISTS appointment_id integer REFERENCES appointments(id);
+
       -- Schedule optimisation history table (Task #8)
       CREATE TABLE IF NOT EXISTS schedule_optimisations (
         id serial PRIMARY KEY,

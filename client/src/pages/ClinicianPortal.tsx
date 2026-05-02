@@ -5421,10 +5421,13 @@ export default function ClinicianPortal() {
                                  </div>
                                )}
 
-                               {/* Post-visit WhatsApp summaries for this date */}
+                               {/* Post-visit WhatsApp summaries — match by appointmentId when available, fall back to date */}
                                {(() => {
+                                 const visitApptId = (selectedVisit as any).appointmentId;
                                  const visitDate = (selectedVisit as any).date;
-                                 const matchingNotes = postVisitSummaryNotes.filter((n: any) => n.date === visitDate);
+                                 const matchingNotes = postVisitSummaryNotes.filter((n: any) =>
+                                   visitApptId ? n.appointmentId === visitApptId : n.date === visitDate
+                                 );
                                  if (matchingNotes.length === 0) return null;
                                  return (
                                    <div className="mt-2 space-y-1.5">
