@@ -14,6 +14,10 @@ function parseId(val: string): number | null {
   return isNaN(n) ? null : n;
 }
 
+// Tracks appointment IDs that have already had a post-visit summary sent
+// (prevents duplicate sends if appointment is PATCH'd to "completed" more than once)
+const postVisitSummarySentIds = new Set<number>();
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -194,8 +198,10 @@ export async function registerRoutes(
     res.json(updated);
 
     // Auto-trigger post-visit WhatsApp summary when appointment is marked Completed
+    // Guard against duplicate sends if appointment is updated to "completed" multiple times
     const newStatus = (req.body.status || "").toLowerCase();
-    if (newStatus === "completed") {
+    if (newStatus === "completed" && !postVisitSummarySentIds.has(id)) {
+      postVisitSummarySentIds.add(id);
       (async () => {
         try {
           const patient = updated.patientId ? await storage.getPatient(updated.patientId) : null;
