@@ -81,17 +81,28 @@ export default function WeightTrackerScreen() {
     for (let i = chartWeeks - 1; i >= 0; i--) {
       const weekNum = baseWeek - i;
       const weekLog = logs.find(l => l.week === weekNum);
-      data.push({
-        week: i === 0 ? "Now" : `W${weekNum}`,
-        weight: weekLog ? weekLog.weight : 70 + Math.random() * 4,
-        isNow: i === 0,
-      });
+      if (weekLog) {
+        data.push({
+          week: i === 0 ? "Now" : `W${weekNum}`,
+          weight: weekLog.weight,
+          hasData: true,
+          isNow: i === 0,
+        });
+      } else {
+        data.push({
+          week: i === 0 ? "Now" : `W${weekNum}`,
+          weight: null,
+          hasData: false,
+          isNow: i === 0,
+        });
+      }
     }
     return data;
   };
 
   const chartData = getChartData();
-  const maxWeight = Math.max(...chartData.map(d => d.weight));
+  const dataWeights = chartData.filter(d => d.weight != null).map(d => d.weight as number);
+  const maxWeight = dataWeights.length > 0 ? Math.max(...dataWeights) : 100;
 
   const formatLogDate = (dateStr: string, index: number) => {
     const date = new Date(dateStr);
@@ -150,35 +161,45 @@ export default function WeightTrackerScreen() {
         </View>
 
         <View style={styles.chartSection}>
-          <View style={styles.chartContainer}>
-            {chartData.map((item, index) => (
-              <View key={index} style={styles.barColumn}>
-                <View style={styles.barWrapper}>
-                  {item.isNow && (
-                    <View style={styles.barLabel}>
-                      <ThemedText style={styles.barLabelText}>{item.weight.toFixed(1)}</ThemedText>
-                    </View>
-                  )}
-                  <View
-                    style={[
-                      styles.bar,
-                      {
-                        height: (item.weight / maxWeight) * 120,
-                        backgroundColor: item.isNow ? "#6C63FF" : "#E0E7FF",
-                      }
-                    ]}
-                  />
+          {dataWeights.length === 0 ? (
+            <View style={styles.emptyChart}>
+              <Feather name="bar-chart-2" size={32} color={COLORS.textMuted} />
+              <ThemedText style={styles.emptyChartText}>Log weight to see your trend</ThemedText>
+            </View>
+          ) : (
+            <View style={styles.chartContainer}>
+              {chartData.map((item, index) => (
+                <View key={index} style={styles.barColumn}>
+                  <View style={styles.barWrapper}>
+                    {item.isNow && item.weight != null && (
+                      <View style={styles.barLabel}>
+                        <ThemedText style={styles.barLabelText}>{item.weight.toFixed(1)}</ThemedText>
+                      </View>
+                    )}
+                    {item.weight != null ? (
+                      <View
+                        style={[
+                          styles.bar,
+                          {
+                            height: (item.weight / maxWeight) * 120,
+                            backgroundColor: item.isNow ? "#6C63FF" : "#E0E7FF",
+                          }
+                        ]}
+                      />
+                    ) : (
+                      <View style={[styles.bar, { height: 4, backgroundColor: "#F3F4F6" }]} />
+                    )}
+                  </View>
+                  <ThemedText style={[
+                    styles.barWeekLabel,
+                    item.isNow && styles.barWeekLabelActive
+                  ]}>
+                    {item.week}
+                  </ThemedText>
                 </View>
-                <ThemedText style={[
-                  styles.barWeekLabel,
-                  item.isNow && styles.barWeekLabelActive
-                ]}>
-                  {item.week}
-                </ThemedText>
-              </View>
-            ))}
-          </View>
-          <ThemedText style={styles.normalRange}>Normal Range: 70kg - 74kg</ThemedText>
+              ))}
+            </View>
+          )}
         </View>
 
         <View style={styles.logsSection}>
@@ -399,11 +420,20 @@ const styles = StyleSheet.create({
     color: "#6C63FF",
     fontWeight: "600",
   },
-  normalRange: {
-    fontSize: 12,
+  emptyChart: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.xl,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    marginBottom: Spacing.xl,
+  },
+  emptyChartText: {
+    fontSize: 13,
     color: COLORS.textMuted,
-    textAlign: "center",
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
   },
   logsSection: {
     paddingHorizontal: Spacing.xl,

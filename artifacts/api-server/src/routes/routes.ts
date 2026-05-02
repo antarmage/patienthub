@@ -81,6 +81,179 @@ export async function registerRoutes(
     res.json({ patient });
   });
 
+  // ── Mobile self-tracking routes (no session required) ────────────────────
+  // These routes accept patientId in the URL and do not require a cookie session,
+  // because native Expo apps cannot maintain cookie sessions like a browser.
+
+  app.get("/api/mobile/providers", async (_req, res) => {
+    const providers = await storage.getProviders();
+    res.json(providers);
+  });
+
+  app.get("/api/mobile/patients/:id/water-logs", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const date = req.query.date as string | undefined;
+    const logs = await storage.getWaterLogs(id, date);
+    res.json(logs);
+  });
+
+  app.post("/api/mobile/patients/:id/water-logs", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const { amountMl, date } = req.body;
+    if (!amountMl || !date) return res.status(400).json({ error: "amountMl and date required" });
+    const ml = parseInt(amountMl);
+    if (isNaN(ml) || ml < 1 || ml > 5000) return res.status(400).json({ error: "amountMl must be 1-5000" });
+    try {
+      const log = await storage.addWaterLog({ patientId: id, amountMl: ml, date, loggedAt: new Date().toISOString() });
+      res.status(201).json(log);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
+  app.get("/api/mobile/patients/:id/pregnancy-metrics", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const metrics = await storage.getPregnancyMetrics(id);
+    res.json(metrics);
+  });
+
+  app.post("/api/mobile/patients/:id/pregnancy-metrics", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const { week, weight, systolic, diastolic } = req.body;
+    if (week == null || isNaN(Number(week))) return res.status(400).json({ error: "week is required" });
+    try {
+      const metric = await storage.createPregnancyMetric({
+        patientId: id,
+        week: parseInt(week),
+        weight: weight != null ? parseFloat(weight) : undefined,
+        systolic: systolic != null ? parseInt(systolic) : undefined,
+        diastolic: diastolic != null ? parseInt(diastolic) : undefined,
+        enteredBy: "patient",
+      });
+      res.status(201).json(metric);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
+  app.get("/api/mobile/patients/:id/medications", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const meds = await storage.getMedications(id);
+    res.json(meds);
+  });
+
+  app.post("/api/mobile/patients/:id/medications", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const { name, dose, frequency, startDate, endDate, notes } = req.body;
+    if (!name) return res.status(400).json({ error: "name required" });
+    try {
+      const med = await storage.createMedication({ patientId: id, name, dose, frequency, startDate, endDate, notes, status: "active" });
+      res.status(201).json(med);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
+  app.delete("/api/mobile/medications/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const deleted = await storage.deleteMedication(id);
+    if (!deleted) return res.status(404).json({ error: "Not found" });
+    res.status(204).send();
+  });
+
+  app.get("/api/mobile/patients/:id/medication-logs", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const date = req.query.date as string | undefined;
+    const logs = await storage.getMedicationLogs(id, date);
+    res.json(logs);
+  });
+
+  app.post("/api/mobile/patients/:id/medication-logs", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const { medicationId, takenDate } = req.body;
+    if (!medicationId || !takenDate) return res.status(400).json({ error: "medicationId and takenDate required" });
+    const mid = parseInt(medicationId);
+    const patientMeds = await storage.getMedications(id);
+    if (!patientMeds.some(m => m.id === mid)) return res.status(403).json({ error: "Medication not found for this patient" });
+    try {
+      const log = await storage.addMedicationLog({ patientId: id, medicationId: mid, takenDate, takenAt: new Date().toISOString() });
+      res.status(201).json(log);
+    } catch (e: any) {
+      if (e.message?.includes("unique")) return res.status(409).json({ error: "Already marked taken for this date" });
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/mobile/patients/:id/appointments", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const appts = await storage.getAppointmentsByPatient(id);
+    res.json(appts);
+  });
+
+  app.post("/api/mobile/appointments", async (req, res) => {
+    const { patientId, date, time, type, status } = req.body;
+    if (!patientId || !date) return res.status(400).json({ error: "patientId and date required" });
+    try {
+      const appt = await storage.createAppointment({
+        patientId: parseInt(patientId),
+        date,
+        time: time || "10:00",
+        type: type || "Consultation",
+        status: status || "Pending",
+      } as any);
+      res.status(201).json(appt);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
+  app.delete("/api/mobile/appointments/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const updated = await storage.updateAppointment(id, { status: "cancelled" });
+    if (!updated) return res.status(404).json({ error: "Not found" });
+    res.status(204).send();
+  });
+
+  app.get("/api/mobile/patients/:id/documents", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const docs = await storage.getPatientDocuments(id);
+    res.json(docs.map((d: any) => ({ ...d, fileData: undefined })));
+  });
+
+  app.post("/api/mobile/patients/:id/documents", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const { fileName, fileData, mimeType, docType, label } = req.body;
+    if (!fileName) return res.status(400).json({ error: "fileName required" });
+    const allowedMime = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (mimeType && !allowedMime.includes(mimeType)) return res.status(400).json({ error: "Unsupported file type" });
+    if (fileData) {
+      const sizeBytes = Math.ceil((fileData.length * 3) / 4);
+      if (sizeBytes > 5 * 1024 * 1024) return res.status(400).json({ error: "File exceeds 5 MB limit" });
+    }
+    try {
+      const doc = await storage.createPatientDocument({
+        patientId: id, fileName, fileData, mimeType, docType, label,
+        uploadedAt: new Date().toISOString(),
+      });
+      res.status(201).json({ ...doc, fileData: undefined });
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
+  app.delete("/api/mobile/patient-documents/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const deleted = await storage.deletePatientDocument(id);
+    if (!deleted) return res.status(404).json({ error: "Not found" });
+    res.status(204).send();
+  });
+
+  // ── End mobile routes ─────────────────────────────────────────────────────
+
   app.get("/api/patients", async (req, res) => {
     const providerId = req.query.providerId ? parseInt(req.query.providerId as string) : undefined;
     if (providerId) {

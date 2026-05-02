@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert, Platform } from "react-native";
+import { initMobileApi } from "@/utils/careStorage";
 
 const STORAGE_KEYS = {
   ONBOARDING_COMPLETE: "@saiviemom_onboarding_complete",
@@ -47,16 +48,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const loadState = async () => {
     try {
-      const [ob, auth, profile, week] = await Promise.all([
+      const [ob, auth, profile, week, patientIdStr] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE),
         AsyncStorage.getItem(STORAGE_KEYS.AUTH_COMPLETE),
         AsyncStorage.getItem(STORAGE_KEYS.USER_PROFILE),
         AsyncStorage.getItem(STORAGE_KEYS.SELECTED_WEEK),
+        AsyncStorage.getItem(STORAGE_KEYS.PATIENT_ID),
       ]);
+      const parsedWeek = week ? parseInt(week, 10) : 1;
       setOnboardingComplete(ob === "true");
       setAuthComplete(auth === "true");
       setUserProfile(profile ? JSON.parse(profile) : null);
-      setSelectedWeek(week ? parseInt(week, 10) : 1);
+      setSelectedWeek(parsedWeek);
+      if (patientIdStr) {
+        const baseUrl = process.env.EXPO_PUBLIC_API_URL || "";
+        initMobileApi(parseInt(patientIdStr, 10), baseUrl, parsedWeek);
+      }
     } catch (e) {
       if (Platform.OS !== "web") {
         Alert.alert("Error", "Failed to load app state. Starting fresh.");
@@ -71,60 +78,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setOnboardingComplete(true);
   }, []);
 
-  const completeAuth = useCallback(async (phone: string) => {
+  const completeAuth = useCallback(async (phone: string): Promise<void> => {
+    const baseUrl = process.env.EXPO_PUBLIC_API_URL || "";
+    let res: Response;
     try {
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || "";
-      const res = await fetch(`${baseUrl}/api/mobile/auth/login`, {
+      res = await fetch(`${baseUrl}/api/mobile/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
       });
+    } catch {
+      throw new Error("Unable to reach the server. Please check your connection and try again.");
+    }
 
-      if (res.ok) {
-        const data = await res.json();
-        const patient = data.patient;
-        const lmpDate = patient.lmpDate ?? patient.lmp_date ?? null;
-        const eddDate = patient.eddDate ?? patient.edd_date ?? null;
+    if (!res.ok) {
+      let message = "Login failed. Please try again.";
+      try {
+        const body = await res.json();
+        if (body?.error) message = body.error;
+      } catch {}
+      throw new Error(message);
+    }
 
-        let week = 1;
-        if (lmpDate) {
-          const lmp = new Date(lmpDate);
-          const diffDays = Math.floor((Date.now() - lmp.getTime()) / (1000 * 60 * 60 * 24));
-          week = Math.min(40, Math.max(1, Math.floor(diffDays / 7)));
-        }
+    const data = await res.json();
+    const patient = data.patient;
+    const lmpDate = patient.lmpDate ?? patient.lmp_date ?? patient.lmp ?? null;
+    const eddDate = patient.eddDate ?? patient.edd_date ?? null;
 
-        const profile: UserProfile = {
-          id: String(patient.id),
-          name: patient.name || "",
-          phone: patient.phone || phone,
-          lmpDate: lmpDate,
-          eddDate: eddDate,
-          mode: patient.mode || "pregnancy",
-        };
-        await AsyncStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
-        await AsyncStorage.setItem(STORAGE_KEYS.SELECTED_WEEK, String(week));
-        await AsyncStorage.setItem(STORAGE_KEYS.AUTH_COMPLETE, "true");
-        await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_ID, String(patient.id));
-        setUserProfile(profile);
-        setSelectedWeek(week);
-        setAuthComplete(true);
-        return;
-      }
-    } catch (e) {
-      console.warn("API login failed, using offline mode:", e);
+    let week = 1;
+    if (lmpDate) {
+      const lmp = new Date(lmpDate);
+      const diffDays = Math.floor((Date.now() - lmp.getTime()) / (1000 * 60 * 60 * 24));
+      week = Math.min(40, Math.max(1, Math.floor(diffDays / 7)));
     }
 
     const profile: UserProfile = {
-      id: "offline",
-      name: "",
-      phone,
-      lmpDate: null,
-      eddDate: null,
-      mode: "pregnancy",
+      id: String(patient.id),
+      name: patient.name || "",
+      phone: patient.phone || phone,
+      lmpDate,
+      eddDate,
+      mode: patient.mode || "pregnancy",
     };
+
     await AsyncStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
+    await AsyncStorage.setItem(STORAGE_KEYS.SELECTED_WEEK, String(week));
     await AsyncStorage.setItem(STORAGE_KEYS.AUTH_COMPLETE, "true");
+    await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_ID, String(patient.id));
+    initMobileApi(patient.id, baseUrl, week);
     setUserProfile(profile);
+    setSelectedWeek(week);
     setAuthComplete(true);
   }, []);
 

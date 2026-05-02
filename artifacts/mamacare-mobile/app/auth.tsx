@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Platform } from "react-native";
+import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Platform, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
@@ -33,8 +33,13 @@ export default function AuthScreen() {
 
   const handleVerify = async () => {
     setLoading(true);
-    await completeAuth(phone);
-    setLoading(false);
+    try {
+      await completeAuth(phone);
+    } catch (err: any) {
+      Alert.alert("Login Failed", err?.message || "Please check your phone number and try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const isOtpComplete = otp.every(d => d !== "");
