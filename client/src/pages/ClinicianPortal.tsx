@@ -387,7 +387,7 @@ export default function ClinicianPortal() {
     enabled: !!selectedPatient
   });
   const clinicalNotes: any[] = clinicalNotesQuery.data || [];
-  const postVisitSummaryNotes = clinicalNotes.filter((n: any) => n.type === 'visit_summary' || n.type === 'voice_soap');
+  const postVisitSummaryNotes = clinicalNotes.filter((n: any) => n.type === 'visit_summary');
 
   React.useEffect(() => {
     setFundalHeightVal((latestVisit?.vitals as any)?.fundalHeight || '');
@@ -3783,6 +3783,7 @@ export default function ClinicianPortal() {
                                             setSoapObjectiveDraft(data.soap.objective || "");
                                             setSoapAssessmentDraft(data.soap.assessment || "");
                                             setSoapPlanDraft(data.soap.plan || "");
+                                            queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient?.id}/clinical-notes`] });
                                           }
                                         } finally {
                                           setIsTranscribing(false);
@@ -3813,6 +3814,7 @@ export default function ClinicianPortal() {
                                     const resp = await fetch(`/api/appointments/${selectedPatient.appointmentId}/post-visit-summary`, { method: 'POST' });
                                     const data = await resp.json();
                                     setPostVisitSummaryResult(data.sent ? `Summary sent to ${selectedPatient.phone}` : 'Generated (no phone on file)');
+                                    queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/clinical-notes`] });
                                   } catch { setPostVisitSummaryResult('Failed to generate summary'); }
                                   finally { setPostVisitSummarySending(false); }
                                 }}
@@ -4108,8 +4110,9 @@ export default function ClinicianPortal() {
                                           setSoapSaving(true);
                                           setSoapSavedMsg(null);
                                           try {
+                                            let saveRes: Response;
                                             if (latestVisit?.id) {
-                                              await fetch(`/api/visit-history/${latestVisit.id}`, {
+                                              saveRes = await fetch(`/api/visit-history/${latestVisit.id}`, {
                                                 method: 'PATCH',
                                                 headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({
@@ -4120,7 +4123,7 @@ export default function ClinicianPortal() {
                                                 }),
                                               });
                                             } else {
-                                              await fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
+                                              saveRes = await fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({
@@ -4133,6 +4136,10 @@ export default function ClinicianPortal() {
                                                 }),
                                               });
                                             }
+                                            if (!saveRes.ok) {
+                                              const errBody = await saveRes.json().catch(() => ({}));
+                                              throw new Error(errBody.error || `Server error ${saveRes.status}`);
+                                            }
                                             setSoapSubjectiveDraft('');
                                             setSoapObjectiveDraft('');
                                             setSoapAssessmentDraft('');
@@ -4141,8 +4148,8 @@ export default function ClinicianPortal() {
                                             setSoapSavedMsg('SOAP notes saved to visit record.');
                                             queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] });
                                             setTimeout(() => setSoapSavedMsg(null), 4000);
-                                          } catch {
-                                            setSoapSavedMsg('Failed to save. Please try again.');
+                                          } catch (err: any) {
+                                            setSoapSavedMsg(`Failed to save: ${err.message || 'Please try again.'}`);
                                           } finally {
                                             setSoapSaving(false);
                                           }
@@ -5410,7 +5417,7 @@ export default function ClinicianPortal() {
                                  </div>
                                )}
 
-                               {/* Post-visit summary & voice SOAP notes for this date */}
+                               {/* Post-visit WhatsApp summaries for this date */}
                                {(() => {
                                  const visitDate = (selectedVisit as any).date;
                                  const matchingNotes = postVisitSummaryNotes.filter((n: any) => n.date === visitDate);
@@ -5418,14 +5425,10 @@ export default function ClinicianPortal() {
                                  return (
                                    <div className="mt-2 space-y-1.5">
                                      {matchingNotes.map((note: any) => (
-                                       <div key={note.id} className={`rounded border px-3 py-2 ${note.type === 'visit_summary' ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'}`}>
+                                       <div key={note.id} className="rounded border px-3 py-2 bg-green-50 border-green-200">
                                          <div className="flex items-center gap-1.5 mb-1">
-                                           {note.type === 'visit_summary'
-                                             ? <MessageCircle className="w-3 h-3 text-green-600" />
-                                             : <Mic className="w-3 h-3 text-blue-600" />}
-                                           <span className={`text-[10px] font-bold uppercase ${note.type === 'visit_summary' ? 'text-green-700' : 'text-blue-700'}`}>
-                                             {note.type === 'visit_summary' ? 'Post-Visit Summary' : 'Voice SOAP Draft'}
-                                           </span>
+                                           <MessageCircle className="w-3 h-3 text-green-600" />
+                                           <span className="text-[10px] font-bold uppercase text-green-700">Post-Visit Summary Sent</span>
                                          </div>
                                          <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{note.content}</p>
                                        </div>
