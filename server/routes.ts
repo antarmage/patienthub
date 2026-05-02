@@ -1789,6 +1789,59 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.status(204).send();
   });
 
+  // ── Service Packages ──────────────────────────────────────────────────────
+  app.get("/api/service-packages", async (_req, res) => {
+    const pkgs = await storage.getServicePackages();
+    res.json(pkgs);
+  });
+
+  app.get("/api/service-packages/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const pkg = await storage.getServicePackage(id);
+    if (!pkg) return res.status(404).json({ error: "Package not found" });
+    const items = await storage.getPackageItems(id);
+    res.json({ ...pkg, items });
+  });
+
+  app.post("/api/service-packages", async (req, res) => {
+    const { items, ...pkgData } = req.body;
+    const pkg = await storage.createServicePackage({ ...pkgData, createdAt: new Date().toISOString() });
+    if (Array.isArray(items) && items.length > 0) {
+      await storage.replacePackageItems(pkg.id, items);
+    }
+    const savedItems = await storage.getPackageItems(pkg.id);
+    res.status(201).json({ ...pkg, items: savedItems });
+  });
+
+  app.patch("/api/service-packages/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const { items, ...pkgData } = req.body;
+    const updated = await storage.updateServicePackage(id, pkgData);
+    if (!updated) return res.status(404).json({ error: "Package not found" });
+    if (Array.isArray(items)) {
+      await storage.replacePackageItems(id, items);
+    }
+    const savedItems = await storage.getPackageItems(id);
+    res.json({ ...updated, items: savedItems });
+  });
+
+  app.delete("/api/service-packages/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const deleted = await storage.deleteServicePackage(id);
+    if (!deleted) return res.status(404).json({ error: "Package not found" });
+    res.status(204).send();
+  });
+
+  app.get("/api/service-packages/:id/items", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const items = await storage.getPackageItems(id);
+    res.json(items);
+  });
+
   app.get("/api/medicine-catalog", async (_req, res) => {
     const catalog = await storage.getMedicineCatalog();
     res.json(catalog);

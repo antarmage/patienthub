@@ -37,6 +37,10 @@ import {
   type BillingCatalog, type InsertBillingCatalog,
   scheduleOptimisations,
   type ScheduleOptimisation, type InsertScheduleOptimisation,
+  servicePackages,
+  type ServicePackage, type InsertServicePackage,
+  packageItems,
+  type PackageItem, type InsertPackageItem,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -157,6 +161,16 @@ export interface IStorage {
   createBillingCatalogItem(item: InsertBillingCatalog): Promise<BillingCatalog>;
   updateBillingCatalogItem(id: number, data: Partial<InsertBillingCatalog>): Promise<BillingCatalog | undefined>;
   deleteBillingCatalogItem(id: number): Promise<boolean>;
+
+  getServicePackages(): Promise<ServicePackage[]>;
+  getServicePackage(id: number): Promise<ServicePackage | undefined>;
+  createServicePackage(pkg: InsertServicePackage): Promise<ServicePackage>;
+  updateServicePackage(id: number, data: Partial<InsertServicePackage>): Promise<ServicePackage | undefined>;
+  deleteServicePackage(id: number): Promise<boolean>;
+  getPackageItems(packageId: number): Promise<PackageItem[]>;
+  addPackageItem(item: InsertPackageItem): Promise<PackageItem>;
+  deletePackageItem(id: number): Promise<boolean>;
+  replacePackageItems(packageId: number, items: Omit<InsertPackageItem, "packageId">[]): Promise<PackageItem[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -587,6 +601,51 @@ export class DatabaseStorage implements IStorage {
   async deleteBillingCatalogItem(id: number): Promise<boolean> {
     const result = await db.delete(billingCatalog).where(eq(billingCatalog.id, id)).returning();
     return result.length > 0;
+  }
+
+  async getServicePackages(): Promise<ServicePackage[]> {
+    return db.select().from(servicePackages).orderBy(servicePackages.category, servicePackages.name);
+  }
+
+  async getServicePackage(id: number): Promise<ServicePackage | undefined> {
+    const [pkg] = await db.select().from(servicePackages).where(eq(servicePackages.id, id));
+    return pkg;
+  }
+
+  async createServicePackage(pkg: InsertServicePackage): Promise<ServicePackage> {
+    const [created] = await db.insert(servicePackages).values(pkg).returning();
+    return created;
+  }
+
+  async updateServicePackage(id: number, data: Partial<InsertServicePackage>): Promise<ServicePackage | undefined> {
+    const [updated] = await db.update(servicePackages).set(data).where(eq(servicePackages.id, id)).returning();
+    return updated;
+  }
+
+  async deleteServicePackage(id: number): Promise<boolean> {
+    const result = await db.delete(servicePackages).where(eq(servicePackages.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getPackageItems(packageId: number): Promise<PackageItem[]> {
+    return db.select().from(packageItems).where(eq(packageItems.packageId, packageId));
+  }
+
+  async addPackageItem(item: InsertPackageItem): Promise<PackageItem> {
+    const [created] = await db.insert(packageItems).values(item).returning();
+    return created;
+  }
+
+  async deletePackageItem(id: number): Promise<boolean> {
+    const result = await db.delete(packageItems).where(eq(packageItems.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async replacePackageItems(packageId: number, items: Omit<InsertPackageItem, "packageId">[]): Promise<PackageItem[]> {
+    await db.delete(packageItems).where(eq(packageItems.packageId, packageId));
+    if (items.length === 0) return [];
+    const rows = items.map(i => ({ ...i, packageId }));
+    return db.insert(packageItems).values(rows).returning();
   }
 
   async getScheduleOptimisations(limit = 50): Promise<ScheduleOptimisation[]> {

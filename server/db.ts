@@ -28,6 +28,26 @@ export async function ensureSchema(): Promise<void> {
       -- appointment_id association on clinical_notes (Task #7)
       ALTER TABLE clinical_notes ADD COLUMN IF NOT EXISTS appointment_id integer REFERENCES appointments(id);
 
+      -- Service packages (bundled services)
+      CREATE TABLE IF NOT EXISTS service_packages (
+        id serial PRIMARY KEY,
+        name text NOT NULL,
+        description text,
+        category text NOT NULL,
+        package_price real NOT NULL,
+        validity_days integer DEFAULT 365,
+        is_active boolean DEFAULT true,
+        created_at text NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS package_items (
+        id serial PRIMARY KEY,
+        package_id integer NOT NULL REFERENCES service_packages(id) ON DELETE CASCADE,
+        catalog_item_id integer NOT NULL REFERENCES billing_catalog(id),
+        quantity integer NOT NULL DEFAULT 1,
+        notes text
+      );
+
       -- Schedule optimisation history table (Task #8)
       CREATE TABLE IF NOT EXISTS schedule_optimisations (
         id serial PRIMARY KEY,

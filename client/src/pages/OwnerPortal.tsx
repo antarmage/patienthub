@@ -27,6 +27,7 @@ import {
   Pencil,
   Trash2,
   Package,
+  Layers,
   Search,
   X,
   Check,
@@ -35,6 +36,9 @@ import {
   RefreshCw,
   ArrowUpRight,
   ArrowDownRight,
+  Tag,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -128,11 +132,27 @@ export default function OwnerPortal() {
   const catalogQuery = useQuery<any[]>({ queryKey: ["/api/billing-catalog"] });
   const catalogItems = catalogQuery.data || [];
 
+  const packagesQuery = useQuery<any[]>({ queryKey: ["/api/service-packages"] });
+  const servicePackagesList = packagesQuery.data || [];
+
   const [editingItem, setEditingItem] = useState<any>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogCategoryFilter, setCatalogCategoryFilter] = useState("all");
   const [newItemTaxRate, setNewItemTaxRate] = useState("0");
+
+  // Package builder state
+  const [showPackageForm, setShowPackageForm] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<any>(null);
+  const [pkgName, setPkgName] = useState("");
+  const [pkgDescription, setPkgDescription] = useState("");
+  const [pkgCategory, setPkgCategory] = useState("");
+  const [pkgPrice, setPkgPrice] = useState("");
+  const [pkgValidity, setPkgValidity] = useState("365");
+  const [pkgItems, setPkgItems] = useState<{ catalogItemId: number; quantity: number; name: string; unitPrice: number }[]>([]);
+  const [pkgCatalogSearch, setPkgCatalogSearch] = useState("");
+  const [expandedPackage, setExpandedPackage] = useState<number | null>(null);
+  const [pkgItemsCache, setPkgItemsCache] = useState<Record<number, any[]>>({});
 
   const queryClient = useQueryClient();
 
@@ -161,6 +181,81 @@ export default function OwnerPortal() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/billing-catalog"] }),
   });
+
+  const resetPackageForm = () => {
+    setPkgName(""); setPkgDescription(""); setPkgCategory("");
+    setPkgPrice(""); setPkgValidity("365"); setPkgItems([]);
+    setPkgCatalogSearch(""); setEditingPackage(null);
+  };
+
+  const createPackage = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch("/api/service-packages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to create package");
+      return res.json();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/service-packages"] }); setShowPackageForm(false); resetPackageForm(); },
+  });
+
+  const updatePackage = useMutation({
+    mutationFn: async ({ id, ...data }: any) => {
+      const res = await fetch(`/api/service-packages/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to update package");
+      return res.json();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/service-packages"] }); setShowPackageForm(false); resetPackageForm(); },
+  });
+
+  const deletePackage = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/service-packages/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete package");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/service-packages"] }),
+  });
+
+  const togglePackageActive = useMutation({
+    mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
+      const res = await fetch(`/api/service-packages/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive }) });
+      if (!res.ok) throw new Error("Failed to update");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/service-packages"] }),
+  });
+
+  const openEditPackage = async (pkg: any) => {
+    setEditingPackage(pkg);
+    setPkgName(pkg.name); setPkgDescription(pkg.description || "");
+    setPkgCategory(pkg.category); setPkgPrice(String(pkg.packagePrice));
+    setPkgValidity(String(pkg.validityDays || 365));
+    const res = await fetch(`/api/service-packages/${pkg.id}`);
+    const full = await res.json();
+    const enriched = (full.items || []).map((it: any) => {
+      const cat = catalogItems.find((c: any) => c.id === it.catalogItemId);
+      return { catalogItemId: it.catalogItemId, quantity: it.quantity, name: cat?.name || `Item #${it.catalogItemId}`, unitPrice: cat?.price || 0 };
+    });
+    setPkgItems(enriched);
+    setShowPackageForm(true);
+  };
+
+  const loadPackageItems = async (pkgId: number) => {
+    if (pkgItemsCache[pkgId]) return;
+    const res = await fetch(`/api/service-packages/${pkgId}`);
+    const full = await res.json();
+    const enriched = (full.items || []).map((it: any) => {
+      const cat = catalogItems.find((c: any) => c.id === it.catalogItemId);
+      return { ...it, name: cat?.name || `Item #${it.catalogItemId}`, unitPrice: cat?.price || 0 };
+    });
+    setPkgItemsCache(prev => ({ ...prev, [pkgId]: enriched }));
+  };
+
+  const pkgTotalValue = pkgItems.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+  const pkgSavings = pkgTotalValue - (parseFloat(pkgPrice) || 0);
+  const filteredCatalogForPkg = catalogItems.filter((c: any) =>
+    c.isActive !== false &&
+    !pkgItems.some(i => i.catalogItemId === c.id) &&
+    (pkgCatalogSearch === "" || c.name.toLowerCase().includes(pkgCatalogSearch.toLowerCase()) || c.category.toLowerCase().includes(pkgCatalogSearch.toLowerCase()))
+  );
 
   const catalogCategories = useMemo(() => {
     const cats = new Set(catalogItems.map((c: any) => c.category));
@@ -224,6 +319,7 @@ export default function OwnerPortal() {
     { id: "alerts", label: "Alerts", icon: AlertTriangle },
     { id: "performance", label: "Performance", icon: BarChart3 },
     { id: "catalog", label: "Service Catalog", icon: Package },
+    { id: "packages", label: "Packages", icon: Layers },
     { id: "ai-insights", label: "AI Insights", icon: Sparkles },
     { id: "ai-audit-log", label: "AI Audit Log", icon: Activity },
   ];
@@ -799,6 +895,203 @@ export default function OwnerPortal() {
                     </CardContent>
                   </Card>
                 </motion.div>
+              </div>
+            )}
+
+            {activeView === "packages" && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900 font-serif">Service Packages</h2>
+                    <p className="text-sm text-slate-500 mt-1">Create bundled packages composed of multiple services.</p>
+                  </div>
+                  <Button onClick={() => { resetPackageForm(); setShowPackageForm(true); }} className="bg-indigo-600 hover:bg-indigo-700">
+                    <Plus className="w-4 h-4 mr-2" /> New Package
+                  </Button>
+                </div>
+
+                {/* Package Builder Form */}
+                {showPackageForm && (
+                  <Card className="border-indigo-200 shadow-sm border-l-4 border-l-indigo-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                        {editingPackage ? "Edit Package" : "Build New Package"}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                      {/* Package meta */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs font-medium text-slate-500 mb-1 block">Package Name *</label>
+                          <input className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder='e.g. Moms Bliss Package' value={pkgName} onChange={e => setPkgName(e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-slate-500 mb-1 block">Category *</label>
+                          <input className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder='e.g. Maternity, Fertility, Wellness' value={pkgCategory} onChange={e => setPkgCategory(e.target.value)} list="pkg-categories" />
+                          <datalist id="pkg-categories">
+                            {["Maternity", "Fertility", "Wellness", "Postpartum", "IVF", "Full Body"].map(c => <option key={c} value={c} />)}
+                          </datalist>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-slate-500 mb-1 block">Description</label>
+                          <input className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder='Brief description of what this package covers' value={pkgDescription} onChange={e => setPkgDescription(e.target.value)} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs font-medium text-slate-500 mb-1 block">Package Price (₹) *</label>
+                            <input type="number" className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder='0' value={pkgPrice} onChange={e => setPkgPrice(e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-slate-500 mb-1 block">Validity (days)</label>
+                            <input type="number" className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" value={pkgValidity} onChange={e => setPkgValidity(e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Composed services */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-xs font-medium text-slate-700">Included Services</label>
+                          {pkgTotalValue > 0 && (
+                            <span className="text-xs text-slate-500">
+                              À la carte value: <span className="font-semibold text-slate-700">₹{pkgTotalValue.toLocaleString("en-IN")}</span>
+                              {pkgSavings > 0 && <span className="ml-2 text-emerald-600 font-semibold">Save ₹{pkgSavings.toLocaleString("en-IN")}</span>}
+                            </span>
+                          )}
+                        </div>
+                        {pkgItems.length > 0 && (
+                          <div className="space-y-2 mb-3">
+                            {pkgItems.map((item, idx) => (
+                              <div key={item.catalogItemId} className="flex items-center gap-3 bg-indigo-50/60 border border-indigo-100 rounded-lg px-3 py-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-slate-800 truncate">{item.name}</p>
+                                  <p className="text-xs text-slate-500">₹{item.unitPrice.toLocaleString("en-IN")} each</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button className="w-6 h-6 rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 text-xs flex items-center justify-center" onClick={() => setPkgItems(items => items.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))}>−</button>
+                                  <span className="text-sm font-semibold w-5 text-center">{item.quantity}</span>
+                                  <button className="w-6 h-6 rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 text-xs flex items-center justify-center" onClick={() => setPkgItems(items => items.map((it, i) => i === idx ? { ...it, quantity: it.quantity + 1 } : it))}>+</button>
+                                </div>
+                                <button className="text-rose-400 hover:text-rose-600 ml-1" onClick={() => setPkgItems(items => items.filter((_, i) => i !== idx))}><X className="w-4 h-4" /></button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {/* Catalog picker */}
+                        <div className="border border-dashed border-slate-200 rounded-lg p-3 bg-slate-50">
+                          <div className="relative mb-2">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                            <input className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400" placeholder="Search catalog services to add..." value={pkgCatalogSearch} onChange={e => setPkgCatalogSearch(e.target.value)} />
+                          </div>
+                          <div className="max-h-40 overflow-y-auto space-y-1">
+                            {filteredCatalogForPkg.slice(0, 20).map((c: any) => (
+                              <button key={c.id} onClick={() => { setPkgItems(items => [...items, { catalogItemId: c.id, quantity: 1, name: c.name, unitPrice: c.price }]); setPkgCatalogSearch(""); }} className="w-full text-left flex items-center justify-between px-2 py-1.5 rounded hover:bg-indigo-50 group">
+                                <span className="text-xs text-slate-700 group-hover:text-indigo-700">{c.name} <span className="text-slate-400">— {c.category}</span></span>
+                                <span className="text-xs font-semibold text-slate-600">₹{(c.price || 0).toLocaleString("en-IN")} <Plus className="w-3 h-3 inline text-indigo-500" /></span>
+                              </button>
+                            ))}
+                            {filteredCatalogForPkg.length === 0 && <p className="text-xs text-slate-400 text-center py-2">No matching catalog items</p>}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => { setShowPackageForm(false); resetPackageForm(); }}>Cancel</Button>
+                        <Button
+                          className="bg-indigo-600 hover:bg-indigo-700"
+                          disabled={!pkgName || !pkgCategory || !pkgPrice}
+                          onClick={() => {
+                            const payload = {
+                              name: pkgName, description: pkgDescription, category: pkgCategory,
+                              packagePrice: parseFloat(pkgPrice) || 0, validityDays: parseInt(pkgValidity) || 365,
+                              isActive: true,
+                              items: pkgItems.map(i => ({ catalogItemId: i.catalogItemId, quantity: i.quantity })),
+                            };
+                            if (editingPackage) updatePackage.mutate({ id: editingPackage.id, ...payload });
+                            else createPackage.mutate(payload);
+                          }}
+                        >
+                          <Save className="w-4 h-4 mr-1.5" />
+                          {editingPackage ? "Save Changes" : "Create Package"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Package list */}
+                {servicePackagesList.length === 0 && !showPackageForm && (
+                  <Card className="border-dashed border-slate-200">
+                    <CardContent className="py-16 text-center">
+                      <Layers className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                      <p className="text-slate-500 font-medium">No packages yet</p>
+                      <p className="text-xs text-slate-400 mt-1">Create your first bundled service package above.</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <div className="space-y-3">
+                  {servicePackagesList.map((pkg: any) => {
+                    const isExpanded = expandedPackage === pkg.id;
+                    const cachedItems = pkgItemsCache[pkg.id];
+                    return (
+                      <Card key={pkg.id} className={`border-slate-200 shadow-sm transition-all ${pkg.isActive === false ? "opacity-60" : ""}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-slate-900">{pkg.name}</span>
+                                <Badge className={pkg.isActive !== false ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200"}>
+                                  {pkg.isActive !== false ? "Active" : "Inactive"}
+                                </Badge>
+                                <span className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full px-2 py-0.5">{pkg.category}</span>
+                              </div>
+                              {pkg.description && <p className="text-xs text-slate-500 mt-1">{pkg.description}</p>}
+                              <div className="flex items-center gap-4 mt-2">
+                                <span className="text-lg font-bold text-indigo-700">₹{(pkg.packagePrice || 0).toLocaleString("en-IN")}</span>
+                                {pkg.validityDays && <span className="text-xs text-slate-400 flex items-center gap-1"><Tag className="w-3 h-3" />Valid {pkg.validityDays} days</span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openEditPackage(pkg)}><Pencil className="w-3 h-3" /></Button>
+                              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => togglePackageActive.mutate({ id: pkg.id, isActive: pkg.isActive === false })}>
+                                {pkg.isActive !== false ? "Deactivate" : "Activate"}
+                              </Button>
+                              <Button variant="outline" size="sm" className="h-7 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-100" onClick={() => { if (confirm(`Delete "${pkg.name}"?`)) deletePackage.mutate(pkg.id); }}><Trash2 className="w-3 h-3" /></Button>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={async () => { if (!isExpanded) await loadPackageItems(pkg.id); setExpandedPackage(isExpanded ? null : pkg.id); }}>
+                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </Button>
+                            </div>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="mt-4 pt-4 border-t border-slate-100">
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Included Services</p>
+                              {!cachedItems ? (
+                                <p className="text-xs text-slate-400">Loading…</p>
+                              ) : cachedItems.length === 0 ? (
+                                <p className="text-xs text-slate-400 italic">No services composed yet. Edit to add services.</p>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {cachedItems.map((item: any) => (
+                                    <div key={item.id} className="flex items-center justify-between text-sm bg-slate-50 rounded px-3 py-1.5">
+                                      <span className="text-slate-700">{item.name} {item.quantity > 1 && <span className="text-xs text-slate-400">× {item.quantity}</span>}</span>
+                                      <span className="text-xs text-slate-500 font-medium">₹{((item.unitPrice || 0) * item.quantity).toLocaleString("en-IN")}</span>
+                                    </div>
+                                  ))}
+                                  <div className="flex justify-between text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200 mt-1 px-3">
+                                    <span>À la carte total</span>
+                                    <span>₹{cachedItems.reduce((s: number, i: any) => s + (i.unitPrice || 0) * i.quantity, 0).toLocaleString("en-IN")}</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

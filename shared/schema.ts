@@ -479,6 +479,33 @@ export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true 
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
 
+export const servicePackages = pgTable("service_packages", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull(),
+  packagePrice: real("package_price").notNull(),
+  validityDays: integer("validity_days").default(365),
+  isActive: boolean("is_active").default(true),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertServicePackageSchema = createInsertSchema(servicePackages).omit({ id: true });
+export type InsertServicePackage = z.infer<typeof insertServicePackageSchema>;
+export type ServicePackage = typeof servicePackages.$inferSelect;
+
+export const packageItems = pgTable("package_items", {
+  id: serial("id").primaryKey(),
+  packageId: integer("package_id").references(() => servicePackages.id, { onDelete: "cascade" }).notNull(),
+  catalogItemId: integer("catalog_item_id").references(() => billingCatalog.id).notNull(),
+  quantity: integer("quantity").default(1).notNull(),
+  notes: text("notes"),
+});
+
+export const insertPackageItemSchema = createInsertSchema(packageItems).omit({ id: true });
+export type InsertPackageItem = z.infer<typeof insertPackageItemSchema>;
+export type PackageItem = typeof packageItems.$inferSelect;
+
 export const scheduleOptimisations = pgTable("schedule_optimisations", {
   id: serial("id").primaryKey(),
   date: date("date").notNull(),
