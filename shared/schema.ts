@@ -192,6 +192,7 @@ export const pregnancyMetrics = pgTable("pregnancy_metrics", {
   expected: real("expected"),
   systolic: integer("systolic"),
   diastolic: integer("diastolic"),
+  enteredBy: text("entered_by"),
 });
 
 export const insertPregnancyMetricSchema = createInsertSchema(pregnancyMetrics).omit({ id: true });

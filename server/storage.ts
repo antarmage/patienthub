@@ -178,6 +178,8 @@ export interface IStorage {
   deletePackageItem(id: number): Promise<boolean>;
   replacePackageItems(packageId: number, items: Omit<InsertPackageItem, "packageId">[]): Promise<PackageItem[]>;
 
+  updatePregnancyMetric(id: number, data: Partial<InsertPregnancyMetric>): Promise<PregnancyMetric | undefined>;
+
   // Pregnancy Hub self-tracking
   getWaterLogs(patientId: number, date?: string): Promise<WaterLog[]>;
   addWaterLog(log: InsertWaterLog): Promise<WaterLog>;
@@ -676,6 +678,11 @@ export class DatabaseStorage implements IStorage {
   async createScheduleOptimisation(record: InsertScheduleOptimisation): Promise<ScheduleOptimisation> {
     const [created] = await db.insert(scheduleOptimisations).values(record).returning();
     return created;
+  }
+
+  async updatePregnancyMetric(id: number, data: Partial<InsertPregnancyMetric>): Promise<PregnancyMetric | undefined> {
+    const [updated] = await db.update(pregnancyMetrics).set(data).where(eq(pregnancyMetrics.id, id)).returning();
+    return updated;
   }
 
   // ── Pregnancy Hub self-tracking ────────────────────────────────────────────

@@ -48,6 +48,9 @@ export async function ensureSchema(): Promise<void> {
         notes text
       );
 
+      -- enteredBy column for pregnancy_metrics (Task #10)
+      ALTER TABLE pregnancy_metrics ADD COLUMN IF NOT EXISTS entered_by text;
+
       -- Pregnancy Hub self-tracking tables (Task #10)
       CREATE TABLE IF NOT EXISTS water_logs (
         id serial PRIMARY KEY,

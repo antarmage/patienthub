@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
+import WeekByWeekTimeline from "@/components/WeekByWeekTimeline";
 import { 
   Sparkles, 
   TrendingUp, 

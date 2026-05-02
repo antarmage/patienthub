@@ -1842,6 +1842,42 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.json(items);
   });
 
+  // ── Standalone pregnancy-metrics routes (Task #10) ────────────────────────
+  app.get("/api/pregnancy-metrics", async (req, res) => {
+    const patientId = parseId(req.query.patientId as string);
+    if (!patientId) return res.status(400).json({ error: "patientId required" });
+    const metrics = await storage.getPregnancyMetrics(patientId);
+    res.json(metrics);
+  });
+
+  app.post("/api/pregnancy-metrics", async (req, res) => {
+    try {
+      const { patientId, week, weight, systolic, diastolic, enteredBy, expected } = req.body;
+      if (!patientId) return res.status(400).json({ error: "patientId required" });
+      if (week == null || isNaN(Number(week))) return res.status(400).json({ error: "week is required" });
+      const metric = await storage.createPregnancyMetric({
+        patientId: parseInt(patientId),
+        week: parseInt(week),
+        weight: weight != null ? parseFloat(weight) : undefined,
+        systolic: systolic != null ? parseInt(systolic) : undefined,
+        diastolic: diastolic != null ? parseInt(diastolic) : undefined,
+        expected: expected != null ? parseFloat(expected) : undefined,
+        enteredBy: enteredBy || "patient",
+      });
+      res.status(201).json(metric);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
+  app.patch("/api/pregnancy-metrics/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    try {
+      const updated = await storage.updatePregnancyMetric(id, req.body);
+      if (!updated) return res.status(404).json({ error: "Not found" });
+      res.json(updated);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
   // ── Pregnancy Hub: Water Logs ──────────────────────────────────────────────
   app.get("/api/water-logs", async (req, res) => {
     const patientId = parseId(req.query.patientId as string);
@@ -1853,7 +1889,11 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
   app.post("/api/water-logs", async (req, res) => {
     try {
-      const log = await storage.addWaterLog(req.body);
+      const { patientId, date, amountMl } = req.body;
+      if (!patientId || !date) return res.status(400).json({ error: "patientId and date are required" });
+      const ml = parseInt(amountMl);
+      if (isNaN(ml) || ml < 1 || ml > 5000) return res.status(400).json({ error: "amountMl must be between 1 and 5000" });
+      const log = await storage.addWaterLog({ ...req.body, amountMl: ml, patientId: parseInt(patientId) });
       res.status(201).json(log);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   });
@@ -1876,7 +1916,14 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
   app.post("/api/medication-logs", async (req, res) => {
     try {
-      const log = await storage.addMedicationLog(req.body);
+      const { patientId, medicationId, takenDate } = req.body;
+      if (!patientId || !medicationId || !takenDate) return res.status(400).json({ error: "patientId, medicationId, takenDate required" });
+      // Prevent duplicate logs for same med on same day
+      const existing = await storage.getMedicationLogs(parseInt(patientId), takenDate);
+      if (existing.some((l: any) => l.medicationId === parseInt(medicationId))) {
+        return res.status(409).json({ error: "Already marked as taken for this date" });
+      }
+      const log = await storage.addMedicationLog({ ...req.body, patientId: parseInt(patientId), medicationId: parseInt(medicationId) });
       res.status(201).json(log);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   });
@@ -1898,7 +1945,17 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
   app.post("/api/patient-documents", async (req, res) => {
     try {
-      const doc = await storage.createPatientDocument(req.body);
+      const { patientId, fileName, fileData, mimeType, docType } = req.body;
+      if (!patientId || !fileName) return res.status(400).json({ error: "patientId and fileName required" });
+      const allowedMime = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "image/heic", "image/heif"];
+      if (mimeType && !allowedMime.includes(mimeType)) return res.status(400).json({ error: "Unsupported file type" });
+      if (fileData) {
+        const sizeBytes = Math.ceil((fileData.length * 3) / 4);
+        if (sizeBytes > 5 * 1024 * 1024) return res.status(400).json({ error: "File exceeds 5 MB limit" });
+      }
+      const allowedDocTypes = ["Diagnostic", "Prescription"];
+      if (docType && !allowedDocTypes.includes(docType)) return res.status(400).json({ error: "docType must be Diagnostic or Prescription" });
+      const doc = await storage.createPatientDocument({ ...req.body, patientId: parseInt(patientId), uploadedAt: new Date().toISOString() });
       res.status(201).json(doc);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   });
