@@ -1872,7 +1872,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
   app.post("/api/pregnancy-metrics", async (req, res) => {
     try {
-      const { patientId, week, weight, systolic, diastolic, enteredBy, expected } = req.body;
+      const { patientId, week, weight, systolic, diastolic, expected } = req.body;
       if (!patientId) return res.status(400).json({ error: "patientId required" });
       if (!assertPatientSession(req, res, parseInt(patientId))) return;
       if (week == null || isNaN(Number(week))) return res.status(400).json({ error: "week is required" });
@@ -1883,7 +1883,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         systolic: systolic != null ? parseInt(systolic) : undefined,
         diastolic: diastolic != null ? parseInt(diastolic) : undefined,
         expected: expected != null ? parseFloat(expected) : undefined,
-        enteredBy: enteredBy || "patient",
+        enteredBy: "patient",
       });
       res.status(201).json(metric);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
@@ -1896,7 +1896,16 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       const existing = await storage.getPregnancyMetricById(id);
       if (!existing) return res.status(404).json({ error: "Not found" });
       if (!existing.patientId || !assertPatientSession(req, res, existing.patientId)) return;
-      const updated = await storage.updatePregnancyMetric(id, req.body);
+      if (existing.enteredBy !== "patient") {
+        return res.status(403).json({ error: "Cannot modify clinician-entered records" });
+      }
+      const { weight, systolic, diastolic, expected } = req.body;
+      const patch: Record<string, any> = {};
+      if (weight != null) patch.weight = parseFloat(weight);
+      if (systolic != null) patch.systolic = parseInt(systolic);
+      if (diastolic != null) patch.diastolic = parseInt(diastolic);
+      if (expected != null) patch.expected = parseFloat(expected);
+      const updated = await storage.updatePregnancyMetric(id, patch);
       res.json(updated);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   });
