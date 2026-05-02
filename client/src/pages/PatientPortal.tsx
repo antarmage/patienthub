@@ -68,25 +68,49 @@ export default function PatientPortal() {
   });
   const patient = patients?.find((p: any) => p.id === parseInt(patientId)) || patients?.[0];
 
-  const isPregnant = (() => {
-    if (!patient) return false;
-    const ps = (patient.pregnancyStatus || '').toLowerCase();
-    const cond = (patient.condition || '').toLowerCase();
-    const status = (patient.status || '').toLowerCase();
-    return ps.includes('pregnant') || ps.includes('active') || ps.includes('antenatal') ||
-           cond.includes('pregnan') || cond.includes('antenatal') || cond.includes('anc') || cond.includes('gestational') ||
-           status.includes('pregnant');
-  })();
+  function inferPatientMode(p: any): string {
+    if (!p) return "general";
+    const dbMode = (p.mode || '').toLowerCase();
+    const type = (p.type || '').toLowerCase();
+    const cond = (p.condition || '').toLowerCase();
+    const focus = (p.focus || '').toLowerCase();
+    const ps = (p.pregnancyStatus || '').toLowerCase();
+
+    // Explicit DB mode takes highest priority
+    if (dbMode === 'pregnancy') return 'pregnancy';
+    if (dbMode === 'ivf') return 'ivf';
+    if (dbMode === 'iui' || dbMode === 'natural_conception') return 'ttc';
+
+    // Patient type
+    if (type === 'pregnant') return 'pregnancy';
+    if (type === 'fertility') {
+      if (focus.includes('ivf')) return 'ivf';
+      return 'ttc';
+    }
+
+    // Condition keywords
+    if (cond.includes('pregnan') || cond.includes('antenatal') || cond.includes('trimester') || cond.includes('gestational')) return 'pregnancy';
+    if (cond.includes('ivf')) return 'ivf';
+    if (cond.includes('iui') || cond.includes('natural conception') || cond.includes('ttc') || cond.includes('trying')) return 'ttc';
+
+    // Focus keywords
+    if (focus.includes('pregnancy') || focus.includes('antenatal') || focus.includes('anc') || focus.includes('prenatal')) return 'pregnancy';
+    if (focus.includes('ivf')) return 'ivf';
+    if (focus.includes('iui') || focus.includes('natural conception') || focus.includes('ttc')) return 'ttc';
+
+    // Pregnancy status
+    if (ps.includes('pregnant') || ps.includes('active') || ps.includes('antenatal')) return 'pregnancy';
+
+    return 'general';
+  }
 
   const [modeInitialized, setModeInitialized] = useState(false);
   useEffect(() => {
     if (patient && !modeInitialized) {
-      if (isPregnant) {
-        setMode("pregnancy");
-      }
+      setMode(inferPatientMode(patient));
       setModeInitialized(true);
     }
-  }, [patient, isPregnant, modeInitialized]);
+  }, [patient, modeInitialized]);
 
   const { data: visitHistory } = useQuery({
     queryKey: [`/api/patients/${patient?.id}/visit-history`],
