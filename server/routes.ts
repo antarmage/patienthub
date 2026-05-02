@@ -7,6 +7,7 @@ import { getUncachableGoogleSheetClient } from "./google-sheets";
 import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "./google-drive";
 import { ai } from "./replit_integrations/image/client";
 import { whatsapp } from "./whatsapp";
+import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "./risk-engine";
 
 function parseId(val: string): number | null {
   const n = parseInt(val);
@@ -468,6 +469,8 @@ export async function registerRoutes(
       patientId: id,
     });
     res.status(201).json(result);
+    // Auto-trigger risk re-score when new lab result is uploaded
+    scorePatient(id).catch(() => {});
   });
 
   app.get("/api/lab-tasks/:id/results", async (req, res) => {
@@ -1397,11 +1400,45 @@ export async function registerRoutes(
         errors,
         message,
       });
+      // Auto-trigger risk re-score after lab extraction completes
+      if (totalExtracted > 0) {
+        scorePatient(patientId).catch(() => {});
+      }
     } catch (err: any) {
       console.error("Lab extraction error:", err);
       res.status(500).json({ error: "Failed to extract lab results: " + err.message });
     }
   });
+
+  // ── Risk Intelligence Endpoints ──────────────────────────────────────────
+
+  app.post("/api/patients/:id/risk-score", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const patient = await storage.getPatient(id);
+    if (!patient) return res.status(404).json({ error: "Patient not found" });
+    const result = await scorePatient(id);
+    if (!result) return res.status(500).json({ error: "Risk scoring failed" });
+    res.json(result);
+  });
+
+  app.post("/api/patients/batch-risk-score", async (_req, res) => {
+    const result = await batchScorePatients();
+    res.json(result);
+  });
+
+  app.post("/api/patients/:id/trimester-checklist", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const patient = await storage.getPatient(id);
+    if (!patient) return res.status(404).json({ error: "Patient not found" });
+    if (!patient.lmp) return res.status(400).json({ error: "LMP not recorded for this patient" });
+    const result = await generateTrimesterChecklist(id);
+    if (!result) return res.status(500).json({ error: "Checklist generation failed" });
+    res.json(result);
+  });
+
+  // ── Billing Catalog ───────────────────────────────────────────────────────
 
   app.get("/api/billing-catalog", async (_req, res) => {
     const catalog = await storage.getBillingCatalog();

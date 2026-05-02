@@ -497,6 +497,9 @@ export default function ClinicianPortal() {
   const [editingCatalogId, setEditingCatalogId] = useState<number | null>(null);
   const [editCatalogData, setEditCatalogData] = useState<any>({});
 
+  const [riskDialogPatient, setRiskDialogPatient] = useState<any>(null);
+  const [scoringPatientId, setScoringPatientId] = useState<number | null>(null);
+
   const updateCatalogMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
       const res = await fetch(`/api/medicine-catalog/${id}`, {
@@ -739,6 +742,13 @@ export default function ClinicianPortal() {
     enabled: patients.length > 0
   });
   const invoices = invoicesQuery.data || [];
+
+  const riskAlerts = useMemo(() => {
+    return patients
+      .filter((p: any) => p.riskScore && (p.riskScore.level === 'High' || p.riskScore.level === 'Critical'))
+      .sort((a: any, b: any) => (b.riskScore?.score || 0) - (a.riskScore?.score || 0))
+      .slice(0, 8);
+  }, [patients]);
 
   const queuePatients = useMemo(() => {
     const dateAppts = appointments.filter((a: any) =>
@@ -1030,6 +1040,7 @@ export default function ClinicianPortal() {
                                     <th className="px-3 py-3 font-medium w-16">Time</th>
                                     <th className="px-3 py-3 font-medium">Patient</th>
                                     <th className="px-3 py-3 font-medium">Type</th>
+                                    <th className="px-3 py-3 font-medium w-20">Risk</th>
                                     <th className="px-3 py-3 font-medium">Status</th>
                                     <th className="px-3 py-3 font-medium w-10"></th>
                                  </tr>
@@ -1068,6 +1079,35 @@ export default function ClinicianPortal() {
                                              )}
                                           </td>
                                           <td className="px-3 py-3"><Badge variant="outline" className={typeColors[p.type] || 'border-slate-200 text-slate-700 bg-slate-50'}>{p.type || 'General'}</Badge></td>
+                                          <td className="px-3 py-3">
+                                            {p.riskScore ? (
+                                              <Badge
+                                                data-testid={`risk-badge-${p.id}`}
+                                                className={`cursor-pointer text-[10px] border-none ${
+                                                  p.riskScore.level === 'Critical' ? 'bg-red-100 text-red-700 hover:bg-red-200' :
+                                                  p.riskScore.level === 'High' ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' :
+                                                  p.riskScore.level === 'Medium' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' :
+                                                  'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                                }`}
+                                                onClick={e => { e.stopPropagation(); setRiskDialogPatient(p); }}
+                                              >
+                                                {p.riskScore.level}
+                                              </Badge>
+                                            ) : (
+                                              <span
+                                                className="text-[10px] text-slate-400 cursor-pointer hover:text-slate-600 underline underline-offset-2"
+                                                onClick={async (e) => {
+                                                  e.stopPropagation();
+                                                  setScoringPatientId(p.id);
+                                                  await fetch(`/api/patients/${p.id}/risk-score`, { method: 'POST' });
+                                                  queryClient.invalidateQueries({ queryKey: ['/api/patients', clinicianProvider?.id] });
+                                                  setScoringPatientId(null);
+                                                }}
+                                              >
+                                                {scoringPatientId === p.id ? 'Scoring…' : 'Score'}
+                                              </span>
+                                            )}
+                                          </td>
                                           <td className="px-3 py-3 text-slate-600 text-xs capitalize">{p.appointmentStatus || 'Scheduled'}</td>
                                           <td className="px-3 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
                                        </tr>
@@ -1122,7 +1162,40 @@ export default function ClinicianPortal() {
 
                   {/* RIGHT COLUMN - INTELLIGENCE SNAPSHOTS */}
                   <div className="space-y-6">
-                     
+
+                     {/* RISK ALERTS PANEL */}
+                     {riskAlerts.length > 0 && (
+                       <Card className="shadow-sm border-rose-200 overflow-hidden" data-testid="panel-risk-alerts">
+                         <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
+                         <CardHeader className="py-3 px-4 border-b border-rose-100 bg-rose-50/40">
+                           <CardTitle className="text-sm font-bold text-rose-900 flex items-center justify-between gap-2">
+                             <span className="flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-rose-600" /> Risk Alerts</span>
+                             <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-100 border-none text-[10px]">{riskAlerts.length} Patients</Badge>
+                           </CardTitle>
+                         </CardHeader>
+                         <CardContent className="p-0">
+                           <div className="divide-y divide-rose-100">
+                             {riskAlerts.map((p: any) => (
+                               <div
+                                 key={p.id}
+                                 data-testid={`risk-alert-${p.id}`}
+                                 className="p-3 flex items-center justify-between hover:bg-rose-50 cursor-pointer"
+                                 onClick={() => setRiskDialogPatient(p)}
+                               >
+                                 <div className="min-w-0 flex-1">
+                                   <p className="text-xs font-semibold text-slate-800 truncate">{p.name}</p>
+                                   <p className="text-[10px] text-slate-500 truncate">{p.riskScore?.factors?.[0]?.factor || 'Click to view details'}</p>
+                                 </div>
+                                 <Badge className={`ml-2 shrink-0 text-[10px] border-none ${p.riskScore?.level === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
+                                   {p.riskScore?.level} · {p.riskScore?.score}
+                                 </Badge>
+                               </div>
+                             ))}
+                           </div>
+                         </CardContent>
+                       </Card>
+                     )}
+
                      {/* SECTION 3 - FERTILITY INTELLIGENCE SNAPSHOT */}
                      <Card className="shadow-sm border-slate-200 overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
@@ -5493,6 +5566,98 @@ export default function ClinicianPortal() {
           </div>
         )}
       </main>
+
+      {/* Risk Assessment Dialog */}
+      <Dialog open={!!riskDialogPatient} onOpenChange={() => setRiskDialogPatient(null)}>
+        <DialogContent className="max-w-lg" data-testid="dialog-risk-assessment">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <AlertTriangle className="w-4 h-4 text-rose-500" />
+              Risk Assessment — {riskDialogPatient?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {riskDialogPatient?.riskScore && (
+            <div className="space-y-4 mt-1">
+              {/* Level + Score */}
+              <div className="flex items-center gap-3">
+                <div className={`text-2xl font-bold tabular-nums ${
+                  riskDialogPatient.riskScore.level === 'Critical' ? 'text-red-600' :
+                  riskDialogPatient.riskScore.level === 'High' ? 'text-orange-600' :
+                  riskDialogPatient.riskScore.level === 'Medium' ? 'text-amber-600' : 'text-emerald-600'
+                }`}>{riskDialogPatient.riskScore.score}/100</div>
+                <div>
+                  <Badge className={`text-xs border-none ${
+                    riskDialogPatient.riskScore.level === 'Critical' ? 'bg-red-100 text-red-700' :
+                    riskDialogPatient.riskScore.level === 'High' ? 'bg-orange-100 text-orange-700' :
+                    riskDialogPatient.riskScore.level === 'Medium' ? 'bg-amber-100 text-amber-700' :
+                    'bg-emerald-100 text-emerald-700'
+                  }`}>{riskDialogPatient.riskScore.level} Risk</Badge>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Updated {riskDialogPatient.riskScore.updatedAt ? new Date(riskDialogPatient.riskScore.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'recently'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Risk Factors */}
+              {riskDialogPatient.riskScore.factors?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Risk Factors</p>
+                  <div className="space-y-2">
+                    {riskDialogPatient.riskScore.factors.map((f: any, i: number) => (
+                      <div key={i} className={`flex items-start gap-2 p-2.5 rounded-lg text-xs ${
+                        f.severity === 'high' ? 'bg-red-50 border border-red-100' :
+                        f.severity === 'medium' ? 'bg-amber-50 border border-amber-100' :
+                        'bg-slate-50 border border-slate-100'
+                      }`}>
+                        <span className={`mt-0.5 shrink-0 w-1.5 h-1.5 rounded-full ${
+                          f.severity === 'high' ? 'bg-red-500' :
+                          f.severity === 'medium' ? 'bg-amber-500' : 'bg-slate-400'
+                        }`} />
+                        <div>
+                          <p className="font-semibold text-slate-800">{f.factor}</p>
+                          <p className="text-slate-600 mt-0.5">{f.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recommendations */}
+              {riskDialogPatient.riskScore.recommendations?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Recommended Actions</p>
+                  <ul className="space-y-1.5">
+                    {riskDialogPatient.riskScore.recommendations.map((r: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-slate-700">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                        {r}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Re-score button */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full text-xs mt-1"
+                data-testid="btn-rescore-patient"
+                onClick={async () => {
+                  setScoringPatientId(riskDialogPatient.id);
+                  await fetch(`/api/patients/${riskDialogPatient.id}/risk-score`, { method: 'POST' });
+                  queryClient.invalidateQueries({ queryKey: ['/api/patients', clinicianProvider?.id] });
+                  setScoringPatientId(null);
+                  setRiskDialogPatient(null);
+                }}
+              >
+                {scoringPatientId === riskDialogPatient?.id ? <><Loader2 className="w-3 h-3 animate-spin mr-1.5" />Scoring…</> : <><Sparkles className="w-3 h-3 mr-1.5 text-violet-500" />Re-score with AI</>}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

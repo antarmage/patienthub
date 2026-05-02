@@ -108,6 +108,35 @@ function PregnancyInsights({ patient }: { patient: any }) {
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-24">
 
+      {/* AI Watch Card — shown only when risk score is available */}
+      {patient?.riskScore?.patientSummary && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <Card className="relative border-none bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 shadow-md overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-400/10 to-pink-400/10 pointer-events-none" />
+            <CardContent className="p-5">
+              <div className="flex items-start gap-3">
+                <div className="shrink-0 w-9 h-9 rounded-2xl bg-violet-100 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-violet-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide mb-1">What to watch this week</p>
+                  <p className="text-sm text-slate-700 leading-relaxed">{patient.riskScore.patientSummary}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                      patient.riskScore.level === 'Critical' ? 'bg-red-100 border-red-200 text-red-700' :
+                      patient.riskScore.level === 'High' ? 'bg-orange-100 border-orange-200 text-orange-700' :
+                      patient.riskScore.level === 'Medium' ? 'bg-amber-100 border-amber-200 text-amber-700' :
+                      'bg-emerald-100 border-emerald-200 text-emerald-700'
+                    }`}>{patient.riskScore.level} Risk</span>
+                    <span className="text-[10px] text-slate-400">Updated by AI</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       <div className="relative">
         <div className="flex items-center justify-between mb-4 px-1">
           <h2 className="text-xl font-serif text-foreground">Pregnancy Timeline</h2>
@@ -276,6 +305,35 @@ export default function InsightsTab({ mode, patient }: InsightsTabProps) {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-24">
+
+      {/* AI Watch Card — shown only when risk score is available */}
+      {patient?.riskScore?.patientSummary && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <Card className="relative border-none bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 shadow-md overflow-hidden" data-testid="card-ai-watch">
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-400/10 to-pink-400/10 pointer-events-none" />
+            <CardContent className="p-5">
+              <div className="flex items-start gap-3">
+                <div className="shrink-0 w-9 h-9 rounded-2xl bg-violet-100 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-violet-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide mb-1">What to watch this week</p>
+                  <p className="text-sm text-slate-700 leading-relaxed">{patient.riskScore.patientSummary}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                      patient.riskScore.level === 'Critical' ? 'bg-red-100 border-red-200 text-red-700' :
+                      patient.riskScore.level === 'High' ? 'bg-orange-100 border-orange-200 text-orange-700' :
+                      patient.riskScore.level === 'Medium' ? 'bg-amber-100 border-amber-200 text-amber-700' :
+                      'bg-emerald-100 border-emerald-200 text-emerald-700'
+                    }`}>{patient.riskScore.level} Risk</span>
+                    <span className="text-[10px] text-slate-400">Updated by AI</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
       
       <div className="relative">
          <div className="flex items-center justify-between mb-4 px-1">

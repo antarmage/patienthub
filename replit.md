@@ -112,6 +112,16 @@ All routes are registered in `server/routes.ts`. Key endpoints:
 - **Phase-Aware Content**: Dynamic content changes based on menstrual cycle phase (colors, recommendations, insights)
 - **Collapsible Card System**: Clinical data organized in priority-colored cards (red=critical, orange=attention, green=stable)
 
+### Risk Intelligence (Phase 2)
+- **Risk Engine**: `server/risk-engine.ts` — Gemini 2.5 Flash powered patient risk scoring and trimester checklist generation
+- **Risk Score Shape**: `{ level: Low|Medium|High|Critical, score: 0-100, factors: [{factor, severity, detail}], recommendations: string[], patientSummary: string, updatedAt: ISO }`
+- **Trimester Checklist Shape**: `{ trimester: 1|2|3, weekRange, currentWeek, items: [{category, task, dueWeek, done, urgent}], generatedAt }`
+- **Schema**: `patients` table extended with `risk_score jsonb` and `trimester_checklist jsonb` columns
+- **Auto-trigger**: Risk re-scoring fires automatically (fire-and-forget) after new lab results are posted or after lab extraction from Drive
+- **API Endpoints**: `POST /api/patients/:id/risk-score`, `POST /api/patients/batch-risk-score`, `POST /api/patients/:id/trimester-checklist`
+- **Clinician Portal**: Risk column in Patient Flow queue table with color-coded badges (Critical=red, High=orange, Medium=amber, Low=green); Risk Alerts panel in right column showing High/Critical patients sorted by score; Risk Assessment dialog with factors breakdown, recommendations, and re-score button
+- **Patient Portal**: "What to watch this week" AI card in InsightsTab (all modes) showing `patient.riskScore.patientSummary` in plain language with risk level badge
+
 ## External Dependencies
 
 ### Database

@@ -55,6 +55,8 @@ export const patients = pgTable("patients", {
   pregnancyStatus: text("pregnancy_status"),
   isPrimeMember: boolean("is_prime_member").default(false),
   primeMemberSince: text("prime_member_since"),
+  riskScore: jsonb("risk_score"),
+  trimesterChecklist: jsonb("trimester_checklist"),
 });
 
 export const insertPatientSchema = createInsertSchema(patients).omit({ id: true });
