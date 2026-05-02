@@ -26,6 +26,12 @@ function getWeightGainTarget(bmi?: number) {
   return { min: 5, max: 9, label: "Obese" };
 }
 
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+// All patient self-service endpoints require X-Patient-Id to prevent IDOR.
+function patientHeaders(patientId: number): HeadersInit {
+  return { "Content-Type": "application/json", "X-Patient-Id": String(patientId) };
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface Props {
   patient: any;
@@ -79,7 +85,7 @@ function WaterTracker({ patientId }: { patientId: number }) {
   const { data: logs = [] } = useQuery<any[]>({
     queryKey: [`/api/water-logs?patientId=${patientId}&date=${today}`],
     queryFn: async () => {
-      const r = await fetch(`/api/water-logs?patientId=${patientId}&date=${today}`);
+      const r = await fetch(`/api/water-logs?patientId=${patientId}&date=${today}`, { headers: { "X-Patient-Id": String(patientId) } });
       return r.json();
     },
   });
@@ -91,7 +97,7 @@ function WaterTracker({ patientId }: { patientId: number }) {
     mutationFn: async (amountMl: number) => {
       const r = await fetch("/api/water-logs", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: patientHeaders(patientId),
         body: JSON.stringify({ patientId, date: today, amountMl, loggedAt: new Date().toISOString() }),
       });
       if (!r.ok) throw new Error((await r.json()).error);
@@ -101,7 +107,7 @@ function WaterTracker({ patientId }: { patientId: number }) {
   });
 
   const delLog = useMutation({
-    mutationFn: async (id: number) => { await fetch(`/api/water-logs/${id}`, { method: "DELETE" }); },
+    mutationFn: async (id: number) => { await fetch(`/api/water-logs/${id}`, { method: "DELETE", headers: { "X-Patient-Id": String(patientId) } }); },
     onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/water-logs?patientId=${patientId}&date=${today}`] }),
   });
 
@@ -189,7 +195,7 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
   const { data: metrics = [] } = useQuery<any[]>({
     queryKey: [`/api/pregnancy-metrics?patientId=${patientId}`],
     queryFn: async () => {
-      const r = await fetch(`/api/pregnancy-metrics?patientId=${patientId}`);
+      const r = await fetch(`/api/pregnancy-metrics?patientId=${patientId}`, { headers: { "X-Patient-Id": String(patientId) } });
       return r.json();
     },
   });
@@ -210,7 +216,7 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
       const week = getGestationalWeek(patient?.lmp);
       const r = await fetch("/api/pregnancy-metrics", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: patientHeaders(patientId),
         body: JSON.stringify({ patientId, week, weight: parseFloat(weight), enteredBy: "patient" }),
       });
       if (!r.ok) throw new Error((await r.json()).error);
@@ -318,7 +324,7 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
   const { data: metrics = [] } = useQuery<any[]>({
     queryKey: [`/api/pregnancy-metrics?patientId=${patientId}`],
     queryFn: async () => {
-      const r = await fetch(`/api/pregnancy-metrics?patientId=${patientId}`);
+      const r = await fetch(`/api/pregnancy-metrics?patientId=${patientId}`, { headers: { "X-Patient-Id": String(patientId) } });
       return r.json();
     },
   });
@@ -342,7 +348,7 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
       const week = getGestationalWeek(patient?.lmp);
       const r = await fetch("/api/pregnancy-metrics", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: patientHeaders(patientId),
         body: JSON.stringify({ patientId, week, systolic: parseInt(systolic), diastolic: parseInt(diastolic), enteredBy: "patient" }),
       });
       if (!r.ok) throw new Error((await r.json()).error);
@@ -442,7 +448,7 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
   const { data: logs = [] } = useQuery<any[]>({
     queryKey: [`/api/medication-logs?patientId=${patientId}&date=${today}`],
     queryFn: async () => {
-      const r = await fetch(`/api/medication-logs?patientId=${patientId}&date=${today}`);
+      const r = await fetch(`/api/medication-logs?patientId=${patientId}&date=${today}`, { headers: { "X-Patient-Id": String(patientId) } });
       return r.json();
     },
   });
@@ -454,7 +460,7 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
     mutationFn: async (medicationId: number) => {
       const r = await fetch("/api/medication-logs", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: patientHeaders(patientId),
         body: JSON.stringify({ patientId, medicationId, takenDate: today, takenAt: new Date().toISOString() }),
       });
       if (!r.ok) {
@@ -471,7 +477,7 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
     mutationFn: async (medicationId: number) => {
       await fetch("/api/medication-logs/unmark", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: patientHeaders(patientId),
         body: JSON.stringify({ patientId, medicationId, takenDate: today }),
       });
     },
@@ -553,7 +559,7 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
   const { data: patientDocs = [] } = useQuery<any[]>({
     queryKey: [`/api/patient-documents?patientId=${patientId}`],
     queryFn: async () => {
-      const r = await fetch(`/api/patient-documents?patientId=${patientId}`);
+      const r = await fetch(`/api/patient-documents?patientId=${patientId}`, { headers: { "X-Patient-Id": String(patientId) } });
       return r.json();
     },
   });
@@ -581,7 +587,7 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
         const fileData = dataUrl.split(",")[1];
         const r = await fetch("/api/patient-documents", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: patientHeaders(patientId),
           body: JSON.stringify({
             patientId,
             fileName: file.name,
@@ -610,7 +616,7 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
   };
 
   const deleteDoc = useMutation({
-    mutationFn: async (id: number) => { await fetch(`/api/patient-documents/${id}`, { method: "DELETE" }); },
+    mutationFn: async (id: number) => { await fetch(`/api/patient-documents/${id}`, { method: "DELETE", headers: { "X-Patient-Id": String(patientId) } }); },
     onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/patient-documents?patientId=${patientId}`] }),
   });
 
@@ -694,6 +700,7 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
         icon={<FileText className="w-4 h-4 text-purple-600" />}
         docs={patientDiag}
         onDelete={id => deleteDoc.mutate(id)}
+        patientId={patientId}
       />
 
       {/* Patient-uploaded: Prescriptions */}
@@ -702,6 +709,7 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
         icon={<Image className="w-4 h-4 text-blue-600" />}
         docs={patientPrx}
         onDelete={id => deleteDoc.mutate(id)}
+        patientId={patientId}
       />
 
       {patientDocs.length === 0 && clinicianDocs.length === 0 && (
@@ -714,10 +722,58 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
   );
 }
 
-function DocList({ title, icon, docs, onDelete }: { title: string; icon: React.ReactNode; docs: any[]; onDelete: (id: number) => void }) {
+// ── Document Viewer Modal ─────────────────────────────────────────────────────
+function DocViewer({ doc, patientId, onClose }: { doc: any; patientId: number; onClose: () => void }) {
+  const [src, setSrc] = useState<string | null>(doc.fileData ? `data:${doc.mimeType};base64,${doc.fileData}` : null);
+  const [loading, setLoading] = useState(!doc.fileData);
+
+  React.useEffect(() => {
+    if (doc.fileData) return;
+    setLoading(true);
+    fetch(`/api/patient-documents/${doc.id}`, { headers: { "X-Patient-Id": String(patientId) } })
+      .then(r => r.json())
+      .then(full => { if (full.fileData) setSrc(`data:${full.mimeType};base64,${full.fileData}`); })
+      .finally(() => setLoading(false));
+  }, [doc.id, doc.fileData, patientId]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b">
+          <p className="text-sm font-semibold text-slate-800 truncate max-w-[80%]">{doc.label || doc.fileName}</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-4 flex items-center justify-center min-h-[200px]">
+          {loading && <div className="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />}
+          {!loading && !src && <p className="text-sm text-slate-400">Unable to load file preview.</p>}
+          {!loading && src && doc.mimeType?.includes("image") && (
+            <img src={src} alt={doc.label || doc.fileName} className="max-w-full max-h-[60vh] object-contain rounded-lg" />
+          )}
+          {!loading && src && doc.mimeType === "application/pdf" && (
+            <iframe src={src} title={doc.label || doc.fileName} className="w-full h-96 rounded-lg border" />
+          )}
+        </div>
+        {src && (
+          <div className="px-4 pb-4">
+            <a href={src} download={doc.fileName}
+              className="w-full flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-semibold py-2.5 rounded-xl transition-colors">
+              <Upload className="w-4 h-4 rotate-180" /> Download
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DocList({ title, icon, docs, onDelete, patientId }: {
+  title: string; icon: React.ReactNode; docs: any[]; onDelete: (id: number) => void; patientId: number;
+}) {
+  const [viewing, setViewing] = useState<any | null>(null);
   if (docs.length === 0) return null;
   return (
     <div>
+      {viewing && <DocViewer doc={viewing} patientId={patientId} onClose={() => setViewing(null)} />}
       <div className="flex items-center gap-2 mb-2 px-1">
         {icon}
         <h4 className="text-sm font-semibold text-slate-700">{title}</h4>
@@ -727,17 +783,18 @@ function DocList({ title, icon, docs, onDelete }: { title: string; icon: React.R
         {docs.map((doc: any) => (
           <Card key={doc.id} className="glass-panel border-white/60">
             <CardContent className="p-3 flex items-center gap-3">
-              <div className="p-2 bg-slate-100 rounded-lg shrink-0">
+              <button onClick={() => setViewing(doc)} className="p-2 bg-slate-100 hover:bg-indigo-100 rounded-lg shrink-0 transition-colors">
                 {doc.mimeType?.includes("image") ? <Image className="w-4 h-4 text-slate-500" /> : <FileText className="w-4 h-4 text-slate-500" />}
-              </div>
-              <div className="flex-1 min-w-0">
+              </button>
+              <button onClick={() => setViewing(doc)} className="flex-1 min-w-0 text-left">
                 <p className="text-sm font-medium text-slate-700 truncate">{doc.label || doc.fileName}</p>
                 <p className="text-[10px] text-slate-400">
                   {doc.trimester ? `Trimester ${doc.trimester}` : ""}
                   {doc.trimester && doc.uploadedAt ? " · " : ""}
                   {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : ""}
+                  <span className="text-indigo-400 ml-2">Tap to view</span>
                 </p>
-              </div>
+              </button>
               <button onClick={() => onDelete(doc.id)} className="text-slate-300 hover:text-rose-400 transition-colors shrink-0">
                 <Trash2 className="w-4 h-4" />
               </button>

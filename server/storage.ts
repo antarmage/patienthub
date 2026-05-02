@@ -190,6 +190,7 @@ export interface IStorage {
   deleteMedicationLog(patientId: number, medicationId: number, takenDate: string): Promise<boolean>;
 
   getPatientDocuments(patientId: number): Promise<PatientDocument[]>;
+  getPatientDocument(id: number): Promise<PatientDocument | undefined>;
   createPatientDocument(doc: InsertPatientDocument): Promise<PatientDocument>;
   deletePatientDocument(id: number): Promise<boolean>;
 }
@@ -720,6 +721,11 @@ export class DatabaseStorage implements IStorage {
       and(eq(medicationLogs.patientId, patientId), eq(medicationLogs.medicationId, medicationId), eq(medicationLogs.takenDate, takenDate))
     ).returning();
     return result.length > 0;
+  }
+
+  async getPatientDocument(id: number): Promise<PatientDocument | undefined> {
+    const [doc] = await db.select().from(patientDocuments).where(eq(patientDocuments.id, id));
+    return doc;
   }
 
   async getPatientDocuments(patientId: number): Promise<PatientDocument[]> {

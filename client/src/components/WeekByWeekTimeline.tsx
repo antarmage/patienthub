@@ -11,6 +11,9 @@ export const WEEK_DATA: Record<number, {
   fruit: string; emoji: string; length: string; weight: string;
   development: string[]; symptoms: string[]; dos: string[]; donts: string[]; nutrition: string;
 }> = {
+  1: { fruit: "Poppy seed (fertilisation)", emoji: "🌱", length: "<1 mm", weight: "<1 g", development: ["Egg and sperm unite — conception may occur this week", "Cell division begins rapidly", "Implantation journey starts"], symptoms: ["No physical symptoms yet", "Cycle day 1 of last menstrual period", "This is the reference start of pregnancy dating"], dos: ["Begin folic acid 5 mg/day if not already started", "Avoid alcohol, smoking, and recreational drugs", "Maintain a balanced, nutrient-dense diet"], donts: ["Take unnecessary medications without doctor advice", "Stress about confirming pregnancy this early"], nutrition: "Start folic acid now if you haven't — it prevents neural tube defects in the first weeks of development." },
+  2: { fruit: "Poppy seed", emoji: "🌱", length: "<1 mm", weight: "<1 g", development: ["Ovulation occurs mid-week", "Fertilisation possible in the fallopian tube", "Zygote (fertilised egg) begins dividing"], symptoms: ["Possible mild ovulation pain (mittelschmerz)", "Cervical mucus changes (egg-white consistency)", "Heightened libido around ovulation"], dos: ["Track ovulation with LH strips if TTC", "Continue folic acid and prenatal vitamins", "Stay hydrated and eat iron-rich foods"], donts: ["Over-exercise or overheat during the implantation window", "Test for pregnancy yet — too early"], nutrition: "Zinc and selenium support egg quality: pumpkin seeds, Brazil nuts, eggs, whole grains." },
+  3: { fruit: "Poppy seed (implanting)", emoji: "🫘", length: "~0.1 mm", weight: "<1 g", development: ["Blastocyst implants into uterine wall", "Placenta and amniotic sac begin forming", "hCG hormone starts being produced — pregnancy begins!"], symptoms: ["Implantation spotting (light pink/brown) possible", "Mild cramping possible", "Pregnancy tests may just begin to show positive by end of week"], dos: ["Continue folic acid", "Avoid NSAIDs (ibuprofen) which can interfere with implantation", "Rest well and reduce stress"], donts: ["Take a pregnancy test before day 10 post-ovulation", "Ignore persistent heavy bleeding (contact doctor)"], nutrition: "Vitamin B6 (bananas, potatoes, chickpeas) supports implantation and early hormone balance." },
   4: { fruit: "Poppy seed", emoji: "🫘", length: "~1 mm", weight: "<1 g", development: ["Embryo is implanting", "Amniotic sac forming", "Placenta beginning to develop"], symptoms: ["Missed period", "Slight cramping", "Breast tenderness"], dos: ["Start folic acid 5 mg/day", "Book first prenatal visit", "Stop alcohol & smoking"], donts: ["Avoid raw fish & unpasteurised dairy", "Avoid X-rays"], nutrition: "Folic acid is critical now — leafy greens, lentils, fortified cereals." },
   5: { fruit: "Apple seed", emoji: "🌱", length: "~3 mm", weight: "<1 g", development: ["Heart begins to beat", "Neural tube closing", "Arm & leg buds forming"], symptoms: ["Nausea beginning", "Fatigue", "Frequent urination"], dos: ["Small frequent meals for nausea", "Rest when tired", "Stay hydrated"], donts: ["Skip prenatal vitamins", "High-impact exercise without guidance"], nutrition: "Ginger tea helps nausea. B6-rich foods: bananas, potatoes, avocado." },
   6: { fruit: "Lentil", emoji: "🫘", length: "~6 mm", weight: "<1 g", development: ["Heartbeat detectable on scan", "Eyes & ears forming", "Hands & feet forming"], symptoms: ["Morning sickness peaking", "Smell sensitivity", "Bloating"], dos: ["Try cold/bland foods if nauseated", "Elevate head when sleeping", "Sip water slowly"], donts: ["Skip meals (worsens nausea)", "Strong smells/cooking odours"], nutrition: "Cold foods often easier to tolerate. Try yoghurt, cold toast, crackers." },
@@ -51,7 +54,7 @@ export const WEEK_DATA: Record<number, {
 };
 
 export function getWeekData(week: number) {
-  const clamped = Math.max(4, Math.min(40, week));
+  const clamped = Math.max(1, Math.min(40, week));
   const keys = Object.keys(WEEK_DATA).map(Number).sort((a, b) => a - b);
   const closest = keys.reduce((prev, curr) => Math.abs(curr - clamped) < Math.abs(prev - clamped) ? curr : prev);
   return WEEK_DATA[closest];
@@ -61,7 +64,7 @@ interface Props { patient: any; compact?: boolean; }
 
 export default function WeekByWeekTimeline({ patient, compact = false }: Props) {
   const currentWeek = patient?.lmp
-    ? Math.min(40, Math.max(4, Math.floor((new Date().getTime() - new Date(patient.lmp).getTime()) / (7 * 24 * 60 * 60 * 1000))))
+    ? Math.min(40, Math.max(1, Math.floor((new Date().getTime() - new Date(patient.lmp).getTime()) / (7 * 24 * 60 * 60 * 1000))))
     : 20;
   const [selectedWeek, setSelectedWeek] = useState(currentWeek);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -86,7 +89,7 @@ export default function WeekByWeekTimeline({ patient, compact = false }: Props) 
 
       {/* Week Selector */}
       <div ref={scrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
-        {Array.from({ length: 37 }, (_, i) => i + 4).map(week => (
+        {Array.from({ length: 40 }, (_, i) => i + 1).map(week => (
           <button key={week} data-week={week} onClick={() => setSelectedWeek(week)}
             className={`shrink-0 w-10 h-10 rounded-full text-xs font-bold transition-all border ${week === selectedWeek ? "bg-pink-500 text-white border-pink-500 shadow" : week === currentWeek ? "bg-pink-100 text-pink-700 border-pink-300" : "bg-white/60 text-slate-500 border-white/60 hover:border-pink-200"}`}>
             {week}
