@@ -6,7 +6,7 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -20,11 +20,23 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const { isLoading } = useApp();
+  const { isLoading, authComplete } = useApp();
+  const router = useRouter();
+  const segments = useSegments();
 
   useEffect(() => {
     if (!isLoading) SplashScreen.hideAsync();
   }, [isLoading]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const inAuthScreen = segments[0] === "auth";
+    if (!authComplete && !inAuthScreen) {
+      router.replace("/auth");
+    } else if (authComplete && inAuthScreen) {
+      router.replace("/(tabs)");
+    }
+  }, [isLoading, authComplete, segments]);
 
   if (isLoading) return null;
 

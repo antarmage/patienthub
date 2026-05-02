@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Platform, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
@@ -16,6 +17,7 @@ export default function AuthScreen() {
   const otpRefs = useRef<(TextInput | null)[]>([]);
   const insets = useSafeAreaInsets();
   const { completeAuth } = useApp();
+  const router = useRouter();
 
   const handleSendOtp = () => {
     if (phone.length >= 10) {
@@ -35,6 +37,7 @@ export default function AuthScreen() {
     setLoading(true);
     try {
       await completeAuth(phone);
+      router.replace("/(tabs)");
     } catch (err: any) {
       Alert.alert("Login Failed", err?.message || "Please check your phone number and try again.");
     } finally {
