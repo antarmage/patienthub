@@ -14,7 +14,10 @@ import {
     FileText,
     Copy,
     ExternalLink,
-    Share2
+    Share2,
+    Building2,
+    Home,
+    Video
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -40,8 +43,10 @@ export default function NewBooking() {
     const [selectedService, setSelectedService] = useState("");
     const [selectedProvider, setSelectedProvider] = useState("");
     const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
+    const [visitMode, setVisitMode] = useState("in-clinic");
     const [isSuccess, setIsSuccess] = useState(false);
     const [createdAppointmentId, setCreatedAppointmentId] = useState<number | null>(null);
+    const [createdTelemedicineLink, setCreatedTelemedicineLink] = useState<string | null>(null);
     const { toast } = useToast();
 
     const timeSlots = [
@@ -118,6 +123,7 @@ export default function NewBooking() {
         },
         onSuccess: (data) => {
             setCreatedAppointmentId(data.id);
+            setCreatedTelemedicineLink(data.telemedicineLink || null);
             setIsSuccess(true);
             toast({
                 title: "Appointment Booked",
@@ -142,7 +148,8 @@ export default function NewBooking() {
             serviceId: parseInt(selectedService) || 1,
             date: date.toISOString().split('T')[0],
             time: selectedSlot,
-            status: "scheduled"
+            status: "scheduled",
+            visitMode,
         });
     };
 
@@ -171,6 +178,30 @@ export default function NewBooking() {
                         </div>
 
                         <CardContent className="p-8 space-y-8">
+                            {createdTelemedicineLink && (
+                                <div className="space-y-3 p-5 bg-indigo-50 border border-indigo-100 rounded-xl">
+                                    <h3 className="text-base font-bold text-indigo-900 flex items-center gap-2">
+                                        <Video className="w-5 h-5 text-indigo-600" />
+                                        Video Consultation Link
+                                    </h3>
+                                    <p className="text-slate-500 text-sm">
+                                        This secure Jitsi Meet link has been sent to the patient via WhatsApp. Share it again if needed.
+                                    </p>
+                                    <div className="flex gap-2 items-center bg-white rounded-lg border border-indigo-200 p-3">
+                                        <code className="flex-1 text-xs font-mono text-indigo-700 break-all select-all">{createdTelemedicineLink}</code>
+                                        <Button size="sm" variant="outline" className="shrink-0" onClick={() => {
+                                            navigator.clipboard.writeText(createdTelemedicineLink);
+                                            toast({ title: "Link Copied", description: "Telemedicine link copied" });
+                                        }}>
+                                            <Copy className="w-3 h-3 mr-1" /> Copy
+                                        </Button>
+                                    </div>
+                                    <Button size="sm" variant="outline" className="w-full border-indigo-200 text-indigo-700" onClick={() => window.open(createdTelemedicineLink, '_blank')}>
+                                        <ExternalLink className="w-3 h-3 mr-2" /> Open Video Room
+                                    </Button>
+                                </div>
+                            )}
+
                             <div className="space-y-4">
                                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                                     <Share2 className="w-5 h-5 text-indigo-600" />
@@ -376,6 +407,41 @@ export default function NewBooking() {
                                     </SelectContent>
                                 </Select>
                             </div>
+
+                            <div className="space-y-3">
+                                <Label>Visit Mode</Label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {[
+                                        { value: "in-clinic", label: "In-Clinic", icon: Building2, desc: "Visit the clinic" },
+                                        { value: "home-visit", label: "Home Visit", icon: Home, desc: "Doctor comes to you" },
+                                        { value: "telemedicine", label: "Video Call", icon: Video, desc: "Online consultation" },
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setVisitMode(opt.value)}
+                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col items-center gap-2 text-center ${visitMode === opt.value ? 'border-indigo-600 bg-indigo-50' : 'border-slate-100 bg-white hover:border-slate-200'}`}
+                                            data-testid={`btn-visit-mode-${opt.value}`}
+                                        >
+                                            <opt.icon className={`w-6 h-6 ${visitMode === opt.value ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                            <div>
+                                                <p className={`font-bold text-sm ${visitMode === opt.value ? 'text-indigo-700' : 'text-slate-700'}`}>{opt.label}</p>
+                                                <p className="text-xs text-slate-400">{opt.desc}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                                {visitMode === "telemedicine" && (
+                                    <p className="text-xs text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg flex items-center gap-2">
+                                        <Video className="w-3 h-3" /> A secure video link (Jitsi Meet) will be generated and sent to the patient via WhatsApp.
+                                    </p>
+                                )}
+                                {visitMode === "home-visit" && (
+                                    <p className="text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-lg flex items-center gap-2">
+                                        <Home className="w-3 h-3" /> Ensure patient address is on file. Additional home visit charges may apply.
+                                    </p>
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -455,6 +521,14 @@ export default function NewBooking() {
                                         <div>
                                             <p className="text-xs text-indigo-500 uppercase font-bold tracking-wide mb-1">Time</p>
                                             <p className="font-medium text-slate-900">{selectedSlot || "09:00 AM"}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-xs text-indigo-500 uppercase font-bold tracking-wide mb-1">Visit Mode</p>
+                                            <p className="font-medium text-slate-900 flex items-center gap-2">
+                                                {visitMode === "telemedicine" ? <><Video className="w-4 h-4 text-indigo-500" /> Video Consultation</> :
+                                                 visitMode === "home-visit" ? <><Home className="w-4 h-4 text-amber-500" /> Home Visit</> :
+                                                 <><Building2 className="w-4 h-4 text-slate-400" /> In-Clinic</>}
+                                            </p>
                                         </div>
                                     </div>
                                 </CardContent>

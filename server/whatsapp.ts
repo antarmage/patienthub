@@ -74,11 +74,116 @@ export class WhatsAppService {
         return this.sendRequest(payload);
     }
 
-    private formatPhoneNumber(phone: string): string {
-        // Basic format: ensure it starts with country code and has no spaces/dashes
+    /**
+     * Sends a welcome message to a newly registered patient.
+     */
+    async sendWelcomeMessage(phone: string, patientName: string) {
+        const message =
+            `Welcome to Saivie! 🌸\n\n` +
+            `Hi ${patientName}, your registration is complete. ` +
+            `We're here to support your reproductive health journey every step of the way.\n\n` +
+            `Reply HELP for assistance or visit us at your scheduled appointment. See you soon! 💜`;
+        return this.sendTextMessage(phone, message);
+    }
+
+    /**
+     * Sends an appointment confirmation message.
+     */
+    async sendAppointmentConfirmation(
+        phone: string,
+        patientName: string,
+        date: string,
+        time: string,
+        visitMode: string = "in-clinic",
+        telemedicineLink?: string | null,
+    ) {
+        const modeLabel =
+            visitMode === "telemedicine" ? "Video Consultation" :
+            visitMode === "home-visit" ? "Home Visit" :
+            "In-Clinic Visit";
+
+        let message =
+            `✅ *Appointment Confirmed – Saivie Clinic*\n\n` +
+            `Hi ${patientName},\n` +
+            `Your appointment has been scheduled.\n\n` +
+            `📅 Date: ${date}\n` +
+            `🕐 Time: ${time}\n` +
+            `📍 Type: ${modeLabel}\n`;
+
+        if (visitMode === "telemedicine" && telemedicineLink) {
+            message += `\n🔗 Join your video consultation:\n${telemedicineLink}\n`;
+        }
+
+        message += `\nReply *CONFIRM* to confirm or *CANCEL* to cancel your appointment.\n\n_Saivie Reproductive Intelligence_`;
+        return this.sendTextMessage(phone, message);
+    }
+
+    /**
+     * Sends a reminder 24 hours before the appointment.
+     */
+    async sendReminder24h(
+        phone: string,
+        patientName: string,
+        date: string,
+        time: string,
+        visitMode: string = "in-clinic",
+        telemedicineLink?: string | null,
+    ) {
+        const modeLabel =
+            visitMode === "telemedicine" ? "video consultation" :
+            visitMode === "home-visit" ? "home visit" :
+            "in-clinic appointment";
+
+        let message =
+            `⏰ *Reminder – Saivie Clinic*\n\n` +
+            `Hi ${patientName}, this is a reminder that you have a ${modeLabel} *tomorrow*.\n\n` +
+            `📅 ${date} at ${time}\n`;
+
+        if (visitMode === "home-visit") {
+            message += `\nOur team will visit you at your registered address. Please ensure someone is available.\n`;
+        } else if (visitMode === "telemedicine" && telemedicineLink) {
+            message += `\n🔗 Your video link:\n${telemedicineLink}\n`;
+        } else {
+            message += `\nPlease arrive 10 minutes early to complete any paperwork.\n`;
+        }
+
+        message += `\nReply *CONFIRM* or *CANCEL*.\n\n_Saivie Reproductive Intelligence_`;
+        return this.sendTextMessage(phone, message);
+    }
+
+    /**
+     * Sends a reminder 1 hour before the appointment.
+     */
+    async sendReminder1h(
+        phone: string,
+        patientName: string,
+        time: string,
+        visitMode: string = "in-clinic",
+        telemedicineLink?: string | null,
+    ) {
+        const modeLabel =
+            visitMode === "telemedicine" ? "video consultation" :
+            visitMode === "home-visit" ? "home visit" :
+            "appointment";
+
+        let message =
+            `🔔 *Starting in 1 Hour – Saivie Clinic*\n\n` +
+            `Hi ${patientName}, your ${modeLabel} begins in *1 hour* at ${time}.\n`;
+
+        if (visitMode === "telemedicine" && telemedicineLink) {
+            message += `\n🔗 Join here:\n${telemedicineLink}\n`;
+        } else if (visitMode === "home-visit") {
+            message += `\nOur team is on the way!\n`;
+        }
+
+        message += `\n_Saivie Reproductive Intelligence_`;
+        return this.sendTextMessage(phone, message);
+    }
+
+    public formatPhoneNumber(phone: string): string {
         let cleaned = phone.replace(/[\s\-\(\)]/g, "");
         if (!cleaned.startsWith("+") && cleaned.length === 10) {
-            cleaned = "91" + cleaned; // Default to India if only 10 digits
+            cleaned = "91" + cleaned;
         } else {
             cleaned = cleaned.replace("+", "");
         }

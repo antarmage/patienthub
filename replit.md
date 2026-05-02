@@ -70,6 +70,10 @@ All routes are registered in `server/routes.ts`. Key endpoints:
 - `GET/POST /api/patients/:id/invoices`, `PATCH/DELETE /api/invoices/:id` — Billing
 - `GET/POST/PATCH/DELETE /api/billing-catalog` — Billing catalog (owner-managed service pricing with GST)
 - `GET/POST/PATCH/DELETE /api/patients/:id/consent-forms` — Consent form tracking
+- `POST /api/appointments/:id/telemedicine` — Generate Jitsi Meet video link for an appointment; notifies patient via WhatsApp
+- `POST /api/whatsapp/send-patient` — Send custom WhatsApp message to a patient by ID (receptionist panel)
+- `GET /api/whatsapp/webhook` — WhatsApp webhook verification handshake (Meta)
+- `POST /api/whatsapp/webhook` — Inbound WhatsApp messages; maps CONFIRM/CANCEL replies to appointment status updates
 - `GET/POST/PATCH/DELETE /api/patients/:id/documents` — Document metadata
 - `POST /api/auth/passcode` — Unified passcode login (returns role + redirects to appropriate portal)
 - `POST /api/google-sheets/sync` — Import/sync patient data from Google Sheet (Form Responses 1)

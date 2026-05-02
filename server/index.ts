@@ -3,6 +3,8 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { seedDatabase } from "./seed";
+import { storage } from "./storage";
+import { whatsapp } from "./whatsapp";
 
 const app = express();
 const httpServer = createServer(app);
@@ -61,9 +63,103 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── WhatsApp Reminder Scheduler ──────────────────────────────────────────
+function startReminderScheduler() {
+  const CHECK_INTERVAL_MS = 5 * 60 * 1000; // every 5 minutes
+
+  const runCheck = async () => {
+    try {
+      const allAppts = await storage.getAppointments();
+      const now = new Date();
+      const todayStr = now.toISOString().split("T")[0];
+
+      for (const appt of allAppts) {
+        if (!appt.patientId || !appt.date || !appt.time) continue;
+        if (appt.status === "completed" || appt.status === "cancelled") continue;
+        if (appt.date < todayStr) continue;
+
+        // Parse appointment datetime
+        const apptDateTimeStr = `${appt.date}T${convertTo24h(appt.time)}:00`;
+        const apptTime = new Date(apptDateTimeStr);
+        if (isNaN(apptTime.getTime())) continue;
+
+        const diffMs = apptTime.getTime() - now.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        const remindersSent = (appt.whatsappReminderSent || "").split(",").filter(Boolean);
+
+        // 24-hour reminder (send when between 24h and 25h away)
+        if (diffHours > 23 && diffHours <= 25 && !remindersSent.includes("24h")) {
+          const patient = await storage.getPatient(appt.patientId);
+          if (patient?.phone) {
+            try {
+              await whatsapp.sendReminder24h(
+                patient.phone,
+                patient.name,
+                appt.date,
+                appt.time,
+                appt.visitMode || "in-clinic",
+                appt.telemedicineLink
+              );
+              await storage.updateAppointment(appt.id, {
+                whatsappReminderSent: [...remindersSent, "24h"].join(","),
+              });
+              log(`24h WhatsApp reminder sent to ${patient.name} for appt ${appt.id}`, "scheduler");
+            } catch (err: any) {
+              log(`Failed 24h reminder for appt ${appt.id}: ${err.message}`, "scheduler");
+            }
+          }
+        }
+
+        // 1-hour reminder (send when between 55min and 65min away)
+        if (diffHours > 0.916 && diffHours <= 1.083 && !remindersSent.includes("1h")) {
+          const patient = await storage.getPatient(appt.patientId);
+          if (patient?.phone) {
+            try {
+              await whatsapp.sendReminder1h(
+                patient.phone,
+                patient.name,
+                appt.time,
+                appt.visitMode || "in-clinic",
+                appt.telemedicineLink
+              );
+              await storage.updateAppointment(appt.id, {
+                whatsappReminderSent: [...remindersSent, "1h"].join(","),
+              });
+              log(`1h WhatsApp reminder sent to ${patient.name} for appt ${appt.id}`, "scheduler");
+            } catch (err: any) {
+              log(`Failed 1h reminder for appt ${appt.id}: ${err.message}`, "scheduler");
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      log(`Reminder scheduler error: ${err.message}`, "scheduler");
+    }
+  };
+
+  // Run immediately then on interval
+  runCheck();
+  setInterval(runCheck, CHECK_INTERVAL_MS);
+  log("WhatsApp reminder scheduler started (checks every 5 min)", "scheduler");
+}
+
+function convertTo24h(time12: string): string {
+  // Convert "09:00 AM" → "09:00", "02:30 PM" → "14:30"
+  const match = time12.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return time12.slice(0, 5);
+  let hours = parseInt(match[1]);
+  const minutes = match[2];
+  const period = match[3].toUpperCase();
+  if (period === "PM" && hours !== 12) hours += 12;
+  if (period === "AM" && hours === 12) hours = 0;
+  return `${String(hours).padStart(2, "0")}:${minutes}`;
+}
+
 (async () => {
   await seedDatabase();
   await registerRoutes(httpServer, app);
+  startReminderScheduler();
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

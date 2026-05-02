@@ -42,6 +42,16 @@ export async function registerRoutes(
   app.post("/api/patients", async (req, res) => {
     if (!req.body.name) return res.status(400).json({ error: "Patient name is required" });
     const patient = await storage.createPatient(req.body);
+
+    // Send welcome WhatsApp to new patient
+    if (patient.phone) {
+      try {
+        await whatsapp.sendWelcomeMessage(patient.phone, patient.name);
+      } catch (err) {
+        console.error("Failed to send welcome WhatsApp:", err);
+      }
+    }
+
     res.status(201).json(patient);
   });
 
@@ -98,18 +108,28 @@ export async function registerRoutes(
   });
 
   app.post("/api/appointments", async (req, res) => {
-    const appt = await storage.createAppointment(req.body);
+    const body = req.body;
 
-    // Optional: Send WhatsApp confirmation
+    // Auto-generate Jitsi telemedicine link if visit mode is telemedicine
+    if (body.visitMode === "telemedicine" && !body.telemedicineLink) {
+      const { randomUUID } = await import("crypto");
+      body.telemedicineLink = `https://meet.jit.si/saivie-${randomUUID().slice(0, 8)}`;
+    }
+
+    const appt = await storage.createAppointment(body);
+
+    // Send WhatsApp confirmation
     if (appt.patientId) {
       const patient = await storage.getPatient(appt.patientId);
       if (patient?.phone) {
         try {
-          // You can send a template or a text message
-          // For now, sending a free-form text message if configured
-          await whatsapp.sendTextMessage(
+          await whatsapp.sendAppointmentConfirmation(
             patient.phone,
-            `Hello ${patient.name}, your appointment is confirmed for ${appt.date} at ${appt.time}. See you then!`
+            patient.name,
+            appt.date,
+            appt.time,
+            appt.visitMode || "in-clinic",
+            appt.telemedicineLink
           );
         } catch (err) {
           console.error("Failed to send WhatsApp confirmation:", err);
@@ -118,6 +138,34 @@ export async function registerRoutes(
     }
 
     res.status(201).json(appt);
+  });
+
+  // Generate / refresh telemedicine link for an appointment
+  app.post("/api/appointments/:id/telemedicine", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const { randomUUID } = await import("crypto");
+    const link = `https://meet.jit.si/saivie-${randomUUID().slice(0, 8)}`;
+    const updated = await storage.updateAppointment(id, {
+      visitMode: "telemedicine",
+      telemedicineLink: link,
+    });
+    if (!updated) return res.status(404).json({ error: "Appointment not found" });
+
+    // Notify patient of telemedicine link
+    if (updated.patientId) {
+      const patient = await storage.getPatient(updated.patientId);
+      if (patient?.phone) {
+        try {
+          await whatsapp.sendTextMessage(
+            patient.phone,
+            `Hi ${patient.name}, your video consultation link is ready:\n${link}\n\nSee you on ${updated.date} at ${updated.time}! 💜\n\n_Saivie Reproductive Intelligence_`
+          );
+        } catch (_) {}
+      }
+    }
+
+    res.json({ link, appointment: updated });
   });
 
   app.patch("/api/appointments/:id", async (req, res) => {
@@ -156,6 +204,103 @@ export async function registerRoutes(
       res.json({ success: true, result });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Send a WhatsApp message to a specific patient (receptionist panel)
+  app.post("/api/whatsapp/send-patient", async (req, res) => {
+    const { patientId, message } = req.body;
+    if (!patientId || !message) {
+      return res.status(400).json({ error: "patientId and message are required" });
+    }
+    const patient = await storage.getPatient(parseInt(patientId));
+    if (!patient) return res.status(404).json({ error: "Patient not found" });
+    if (!patient.phone) return res.status(400).json({ error: "Patient has no phone number on record" });
+    try {
+      const result = await whatsapp.sendTextMessage(patient.phone, message);
+      res.json({ success: true, patient: { name: patient.name, phone: patient.phone }, result });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // WhatsApp Inbound Webhook — Meta verification handshake
+  app.get("/api/whatsapp/webhook", (req, res) => {
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
+    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || "saivie_webhook_verify";
+    if (mode === "subscribe" && token === verifyToken) {
+      console.log("WhatsApp webhook verified");
+      res.status(200).send(challenge);
+    } else {
+      res.status(403).json({ error: "Verification failed" });
+    }
+  });
+
+  // WhatsApp Inbound Webhook — receive messages
+  app.post("/api/whatsapp/webhook", async (req, res) => {
+    try {
+      const body = req.body;
+      const entry = body?.entry?.[0];
+      const changes = entry?.changes?.[0];
+      const value = changes?.value;
+      const messages = value?.messages;
+
+      if (!messages || messages.length === 0) {
+        return res.sendStatus(200);
+      }
+
+      for (const msg of messages) {
+        const fromPhone = msg.from; // raw phone (91XXXXXXXXXX)
+        const text = msg.text?.body?.trim().toUpperCase();
+
+        if (!text || !fromPhone) continue;
+
+        // Find patient by phone number
+        const allPatients = await storage.getPatients();
+        const patient = allPatients.find(p => {
+          if (!p.phone) return false;
+          const cleaned = whatsapp.formatPhoneNumber(p.phone);
+          return cleaned === fromPhone || cleaned === fromPhone.replace(/^91/, "");
+        });
+
+        if (!patient) {
+          console.log(`WhatsApp inbound from unknown phone ${fromPhone}: ${text}`);
+          continue;
+        }
+
+        // Find their next upcoming appointment
+        const appts = await storage.getAppointmentsByPatient(patient.id);
+        const today = new Date().toISOString().split("T")[0];
+        const upcoming = appts
+          .filter(a => a.date >= today && a.status !== "completed" && a.status !== "cancelled")
+          .sort((a, b) => a.date.localeCompare(b.date));
+        const next = upcoming[0];
+
+        if (!next) continue;
+
+        if (text === "CONFIRM") {
+          await storage.updateAppointment(next.id, { status: "confirmed" });
+          await whatsapp.sendTextMessage(
+            patient.phone!,
+            `✅ Confirmed! Your appointment on ${next.date} at ${next.time} is confirmed. See you then! 💜\n\n_Saivie Reproductive Intelligence_`
+          );
+          console.log(`Appointment ${next.id} confirmed by patient ${patient.name} via WhatsApp`);
+        } else if (text === "CANCEL") {
+          await storage.updateAppointment(next.id, { status: "cancelled" });
+          await whatsapp.sendTextMessage(
+            patient.phone!,
+            `Your appointment on ${next.date} at ${next.time} has been cancelled. To reschedule, please call us or book online. We hope to see you soon. 💜\n\n_Saivie Reproductive Intelligence_`
+          );
+          console.log(`Appointment ${next.id} cancelled by patient ${patient.name} via WhatsApp`);
+        }
+      }
+
+      res.sendStatus(200);
+    } catch (err: any) {
+      console.error("WhatsApp webhook error:", err.message);
+      res.sendStatus(200); // Always 200 to prevent Meta retry loops
     }
   });
 

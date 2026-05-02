@@ -46,7 +46,10 @@ import {
   IndianRupee,
   Receipt,
   Printer,
-  Trash2
+  Trash2,
+  Video,
+  Home,
+  Send
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1256,6 +1259,7 @@ export default function StaffPortal() {
         const statusMap: Record<string, string> = { 'On Time': 'Waiting', 'Late': 'Check-in', 'Completed': 'Completed' };
         const queueStatus = statusMap[apt.status] || 'Arriving';
         const actionMap: Record<string, string> = { 'Waiting': 'Take Vitals', 'Check-in': 'Upload Records', 'Arriving': 'Onboard', 'Completed': 'Checkout' };
+        const patient = patients.find((p: any) => p.id === apt.patientId);
         return {
           id: apt.id,
           name: apt.patient,
@@ -1264,9 +1268,12 @@ export default function StaffPortal() {
           status: queueStatus,
           action: actionMap[queueStatus] || 'Take Vitals',
           type: apt.type || '',
+          phone: patient?.phone || null,
+          visitMode: apt.visitMode || 'in-clinic',
+          telemedicineLink: apt.telemedicineLink || null,
         };
       });
-  }, [todayAppointments]);
+  }, [todayAppointments, patients]);
 
   const receptionistTasks = useMemo(() => {
     return labTasks
@@ -1415,6 +1422,9 @@ export default function StaffPortal() {
   const [driveStatus, setDriveStatus] = useState<any>(null);
 
   const [isFollowUpCallOpen, setIsFollowUpCallOpen] = useState(false);
+  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
+  const [whatsAppTarget, setWhatsAppTarget] = useState<{ patientId: number; name: string; phone?: string } | null>(null);
+  const [whatsAppMessage, setWhatsAppMessage] = useState("");
   const [selectedCallPatient, setSelectedCallPatient] = useState<any>(null);
   const [followUpCallForm, setFollowUpCallForm] = useState({
     feeling: '', gotMedicines: '', concerns: '', crossSell: '', nextVisit: '', notes: '', nextMilestone: '', didntPickCallTime: '',
@@ -3204,7 +3214,11 @@ export default function StaffPortal() {
                                                         {p.name.split(' ').map((n: string) => n[0]).join('')}
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold text-slate-900 text-sm">{p.name}</p>
+                                                        <p className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                                                            {p.name}
+                                                            {p.visitMode === 'telemedicine' && <span title="Video Consultation"><Video className="w-3 h-3 text-indigo-500" /></span>}
+                                                            {p.visitMode === 'home-visit' && <span title="Home Visit"><Home className="w-3 h-3 text-amber-500" /></span>}
+                                                        </p>
                                                         <p className="text-xs text-slate-500 flex items-center gap-1">
                                                             <Clock className="w-3 h-3" /> {p.time} — {p.type || 'Appointment'}
                                                         </p>
@@ -3267,6 +3281,30 @@ export default function StaffPortal() {
                                                             }}
                                                         >
                                                             <FileText className="w-3 h-3 mr-1" /> Upload Records
+                                                        </Button>
+                                                    )}
+                                                    {p.visitMode === 'telemedicine' && p.telemedicineLink && (
+                                                        <Button
+                                                            size="sm"
+                                                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs"
+                                                            onClick={() => window.open(p.telemedicineLink, '_blank')}
+                                                        >
+                                                            <Video className="w-3 h-3 mr-1" /> Join Call
+                                                        </Button>
+                                                    )}
+                                                    {p.phone && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="border-emerald-200 text-emerald-700 bg-emerald-50 h-8 text-xs hover:bg-emerald-100"
+                                                            onClick={() => {
+                                                                const pt = patients.find((pt: any) => pt.id === p.patientId);
+                                                                setWhatsAppTarget({ patientId: p.patientId, name: p.name, phone: p.phone });
+                                                                setWhatsAppMessage('');
+                                                                setIsWhatsAppOpen(true);
+                                                            }}
+                                                        >
+                                                            <MessageSquare className="w-3 h-3 mr-1" /> WhatsApp
                                                         </Button>
                                                     )}
                                                 </div>
@@ -5131,6 +5169,92 @@ export default function StaffPortal() {
 
                     <DialogFooter className="pt-2 border-t border-slate-100">
                         <Button variant="outline" onClick={() => setIsViewLogOpen(false)}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── WhatsApp Messenger Dialog ─────────────────────────── */}
+            <Dialog open={isWhatsAppOpen} onOpenChange={setIsWhatsAppOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-emerald-700">
+                            <MessageSquare className="w-5 h-5" />
+                            Send WhatsApp Message
+                        </DialogTitle>
+                        <DialogDescription>
+                            {whatsAppTarget ? (
+                                <span>To: <strong>{whatsAppTarget.name}</strong> · {whatsAppTarget.phone || 'No phone'}</span>
+                            ) : 'Select a patient'}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        {!whatsAppTarget?.phone && (
+                            <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
+                                <AlertCircle className="w-4 h-4 shrink-0" />
+                                This patient has no phone number on file. Update their profile first.
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Quick Templates</Label>
+                            <div className="flex flex-wrap gap-2">
+                                {[
+                                    "Your appointment is confirmed for tomorrow. Please arrive 10 minutes early. 💜",
+                                    "Please bring your previous lab reports and ID proof for your visit.",
+                                    "Your prescription is ready for pickup at the clinic.",
+                                    "Kindly call us to reschedule your appointment. Thank you.",
+                                ].map((tmpl, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setWhatsAppMessage(tmpl)}
+                                        className="text-xs px-2 py-1 rounded-md border border-slate-200 bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-colors text-left"
+                                    >
+                                        {tmpl.slice(0, 40)}…
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Message</Label>
+                            <Textarea
+                                placeholder="Type your message here..."
+                                className="min-h-[120px] resize-none text-sm"
+                                value={whatsAppMessage}
+                                onChange={e => setWhatsAppMessage(e.target.value)}
+                                data-testid="textarea-whatsapp-message"
+                            />
+                            <p className="text-xs text-slate-400">{whatsAppMessage.length} characters</p>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setIsWhatsAppOpen(false)}>Cancel</Button>
+                        <Button
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            disabled={!whatsAppMessage.trim() || !whatsAppTarget?.phone}
+                            data-testid="btn-send-whatsapp"
+                            onClick={async () => {
+                                if (!whatsAppTarget || !whatsAppMessage.trim()) return;
+                                try {
+                                    const res = await fetch('/api/whatsapp/send-patient', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ patientId: whatsAppTarget.patientId, message: whatsAppMessage }),
+                                    });
+                                    const data = await res.json();
+                                    if (!res.ok) throw new Error(data.error || 'Failed');
+                                    setIsWhatsAppOpen(false);
+                                    setWhatsAppMessage('');
+                                    alert(`✅ WhatsApp message sent to ${whatsAppTarget.name}${data.result?.success === 'SIMULATED' ? ' (simulated – configure API key for live delivery)' : ''}`);
+                                } catch (err: any) {
+                                    alert(`Failed to send: ${err.message}`);
+                                }
+                            }}
+                        >
+                            <Send className="w-4 h-4 mr-2" /> Send Message
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

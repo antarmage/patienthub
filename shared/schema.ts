@@ -108,6 +108,7 @@ export const appointments = pgTable("appointments", {
   reason: text("reason"),
   chiefComplaint: text("chief_complaint"),
   visitType: text("visit_type"),
+  visitMode: text("visit_mode"),
   priority: text("priority"),
   room: text("room"),
   billingCode: text("billing_code"),
@@ -121,6 +122,8 @@ export const appointments = pgTable("appointments", {
   followUpNotes: text("follow_up_notes"),
   notes: text("notes"),
   vitals: jsonb("vitals"),
+  telemedicineLink: text("telemedicine_link"),
+  whatsappReminderSent: text("whatsapp_reminder_sent"),
 });
 
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true });
