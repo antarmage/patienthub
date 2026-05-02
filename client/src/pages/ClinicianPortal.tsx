@@ -137,6 +137,10 @@ export default function ClinicianPortal() {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [soapTranscript, setSoapTranscript] = useState<{subjective: string; objective: string; assessment: string; plan: string; rawTranscript: string} | null>(null);
+  const [soapSubjectiveDraft, setSoapSubjectiveDraft] = useState("");
+  const [soapObjectiveDraft, setSoapObjectiveDraft] = useState("");
+  const [soapAssessmentDraft, setSoapAssessmentDraft] = useState("");
+  const [soapPlanDraft, setSoapPlanDraft] = useState("");
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
   const audioChunksRef = React.useRef<Blob[]>([]);
   const [postVisitSummarySending, setPostVisitSummarySending] = useState(false);
@@ -849,6 +853,13 @@ export default function ClinicianPortal() {
     setSelectedPatient(patient);
     setSelectedTrailVisitId(null);
     setActiveView("patient_detail");
+    // Reset voice SOAP drafts when switching patients
+    setSoapTranscript(null);
+    setSoapSubjectiveDraft("");
+    setSoapObjectiveDraft("");
+    setSoapAssessmentDraft("");
+    setSoapPlanDraft("");
+    setPostVisitSummaryResult(null);
   };
 
   return (
@@ -3750,7 +3761,13 @@ export default function ClinicianPortal() {
                                             }),
                                           });
                                           const data = await resp.json();
-                                          if (data.soap) setSoapTranscript(data.soap);
+                                          if (data.soap) {
+                                            setSoapTranscript(data.soap);
+                                            setSoapSubjectiveDraft(data.soap.subjective || "");
+                                            setSoapObjectiveDraft(data.soap.objective || "");
+                                            setSoapAssessmentDraft(data.soap.assessment || "");
+                                            setSoapPlanDraft(data.soap.plan || "");
+                                          }
                                         } finally {
                                           setIsTranscribing(false);
                                         }
@@ -3826,10 +3843,15 @@ export default function ClinicianPortal() {
                                        <p className="text-sm text-slate-800 mt-0.5">{latestVisit.chiefComplaint}</p>
                                     </div>
                                   )}
-                                  {latestVisit?.subjective ? (
+                                  {latestVisit?.subjective && !soapSubjectiveDraft ? (
                                     <p className="text-sm text-slate-700 leading-relaxed">{latestVisit.subjective}</p>
                                   ) : (
-                                    <Textarea placeholder="Patient's symptoms, complaints, history of present illness..." className="min-h-[60px] text-sm border-amber-200 focus-visible:ring-amber-300" />
+                                    <Textarea
+                                      value={soapSubjectiveDraft || (latestVisit?.subjective || "")}
+                                      onChange={e => setSoapSubjectiveDraft(e.target.value)}
+                                      placeholder="Patient's symptoms, complaints, history of present illness..."
+                                      className={`min-h-[60px] text-sm border-amber-200 focus-visible:ring-amber-300 ${soapSubjectiveDraft ? 'bg-amber-50/50 border-amber-300' : ''}`}
+                                    />
                                   )}
                                </div>
 
@@ -3958,10 +3980,15 @@ export default function ClinicianPortal() {
                                     </div>
                                   )}
 
-                                  {latestVisit?.objective ? (
+                                  {latestVisit?.objective && !soapObjectiveDraft ? (
                                     <p className="text-sm text-slate-700 leading-relaxed">{latestVisit.objective}</p>
                                   ) : (
-                                    <Textarea placeholder="Clinical findings, examination notes, test results..." className="min-h-[50px] text-sm border-blue-200 focus-visible:ring-blue-300" />
+                                    <Textarea
+                                      value={soapObjectiveDraft || ""}
+                                      onChange={e => setSoapObjectiveDraft(e.target.value)}
+                                      placeholder="Clinical findings, examination notes, test results..."
+                                      className={`min-h-[50px] text-sm border-blue-200 focus-visible:ring-blue-300 ${soapObjectiveDraft ? 'bg-blue-50/50 border-blue-300' : ''}`}
+                                    />
                                   )}
                                </div>
 
@@ -4017,17 +4044,20 @@ export default function ClinicianPortal() {
                                     </div>
                                   )}
 
-                                  {latestVisit?.assessment ? (
+                                  {(latestVisit?.assessment || latestVisit?.diagnosis) && !soapAssessmentDraft ? (
                                     <div className="bg-white border border-emerald-100 rounded p-3">
-                                       <p className="text-sm text-slate-700 leading-relaxed italic">"{latestVisit.assessment}"</p>
-                                    </div>
-                                  ) : latestVisit?.diagnosis ? (
-                                    <div className="bg-white border border-emerald-100 rounded p-3">
-                                       <span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Diagnosis</span>
-                                       <p className="text-sm text-slate-700">{latestVisit.diagnosis}</p>
+                                       {latestVisit.assessment
+                                         ? <p className="text-sm text-slate-700 leading-relaxed italic">"{latestVisit.assessment}"</p>
+                                         : <><span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Diagnosis</span><p className="text-sm text-slate-700">{latestVisit.diagnosis}</p></>
+                                       }
                                     </div>
                                   ) : (
-                                    <Textarea placeholder="Clinical assessment, differential diagnosis..." className="min-h-[50px] text-sm border-emerald-200 focus-visible:ring-emerald-300" />
+                                    <Textarea
+                                      value={soapAssessmentDraft || ""}
+                                      onChange={e => setSoapAssessmentDraft(e.target.value)}
+                                      placeholder="Clinical assessment, differential diagnosis..."
+                                      className={`min-h-[50px] text-sm border-emerald-200 focus-visible:ring-emerald-300 ${soapAssessmentDraft ? 'bg-emerald-50/50 border-emerald-300' : ''}`}
+                                    />
                                   )}
                                </div>
 
@@ -4039,13 +4069,18 @@ export default function ClinicianPortal() {
                                   </div>
                                   
                                   {/* Plan notes */}
-                                  {latestVisit?.planNotes ? (
+                                  {latestVisit?.planNotes && !soapPlanDraft ? (
                                     <div className="bg-white border border-purple-100 rounded p-3 mb-3">
                                        <p className="text-sm text-slate-700 leading-relaxed">{latestVisit.planNotes}</p>
                                     </div>
-                                  ) : !medications.length && !latestVisit?.prescriptions && !latestVisit?.labsOrdered ? (
-                                    <Textarea placeholder="Treatment plan, prescriptions, follow-up..." className="min-h-[50px] text-sm border-purple-200 focus-visible:ring-purple-300 mb-3" />
-                                  ) : null}
+                                  ) : (
+                                    <Textarea
+                                      value={soapPlanDraft || ""}
+                                      onChange={e => setSoapPlanDraft(e.target.value)}
+                                      placeholder="Treatment plan, prescriptions, follow-up..."
+                                      className={`min-h-[50px] text-sm border-purple-200 focus-visible:ring-purple-300 mb-3 ${soapPlanDraft ? 'bg-purple-50/50 border-purple-300' : ''}`}
+                                    />
+                                  )}
 
                                   {/* Dynamic medications table */}
                                   {(medications.length > 0 || showAddMedRow) && (

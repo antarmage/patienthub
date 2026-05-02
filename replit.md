@@ -122,6 +122,15 @@ All routes are registered in `server/routes.ts`. Key endpoints:
 - **Clinician Portal**: Risk column in Patient Flow queue table with color-coded badges (Critical=red, High=orange, Medium=amber, Low=green); Risk Alerts panel in right column showing High/Critical patients sorted by score; Risk Assessment dialog with factors breakdown, recommendations, and re-score button
 - **Patient Portal**: "What to watch this week" AI card in InsightsTab (all modes) showing `patient.riskScore.patientSummary` in plain language with risk level badge
 
+### AI-Augmented Workforce (Phase 3)
+- **AI Triage Queue**: `GET /api/appointments/triage?date=` — computes a `triageScore` per appointment from risk score + days-since-visit bonus + gestational urgency. Returns sorted list with a `triageReason` one-liner. Toggle in Patient Flow header activates triage sort mode with a "Priority Reason" column.
+- **WhatsApp Virtual Assistant**: Inbound WhatsApp messages that aren't CONFIRM/CANCEL are handled by Gemini. Messages are classified (appointment_query, medication_question, symptom_query, result_query, general) and replied to with patient-context-aware responses. Patients with no upcoming appointment also get an AI reply.
+- **Voice-to-SOAP Documentation**: `POST /api/voice/soap-transcribe` — accepts `{ audioData: base64, mimeType, patientContext }`, sends audio to Gemini multimodal model, returns structured `{ subjective, objective, assessment, plan, rawTranscript }`. Clinician Portal has a "Voice" button in the SOAP workspace header that records microphone audio (MediaRecorder API), sends to backend, and auto-populates the S/O/A/P draft fields. Drafts reset on patient navigation.
+- **Post-Visit WhatsApp Summary**: `POST /api/appointments/:id/post-visit-summary` — generates a warm plain-language WhatsApp summary using Gemini (latest visit + active meds), sends via WhatsApp if patient has a phone number. "Post-Visit" button in SOAP workspace header triggers this.
+- **AI Schedule Optimisation**: `POST /api/appointments/optimise-schedule` body `{ date }` — Gemini analyses appointments by risk level, visit mode, and duration to suggest an optimised order. Returns `{ suggestions, summary, estimatedTimeSaved }`. "Optimise Schedule" button in Staff Portal schedule view opens a result dialog.
+- **Owner AI Insights**: `POST /api/owner/ai-insights` — aggregates weekly clinic metrics (appointments, revenue, diagnoses, staff utilisation, high-risk count) and sends to Gemini for a structured insights report with 4 sections (Patient Volume, Finance, Clinical Focus, Staff & Operations) plus action items. "AI Insights" nav item in Owner Portal triggers generation.
+- **API Endpoints**: `GET /api/appointments/triage`, `POST /api/voice/soap-transcribe`, `POST /api/appointments/:id/post-visit-summary`, `POST /api/appointments/optimise-schedule`, `POST /api/owner/ai-insights`
+
 ## External Dependencies
 
 ### Database
