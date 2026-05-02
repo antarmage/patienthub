@@ -46,6 +46,7 @@ export interface IStorage {
   getPatient(id: number): Promise<Patient | undefined>;
   createPatient(patient: InsertPatient): Promise<Patient>;
   updatePatient(id: number, data: Partial<InsertPatient>): Promise<Patient | undefined>;
+  updatePatientRiskData(id: number, data: { riskScore?: Record<string, unknown>; trimesterChecklist?: Record<string, unknown> }): Promise<void>;
 
   getProviders(): Promise<Provider[]>;
   getProvider(id: number): Promise<Provider | undefined>;
@@ -186,6 +187,22 @@ export class DatabaseStorage implements IStorage {
   async updatePatient(id: number, data: Partial<InsertPatient>): Promise<Patient | undefined> {
     const [updated] = await db.update(patients).set(data).where(eq(patients.id, id)).returning();
     return updated;
+  }
+
+  async updatePatientRiskData(id: number, data: { riskScore?: Record<string, unknown>; trimesterChecklist?: Record<string, unknown> }): Promise<void> {
+    if (data.riskScore !== undefined && data.trimesterChecklist !== undefined) {
+      await db.execute(
+        sql`UPDATE patients SET risk_score = ${JSON.stringify(data.riskScore)}::jsonb, trimester_checklist = ${JSON.stringify(data.trimesterChecklist)}::jsonb WHERE id = ${id}`
+      );
+    } else if (data.riskScore !== undefined) {
+      await db.execute(
+        sql`UPDATE patients SET risk_score = ${JSON.stringify(data.riskScore)}::jsonb WHERE id = ${id}`
+      );
+    } else if (data.trimesterChecklist !== undefined) {
+      await db.execute(
+        sql`UPDATE patients SET trimester_checklist = ${JSON.stringify(data.trimesterChecklist)}::jsonb WHERE id = ${id}`
+      );
+    }
   }
 
   async getProviders(): Promise<Provider[]> {

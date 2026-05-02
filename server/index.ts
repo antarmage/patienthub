@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { seedDatabase } from "./seed";
 import { storage } from "./storage";
 import { whatsapp } from "./whatsapp";
+import { scorePatient, generateTrimesterChecklist } from "./risk-engine";
 
 const app = express();
 const httpServer = createServer(app);
@@ -160,6 +161,30 @@ function convertTo24h(time12: string): string {
   await seedDatabase();
   await registerRoutes(httpServer, app);
   startReminderScheduler();
+
+  // Background: score any patients that don't have a risk score yet, and generate
+  // trimester checklists for pregnant patients without one. Runs after startup, non-blocking.
+  setTimeout(async () => {
+    try {
+      const allPatients = await storage.getPatients();
+      const unscored = allPatients.filter((p) => !p.riskScore);
+      console.log(`[risk-engine] Startup: auto-scoring ${unscored.length} unscored patients in background`);
+      for (const p of unscored) {
+        await scorePatient(p.id);
+        // Small delay to avoid overwhelming Gemini API
+        await new Promise((r) => setTimeout(r, 600));
+      }
+      // Auto-generate trimester checklists for pregnant patients without one
+      const noChecklist = allPatients.filter((p) => p.lmp && !p.trimesterChecklist);
+      console.log(`[risk-engine] Startup: generating checklists for ${noChecklist.length} patients with LMP`);
+      for (const p of noChecklist) {
+        await generateTrimesterChecklist(p.id);
+        await new Promise((r) => setTimeout(r, 600));
+      }
+    } catch (err: any) {
+      console.error("[risk-engine] Startup background scoring error:", err.message);
+    }
+  }, 5000);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

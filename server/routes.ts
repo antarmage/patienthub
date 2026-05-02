@@ -54,6 +54,13 @@ export async function registerRoutes(
       }
     }
 
+    // Auto-score new patient
+    scorePatient(patient.id).catch(() => {});
+    // Auto-generate trimester checklist if LMP is set (pregnancy patient)
+    if (patient.lmp) {
+      generateTrimesterChecklist(patient.id).catch(() => {});
+    }
+
     res.status(201).json(patient);
   });
 
@@ -62,6 +69,15 @@ export async function registerRoutes(
     if (!id) return res.status(400).json({ error: "Invalid patient ID" });
     const updated = await storage.updatePatient(id, req.body);
     if (!updated) return res.status(404).json({ error: "Patient not found" });
+    // Re-score if clinically relevant fields changed
+    const clinicalFields = ['lmp', 'bp', 'hb', 'weight', 'condition', 'type'];
+    if (clinicalFields.some(f => req.body[f] !== undefined)) {
+      scorePatient(id).catch(() => {});
+    }
+    // Regenerate trimester checklist if LMP changed
+    if (req.body.lmp) {
+      generateTrimesterChecklist(id).catch(() => {});
+    }
     res.json(updated);
   });
 
@@ -1010,6 +1026,9 @@ export async function registerRoutes(
             if (phone) {
               whatsapp.sendWelcomeMessage(phone, name).catch(() => {});
             }
+            // Auto-score new patient from sheet sync
+            scorePatient(patient.id).catch(() => {});
+            if (lmpFixed) generateTrimesterChecklist(patient.id).catch(() => {});
           }
 
           if (parsed) {
