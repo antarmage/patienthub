@@ -342,7 +342,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getVisitHistory(patientId: number): Promise<VisitHistory[]> {
-    return db.select().from(visitHistory).where(eq(visitHistory.patientId, patientId));
+    return db.select().from(visitHistory)
+      .where(eq(visitHistory.patientId, patientId))
+      .orderBy(visitHistory.date, visitHistory.id);
   }
 
   async getAllVisitHistory(): Promise<VisitHistory[]> {

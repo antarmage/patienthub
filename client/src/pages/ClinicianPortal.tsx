@@ -375,7 +375,10 @@ export default function ClinicianPortal() {
     enabled: !!selectedPatient
   });
   const visitHistory = visitHistoryQuery.data || [];
-  const latestVisit = visitHistory.length > 0 ? visitHistory[visitHistory.length - 1] : null;
+  const sortedVisitHistory = [...visitHistory].sort((a: any, b: any) =>
+    new Date(a.date).getTime() - new Date(b.date).getTime() || a.id - b.id
+  );
+  const latestVisit = sortedVisitHistory.length > 0 ? sortedVisitHistory[sortedVisitHistory.length - 1] : null;
 
   const clinicalNotesQuery = useQuery({
     queryKey: [`/api/patients/${selectedPatient?.id}/clinical-notes`],
@@ -4129,6 +4132,7 @@ export default function ClinicianPortal() {
                                                 body: JSON.stringify({
                                                   date: new Date().toISOString().split('T')[0],
                                                   visitType: 'consultation',
+                                                  ...(selectedPatient.appointmentId ? { appointmentId: selectedPatient.appointmentId } : {}),
                                                   subjective: soapSubjectiveDraft,
                                                   objective: soapObjectiveDraft,
                                                   assessment: soapAssessmentDraft,
