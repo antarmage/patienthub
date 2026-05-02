@@ -2576,7 +2576,11 @@ export default function ClinicianPortal() {
                             >
                                <Users className="w-4 h-4 mr-3" /> Profile Details
                             </Button>
-                            <Button variant="ghost" className="w-full justify-start text-slate-500 hover:text-slate-900">
+                            <Button
+                               variant="ghost"
+                               className={`w-full justify-start font-medium ${activeSettingsTab === 'notifications' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                               onClick={() => setActiveSettingsTab('notifications')}
+                            >
                                <Bell className="w-4 h-4 mr-3" /> Notifications
                             </Button>
                             <Button 
@@ -2768,6 +2772,82 @@ export default function ClinicianPortal() {
                                 </CardContent>
                             </Card>
                           </>
+                      )}
+
+                      {activeSettingsTab === 'notifications' && (
+                        <div className="space-y-6">
+                          <Card className="shadow-sm border-slate-200">
+                            <CardHeader>
+                              <CardTitle className="text-base font-bold text-slate-800">Appointment Notifications</CardTitle>
+                              <p className="text-xs text-slate-500 mt-1">Choose how you want to be alerted about appointments.</p>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              {[
+                                { label: "New appointment booked", desc: "When a patient books via the portal or WhatsApp", defaultOn: true },
+                                { label: "Appointment cancellation", desc: "When a patient cancels or reschedules", defaultOn: true },
+                                { label: "Same-day appointment reminder", desc: "Morning summary of today's schedule", defaultOn: true },
+                                { label: "Appointment no-show", desc: "When a patient misses their slot", defaultOn: false },
+                              ].map((item) => (
+                                <div key={item.label} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-900">{item.label}</p>
+                                    <p className="text-xs text-slate-500">{item.desc}</p>
+                                  </div>
+                                  <input type="checkbox" defaultChecked={item.defaultOn} className="w-4 h-4 accent-blue-600" />
+                                </div>
+                              ))}
+                            </CardContent>
+                          </Card>
+
+                          <Card className="shadow-sm border-slate-200">
+                            <CardHeader>
+                              <CardTitle className="text-base font-bold text-slate-800">Patient & Clinical Alerts</CardTitle>
+                              <p className="text-xs text-slate-500 mt-1">Alerts related to patient risk and clinical updates.</p>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              {[
+                                { label: "High-risk patient flag", desc: "When AI scores a patient as high or critical risk", defaultOn: true },
+                                { label: "Lab results uploaded", desc: "When new lab reports are imported from Drive", defaultOn: true },
+                                { label: "New WhatsApp message", desc: "Inbound messages from patients via WhatsApp", defaultOn: false },
+                                { label: "Post-visit summary sent", desc: "Confirmation when a WhatsApp summary is delivered", defaultOn: false },
+                              ].map((item) => (
+                                <div key={item.label} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-900">{item.label}</p>
+                                    <p className="text-xs text-slate-500">{item.desc}</p>
+                                  </div>
+                                  <input type="checkbox" defaultChecked={item.defaultOn} className="w-4 h-4 accent-blue-600" />
+                                </div>
+                              ))}
+                            </CardContent>
+                          </Card>
+
+                          <Card className="shadow-sm border-slate-200">
+                            <CardHeader>
+                              <CardTitle className="text-base font-bold text-slate-800">Notification Channels</CardTitle>
+                              <p className="text-xs text-slate-500 mt-1">Where to receive your notifications.</p>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              {[
+                                { label: "In-app notifications", desc: "Alerts shown inside the Saivie portal", defaultOn: true },
+                                { label: "WhatsApp alerts", desc: "Send notifications to your registered WhatsApp number", defaultOn: false },
+                                { label: "Email digest", desc: "Daily summary email of key updates", defaultOn: false },
+                              ].map((item) => (
+                                <div key={item.label} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-900">{item.label}</p>
+                                    <p className="text-xs text-slate-500">{item.desc}</p>
+                                  </div>
+                                  <input type="checkbox" defaultChecked={item.defaultOn} className="w-4 h-4 accent-blue-600" />
+                                </div>
+                              ))}
+                            </CardContent>
+                          </Card>
+
+                          <div className="flex justify-end">
+                            <Button className="bg-blue-600 hover:bg-blue-700">Save Notification Preferences</Button>
+                          </div>
+                        </div>
                       )}
 
                       {activeSettingsTab === 'availability' && (
