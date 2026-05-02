@@ -506,6 +506,77 @@ export default function PatientPortal() {
               </>
             )}
 
+            {/* Trimester Checklist — pregnancy mode only */}
+            {mode === 'pregnancy' && (
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+                <div className="flex items-center gap-2 mb-3 px-1">
+                  <CheckCircle2 className="w-4 h-4 text-pink-500" />
+                  <h3 className="text-lg font-serif text-foreground">Your ANC Checklist</h3>
+                  {patient?.trimesterChecklist && (
+                    <span className="text-xs text-muted-foreground">Week {(patient.trimesterChecklist as any).currentWeek}</span>
+                  )}
+                </div>
+                {(() => {
+                  const cl = patient?.trimesterChecklist as any;
+                  if (!cl?.items?.length) {
+                    return (
+                      <Card className="glass-panel border-white/60">
+                        <CardContent className="p-5 text-center">
+                          <Baby className="w-8 h-8 text-pink-200 mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">Your personalised antenatal checklist will appear here once your care team generates it.</p>
+                        </CardContent>
+                      </Card>
+                    );
+                  }
+                  const urgentItems = cl.items.filter((it: any) => it.urgent && !it.done);
+                  const otherItems = cl.items.filter((it: any) => !it.urgent && !it.done);
+                  const doneItems = cl.items.filter((it: any) => it.done);
+                  const catIcon: Record<string, React.ReactNode> = {
+                    'Scan': <Stethoscope className="w-3.5 h-3.5 text-blue-500" />,
+                    'Lab Test': <FlaskConical className="w-3.5 h-3.5 text-purple-500" />,
+                    'Vaccine': <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />,
+                    'Vitals': <Activity className="w-3.5 h-3.5 text-slate-500" />,
+                    'Consultation': <Brain className="w-3.5 h-3.5 text-amber-500" />,
+                    'Lifestyle': <Heart className="w-3.5 h-3.5 text-rose-500" />,
+                  };
+                  return (
+                    <div className="space-y-2">
+                      {urgentItems.length > 0 && urgentItems.map((item: any, i: number) => (
+                        <Card key={`u-${i}`} className="glass-panel border-red-200/60 bg-red-50/30">
+                          <CardContent className="p-4 flex items-start gap-3">
+                            <div className="p-1.5 bg-red-100 rounded-lg shrink-0 mt-0.5">{catIcon[item.category] || <CheckCircle2 className="w-3.5 h-3.5 text-red-500" />}</div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <Badge className="text-[10px] bg-red-100 text-red-700 border-none">Needs Attention</Badge>
+                                {item.dueWeek && <span className="text-[10px] text-red-600">by Week {item.dueWeek}</span>}
+                              </div>
+                              <p className="text-sm text-foreground font-medium">{item.task}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{item.category}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                      {otherItems.slice(0, 5).map((item: any, i: number) => (
+                        <Card key={`o-${i}`} className="glass-panel border-white/60">
+                          <CardContent className="p-3.5 flex items-center gap-3">
+                            <div className="p-1.5 bg-white/60 rounded-lg shrink-0">{catIcon[item.category] || <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />}</div>
+                            <div className="flex-1">
+                              <p className="text-sm text-foreground">{item.task}</p>
+                              {item.dueWeek && <p className="text-[10px] text-muted-foreground mt-0.5">Week {item.dueWeek}</p>}
+                            </div>
+                            <Clock className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+                          </CardContent>
+                        </Card>
+                      ))}
+                      {doneItems.length > 0 && (
+                        <p className="text-xs text-muted-foreground px-1"><CheckCircle2 className="w-3 h-3 inline mr-1 text-emerald-500" />{doneItems.length} items completed</p>
+                      )}
+                    </div>
+                  );
+                })()}
+              </motion.div>
+            )}
+
             {/* Active Medications */}
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
               <div className="flex items-center gap-2 mb-3 px-1">

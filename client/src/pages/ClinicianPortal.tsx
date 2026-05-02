@@ -3565,6 +3565,94 @@ export default function ClinicianPortal() {
                      );
                    })()}
 
+                   {/* TRIMESTER CHECKLIST — shown when pregnancy care mode and checklist data exists */}
+                   {careMode === 'pregnancy' && selectedPatient.lmp && (
+                     <Card className="shadow-sm border-pink-200 overflow-hidden" data-testid="card-trimester-checklist">
+                       <div
+                         className="px-4 py-2.5 border-b border-pink-100 bg-pink-50/40 flex items-center justify-between cursor-pointer"
+                         onClick={() => {
+                           const el = document.getElementById(`trimester-checklist-body-${selectedPatient.id}`);
+                           if (el) el.classList.toggle('hidden');
+                         }}
+                       >
+                         <h3 className="font-bold text-sm text-pink-900 flex items-center gap-2">
+                           <Baby className="w-4 h-4 text-pink-500" />
+                           ANC Trimester Checklist
+                           {(() => {
+                             const cl = selectedPatient.trimesterChecklist as any;
+                             if (cl?.currentWeek) return <Badge className="text-[10px] bg-pink-100 text-pink-700 border-pink-200 font-normal">Week {cl.currentWeek}</Badge>;
+                             return null;
+                           })()}
+                         </h3>
+                         <div className="flex items-center gap-2">
+                           <Button
+                             size="sm"
+                             variant="ghost"
+                             className="h-6 text-[10px] text-violet-600 hover:text-violet-800 hover:bg-violet-50 px-2"
+                             data-testid="btn-generate-checklist"
+                             onClick={async (e) => {
+                               e.stopPropagation();
+                               await fetch(`/api/patients/${selectedPatient.id}/trimester-checklist`, { method: 'POST' });
+                               queryClient.invalidateQueries({ queryKey: ['/api/patients', clinicianProvider?.id] });
+                             }}
+                           >
+                             <Sparkles className="w-3 h-3 mr-1 text-violet-500" />
+                             {(selectedPatient.trimesterChecklist as any) ? 'Refresh' : 'Generate'}
+                           </Button>
+                           <ChevronDown className="w-4 h-4 text-pink-400" />
+                         </div>
+                       </div>
+                       <div id={`trimester-checklist-body-${selectedPatient.id}`}>
+                         {(() => {
+                           const cl = selectedPatient.trimesterChecklist as any;
+                           if (!cl?.items?.length) {
+                             return (
+                               <div className="px-4 py-6 text-center text-sm text-slate-400">
+                                 <Baby className="w-6 h-6 text-slate-200 mx-auto mb-2" />
+                                 <p>Click <span className="font-medium text-violet-600">Generate</span> to create an AI-powered ANC checklist for this patient</p>
+                               </div>
+                             );
+                           }
+                           const categories = ['Scan', 'Lab Test', 'Vaccine', 'Vitals', 'Consultation', 'Lifestyle'] as const;
+                           return (
+                             <CardContent className="p-3">
+                               <div className="space-y-3">
+                                 {categories.map(cat => {
+                                   const items = cl.items.filter((it: any) => it.category === cat);
+                                   if (!items.length) return null;
+                                   const catColors: Record<string, string> = {
+                                     'Scan': 'text-blue-700 bg-blue-50',
+                                     'Lab Test': 'text-purple-700 bg-purple-50',
+                                     'Vaccine': 'text-emerald-700 bg-emerald-50',
+                                     'Vitals': 'text-slate-700 bg-slate-50',
+                                     'Consultation': 'text-amber-700 bg-amber-50',
+                                     'Lifestyle': 'text-rose-700 bg-rose-50',
+                                   };
+                                   return (
+                                     <div key={cat}>
+                                       <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${catColors[cat]}`}>{cat}</span>
+                                       <div className="mt-1.5 space-y-1">
+                                         {items.map((item: any, i: number) => (
+                                           <div key={i} className={`flex items-start gap-2 p-2 rounded text-xs ${item.urgent ? 'bg-red-50 border border-red-100' : 'bg-white border border-slate-100'}`}>
+                                             <span className={`mt-0.5 shrink-0 w-1.5 h-1.5 rounded-full ${item.urgent ? 'bg-red-500' : item.done ? 'bg-emerald-400' : 'bg-slate-300'}`} />
+                                             <span className={`flex-1 ${item.done ? 'line-through text-slate-400' : 'text-slate-700'}`}>{item.task}</span>
+                                             {item.dueWeek && <span className={`shrink-0 text-[10px] ${item.urgent ? 'text-red-600 font-semibold' : 'text-slate-400'}`}>Wk {item.dueWeek}</span>}
+                                             {item.urgent && <Badge className="shrink-0 text-[10px] bg-red-100 text-red-700 border-none h-4">Urgent</Badge>}
+                                           </div>
+                                         ))}
+                                       </div>
+                                     </div>
+                                   );
+                                 })}
+                               </div>
+                               <p className="text-[10px] text-slate-300 mt-3">Generated {new Date(cl.generatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                             </CardContent>
+                           );
+                         })()}
+                       </div>
+                     </Card>
+                   )}
+
                    {/* 1. CURRENT VISIT CLINICAL WORKSPACE (SOAP) - DYNAMIC */}
                    <Card className="shadow-md border-blue-100 bg-white overflow-hidden">
                       <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center cursor-pointer" onClick={() => setShowDocumentation(!showDocumentation)}>

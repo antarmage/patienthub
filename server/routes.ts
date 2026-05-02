@@ -1422,8 +1422,9 @@ export async function registerRoutes(
     res.json(result);
   });
 
-  app.post("/api/patients/batch-risk-score", async (_req, res) => {
-    const result = await batchScorePatients();
+  app.post("/api/patients/batch-risk-score", async (req, res) => {
+    const patientIds = Array.isArray(req.body?.patientIds) ? req.body.patientIds.map(Number).filter(Boolean) : undefined;
+    const result = await batchScorePatients(patientIds);
     res.json(result);
   });
 

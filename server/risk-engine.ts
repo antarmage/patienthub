@@ -126,7 +126,7 @@ Focus on: abnormal lab values (anaemia, high glucose, abnormal thyroid), high BP
       updatedAt: new Date().toISOString(),
     };
 
-    await storage.updatePatient(patientId, { riskScore } as any);
+    await storage.updatePatient(patientId, { riskScore: riskScore as unknown as null });
     console.log(`[risk-engine] Scored patient ${patient.name} (#${patientId}): ${riskScore.level} (${riskScore.score})`);
     return riskScore;
   } catch (err: any) {
@@ -202,7 +202,7 @@ Include 8-12 specific, clinically accurate items relevant to week ${currentWeek}
       generatedAt: new Date().toISOString(),
     };
 
-    await storage.updatePatient(patientId, { trimesterChecklist: checklist } as any);
+    await storage.updatePatient(patientId, { trimesterChecklist: checklist as unknown as null });
     console.log(`[risk-engine] Generated trimester checklist for patient ${patient.name} (#${patientId}): week ${currentWeek}`);
     return checklist;
   } catch (err: any) {
