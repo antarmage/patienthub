@@ -941,6 +941,65 @@ export default function PatientPortal() {
               </motion.div>
             )}
 
+            {/* Book Appointment Section */}
+            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
+              <div className="flex items-center gap-2 mb-3 px-1">
+                <CalendarPlus className="w-4 h-4 text-primary" />
+                <h3 className="text-lg font-serif text-foreground">Book an Appointment</h3>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { type: 'doctor', icon: <User className="w-5 h-5" />, label: 'Doctor', sub: 'Consultation', color: 'bg-blue-100 text-blue-700', border: 'hover:border-blue-200' },
+                  { type: 'nutritionist', icon: <Apple className="w-5 h-5" />, label: 'Nutritionist', sub: 'Diet & Wellness', color: 'bg-green-100 text-green-700', border: 'hover:border-green-200' },
+                  { type: 'blood_test', icon: <Microscope className="w-5 h-5" />, label: 'Lab Test', sub: 'Blood & Reports', color: 'bg-purple-100 text-purple-700', border: 'hover:border-purple-200' },
+                ].map(({ type, icon, label, sub, color, border }) => (
+                  <button
+                    key={type}
+                    onClick={() => { setBookingType(type as any); setBookingStep('date'); setBookingOpen(true); }}
+                    className={`glass-panel border-white/60 ${border} rounded-2xl p-4 flex flex-col items-center gap-2 transition-all hover:shadow-sm group`}
+                    data-testid={`book-${type}`}
+                  >
+                    <div className={`p-2.5 rounded-xl ${color} group-hover:scale-110 transition-transform`}>{icon}</div>
+                    <p className="text-xs font-semibold text-foreground">{label}</p>
+                    <p className="text-[10px] text-muted-foreground text-center leading-tight">{sub}</p>
+                  </button>
+                ))}
+              </div>
+
+              {/* Upcoming Patient Appointments */}
+              {patientAppointments && (patientAppointments as any[]).filter((a: any) => {
+                const s = (a.status || '').toLowerCase();
+                return s !== 'cancelled' && s !== 'completed';
+              }).length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs text-muted-foreground px-1 font-medium uppercase tracking-wider">Your Appointments</p>
+                  {[...(patientAppointments as any[])]
+                    .filter((a: any) => !['cancelled','completed'].includes((a.status||'').toLowerCase()))
+                    .sort((a: any, b: any) => new Date(a.date||0).getTime() - new Date(b.date||0).getTime())
+                    .slice(0, 4)
+                    .map((appt: any) => {
+                      const s = (appt.status || 'Pending').toLowerCase();
+                      const statusColor = s === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : s === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700';
+                      return (
+                        <Card key={appt.id} className="glass-panel border-white/60" data-testid={`patient-appt-${appt.id}`}>
+                          <CardContent className="p-3.5 flex items-center gap-3">
+                            <div className="p-1.5 bg-primary/10 rounded-lg shrink-0"><CalendarDays className="w-3.5 h-3.5 text-primary" /></div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{appt.type || 'Consultation'}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {appt.date ? new Date(appt.date).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' }) : '—'}
+                                {appt.time ? ` • ${appt.time}` : ''}
+                              </p>
+                            </div>
+                            <Badge className={`text-[10px] shrink-0 border-none ${statusColor}`}>{appt.status || 'Pending'}</Badge>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                </div>
+              )}
+            </motion.div>
+
             {/* Treatment Trail / Visit History */}
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
               <div className="flex items-center gap-2 mb-3 px-1">
@@ -1018,6 +1077,168 @@ export default function PatientPortal() {
           </TabsContent>
 
         </Tabs>
+
+        {/* Book Appointment Dialog */}
+        <Dialog open={bookingOpen} onOpenChange={(o) => { if (!o) setBookingOpen(false); }}>
+          <DialogContent className="max-w-sm mx-auto rounded-3xl border-white/60 bg-white/95 backdrop-blur-2xl shadow-2xl p-0 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-white/80 to-purple-50/30 pointer-events-none" />
+            <div className="relative z-10">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-black/5">
+                <div className="flex items-center gap-2">
+                  {bookingStep !== 'type' && bookingStep !== 'done' && (
+                    <button onClick={() => setBookingStep(bookingStep === 'confirm' ? 'date' : 'type')} className="p-1 rounded-full hover:bg-black/5 transition-colors mr-1">
+                      <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  )}
+                  <CalendarPlus className="w-4 h-4 text-primary" />
+                  <DialogTitle className="text-base font-serif text-foreground font-medium">Book Appointment</DialogTitle>
+                </div>
+                <button onClick={() => setBookingOpen(false)} className="p-1.5 rounded-full hover:bg-black/5 transition-colors">
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+
+              <div className="px-6 py-5 space-y-4">
+                {/* Step: Choose type */}
+                {bookingStep === 'type' && (
+                  <AnimatePresence mode="wait">
+                    <motion.div key="type" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-3">
+                      <p className="text-sm text-muted-foreground">What kind of appointment do you need?</p>
+                      {[
+                        { type: 'doctor', icon: <User className="w-5 h-5" />, label: 'Doctor Consultation', sub: 'General check-up, follow-up, or specialist', color: 'bg-blue-100 text-blue-700' },
+                        { type: 'nutritionist', icon: <Apple className="w-5 h-5" />, label: 'Nutritionist', sub: 'Diet plan, wellness & supplements', color: 'bg-green-100 text-green-700' },
+                        { type: 'blood_test', icon: <Microscope className="w-5 h-5" />, label: 'Blood Test / Lab Work', sub: 'Lab tests, reports & investigations', color: 'bg-purple-100 text-purple-700' },
+                      ].map(({ type, icon, label, sub, color }) => (
+                        <button
+                          key={type}
+                          onClick={() => { setBookingType(type as any); setBookingStep('date'); }}
+                          className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/60 border border-white/60 hover:border-primary/20 hover:bg-white/80 transition-all text-left group"
+                          data-testid={`dialog-book-${type}`}
+                        >
+                          <div className={`p-2.5 rounded-xl ${color} shrink-0`}>{icon}</div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{label}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground/40 ml-auto group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                        </button>
+                      ))}
+                    </motion.div>
+                  </AnimatePresence>
+                )}
+
+                {/* Step: Choose date */}
+                {bookingStep === 'date' && (
+                  <AnimatePresence mode="wait">
+                    <motion.div key="date" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        {bookingType === 'doctor' && <><User className="w-4 h-4 text-blue-600" /><p className="text-sm font-medium">Doctor Consultation</p></>}
+                        {bookingType === 'nutritionist' && <><Apple className="w-4 h-4 text-green-600" /><p className="text-sm font-medium">Nutritionist Session</p></>}
+                        {bookingType === 'blood_test' && <><Microscope className="w-4 h-4 text-purple-600" /><p className="text-sm font-medium">Blood Test / Lab Work</p></>}
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Preferred Date</label>
+                        <input
+                          type="date"
+                          value={bookingDate}
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => setBookingDate(e.target.value)}
+                          className="w-full rounded-xl border border-black/10 bg-white/70 px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+                          data-testid="booking-date-input"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Any notes for the doctor? (optional)</label>
+                        <textarea
+                          value={bookingNote}
+                          onChange={(e) => setBookingNote(e.target.value)}
+                          placeholder="E.g. I've been having back pain..."
+                          rows={2}
+                          className="w-full rounded-xl border border-black/10 bg-white/70 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 resize-none"
+                          data-testid="booking-note-input"
+                        />
+                      </div>
+                      <Button
+                        disabled={!bookingDate}
+                        onClick={() => setBookingStep('confirm')}
+                        className="w-full rounded-xl font-medium"
+                        data-testid="booking-next-btn"
+                      >
+                        Review Booking
+                      </Button>
+                    </motion.div>
+                  </AnimatePresence>
+                )}
+
+                {/* Step: Confirm */}
+                {bookingStep === 'confirm' && (
+                  <AnimatePresence mode="wait">
+                    <motion.div key="confirm" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
+                      <p className="text-sm text-muted-foreground">Please confirm your appointment details:</p>
+                      <div className="bg-white/70 rounded-2xl p-4 space-y-3 border border-black/5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground uppercase tracking-wider">Type</span>
+                          <span className="text-sm font-medium text-foreground">
+                            {bookingType === 'doctor' ? 'Doctor Consultation' : bookingType === 'nutritionist' ? 'Nutritionist' : 'Blood Test / Lab Work'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground uppercase tracking-wider">Date</span>
+                          <span className="text-sm font-medium text-foreground">
+                            {bookingDate ? new Date(bookingDate).toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground uppercase tracking-wider">Patient</span>
+                          <span className="text-sm font-medium text-foreground">{patient?.name || 'You'}</span>
+                        </div>
+                        {bookingNote && (
+                          <div className="pt-2 border-t border-black/5">
+                            <p className="text-xs text-muted-foreground"><span className="font-medium">Note: </span>{bookingNote}</p>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center">The clinic will confirm your appointment time and send you a WhatsApp message.</p>
+                      <div className="flex gap-3">
+                        <Button variant="outline" onClick={() => setBookingStep('date')} className="flex-1 rounded-xl">Edit</Button>
+                        <Button
+                          onClick={handleBookingConfirm}
+                          disabled={bookingMutation.isPending}
+                          className="flex-1 rounded-xl font-medium"
+                          data-testid="booking-confirm-btn"
+                        >
+                          {bookingMutation.isPending ? 'Booking…' : 'Confirm'}
+                        </Button>
+                      </div>
+                    </motion.div>
+                  </AnimatePresence>
+                )}
+
+                {/* Step: Done */}
+                {bookingStep === 'done' && (
+                  <AnimatePresence mode="wait">
+                    <motion.div key="done" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-4 space-y-4">
+                      <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                      </div>
+                      <div>
+                        <p className="text-lg font-serif text-foreground font-medium">Request Sent!</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Your appointment request for <strong>{bookingDate ? new Date(bookingDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}</strong> has been sent to the clinic.
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-2">You'll receive a WhatsApp confirmation once it's approved.</p>
+                      </div>
+                      <Button onClick={() => { setBookingOpen(false); setActiveTab('care'); }} className="w-full rounded-xl" data-testid="booking-done-btn">
+                        View My Appointments
+                      </Button>
+                    </motion.div>
+                  </AnimatePresence>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Premium Floating Navigation */}
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
