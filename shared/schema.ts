@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, serial, integer, real, date, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, integer, real, date, jsonb, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -527,7 +527,7 @@ export const medicationLogs = pgTable("medication_logs", {
   medicationId: integer("medication_id").references(() => medications.id).notNull(),
   takenDate: date("taken_date").notNull(),
   takenAt: text("taken_at"),
-});
+}, (t) => [uniqueIndex("medication_logs_patient_med_date_idx").on(t.patientId, t.medicationId, t.takenDate)]);
 
 export const insertMedicationLogSchema = createInsertSchema(medicationLogs).omit({ id: true });
 export type InsertMedicationLog = z.infer<typeof insertMedicationLogSchema>;
