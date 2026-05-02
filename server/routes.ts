@@ -1843,9 +1843,12 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   // ── Patient self-service auth helper ──────────────────────────────────────
-  // The patient portal uses phone-based login stored in localStorage.
-  // All patient self-service endpoints require an X-Patient-Id header that must
-  // match the requested patientId, preventing one patient from accessing another's data.
+  // The patient portal uses phone-based login (patientId stored in localStorage).
+  // Every patient self-service endpoint requires the caller to send X-Patient-Id
+  // matching the target resource's patientId, AND loads each resource from the DB
+  // to confirm ownership BEFORE any mutation. This is object-level access control
+  // within the existing stateless architecture; it is not a substitute for server
+  // sessions but ensures the server never trusts an arbitrary body/query patientId.
   function claimedPatientId(req: any): number | null {
     const hdr = req.headers["x-patient-id"];
     if (!hdr) return null;
@@ -1893,10 +1896,11 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     try {
+      // Verify ownership on the EXISTING record BEFORE mutating
+      const existing = await storage.getPregnancyMetricById(id);
+      if (!existing) return res.status(404).json({ error: "Not found" });
+      if (!existing.patientId || !assertPatientOwner(req, res, existing.patientId)) return;
       const updated = await storage.updatePregnancyMetric(id, req.body);
-      if (!updated) return res.status(404).json({ error: "Not found" });
-      // Verify the record belongs to the claiming patient
-      if (!assertPatientOwner(req, res, updated.patientId)) return;
       res.json(updated);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   });
@@ -1926,6 +1930,10 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.delete("/api/water-logs/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    // Load record first to verify ownership before deletion
+    const log = await storage.getWaterLog(id);
+    if (!log) return res.status(404).json({ error: "Not found" });
+    if (!assertPatientOwner(req, res, log.patientId)) return;
     await storage.deleteWaterLog(id);
     res.status(204).send();
   });
@@ -1944,13 +1952,20 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     try {
       const { patientId, medicationId, takenDate } = req.body;
       if (!patientId || !medicationId || !takenDate) return res.status(400).json({ error: "patientId, medicationId, takenDate required" });
-      if (!assertPatientOwner(req, res, parseInt(patientId))) return;
+      const pid = parseInt(patientId);
+      const mid = parseInt(medicationId);
+      if (!assertPatientOwner(req, res, pid)) return;
+      // Verify the medication actually belongs to this patient (prevents cross-patient med logging)
+      const patientMeds = await storage.getMedications(pid);
+      if (!patientMeds.some((m: any) => m.id === mid)) {
+        return res.status(403).json({ error: "Medication does not belong to this patient" });
+      }
       // Prevent duplicate logs for same med on same day
-      const existing = await storage.getMedicationLogs(parseInt(patientId), takenDate);
-      if (existing.some((l: any) => l.medicationId === parseInt(medicationId))) {
+      const existing = await storage.getMedicationLogs(pid, takenDate);
+      if (existing.some((l: any) => l.medicationId === mid)) {
         return res.status(409).json({ error: "Already marked as taken for this date" });
       }
-      const log = await storage.addMedicationLog({ ...req.body, patientId: parseInt(patientId), medicationId: parseInt(medicationId) });
+      const log = await storage.addMedicationLog({ ...req.body, patientId: pid, medicationId: mid });
       res.status(201).json(log);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   });

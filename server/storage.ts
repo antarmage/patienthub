@@ -178,10 +178,12 @@ export interface IStorage {
   deletePackageItem(id: number): Promise<boolean>;
   replacePackageItems(packageId: number, items: Omit<InsertPackageItem, "packageId">[]): Promise<PackageItem[]>;
 
+  getPregnancyMetricById(id: number): Promise<PregnancyMetric | undefined>;
   updatePregnancyMetric(id: number, data: Partial<InsertPregnancyMetric>): Promise<PregnancyMetric | undefined>;
 
   // Pregnancy Hub self-tracking
   getWaterLogs(patientId: number, date?: string): Promise<WaterLog[]>;
+  getWaterLog(id: number): Promise<WaterLog | undefined>;
   addWaterLog(log: InsertWaterLog): Promise<WaterLog>;
   deleteWaterLog(id: number): Promise<boolean>;
 
@@ -681,12 +683,22 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async getPregnancyMetricById(id: number): Promise<PregnancyMetric | undefined> {
+    const [row] = await db.select().from(pregnancyMetrics).where(eq(pregnancyMetrics.id, id));
+    return row;
+  }
+
   async updatePregnancyMetric(id: number, data: Partial<InsertPregnancyMetric>): Promise<PregnancyMetric | undefined> {
     const [updated] = await db.update(pregnancyMetrics).set(data).where(eq(pregnancyMetrics.id, id)).returning();
     return updated;
   }
 
   // ── Pregnancy Hub self-tracking ────────────────────────────────────────────
+  async getWaterLog(id: number): Promise<WaterLog | undefined> {
+    const [row] = await db.select().from(waterLogs).where(eq(waterLogs.id, id));
+    return row;
+  }
+
   async getWaterLogs(patientId: number, date?: string): Promise<WaterLog[]> {
     if (date) {
       return db.select().from(waterLogs).where(and(eq(waterLogs.patientId, patientId), eq(waterLogs.date, date)));
