@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/mamacare/"
+title = "SaivieMom"
+version = "1.0.0"
+id = "artifacts/mamacare-mobile"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/mamacare/" ]
+localPort = 24011
+
+[services.development]
+run = "pnpm --filter @workspace/mamacare-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/mamacare-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/mamacare-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "24011"
+BASE_PATH = "/mamacare/"

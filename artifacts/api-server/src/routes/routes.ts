@@ -67,6 +67,20 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  // Mobile app: look up patient by phone number (no session required)
+  app.post("/api/mobile/auth/login", async (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: "phone required" });
+    const allPatients = await storage.getPatients();
+    const normalized = String(phone).replace(/\D/g, "");
+    const patient = allPatients.find(p => {
+      if (!p.phone) return false;
+      return p.phone.replace(/\D/g, "").endsWith(normalized) || normalized.endsWith(p.phone.replace(/\D/g, ""));
+    });
+    if (!patient) return res.status(404).json({ error: "No patient found for this phone number" });
+    res.json({ patient });
+  });
+
   app.get("/api/patients", async (req, res) => {
     const providerId = req.query.providerId ? parseInt(req.query.providerId as string) : undefined;
     if (providerId) {
