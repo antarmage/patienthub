@@ -1356,6 +1356,9 @@ export default function StaffPortal() {
     : "nutritionist";
   const [activeRole, setActiveRole] = useState(defaultRole);
   const [activeView, setActiveView] = useState("dashboard"); // 'dashboard', 'patients', 'schedule', 'reports'
+  const [optimiseLoading, setOptimiseLoading] = useState(false);
+  const [optimiseResult, setOptimiseResult] = useState<any>(null);
+  const [showOptimiseDialog, setShowOptimiseDialog] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isAdjustProtocolOpen, setIsAdjustProtocolOpen] = useState(false);
@@ -1951,6 +1954,31 @@ export default function StaffPortal() {
                     <div className="flex justify-between items-center">
                         <h2 className="text-2xl font-bold text-slate-900 font-serif">Staff Schedule</h2>
                         <div className="flex gap-2">
+                             <Button
+                               variant="outline"
+                               className="bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-700"
+                               data-testid="btn-optimise-schedule"
+                               onClick={async () => {
+                                 const today = new Date().toISOString().split('T')[0];
+                                 setOptimiseLoading(true);
+                                 setOptimiseResult(null);
+                                 try {
+                                   const res = await fetch('/api/appointments/optimise-schedule', {
+                                     method: 'POST',
+                                     headers: { 'Content-Type': 'application/json' },
+                                     body: JSON.stringify({ date: today }),
+                                   });
+                                   const data = await res.json();
+                                   setOptimiseResult(data);
+                                   setShowOptimiseDialog(true);
+                                 } finally {
+                                   setOptimiseLoading(false);
+                                 }
+                               }}
+                             >
+                               <Sparkles className="w-4 h-4 mr-2 text-indigo-500" />
+                               {optimiseLoading ? 'Optimising…' : 'Optimise Schedule'}
+                             </Button>
                              <Link href="/staff/check-in">
                                 <Button variant="outline" className="bg-white border-slate-200">
                                    <CheckCircle2 className="w-4 h-4 mr-2" /> Check In
@@ -1963,6 +1991,46 @@ export default function StaffPortal() {
                              </Link>
                         </div>
                     </div>
+
+                    {/* Optimise Schedule Dialog */}
+                    {showOptimiseDialog && optimiseResult && (
+                      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowOptimiseDialog(false)}>
+                        <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                              <Sparkles className="w-4 h-4 text-indigo-600" />
+                            </div>
+                            <h3 className="font-bold text-slate-900">AI Schedule Optimisation</h3>
+                            <button onClick={() => setShowOptimiseDialog(false)} className="ml-auto text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+                          </div>
+                          <p className="text-sm text-slate-600 mb-4">{optimiseResult.summary || 'Schedule analysis complete.'}</p>
+                          {optimiseResult.estimatedTimeSaved && (
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-4 text-sm text-emerald-700 font-medium">
+                              ⏱ {optimiseResult.estimatedTimeSaved}
+                            </div>
+                          )}
+                          {optimiseResult.suggestions?.length > 0 ? (
+                            <div className="space-y-2">
+                              <p className="text-xs font-bold text-slate-500 uppercase">Recommended Changes</p>
+                              {optimiseResult.suggestions.map((s: any, i: number) => (
+                                <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                  <div className="text-xs font-mono text-slate-500 shrink-0 pt-0.5">{s.currentTime} → {s.suggestedTime}</div>
+                                  <div className="text-xs text-slate-700 flex-1">{s.reason}</div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-4 text-sm text-slate-400">Schedule is already optimally arranged ✓</div>
+                          )}
+                          <button
+                            onClick={() => setShowOptimiseDialog(false)}
+                            className="mt-4 w-full py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                          >
+                            Got it
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-12 gap-6 h-[calc(100vh-12rem)]">
                         {/* Calendar Sidebar */}

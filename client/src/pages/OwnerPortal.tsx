@@ -31,6 +31,10 @@ import {
   X,
   Check,
   Save,
+  Sparkles,
+  RefreshCw,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +83,8 @@ export default function OwnerPortal() {
   const [activeView, setActiveView] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [aiInsights, setAiInsights] = useState<any>(null);
+  const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
 
   const today = new Date().toISOString().split("T")[0];
   const monthStart = `${today.slice(0, 7)}-01`;
@@ -217,6 +223,7 @@ export default function OwnerPortal() {
     { id: "alerts", label: "Alerts", icon: AlertTriangle },
     { id: "performance", label: "Performance", icon: BarChart3 },
     { id: "catalog", label: "Service Catalog", icon: Package },
+    { id: "ai-insights", label: "AI Insights", icon: Sparkles },
   ];
 
   const statusBadge = (status: string) => {
@@ -1109,6 +1116,116 @@ export default function OwnerPortal() {
                     </div>
                   </CardContent>
                 </Card>
+              </div>
+            )}
+
+            {/* AI INSIGHTS SECTION */}
+            {activeView === "ai-insights" && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900 font-serif">AI Weekly Insights</h2>
+                    <p className="text-sm text-slate-500 mt-0.5">Gemini-powered business intelligence for your clinic</p>
+                  </div>
+                  <Button
+                    onClick={async () => {
+                      setAiInsightsLoading(true);
+                      try {
+                        const res = await fetch('/api/owner/ai-insights', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+                        const data = await res.json();
+                        setAiInsights(data.insights);
+                      } finally {
+                        setAiInsightsLoading(false);
+                      }
+                    }}
+                    disabled={aiInsightsLoading}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    data-testid="btn-generate-ai-insights"
+                  >
+                    {aiInsightsLoading ? (
+                      <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Generating…</>
+                    ) : (
+                      <><Sparkles className="w-4 h-4 mr-2" /> {aiInsights ? 'Refresh Insights' : 'Generate Insights'}</>
+                    )}
+                  </Button>
+                </div>
+
+                {!aiInsights && !aiInsightsLoading && (
+                  <Card className="border-dashed border-2 border-slate-200 bg-slate-50">
+                    <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
+                      <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center">
+                        <Sparkles className="w-8 h-8 text-indigo-400" />
+                      </div>
+                      <p className="font-semibold text-slate-700">No insights generated yet</p>
+                      <p className="text-sm text-slate-400 text-center max-w-sm">Click "Generate Insights" to get Gemini AI analysis of your clinic's weekly performance, trends, and action items.</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {aiInsightsLoading && (
+                  <Card className="border-indigo-100 bg-indigo-50/50">
+                    <CardContent className="flex items-center justify-center py-16 gap-3">
+                      <RefreshCw className="w-6 h-6 text-indigo-500 animate-spin" />
+                      <p className="text-indigo-700 font-medium">Analysing clinic data with Gemini AI…</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {aiInsights && !aiInsightsLoading && (
+                  <div className="space-y-4">
+                    {/* Headline */}
+                    <Card className="bg-gradient-to-br from-indigo-600 to-violet-600 text-white border-none shadow-lg">
+                      <CardContent className="py-6 px-6">
+                        <div className="flex items-start gap-3">
+                          <Sparkles className="w-5 h-5 text-indigo-200 mt-0.5 shrink-0" />
+                          <p className="text-lg font-semibold leading-relaxed">{aiInsights.headline}</p>
+                        </div>
+                        <p className="text-indigo-200 text-xs mt-3">Generated {aiInsights.generatedAt ? new Date(aiInsights.generatedAt).toLocaleString('en-IN') : 'just now'}</p>
+                      </CardContent>
+                    </Card>
+
+                    {/* Section cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {(aiInsights.sections || []).map((section: any, i: number) => (
+                        <Card key={i} className="border-slate-200 shadow-sm">
+                          <CardContent className="p-5">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="font-bold text-slate-800 text-sm">{section.title}</h3>
+                              <div className="flex items-center gap-1.5">
+                                {section.trend === 'up' && <ArrowUpRight className="w-4 h-4 text-emerald-500" />}
+                                {section.trend === 'down' && <ArrowDownRight className="w-4 h-4 text-rose-500" />}
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${section.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : section.trend === 'down' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
+                                  {section.metric}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-sm text-slate-600 leading-relaxed">{section.insight}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {/* Action items */}
+                    {aiInsights.actionItems?.length > 0 && (
+                      <Card className="border-amber-200 bg-amber-50/50">
+                        <CardContent className="p-5">
+                          <h3 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-amber-500" />
+                            Recommended Actions
+                          </h3>
+                          <ul className="space-y-2">
+                            {aiInsights.actionItems.map((item: string, i: number) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                                <span className="w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

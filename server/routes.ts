@@ -318,7 +318,19 @@ export async function registerRoutes(
           .sort((a, b) => a.date.localeCompare(b.date));
         const next = upcoming[0];
 
-        if (!next) continue;
+        if (!next) {
+          // No upcoming appointment — still try AI assistant for general queries
+          if (patient.phone) {
+            try {
+              const aiResp = await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: [{ role: "user", parts: [{ text: `You are a friendly WhatsApp assistant for Saivie, a women's reproductive health clinic in India. A patient named ${patient.name} sent this message: "${msg.text?.body || text}"\n\nThey currently have no upcoming appointment.\n\nRespond warmly and helpfully in 2-3 sentences. Suggest they call the clinic to book an appointment if relevant. End with "_Saivie Reproductive Intelligence_". Keep it brief and supportive.` }] }],
+              });
+              await whatsapp.sendTextMessage(patient.phone, aiResp.text || `Hi ${patient.name}! Please call us to schedule your appointment. 💜\n\n_Saivie Reproductive Intelligence_`);
+            } catch (_) {}
+          }
+          continue;
+        }
 
         if (text === "CONFIRM") {
           await storage.updateAppointment(next.id, { status: "confirmed" });
@@ -334,6 +346,27 @@ export async function registerRoutes(
             `Your appointment on ${next.date} at ${next.time} has been cancelled. To reschedule, please call us or book online. We hope to see you soon. 💜\n\n_Saivie Reproductive Intelligence_`
           );
           console.log(`Appointment ${next.id} cancelled by patient ${patient.name} via WhatsApp`);
+        } else {
+          // AI virtual assistant — classify and respond using Gemini
+          try {
+            const originalText = msg.text?.body || text;
+            const meds = await storage.getMedications(patient.id);
+            const activeMeds = meds.filter(m => m.status === "active" || m.status === "Active" || !m.status).map(m => m.name);
+            const aiResp = await ai.models.generateContent({
+              model: "gemini-2.5-flash",
+              contents: [{
+                role: "user",
+                parts: [{
+                  text: `You are a helpful WhatsApp assistant for Saivie, a women's reproductive health clinic in India. A patient named ${patient.name} (Age: ${patient.age}, Next appointment: ${next.date} at ${next.time}) sent this message:\n\n"${originalText}"\n\nPatient's active medications: ${activeMeds.join(", ") || "None on record"}\n\nClassify the message type (appointment_query, medication_question, symptom_query, result_query, general) and respond appropriately.\n\nRules:\n- Appointment queries: confirm their next appointment date/time\n- Medication questions: answer about their listed medications only, advise consulting doctor for dosage changes\n- Symptom queries: provide general supportive information, always recommend contacting the clinic if concerned\n- Never provide specific medical diagnoses\n- Keep response under 100 words, warm and supportive\n- End with "_Saivie Reproductive Intelligence_"\n- If the query seems urgent or clinical, add "⚠️ Please call our clinic directly for urgent concerns."`,
+                }],
+              }],
+            });
+            const reply = aiResp.text || `Thank you for your message, ${patient.name}! For queries, please call us. Your next appointment is on ${next.date} at ${next.time}. 💜\n\n_Saivie Reproductive Intelligence_`;
+            await whatsapp.sendTextMessage(patient.phone!, reply);
+            console.log(`[WhatsApp AI] Replied to ${patient.name}: ${originalText.slice(0, 50)}...`);
+          } catch (aiErr: any) {
+            console.error("[WhatsApp AI] Failed to generate response:", aiErr.message);
+          }
         }
       }
 
@@ -2077,6 +2110,393 @@ Be thorough — extract every medication mentioned including supplements and vit
         totalAppointments: allAppointments.length,
       });
     } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ─── PHASE 3: AI-AUGMENTED WORKFORCE ─────────────────────────────────────
+
+  // 1. AI Triage Queue — sorted appointment list with urgency reason
+  app.get("/api/appointments/triage", async (req: any, res: any) => {
+    try {
+      const { date } = req.query;
+      const today = date || new Date().toISOString().split("T")[0];
+      const appts = await storage.getAppointmentsByDate(today);
+      const allPatients = await storage.getPatients();
+      const allVisits = await storage.getAllVisitHistory();
+
+      const enriched = appts
+        .filter(a => a.status !== "cancelled" && a.status !== "Cancelled")
+        .map(a => {
+          const patient = allPatients.find(p => p.id === a.patientId);
+          if (!patient) return null;
+
+          const riskScore = (patient as any).riskScore as any;
+          const riskLevel = riskScore?.level || "Low";
+          const riskNum = riskScore?.score || 0;
+
+          // Days since last visit
+          const patientVisits = allVisits.filter(v => v.patientId === patient.id);
+          const lastVisitDate = patientVisits.length > 0
+            ? patientVisits.sort((x, y) => y.date.localeCompare(x.date))[0].date
+            : null;
+          const daysSinceVisit = lastVisitDate
+            ? Math.floor((Date.now() - new Date(lastVisitDate).getTime()) / (1000 * 60 * 60 * 24))
+            : 999;
+
+          // Gestational week if pregnant
+          const lmpDate = patient.lmp ? new Date(patient.lmp) : null;
+          const gestWeeks = lmpDate
+            ? Math.floor((Date.now() - lmpDate.getTime()) / (1000 * 60 * 60 * 24 * 7))
+            : null;
+
+          // Triage score: risk (0-100) + overdue bonus + trimester urgency
+          let triageScore = riskNum;
+          if (daysSinceVisit > 30) triageScore += 20;
+          if (daysSinceVisit > 60) triageScore += 10;
+          if (gestWeeks !== null && (gestWeeks >= 36 || gestWeeks <= 10)) triageScore += 15;
+
+          // One-line triage reason
+          const reasons: string[] = [];
+          if (riskLevel === "Critical" || riskLevel === "High") reasons.push(`${riskLevel} risk`);
+          if (daysSinceVisit > 30) reasons.push(`${daysSinceVisit}d since last visit`);
+          if (gestWeeks !== null) reasons.push(`${gestWeeks}w pregnant`);
+          if (patient.bp) {
+            const sys = parseInt((patient.bp || "").split("/")[0]);
+            if (!isNaN(sys) && sys >= 140) reasons.push("BP elevated");
+          }
+          if (riskScore?.factors?.[0]?.factor) reasons.push(riskScore.factors[0].factor);
+
+          return {
+            appointmentId: a.id,
+            patientId: patient.id,
+            patientName: patient.name,
+            patientType: patient.type,
+            time: a.time,
+            date: a.date,
+            status: a.status,
+            visitMode: a.visitMode,
+            riskLevel,
+            riskScore: riskNum,
+            triageScore,
+            triageReason: reasons.slice(0, 2).join(", ") || "Routine visit",
+            daysSinceVisit: daysSinceVisit === 999 ? null : daysSinceVisit,
+            gestWeeks,
+          };
+        })
+        .filter(Boolean)
+        .sort((a: any, b: any) => b.triageScore - a.triageScore);
+
+      res.json({ date: today, count: enriched.length, appointments: enriched });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 2. Voice-to-SOAP transcription — accept base64 audio, return structured SOAP
+  app.post("/api/voice/soap-transcribe", async (req: any, res: any) => {
+    try {
+      const { audioData, mimeType, patientContext } = req.body;
+      if (!audioData) return res.status(400).json({ error: "audioData is required" });
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                inlineData: {
+                  mimeType: mimeType || "audio/webm",
+                  data: audioData,
+                },
+              },
+              {
+                text: `You are a medical transcription AI for a women's reproductive health clinic in India. Transcribe and structure this voice recording into a SOAP note.${patientContext ? `\n\nPatient context: ${patientContext}` : ""}
+
+Return a JSON object with exactly these fields (use empty string if not mentioned):
+{
+  "subjective": "Patient's symptoms, complaints, and history as described",
+  "objective": "Examination findings, vitals, observations mentioned",
+  "assessment": "Clinical assessment, diagnosis, or impression",
+  "plan": "Treatment plan, medications, follow-up instructions",
+  "rawTranscript": "Full verbatim transcript of the recording"
+}
+
+Be concise and clinically accurate. Convert spoken language to structured clinical notes.`,
+              },
+            ],
+          },
+        ],
+        config: { responseMimeType: "application/json" },
+      });
+
+      const text = response.text || "{}";
+      const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      res.json({ success: true, soap: parsed });
+    } catch (err: any) {
+      console.error("[voice-soap] Error:", err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 3. Post-visit WhatsApp summary
+  app.post("/api/appointments/:id/post-visit-summary", async (req: any, res: any) => {
+    try {
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
+
+      const appt = await storage.getAppointments().then(all => all.find(a => a.id === id));
+      if (!appt) return res.status(404).json({ error: "Appointment not found" });
+
+      const patient = appt.patientId ? await storage.getPatient(appt.patientId) : null;
+      if (!patient) return res.status(404).json({ error: "Patient not found" });
+
+      const visits = await storage.getVisitHistory(patient.id);
+      const latestVisit = visits.sort((a, b) => b.date.localeCompare(a.date))[0];
+      const meds = await storage.getMedications(patient.id);
+      const activeMeds = meds.filter(m => m.status === "active" || m.status === "Active" || !m.status);
+
+      // Generate plain-language summary using Gemini
+      const summaryResponse = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `Generate a warm, friendly post-visit WhatsApp summary for a patient visiting a women's reproductive health clinic.
+
+Patient: ${patient.name}, Age: ${patient.age}
+Today's visit diagnosis/assessment: ${latestVisit?.diagnosis || latestVisit?.assessment || "General consultation"}
+Plan notes: ${latestVisit?.planNotes || ""}
+Active medications: ${activeMeds.slice(0, 5).map(m => `${m.name}${m.dose ? ` ${m.dose}` : ""}${m.frequency ? ` (${m.frequency})` : ""}`).join(", ") || "None prescribed"}
+Next appointment: ${patient.nextReview || "To be scheduled"}
+
+Write a WhatsApp message (not too long, max 180 words) in a warm, supportive tone. Include:
+1. A brief summary of today's visit
+2. Key medications to take (if any)
+3. Important instructions or things to watch for
+4. Next steps / follow-up
+
+Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_". Use WhatsApp formatting (bold with *text*).`,
+              },
+            ],
+          },
+        ],
+      });
+
+      const summaryText = summaryResponse.text || "";
+
+      if (patient.phone) {
+        await whatsapp.sendTextMessage(patient.phone, summaryText);
+      }
+
+      res.json({
+        success: true,
+        patientName: patient.name,
+        phone: patient.phone || null,
+        message: summaryText,
+        sent: !!patient.phone,
+      });
+    } catch (err: any) {
+      console.error("[post-visit-summary] Error:", err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 4. AI Schedule Optimisation
+  app.post("/api/appointments/optimise-schedule", async (req: any, res: any) => {
+    try {
+      const { date } = req.body;
+      const targetDate = date || new Date().toISOString().split("T")[0];
+      const appts = await storage.getAppointmentsByDate(targetDate);
+      const allPatients = await storage.getPatients();
+
+      const enriched = appts
+        .filter(a => a.status !== "cancelled" && a.status !== "Cancelled")
+        .map(a => {
+          const patient = allPatients.find(p => p.id === a.patientId);
+          return {
+            id: a.id,
+            time: a.time,
+            endTime: a.endTime,
+            duration: a.duration || 30,
+            patientName: patient?.name || "Unknown",
+            patientType: patient?.type || "",
+            visitMode: a.visitMode,
+            status: a.status,
+            riskScore: (patient as any)?.riskScore?.score || 0,
+            riskLevel: (patient as any)?.riskScore?.level || "Low",
+          };
+        });
+
+      if (enriched.length === 0) {
+        return res.json({ date: targetDate, suggestions: [], message: "No appointments to optimise." });
+      }
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `You are a clinic scheduling optimisation AI. Analyse these appointments and suggest an optimised schedule.
+
+Date: ${targetDate}
+Appointments:
+${JSON.stringify(enriched, null, 2)}
+
+Optimisation goals:
+1. High/Critical risk patients should be seen earlier in the day
+2. Telemedicine slots should be grouped to minimise context switching
+3. Longer consultations (30+ min) should not be scheduled back-to-back without a buffer
+4. Patients who haven't visited in >30 days should be prioritised
+
+Return a JSON object:
+{
+  "suggestions": [
+    {
+      "appointmentId": number,
+      "currentTime": "HH:MM",
+      "suggestedTime": "HH:MM",
+      "reason": "brief reason for change"
+    }
+  ],
+  "summary": "2-3 sentence plain English summary of the optimisation recommendations",
+  "estimatedTimeSaved": "e.g. 45 minutes of idle time eliminated"
+}
+
+Only include appointments that should move. If schedule is already optimal, return empty suggestions array with a positive summary.`,
+              },
+            ],
+          },
+        ],
+        config: { responseMimeType: "application/json" },
+      });
+
+      const text = response.text || "{}";
+      const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      res.json({ date: targetDate, ...parsed, totalAppointments: enriched.length });
+    } catch (err: any) {
+      console.error("[optimise-schedule] Error:", err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 5. Owner AI Weekly Insights
+  app.post("/api/owner/ai-insights", async (req: any, res: any) => {
+    try {
+      const allPatients = await storage.getPatients();
+      const allAppointments = await storage.getAppointments();
+      const allInvoices = await storage.getAllInvoices();
+      const allExpenses = await storage.getExpenses();
+      const allAttendance = await storage.getAttendance();
+
+      const today = new Date();
+      const thisMonth = today.toISOString().slice(0, 7);
+      const thisWeekStart = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+      const monthlyRevenue = allInvoices.filter(i => i.date?.startsWith(thisMonth)).reduce((s, i) => s + (i.total || 0), 0);
+      const monthlyExpenses = allExpenses.filter(e => e.date?.startsWith(thisMonth)).reduce((s, e) => s + (e.amount || 0), 0);
+      const weeklyAppts = allAppointments.filter(a => a.date >= thisWeekStart);
+
+      // Diagnosis frequency from all visits
+      const allVisits = await storage.getAllVisitHistory();
+      const diagnosisCounts: Record<string, number> = {};
+      allVisits.filter(v => v.date >= thisWeekStart).forEach(v => {
+        const diag = v.diagnosis || v.assessment;
+        if (diag) {
+          const key = diag.toLowerCase().slice(0, 40);
+          diagnosisCounts[key] = (diagnosisCounts[key] || 0) + 1;
+        }
+      });
+      const topDiagnoses = Object.entries(diagnosisCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([d, count]) => `${d} (${count}x)`);
+
+      // Staff utilisation
+      const presentDays = allAttendance.filter(a => a.date >= thisWeekStart && a.status === "present").length;
+      const totalStaff = new Set(allAttendance.map(a => a.employeeName)).size;
+
+      // High-risk patients
+      const highRiskCount = allPatients.filter((p: any) => p.riskScore?.level === "High" || p.riskScore?.level === "Critical").length;
+
+      const context = {
+        reportPeriod: `${thisWeekStart} to ${today.toISOString().split("T")[0]}`,
+        totalPatients: allPatients.length,
+        newPatientsThisMonth: allPatients.filter((p: any) => p.lastVisit?.startsWith(thisMonth)).length,
+        weeklyAppointments: weeklyAppts.length,
+        completedThisWeek: weeklyAppts.filter(a => a.status === "Completed" || a.status === "completed").length,
+        monthlyRevenue,
+        monthlyExpenses,
+        netProfit: monthlyRevenue - monthlyExpenses,
+        topDiagnoses,
+        staffUtilisationThisWeek: totalStaff > 0 ? Math.round((presentDays / (totalStaff * 5)) * 100) : 0,
+        highRiskPatientCount: highRiskCount,
+      };
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `You are a clinic business intelligence AI. Generate a concise weekly insights report for the clinic owner of a women's reproductive health clinic in India.
+
+Clinic Data:
+${JSON.stringify(context, null, 2)}
+
+Return a JSON object:
+{
+  "headline": "One compelling sentence summarising the week",
+  "sections": [
+    {
+      "title": "Patient Volume",
+      "insight": "2-3 sentence insight about appointment trends and patient activity",
+      "trend": "up" | "down" | "stable",
+      "metric": "key number or % to highlight"
+    },
+    {
+      "title": "Revenue & Finance",
+      "insight": "2-3 sentence insight about revenue, expenses, and profitability",
+      "trend": "up" | "down" | "stable",
+      "metric": "key number or % to highlight"
+    },
+    {
+      "title": "Clinical Focus",
+      "insight": "2-3 sentence insight about the most common conditions and clinical patterns this week",
+      "trend": "up" | "down" | "stable",
+      "metric": "key number or % to highlight"
+    },
+    {
+      "title": "Staff & Operations",
+      "insight": "2-3 sentence insight about staff attendance, utilisation, and operational efficiency",
+      "trend": "up" | "down" | "stable",
+      "metric": "key number or % to highlight"
+    }
+  ],
+  "actionItems": ["specific recommended action 1", "specific recommended action 2", "specific recommended action 3"],
+  "generatedAt": "${new Date().toISOString()}"
+}`,
+              },
+            ],
+          },
+        ],
+        config: { responseMimeType: "application/json" },
+      });
+
+      const text = response.text || "{}";
+      const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      res.json({ success: true, insights: parsed, context });
+    } catch (err: any) {
+      console.error("[ai-insights] Error:", err.message);
       res.status(500).json({ error: err.message });
     }
   });

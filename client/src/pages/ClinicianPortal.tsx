@@ -55,7 +55,9 @@ import {
   Milestone,
   ChevronDown,
   ChevronUp,
-  LogOut
+  LogOut,
+  Mic,
+  MessageCircle
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -129,8 +131,16 @@ export default function ClinicianPortal() {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [queueDateFrom, setQueueDateFrom] = useState(() => new Date().toISOString().split('T')[0]);
   const [queueDateTo, setQueueDateTo] = useState(() => new Date().toISOString().split('T')[0]);
+  const [queueTriageSort, setQueueTriageSort] = useState(false);
   const [patientSearch, setPatientSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [soapTranscript, setSoapTranscript] = useState<{subjective: string; objective: string; assessment: string; plan: string; rawTranscript: string} | null>(null);
+  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const audioChunksRef = React.useRef<Blob[]>([]);
+  const [postVisitSummarySending, setPostVisitSummarySending] = useState(false);
+  const [postVisitSummaryResult, setPostVisitSummaryResult] = useState<string | null>(null);
   const [extractionStatus, setExtractionStatus] = useState<string | null>(null);
   const [fundalHeightVal, setFundalHeightVal] = useState('');
   const [fetalHeartRateVal, setFetalHeartRateVal] = useState('');
@@ -755,10 +765,30 @@ export default function ClinicianPortal() {
       a.date >= queueDateFrom && a.date <= queueDateTo &&
       a.status !== 'cancelled' && a.status !== 'Cancelled'
     );
-    dateAppts.sort((a: any, b: any) => (a.date || '').localeCompare(b.date || '') || (a.time || '').localeCompare(b.time || ''));
-    return dateAppts.map((apt: any) => {
+    if (!queueTriageSort) {
+      dateAppts.sort((a: any, b: any) => (a.date || '').localeCompare(b.date || '') || (a.time || '').localeCompare(b.time || ''));
+    }
+    const mapped = dateAppts.map((apt: any) => {
       const patient = patients.find((p: any) => p.id === apt.patientId);
-      return patient ? {
+      if (!patient) return null;
+      const riskScore = (patient as any).riskScore;
+      const riskNum = riskScore?.score || 0;
+      const riskLevel = riskScore?.level || 'Low';
+      // Compute days since last visit for triage
+      const lastVisit = patient.lastVisit;
+      const daysSince = lastVisit ? Math.floor((Date.now() - new Date(lastVisit).getTime()) / (1000*60*60*24)) : 999;
+      const lmpDate = patient.lmp ? new Date(patient.lmp) : null;
+      const gestWeeks = lmpDate ? Math.floor((Date.now() - lmpDate.getTime()) / (1000*60*60*24*7)) : null;
+      let triageScore = riskNum;
+      if (daysSince > 30) triageScore += 20;
+      if (daysSince > 60) triageScore += 10;
+      if (gestWeeks !== null && (gestWeeks >= 36 || gestWeeks <= 10)) triageScore += 15;
+      const triageReasons: string[] = [];
+      if (riskLevel === 'Critical' || riskLevel === 'High') triageReasons.push(`${riskLevel} risk`);
+      if (daysSince > 30 && daysSince < 999) triageReasons.push(`${daysSince}d no visit`);
+      if (gestWeeks !== null) triageReasons.push(`${gestWeeks}w pregnant`);
+      if (riskScore?.factors?.[0]?.factor) triageReasons.push(riskScore.factors[0].factor);
+      return {
         ...patient,
         appointmentDate: apt.date,
         appointmentTime: apt.time,
@@ -767,9 +797,15 @@ export default function ClinicianPortal() {
         appointmentStatus: apt.status,
         appointmentVisitMode: apt.visitMode,
         appointmentTelemedicineLink: apt.telemedicineLink,
-      } : null;
+        triageScore,
+        triageReason: triageReasons.slice(0, 2).join(', ') || 'Routine visit',
+      };
     }).filter(Boolean);
-  }, [appointments, patients, queueDateFrom, queueDateTo]);
+    if (queueTriageSort) {
+      mapped.sort((a: any, b: any) => b.triageScore - a.triageScore);
+    }
+    return mapped;
+  }, [appointments, patients, queueDateFrom, queueDateTo, queueTriageSort]);
 
   const searchResults = useMemo(() => {
     if (!patientSearch.trim()) return [];
@@ -1024,6 +1060,15 @@ export default function ClinicianPortal() {
                                 className="h-7 text-xs w-[120px] border-slate-200"
                                 data-testid="input-queue-date-to"
                               />
+                              <button
+                                onClick={() => setQueueTriageSort(v => !v)}
+                                data-testid="btn-triage-sort"
+                                className={`flex items-center gap-1 h-7 px-2 rounded text-[10px] font-bold border transition-colors ${queueTriageSort ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-slate-200 text-slate-500 hover:border-orange-200 hover:text-orange-600'}`}
+                                title="Sort by AI triage priority"
+                              >
+                                <Sparkles className="w-3 h-3" />
+                                {queueTriageSort ? 'Triage ON' : 'Triage'}
+                              </button>
                               <span className="text-xs text-slate-500 font-medium">{queuePatients.length}</span>
                            </div>
                         </CardHeader>
@@ -1041,6 +1086,7 @@ export default function ClinicianPortal() {
                                     <th className="px-3 py-3 font-medium">Patient</th>
                                     <th className="px-3 py-3 font-medium">Type</th>
                                     <th className="px-3 py-3 font-medium w-20">Risk</th>
+                                    {queueTriageSort && <th className="px-3 py-3 font-medium">Priority Reason</th>}
                                     <th className="px-3 py-3 font-medium">Status</th>
                                     <th className="px-3 py-3 font-medium w-10"></th>
                                  </tr>
@@ -1108,6 +1154,14 @@ export default function ClinicianPortal() {
                                               </span>
                                             )}
                                           </td>
+                                          {queueTriageSort && (
+                                            <td className="px-3 py-3 text-xs text-slate-500 max-w-[180px]">
+                                              <span className="flex items-center gap-1">
+                                                <Sparkles className="w-3 h-3 text-orange-400 shrink-0" />
+                                                <span className="truncate" title={p.triageReason}>{p.triageReason}</span>
+                                              </span>
+                                            </td>
+                                          )}
                                           <td className="px-3 py-3 text-slate-600 text-xs capitalize">{p.appointmentStatus || 'Scheduled'}</td>
                                           <td className="px-3 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
                                        </tr>
@@ -3662,11 +3716,99 @@ export default function ClinicianPortal() {
                             {latestVisit && <Badge variant="outline" className="text-[10px] font-normal text-slate-400 ml-2">{new Date(latestVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</Badge>}
                             {!latestVisit && !showDocumentation && <span className="text-xs font-normal text-slate-400 ml-2">(No visit records yet)</span>}
                          </h3>
-                         <div className="flex items-center gap-2">
+                         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                            {/* Voice-to-SOAP button */}
+                            <button
+                              data-testid="btn-voice-soap"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (isRecording) {
+                                  mediaRecorderRef.current?.stop();
+                                  setIsRecording(false);
+                                } else {
+                                  try {
+                                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                                    audioChunksRef.current = [];
+                                    const mr = new MediaRecorder(stream);
+                                    mediaRecorderRef.current = mr;
+                                    mr.ondataavailable = (ev) => { if (ev.data.size > 0) audioChunksRef.current.push(ev.data); };
+                                    mr.onstop = async () => {
+                                      stream.getTracks().forEach(t => t.stop());
+                                      const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                                      const reader = new FileReader();
+                                      reader.onloadend = async () => {
+                                        const base64 = (reader.result as string).split(',')[1];
+                                        setIsTranscribing(true);
+                                        try {
+                                          const resp = await fetch('/api/voice/soap-transcribe', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                              audioData: base64,
+                                              mimeType: 'audio/webm',
+                                              patientContext: `${selectedPatient?.name}, ${selectedPatient?.age}y, ${selectedPatient?.type || ''}`,
+                                            }),
+                                          });
+                                          const data = await resp.json();
+                                          if (data.soap) setSoapTranscript(data.soap);
+                                        } finally {
+                                          setIsTranscribing(false);
+                                        }
+                                      };
+                                      reader.readAsDataURL(blob);
+                                    };
+                                    mr.start();
+                                    setIsRecording(true);
+                                  } catch { alert('Microphone access denied'); }
+                                }
+                              }}
+                              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border transition-colors ${isRecording ? 'bg-red-100 border-red-300 text-red-700 animate-pulse' : 'bg-white border-slate-200 text-slate-500 hover:border-blue-200 hover:text-blue-600'}`}
+                              title="Voice-to-SOAP documentation"
+                            >
+                              <Mic className="w-3 h-3" />
+                              {isRecording ? 'Stop' : isTranscribing ? 'Transcribing…' : 'Voice'}
+                            </button>
+                            {/* Post-visit WhatsApp summary */}
+                            {selectedPatient?.appointmentId && (
+                              <button
+                                data-testid="btn-post-visit-summary"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  setPostVisitSummarySending(true);
+                                  setPostVisitSummaryResult(null);
+                                  try {
+                                    const resp = await fetch(`/api/appointments/${selectedPatient.appointmentId}/post-visit-summary`, { method: 'POST' });
+                                    const data = await resp.json();
+                                    setPostVisitSummaryResult(data.sent ? `Summary sent to ${selectedPatient.phone}` : 'Generated (no phone on file)');
+                                  } catch { setPostVisitSummaryResult('Failed to generate summary'); }
+                                  finally { setPostVisitSummarySending(false); }
+                                }}
+                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border bg-white border-slate-200 text-slate-500 hover:border-green-300 hover:text-green-600 transition-colors"
+                                title="Send post-visit WhatsApp summary"
+                              >
+                                <MessageCircle className="w-3 h-3" />
+                                {postVisitSummarySending ? 'Sending…' : 'Post-Visit'}
+                              </button>
+                            )}
                             {visitHistory.length > 1 && <Badge variant="outline" className="text-[10px] font-normal text-slate-500">{visitHistory.length} visits</Badge>}
                             <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${showDocumentation ? 'rotate-90' : ''}`} />
                          </div>
                       </div>
+                      {/* Voice transcript result banner */}
+                      {soapTranscript && (
+                        <div className="bg-blue-50 border-b border-blue-100 px-4 py-2 flex items-center gap-2">
+                          <Sparkles className="w-3 h-3 text-blue-500 shrink-0" />
+                          <span className="text-xs text-blue-700 font-medium">AI transcript ready — SOAP fields pre-filled below.</span>
+                          <button onClick={() => setSoapTranscript(null)} className="ml-auto text-blue-400 hover:text-blue-600 text-xs">Dismiss</button>
+                        </div>
+                      )}
+                      {postVisitSummaryResult && (
+                        <div className="bg-green-50 border-b border-green-100 px-4 py-2 flex items-center gap-2">
+                          <MessageCircle className="w-3 h-3 text-green-500 shrink-0" />
+                          <span className="text-xs text-green-700 font-medium">{postVisitSummaryResult}</span>
+                          <button onClick={() => setPostVisitSummaryResult(null)} className="ml-auto text-green-400 hover:text-green-600 text-xs">✕</button>
+                        </div>
+                      )}
                       
                       {showDocumentation && (
                          <CardContent className="p-0">
