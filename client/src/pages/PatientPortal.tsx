@@ -1079,12 +1079,16 @@ export default function PatientPortal() {
 
           {/* ── Pregnancy Hub Track Tab ─────────────────────────────────────── */}
           <TabsContent value="track" className="animate-in fade-in duration-700">
-            {patient?.id && (
+            {patient?.id && (mode === 'pregnancy' || mode === 'ttc') ? (
               <PregnancyTrackersTab
                 patient={patient}
                 medications={(medications as any[]) || []}
                 patientId={patient.id}
               />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
+                <p className="text-sm text-slate-500">Switch to Pregnancy or TTC mode to access trackers.</p>
+              </div>
             )}
           </TabsContent>
 

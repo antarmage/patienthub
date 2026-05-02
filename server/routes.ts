@@ -1062,6 +1062,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       return res.status(404).json({ error: "No patient found with this phone number. Please contact the clinic." });
     }
 
+    req.session.patientId = patient.id;
+
     res.json({
       success: true,
       patient: {
@@ -1073,6 +1075,10 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         condition: patient.condition,
       },
     });
+  });
+
+  app.post("/api/auth/patient-logout", (req, res) => {
+    req.session.destroy(() => res.status(204).send());
   });
 
   app.get("/api/patient-protocols/:patientId", async (req, res) => {
@@ -1842,33 +1848,24 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.json(items);
   });
 
-  // ── Patient self-service auth helper ──────────────────────────────────────
-  // The patient portal uses phone-based login (patientId stored in localStorage).
-  // Every patient self-service endpoint requires the caller to send X-Patient-Id
-  // matching the target resource's patientId, AND loads each resource from the DB
-  // to confirm ownership BEFORE any mutation. This is object-level access control
-  // within the existing stateless architecture; it is not a substitute for server
-  // sessions but ensures the server never trusts an arbitrary body/query patientId.
-  function claimedPatientId(req: any): number | null {
-    const hdr = req.headers["x-patient-id"];
-    if (!hdr) return null;
-    const id = parseInt(hdr as string);
-    return isNaN(id) ? null : id;
+  // Returns the authenticated patient's id from their server-side session, or null.
+  function sessionPatientId(req: any): number | null {
+    return req.session?.patientId ?? null;
   }
-  function assertPatientOwner(req: any, res: any, patientId: number): boolean {
-    const claimed = claimedPatientId(req);
-    if (!claimed || claimed !== patientId) {
+  // Checks that the session belongs to the given patientId; sends 403 and returns false if not.
+  function assertPatientSession(req: any, res: any, patientId: number): boolean {
+    const sid = sessionPatientId(req);
+    if (!sid || sid !== patientId) {
       res.status(403).json({ error: "Forbidden" });
       return false;
     }
     return true;
   }
 
-  // ── Standalone pregnancy-metrics routes (Task #10) ────────────────────────
   app.get("/api/pregnancy-metrics", async (req, res) => {
     const patientId = parseId(req.query.patientId as string);
     if (!patientId) return res.status(400).json({ error: "patientId required" });
-    if (!assertPatientOwner(req, res, patientId)) return;
+    if (!assertPatientSession(req, res, patientId)) return;
     const metrics = await storage.getPregnancyMetrics(patientId);
     res.json(metrics);
   });
@@ -1877,7 +1874,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     try {
       const { patientId, week, weight, systolic, diastolic, enteredBy, expected } = req.body;
       if (!patientId) return res.status(400).json({ error: "patientId required" });
-      if (!assertPatientOwner(req, res, parseInt(patientId))) return;
+      if (!assertPatientSession(req, res, parseInt(patientId))) return;
       if (week == null || isNaN(Number(week))) return res.status(400).json({ error: "week is required" });
       const metric = await storage.createPregnancyMetric({
         patientId: parseInt(patientId),
@@ -1896,20 +1893,18 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     try {
-      // Verify ownership on the EXISTING record BEFORE mutating
       const existing = await storage.getPregnancyMetricById(id);
       if (!existing) return res.status(404).json({ error: "Not found" });
-      if (!existing.patientId || !assertPatientOwner(req, res, existing.patientId)) return;
+      if (!existing.patientId || !assertPatientSession(req, res, existing.patientId)) return;
       const updated = await storage.updatePregnancyMetric(id, req.body);
       res.json(updated);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   });
 
-  // ── Pregnancy Hub: Water Logs ──────────────────────────────────────────────
   app.get("/api/water-logs", async (req, res) => {
     const patientId = parseId(req.query.patientId as string);
     if (!patientId) return res.status(400).json({ error: "patientId required" });
-    if (!assertPatientOwner(req, res, patientId)) return;
+    if (!assertPatientSession(req, res, patientId)) return;
     const date = req.query.date as string | undefined;
     const logs = await storage.getWaterLogs(patientId, date);
     res.json(logs);
@@ -1919,7 +1914,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     try {
       const { patientId, date, amountMl } = req.body;
       if (!patientId || !date) return res.status(400).json({ error: "patientId and date are required" });
-      if (!assertPatientOwner(req, res, parseInt(patientId))) return;
+      if (!assertPatientSession(req, res, parseInt(patientId))) return;
       const ml = parseInt(amountMl);
       if (isNaN(ml) || ml < 1 || ml > 5000) return res.status(400).json({ error: "amountMl must be between 1 and 5000" });
       const log = await storage.addWaterLog({ ...req.body, amountMl: ml, patientId: parseInt(patientId) });
@@ -1930,19 +1925,17 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.delete("/api/water-logs/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
-    // Load record first to verify ownership before deletion
     const log = await storage.getWaterLog(id);
     if (!log) return res.status(404).json({ error: "Not found" });
-    if (!assertPatientOwner(req, res, log.patientId)) return;
+    if (!assertPatientSession(req, res, log.patientId)) return;
     await storage.deleteWaterLog(id);
     res.status(204).send();
   });
 
-  // ── Pregnancy Hub: Medication Logs ────────────────────────────────────────
   app.get("/api/medication-logs", async (req, res) => {
     const patientId = parseId(req.query.patientId as string);
     if (!patientId) return res.status(400).json({ error: "patientId required" });
-    if (!assertPatientOwner(req, res, patientId)) return;
+    if (!assertPatientSession(req, res, patientId)) return;
     const date = req.query.date as string | undefined;
     const logs = await storage.getMedicationLogs(patientId, date);
     res.json(logs);
@@ -1954,13 +1947,11 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       if (!patientId || !medicationId || !takenDate) return res.status(400).json({ error: "patientId, medicationId, takenDate required" });
       const pid = parseInt(patientId);
       const mid = parseInt(medicationId);
-      if (!assertPatientOwner(req, res, pid)) return;
-      // Verify the medication actually belongs to this patient (prevents cross-patient med logging)
+      if (!assertPatientSession(req, res, pid)) return;
       const patientMeds = await storage.getMedications(pid);
       if (!patientMeds.some((m: any) => m.id === mid)) {
         return res.status(403).json({ error: "Medication does not belong to this patient" });
       }
-      // Prevent duplicate logs for same med on same day
       const existing = await storage.getMedicationLogs(pid, takenDate);
       if (existing.some((l: any) => l.medicationId === mid)) {
         return res.status(409).json({ error: "Already marked as taken for this date" });
@@ -1973,28 +1964,25 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.post("/api/medication-logs/unmark", async (req, res) => {
     const { patientId, medicationId, takenDate } = req.body;
     if (!patientId || !medicationId || !takenDate) return res.status(400).json({ error: "patientId, medicationId, takenDate required" });
-    if (!assertPatientOwner(req, res, parseInt(patientId))) return;
+    if (!assertPatientSession(req, res, parseInt(patientId))) return;
     await storage.deleteMedicationLog(patientId, medicationId, takenDate);
     res.status(204).send();
   });
 
-  // ── Pregnancy Hub: Patient Documents ──────────────────────────────────────
   app.get("/api/patient-documents", async (req, res) => {
     const patientId = parseId(req.query.patientId as string);
     if (!patientId) return res.status(400).json({ error: "patientId required" });
-    if (!assertPatientOwner(req, res, patientId)) return;
-    // Strip fileData from list response to avoid large payloads; client fetches by id for viewing
+    if (!assertPatientSession(req, res, patientId)) return;
     const docs = await storage.getPatientDocuments(patientId);
     res.json(docs.map((d: any) => ({ ...d, fileData: undefined })));
   });
 
-  // GET single document with file data (ownership-scoped)
   app.get("/api/patient-documents/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     const doc = await storage.getPatientDocument(id);
     if (!doc) return res.status(404).json({ error: "Not found" });
-    if (!assertPatientOwner(req, res, doc.patientId)) return;
+    if (!assertPatientSession(req, res, doc.patientId)) return;
     res.json(doc);
   });
 
@@ -2002,7 +1990,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     try {
       const { patientId, fileName, fileData, mimeType, docType } = req.body;
       if (!patientId || !fileName) return res.status(400).json({ error: "patientId and fileName required" });
-      if (!assertPatientOwner(req, res, parseInt(patientId))) return;
+      if (!assertPatientSession(req, res, parseInt(patientId))) return;
       const allowedMime = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "image/heic", "image/heif"];
       if (mimeType && !allowedMime.includes(mimeType)) return res.status(400).json({ error: "Unsupported file type" });
       if (fileData) {
@@ -2019,10 +2007,9 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.delete("/api/patient-documents/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
-    // Verify ownership before deletion
     const doc = await storage.getPatientDocument(id);
     if (!doc) return res.status(404).json({ error: "Not found" });
-    if (!assertPatientOwner(req, res, doc.patientId)) return;
+    if (!assertPatientSession(req, res, doc.patientId)) return;
     await storage.deletePatientDocument(id);
     res.status(204).send();
   });

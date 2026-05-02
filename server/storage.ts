@@ -693,7 +693,6 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  // ── Pregnancy Hub self-tracking ────────────────────────────────────────────
   async getWaterLog(id: number): Promise<WaterLog | undefined> {
     const [row] = await db.select().from(waterLogs).where(eq(waterLogs.id, id));
     return row;

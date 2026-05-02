@@ -12,7 +12,6 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip
 } from "recharts";
 
-// ── Gestational week from LMP ─────────────────────────────────────────────────
 function getGestationalWeek(lmp?: string): number {
   if (!lmp) return 20;
   return Math.max(4, Math.min(42, Math.floor((new Date().getTime() - new Date(lmp).getTime()) / (7 * 24 * 60 * 60 * 1000))));
@@ -26,20 +25,14 @@ function getWeightGainTarget(bmi?: number) {
   return { min: 5, max: 9, label: "Obese" };
 }
 
-// ── Auth helpers ──────────────────────────────────────────────────────────────
-// All patient self-service endpoints require X-Patient-Id to prevent IDOR.
-function patientHeaders(patientId: number): HeadersInit {
-  return { "Content-Type": "application/json", "X-Patient-Id": String(patientId) };
-}
+const JSON_HEADERS: HeadersInit = { "Content-Type": "application/json" };
 
-// ── Props ─────────────────────────────────────────────────────────────────────
 interface Props {
   patient: any;
   medications: any[];
   patientId: number;
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────────
 export default function PregnancyTrackersTab({ patient, medications, patientId }: Props) {
   const [section, setSection] = useState<"trackers" | "records">("trackers");
 
@@ -64,7 +57,6 @@ export default function PregnancyTrackersTab({ patient, medications, patientId }
   );
 }
 
-// ── Trackers Section ──────────────────────────────────────────────────────────
 function TrackersSection({ patient, medications, patientId }: { patient: any; medications: any[]; patientId: number }) {
   return (
     <div className="space-y-4">
@@ -76,7 +68,6 @@ function TrackersSection({ patient, medications, patientId }: { patient: any; me
   );
 }
 
-// ── Water Tracker ─────────────────────────────────────────────────────────────
 function WaterTracker({ patientId }: { patientId: number }) {
   const qc = useQueryClient();
   const today = new Date().toISOString().split("T")[0];
@@ -85,7 +76,7 @@ function WaterTracker({ patientId }: { patientId: number }) {
   const { data: logs = [] } = useQuery<any[]>({
     queryKey: [`/api/water-logs?patientId=${patientId}&date=${today}`],
     queryFn: async () => {
-      const r = await fetch(`/api/water-logs?patientId=${patientId}&date=${today}`, { headers: { "X-Patient-Id": String(patientId) } });
+      const r = await fetch(`/api/water-logs?patientId=${patientId}&date=${today}`, { credentials: "include" });
       return r.json();
     },
   });
@@ -97,7 +88,8 @@ function WaterTracker({ patientId }: { patientId: number }) {
     mutationFn: async (amountMl: number) => {
       const r = await fetch("/api/water-logs", {
         method: "POST",
-        headers: patientHeaders(patientId),
+        credentials: "include",
+        headers: JSON_HEADERS,
         body: JSON.stringify({ patientId, date: today, amountMl, loggedAt: new Date().toISOString() }),
       });
       if (!r.ok) throw new Error((await r.json()).error);
@@ -107,7 +99,7 @@ function WaterTracker({ patientId }: { patientId: number }) {
   });
 
   const delLog = useMutation({
-    mutationFn: async (id: number) => { await fetch(`/api/water-logs/${id}`, { method: "DELETE", headers: { "X-Patient-Id": String(patientId) } }); },
+    mutationFn: async (id: number) => { await fetch(`/api/water-logs/${id}`, { method: "DELETE", credentials: "include" }); },
     onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/water-logs?patientId=${patientId}&date=${today}`] }),
   });
 
@@ -186,7 +178,6 @@ function WaterTracker({ patientId }: { patientId: number }) {
   );
 }
 
-// ── Weight Tracker ─────────────────────────────────────────────────────────────
 function WeightTracker({ patientId, patient }: { patientId: number; patient: any }) {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -195,7 +186,7 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
   const { data: metrics = [] } = useQuery<any[]>({
     queryKey: [`/api/pregnancy-metrics?patientId=${patientId}`],
     queryFn: async () => {
-      const r = await fetch(`/api/pregnancy-metrics?patientId=${patientId}`, { headers: { "X-Patient-Id": String(patientId) } });
+      const r = await fetch(`/api/pregnancy-metrics?patientId=${patientId}`, { credentials: "include" });
       return r.json();
     },
   });
@@ -216,7 +207,8 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
       const week = getGestationalWeek(patient?.lmp);
       const r = await fetch("/api/pregnancy-metrics", {
         method: "POST",
-        headers: patientHeaders(patientId),
+        credentials: "include",
+        headers: JSON_HEADERS,
         body: JSON.stringify({ patientId, week, weight: parseFloat(weight), enteredBy: "patient" }),
       });
       if (!r.ok) throw new Error((await r.json()).error);
@@ -314,7 +306,6 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
   );
 }
 
-// ── BP Tracker ─────────────────────────────────────────────────────────────────
 function BPTracker({ patientId, patient }: { patientId: number; patient: any }) {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -324,7 +315,7 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
   const { data: metrics = [] } = useQuery<any[]>({
     queryKey: [`/api/pregnancy-metrics?patientId=${patientId}`],
     queryFn: async () => {
-      const r = await fetch(`/api/pregnancy-metrics?patientId=${patientId}`, { headers: { "X-Patient-Id": String(patientId) } });
+      const r = await fetch(`/api/pregnancy-metrics?patientId=${patientId}`, { credentials: "include" });
       return r.json();
     },
   });
@@ -348,7 +339,8 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
       const week = getGestationalWeek(patient?.lmp);
       const r = await fetch("/api/pregnancy-metrics", {
         method: "POST",
-        headers: patientHeaders(patientId),
+        credentials: "include",
+        headers: JSON_HEADERS,
         body: JSON.stringify({ patientId, week, systolic: parseInt(systolic), diastolic: parseInt(diastolic), enteredBy: "patient" }),
       });
       if (!r.ok) throw new Error((await r.json()).error);
@@ -439,7 +431,6 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
   );
 }
 
-// ── Medicine Tracker ──────────────────────────────────────────────────────────
 function MedicineTracker({ patientId, medications }: { patientId: number; medications: any[] }) {
   const qc = useQueryClient();
   const today = new Date().toISOString().split("T")[0];
@@ -448,7 +439,7 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
   const { data: logs = [] } = useQuery<any[]>({
     queryKey: [`/api/medication-logs?patientId=${patientId}&date=${today}`],
     queryFn: async () => {
-      const r = await fetch(`/api/medication-logs?patientId=${patientId}&date=${today}`, { headers: { "X-Patient-Id": String(patientId) } });
+      const r = await fetch(`/api/medication-logs?patientId=${patientId}&date=${today}`, { credentials: "include" });
       return r.json();
     },
   });
@@ -460,7 +451,8 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
     mutationFn: async (medicationId: number) => {
       const r = await fetch("/api/medication-logs", {
         method: "POST",
-        headers: patientHeaders(patientId),
+        credentials: "include",
+        headers: JSON_HEADERS,
         body: JSON.stringify({ patientId, medicationId, takenDate: today, takenAt: new Date().toISOString() }),
       });
       if (!r.ok) {
@@ -477,7 +469,8 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
     mutationFn: async (medicationId: number) => {
       await fetch("/api/medication-logs/unmark", {
         method: "POST",
-        headers: patientHeaders(patientId),
+        credentials: "include",
+        headers: JSON_HEADERS,
         body: JSON.stringify({ patientId, medicationId, takenDate: today }),
       });
     },
@@ -542,7 +535,6 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
   );
 }
 
-// ── Records Section ───────────────────────────────────────────────────────────
 function RecordsSection({ patientId, patient }: { patientId: number; patient: any }) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -559,7 +551,7 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
   const { data: patientDocs = [] } = useQuery<any[]>({
     queryKey: [`/api/patient-documents?patientId=${patientId}`],
     queryFn: async () => {
-      const r = await fetch(`/api/patient-documents?patientId=${patientId}`, { headers: { "X-Patient-Id": String(patientId) } });
+      const r = await fetch(`/api/patient-documents?patientId=${patientId}`, { credentials: "include" });
       return r.json();
     },
   });
@@ -587,7 +579,8 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
         const fileData = dataUrl.split(",")[1];
         const r = await fetch("/api/patient-documents", {
           method: "POST",
-          headers: patientHeaders(patientId),
+          credentials: "include",
+          headers: JSON_HEADERS,
           body: JSON.stringify({
             patientId,
             fileName: file.name,
@@ -616,7 +609,7 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
   };
 
   const deleteDoc = useMutation({
-    mutationFn: async (id: number) => { await fetch(`/api/patient-documents/${id}`, { method: "DELETE", headers: { "X-Patient-Id": String(patientId) } }); },
+    mutationFn: async (id: number) => { await fetch(`/api/patient-documents/${id}`, { method: "DELETE", credentials: "include" }); },
     onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/patient-documents?patientId=${patientId}`] }),
   });
 
@@ -722,7 +715,6 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
   );
 }
 
-// ── Document Viewer Modal ─────────────────────────────────────────────────────
 function DocViewer({ doc, patientId, onClose }: { doc: any; patientId: number; onClose: () => void }) {
   const [src, setSrc] = useState<string | null>(doc.fileData ? `data:${doc.mimeType};base64,${doc.fileData}` : null);
   const [loading, setLoading] = useState(!doc.fileData);
@@ -730,7 +722,7 @@ function DocViewer({ doc, patientId, onClose }: { doc: any; patientId: number; o
   React.useEffect(() => {
     if (doc.fileData) return;
     setLoading(true);
-    fetch(`/api/patient-documents/${doc.id}`, { headers: { "X-Patient-Id": String(patientId) } })
+    fetch(`/api/patient-documents/${doc.id}`, { credentials: "include" })
       .then(r => r.json())
       .then(full => { if (full.fileData) setSrc(`data:${full.mimeType};base64,${full.fileData}`); })
       .finally(() => setLoading(false));

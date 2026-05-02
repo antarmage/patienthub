@@ -6,7 +6,6 @@ import {
   Baby, Utensils, ShieldCheck, Activity, ChevronLeft, ChevronRight, X
 } from "lucide-react";
 
-// ── 40-week static content ─────────────────────────────────────────────────────
 export const WEEK_DATA: Record<number, {
   fruit: string; emoji: string; length: string; weight: string;
   development: string[]; symptoms: string[]; dos: string[]; donts: string[]; nutrition: string;
