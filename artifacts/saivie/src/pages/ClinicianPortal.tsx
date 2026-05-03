@@ -211,6 +211,153 @@ function GenomeInsightsBadge({ patientId }: { patientId: number }) {
   );
 }
 
+function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; patientName: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: [`/api/genome/results/patient/${patientId}`],
+    queryFn: async () => {
+      const res = await fetch(`/api/genome/results/patient/${patientId}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16 text-slate-400">
+        <div className="text-center space-y-2">
+          <Dna className="w-8 h-8 mx-auto animate-pulse text-yellow-500" />
+          <p className="text-sm">Loading genome data…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center py-16 text-slate-400">
+        <div className="text-center space-y-3">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto">
+            <Dna className="w-7 h-7 text-slate-400" />
+          </div>
+          <p className="text-sm font-medium text-slate-600">No genome data on file</p>
+          <p className="text-xs text-slate-400 max-w-xs">{patientName} has not yet uploaded a genome file through the SaivieGene app.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const riskBadge = (risk: string) => {
+    if (risk === "high") return "bg-red-100 text-red-700";
+    if (risk === "moderate") return "bg-amber-100 text-amber-700";
+    return "bg-emerald-100 text-emerald-700";
+  };
+  const likeliBadge = (l: string) => {
+    if (l === "elevated") return "bg-rose-100 text-rose-700";
+    if (l === "reduced") return "bg-emerald-100 text-emerald-700";
+    return "bg-slate-100 text-slate-600";
+  };
+  const pgxBadge = (r: string) => {
+    if (r === "poor") return "bg-red-100 text-red-700";
+    if (r === "sensitive") return "bg-orange-100 text-orange-700";
+    if (r === "rapid") return "bg-blue-100 text-blue-700";
+    return "bg-slate-100 text-slate-600";
+  };
+
+  const highRisks = (data.healthRisks ?? []).filter((r: any) => r.risk === "high");
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-5">
+      {/* Summary header */}
+      <Card className="shadow-sm border-yellow-200 bg-gradient-to-r from-yellow-50 to-amber-50">
+        <CardContent className="py-4 px-5">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center">
+                <Dna className="w-5 h-5 text-yellow-700" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-800">Genome Analysis on File</p>
+                <p className="text-xs text-slate-500">{(data.snpCount ?? 0).toLocaleString()} SNPs analysed · {data.fileName}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-center">
+              <div><p className="text-lg font-bold text-red-600">{highRisks.length}</p><p className="text-[10px] text-slate-500 uppercase tracking-wide">High Risks</p></div>
+              <div><p className="text-lg font-bold text-violet-600">{(data.pharmacogenomics ?? []).filter((p: any) => p.response !== "normal").length}</p><p className="text-[10px] text-slate-500 uppercase tracking-wide">Drug Flags</p></div>
+              <div><p className="text-lg font-bold text-slate-700">{(data.predispositions ?? []).length}</p><p className="text-[10px] text-slate-500 uppercase tracking-wide">Predispositions</p></div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Health Risks */}
+      {(data.healthRisks ?? []).length > 0 && (
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
+            <CardTitle className="text-xs font-bold text-slate-700 uppercase tracking-wide">🛡 Health Risks</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {(data.healthRisks ?? []).map((r: any, i: number) => (
+              <div key={i} className="flex items-start justify-between px-4 py-3 border-b border-slate-100 last:border-0 gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800">{r.name}</p>
+                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{r.description}</p>
+                </div>
+                <Badge className={`shrink-0 text-[10px] border-none font-semibold ${riskBadge(r.risk)}`}>{r.risk?.toUpperCase()}</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pharmacogenomics flags */}
+      {(data.pharmacogenomics ?? []).length > 0 && (
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
+            <CardTitle className="text-xs font-bold text-slate-700 uppercase tracking-wide">💊 Pharmacogenomic Flags</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {(data.pharmacogenomics ?? []).map((pgx: any, i: number) => (
+              <div key={i} className="px-4 py-3 border-b border-slate-100 last:border-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className="text-sm font-semibold text-slate-800">{pgx.drug}</p>
+                  <Badge className={`shrink-0 text-[10px] border-none font-semibold ${pgxBadge(pgx.response)}`}>{pgx.response?.toUpperCase()}</Badge>
+                </div>
+                <p className="text-[11px] font-mono text-blue-600 mb-1">Gene: {pgx.gene}</p>
+                <p className="text-xs text-slate-500 italic">{pgx.recommendation}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Predispositions */}
+      {(data.predispositions ?? []).length > 0 && (
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
+            <CardTitle className="text-xs font-bold text-slate-700 uppercase tracking-wide">🧬 Predispositions</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {(data.predispositions ?? []).map((p: any, i: number) => (
+              <div key={i} className="flex items-start justify-between px-4 py-3 border-b border-slate-100 last:border-0 gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800">{p.name}</p>
+                  <p className="text-[11px] font-mono text-blue-600">{p.gene}</p>
+                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{p.description}</p>
+                </div>
+                <Badge className={`shrink-0 text-[10px] border-none font-semibold ${likeliBadge(p.likelihood)}`}>{p.likelihood?.toUpperCase()}</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <p className="text-[10px] text-slate-400 text-center pb-2">For informational purposes only. Not a substitute for clinical judgement.</p>
+    </div>
+  );
+}
+
 export default function ClinicianPortal() {
   const [, navigate] = useLocation();
   const [activeView, setActiveView] = useState("dashboard");
@@ -222,7 +369,7 @@ export default function ClinicianPortal() {
   const [scheduleViewMode, setScheduleViewMode] = useState("appointments");
   const [calendarViewMode, setCalendarViewMode] = useState("month");
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
-  const [patientDetailTab, setPatientDetailTab] = useState<'overview' | 'postop'>('overview');
+  const [patientDetailTab, setPatientDetailTab] = useState<'overview' | 'postop' | 'genome'>('overview');
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingType, setBookingType] = useState("surgery");
@@ -3621,15 +3768,19 @@ export default function ClinicianPortal() {
 
               {/* Detailed View (Right) - Intelligent Dashboard */}
               <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
-                {/* Post-Op Tab Strip */}
+                {/* Tab Strip */}
                 <div className="flex gap-1 mb-5 bg-white rounded-xl border border-slate-200 p-1 w-fit shadow-sm">
                   <button onClick={() => setPatientDetailTab('overview')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${patientDetailTab === 'overview' ? 'bg-slate-100 text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>Overview</button>
                   <button onClick={() => setPatientDetailTab('postop')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${patientDetailTab === 'postop' ? 'bg-sky-50 text-sky-700' : 'text-slate-500 hover:text-slate-700'}`}>🏥 Post-Op</button>
+                  <button onClick={() => setPatientDetailTab('genome')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${patientDetailTab === 'genome' ? 'bg-yellow-50 text-yellow-800' : 'text-slate-500 hover:text-slate-700'}`}><Dna className="w-3.5 h-3.5" /> Genome</button>
                 </div>
                 {patientDetailTab === 'postop' && (
                   <PostOpDetailedView patientId={selectedPatient.id} patientName={selectedPatient.name} />
                 )}
-                <div className={patientDetailTab === 'postop' ? 'hidden' : ''}>
+                {patientDetailTab === 'genome' && (
+                  <GenomeInsightsPanel patientId={selectedPatient.id} patientName={selectedPatient.name} />
+                )}
+                <div className={patientDetailTab !== 'overview' ? 'hidden' : ''}>
                 <div className="max-w-7xl mx-auto space-y-6">
                    
                    {/* PATIENT HISTORY SUMMARY */}

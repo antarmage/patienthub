@@ -62,11 +62,11 @@ const SNP_PREDISPOSITIONS: Record<string, { name: string; likelihood: "elevated"
 };
 
 const SNP_PHARMACOGENOMICS: Record<string, { drug: string; response: "poor" | "normal" | "rapid" | "sensitive"; gene: string; recommendation: string }> = {
-  "rs4244285": { drug: "Clopidogrel (Plavix)", response: "poor", gene: "CYP2C19", description: "CYP2C19*2 loss-of-function variant — poor metaboliser. Reduced antiplatelet effect. Consider alternative antiplatelet therapy.", recommendation: "Discuss prasugrel or ticagrelor with your prescriber." },
-  "rs1057910": { drug: "Warfarin", response: "sensitive", gene: "CYP2C9", description: "CYP2C9*3 variant — reduced warfarin metabolism; lower doses may be required.", recommendation: "Lower starting dose recommended; close INR monitoring essential." },
-  "rs1800460": { drug: "6-Mercaptopurine / Azathioprine", response: "poor", gene: "TPMT", description: "TPMT variant associated with reduced thiopurine methyltransferase activity; increased myelosuppression risk.", recommendation: "Significant dose reduction required. Discuss with haematologist." },
-  "rs9923231": { drug: "Warfarin", response: "sensitive", gene: "VKORC1", description: "VKORC1 -1639G>A variant reduces warfarin target enzyme expression — lower dose requirement.", recommendation: "Start with lower dose; use pharmacogenomic dosing algorithm." },
-  "rs4149056": { drug: "Statins (Simvastatin/Atorvastatin)", response: "sensitive", gene: "SLCO1B1", description: "SLCO1B1*5 variant impairs statin hepatic uptake; elevated plasma statin levels and myopathy risk.", recommendation: "Prefer rosuvastatin or pravastatin; avoid high-dose simvastatin." },
+  "rs4244285": { drug: "Clopidogrel (Plavix)", response: "poor", gene: "CYP2C19", recommendation: "Discuss prasugrel or ticagrelor with your prescriber. CYP2C19*2 loss-of-function variant — poor metaboliser with reduced antiplatelet effect." },
+  "rs1057910": { drug: "Warfarin", response: "sensitive", gene: "CYP2C9", recommendation: "Lower starting dose recommended; close INR monitoring essential. CYP2C9*3 variant reduces warfarin metabolism." },
+  "rs1800460": { drug: "6-Mercaptopurine / Azathioprine", response: "poor", gene: "TPMT", recommendation: "Significant dose reduction required. Discuss with haematologist. TPMT variant increases myelosuppression risk." },
+  "rs9923231": { drug: "Warfarin", response: "sensitive", gene: "VKORC1", recommendation: "Start with lower dose; use pharmacogenomic dosing algorithm. VKORC1 -1639G>A variant reduces warfarin target enzyme expression." },
+  "rs4149056": { drug: "Statins (Simvastatin/Atorvastatin)", response: "sensitive", gene: "SLCO1B1", recommendation: "Prefer rosuvastatin or pravastatin; avoid high-dose simvastatin. SLCO1B1*5 variant impairs hepatic statin uptake." },
 };
 
 const SNP_TRAITS: Record<string, { trait: string; value: string; description: string }> = {

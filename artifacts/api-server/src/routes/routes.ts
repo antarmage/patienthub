@@ -3896,7 +3896,7 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
     const patientId = getMobilePatientId(req, res);
     if (!patientId) return;
 
-    const { jobId } = req.params;
+    const jobId = Array.isArray(req.params.jobId) ? req.params.jobId[0] : req.params.jobId;
     const job = genomeJobs.get(jobId);
 
     if (!job) {
@@ -3973,9 +3973,17 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
   });
 
   // GET /api/genome/results/patient/:patientId — clinician portal: get patient genome insights
+  // Requires either a valid session (patient/clinician portal) or staff Bearer token.
   app.get("/api/genome/results/patient/:patientId", async (req: Request, res: Response) => {
+    const hasSession = !!((req as any).session)?.patientId;
+    const auth = (req.headers["authorization"] ?? "") as string;
+    const hasStaffToken = auth.startsWith("Bearer ") && staffAuthTokens.has(auth.slice(7));
+    if (!hasSession && !hasStaffToken) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
     try {
-      const pid = parseId(req.params.patientId);
+      const pid = parseId(Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId);
       if (!pid) { res.status(400).json({ error: "Invalid patient ID" }); return; }
 
       const client = await (await import("../db")).pool.connect();
@@ -4060,6 +4068,15 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
   });
 }
 
+function escHtml(s: unknown): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function generateReportHtml(data: {
   fileName: string;
   snpCount: number;
@@ -4104,11 +4121,11 @@ function generateReportHtml(data: {
 <div class="header">
   <div class="logo">⬡ SAIVIEGENE</div>
   <h1>Genome Analysis Report</h1>
-  <div class="subtitle">Analysed: ${data.date} &nbsp;·&nbsp; File: ${data.fileName}</div>
+  <div class="subtitle">Analysed: ${escHtml(data.date)} &nbsp;·&nbsp; File: ${escHtml(data.fileName)}</div>
   <div class="stats">
-    <div class="stat"><div class="stat-val">${data.snpCount.toLocaleString()}</div><div class="stat-lab">SNPs Analysed</div></div>
-    <div class="stat"><div class="stat-val">${data.healthRisks.length + data.predispositions.length}</div><div class="stat-lab">Conditions Screened</div></div>
-    <div class="stat"><div class="stat-val">${data.pharmacogenomics.length}</div><div class="stat-lab">Drug Interactions</div></div>
+    <div class="stat"><div class="stat-val">${escHtml(data.snpCount.toLocaleString())}</div><div class="stat-lab">SNPs Analysed</div></div>
+    <div class="stat"><div class="stat-val">${escHtml(data.healthRisks.length + data.predispositions.length)}</div><div class="stat-lab">Conditions Screened</div></div>
+    <div class="stat"><div class="stat-val">${escHtml(data.pharmacogenomics.length)}</div><div class="stat-lab">Drug Interactions</div></div>
   </div>
 </div>
 
@@ -4117,10 +4134,10 @@ function generateReportHtml(data: {
   ${data.healthRisks.map((r) => `
   <div class="item">
     <div class="item-header">
-      <div class="item-name">${r.name}</div>
-      <span class="badge" style="background:${riskColor(r.risk)}22;color:${riskColor(r.risk)}">${r.risk?.toUpperCase()}</span>
+      <div class="item-name">${escHtml(r.name)}</div>
+      <span class="badge" style="background:${riskColor(r.risk)}22;color:${riskColor(r.risk)}">${escHtml(r.risk?.toUpperCase())}</span>
     </div>
-    <div class="item-desc">${r.description}</div>
+    <div class="item-desc">${escHtml(r.description)}</div>
   </div>`).join("")}
 </div>
 
@@ -4129,11 +4146,11 @@ function generateReportHtml(data: {
   ${data.predispositions.map((p) => `
   <div class="item">
     <div class="item-header">
-      <div class="item-name">${p.name}</div>
-      <span class="badge" style="background:${likeColor(p.likelihood)}22;color:${likeColor(p.likelihood)}">${p.likelihood?.toUpperCase()}</span>
+      <div class="item-name">${escHtml(p.name)}</div>
+      <span class="badge" style="background:${likeColor(p.likelihood)}22;color:${likeColor(p.likelihood)}">${escHtml(p.likelihood?.toUpperCase())}</span>
     </div>
-    <div class="gene">Gene: ${p.gene}</div>
-    <div class="item-desc">${p.description}</div>
+    <div class="gene">Gene: ${escHtml(p.gene)}</div>
+    <div class="item-desc">${escHtml(p.description)}</div>
   </div>`).join("")}
 </div>
 
@@ -4142,11 +4159,11 @@ function generateReportHtml(data: {
   ${data.pharmacogenomics.map((pgx) => `
   <div class="item">
     <div class="item-header">
-      <div class="item-name">${pgx.drug}</div>
-      <span class="badge" style="background:#7c3aed22;color:#a78bfa">${pgx.response?.toUpperCase()}</span>
+      <div class="item-name">${escHtml(pgx.drug)}</div>
+      <span class="badge" style="background:#7c3aed22;color:#a78bfa">${escHtml(pgx.response?.toUpperCase())}</span>
     </div>
-    <div class="gene">Gene: ${pgx.gene}</div>
-    <div class="rec">→ ${pgx.recommendation}</div>
+    <div class="gene">Gene: ${escHtml(pgx.gene)}</div>
+    <div class="rec">→ ${escHtml(pgx.recommendation)}</div>
   </div>`).join("")}
 </div>
 
@@ -4155,10 +4172,10 @@ function generateReportHtml(data: {
   ${data.traits.map((t) => `
   <div class="item">
     <div class="item-header">
-      <div class="item-name">${t.trait}</div>
-      <span class="badge" style="background:#0d916022;color:#34d399">${t.value}</span>
+      <div class="item-name">${escHtml(t.trait)}</div>
+      <span class="badge" style="background:#0d916022;color:#34d399">${escHtml(t.value)}</span>
     </div>
-    <div class="item-desc">${t.description}</div>
+    <div class="item-desc">${escHtml(t.description)}</div>
   </div>`).join("")}
 </div>
 
