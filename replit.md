@@ -91,6 +91,30 @@ Mobile-first React + Vite web app at `/saiviegene/`. Dark navy (#0a0e1a) + gold 
 - `saiviegene_plan` — selected plan ("monthly"/"annual")
 - `saiviegene_onboarded` — whether onboarding was completed
 
+## SaivieKiosk — Patient Self-Service Check-In
+
+Patient-facing tablet kiosk at `/kiosk/` (served via the `saivie` artifact at `/`). Dark navy + indigo branding, large-touch-friendly layout, no staff UI.
+
+**Screens (single `Kiosk.tsx` component — screen state machine):**
+- `phone` — Large numeric keypad + phone display, "Find My Appointment" lookup
+- `appointments` — Today's appointments for the matched patient, tap to proceed
+- `confirm-checkin` — Shows appointment details (time, provider, service), confirm button
+- `intake` — Pre-visit form: chief complaint, current medications, allergies, new symptoms
+- `status` — Live appointment status (Waiting → With Doctor → Completed) with 30s polling
+
+**Idle reset:** 90-second inactivity timer (any pointer/touch/keyboard event resets it); shows countdown warning at ≤20s; auto-returns to phone screen.
+
+**Backend routes (`/api/kiosk/*`):**
+- `POST /api/kiosk/lookup` — phone → patient + today's appointments + provider names (no auth, trusted terminal)
+- `GET /api/kiosk/appointment/:id` — poll live appointment status/timestamps (no auth)
+- Reuses existing `PATCH /api/appointments/:id` for check-in (sets `checkedInAt` + `status: "checked-in"`)
+- Reuses existing `PATCH /api/appointments/:id` for intake (saves `chiefComplaint` + `notes`)
+- Reuses existing `PATCH /api/patients/:id` for allergy data
+
+**Key file:** `artifacts/saivie/src/pages/Kiosk.tsx`
+
+**Note:** The project is at the 7-artifact maximum, so the kiosk is a route within the `saivie` artifact rather than a standalone artifact. It is fully accessible at `/kiosk/` from the preview pane.
+
 ## SaivieMom Postpartum Care Hub
 
 All screens live under `artifacts/mamacare-mobile/app/(postpartum)/`:

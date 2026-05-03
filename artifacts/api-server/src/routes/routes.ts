@@ -471,6 +471,65 @@ export async function registerRoutes(
 
   // ── End mobile routes ─────────────────────────────────────────────────────
 
+  // ── Kiosk routes (patient self-service terminal) ──────────────────────────
+  // No auth required — the kiosk is a trusted in-clinic terminal.
+
+  // POST /api/kiosk/lookup — phone number → patient + today's appointments
+  app.post("/api/kiosk/lookup", async (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: "phone required" });
+    const normalized = String(phone).replace(/\D/g, "");
+    if (normalized.length < 7) return res.status(400).json({ error: "Invalid phone number" });
+
+    const allPatients = await storage.getPatients();
+    const patient = allPatients.find(p => {
+      if (!p.phone) return false;
+      const stored = p.phone.replace(/\D/g, "");
+      if (stored.length < 7) return false;
+      const cmp = Math.min(normalized.length, stored.length, 10);
+      return normalized.slice(-cmp) === stored.slice(-cmp);
+    });
+    if (!patient) return res.status(404).json({ error: "No patient found for this phone number." });
+
+    const today = new Date().toISOString().split("T")[0];
+    const todayAppts = await storage.getAppointmentsByDate(today);
+    const patientAppts = todayAppts.filter(a => a.patientId === patient.id);
+
+    const providers = await storage.getProviders();
+    const appointments = patientAppts.map(a => ({
+      id: a.id,
+      date: a.date,
+      time: a.time,
+      type: a.type,
+      status: a.status,
+      checkedInAt: a.checkedInAt,
+      providerName: providers.find(p => p.id === a.providerId)?.name ?? "Your Doctor",
+    }));
+
+    res.json({
+      patient: { id: patient.id, name: patient.name, phone: patient.phone },
+      appointments,
+    });
+  });
+
+  // GET /api/kiosk/appointment/:id — poll live appointment status
+  app.get("/api/kiosk/appointment/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const appts = await storage.getAppointments();
+    const appt = appts.find(a => a.id === id);
+    if (!appt) return res.status(404).json({ error: "Appointment not found" });
+    res.json({
+      id: appt.id,
+      status: appt.status,
+      checkedInAt: appt.checkedInAt,
+      seenAt: appt.seenAt,
+      completedAt: appt.completedAt,
+    });
+  });
+
+  // ── End kiosk routes ──────────────────────────────────────────────────────
+
   app.get("/api/patients", async (req, res) => {
     const providerId = req.query.providerId ? parseInt(req.query.providerId as string) : undefined;
     if (providerId) {
