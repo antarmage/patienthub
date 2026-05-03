@@ -89,8 +89,13 @@ export default function Kiosk() {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     if (idleCountdownTimer.current) clearInterval(idleCountdownTimer.current);
     setIdleCountdown(IDLE_SECONDS);
+    // On the phone screen, idle clears only the entered digits (privacy).
+    // On all other screens, idle returns fully to home.
+    const onIdle = screen === "phone"
+      ? () => { setPhone(""); setError(""); }
+      : resetToHome;
+    idleTimer.current = setTimeout(onIdle, IDLE_SECONDS * 1000);
     if (screen !== "phone") {
-      idleTimer.current = setTimeout(resetToHome, IDLE_SECONDS * 1000);
       let secs = IDLE_SECONDS;
       idleCountdownTimer.current = setInterval(() => {
         secs -= 1;

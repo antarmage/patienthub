@@ -521,7 +521,7 @@ export async function registerRoutes(
   // Simple IP rate limiter for phone lookup (max 10 req/min per IP)
   const kioskLookupRateMap = new Map<string, { count: number; resetAt: number }>();
   function kioskLookupRateLimit(req: Request, res: Response): boolean {
-    const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "unknown";
+    const ip = req.ip ?? req.socket.remoteAddress ?? "unknown";
     const now = Date.now();
     const entry = kioskLookupRateMap.get(ip);
     if (!entry || entry.resetAt < now) {
@@ -553,11 +553,21 @@ export async function registerRoutes(
       const cmp = Math.min(normalized.length, stored.length, 10);
       return normalized.slice(-cmp) === stored.slice(-cmp);
     });
-    if (!patient) return res.status(404).json({ error: "No patient found for this phone number." });
+    // Only reveal patient identity after confirming a same-day appointment exists.
+    // A generic 404 is returned for both "unknown phone" and "no appointment today"
+    // to avoid confirming whether a phone number is registered in the system.
+    if (!patient) {
+      return res.status(404).json({ error: "No appointment found for today. Please speak to a staff member." });
+    }
 
     const today = new Date().toISOString().split("T")[0];
     const todayAppts = await storage.getAppointmentsByDate(today);
     const patientAppts = todayAppts.filter(a => a.patientId === patient.id);
+
+    if (patientAppts.length === 0) {
+      // Do not confirm the patient exists or return their name/id
+      return res.status(404).json({ error: "No appointment found for today. Please speak to a staff member." });
+    }
 
     const providers = await storage.getProviders();
     const appointments = patientAppts.map(a => ({
