@@ -9,6 +9,10 @@ import { Button } from "@/components/Button";
 import { useApp } from "@/context/AppContext";
 import { COLORS, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
+const BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "");
+
 export default function AuthScreen() {
   const [phone, setPhone] = useState("");
   const [showOtp, setShowOtp] = useState(false);
@@ -19,10 +23,25 @@ export default function AuthScreen() {
   const { completeAuth } = useApp();
   const router = useRouter();
 
-  const handleSendOtp = () => {
-    if (phone.length >= 10) {
-      setLoading(true);
-      setTimeout(() => { setLoading(false); setShowOtp(true); }, 800);
+  const handleSendOtp = async () => {
+    if (phone.length < 10) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/mobile/auth/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: `+91${phone}` }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        Alert.alert("Error", data.error || "Could not send verification code.");
+        return;
+      }
+      setShowOtp(true);
+    } catch {
+      Alert.alert("Connection Error", "Unable to reach the server. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -34,12 +53,14 @@ export default function AuthScreen() {
   };
 
   const handleVerify = async () => {
+    const otpCode = otp.join("");
+    if (otpCode.length !== 6) return;
     setLoading(true);
     try {
-      await completeAuth(phone);
+      await completeAuth(`+91${phone}`, otpCode);
       router.replace("/(tabs)");
     } catch (err: any) {
-      Alert.alert("Login Failed", err?.message || "Please check your phone number and try again.");
+      Alert.alert("Login Failed", err?.message || "Please check your code and try again.");
     } finally {
       setLoading(false);
     }
@@ -52,7 +73,6 @@ export default function AuthScreen() {
   return (
     <LinearGradient colors={["#eaf2ff", "#f7f9fc", "#eef1f7"]} style={[styles.root, { paddingTop: topPad, paddingBottom: botPad }]}>
 
-      {/* Logo */}
       <View style={styles.logoSection}>
         <View style={[styles.logoIcon, { backgroundColor: COLORS.lavender }]}>
           <Feather name="heart" size={36} color={COLORS.primary} />
@@ -61,7 +81,6 @@ export default function AuthScreen() {
         <ThemedText type="body" style={styles.tagline}>Your pregnancy companion</ThemedText>
       </View>
 
-      {/* Form */}
       <View style={[styles.card, Shadows.cardElevated]}>
         {!showOtp ? (
           <>
@@ -87,7 +106,7 @@ export default function AuthScreen() {
         ) : (
           <>
             <ThemedText type="h3" style={styles.formTitle}>Verify your number</ThemedText>
-            <ThemedText type="small" style={styles.otpSub}>OTP sent to +91 {phone}</ThemedText>
+            <ThemedText type="small" style={styles.otpSub}>OTP sent to +91 {phone} via WhatsApp</ThemedText>
             <View style={styles.otpRow}>
               {otp.map((d, i) => (
                 <TextInput
@@ -107,7 +126,7 @@ export default function AuthScreen() {
             <Button onPress={handleVerify} disabled={!isOtpComplete || loading}>
               {loading ? <ActivityIndicator color="#FFF" /> : "Verify & Continue"}
             </Button>
-            <Pressable onPress={() => setShowOtp(false)} style={styles.changeNum}>
+            <Pressable onPress={() => { setShowOtp(false); setOtp(["", "", "", "", "", ""]); }} style={styles.changeNum}>
               <Feather name="arrow-left" size={14} color={COLORS.primary} />
               <ThemedText type="small" style={{ color: COLORS.primary }}>Change number</ThemedText>
             </Pressable>

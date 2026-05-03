@@ -86,7 +86,10 @@ export default function RecoverApp() {
   const [staff, setStaff] = useState<Staff | null>(() => {
     try { return JSON.parse(sessionStorage.getItem("recover_staff") || "null"); } catch { return null; }
   });
+  const [loginStep, setLoginStep] = useState<"credentials" | "otp">("credentials");
   const [loginForm, setLoginForm] = useState({ username: "", passcode: "" });
+  const [loginOtp, setLoginOtp] = useState("");
+  const [loginMaskedPhone, setLoginMaskedPhone] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
 
@@ -124,21 +127,43 @@ export default function RecoverApp() {
     setView("search");
   }
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleRequestOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setLoginError("");
+    setLoginLoading(true);
+    try {
+      const r = await api("/api/staff/otp/request", {
+        method: "POST",
+        body: JSON.stringify({ username: loginForm.username, passcode: loginForm.passcode }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setLoginError((data as any).error || "Invalid credentials");
+        return;
+      }
+      setLoginMaskedPhone((data as any).phone || "");
+      setLoginStep("otp");
+    } catch {
+      setLoginError("Network error, please try again.");
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
+  async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
     setLoginError("");
     setLoginLoading(true);
     try {
       const r = await api("/api/postop/auth/login", {
         method: "POST",
-        body: JSON.stringify({ username: loginForm.username, passcode: loginForm.passcode }),
+        body: JSON.stringify({ username: loginForm.username, passcode: loginForm.passcode, otp: loginOtp }),
       });
+      const data = await r.json().catch(() => ({}));
       if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        setLoginError((err as any).error || "Login failed");
+        setLoginError((data as any).error || "Verification failed");
         return;
       }
-      const data = await r.json();
       sessionStorage.setItem("recover_token", data.staffToken);
       sessionStorage.setItem("recover_staff", JSON.stringify(data.user));
       setToken(data.staffToken);
@@ -237,30 +262,61 @@ export default function RecoverApp() {
             <p className="text-slate-500 text-sm mt-1">Post-Operative Care Tablet</p>
           </CardHeader>
           <CardContent className="pt-4">
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-sm font-semibold text-slate-700">Staff Username</Label>
-                <Input
-                  id="username" autoCapitalize="none" autoCorrect="off"
-                  value={loginForm.username} onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))}
-                  placeholder="Enter your username" className="h-13 text-base"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="passcode" className="text-sm font-semibold text-slate-700">Passcode</Label>
-                <Input
-                  id="passcode" type="password" autoComplete="current-password"
-                  value={loginForm.passcode} onChange={e => setLoginForm(f => ({ ...f, passcode: e.target.value }))}
-                  placeholder="Enter passcode" className="h-13 text-base"
-                />
-              </div>
-              {loginError && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm px-4 py-3 rounded-xl">{loginError}</div>
-              )}
-              <Button type="submit" className="w-full h-13 text-base font-semibold bg-sky-600 hover:bg-sky-700" disabled={loginLoading || !loginForm.username || !loginForm.passcode}>
-                {loginLoading ? "Signing in…" : "Sign In"}
-              </Button>
-            </form>
+            {loginStep === "credentials" ? (
+              <form onSubmit={handleRequestOtp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="text-sm font-semibold text-slate-700">Staff Username</Label>
+                  <Input
+                    id="username" autoCapitalize="none" autoCorrect="off"
+                    value={loginForm.username} onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))}
+                    placeholder="Enter your username" className="h-13 text-base"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="passcode" className="text-sm font-semibold text-slate-700">Passcode</Label>
+                  <Input
+                    id="passcode" type="password" autoComplete="current-password"
+                    value={loginForm.passcode} onChange={e => setLoginForm(f => ({ ...f, passcode: e.target.value }))}
+                    placeholder="Enter passcode" className="h-13 text-base"
+                  />
+                </div>
+                {loginError && (
+                  <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm px-4 py-3 rounded-xl">{loginError}</div>
+                )}
+                <Button type="submit" className="w-full h-13 text-base font-semibold bg-sky-600 hover:bg-sky-700" disabled={loginLoading || !loginForm.username || !loginForm.passcode}>
+                  {loginLoading ? "Sending code…" : "Continue"}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => { setLoginStep("credentials"); setLoginOtp(""); setLoginError(""); }}
+                  className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-2"
+                >
+                  ← Back
+                </button>
+                <p className="text-sm text-slate-600">
+                  Enter the 6-digit code sent to <strong>{loginMaskedPhone || "your registered phone"}</strong> via WhatsApp.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="otp" className="text-sm font-semibold text-slate-700">Verification Code</Label>
+                  <Input
+                    id="otp" type="number" inputMode="numeric"
+                    value={loginOtp} onChange={e => setLoginOtp(e.target.value.slice(0, 6))}
+                    placeholder="000000" className="h-13 text-2xl tracking-widest text-center"
+                    autoFocus
+                  />
+                </div>
+                {loginError && (
+                  <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm px-4 py-3 rounded-xl">{loginError}</div>
+                )}
+                <Button type="submit" className="w-full h-13 text-base font-semibold bg-sky-600 hover:bg-sky-700" disabled={loginLoading || loginOtp.length !== 6}>
+                  {loginLoading ? "Verifying…" : "Sign In"}
+                </Button>
+                <p className="text-xs text-slate-400 text-center">Code expires in 5 minutes.</p>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>

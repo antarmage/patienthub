@@ -103,6 +103,62 @@ function getStaffUserId(req: Request, res: Response): string | null {
   return entry.userId;
 }
 
+// ── OTP Store ─────────────────────────────────────────────────────────────────
+const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const otpStore = new Map<string, { code: string; expiresAt: number }>();
+
+function generateOtp(): string {
+  return String(crypto.randomInt(100000, 1000000));
+}
+
+async function sendOtp(phone: string, code: string): Promise<void> {
+  const message = `Your Saivie verification code is: ${code}. Valid for 5 minutes.`;
+  if (whatsapp.isConfigured) {
+    await whatsapp.sendTextMessage(phone, message);
+    // If sendTextMessage throws, the error propagates to the caller
+  } else {
+    console.log("------------------------------------------");
+    console.log(`🔑 OTP for ${phone}: ${code}`);
+    console.log("------------------------------------------");
+  }
+}
+
+// ── OTP Verification Tickets ───────────────────────────────────────────────
+const OTP_TICKET_TTL_MS = 2 * 60 * 1000; // 2 minutes — one-time use only
+const otpTickets = new Map<string, { userId: string; expiresAt: number }>();
+
+function issueOtpTicket(userId: string): string {
+  const ticket = crypto.randomBytes(32).toString("hex");
+  otpTickets.set(ticket, { userId, expiresAt: Date.now() + OTP_TICKET_TTL_MS });
+  return ticket;
+}
+
+function consumeOtpTicket(ticket: string): string | null {
+  const entry = otpTickets.get(ticket);
+  if (!entry) return null;
+  otpTickets.delete(ticket); // one-time use
+  if (entry.expiresAt < Date.now()) return null;
+  return entry.userId;
+}
+
+function storeOtp(phone: string, code: string): void {
+  const key = phone.replace(/\D/g, "");
+  otpStore.set(key, { code, expiresAt: Date.now() + OTP_TTL_MS });
+}
+
+function validateOtp(phone: string, code: string): boolean {
+  const key = phone.replace(/\D/g, "");
+  const entry = otpStore.get(key);
+  if (!entry) return false;
+  if (entry.expiresAt < Date.now()) {
+    otpStore.delete(key);
+    return false;
+  }
+  if (entry.code !== String(code)) return false;
+  otpStore.delete(key);
+  return true;
+}
+
 // ── AI Audit Log ──────────────────────────────────────────────────────────────
 const AUDIT_LOG_PATH = path.join(process.cwd(), "data", "ai_audit_log.jsonl");
 
@@ -141,27 +197,8 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
-  // Mobile app: request OTP (simulated — confirms the phone is registered, does not send SMS)
+  // Mobile app: request OTP — generates a real 6-digit code and delivers it via WhatsApp
   app.post("/api/mobile/auth/request", async (req, res) => {
-    const { phone } = req.body;
-    if (!phone) return res.status(400).json({ error: "phone required" });
-    const normalized = String(phone).replace(/\D/g, "");
-    if (normalized.length < 7) return res.status(400).json({ error: "Invalid phone number" });
-    const allPatients = await storage.getPatients();
-    const found = allPatients.some(p => {
-      if (!p.phone) return false;
-      const stored = p.phone.replace(/\D/g, "");
-      if (stored.length < 7) return false;
-      const cmp = Math.min(normalized.length, stored.length, 10);
-      return normalized.slice(-cmp) === stored.slice(-cmp);
-    });
-    if (!found) return res.status(404).json({ error: "No patient found for this phone number" });
-    // In a production system this would send an SMS OTP. For now, accept any 6-digit code.
-    res.json({ success: true, message: "Verification code sent" });
-  });
-
-  // Mobile app: look up patient by phone number (no session required)
-  app.post("/api/mobile/auth/login", async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: "phone required" });
     const normalized = String(phone).replace(/\D/g, "");
@@ -171,14 +208,138 @@ export async function registerRoutes(
       if (!p.phone) return false;
       const stored = p.phone.replace(/\D/g, "");
       if (stored.length < 7) return false;
-      // Accept 10-digit exact match or country-code prefix equivalence
-      // e.g. "8404828065" matches "918404828065" — compare last 10 digits
+      const cmp = Math.min(normalized.length, stored.length, 10);
+      return normalized.slice(-cmp) === stored.slice(-cmp);
+    });
+    if (!patient) return res.status(404).json({ error: "No patient found for this phone number" });
+    const code = generateOtp();
+    storeOtp(normalized, code);
+    try {
+      await sendOtp(phone, code);
+    } catch (err: unknown) {
+      console.error("[OTP] Failed to send:", err instanceof Error ? err.message : err);
+      return res.status(503).json({ error: "Failed to send verification code. Please try again." });
+    }
+    res.json({ success: true, message: "Verification code sent" });
+  });
+
+  // Mobile app: verify OTP and issue mobile token
+  app.post("/api/mobile/auth/login", async (req, res) => {
+    const { phone, otp } = req.body;
+    if (!phone) return res.status(400).json({ error: "phone required" });
+    if (!otp) return res.status(400).json({ error: "otp required" });
+    const normalized = String(phone).replace(/\D/g, "");
+    if (normalized.length < 7) return res.status(400).json({ error: "Invalid phone number" });
+    if (!validateOtp(normalized, String(otp))) {
+      return res.status(401).json({ error: "Invalid or expired verification code" });
+    }
+    const allPatients = await storage.getPatients();
+    const patient = allPatients.find(p => {
+      if (!p.phone) return false;
+      const stored = p.phone.replace(/\D/g, "");
+      if (stored.length < 7) return false;
       const cmp = Math.min(normalized.length, stored.length, 10);
       return normalized.slice(-cmp) === stored.slice(-cmp);
     });
     if (!patient) return res.status(404).json({ error: "No patient found for this phone number" });
     const mobileToken = issueMobileToken(patient.id);
     res.json({ patient, mobileToken });
+  });
+
+  // Staff OTP request — validates credentials then sends OTP to the staff member's registered phone
+  app.post("/api/staff/otp/request", async (req, res) => {
+    const { identifier, username, passcode, pin } = req.body as {
+      identifier?: string; username?: string; passcode?: string; pin?: string;
+    };
+    const id = (identifier ?? username ?? "").trim();
+    const secret = (pin ?? passcode ?? "").trim();
+    if (!id || !secret) {
+      return res.status(400).json({ error: "identifier and passcode required" });
+    }
+    const userByPin = await storage.getUserByPasscode(secret);
+    let user = userByPin && (userByPin.username === id || userByPin.phone === id) ? userByPin : undefined;
+    if (!user) {
+      const userByPhone = await storage.getUserByPhone(id);
+      if (userByPhone?.password === secret) user = userByPhone;
+    }
+    if (!user) {
+      const userByUsername = await storage.getUserByUsername(id);
+      if (userByUsername?.password === secret) user = userByUsername;
+    }
+    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+    const phone = user.phone;
+    if (!phone) {
+      return res.status(400).json({ error: "No phone number registered for this account. Contact your admin." });
+    }
+    const code = generateOtp();
+    storeOtp(phone, code);
+    try {
+      await sendOtp(phone, code);
+    } catch (err: unknown) {
+      console.error("[OTP] Failed to send staff OTP:", err instanceof Error ? err.message : err);
+      return res.status(503).json({ error: "Failed to send verification code. Please try again." });
+    }
+    const masked = phone.replace(/(\d{2})\d+(\d{2})$/, "$1****$2");
+    res.json({ success: true, message: "OTP sent", phone: masked });
+  });
+
+  // Staff OTP verify — validates OTP and returns a short-lived one-time ticket
+  // The ticket can be passed to /api/desk/auth or /api/postop/auth/login instead of OTP
+  app.post("/api/staff/otp/verify", async (req, res) => {
+    const { identifier, username, passcode, pin, otp } = req.body as {
+      identifier?: string; username?: string; passcode?: string; pin?: string; otp?: string;
+    };
+    const id = (identifier ?? username ?? "").trim();
+    const secret = (pin ?? passcode ?? "").trim();
+    if (!id || !secret) {
+      return res.status(400).json({ error: "identifier and passcode required" });
+    }
+    if (!otp) return res.status(400).json({ error: "otp required" });
+    const userByPin = await storage.getUserByPasscode(secret);
+    let user = userByPin && (userByPin.username === id || userByPin.phone === id) ? userByPin : undefined;
+    if (!user) {
+      const userByPhone = await storage.getUserByPhone(id);
+      if (userByPhone?.password === secret) user = userByPhone;
+    }
+    if (!user) {
+      const userByUsername = await storage.getUserByUsername(id);
+      if (userByUsername?.password === secret) user = userByUsername;
+    }
+    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+    const phone = user.phone;
+    if (!phone || !validateOtp(phone, String(otp))) {
+      return res.status(401).json({ error: "Invalid or expired verification code" });
+    }
+    const ticket = issueOtpTicket(user.id);
+    res.json({ ticket });
+  });
+
+  // Patient OTP request for Saivie web portal
+  app.post("/api/auth/patient-otp/request", async (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: "Phone number is required" });
+    const normalizedPhone = phone.replace(/[\s\-\(\)]/g, "").replace(/^\+91/, "").slice(-10);
+    if (normalizedPhone.length !== 10 || !/^\d{10}$/.test(normalizedPhone)) {
+      return res.status(400).json({ error: "Please enter a valid 10-digit phone number" });
+    }
+    const allPatients = await storage.getPatients();
+    const patient = allPatients.find((p: any) => {
+      if (!p.phone) return false;
+      const pPhone = p.phone.replace(/[\s\-\(\)]/g, "").replace(/^\+91/, "").slice(-10);
+      return pPhone === normalizedPhone;
+    });
+    if (!patient) {
+      return res.status(404).json({ error: "No patient found with this phone number. Please contact the clinic." });
+    }
+    const code = generateOtp();
+    storeOtp(normalizedPhone, code);
+    try {
+      await sendOtp(patient.phone || phone, code);
+    } catch (err: unknown) {
+      console.error("[OTP] Failed to send patient OTP:", err instanceof Error ? err.message : err);
+      return res.status(503).json({ error: "Failed to send verification code. Please try again." });
+    }
+    res.json({ success: true, message: "Verification code sent" });
   });
 
   // ── Mobile self-tracking routes ────────────────────────────────────────────
@@ -1626,10 +1787,35 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.post("/api/auth/passcode", async (req, res) => {
-    const { passcode } = req.body;
+    const { passcode, otp } = req.body;
     if (!passcode) return res.status(400).json({ error: "Passcode required" });
     const user = await storage.getUserByPasscode(passcode);
     if (!user) return res.status(401).json({ error: "Invalid passcode" });
+
+    // Require a registered phone on all accounts
+    const phone = user.phone;
+    if (!phone) {
+      return res.status(403).json({ error: "No phone number registered for this account. Contact your admin to add a phone number before logging in." });
+    }
+
+    // If OTP not supplied yet, send one to the staff member's registered phone
+    if (!otp) {
+      const code = generateOtp();
+      storeOtp(phone, code);
+      try {
+        await sendOtp(phone, code);
+      } catch (err: unknown) {
+        console.error("[OTP] Failed to send staff passcode OTP:", err instanceof Error ? err.message : err);
+        return res.status(503).json({ error: "Failed to send verification code. Please try again." });
+      }
+      const masked = phone.replace(/(\d{2})\d+(\d{2})$/, "$1****$2");
+      return res.json({ otpRequired: true, phone: masked });
+    }
+
+    // OTP supplied — validate it
+    if (!validateOtp(phone, String(otp))) {
+      return res.status(401).json({ error: "Invalid or expired verification code" });
+    }
 
     let providerInfo = null;
     if (user.role === "clinician") {
@@ -1641,7 +1827,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       };
       const providerName = usernameToProvider[user.username];
       if (providerName) {
-        providerInfo = providers.find(p => p.name.toLowerCase().includes(providerName.toLowerCase().split(' ')[1]));
+        providerInfo = providers.find(p => p.name.toLowerCase().includes(providerName.toLowerCase().split(" ")[1]));
       }
     }
 
@@ -1654,18 +1840,23 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.post("/api/auth/patient-login", async (req, res) => {
-    const { phone } = req.body;
+    const { phone, otp } = req.body;
     if (!phone) return res.status(400).json({ error: "Phone number is required" });
+    if (!otp) return res.status(400).json({ error: "Verification code is required" });
 
-    const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '').replace(/^\+91/, '').slice(-10);
+    const normalizedPhone = phone.replace(/[\s\-\(\)]/g, "").replace(/^\+91/, "").slice(-10);
     if (normalizedPhone.length !== 10 || !/^\d{10}$/.test(normalizedPhone)) {
       return res.status(400).json({ error: "Please enter a valid 10-digit phone number" });
+    }
+
+    if (!validateOtp(normalizedPhone, String(otp))) {
+      return res.status(401).json({ error: "Invalid or expired verification code" });
     }
 
     const allPatients = await storage.getPatients();
     const patient = allPatients.find((p: any) => {
       if (!p.phone) return false;
-      const pPhone = p.phone.replace(/[\s\-\(\)]/g, '').replace(/^\+91/, '').slice(-10);
+      const pPhone = p.phone.replace(/[\s\-\(\)]/g, "").replace(/^\+91/, "").slice(-10);
       return pPhone === normalizedPhone;
     });
 
@@ -3736,10 +3927,22 @@ Return a JSON object:
 
   // Staff login: authenticate using username+password stored in users table
   app.post("/api/postop/auth/login", async (req, res) => {
-    const { username, passcode } = req.body;
+    const { username, passcode, otp, ticket } = req.body;
     if (!username || !passcode) return res.status(400).json({ error: "username and passcode required" });
     const user = await storage.getUserByPasscode(passcode);
     if (!user || user.username !== username) return res.status(401).json({ error: "Invalid credentials" });
+    if (!otp && !ticket) return res.status(400).json({ error: "Verification code required" });
+    if (ticket) {
+      const ticketUserId = consumeOtpTicket(String(ticket));
+      if (!ticketUserId || ticketUserId !== user.id) {
+        return res.status(401).json({ error: "Invalid or expired verification ticket" });
+      }
+    } else {
+      const phone = user.phone;
+      if (!phone || !validateOtp(phone, String(otp))) {
+        return res.status(401).json({ error: "Invalid or expired verification code" });
+      }
+    }
     const staffToken = issueStaffToken(user.id);
     res.json({ staffToken, user: { id: user.id, username: user.username, role: user.role } });
   });
@@ -3824,33 +4027,39 @@ const deskUpdateSchema = insertPatientSchema.pick(deskIntakeFields).partial();
 
 async function handleDeskAuth(req: Request, res: Response) {
   try {
-    const { identifier, username, passcode, pin } = req.body as {
-      identifier?: string; username?: string; passcode?: string; pin?: string;
+    const { identifier, username, passcode, pin, otp, ticket } = req.body as {
+      identifier?: string; username?: string; passcode?: string; pin?: string; otp?: string; ticket?: string;
     };
-    // Accept identifier (username or phone) or the legacy username field
     const id = (identifier ?? username ?? "").trim();
     const secret = (pin ?? passcode ?? "").trim();
     if (!id || !secret) {
       return res.status(400).json({ error: "identifier (username or phone) and PIN are required" });
     }
-    // Look up the staff member by PIN first, then verify identifier matches username or phone
     const userByPin = await storage.getUserByPasscode(secret);
     let user = userByPin && (userByPin.username === id || userByPin.phone === id) ? userByPin : undefined;
-
-    // If no match by PIN+identifier, try phone lookup and validate PIN separately
     if (!user) {
       const userByPhone = await storage.getUserByPhone(id);
       if (userByPhone?.password === secret) user = userByPhone;
     }
-    // Finally try username lookup
     if (!user) {
       const userByUsername = await storage.getUserByUsername(id);
       if (userByUsername?.password === secret) user = userByUsername;
     }
-
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
     if (user.role !== "receptionist" && user.role !== "admin") {
       return res.status(403).json({ error: "Access denied. Receptionist or admin role required." });
+    }
+    if (!otp && !ticket) return res.status(400).json({ error: "Verification code required" });
+    if (ticket) {
+      const ticketUserId = consumeOtpTicket(String(ticket));
+      if (!ticketUserId || ticketUserId !== user.id) {
+        return res.status(401).json({ error: "Invalid or expired verification ticket" });
+      }
+    } else {
+      const phone = user.phone;
+      if (!phone || !validateOtp(phone, String(otp))) {
+        return res.status(401).json({ error: "Invalid or expired verification code" });
+      }
     }
     const staffToken = issueStaffToken(user.id);
     res.json({ staffToken, user: { id: user.id, username: user.username, role: user.role } });

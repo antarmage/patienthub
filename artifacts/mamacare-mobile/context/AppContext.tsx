@@ -28,7 +28,7 @@ interface AppContextType {
   userProfile: UserProfile | null;
   selectedWeek: number;
   completeOnboarding: () => Promise<void>;
-  completeAuth: (phone: string) => Promise<void>;
+  completeAuth: (phone: string, otp: string) => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   updateSelectedWeek: (week: number) => Promise<void>;
   logout: () => Promise<void>;
@@ -92,7 +92,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setOnboardingComplete(true);
   }, []);
 
-  const completeAuth = useCallback(async (phone: string): Promise<void> => {
+  const completeAuth = useCallback(async (phone: string, otp: string): Promise<void> => {
     const baseUrl =
       process.env.EXPO_PUBLIC_API_URL ||
       (process.env.EXPO_PUBLIC_DOMAIN
@@ -103,7 +103,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       res = await fetch(`${baseUrl}/api/mobile/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone, otp }),
       });
     } catch {
       throw new Error("Unable to reach the server. Please check your connection and try again.");
