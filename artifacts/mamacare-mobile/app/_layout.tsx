@@ -49,8 +49,18 @@ function RootLayoutNav() {
     (async () => {
       const already = await AsyncStorage.getItem(NOTIF_PERM_ASKED_KEY);
       if (already === "true") return;
-      await requestNotificationPermissions();
+      const granted = await requestNotificationPermissions();
       await AsyncStorage.setItem(NOTIF_PERM_ASKED_KEY, "true");
+      if (granted) {
+        const [medVal, apptVal] = await AsyncStorage.multiGet([
+          "@saiviemom_notif_medicine",
+          "@saiviemom_notif_appointment",
+        ]);
+        const sets: [string, string][] = [];
+        if (medVal[1] === null) sets.push(["@saiviemom_notif_medicine", "true"]);
+        if (apptVal[1] === null) sets.push(["@saiviemom_notif_appointment", "true"]);
+        if (sets.length) await AsyncStorage.multiSet(sets);
+      }
     })();
   }, [authComplete]);
 
