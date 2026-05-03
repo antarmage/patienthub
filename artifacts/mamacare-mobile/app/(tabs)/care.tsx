@@ -102,7 +102,7 @@ export default function CareScreen() {
 
         <Pressable
           style={styles.postpartumCard}
-          onPress={() => router.push("/(trackers)/postpartum-hub" as any)}
+          onPress={() => router.push("/(postpartum)")}
         >
           <View style={styles.postpartumLeft}>
             <View style={styles.postpartumIconWrap}>

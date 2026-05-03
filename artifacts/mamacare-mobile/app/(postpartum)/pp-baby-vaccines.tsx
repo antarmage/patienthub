@@ -1,10 +1,9 @@
 import React, { useState, useCallback } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Switch } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Switch, Alert, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
 import { requestNotificationPermissions } from "@/utils/notifications";
@@ -58,7 +57,7 @@ async function scheduleVaxNotif(vaccine: VaccineEntry, dueDate: Date): Promise<s
   if (Platform.OS === "web") return null;
   const granted = await requestNotificationPermissions();
   if (!granted) return null;
-  const Notifications = (await import("expo-notifications")).default ?? await import("expo-notifications");
+  const Notifications = await import("expo-notifications");
   const notifDate = new Date(dueDate.getTime() - 7 * 24 * 60 * 60 * 1000);
   if (notifDate <= new Date()) return null;
   const id = `bvax_${vaccine.id}`;
@@ -84,7 +83,7 @@ async function scheduleVaxNotif(vaccine: VaccineEntry, dueDate: Date): Promise<s
 async function cancelVaxNotif(vaccineId: string): Promise<void> {
   if (Platform.OS === "web") return;
   try {
-    const Notifications = (await import("expo-notifications")).default ?? await import("expo-notifications");
+    const Notifications = await import("expo-notifications");
     await Notifications.cancelScheduledNotificationAsync(`bvax_${vaccineId}`);
   } catch {}
 }
@@ -114,16 +113,25 @@ export default function PostpartumBabyVaccinesScreen() {
   );
 
   const toggleNotif = async (vaccine: VaccineEntry, dueDate: Date, current: boolean) => {
-    const next = !current;
     const key = `${NOTIF_KEY_PREFIX}${vaccine.id}`;
-    if (next) {
-      await scheduleVaxNotif(vaccine, dueDate);
-      await AsyncStorage.setItem(key, "true");
+    if (!current) {
+      // Trying to enable — only persist if scheduling actually succeeds
+      const id = await scheduleVaxNotif(vaccine, dueDate);
+      if (id) {
+        await AsyncStorage.setItem(key, "true");
+        setNotifsEnabled((prev) => ({ ...prev, [vaccine.id]: true }));
+      } else {
+        Alert.alert(
+          "Reminder not set",
+          "Could not schedule a reminder. The vaccine may be due in less than a week, or notification permissions may be disabled."
+        );
+      }
     } else {
+      // Turning off
       await cancelVaxNotif(vaccine.id);
       await AsyncStorage.setItem(key, "false");
+      setNotifsEnabled((prev) => ({ ...prev, [vaccine.id]: false }));
     }
-    setNotifsEnabled((prev) => ({ ...prev, [vaccine.id]: next }));
   };
 
   return (

@@ -14,38 +14,6 @@ interface ProgramData { targetWeight: number; startWeight: number; logs: WeightL
 
 function today() { return new Date().toISOString().split("T")[0]; }
 
-function ProgressRing({ progress }: { progress: number }) {
-  const pct = Math.min(100, Math.max(0, Math.round(progress * 100)));
-  return (
-    <View style={ring.wrap}>
-      <View style={ring.outer}>
-        <View style={[ring.fill, { height: `${pct}%` as any }]} />
-        <View style={ring.inner}>
-          <ThemedText style={ring.pct}>{pct}%</ThemedText>
-          <ThemedText style={ring.label}>progress</ThemedText>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-const ring = StyleSheet.create({
-  wrap: { alignItems: "center", marginVertical: Spacing.xl },
-  outer: {
-    width: 140, height: 140, borderRadius: 70,
-    backgroundColor: "#F3F4F6", overflow: "hidden",
-    alignItems: "center", justifyContent: "center",
-    borderWidth: 3, borderColor: "#22C55E",
-  },
-  fill: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    backgroundColor: "rgba(34,197,94,0.15)",
-  },
-  inner: { alignItems: "center", justifyContent: "center" },
-  pct: { fontSize: 30, fontWeight: "700", color: "#22C55E" },
-  label: { fontSize: 12, color: COLORS.textMuted },
-});
-
 export default function PostpartumWeightLossScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -55,6 +23,7 @@ export default function PostpartumWeightLossScreen() {
   const [inputTarget, setInputTarget] = useState("");
   const [logWeight, setLogWeight] = useState("");
   const [showLog, setShowLog] = useState(false);
+  const [barWidth, setBarWidth] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -98,21 +67,24 @@ export default function PostpartumWeightLossScreen() {
   const handleReset = async () => {
     Alert.alert("Reset Program", "This will clear all your weight data. Continue?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Reset", style: "destructive", onPress: async () => {
-        await AsyncStorage.removeItem(KEY);
-        setData(null);
-        setSetupMode(true);
-        setInputStart("");
-        setInputTarget("");
-      }},
+      {
+        text: "Reset", style: "destructive", onPress: async () => {
+          await AsyncStorage.removeItem(KEY);
+          setData(null);
+          setSetupMode(true);
+          setInputStart("");
+          setInputTarget("");
+        }
+      },
     ]);
   };
 
   const currentWeight = data?.logs.length ? data.logs[data.logs.length - 1].weight : data?.startWeight ?? 0;
   const totalToLose = data ? data.startWeight - data.targetWeight : 0;
-  const lost = data ? data.startWeight - currentWeight : 0;
-  const progress = totalToLose > 0 ? lost / totalToLose : 0;
+  const lost = data ? Math.max(0, data.startWeight - currentWeight) : 0;
+  const progress = totalToLose > 0 ? Math.min(1, lost / totalToLose) : 0;
   const remaining = data ? Math.max(0, currentWeight - data.targetWeight) : 0;
+  const pct = Math.round(progress * 100);
 
   return (
     <View style={styles.container}>
@@ -167,31 +139,35 @@ export default function PostpartumWeightLossScreen() {
           </View>
         ) : data ? (
           <>
-            <ProgressRing progress={progress} />
-
-            <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <ThemedText style={styles.statValue}>{data.startWeight} kg</ThemedText>
-                <ThemedText style={styles.statLabel}>Start</ThemedText>
+            <View style={styles.progressCard}>
+              <View style={styles.progressHeader}>
+                <ThemedText style={styles.progressLabel}>Progress</ThemedText>
+                <ThemedText style={styles.progressPct}>{pct}%</ThemedText>
               </View>
-              <View style={styles.statCard}>
-                <ThemedText style={[styles.statValue, { color: "#22C55E" }]}>{currentWeight} kg</ThemedText>
-                <ThemedText style={styles.statLabel}>Current</ThemedText>
+              <View
+                style={styles.progressTrack}
+                onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+              >
+                <View style={[styles.progressFill, { width: barWidth * progress }]} />
               </View>
-              <View style={styles.statCard}>
-                <ThemedText style={[styles.statValue, { color: "#6C63FF" }]}>{data.targetWeight} kg</ThemedText>
-                <ThemedText style={styles.statLabel}>Target</ThemedText>
+              <View style={styles.progressFooter}>
+                <ThemedText style={styles.progressFooterText}>{data.startWeight} kg</ThemedText>
+                <ThemedText style={styles.progressFooterText}>{data.targetWeight} kg</ThemedText>
               </View>
             </View>
 
-            <View style={styles.summaryRow}>
-              <View style={[styles.summaryItem, { backgroundColor: "#ECFDF5" }]}>
-                <ThemedText style={styles.summaryVal}>{lost.toFixed(1)} kg</ThemedText>
-                <ThemedText style={styles.summaryLbl}>Lost so far</ThemedText>
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <ThemedText style={styles.statValue}>{currentWeight} kg</ThemedText>
+                <ThemedText style={styles.statLabel}>Current</ThemedText>
               </View>
-              <View style={[styles.summaryItem, { backgroundColor: "#F5F3FF" }]}>
-                <ThemedText style={[styles.summaryVal, { color: "#6C63FF" }]}>{remaining.toFixed(1)} kg</ThemedText>
-                <ThemedText style={styles.summaryLbl}>To go</ThemedText>
+              <View style={[styles.statCard, { borderColor: "#D1FAE5" }]}>
+                <ThemedText style={[styles.statValue, { color: "#22C55E" }]}>{lost.toFixed(1)} kg</ThemedText>
+                <ThemedText style={styles.statLabel}>Lost so far</ThemedText>
+              </View>
+              <View style={[styles.statCard, { borderColor: "#EDE9FE" }]}>
+                <ThemedText style={[styles.statValue, { color: "#6C63FF" }]}>{remaining.toFixed(1)} kg</ThemedText>
+                <ThemedText style={styles.statLabel}>To go</ThemedText>
               </View>
             </View>
 
@@ -269,17 +245,27 @@ const styles = StyleSheet.create({
     alignItems: "center", marginTop: Spacing.sm,
   },
   setupBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
-  statsRow: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.md },
+  progressCard: {
+    backgroundColor: "#FFFFFF", borderRadius: 16, padding: Spacing.lg,
+    marginBottom: Spacing.md, borderWidth: 1, borderColor: "#F3F4F6",
+  },
+  progressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md },
+  progressLabel: { fontSize: 14, fontWeight: "600", color: COLORS.textPrimary },
+  progressPct: { fontSize: 24, fontWeight: "700", color: "#22C55E" },
+  progressTrack: {
+    height: 12, backgroundColor: "#F3F4F6", borderRadius: 6,
+    overflow: "hidden", marginBottom: Spacing.sm,
+  },
+  progressFill: { height: 12, backgroundColor: "#22C55E", borderRadius: 6 },
+  progressFooter: { flexDirection: "row", justifyContent: "space-between" },
+  progressFooterText: { fontSize: 11, color: COLORS.textMuted },
+  statsRow: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.xl },
   statCard: {
     flex: 1, backgroundColor: "#FFFFFF", borderRadius: 14, padding: Spacing.md,
     alignItems: "center", borderWidth: 1, borderColor: "#F3F4F6",
   },
-  statValue: { fontSize: 17, fontWeight: "700", color: COLORS.textPrimary },
-  statLabel: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
-  summaryRow: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.xl },
-  summaryItem: { flex: 1, borderRadius: 14, padding: Spacing.md, alignItems: "center" },
-  summaryVal: { fontSize: 20, fontWeight: "700", color: "#22C55E" },
-  summaryLbl: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  statValue: { fontSize: 16, fontWeight: "700", color: COLORS.textPrimary },
+  statLabel: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
   addLogBtn: {
     backgroundColor: "#22C55E", borderRadius: 14, paddingVertical: 14,
     flexDirection: "row", alignItems: "center", justifyContent: "center",

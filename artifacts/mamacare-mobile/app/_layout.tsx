@@ -115,6 +115,7 @@ function RootLayoutNav() {
       <Stack.Screen name="auth" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="(trackers)" options={{ headerShown: false }} />
+      <Stack.Screen name="(postpartum)" options={{ headerShown: false }} />
     </Stack>
   );
 }

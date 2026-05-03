@@ -8,6 +8,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
 
 const KEY = "@saiviemom_pp_milestones_early";
+const BABY_DOB_KEY = "@saiviemom_pp_baby_dob";
 
 const MONTHS = [
   {
@@ -77,10 +78,31 @@ export default function PostpartumMilestonesEarlyScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [babyMonthsOld, setBabyMonthsOld] = useState<number | null>(null);
+  const [openMonth, setOpenMonth] = useState<number | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      AsyncStorage.getItem(KEY).then((v) => { if (v) setChecked(JSON.parse(v)); });
+      (async () => {
+        const [storedChecked, dobStr] = await Promise.all([
+          AsyncStorage.getItem(KEY),
+          AsyncStorage.getItem(BABY_DOB_KEY),
+        ]);
+        if (storedChecked) setChecked(JSON.parse(storedChecked));
+        if (dobStr) {
+          const dob = new Date(dobStr);
+          const now = new Date();
+          const months = Math.floor(
+            (now.getTime() - dob.getTime()) / (30.44 * 24 * 60 * 60 * 1000)
+          );
+          setBabyMonthsOld(months);
+          // Auto-expand the current month (1-indexed, clamped to 1–6)
+          const current = Math.max(1, Math.min(6, months + 1));
+          setOpenMonth(current);
+        } else {
+          setOpenMonth(1);
+        }
+      })();
     }, [])
   );
 
@@ -101,6 +123,9 @@ export default function PostpartumMilestonesEarlyScreen() {
         </Pressable>
         <View style={styles.headerTitle}>
           <ThemedText style={styles.headerName}>0–6 Month Milestones</ThemedText>
+          {babyMonthsOld !== null && (
+            <ThemedText style={styles.headerSub}>Baby is {babyMonthsOld} month{babyMonthsOld !== 1 ? "s" : ""} old</ThemedText>
+          )}
         </View>
         <View style={styles.badge}>
           <ThemedText style={styles.badgeText}>{done}/{allIds.length}</ThemedText>
@@ -121,15 +146,35 @@ export default function PostpartumMilestonesEarlyScreen() {
 
         {MONTHS.map((group) => {
           const groupDone = group.milestones.filter(m => checked[m.id]).length;
+          const isCurrent = babyMonthsOld !== null &&
+            (group.month === Math.max(1, Math.min(6, babyMonthsOld + 1)));
+          const isOpen = openMonth === group.month;
+
           return (
-            <View key={group.month} style={styles.monthSection}>
-              <View style={styles.monthHeader}>
-                <View style={styles.monthBadge}>
-                  <ThemedText style={styles.monthBadgeText}>{group.label}</ThemedText>
+            <View key={group.month} style={[styles.monthSection, isCurrent && styles.monthSectionCurrent]}>
+              <Pressable
+                style={styles.monthHeader}
+                onPress={() => setOpenMonth(isOpen ? null : group.month)}
+              >
+                <View style={styles.monthHeaderLeft}>
+                  <View style={[styles.monthBadge, isCurrent && styles.monthBadgeCurrent]}>
+                    <ThemedText style={[styles.monthBadgeText, isCurrent && styles.monthBadgeTextCurrent]}>
+                      {group.label}
+                    </ThemedText>
+                  </View>
+                  {isCurrent && (
+                    <View style={styles.currentTag}>
+                      <ThemedText style={styles.currentTagText}>Baby is here</ThemedText>
+                    </View>
+                  )}
                 </View>
-                <ThemedText style={styles.monthProgress}>{groupDone}/{group.milestones.length} done</ThemedText>
-              </View>
-              {group.milestones.map((ms) => (
+                <View style={styles.monthHeaderRight}>
+                  <ThemedText style={styles.monthProgress}>{groupDone}/{group.milestones.length}</ThemedText>
+                  <Feather name={isOpen ? "chevron-up" : "chevron-down"} size={16} color={COLORS.textMuted} />
+                </View>
+              </Pressable>
+
+              {isOpen && group.milestones.map((ms) => (
                 <Pressable key={ms.id} style={styles.milestoneRow} onPress={() => toggle(ms.id)}>
                   <View style={[styles.checkbox, checked[ms.id] && styles.checkboxDone]}>
                     {checked[ms.id] && <Feather name="check" size={13} color="#FFFFFF" />}
@@ -157,6 +202,7 @@ const styles = StyleSheet.create({
   backBtn: { padding: Spacing.sm, marginRight: Spacing.sm, marginLeft: -Spacing.sm },
   headerTitle: { flex: 1 },
   headerName: { fontSize: 17, fontWeight: "600", color: COLORS.textPrimary },
+  headerSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 1 },
   badge: {
     backgroundColor: "#F5F3FF", borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.md, paddingVertical: 4,
@@ -173,19 +219,33 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF", borderRadius: 16, padding: Spacing.md,
     marginBottom: Spacing.md, borderWidth: 1, borderColor: "#F3F4F6",
   },
+  monthSectionCurrent: {
+    borderColor: "#C4B5FD",
+    shadowColor: "#6C63FF", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 2,
+  },
   monthHeader: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    marginBottom: Spacing.md,
   },
+  monthHeaderLeft: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
+  monthHeaderRight: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
   monthBadge: {
     backgroundColor: "#F5F3FF", borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.md, paddingVertical: 5,
   },
+  monthBadgeCurrent: { backgroundColor: "#6C63FF" },
   monthBadgeText: { fontSize: 13, fontWeight: "700", color: "#6C63FF" },
+  monthBadgeTextCurrent: { color: "#FFFFFF" },
+  currentTag: {
+    backgroundColor: "#ECFDF5", borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.sm, paddingVertical: 3,
+  },
+  currentTagText: { fontSize: 11, fontWeight: "700", color: "#10B981" },
   monthProgress: { fontSize: 12, color: COLORS.textMuted },
   milestoneRow: {
     flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm,
-    paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: "#F9FAFB",
+    paddingVertical: Spacing.sm, borderTopWidth: 1, borderTopColor: "#F9FAFB",
+    marginTop: Spacing.sm,
   },
   checkbox: {
     width: 22, height: 22, borderRadius: 6, borderWidth: 2,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -24,22 +24,21 @@ interface HubCard {
   icon: keyof typeof Feather.glyphMap;
   bg: string;
   iconColor: string;
-  route: string;
 }
 
 const RECOVERY_CARDS: HubCard[] = [
-  { id: "vaccines", label: "Vaccines", desc: "Postpartum vaccine checklist", icon: "shield", bg: "#ECFDF5", iconColor: "#10B981", route: "/(trackers)/pp-vaccines" },
-  { id: "lactation", label: "Lactation", desc: "Breastfeeding tips & support", icon: "droplet", bg: "#EFF6FF", iconColor: "#3B82F6", route: "/(trackers)/pp-lactation" },
-  { id: "mental", label: "Mental Health", desc: "Mood check-in & resources", icon: "smile", bg: "#FDF4FF", iconColor: "#A855F7", route: "/(trackers)/pp-mental-health" },
-  { id: "fitness", label: "Fitness", desc: "Week-by-week recovery plan", icon: "activity", bg: "#FFF7ED", iconColor: "#F97316", route: "/(trackers)/pp-fitness" },
-  { id: "massage", label: "Massage", desc: "Guide & timing recommendations", icon: "heart", bg: "#FFF1F2", iconColor: "#F43F5E", route: "/(trackers)/pp-massage" },
-  { id: "weight", label: "Weight Program", desc: "Safe gradual weight loss", icon: "trending-down", bg: "#F0FDF4", iconColor: "#22C55E", route: "/(trackers)/pp-weight-loss" },
+  { id: "vaccines", label: "Vaccines", desc: "Postpartum vaccine checklist", icon: "shield", bg: "#ECFDF5", iconColor: "#10B981" },
+  { id: "lactation", label: "Lactation", desc: "Breastfeeding tips & support", icon: "droplet", bg: "#EFF6FF", iconColor: "#3B82F6" },
+  { id: "mental", label: "Mental Health", desc: "Mood check-in & resources", icon: "smile", bg: "#FDF4FF", iconColor: "#A855F7" },
+  { id: "fitness", label: "Fitness", desc: "Week-by-week recovery plan", icon: "activity", bg: "#FFF7ED", iconColor: "#F97316" },
+  { id: "massage", label: "Massage", desc: "Guide & timing recommendations", icon: "heart", bg: "#FFF1F2", iconColor: "#F43F5E" },
+  { id: "weight", label: "Weight Program", desc: "Safe gradual weight loss", icon: "trending-down", bg: "#F0FDF4", iconColor: "#22C55E" },
 ];
 
 const BABY_CARDS: HubCard[] = [
-  { id: "m06", label: "0–6 Month Milestones", desc: "Development checkpoints", icon: "star", bg: "#F5F3FF", iconColor: "#6C63FF", route: "/(trackers)/pp-milestones-early" },
-  { id: "m612", label: "6–12 Month Milestones", desc: "Growth & learning stages", icon: "star", bg: "#FDF4FF", iconColor: "#A855F7", route: "/(trackers)/pp-milestones-late" },
-  { id: "bvax", label: "Baby Vaccines", desc: "Schedule & reminders", icon: "shield", bg: "#FFFBEB", iconColor: "#F59E0B", route: "/(trackers)/pp-baby-vaccines" },
+  { id: "m06", label: "0–6 Month Milestones", desc: "Development checkpoints", icon: "star", bg: "#F5F3FF", iconColor: "#6C63FF" },
+  { id: "m612", label: "6–12 Month Milestones", desc: "Growth & learning stages", icon: "star", bg: "#FDF4FF", iconColor: "#A855F7" },
+  { id: "bvax", label: "Baby Vaccines", desc: "Schedule & reminders", icon: "shield", bg: "#FFFBEB", iconColor: "#F59E0B" },
 ];
 
 function recoveryWeekFromDOB(dob: string): number {
@@ -78,13 +77,27 @@ export default function PostpartumHubScreen() {
     setShowDobModal(false);
   };
 
+  const navigate = (id: string) => {
+    switch (id) {
+      case "vaccines":    return router.push("/(postpartum)/pp-vaccines");
+      case "lactation":   return router.push("/(postpartum)/pp-lactation");
+      case "mental":      return router.push("/(postpartum)/pp-mental-health");
+      case "fitness":     return router.push("/(postpartum)/pp-fitness");
+      case "massage":     return router.push("/(postpartum)/pp-massage");
+      case "weight":      return router.push("/(postpartum)/pp-weight-loss");
+      case "m06":         return router.push("/(postpartum)/pp-milestones-early");
+      case "m612":        return router.push("/(postpartum)/pp-milestones-late");
+      case "bvax":        return router.push("/(postpartum)/pp-baby-vaccines");
+    }
+  };
+
   const recoveryWeek = babyDob ? recoveryWeekFromDOB(babyDob) : null;
 
   const renderCard = (card: HubCard) => (
     <Pressable
       key={card.id}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
-      onPress={() => router.push(card.route as any)}
+      onPress={() => navigate(card.id)}
     >
       <View style={[styles.cardIcon, { backgroundColor: card.bg }]}>
         <Feather name={card.icon} size={22} color={card.iconColor} />
@@ -144,7 +157,12 @@ export default function PostpartumHubScreen() {
         </View>
       </ScrollView>
 
-      <Modal visible={showDobModal} transparent animationType="slide" onRequestClose={() => { if (babyDob) setShowDobModal(false); }}>
+      <Modal
+        visible={showDobModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { if (babyDob) setShowDobModal(false); }}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <ThemedText style={styles.modalTitle}>Baby's Date of Birth</ThemedText>
