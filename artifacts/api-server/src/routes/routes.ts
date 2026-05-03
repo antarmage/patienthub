@@ -141,6 +141,25 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  // Mobile app: request OTP (simulated — confirms the phone is registered, does not send SMS)
+  app.post("/api/mobile/auth/request", async (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: "phone required" });
+    const normalized = String(phone).replace(/\D/g, "");
+    if (normalized.length < 7) return res.status(400).json({ error: "Invalid phone number" });
+    const allPatients = await storage.getPatients();
+    const found = allPatients.some(p => {
+      if (!p.phone) return false;
+      const stored = p.phone.replace(/\D/g, "");
+      if (stored.length < 7) return false;
+      const cmp = Math.min(normalized.length, stored.length, 10);
+      return normalized.slice(-cmp) === stored.slice(-cmp);
+    });
+    if (!found) return res.status(404).json({ error: "No patient found for this phone number" });
+    // In a production system this would send an SMS OTP. For now, accept any 6-digit code.
+    res.json({ success: true, message: "Verification code sent" });
+  });
+
   // Mobile app: look up patient by phone number (no session required)
   app.post("/api/mobile/auth/login", async (req, res) => {
     const { phone } = req.body;
