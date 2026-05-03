@@ -183,7 +183,7 @@ export default function ProfileScreen() {
         case "thrice": times = [fmt(h, m), fmt(Math.min(h + 5, 23), m), fmt(Math.min(h + 10, 23), m)]; break;
         default: times = [fmt(h, m)];
       }
-      await scheduleMedicineReminders(med.id, med.name, med.dosage, times);
+      await scheduleMedicineReminders(med.id, med.name, med.dosage, times, med.durationDays, start);
     }
   };
 

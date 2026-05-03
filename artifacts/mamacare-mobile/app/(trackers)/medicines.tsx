@@ -176,6 +176,7 @@ export default function MedicinesScreen() {
           newMedicine.name,
           newMedicine.dosage,
           times,
+          days,
         );
       }
 

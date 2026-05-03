@@ -84,7 +84,7 @@ function RootLayoutNav() {
             const end = new Date(start);
             end.setDate(end.getDate() + med.durationDays);
             if (now > end) continue;
-            await scheduleMedicineReminders(med.id, med.name, med.dosage, med.times);
+            await scheduleMedicineReminders(med.id, med.name, med.dosage, med.times, med.durationDays, start);
           }
         }
 
