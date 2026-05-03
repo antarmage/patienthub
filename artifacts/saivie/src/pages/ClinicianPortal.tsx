@@ -104,108 +104,36 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-function PostOpObservationsCard({ patientId }: { patientId: number }) {
-  const { data: obs = [], isLoading } = useQuery<any[]>({
-    queryKey: [`/api/postop/observations/${patientId}`],
-    queryFn: async () => {
-      const r = await fetch(`/api/postop/observations/${patientId}`);
-      if (!r.ok) return [];
-      return r.json();
-    },
-    retry: false,
-  });
-
-  const painColor = (score: number | null) => {
-    if (score == null) return "text-slate-400";
-    if (score <= 3) return "text-emerald-600 font-bold";
-    if (score <= 6) return "text-amber-600 font-bold";
-    return "text-rose-600 font-bold";
-  };
-
+function PostOpObservationsCard({ patientId: _patientId }: { patientId: number }) {
   return (
-    <Card className="shadow-sm border-slate-200">
-      <CardHeader className="py-3 border-b border-slate-100">
+    <Card className="shadow-sm border-sky-200 bg-sky-50/30">
+      <CardHeader className="py-3 border-b border-sky-100">
         <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
           <Stethoscope className="w-4 h-4 text-sky-500" /> Post-Op Observations
-          {obs.length > 0 && (
-            <Badge variant="outline" className="ml-auto text-[10px] h-[18px] border-sky-200 text-sky-700 bg-sky-50">
-              {obs.length} record{obs.length !== 1 ? "s" : ""}
-            </Badge>
-          )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-0">
-        {isLoading ? (
-          <div className="p-4 text-xs text-slate-400 text-center">Loading…</div>
-        ) : obs.length === 0 ? (
-          <div className="p-4 text-xs text-slate-400 text-center italic">No post-op observations recorded.</div>
-        ) : (
-          <>
-            <div className="grid grid-cols-6 gap-2 px-3 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-              <span>Time</span>
-              <span className="text-center">Pain</span>
-              <span className="text-center">BP</span>
-              <span className="text-center">Pulse</span>
-              <span className="text-center">Nausea</span>
-              <span>Notes</span>
-            </div>
-            {obs.slice(0, 5).map((o: any) => (
-              <div key={o.id} className="grid grid-cols-6 gap-2 px-3 py-2.5 border-b border-slate-50 text-xs items-center">
-                <span className="text-slate-400">
-                  {new Date(o.observedAt).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                </span>
-                <span className={`text-center ${painColor(o.painScore)}`}>{o.painScore != null ? `${o.painScore}/10` : "—"}</span>
-                <span className="text-center text-slate-600">{o.systolic && o.diastolic ? `${o.systolic}/${o.diastolic}` : "—"}</span>
-                <span className="text-center text-slate-600">{o.pulse ?? "—"}</span>
-                <span className="text-center">{o.nausea ? <span className="text-amber-600">Yes</span> : <span className="text-slate-400">No</span>}</span>
-                <span className="text-slate-500 truncate">{o.woundCondition || o.mobility || o.notes || "—"}</span>
-              </div>
-            ))}
-            {obs.length > 5 && (
-              <div className="px-3 py-2 text-xs text-slate-400 text-center border-t border-slate-50">
-                +{obs.length - 5} more entries — view in SaivieRecover
-              </div>
-            )}
-          </>
-        )}
+      <CardContent className="p-4 flex items-center justify-between gap-4">
+        <p className="text-xs text-slate-500">Post-op vitals are recorded by nursing staff on the SaivieRecover ward tablet. Open the full Post-Op tab to review or go to SaivieRecover directly.</p>
+        <a
+          href="/recover/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-sky-700 bg-white border border-sky-200 px-3 py-1.5 rounded-lg hover:bg-sky-50 transition-colors whitespace-nowrap"
+        >
+          <ExternalLink className="w-3 h-3" /> SaivieRecover
+        </a>
       </CardContent>
     </Card>
   );
 }
 
-function PostOpDetailedView({ patientId, patientName }: { patientId: number; patientName: string }) {
-  const { data: obs = [], isLoading } = useQuery<any[]>({
-    queryKey: [`/api/postop/observations/${patientId}`],
-    queryFn: async () => {
-      const r = await fetch(`/api/postop/observations/${patientId}`);
-      if (!r.ok) return [];
-      return r.json();
-    },
-    retry: false,
-  });
-
-  const painColor = (score: number | null) => {
-    if (score == null) return "text-slate-400";
-    if (score <= 3) return "text-emerald-600 font-bold";
-    if (score <= 6) return "text-amber-600 font-bold";
-    return "text-rose-600 font-bold";
-  };
-
-  const painBg = (score: number | null) => {
-    if (score == null) return "bg-slate-100 text-slate-500";
-    if (score <= 3) return "bg-emerald-100 text-emerald-700";
-    if (score <= 6) return "bg-amber-100 text-amber-700";
-    return "bg-rose-100 text-rose-700";
-  };
-
-  const latest = obs[0];
-
+function PostOpDetailedView({ patientId: _patientId, patientName }: { patientId: number; patientName: string }) {
   return (
     <div className="max-w-4xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-slate-800">Post-Op Observations</h2>
-          <p className="text-sm text-slate-500 mt-0.5">{patientName} — full nursing record</p>
+          <p className="text-sm text-slate-500 mt-0.5">{patientName} — nursing ward record</p>
         </div>
         <a
           href="/recover/"
@@ -213,78 +141,27 @@ function PostOpDetailedView({ patientId, patientName }: { patientId: number; pat
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 text-sm font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-4 py-2 rounded-xl hover:bg-sky-100 transition-colors"
         >
-          <Stethoscope className="w-4 h-4" /> Open SaivieRecover
+          <ExternalLink className="w-4 h-4" /> Open SaivieRecover
         </a>
       </div>
 
-      {/* Summary cards */}
-      {latest && (
-        <div className="grid grid-cols-4 gap-4">
-          {[
-            { label: "Latest Pain", value: latest.painScore != null ? `${latest.painScore}/10` : "—", extra: painBg(latest.painScore) },
-            { label: "Blood Pressure", value: latest.systolic && latest.diastolic ? `${latest.systolic}/${latest.diastolic}` : "—", extra: "bg-sky-100 text-sky-700" },
-            { label: "Pulse", value: latest.pulse != null ? `${latest.pulse} bpm` : "—", extra: "bg-emerald-100 text-emerald-700" },
-            { label: "Total Records", value: String(obs.length), extra: "bg-slate-100 text-slate-700" },
-          ].map(c => (
-            <Card key={c.label} className="shadow-sm border-slate-200">
-              <CardContent className="p-4 text-center">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{c.label}</p>
-                <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${c.extra}`}>{c.value}</span>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Full observation table */}
-      <Card className="shadow-sm border-slate-200 overflow-hidden">
-        <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
-          <CardTitle className="text-sm font-bold text-slate-700 flex items-center gap-2">
-            <ClipboardList className="w-4 h-4 text-sky-500" /> All Observations
-            {obs.length > 0 && (
-              <Badge variant="outline" className="ml-auto text-[10px] h-[18px] border-sky-200 text-sky-700 bg-sky-50">
-                {obs.length} record{obs.length !== 1 ? "s" : ""}
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-8 text-center text-slate-400 text-sm">Loading…</div>
-          ) : obs.length === 0 ? (
-            <div className="p-10 text-center">
-              <Stethoscope className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-              <p className="text-slate-500 font-medium text-sm">No post-op observations recorded yet.</p>
-              <p className="text-slate-400 text-xs mt-1">Use SaivieRecover on the ward tablet to add the first record.</p>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-7 gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                <span>Time</span>
-                <span className="text-center">Pain</span>
-                <span className="text-center">BP</span>
-                <span className="text-center">Pulse</span>
-                <span className="text-center">Nausea</span>
-                <span>Wound</span>
-                <span>Notes</span>
-              </div>
-              {obs.map((o: any) => (
-                <div key={o.id} className="grid grid-cols-7 gap-2 px-4 py-3 border-b border-slate-50 text-xs items-center hover:bg-slate-50/50 transition-colors">
-                  <span className="text-slate-400 text-[11px]">
-                    {new Date(o.observedAt).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                  <span className={`text-center font-bold ${painColor(o.painScore)}`}>
-                    {o.painScore != null ? `${o.painScore}/10` : "—"}
-                  </span>
-                  <span className="text-center text-slate-600">{o.systolic && o.diastolic ? `${o.systolic}/${o.diastolic}` : "—"}</span>
-                  <span className="text-center text-slate-600">{o.pulse ?? "—"}</span>
-                  <span className="text-center">{o.nausea ? <span className="text-amber-600 font-medium">Yes</span> : <span className="text-slate-300">—</span>}</span>
-                  <span className="text-slate-500 truncate">{o.woundCondition || "—"}</span>
-                  <span className="text-slate-500 truncate">{o.notes || "—"}</span>
-                </div>
-              ))}
-            </>
-          )}
+      <Card className="shadow-sm border-slate-200">
+        <CardContent className="p-10 text-center">
+          <div className="w-16 h-16 bg-sky-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Stethoscope className="w-8 h-8 text-sky-400" />
+          </div>
+          <p className="text-slate-700 font-semibold text-base mb-2">Post-op data lives in SaivieRecover</p>
+          <p className="text-slate-400 text-sm mb-6 max-w-sm mx-auto">
+            Post-operative observations are recorded by nursing staff on the dedicated ward tablet. Open SaivieRecover to view vitals, pain scores, and wound assessments for {patientName}.
+          </p>
+          <a
+            href="/recover/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 px-6 py-3 rounded-xl transition-colors shadow-sm"
+          >
+            <ExternalLink className="w-4 h-4" /> Open SaivieRecover Tablet App
+          </a>
         </CardContent>
       </Card>
     </div>

@@ -8,10 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-
 function api(path: string, opts?: RequestInit, token?: string) {
-  return fetch(`${BASE}${path}`, {
+  return fetch(path, {
     ...opts,
     headers: {
       "Content-Type": "application/json",
@@ -166,7 +164,9 @@ export default function RecoverApp() {
     setFormData({ painScore: 0, systolic: "", diastolic: "", pulse: "", nausea: false, mobility: "", woundCondition: "", notes: "" });
   }
 
-  const isFormFilled = formData.painScore > 0 || formData.systolic || formData.diastolic || formData.pulse || formData.nausea || formData.mobility || formData.woundCondition || formData.notes;
+  // Pain score 0 is a valid clinical value; submission is always allowed since nurse
+  // has explicitly confirmed the patient and navigated to the form.
+  const isFormFilled = true;
 
   const { data: patients = [], isFetching } = useQuery<Patient[]>({
     queryKey: ["/api/postop/patients", search],
