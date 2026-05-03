@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
 import fs from "fs";
@@ -46,7 +46,7 @@ function issueMobileToken(patientId: number): string {
  * that the token belongs to that patient (IDOR guard).
  * Returns the bound patientId on success, or sends a 401/403 and returns null.
  */
-function getMobilePatientId(req: any, res: any, expectedPatientId?: number): number | null {
+function getMobilePatientId(req: Request, res: Response, expectedPatientId?: number): number | null {
   const auth = (req.headers["authorization"] ?? "") as string;
   if (!auth.startsWith("Bearer ")) {
     res.status(401).json({ error: "Mobile token required" });
@@ -153,7 +153,7 @@ export async function registerRoutes(
     try {
       const log = await storage.addWaterLog({ patientId: id, amountMl: ml, date, loggedAt: new Date().toISOString() });
       res.status(201).json(log);
-    } catch (e: any) { res.status(400).json({ error: e.message }); }
+    } catch (err: unknown) { res.status(400).json({ error: err instanceof Error ? err.message : "An error occurred" }); }
   });
 
   app.get("/api/mobile/patients/:id/pregnancy-metrics", async (req, res) => {
@@ -180,7 +180,7 @@ export async function registerRoutes(
         enteredBy: "patient",
       });
       res.status(201).json(metric);
-    } catch (e: any) { res.status(400).json({ error: e.message }); }
+    } catch (err: unknown) { res.status(400).json({ error: err instanceof Error ? err.message : "An error occurred" }); }
   });
 
   app.get("/api/mobile/patients/:id/medications", async (req, res) => {
@@ -200,7 +200,7 @@ export async function registerRoutes(
     try {
       const med = await storage.createMedication({ patientId: id, name, dose, frequency, startDate, endDate, notes, status: "active" });
       res.status(201).json(med);
-    } catch (e: any) { res.status(400).json({ error: e.message }); }
+    } catch (err: unknown) { res.status(400).json({ error: err instanceof Error ? err.message : "An error occurred" }); }
   });
 
   app.delete("/api/mobile/medications/:id", async (req, res) => {
@@ -236,9 +236,10 @@ export async function registerRoutes(
     try {
       const log = await storage.addMedicationLog({ patientId: id, medicationId: mid, takenDate, takenAt: new Date().toISOString() });
       res.status(201).json(log);
-    } catch (e: any) {
-      if (e.message?.includes("unique")) return res.status(409).json({ error: "Already marked taken for this date" });
-      res.status(400).json({ error: e.message });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An error occurred";
+      if (msg.includes("unique")) return res.status(409).json({ error: "Already marked taken for this date" });
+      res.status(400).json({ error: msg });
     }
   });
 
@@ -264,7 +265,7 @@ export async function registerRoutes(
         status: String(status || "Pending"),
       });
       res.status(201).json(appt);
-    } catch (e: any) { res.status(400).json({ error: e.message }); }
+    } catch (err: unknown) { res.status(400).json({ error: err instanceof Error ? err.message : "An error occurred" }); }
   });
 
   app.delete("/api/mobile/appointments/:id", async (req, res) => {
@@ -273,7 +274,7 @@ export async function registerRoutes(
     const patientId = getMobilePatientId(req, res);
     if (!patientId) return;
     const appts = await storage.getAppointmentsByPatient(patientId);
-    if (!appts.some((a: any) => a.id === id)) return res.status(403).json({ error: "Forbidden" });
+    if (!appts.some(a => a.id === id)) return res.status(403).json({ error: "Forbidden" });
     const updated = await storage.updateAppointment(id, { status: "cancelled" });
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.status(204).send();
@@ -284,7 +285,7 @@ export async function registerRoutes(
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     if (!getMobilePatientId(req, res, id)) return;
     const docs = await storage.getPatientDocuments(id);
-    res.json(docs.map((d: any) => ({ ...d, fileData: undefined })));
+    res.json(docs.map(d => ({ ...d, fileData: undefined })));
   });
 
   app.post("/api/mobile/patients/:id/documents", async (req, res) => {
@@ -305,7 +306,7 @@ export async function registerRoutes(
         uploadedAt: new Date().toISOString(),
       });
       res.status(201).json({ ...doc, fileData: undefined });
-    } catch (e: any) { res.status(400).json({ error: e.message }); }
+    } catch (err: unknown) { res.status(400).json({ error: err instanceof Error ? err.message : "An error occurred" }); }
   });
 
   app.delete("/api/mobile/patient-documents/:id", async (req, res) => {
@@ -314,7 +315,7 @@ export async function registerRoutes(
     const patientId = getMobilePatientId(req, res);
     if (!patientId) return;
     const docs = await storage.getPatientDocuments(patientId);
-    if (!docs.some((d: any) => d.id === id)) return res.status(403).json({ error: "Forbidden" });
+    if (!docs.some(d => d.id === id)) return res.status(403).json({ error: "Forbidden" });
     const deleted = await storage.deletePatientDocument(id);
     if (!deleted) return res.status(404).json({ error: "Not found" });
     res.status(204).send();

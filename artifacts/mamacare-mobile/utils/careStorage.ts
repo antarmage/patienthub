@@ -28,6 +28,16 @@ let _apiBase: string = "";
 let _currentWeek: number = 1;
 let _mobileToken: string = "";
 
+let _onAuthError: (() => void) | null = null;
+
+export function setOnAuthError(cb: () => void) {
+  _onAuthError = cb;
+}
+
+export function getApiBase(): string {
+  return _apiBase;
+}
+
 export function initMobileApi(
   patientId: number,
   apiBase: string,
@@ -54,6 +64,7 @@ async function apiGet<T>(path: string): Promise<T | null> {
   if (!_patientId) return null;
   try {
     const res = await fetch(`${_apiBase}${path}`, { headers: authHeaders() });
+    if (res.status === 401) { _onAuthError?.(); return null; }
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
@@ -69,6 +80,7 @@ async function apiPost<T>(path: string, body: object): Promise<T | null> {
       headers: authHeaders(),
       body: JSON.stringify(body),
     });
+    if (res.status === 401) { _onAuthError?.(); return null; }
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
@@ -83,6 +95,7 @@ async function apiDelete(path: string): Promise<boolean> {
       method: "DELETE",
       headers: authHeaders(),
     });
+    if (res.status === 401) { _onAuthError?.(); return false; }
     return res.ok || res.status === 204;
   } catch {
     return false;
@@ -411,12 +424,36 @@ export async function updateMedicineNotifications(
 
 // ─── Medicine logs ────────────────────────────────────────────────────────────
 
+interface ApiMedicationLog {
+  id: number;
+  patientId: number;
+  medicationId: number;
+  takenDate: string;
+}
+
 async function getMedicineLogsFromStorage(): Promise<MedicineLog[]> {
   const v = await AsyncStorage.getItem(KEYS.MEDICINE_LOGS);
   return v ? JSON.parse(v) : [];
 }
 
 export async function getMedicineLogs(date?: string): Promise<MedicineLog[]> {
+  if (_patientId) {
+    const url = date
+      ? `/api/mobile/patients/${_patientId}/medication-logs?date=${date}`
+      : `/api/mobile/patients/${_patientId}/medication-logs`;
+    const data = await apiGet<ApiMedicationLog[]>(url);
+    if (data) {
+      const mapped: MedicineLog[] = data.map(l => ({
+        id: String(l.id),
+        medicineId: String(l.medicationId),
+        takenAt: l.takenDate,
+        scheduledTime: "09:00",
+        date: l.takenDate,
+      }));
+      await AsyncStorage.setItem(KEYS.MEDICINE_LOGS, JSON.stringify(mapped));
+      return mapped;
+    }
+  }
   const all = await getMedicineLogsFromStorage();
   return date ? all.filter(l => l.date === date) : all;
 }

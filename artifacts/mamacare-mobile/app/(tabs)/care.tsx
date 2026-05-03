@@ -10,6 +10,7 @@ import {
   getAppointments,
   getMedicines,
   getTodayMedicineStats,
+  getApiBase,
   Appointment,
   Medicine,
 } from "@/utils/careStorage";
@@ -59,7 +60,7 @@ export default function CareScreen() {
     }
 
     try {
-      const res = await fetch("/api/mobile/providers");
+      const res = await fetch(`${getApiBase()}/api/mobile/providers`);
       if (res.ok) {
         const data: Provider[] = await res.json();
         setProviders(data);

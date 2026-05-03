@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert, Platform } from "react-native";
-import { initMobileApi } from "@/utils/careStorage";
+import { initMobileApi, setOnAuthError, getApiBase } from "@/utils/careStorage";
 
 const STORAGE_KEYS = {
   ONBOARDING_COMPLETE: "@saiviemom_onboarding_complete",
@@ -69,6 +69,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
             : "");
         initMobileApi(parseInt(patientIdStr, 10), baseUrl, parsedWeek, storedToken);
+        setOnAuthError(() => {
+          AsyncStorage.multiRemove(Object.values(STORAGE_KEYS)).then(() => {
+            setOnboardingComplete(false);
+            setAuthComplete(false);
+            setUserProfile(null);
+            setSelectedWeek(1);
+          });
+        });
       }
     } catch (e) {
       if (Platform.OS !== "web") {
@@ -138,6 +146,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_ID, String(patient.id));
     await AsyncStorage.setItem(STORAGE_KEYS.MOBILE_TOKEN, mobileToken);
     initMobileApi(patient.id, baseUrl, week, mobileToken);
+    setOnAuthError(() => {
+      AsyncStorage.multiRemove(Object.values(STORAGE_KEYS)).then(() => {
+        setOnboardingComplete(false);
+        setAuthComplete(false);
+        setUserProfile(null);
+        setSelectedWeek(1);
+      });
+    });
     setUserProfile(profile);
     setSelectedWeek(week);
     setAuthComplete(true);
@@ -150,8 +166,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (updated.id && updated.id !== "offline") {
       try {
-        const baseUrl = process.env.EXPO_PUBLIC_API_URL || "";
-        await fetch(`${baseUrl}/api/patients/${updated.id}`, {
+        await fetch(`${getApiBase()}/api/patients/${updated.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
