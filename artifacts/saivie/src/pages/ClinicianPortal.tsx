@@ -87,6 +87,27 @@ import {
   ComposedChart,
   LineChart
 } from "recharts";
+
+interface ClinicianWeightLog {
+  id: number;
+  patientId: number;
+  weight: number;
+  unit: string;
+  date: string;
+  week: number | null;
+  loggedAt: string;
+}
+
+interface ClinicianBpLog {
+  id: number;
+  patientId: number;
+  systolic: number;
+  diastolic: number;
+  pulse: number | null;
+  date: string;
+  loggedAt: string;
+}
+
 import medicalDashboardBg from "../assets/images/medical-dashboard-bg.png";
 import pregnancyGrowthBg from "../assets/images/pregnancy-growth-bg.png";
 import postpartumRecoveryBg from "../assets/images/postpartum-recovery-bg.png";
@@ -485,29 +506,29 @@ export default function ClinicianPortal() {
   const labResults = labResultsQuery.data || [];
   const labResultsLoaded = labResultsQuery.isSuccess;
 
-  const weightLogsQuery = useQuery({
+  const weightLogsQuery = useQuery<ClinicianWeightLog[]>({
     queryKey: [`/api/patients/${selectedPatient?.id}/weight-logs`],
     queryFn: async () => {
       const res = await fetch(`/api/patients/${selectedPatient?.id}/weight-logs`);
       if (!res.ok) throw new Error('Failed to fetch weight logs');
-      return res.json();
+      return res.json() as Promise<ClinicianWeightLog[]>;
     },
     enabled: !!selectedPatient
   });
-  const weightLogs: any[] = weightLogsQuery.data || [];
-  const latestWeight = weightLogs[0] || null;
+  const weightLogs: ClinicianWeightLog[] = weightLogsQuery.data || [];
+  const latestWeight: ClinicianWeightLog | null = weightLogs[0] ?? null;
 
-  const bpLogsQuery = useQuery({
+  const bpLogsQuery = useQuery<ClinicianBpLog[]>({
     queryKey: [`/api/patients/${selectedPatient?.id}/bp-logs`],
     queryFn: async () => {
       const res = await fetch(`/api/patients/${selectedPatient?.id}/bp-logs`);
       if (!res.ok) throw new Error('Failed to fetch BP logs');
-      return res.json();
+      return res.json() as Promise<ClinicianBpLog[]>;
     },
     enabled: !!selectedPatient
   });
-  const bpLogsData: any[] = bpLogsQuery.data || [];
-  const latestBP = bpLogsData[0] || null;
+  const bpLogsData: ClinicianBpLog[] = bpLogsQuery.data || [];
+  const latestBP: ClinicianBpLog | null = bpLogsData[0] ?? null;
 
   const labDocumentsQuery = useQuery({
     queryKey: [`/api/patients/${selectedPatient?.id}/documents`, 'lab'],

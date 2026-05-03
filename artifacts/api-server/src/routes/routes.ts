@@ -1089,6 +1089,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.status(201).json(metric);
   });
 
+  // Weight and BP logs are written by the mobile app via the /api/mobile/ routes.
+  // These read-only endpoints expose self-tracked vitals to the clinician portal.
   app.get("/api/patients/:id/weight-logs", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
@@ -1096,50 +1098,11 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.json(logs);
   });
 
-  app.post("/api/patients/:id/weight-logs", async (req, res) => {
-    const id = parseId(req.params.id);
-    if (!id) return res.status(400).json({ error: "Invalid ID" });
-    const { weight, unit, date, week } = req.body;
-    if (weight == null || isNaN(Number(weight))) return res.status(400).json({ error: "weight is required" });
-    if (!date) return res.status(400).json({ error: "date is required" });
-    try {
-      const log = await storage.addWeightLog({
-        patientId: id,
-        weight: parseFloat(weight),
-        unit: unit || "kg",
-        date,
-        week: week != null ? parseInt(week) : undefined,
-        loggedAt: new Date().toISOString(),
-      });
-      res.status(201).json(log);
-    } catch (err: unknown) { res.status(400).json({ error: err instanceof Error ? err.message : "An error occurred" }); }
-  });
-
   app.get("/api/patients/:id/bp-logs", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     const logs = await storage.getBpLogs(id);
     res.json(logs);
-  });
-
-  app.post("/api/patients/:id/bp-logs", async (req, res) => {
-    const id = parseId(req.params.id);
-    if (!id) return res.status(400).json({ error: "Invalid ID" });
-    const { systolic, diastolic, pulse, date } = req.body;
-    if (systolic == null || isNaN(Number(systolic))) return res.status(400).json({ error: "systolic is required" });
-    if (diastolic == null || isNaN(Number(diastolic))) return res.status(400).json({ error: "diastolic is required" });
-    if (!date) return res.status(400).json({ error: "date is required" });
-    try {
-      const log = await storage.addBpLog({
-        patientId: id,
-        systolic: parseInt(systolic),
-        diastolic: parseInt(diastolic),
-        pulse: pulse != null ? parseInt(pulse) : undefined,
-        date,
-        loggedAt: new Date().toISOString(),
-      });
-      res.status(201).json(log);
-    } catch (err: unknown) { res.status(400).json({ error: err instanceof Error ? err.message : "An error occurred" }); }
   });
 
   app.get("/api/patients/:id/follicle-data", async (req, res) => {
