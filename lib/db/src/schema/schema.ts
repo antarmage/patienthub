@@ -614,4 +614,24 @@ export const insertBpLogSchema = createInsertSchema(bpLogs).omit({ id: true });
 export type InsertBpLog = z.infer<typeof insertBpLogSchema>;
 export type BpLog = typeof bpLogs.$inferSelect;
 
+export const genomeAnalyses = pgTable("genome_analyses", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id).notNull(),
+  jobId: text("job_id").notNull().unique(),
+  status: text("status").notNull().default("processing"),
+  fileName: text("file_name"),
+  snpCount: integer("snp_count"),
+  healthRisks: jsonb("health_risks"),
+  predispositions: jsonb("predispositions"),
+  pharmacogenomics: jsonb("pharmacogenomics"),
+  traits: jsonb("traits"),
+  rawMarkers: jsonb("raw_markers"),
+  analysedAt: text("analysed_at"),
+  createdAt: text("created_at").notNull().default(sql`now()`),
+});
+
+export const insertGenomeAnalysisSchema = createInsertSchema(genomeAnalyses).omit({ id: true });
+export type InsertGenomeAnalysis = z.infer<typeof insertGenomeAnalysisSchema>;
+export type GenomeAnalysis = typeof genomeAnalyses.$inferSelect;
+
 export * from "./models/chat";

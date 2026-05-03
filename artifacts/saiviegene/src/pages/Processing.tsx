@@ -81,7 +81,7 @@ export default function Processing() {
               borderColor: `hsl(44 87% 55% / ${0.12 + i * 0.06})`,
             }}
             animate={{ rotate: 360 }}
-            transition={{ duration: 8 + i * 4, repeat: Infinity, ease: "linear", direction: i % 2 === 0 ? "normal" : "reverse" }}
+            transition={{ duration: 8 + i * 4, repeat: Infinity, ease: "linear", repeatType: i % 2 === 0 ? "loop" : "reverse" }}
           >
             <div
               className="absolute rounded-full"

@@ -1,6 +1,5 @@
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect } from "react";
 import NotFound from "@/pages/not-found";
 import Onboarding from "@/pages/Onboarding";
 import Auth from "@/pages/Auth";
@@ -16,31 +15,61 @@ const queryClient = new QueryClient({
   },
 });
 
+function useAuthState() {
+  const token = localStorage.getItem("saiviegene_token");
+  const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
+  const onboarded = localStorage.getItem("saiviegene_onboarded") === "true";
+  return { token, subscribed, onboarded };
+}
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { token, onboarded } = useAuthState();
+  const [location] = useLocation();
+  if (!onboarded) return <Redirect to="/" />;
+  if (!token) return <Redirect to="/auth" />;
+  return <>{children}</>;
+}
+
+function RequireSubscription({ children }: { children: React.ReactNode }) {
+  const { token, subscribed, onboarded } = useAuthState();
+  if (!onboarded) return <Redirect to="/" />;
+  if (!token) return <Redirect to="/auth" />;
+  if (!subscribed) return <Redirect to="/paywall" />;
+  return <>{children}</>;
+}
+
 function AppRoutes() {
-  const [location, navigate] = useLocation();
-
-  useEffect(() => {
-    const token = localStorage.getItem("saiviegene_token");
-    const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
-    const onboarded = localStorage.getItem("saiviegene_onboarded") === "true";
-
-    if (location === "/" || location === "") {
-      if (!onboarded) return;
-      if (!token) { navigate("/auth"); return; }
-      if (!subscribed) { navigate("/paywall"); return; }
-      navigate("/dashboard");
-    }
-  }, []);
+  const { token, subscribed, onboarded } = useAuthState();
 
   return (
     <Switch>
-      <Route path="/" component={Onboarding} />
-      <Route path="/auth" component={Auth} />
-      <Route path="/paywall" component={Paywall} />
-      <Route path="/upload" component={Upload} />
-      <Route path="/processing/:jobId" component={Processing} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/section/:key" component={Section} />
+      <Route path="/">
+        {onboarded && token && subscribed
+          ? <Redirect to="/dashboard" />
+          : onboarded && token
+          ? <Redirect to="/paywall" />
+          : onboarded
+          ? <Redirect to="/auth" />
+          : <Onboarding />}
+      </Route>
+      <Route path="/auth">
+        {token ? <Redirect to={subscribed ? "/dashboard" : "/paywall"} /> : <Auth />}
+      </Route>
+      <Route path="/paywall">
+        <RequireAuth><Paywall /></RequireAuth>
+      </Route>
+      <Route path="/upload">
+        <RequireSubscription><Upload /></RequireSubscription>
+      </Route>
+      <Route path="/processing/:jobId">
+        <RequireSubscription><Processing /></RequireSubscription>
+      </Route>
+      <Route path="/dashboard">
+        <RequireSubscription><Dashboard /></RequireSubscription>
+      </Route>
+      <Route path="/section/:key">
+        <RequireSubscription><Section /></RequireSubscription>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

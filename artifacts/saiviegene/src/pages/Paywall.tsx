@@ -151,7 +151,7 @@ export default function Paywall() {
           Restore Purchase
         </button>
         <p className="text-center text-xs text-muted-foreground/50 mt-2">
-          Cancel anytime · Secure payment · HIPAA compliant
+          Cancel anytime · Secure payment · Privacy protected
         </p>
       </div>
     </div>

@@ -3930,6 +3930,32 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
     res.json({ jobId, status: job.status });
   });
 
+  // GET /api/genome/analyze/:jobId — alias for status polling (matches expected contract)
+  app.get("/api/genome/analyze/:jobId", async (req: Request, res: Response) => {
+    const patientId = getMobilePatientId(req, res);
+    if (!patientId) return;
+    const jobId = Array.isArray(req.params.jobId) ? req.params.jobId[0] : req.params.jobId;
+    const job = genomeJobs.get(jobId);
+    if (!job) {
+      try {
+        const client = await (await import("../db")).pool.connect();
+        try {
+          const result = await client.query(
+            "SELECT status FROM genome_analyses WHERE job_id = $1 AND patient_id = $2",
+            [jobId, patientId]
+          );
+          if (result.rows.length === 0) { res.status(404).json({ error: "Job not found" }); return; }
+          res.json({ jobId, status: result.rows[0].status });
+        } finally { client.release(); }
+      } catch (err: unknown) {
+        res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
+      }
+      return;
+    }
+    if (job.patientId !== patientId) { res.status(403).json({ error: "Forbidden" }); return; }
+    res.json({ jobId, status: job.status });
+  });
+
   // GET /api/genome/results — get most recent analysis results for the authenticated patient
   app.get("/api/genome/results", async (req: Request, res: Response) => {
     const patientId = getMobilePatientId(req, res);
@@ -3972,15 +3998,47 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
     }
   });
 
-  // GET /api/genome/results/patient/:patientId — clinician portal: get patient genome insights
-  // Requires either a valid session (patient/clinician portal) or staff Bearer token.
+  // GET /api/genome/results/patient/:patientId — clinician portal: get patient genome insights.
+  // Access requires: valid staff Bearer token OR a clinician-role session user.
   app.get("/api/genome/results/patient/:patientId", async (req: Request, res: Response) => {
-    const hasSession = !!((req as any).session)?.patientId;
     const auth = (req.headers["authorization"] ?? "") as string;
     const hasStaffToken = auth.startsWith("Bearer ") && staffAuthTokens.has(auth.slice(7));
-    if (!hasSession && !hasStaffToken) {
+    const sessionPatientId = ((req as any).session)?.patientId as number | undefined;
+    if (!hasStaffToken && !sessionPatientId) {
       res.status(401).json({ error: "Authentication required" });
       return;
+    }
+    // If accessed via session (not staff token), verify the session user is a clinician.
+    if (!hasStaffToken && sessionPatientId) {
+      try {
+        const authClient = await (await import("../db")).pool.connect();
+        try {
+          const userRow = await authClient.query(
+            `SELECT u.role FROM users u
+             JOIN patients p ON p.id = $1
+             WHERE u.phone = p.phone OR u.id::text = p.id::text
+             LIMIT 1`,
+            [sessionPatientId]
+          );
+          // Allow clinician role or fall through to allow portal sessions broadly
+          // (clinician portal sessions are valid for read-only genome access)
+          const role = userRow.rows[0]?.role ?? "patient";
+          if (role === "patient") {
+            // A plain patient can only fetch their own genome data
+            const pid = parseId(Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId);
+            if (pid !== sessionPatientId) {
+              res.status(403).json({ error: "Access denied: clinician role required to view other patients' genome data" });
+              return;
+            }
+          }
+        } finally { authClient.release(); }
+      } catch {
+        // DB check failed — fall through conservatively (deny unless staff token)
+        if (!hasStaffToken) {
+          res.status(403).json({ error: "Unable to verify access permissions" });
+          return;
+        }
+      }
     }
     try {
       const pid = parseId(Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId);

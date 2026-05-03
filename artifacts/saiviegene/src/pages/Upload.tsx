@@ -92,7 +92,7 @@ export default function Upload() {
 
         <h1 className="text-3xl font-bold text-foreground mb-2">Upload Your<br />Genome File</h1>
         <p className="text-muted-foreground mb-8 text-sm">
-          Supports VCF, raw 23andMe, and AncestryDNA exports. Your data is encrypted and never shared.
+          Supports VCF, raw 23andMe, and AncestryDNA exports. Your data is stored securely and only shared with your care team.
         </p>
 
         <div
@@ -156,7 +156,7 @@ export default function Upload() {
         <div className="rounded-2xl border border-card-border bg-card p-4 mb-4">
           <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Privacy & Security</p>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Your genome data is encrypted end-to-end using AES-256. We never sell or share your genetic data. Analysis runs on secure isolated servers and results are accessible only to you and your care team.
+            Your genome file is transmitted over HTTPS and stored securely. We never sell or share your genetic data. Results are accessible only to you and your care team.
           </p>
         </div>
       </div>
