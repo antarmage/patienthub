@@ -26,7 +26,9 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
     name: string;
     phone: string;
     email: string;
+    dob: string;
     lmp: string;
+    procedureDate: string;
     mode: string;
     referredBy: string;
     address: string;
@@ -36,7 +38,9 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
       name: "",
       phone: "",
       email: "",
+      dob: "",
       lmp: "",
+      procedureDate: "",
       mode: "",
       referredBy: "",
       address: "",
@@ -54,7 +58,9 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
         name: patient.name || "",
         phone: patient.phone || "",
         email: patient.email || "",
+        dob: patient.dob || "",
         lmp: patient.lmp || "",
+        procedureDate: patient.procedureDate || "",
         mode: patient.mode || "",
         referredBy: patient.referredBy || "",
         address: patient.address || "",
@@ -64,11 +70,18 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
   }, [patient, form]);
 
   const onSubmit = async (data: {
-    name: string; phone: string; email: string; lmp: string;
-    mode: string; referredBy: string; address: string; clinicianNote: string;
+    name: string; phone: string; email: string; dob: string;
+    lmp: string; procedureDate: string; mode: string;
+    referredBy: string; address: string; clinicianNote: string;
   }) => {
     try {
-      const payload = { ...data, mode: data.mode === "__none__" ? "" : data.mode };
+      const resolvedMode = data.mode === "__none__" ? "" : data.mode;
+      const payload = {
+        ...data,
+        mode: resolvedMode,
+        lmp: resolvedMode !== "Post-op" ? data.lmp : "",
+        procedureDate: resolvedMode === "Post-op" ? data.procedureDate : "",
+      };
       await updatePatient.mutateAsync({ id: params.id, data: payload });
       toast({
         title: "Patient Updated",
@@ -229,13 +242,35 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-slate-500">LMP Date</Label>
+                  <Label className="text-slate-500">Date of Birth</Label>
                   {isEditing ? (
-                    <Input {...form.register("lmp")} type="date" data-testid="input-edit-lmp" />
+                    <Input {...form.register("dob")} type="date" data-testid="input-edit-dob" />
                   ) : (
-                    <div className="font-medium text-slate-800">{patient.lmp || <span className="text-slate-400 italic">Not provided</span>}</div>
+                    <div className="font-medium text-slate-800">{patient.dob || <span className="text-slate-400 italic">Not provided</span>}</div>
                   )}
                 </div>
+
+                {(form.watch("mode") || patient.mode) !== "Post-op" && (
+                  <div className="space-y-2">
+                    <Label className="text-slate-500">LMP Date</Label>
+                    {isEditing ? (
+                      <Input {...form.register("lmp")} type="date" data-testid="input-edit-lmp" />
+                    ) : (
+                      <div className="font-medium text-slate-800">{patient.lmp || <span className="text-slate-400 italic">Not provided</span>}</div>
+                    )}
+                  </div>
+                )}
+
+                {(isEditing ? form.watch("mode") : patient.mode) === "Post-op" && (
+                  <div className="space-y-2">
+                    <Label className="text-slate-500">Procedure Date</Label>
+                    {isEditing ? (
+                      <Input {...form.register("procedureDate")} type="date" data-testid="input-edit-procedure-date" />
+                    ) : (
+                      <div className="font-medium text-slate-800">{patient.procedureDate || <span className="text-slate-400 italic">Not provided</span>}</div>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label className="text-slate-500">Referring Doctor</Label>

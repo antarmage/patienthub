@@ -7,10 +7,12 @@ export interface DeskPatient {
   id: number;
   name: string;
   age: number | null;
+  dob: string | null;
   phone: string | null;
   email: string | null;
   address: string | null;
   lmp: string | null;
+  procedureDate: string | null;
   mode: string | null;
   referredBy: string | null;
   condition: string | null;

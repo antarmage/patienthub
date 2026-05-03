@@ -3502,7 +3502,8 @@ async function getDeskStaffUserId(req: Request, res: Response): Promise<string |
 // Tightly-scoped intake schema — only the fields a receptionist may set
 const deskIntakeFields = {
   name: true, phone: true, age: true, email: true, address: true,
-  lmp: true, mode: true, referredBy: true, condition: true, clinicianNote: true,
+  lmp: true, dob: true, procedureDate: true,
+  mode: true, referredBy: true, condition: true, clinicianNote: true,
 } as const;
 
 const deskCreateSchema = insertPatientSchema.pick(deskIntakeFields);

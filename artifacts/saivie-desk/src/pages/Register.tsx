@@ -21,10 +21,11 @@ const APPOINTMENT_TYPES = ["Consultation", "Blood Test", "Scan"] as const;
 const formSchema = z.object({
   name: z.string().min(2, "Name is required"),
   phone: z.string().min(5, "Phone is required"),
-  age: z.coerce.number().min(1, "Age is required"),
+  dob: z.string().min(1, "Date of birth is required"),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
   address: z.string().optional(),
   lmp: z.string().optional(),
+  procedureDate: z.string().optional(),
   mode: z.enum(CARE_MODES, { message: "Care mode is required" }),
   referredBy: z.string().optional(),
   condition: z.string().optional(),
@@ -34,6 +35,15 @@ const formSchema = z.object({
   appointmentType: z.string().optional(),
   providerId: z.coerce.number().optional(),
 });
+
+function ageFromDob(dob: string): number {
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return Math.max(0, age);
+}
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -53,10 +63,11 @@ export default function Register() {
     defaultValues: {
       name: "",
       phone: "",
-      age: undefined,
+      dob: "",
       email: "",
       address: "",
       lmp: "",
+      procedureDate: "",
       mode: undefined,
       referredBy: "",
       condition: "",
@@ -77,10 +88,12 @@ export default function Register() {
       const patientData = {
         name: data.name,
         phone: data.phone,
-        age: data.age,
+        age: ageFromDob(data.dob),
+        dob: data.dob,
         email: data.email || null,
         address: data.address || null,
-        lmp: data.lmp || null,
+        lmp: data.mode !== "Post-op" ? (data.lmp || null) : null,
+        procedureDate: data.mode === "Post-op" ? (data.procedureDate || null) : null,
         mode: data.mode || null,
         referredBy: data.referredBy || null,
         condition: data.condition || null,
@@ -114,7 +127,7 @@ export default function Register() {
   };
 
   const validateStep = async () => {
-    const step1Fields = ["name", "phone", "age", "email", "address"] as const;
+    const step1Fields = ["name", "phone", "dob", "email", "address"] as const;
     const step2Fields = ["lmp", "mode", "referredBy", "condition"] as const;
     const fieldsToValidate = step === 1 ? step1Fields : step === 2 ? step2Fields : [];
     const isValid = await form.trigger(fieldsToValidate);
@@ -208,12 +221,12 @@ export default function Register() {
                     />
                     <FormField
                       control={form.control}
-                      name="age"
+                      name="dob"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Age *</FormLabel>
+                          <FormLabel>Date of Birth *</FormLabel>
                           <FormControl>
-                            <Input type="number" placeholder="Age" {...field} value={field.value || ""} data-testid="input-register-age" />
+                            <Input type="date" {...field} data-testid="input-register-dob" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -271,19 +284,36 @@ export default function Register() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="lmp"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>LMP Date (Last Menstrual Period)</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} data-testid="input-register-lmp" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {form.watch("mode") !== "Post-op" && (
+                    <FormField
+                      control={form.control}
+                      name="lmp"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>LMP Date (Last Menstrual Period)</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} data-testid="input-register-lmp" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  {form.watch("mode") === "Post-op" && (
+                    <FormField
+                      control={form.control}
+                      name="procedureDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Procedure Date *</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} data-testid="input-register-procedure-date" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   <FormField
                     control={form.control}
                     name="condition"

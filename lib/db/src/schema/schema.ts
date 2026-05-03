@@ -51,6 +51,8 @@ export const patients = pgTable("patients", {
   email: text("email"),
   address: text("address"),
   lmp: text("lmp"),
+  dob: text("dob"),
+  procedureDate: text("procedure_date"),
   height: text("height"),
   bp: text("bp"),
   pregnancyStatus: text("pregnancy_status"),
