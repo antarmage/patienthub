@@ -121,8 +121,8 @@ export default function Kiosk() {
       };
       poll();
       pollTimer.current = setInterval(poll, 30000);
-      return () => { if (pollTimer.current) clearInterval(pollTimer.current); };
     }
+    return () => { if (pollTimer.current) clearInterval(pollTimer.current); };
   }, [screen, selected]);
 
   const dialPhone = (digit: string) => {
@@ -196,6 +196,8 @@ export default function Kiosk() {
     setLoading(true);
     setError("");
     try {
+      // Consolidate all intake fields into appointment notes so we never
+      // partially-overwrite existing patient records (e.g. history JSON).
       const notesText = [
         intakeData.chiefComplaint ? `Chief complaint: ${intakeData.chiefComplaint}` : "",
         intakeData.currentMeds ? `Current medications: ${intakeData.currentMeds}` : "",
@@ -203,20 +205,18 @@ export default function Kiosk() {
         intakeData.newSymptoms ? `New symptoms: ${intakeData.newSymptoms}` : "",
       ].filter(Boolean).join("\n");
 
-      await Promise.all([
-        fetch(`${BASE}/api/appointments/${selected.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chiefComplaint: intakeData.chiefComplaint || undefined, notes: notesText }),
+      const res = await fetch(`${BASE}/api/appointments/${selected.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chiefComplaint: intakeData.chiefComplaint || undefined,
+          notes: notesText || undefined,
         }),
-        fetch(`${BASE}/api/patients/${patient.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...(intakeData.allergies ? { history: { allergies: intakeData.allergies } } : {}),
-          }),
-        }),
-      ]);
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body.error || "Could not save your details, but you are still checked in.");
+      }
       setLiveStatus("checked-in");
       setScreen("status");
     } catch {
