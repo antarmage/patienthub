@@ -19,6 +19,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 ## Artifacts
 
 - **`artifacts/saivie/`** — Saivie clinician/patient web portal (React + Vite, preview path: `/`)
+- **`artifacts/saivie-recover/`** — SaivieRecover tablet app for nursing staff post-op data collection (React + Vite, preview path: `/recover/`)
 - **`artifacts/api-server/`** — Backend API server (Express 5, preview path: `/api`)
 - **`artifacts/mockup-sandbox/`** — Design/mockup canvas (pre-existing)
 
@@ -32,7 +33,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Backend Structure
 
-- `artifacts/api-server/src/routes/routes.ts` — all app route handlers (legacy registerRoutes pattern)
+- `artifacts/api-server/src/routes/routes.ts` — all app route handlers (legacy registerRoutes pattern); includes `/api/postop/*` routes for SaivieRecover
 - `artifacts/api-server/src/storage.ts` — data access layer
 - `artifacts/api-server/src/db.ts` — database connection + ensureSchema migrations
 - `artifacts/api-server/src/google-drive.ts` — Google Drive integration

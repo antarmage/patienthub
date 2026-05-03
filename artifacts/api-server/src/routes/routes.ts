@@ -70,6 +70,36 @@ function getMobilePatientId(req: Request, res: Response, expectedPatientId?: num
   return entry.patientId;
 }
 
+// ── Staff (Recover) Auth Tokens ───────────────────────────────────────────────
+const STAFF_TOKEN_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
+const staffAuthTokens = new Map<string, { userId: string; expiresAt: number }>();
+
+function issueStaffToken(userId: string): string {
+  const token = crypto.randomBytes(32).toString("hex");
+  staffAuthTokens.set(token, { userId, expiresAt: Date.now() + STAFF_TOKEN_TTL_MS });
+  return token;
+}
+
+function getStaffUserId(req: Request, res: Response): string | null {
+  const auth = (req.headers["authorization"] ?? "") as string;
+  if (!auth.startsWith("Bearer ")) {
+    res.status(401).json({ error: "Staff token required" });
+    return null;
+  }
+  const token = auth.slice(7);
+  const entry = staffAuthTokens.get(token);
+  if (!entry) {
+    res.status(401).json({ error: "Invalid staff token" });
+    return null;
+  }
+  if (entry.expiresAt < Date.now()) {
+    staffAuthTokens.delete(token);
+    res.status(401).json({ error: "Staff token expired, please log in again" });
+    return null;
+  }
+  return entry.userId;
+}
+
 // ── AI Audit Log ──────────────────────────────────────────────────────────────
 const AUDIT_LOG_PATH = path.join(process.cwd(), "data", "ai_audit_log.jsonl");
 
@@ -3386,6 +3416,64 @@ Return a JSON object:
       console.error("[ai-insights] Error:", err.message);
       res.status(500).json({ error: err.message });
     }
+  });
+
+  // ── Post-Op (SaivieRecover tablet) routes ────────────────────────────────────
+
+  // Staff login: authenticate using username+password stored in users table
+  app.post("/api/postop/auth/login", async (req, res) => {
+    const { username, passcode } = req.body;
+    if (!username || !passcode) return res.status(400).json({ error: "username and passcode required" });
+    const user = await storage.getUserByPasscode(passcode);
+    if (!user || user.username !== username) return res.status(401).json({ error: "Invalid credentials" });
+    const staffToken = issueStaffToken(user.id);
+    res.json({ staffToken, user: { id: user.id, username: user.username, role: user.role } });
+  });
+
+  // Search patients (staff-authenticated)
+  app.get("/api/postop/patients", async (req, res) => {
+    if (!getStaffUserId(req, res)) return;
+    const q = ((req.query.q as string) || "").toLowerCase().trim();
+    const all = await storage.getPatients();
+    const results = q
+      ? all.filter(p => p.name?.toLowerCase().includes(q) || p.phone?.includes(q)).slice(0, 20)
+      : all.slice(0, 20);
+    res.json(results);
+  });
+
+  // Get post-op observations for a patient
+  app.get("/api/postop/observations/:patientId", async (req, res) => {
+    if (!getStaffUserId(req, res)) return;
+    const patientId = parseInt(req.params.patientId);
+    if (isNaN(patientId)) return res.status(400).json({ error: "Invalid patient ID" });
+    const obs = await storage.getPostopObservations(patientId);
+    res.json(obs);
+  });
+
+  // Create a new post-op observation
+  app.post("/api/postop/observations", async (req, res) => {
+    const staffUserId = getStaffUserId(req, res);
+    if (!staffUserId) return;
+    const {
+      patientId, observedAt, painScore, systolic, diastolic, pulse,
+      nausea, mobility, woundCondition, notes
+    } = req.body;
+    if (!patientId || !observedAt) return res.status(400).json({ error: "patientId and observedAt required" });
+    const staffUser = await storage.getUser(staffUserId);
+    const obs = await storage.createPostopObservation({
+      patientId: parseInt(patientId),
+      observedAt,
+      painScore: painScore != null ? parseInt(painScore) : null,
+      systolic: systolic != null ? parseInt(systolic) : null,
+      diastolic: diastolic != null ? parseInt(diastolic) : null,
+      pulse: pulse != null ? parseInt(pulse) : null,
+      nausea: !!nausea,
+      mobility: mobility || null,
+      woundCondition: woundCondition || null,
+      notes: notes || null,
+      recordedBy: staffUser?.username || staffUserId,
+    });
+    res.status(201).json(obs);
   });
 
   app.use("/api", (err: any, _req: any, res: any, _next: any) => {

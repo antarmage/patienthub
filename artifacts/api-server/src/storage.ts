@@ -47,6 +47,8 @@ import {
   type MedicationLog, type InsertMedicationLog,
   patientDocuments,
   type PatientDocument, type InsertPatientDocument,
+  postopObservations,
+  type PostopObservation, type InsertPostopObservation,
 } from "@workspace/db";
 
 export interface IStorage {
@@ -195,6 +197,9 @@ export interface IStorage {
   getPatientDocument(id: number): Promise<PatientDocument | undefined>;
   createPatientDocument(doc: InsertPatientDocument): Promise<PatientDocument>;
   deletePatientDocument(id: number): Promise<boolean>;
+
+  getPostopObservations(patientId: number): Promise<PostopObservation[]>;
+  createPostopObservation(obs: InsertPostopObservation): Promise<PostopObservation>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -751,6 +756,17 @@ export class DatabaseStorage implements IStorage {
   async deletePatientDocument(id: number): Promise<boolean> {
     const result = await db.delete(patientDocuments).where(eq(patientDocuments.id, id)).returning();
     return result.length > 0;
+  }
+
+  async getPostopObservations(patientId: number): Promise<PostopObservation[]> {
+    return db.select().from(postopObservations)
+      .where(eq(postopObservations.patientId, patientId))
+      .orderBy(desc(postopObservations.observedAt));
+  }
+
+  async createPostopObservation(obs: InsertPostopObservation): Promise<PostopObservation> {
+    const [created] = await db.insert(postopObservations).values(obs).returning();
+    return created;
   }
 }
 

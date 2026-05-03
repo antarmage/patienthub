@@ -104,6 +104,75 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+function PostOpObservationsCard({ patientId }: { patientId: number }) {
+  const { data: obs = [], isLoading } = useQuery<any[]>({
+    queryKey: [`/api/postop/observations/${patientId}`],
+    queryFn: async () => {
+      const r = await fetch(`/api/postop/observations/${patientId}`);
+      if (!r.ok) return [];
+      return r.json();
+    },
+    retry: false,
+  });
+
+  const painColor = (score: number | null) => {
+    if (score == null) return "text-slate-400";
+    if (score <= 3) return "text-emerald-600 font-bold";
+    if (score <= 6) return "text-amber-600 font-bold";
+    return "text-rose-600 font-bold";
+  };
+
+  return (
+    <Card className="shadow-sm border-slate-200">
+      <CardHeader className="py-3 border-b border-slate-100">
+        <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <Stethoscope className="w-4 h-4 text-sky-500" /> Post-Op Observations
+          {obs.length > 0 && (
+            <Badge variant="outline" className="ml-auto text-[10px] h-[18px] border-sky-200 text-sky-700 bg-sky-50">
+              {obs.length} record{obs.length !== 1 ? "s" : ""}
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {isLoading ? (
+          <div className="p-4 text-xs text-slate-400 text-center">Loading…</div>
+        ) : obs.length === 0 ? (
+          <div className="p-4 text-xs text-slate-400 text-center italic">No post-op observations recorded.</div>
+        ) : (
+          <>
+            <div className="grid grid-cols-6 gap-2 px-3 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+              <span>Time</span>
+              <span className="text-center">Pain</span>
+              <span className="text-center">BP</span>
+              <span className="text-center">Pulse</span>
+              <span className="text-center">Nausea</span>
+              <span>Notes</span>
+            </div>
+            {obs.slice(0, 5).map((o: any) => (
+              <div key={o.id} className="grid grid-cols-6 gap-2 px-3 py-2.5 border-b border-slate-50 text-xs items-center">
+                <span className="text-slate-400">
+                  {new Date(o.observedAt).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </span>
+                <span className={`text-center ${painColor(o.painScore)}`}>{o.painScore != null ? `${o.painScore}/10` : "—"}</span>
+                <span className="text-center text-slate-600">{o.systolic && o.diastolic ? `${o.systolic}/${o.diastolic}` : "—"}</span>
+                <span className="text-center text-slate-600">{o.pulse ?? "—"}</span>
+                <span className="text-center">{o.nausea ? <span className="text-amber-600">Yes</span> : <span className="text-slate-400">No</span>}</span>
+                <span className="text-slate-500 truncate">{o.woundCondition || o.mobility || o.notes || "—"}</span>
+              </div>
+            ))}
+            {obs.length > 5 && (
+              <div className="px-3 py-2 text-xs text-slate-400 text-center border-t border-slate-50">
+                +{obs.length - 5} more entries — view in SaivieRecover
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function ClinicianPortal() {
   const [, navigate] = useLocation();
   const [activeView, setActiveView] = useState("dashboard");
@@ -6029,6 +6098,9 @@ export default function ClinicianPortal() {
                                </div>
                             </CardContent>
                          </Card>
+
+                         {/* POST-OP OBSERVATIONS */}
+                         <PostOpObservationsCard patientId={selectedPatient.id} />
 
                       </div>
 

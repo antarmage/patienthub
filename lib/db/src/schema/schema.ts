@@ -549,6 +549,25 @@ export const insertPatientDocumentSchema = createInsertSchema(patientDocuments).
 export type InsertPatientDocument = z.infer<typeof insertPatientDocumentSchema>;
 export type PatientDocument = typeof patientDocuments.$inferSelect;
 
+export const postopObservations = pgTable("postop_observations", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id).notNull(),
+  observedAt: text("observed_at").notNull(),
+  painScore: integer("pain_score"),
+  systolic: integer("systolic"),
+  diastolic: integer("diastolic"),
+  pulse: integer("pulse"),
+  nausea: boolean("nausea").default(false),
+  mobility: text("mobility"),
+  woundCondition: text("wound_condition"),
+  notes: text("notes"),
+  recordedBy: text("recorded_by"),
+});
+
+export const insertPostopObservationSchema = createInsertSchema(postopObservations).omit({ id: true });
+export type InsertPostopObservation = z.infer<typeof insertPostopObservationSchema>;
+export type PostopObservation = typeof postopObservations.$inferSelect;
+
 export const scheduleOptimisations = pgTable("schedule_optimisations", {
   id: serial("id").primaryKey(),
   date: date("date").notNull(),
