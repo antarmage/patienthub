@@ -18,9 +18,9 @@ import { AppProvider, useApp } from "@/context/AppContext";
 import { KeyboardWrapper } from "@/components/KeyboardWrapper";
 import {
   requestNotificationPermissions,
-  scheduleMedicineReminder,
-  scheduleAppointmentReminder,
-  scheduleWaterNudge,
+  scheduleMedicineReminders,
+  scheduleAppointmentReminders,
+  scheduleWaterReminders,
 } from "@/utils/notifications";
 import {
   getMedicines,
@@ -84,9 +84,7 @@ function RootLayoutNav() {
             const end = new Date(start);
             end.setDate(end.getDate() + med.durationDays);
             if (now > end) continue;
-            await scheduleMedicineReminder(
-              med.id, med.name, med.dosage, med.times, med.durationDays, start,
-            );
+            await scheduleMedicineReminders(med.id, med.name, med.dosage, med.times);
           }
         }
 
@@ -95,16 +93,14 @@ function RootLayoutNav() {
           for (const appt of appointments) {
             const dt = new Date(appt.dateTime);
             if (dt <= now) continue;
-            await scheduleAppointmentReminder(
-              appt.id, appt.doctorName, appt.clinicName, dt,
-            );
+            await scheduleAppointmentReminders(appt.id, appt.doctorName, appt.clinicName, dt);
           }
         }
 
         if (waterVal[1] === "true") {
           const [intake, goalMl] = await Promise.all([getWaterIntakeToday(), getWaterGoal()]);
           if (intake.totalMl < goalMl) {
-            await scheduleWaterNudge();
+            await scheduleWaterReminders();
           }
         }
       }

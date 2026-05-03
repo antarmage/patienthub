@@ -34,8 +34,8 @@ import {
 } from "@/utils/careStorage";
 import {
   requestNotificationPermissions,
-  scheduleMedicineReminder,
-  cancelMedicineReminder,
+  scheduleMedicineReminders,
+  cancelMedicineReminders,
 } from "@/utils/notifications";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
 
@@ -107,7 +107,7 @@ export default function MedicinesScreen() {
       const end = new Date(start);
       end.setDate(end.getDate() + med.durationDays);
       if (now > end) {
-        await cancelMedicineReminder(med.id);
+        await cancelMedicineReminders(med.id);
       }
     }
 
@@ -171,12 +171,11 @@ export default function MedicinesScreen() {
         AsyncStorage.getItem("@saiviemom_notif_medicine"),
       ]);
       if (hasPermission && medicineNotifsEnabled === "true") {
-        await scheduleMedicineReminder(
+        await scheduleMedicineReminders(
           newMedicine.id,
           newMedicine.name,
           newMedicine.dosage,
           times,
-          days,
         );
       }
 
@@ -200,7 +199,7 @@ export default function MedicinesScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          await cancelMedicineReminder(medicine.id);
+          await cancelMedicineReminders(medicine.id);
           await deleteMedicine(medicine.id);
           loadData();
         },

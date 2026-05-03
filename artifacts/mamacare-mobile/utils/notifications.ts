@@ -2,50 +2,32 @@ import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type Notifs = typeof import("expo-notifications");
-
 let _notifs: Notifs | null = null;
 
 async function getNotifs(): Promise<Notifs | null> {
   if (Platform.OS === "web") return null;
   if (_notifs) return _notifs;
+  _notifs = await import("expo-notifications");
+  _notifs.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+  return _notifs;
+}
+
+// Cancel a single scheduled notification, ignoring errors if it has already fired.
+async function tryCancelId(Notifications: Notifs, id: string): Promise<void> {
   try {
-    _notifs = await import("expo-notifications");
-    _notifs.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
-    });
-    return _notifs;
+    await Notifications.cancelScheduledNotificationAsync(id);
   } catch {
-    return null;
+    // Already fired or not found — not an error
   }
 }
-
-// ─── Storage key helpers ──────────────────────────────────────────────────────
-
-const medNotifKey = (id: string) => `@saiviemom_notif_ids_med_${id}`;
-const apptNotifKey = (id: string) => `@saiviemom_notif_ids_appt_${id}`;
-const waterDateKey = (dateStr: string) => `@saiviemom_notif_water_${dateStr}`;
-
-function todayDateStr(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
-async function cancelIds(Notifications: Notifs, ids: string[]): Promise<void> {
-  for (const id of ids) {
-    try {
-      await Notifications.cancelScheduledNotificationAsync(id);
-    } catch {
-      // Already fired or cancelled — ignore
-    }
-  }
-}
-
-// ─── Permission ───────────────────────────────────────────────────────────────
 
 export async function requestNotificationPermissions(): Promise<boolean> {
   const Notifications = await getNotifs();
@@ -56,80 +38,75 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   return status === "granted";
 }
 
-// ─── Medicine reminders ───────────────────────────────────────────────────────
-// Schedules finite DATE triggers (times × min(durationDays, 30) days) so
-// reminders stop automatically at the end of the medication course.
-
-export async function scheduleMedicineReminder(
+// Schedules a DAILY repeating trigger for each time slot in `times` (["HH:MM", ...]).
+// Returns the list of successfully scheduled notification IDs and persists them.
+// Call cancelMedicineReminders() when the medicine is deleted or its course expires.
+export async function scheduleMedicineReminders(
   medicineId: string,
   name: string,
   dosage: string,
   times: string[],
-  durationDays: number,
-  startDate?: Date,
-): Promise<void> {
+): Promise<string[]> {
   const Notifications = await getNotifs();
-  if (!Notifications) return;
+  if (!Notifications) return [];
 
-  const start = startDate ?? new Date();
-  const now = new Date();
   const ids: string[] = [];
-
-  for (let day = 0; day < durationDays; day++) {
-    for (const timeStr of times) {
-      const [hh, mm] = timeStr.split(":").map(Number);
-      if (isNaN(hh) || isNaN(mm)) continue;
-      const trigger = new Date(start);
-      trigger.setDate(trigger.getDate() + day);
-      trigger.setHours(hh, mm, 0, 0);
-      if (trigger <= now) continue;
-
-      const id = `med_${medicineId}_d${day}_${String(hh).padStart(2, "0")}${String(mm).padStart(2, "0")}`;
-      try {
-        await Notifications.scheduleNotificationAsync({
-          identifier: id,
-          content: {
-            title: `Time for ${name}`,
-            body: `Take your ${dosage} dose now`,
-            sound: true,
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: trigger,
-          },
-        });
-        ids.push(id);
-      } catch {
-        // Silently ignore individual failures
-      }
+  for (const timeStr of times) {
+    const [hh, mm] = timeStr.split(":").map(Number);
+    if (isNaN(hh) || isNaN(mm)) continue;
+    const id = `med_${medicineId}_${String(hh).padStart(2, "0")}${String(mm).padStart(2, "0")}`;
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: id,
+        content: {
+          title: `Time for ${name}`,
+          body: `Take your ${dosage} dose now`,
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour: hh,
+          minute: mm,
+        },
+      });
+      ids.push(id);
+    } catch (err) {
+      console.warn(`[notifications] Failed to schedule medicine reminder ${id}:`, err);
     }
   }
 
-  await AsyncStorage.setItem(medNotifKey(medicineId), JSON.stringify(ids));
+  if (ids.length > 0) {
+    await AsyncStorage.setItem(`@saiviemom_notif_ids_med_${medicineId}`, JSON.stringify(ids));
+  }
+  return ids;
 }
 
-export async function cancelMedicineReminder(medicineId: string): Promise<void> {
+// Reads persisted IDs for the medicine, cancels them all, and clears storage.
+export async function cancelMedicineReminders(medicineId: string): Promise<void> {
   const Notifications = await getNotifs();
   if (!Notifications) return;
-  const key = medNotifKey(medicineId);
+  const key = `@saiviemom_notif_ids_med_${medicineId}`;
   const stored = await AsyncStorage.getItem(key);
   if (stored) {
-    await cancelIds(Notifications, JSON.parse(stored));
+    const ids: string[] = JSON.parse(stored);
+    for (const id of ids) {
+      await tryCancelId(Notifications, id);
+    }
   }
   await AsyncStorage.removeItem(key);
 }
 
-// ─── Appointment reminders ────────────────────────────────────────────────────
-// Schedules one-time DATE triggers 24 h and 1 h before the appointment.
-
-export async function scheduleAppointmentReminder(
+// Schedules two DATE triggers: 24 h before and 1 h before the appointment.
+// Returns the list of successfully scheduled IDs and persists them.
+// Triggers in the past are skipped silently.
+export async function scheduleAppointmentReminders(
   appointmentId: string,
   doctorName: string,
   clinicName: string,
   dateTime: Date,
-): Promise<void> {
+): Promise<string[]> {
   const Notifications = await getNotifs();
-  if (!Notifications) return;
+  if (!Notifications) return [];
 
   const now = new Date();
   const clinic = clinicName ? ` at ${clinicName}` : "";
@@ -166,98 +143,88 @@ export async function scheduleAppointmentReminder(
         },
       });
       ids.push(slot.id);
-    } catch {
-      // Silently ignore
+    } catch (err) {
+      console.warn(`[notifications] Failed to schedule appointment reminder ${slot.id}:`, err);
     }
   }
 
-  await AsyncStorage.setItem(apptNotifKey(appointmentId), JSON.stringify(ids));
+  if (ids.length > 0) {
+    await AsyncStorage.setItem(
+      `@saiviemom_notif_ids_appt_${appointmentId}`,
+      JSON.stringify(ids),
+    );
+  }
+  return ids;
 }
 
-export async function cancelAppointmentReminder(
-  appointmentId: string,
-): Promise<void> {
+// Reads persisted IDs for the appointment, cancels them all, and clears storage.
+export async function cancelAppointmentReminders(appointmentId: string): Promise<void> {
   const Notifications = await getNotifs();
   if (!Notifications) return;
-  const key = apptNotifKey(appointmentId);
+  const key = `@saiviemom_notif_ids_appt_${appointmentId}`;
   const stored = await AsyncStorage.getItem(key);
   if (stored) {
-    await cancelIds(Notifications, JSON.parse(stored));
+    const ids: string[] = JSON.parse(stored);
+    for (const id of ids) {
+      await tryCancelId(Notifications, id);
+    }
   }
   await AsyncStorage.removeItem(key);
 }
 
-// ─── Water nudge ──────────────────────────────────────────────────────────────
-// Schedules individual DATE triggers for each of the next `days` days at 3 PM.
-// Each day is keyed separately so cancelling today's nudge (when goal is met)
-// does not affect future days.
+// Water nudge constants
+const WATER_NUDGE_ID = "water_nudge_3pm";
+const WATER_NUDGE_DATE_KEY = "@saiviemom_notif_water_scheduled_date";
 
-export async function scheduleWaterNudge(days = 14): Promise<void> {
+// Schedules a one-time DATE trigger for today at 3 PM if:
+//   a) it is still before 3 PM today, and
+//   b) a nudge has not already been scheduled for today.
+// Call this on water tracker focus (when goal is unmet) and on first permission grant.
+// Call cancelWaterNudge() when the daily goal is reached.
+// The next day's nudge is scheduled on the next app open, keeping scheduling on-demand.
+export async function scheduleWaterReminders(): Promise<void> {
   const Notifications = await getNotifs();
   if (!Notifications) return;
 
   const now = new Date();
+  const todayAt3PM = new Date(now);
+  todayAt3PM.setHours(15, 0, 0, 0);
+  if (todayAt3PM <= now) return;
 
-  for (let i = 0; i < days; i++) {
-    const target = new Date(now);
-    target.setDate(target.getDate() + i);
-    target.setHours(15, 0, 0, 0);
-    if (target <= now) continue;
+  const todayStr = now.toISOString().split("T")[0];
+  const scheduledDate = await AsyncStorage.getItem(WATER_NUDGE_DATE_KEY);
+  if (scheduledDate === todayStr) return;
 
-    const dateStr = target.toISOString().split("T")[0];
-    const key = waterDateKey(dateStr);
-    const existing = await AsyncStorage.getItem(key);
-    if (existing) continue; // already scheduled for this date
+  await tryCancelId(Notifications, WATER_NUDGE_ID);
 
-    const id = `water_nudge_${dateStr}`;
-    try {
-      await Notifications.scheduleNotificationAsync({
-        identifier: id,
-        content: {
-          title: "Hydration check",
-          body: "Don't forget your water intake today — you and baby need it!",
-          sound: true,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: target,
-        },
-      });
-      await AsyncStorage.setItem(key, id);
-    } catch {
-      // Silently ignore
-    }
-  }
-}
-
-export async function cancelTodayWaterNudge(): Promise<void> {
-  const Notifications = await getNotifs();
-  if (!Notifications) return;
-  const key = waterDateKey(todayDateStr());
-  const id = await AsyncStorage.getItem(key);
-  if (!id) return;
   try {
-    await Notifications.cancelScheduledNotificationAsync(id);
-  } catch {
-    // Already fired or cancelled
+    await Notifications.scheduleNotificationAsync({
+      identifier: WATER_NUDGE_ID,
+      content: {
+        title: "Hydration check",
+        body: "Don't forget your water intake today — you and baby need it!",
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: todayAt3PM,
+      },
+    });
+    await AsyncStorage.setItem(WATER_NUDGE_DATE_KEY, todayStr);
+  } catch (err) {
+    console.warn("[notifications] Failed to schedule water nudge:", err);
   }
-  await AsyncStorage.removeItem(key);
 }
 
-export async function cancelAllWaterNudges(): Promise<void> {
+// Cancels today's water nudge (e.g. when the daily goal is reached).
+export async function cancelWaterNudge(): Promise<void> {
   const Notifications = await getNotifs();
   if (!Notifications) return;
-  const allKeys = await AsyncStorage.getAllKeys();
-  const waterKeys = allKeys.filter((k) => k.startsWith("@saiviemom_notif_water_"));
-  for (const key of waterKeys) {
-    const id = await AsyncStorage.getItem(key);
-    if (id) {
-      try {
-        await Notifications.cancelScheduledNotificationAsync(id);
-      } catch {
-        // Already fired or cancelled
-      }
-    }
-    await AsyncStorage.removeItem(key);
-  }
+  await tryCancelId(Notifications, WATER_NUDGE_ID);
+  await AsyncStorage.removeItem(WATER_NUDGE_DATE_KEY);
+}
+
+// Cancels the water nudge and clears all related state (e.g. when toggling off).
+export async function cancelAllWaterReminders(): Promise<void> {
+  await cancelWaterNudge();
 }

@@ -20,12 +20,12 @@ import { calculateEDD, formatDate } from "@/data/pregnancyData";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
 import {
   requestNotificationPermissions,
-  scheduleMedicineReminder,
-  cancelMedicineReminder,
-  scheduleAppointmentReminder,
-  cancelAppointmentReminder,
-  scheduleWaterNudge,
-  cancelAllWaterNudges,
+  scheduleMedicineReminders,
+  cancelMedicineReminders,
+  scheduleAppointmentReminders,
+  cancelAppointmentReminders,
+  scheduleWaterReminders,
+  cancelAllWaterReminders,
 } from "@/utils/notifications";
 import {
   getMedicines,
@@ -176,14 +176,14 @@ export default function ProfileScreen() {
       const end = new Date(start);
       end.setDate(end.getDate() + med.durationDays);
       if (now > end) continue;
-      await cancelMedicineReminder(med.id);
+      await cancelMedicineReminders(med.id);
       let times: string[];
       switch (med.frequency) {
         case "twice": times = [fmt(h, m), fmt((h + 12) % 24, m)]; break;
         case "thrice": times = [fmt(h, m), fmt(Math.min(h + 5, 23), m), fmt(Math.min(h + 10, 23), m)]; break;
         default: times = [fmt(h, m)];
       }
-      await scheduleMedicineReminder(med.id, med.name, med.dosage, times, med.durationDays, start);
+      await scheduleMedicineReminders(med.id, med.name, med.dosage, times);
     }
   };
 
@@ -198,7 +198,7 @@ export default function ProfileScreen() {
       } else {
         const medicines = await getMedicines();
         for (const med of medicines) {
-          await cancelMedicineReminder(med.id);
+          await cancelMedicineReminders(med.id);
         }
       }
       await AsyncStorage.setItem(NOTIF_KEYS.MEDICINE, value ? "true" : "false");
@@ -220,12 +220,12 @@ export default function ProfileScreen() {
         for (const appt of appointments) {
           const dateTime = new Date(appt.dateTime);
           if (dateTime <= now) continue;
-          await scheduleAppointmentReminder(appt.id, appt.doctorName, appt.clinicName, dateTime);
+          await scheduleAppointmentReminders(appt.id, appt.doctorName, appt.clinicName, dateTime);
         }
       } else {
         const appointments = await getAppointments();
         for (const appt of appointments) {
-          await cancelAppointmentReminder(appt.id);
+          await cancelAppointmentReminders(appt.id);
         }
       }
       await AsyncStorage.setItem(NOTIF_KEYS.APPOINTMENT, value ? "true" : "false");
@@ -244,10 +244,10 @@ export default function ProfileScreen() {
         if (!hasPermission) return;
         const [intake, goalMl] = await Promise.all([getWaterIntakeToday(), getWaterGoal()]);
         if (intake.totalMl < goalMl) {
-          await scheduleWaterNudge();
+          await scheduleWaterReminders();
         }
       } else {
-        await cancelAllWaterNudges();
+        await cancelAllWaterReminders();
       }
       await AsyncStorage.setItem(NOTIF_KEYS.WATER, value ? "true" : "false");
       setWaterNotifs(value);

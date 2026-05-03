@@ -33,8 +33,8 @@ import {
 } from "@/utils/careStorage";
 import {
   requestNotificationPermissions,
-  scheduleAppointmentReminder,
-  cancelAppointmentReminder,
+  scheduleAppointmentReminders,
+  cancelAppointmentReminders,
 } from "@/utils/notifications";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
 
@@ -171,7 +171,7 @@ export default function AppointmentsScreen() {
         AsyncStorage.getItem("@saiviemom_notif_appointment"),
       ]);
       if (hasPermission && apptNotifsEnabled === "true") {
-        await scheduleAppointmentReminder(
+        await scheduleAppointmentReminders(
           newAppointment.id,
           newAppointment.doctorName,
           newAppointment.clinicName,
@@ -210,7 +210,7 @@ export default function AppointmentsScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await cancelAppointmentReminder(appointment.id);
+            await cancelAppointmentReminders(appointment.id);
             await deleteAppointment(appointment.id);
             loadAppointments();
           },
