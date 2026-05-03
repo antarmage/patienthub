@@ -3486,9 +3486,16 @@ Return a JSON object:
 
 // ── SaivieDesk (Receptionist Intake) Routes ───────────────────────────────────
 
-// Helper: validate desk staff token (receptionist or admin only)
-function getDeskStaffUserId(req: Request, res: Response): string | null {
-  return getStaffUserId(req, res);
+// Helper: validate desk staff token AND verify receptionist/admin role
+async function getDeskStaffUserId(req: Request, res: Response): Promise<string | null> {
+  const userId = getStaffUserId(req, res);
+  if (!userId) return null;
+  const user = await storage.getUser(userId);
+  if (!user || (user.role !== "receptionist" && user.role !== "admin")) {
+    res.status(403).json({ error: "Access denied. Receptionist or admin role required." });
+    return null;
+  }
+  return userId;
 }
 
 export async function registerDeskRoutes(app: Express) {
@@ -3509,9 +3516,9 @@ export async function registerDeskRoutes(app: Express) {
     }
   });
 
-  // GET /api/desk/patients?search= — search patients (staff-authenticated)
+  // GET /api/desk/patients?search= — search patients (receptionist/admin only)
   app.get("/api/desk/patients", async (req, res) => {
-    if (!getDeskStaffUserId(req, res)) return;
+    if (!(await getDeskStaffUserId(req, res))) return;
     try {
       const q = ((req.query.search as string) || (req.query.q as string) || "").toLowerCase().trim();
       const all = await storage.getPatients();
@@ -3519,32 +3526,32 @@ export async function registerDeskRoutes(app: Express) {
         ? all.filter(p => p.name?.toLowerCase().includes(q) || p.phone?.includes(q) || p.email?.toLowerCase().includes(q)).slice(0, 30)
         : all.slice(0, 30);
       res.json(results);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message || "Internal server error" });
+    } catch (err: unknown) {
+      res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
     }
   });
 
-  // GET /api/desk/patients/:id — get single patient by ID (staff-authenticated)
+  // GET /api/desk/patients/:id — get single patient by ID (receptionist/admin only)
   app.get("/api/desk/patients/:id", async (req, res) => {
-    if (!getDeskStaffUserId(req, res)) return;
+    if (!(await getDeskStaffUserId(req, res))) return;
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid patient ID" });
       const patient = await storage.getPatient(id);
       if (!patient) return res.status(404).json({ error: "Patient not found" });
       res.json(patient);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message || "Internal server error" });
+    } catch (err: unknown) {
+      res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
     }
   });
 
-  // POST /api/desk/patients — create new patient (staff-authenticated)
+  // POST /api/desk/patients — create new patient (receptionist/admin only)
   app.post("/api/desk/patients", async (req, res) => {
-    if (!getDeskStaffUserId(req, res)) return;
+    if (!(await getDeskStaffUserId(req, res))) return;
     try {
-      const all = await storage.getPatients();
-      const phone = req.body.phone?.trim();
+      const phone = (req.body.phone as string | undefined)?.trim();
       if (phone) {
+        const all = await storage.getPatients();
         const duplicate = all.find(p => p.phone === phone);
         if (duplicate) {
           return res.status(409).json({ error: "A patient with this phone number already exists", existingId: duplicate.id });
@@ -3552,46 +3559,64 @@ export async function registerDeskRoutes(app: Express) {
       }
       const patient = await storage.createPatient(req.body);
       res.status(201).json(patient);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message || "Internal server error" });
+    } catch (err: unknown) {
+      res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
     }
   });
 
-  // PATCH /api/desk/patients/:id — update patient (staff-authenticated)
+  // PATCH /api/desk/patients/:id — update patient (receptionist/admin only)
   app.patch("/api/desk/patients/:id", async (req, res) => {
-    if (!getDeskStaffUserId(req, res)) return;
+    if (!(await getDeskStaffUserId(req, res))) return;
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid patient ID" });
+      // Prevent introducing duplicate phone numbers
+      const newPhone = (req.body.phone as string | undefined)?.trim();
+      if (newPhone) {
+        const all = await storage.getPatients();
+        const conflict = all.find(p => p.phone === newPhone && p.id !== id);
+        if (conflict) {
+          return res.status(409).json({ error: "Another patient already has this phone number", existingId: conflict.id });
+        }
+      }
       const patient = await storage.updatePatient(id, req.body);
       if (!patient) return res.status(404).json({ error: "Patient not found" });
       res.json(patient);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message || "Internal server error" });
+    } catch (err: unknown) {
+      res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
     }
   });
 
-  // GET /api/desk/providers — get providers list (staff-authenticated)
+  // GET /api/desk/providers — get providers list (receptionist/admin only)
   app.get("/api/desk/providers", async (req, res) => {
-    if (!getDeskStaffUserId(req, res)) return;
+    if (!(await getDeskStaffUserId(req, res))) return;
     try {
       const providers = await storage.getProviders();
       res.json(providers);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message || "Internal server error" });
+    } catch (err: unknown) {
+      res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
     }
   });
 
-  // POST /api/desk/appointments — book appointment (staff-authenticated)
+  // POST /api/desk/appointments — book appointment (receptionist/admin only)
   app.post("/api/desk/appointments", async (req, res) => {
-    if (!getDeskStaffUserId(req, res)) return;
+    if (!(await getDeskStaffUserId(req, res))) return;
     try {
-      const { patientId, providerId, serviceId, date, time, type, reason, visitType } = req.body;
+      const { patientId, providerId, serviceId, date, time, type, reason, visitType } = req.body as {
+        patientId: string | number;
+        providerId?: string | number;
+        serviceId?: string | number;
+        date: string;
+        time: string;
+        type?: string;
+        reason?: string;
+        visitType?: string;
+      };
       if (!patientId || !date || !time) return res.status(400).json({ error: "patientId, date and time required" });
       const appt = await storage.createAppointment({
-        patientId: parseInt(patientId),
-        providerId: providerId ? parseInt(providerId) : null,
-        serviceId: serviceId ? parseInt(serviceId) : null,
+        patientId: Number(patientId),
+        providerId: providerId ? Number(providerId) : null,
+        serviceId: serviceId ? Number(serviceId) : null,
         date,
         time,
         type: type || "Consultation",
@@ -3600,8 +3625,8 @@ export async function registerDeskRoutes(app: Express) {
         status: "Confirmed",
       });
       res.status(201).json(appt);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message || "Internal server error" });
+    } catch (err: unknown) {
+      res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
     }
   });
 }

@@ -3,19 +3,20 @@ import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format } from "date-fns";
-import { CalendarIcon, ArrowLeft, ArrowRight, UserPlus, Phone, AlertCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/DeskAuthContext";
-import { useCreatePatient, useCreateAppointment, useProviders } from "@/hooks/use-desk-api";
+import { useCreatePatient, useCreateAppointment, useProviders, type DeskProvider } from "@/hooks/use-desk-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+const CARE_MODES = ["Pregnancy", "Gynaecology", "Post-op", "Fertility"] as const;
 
 const formSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -24,7 +25,7 @@ const formSchema = z.object({
   email: z.string().email("Invalid email").optional().or(z.literal("")),
   address: z.string().optional(),
   lmp: z.string().optional(),
-  mode: z.string().optional(),
+  mode: z.enum(CARE_MODES, { message: "Care mode is required" }),
   referredBy: z.string().optional(),
   condition: z.string().optional(),
   bookAppointment: z.boolean().default(false),
@@ -56,7 +57,7 @@ export default function Register() {
       email: "",
       address: "",
       lmp: "",
-      mode: "",
+      mode: undefined,
       referredBy: "",
       condition: "",
       bookAppointment: false,
@@ -253,18 +254,17 @@ export default function Register() {
                     name="mode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Care Mode</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormLabel>Care Mode *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="select-register-mode">
                               <SelectValue placeholder="Select patient mode" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Pregnancy">Pregnancy</SelectItem>
-                            <SelectItem value="Gynaecology">Gynaecology</SelectItem>
-                            <SelectItem value="Post-op">Post-op</SelectItem>
-                            <SelectItem value="Fertility">Fertility</SelectItem>
+                            {CARE_MODES.map(m => (
+                              <SelectItem key={m} value={m}>{m}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -397,7 +397,7 @@ export default function Register() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {providers?.map((p: any) => (
+                                {providers?.map((p: DeskProvider) => (
                                   <SelectItem key={p.id} value={p.id.toString()}>
                                     {p.name} {p.specialty ? `(${p.specialty})` : ""}
                                   </SelectItem>
@@ -441,7 +441,3 @@ export default function Register() {
   );
 }
 
-// Temporary internal component for sub-descriptions
-function FormDescription({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <p className={className}>{children}</p>;
-}

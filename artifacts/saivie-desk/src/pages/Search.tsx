@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Search as SearchIcon, UserPlus, Phone, Calendar, Clock, AlertCircle } from "lucide-react";
+import { Search as SearchIcon, UserPlus, Phone, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/DeskAuthContext";
-import { usePatients } from "@/hooks/use-desk-api";
+import { usePatients, type DeskPatient } from "@/hooks/use-desk-api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -83,7 +83,7 @@ export default function Search() {
             </div>
           ) : patients && patients.length > 0 ? (
             <div className="space-y-3 pb-8">
-              {patients.map((patient: any) => (
+              {patients.map((patient: DeskPatient) => (
                 <Link key={patient.id} href={`/patient/${patient.id}`}>
                   <Card className="hover:border-primary/50 transition-colors cursor-pointer border-slate-200">
                     <CardContent className="p-4 flex items-center justify-between">

@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/context/DeskAuthContext";
-import { usePatient, useProviders, useCreateAppointment } from "@/hooks/use-desk-api";
+import { usePatient, useProviders, useCreateAppointment, type DeskProvider } from "@/hooks/use-desk-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -179,7 +179,7 @@ export default function Book() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {providers?.map((p: any) => (
+                          {providers?.map((p: DeskProvider) => (
                             <SelectItem key={p.id} value={p.id.toString()}>
                               {p.name} {p.specialty ? `(${p.specialty})` : ""}
                             </SelectItem>
