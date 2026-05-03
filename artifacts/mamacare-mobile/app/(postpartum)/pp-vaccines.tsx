@@ -42,7 +42,7 @@ export default function PostpartumVaccinesScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+        <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace("/(postpartum)")}>
           <Feather name="arrow-left" size={22} color={COLORS.textPrimary} />
         </Pressable>
         <ThemedText style={styles.headerName}>Postpartum Vaccines</ThemedText>
