@@ -161,7 +161,7 @@ export default function PostpartumHubScreen() {
         visible={showDobModal}
         transparent
         animationType="slide"
-        onRequestClose={() => { if (babyDob) setShowDobModal(false); }}
+        onRequestClose={() => setShowDobModal(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -181,11 +181,9 @@ export default function PostpartumHubScreen() {
             <Pressable style={styles.saveBtn} onPress={handleSaveDob}>
               <ThemedText style={styles.saveBtnText}>Save</ThemedText>
             </Pressable>
-            {babyDob && (
-              <Pressable onPress={() => setShowDobModal(false)} style={{ marginTop: Spacing.md, alignItems: "center" }}>
-                <ThemedText style={{ color: COLORS.textMuted, fontSize: 14 }}>Cancel</ThemedText>
-              </Pressable>
-            )}
+            <Pressable onPress={() => setShowDobModal(false)} style={{ marginTop: Spacing.md, alignItems: "center" }}>
+              <ThemedText style={{ color: COLORS.textMuted, fontSize: 14 }}>Skip for now</ThemedText>
+            </Pressable>
           </View>
         </View>
       </Modal>
