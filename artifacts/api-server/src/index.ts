@@ -1,6 +1,6 @@
 import { createServer } from "http";
 import app from "./app";
-import { registerRoutes } from "./routes/routes";
+import { registerRoutes, registerDeskRoutes } from "./routes/routes";
 import { logger } from "./lib/logger";
 
 const rawPort = process.env["PORT"];
@@ -19,7 +19,8 @@ if (Number.isNaN(port) || port <= 0) {
 
 const httpServer = createServer(app);
 
-registerRoutes(httpServer, app).then(() => {
+registerRoutes(httpServer, app).then(async () => {
+  await registerDeskRoutes(app);
   httpServer.listen(port, () => {
     logger.info({ port }, "Server listening");
   });
