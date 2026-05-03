@@ -29,6 +29,7 @@ import {
   saveAppointment,
   deleteAppointment,
   updateAppointmentNotifications,
+  getApiBase,
 } from "@/utils/careStorage";
 import {
   requestNotificationPermissions,
@@ -95,8 +96,7 @@ export default function AppointmentsScreen() {
   const loadProviders = async () => {
     setProvidersLoading(true);
     try {
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || "";
-      const res = await fetch(`${baseUrl}/api/mobile/providers`);
+      const res = await fetch(`${getApiBase()}/api/mobile/providers`);
       if (res.ok) {
         const data: ApiProvider[] = await res.json();
         setProviders(data);

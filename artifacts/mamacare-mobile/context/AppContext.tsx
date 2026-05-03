@@ -171,8 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: updated.name,
-            lmpDate: updated.lmpDate,
-            eddDate: updated.eddDate,
+            lmp: updated.lmpDate,
           }),
         });
       } catch (e) {
