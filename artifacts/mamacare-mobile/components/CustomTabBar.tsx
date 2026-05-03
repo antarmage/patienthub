@@ -2,7 +2,6 @@ import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
 import {
-  Animated,
   Platform,
   Pressable,
   StyleSheet,
