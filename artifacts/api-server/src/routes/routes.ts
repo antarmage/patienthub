@@ -112,11 +112,17 @@ export async function registerRoutes(
   app.post("/api/mobile/auth/login", async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: "phone required" });
-    const allPatients = await storage.getPatients();
     const normalized = String(phone).replace(/\D/g, "");
+    if (normalized.length < 7) return res.status(400).json({ error: "Invalid phone number" });
+    const allPatients = await storage.getPatients();
     const patient = allPatients.find(p => {
       if (!p.phone) return false;
-      return p.phone.replace(/\D/g, "").endsWith(normalized) || normalized.endsWith(p.phone.replace(/\D/g, ""));
+      const stored = p.phone.replace(/\D/g, "");
+      if (stored.length < 7) return false;
+      // Accept 10-digit exact match or country-code prefix equivalence
+      // e.g. "8404828065" matches "918404828065" — compare last 10 digits
+      const cmp = Math.min(normalized.length, stored.length, 10);
+      return normalized.slice(-cmp) === stored.slice(-cmp);
     });
     if (!patient) return res.status(404).json({ error: "No patient found for this phone number" });
     const mobileToken = issueMobileToken(patient.id);
