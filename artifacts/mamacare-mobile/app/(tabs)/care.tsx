@@ -68,6 +68,9 @@ export default function CareScreen() {
   const togglePp = async (value: boolean) => {
     setPpEnabled(value);
     await AsyncStorage.setItem(PP_ENABLED_KEY, value ? "true" : "false");
+    if (!value) {
+      await AsyncStorage.removeItem("@saiviemom_pp_baby_dob");
+    }
   };
 
   const loadData = async () => {
