@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -41,7 +42,7 @@ export default function HomeScreen() {
   const daysUntilEDD = eddDate
     ? Math.floor((eddDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     : null;
-  const showPostpartum = daysUntilEDD !== null && daysUntilEDD <= 14;
+  const [showPostpartum, setShowPostpartum] = useState(false);
 
   const trimester = selectedWeek <= 13 ? 1 : selectedWeek <= 26 ? 2 : 3;
   const trimesterText = trimester === 1 ? "First Trimester" : trimester === 2 ? "Second Trimester" : "Third Trimester";
@@ -54,7 +55,7 @@ export default function HomeScreen() {
 
   const loadAllStats = async () => {
     try {
-      const [stats, water, goal, weight, bp, appointments, journal] = await Promise.all([
+      const [stats, water, goal, weight, bp, appointments, journal, ppStored] = await Promise.all([
         getTodayMedicineStats(),
         getWaterIntakeToday(),
         getWaterGoal(),
@@ -62,6 +63,7 @@ export default function HomeScreen() {
         getLatestBP(),
         getAppointments(),
         getTodayJournalEntry(),
+        AsyncStorage.getItem("@saiviemom_pp_enabled"),
       ]);
       setMedicineStats(stats);
       setWaterIntake(water.totalMl);
@@ -70,6 +72,14 @@ export default function HomeScreen() {
       setLatestWeight(weight);
       setLatestBP(bp);
       setTodayJournal(journal);
+
+      // Show postpartum card if the user has explicitly enabled it,
+      // or auto-show when EDD is ≤ 14 days away / already past.
+      if (ppStored !== null) {
+        setShowPostpartum(ppStored === "true");
+      } else {
+        setShowPostpartum(daysUntilEDD !== null && daysUntilEDD <= 14);
+      }
 
       const upcoming = appointments
         .filter(a => new Date(a.dateTime) > new Date())

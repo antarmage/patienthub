@@ -1,11 +1,13 @@
 import React, { useState, useCallback } from "react";
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Switch } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
+import { useApp } from "@/context/AppContext";
 import {
   getAppointments,
   getMedicines,
@@ -14,6 +16,8 @@ import {
   Appointment,
   Medicine,
 } from "@/utils/careStorage";
+
+const PP_ENABLED_KEY = "@saiviemom_pp_enabled";
 
 const PROVIDER_COLORS = ["#F5F3FF", "#FCE7F3", "#ECFDF5", "#EFF6FF", "#FEF3C7"];
 const PROVIDER_TEXT_COLORS = ["#6C63FF", "#EC4899", "#10B981", "#3B82F6", "#F59E0B"];
@@ -28,18 +32,43 @@ export default function CareScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const router = useRouter();
+  const { userProfile } = useApp();
 
   const [nextAppointment, setNextAppointment] = useState<Appointment | null>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [medicineStats, setMedicineStats] = useState({ total: 0, taken: 0, pending: 0 });
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loadingProviders, setLoadingProviders] = useState(true);
+  const [ppEnabled, setPpEnabled] = useState(false);
+
+  const eddDate = userProfile?.eddDate ? new Date(userProfile.eddDate) : null;
+  const daysUntilEDD = eddDate
+    ? Math.floor((eddDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
 
   useFocusEffect(
     useCallback(() => {
       loadData();
+      loadPpToggle();
     }, [])
   );
+
+  const loadPpToggle = async () => {
+    const stored = await AsyncStorage.getItem(PP_ENABLED_KEY);
+    if (stored === null) {
+      // Auto-enable when EDD is within 14 days or already past
+      const autoOn = daysUntilEDD !== null && daysUntilEDD <= 14;
+      setPpEnabled(autoOn);
+      if (autoOn) await AsyncStorage.setItem(PP_ENABLED_KEY, "true");
+    } else {
+      setPpEnabled(stored === "true");
+    }
+  };
+
+  const togglePp = async (value: boolean) => {
+    setPpEnabled(value);
+    await AsyncStorage.setItem(PP_ENABLED_KEY, value ? "true" : "false");
+  };
 
   const loadData = async () => {
     try {
@@ -100,21 +129,34 @@ export default function CareScreen() {
           <ThemedText style={styles.subtitle}>Manage appointments & team</ThemedText>
         </View>
 
-        <Pressable
-          style={styles.postpartumCard}
-          onPress={() => router.push("/(postpartum)")}
-        >
-          <View style={styles.postpartumLeft}>
-            <View style={styles.postpartumIconWrap}>
+        <View style={[styles.postpartumCard, !ppEnabled && styles.postpartumCardOff]}>
+          <Pressable
+            style={styles.postpartumLeft}
+            onPress={() => ppEnabled && router.push("/(postpartum)")}
+          >
+            <View style={[styles.postpartumIconWrap, !ppEnabled && styles.postpartumIconWrapOff]}>
               <ThemedText style={styles.postpartumEmoji}>🌸</ThemedText>
             </View>
             <View style={styles.postpartumText}>
-              <ThemedText style={styles.postpartumTitle}>Postpartum Care Hub</ThemedText>
-              <ThemedText style={styles.postpartumSub}>Recovery, milestones & baby vaccines</ThemedText>
+              <ThemedText style={[styles.postpartumTitle, !ppEnabled && styles.postpartumTitleOff]}>
+                Postpartum Care Hub
+              </ThemedText>
+              <ThemedText style={[styles.postpartumSub, !ppEnabled && styles.postpartumSubOff]}>
+                {ppEnabled ? "Recovery, milestones & baby vaccines" : "Enable to access postpartum tools"}
+              </ThemedText>
             </View>
+          </Pressable>
+          <View style={styles.postpartumToggleWrap}>
+            {ppEnabled && <Feather name="chevron-right" size={16} color="#DB2777" style={{ marginRight: 8 }} />}
+            <Switch
+              value={ppEnabled}
+              onValueChange={togglePp}
+              trackColor={{ false: "#E5E7EB", true: "#FBCFE8" }}
+              thumbColor={ppEnabled ? "#DB2777" : "#9CA3AF"}
+              ios_backgroundColor="#E5E7EB"
+            />
           </View>
-          <Feather name="chevron-right" size={18} color="#DB2777" />
-        </Pressable>
+        </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -522,6 +564,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FFD6E7",
   },
+  postpartumCardOff: {
+    backgroundColor: "#F9FAFB",
+    borderColor: "#E5E7EB",
+  },
   postpartumLeft: {
     flexDirection: "row",
     alignItems: "center",
@@ -536,6 +582,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  postpartumIconWrapOff: {
+    backgroundColor: "#F3F4F6",
+  },
   postpartumEmoji: {
     fontSize: 22,
   },
@@ -547,9 +596,19 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#DB2777",
   },
+  postpartumTitleOff: {
+    color: "#6B7280",
+  },
   postpartumSub: {
     fontSize: 12,
     color: "#BE185D",
     marginTop: 2,
+  },
+  postpartumSubOff: {
+    color: "#9CA3AF",
+  },
+  postpartumToggleWrap: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 });
