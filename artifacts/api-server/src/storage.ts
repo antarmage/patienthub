@@ -143,6 +143,7 @@ export interface IStorage {
   deleteDocument(id: number): Promise<boolean>;
 
   getUserByPasscode(passcode: string): Promise<User | undefined>;
+  getUserByPhone(phone: string): Promise<User | undefined>;
 
   getPatientProtocol(patientId: number): Promise<PatientProtocol | undefined>;
   savePatientProtocol(protocol: InsertPatientProtocol): Promise<PatientProtocol>;
@@ -528,6 +529,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByPasscode(passcode: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.password, passcode));
+    return user;
+  }
+
+  async getUserByPhone(phone: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.phone, phone));
     return user;
   }
 

@@ -3510,10 +3510,31 @@ const deskUpdateSchema = insertPatientSchema.pick(deskIntakeFields).partial();
 
 async function handleDeskAuth(req: Request, res: Response) {
   try {
-    const { username, passcode } = req.body as { username?: string; passcode?: string };
-    if (!username || !passcode) return res.status(400).json({ error: "username and passcode required" });
-    const user = await storage.getUserByPasscode(passcode);
-    if (!user || user.username !== username) return res.status(401).json({ error: "Invalid credentials" });
+    const { identifier, username, passcode, pin } = req.body as {
+      identifier?: string; username?: string; passcode?: string; pin?: string;
+    };
+    // Accept identifier (username or phone) or the legacy username field
+    const id = (identifier ?? username ?? "").trim();
+    const secret = (pin ?? passcode ?? "").trim();
+    if (!id || !secret) {
+      return res.status(400).json({ error: "identifier (username or phone) and PIN are required" });
+    }
+    // Look up the staff member by PIN first, then verify identifier matches username or phone
+    const userByPin = await storage.getUserByPasscode(secret);
+    let user = userByPin && (userByPin.username === id || userByPin.phone === id) ? userByPin : undefined;
+
+    // If no match by PIN+identifier, try phone lookup and validate PIN separately
+    if (!user) {
+      const userByPhone = await storage.getUserByPhone(id);
+      if (userByPhone?.password === secret) user = userByPhone;
+    }
+    // Finally try username lookup
+    if (!user) {
+      const userByUsername = await storage.getUserByUsername(id);
+      if (userByUsername?.password === secret) user = userByUsername;
+    }
+
+    if (!user) return res.status(401).json({ error: "Invalid credentials" });
     if (user.role !== "receptionist" && user.role !== "admin") {
       return res.status(403).json({ error: "Access denied. Receptionist or admin role required." });
     }

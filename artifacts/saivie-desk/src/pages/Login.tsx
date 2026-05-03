@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Stethoscope } from "lucide-react";
 
 export default function Login() {
-  const [username, setUsername] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [passcode, setPasscode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
@@ -23,7 +23,7 @@ export default function Login() {
       const res = await fetch("/api/desk/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, passcode }),
+        body: JSON.stringify({ identifier, passcode }),
       });
       
       if (!res.ok) throw new Error("Invalid credentials");
@@ -61,15 +61,15 @@ export default function Login() {
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="identifier">Username or Phone</Label>
                 <Input
-                  id="username"
-                  placeholder="e.g. desk1"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  id="identifier"
+                  placeholder="e.g. desk1 or +2348012345678"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   disabled={isLoading}
                   autoComplete="off"
-                  data-testid="input-login-username"
+                  data-testid="input-login-identifier"
                   required
                 />
               </div>

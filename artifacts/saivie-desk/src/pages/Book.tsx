@@ -59,11 +59,12 @@ export default function Book() {
         type: data.type,
       });
       setLocation(`/success?patientId=${patient.id}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
       toast({
         variant: "destructive",
         title: "Booking Failed",
-        description: err.message || "An error occurred while booking.",
+        description: apiErr.message || "An error occurred while booking.",
       });
     }
   };
