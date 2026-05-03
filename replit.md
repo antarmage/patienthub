@@ -59,4 +59,31 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Uses Tailwind v4 via `@tailwindcss/vite` plugin
 - Font: DM Sans (Google Fonts)
 
+## SaivieMom Postpartum Care Hub
+
+All screens live under `artifacts/mamacare-mobile/app/(trackers)/`:
+
+- `postpartum-hub.tsx` — Hub index; shows baby DOB modal on first entry, two-section card grid (Your Recovery / Your Baby)
+- `pp-vaccines.tsx` — Mom postpartum vaccine checklist (Tdap, flu, MMR, COVID, HPV, HepB) — checkable, persisted
+- `pp-lactation.tsx` — Breastfeeding tips + FAQ accordion + support CTA
+- `pp-mental-health.tsx` — 3-question mood check-in with concern detection and resource links
+- `pp-fitness.tsx` — Week-phased fitness plan (Weeks 1–2 rest, 3–6 gentle, 6+ progressive)
+- `pp-massage.tsx` — Postpartum massage guide with timing recommendations
+- `pp-weight-loss.tsx` — Weight loss tracker with start/target setup, progress ring, and weight log history
+- `pp-milestones-early.tsx` — Month-by-month 0–6 month developmental milestone checklist (persisted)
+- `pp-milestones-late.tsx` — Month-by-month 6–12 month developmental milestone checklist (persisted)
+- `pp-baby-vaccines.tsx` — Infant vaccine schedule with due-date countdown (from baby DOB), notification reminders 1 week before
+
+**AsyncStorage keys:**
+- `@saiviemom_pp_baby_dob` — baby date of birth (drives milestone age + vaccine due dates)
+- `@saiviemom_pp_mom_vaccines` — mom vaccine checklist state
+- `@saiviemom_pp_mental_health` — mood check-in answers + date
+- `@saiviemom_pp_milestones_early` / `_late` — milestone checked states
+- `@saiviemom_pp_weight_program` — weight program (startWeight, targetWeight, logs[])
+- `@saiviemom_pp_bvax_notif_<id>` — per-vaccine notification enabled state
+
+**Entry points:**
+- `app/(tabs)/care.tsx` — always shows Postpartum Care Hub card at top of Care Plan screen
+- `app/(tabs)/index.tsx` — shows Postpartum Care Hub card on Today tab when EDD ≤ 14 days away or past
+
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.

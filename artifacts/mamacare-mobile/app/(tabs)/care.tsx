@@ -100,6 +100,22 @@ export default function CareScreen() {
           <ThemedText style={styles.subtitle}>Manage appointments & team</ThemedText>
         </View>
 
+        <Pressable
+          style={styles.postpartumCard}
+          onPress={() => router.push("/(trackers)/postpartum-hub" as any)}
+        >
+          <View style={styles.postpartumLeft}>
+            <View style={styles.postpartumIconWrap}>
+              <ThemedText style={styles.postpartumEmoji}>🌸</ThemedText>
+            </View>
+            <View style={styles.postpartumText}>
+              <ThemedText style={styles.postpartumTitle}>Postpartum Care Hub</ThemedText>
+              <ThemedText style={styles.postpartumSub}>Recovery, milestones & baby vaccines</ThemedText>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={18} color="#DB2777" />
+        </Pressable>
+
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>Next Appointment</ThemedText>
@@ -493,5 +509,47 @@ const styles = StyleSheet.create({
   medicineStatusText: {
     fontSize: 12,
     fontWeight: "500",
+  },
+  postpartumCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFF0F6",
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.xl,
+    borderRadius: 20,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: "#FFD6E7",
+  },
+  postpartumLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    flex: 1,
+  },
+  postpartumIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(219,39,119,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  postpartumEmoji: {
+    fontSize: 22,
+  },
+  postpartumText: {
+    flex: 1,
+  },
+  postpartumTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#DB2777",
+  },
+  postpartumSub: {
+    fontSize: 12,
+    color: "#BE185D",
+    marginTop: 2,
   },
 });

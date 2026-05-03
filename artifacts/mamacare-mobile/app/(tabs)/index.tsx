@@ -26,7 +26,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
-  const { selectedWeek } = useApp();
+  const { selectedWeek, userProfile } = useApp();
 
   const [medicineStats, setMedicineStats] = useState({ total: 0, taken: 0, pending: 0 });
   const [waterProgress, setWaterProgress] = useState(0);
@@ -36,6 +36,12 @@ export default function HomeScreen() {
   const [latestBP, setLatestBP] = useState<BPLog | null>(null);
   const [nextAppointment, setNextAppointment] = useState<Appointment | null>(null);
   const [todayJournal, setTodayJournal] = useState<JournalEntry | null>(null);
+
+  const eddDate = userProfile?.eddDate ? new Date(userProfile.eddDate) : null;
+  const daysUntilEDD = eddDate
+    ? Math.floor((eddDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const showPostpartum = daysUntilEDD !== null && daysUntilEDD <= 14;
 
   const trimester = selectedWeek <= 13 ? 1 : selectedWeek <= 26 ? 2 : 3;
   const trimesterText = trimester === 1 ? "First Trimester" : trimester === 2 ? "Second Trimester" : "Third Trimester";
@@ -295,6 +301,28 @@ export default function HomeScreen() {
             </Pressable>
           </ScrollView>
         </View>
+
+        {showPostpartum && (
+          <Pressable
+            style={styles.postpartumCard}
+            onPress={() => router.push("/(trackers)/postpartum-hub" as any)}
+          >
+            <View style={styles.postpartumLeft}>
+              <View style={styles.postpartumIconWrap}>
+                <ThemedText style={styles.postpartumEmoji}>🌸</ThemedText>
+              </View>
+              <View style={styles.postpartumTextWrap}>
+                <ThemedText style={styles.postpartumTitle}>Postpartum Care Hub</ThemedText>
+                <ThemedText style={styles.postpartumSub}>
+                  {daysUntilEDD !== null && daysUntilEDD < 0
+                    ? "Your recovery journey starts now"
+                    : `${daysUntilEDD} days to go — get ready!`}
+                </ThemedText>
+              </View>
+            </View>
+            <Feather name="chevron-right" size={18} color="#DB2777" />
+          </Pressable>
+        )}
 
         <ThemedText style={styles.milestoneText}>
           Next milestone: Week {Math.min(selectedWeek + 1, 40)} checkup
@@ -618,5 +646,47 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: "#FFFFFF",
+  },
+  postpartumCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFF0F6",
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.xl,
+    borderRadius: 20,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: "#FFD6E7",
+  },
+  postpartumLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    flex: 1,
+  },
+  postpartumIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(219,39,119,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  postpartumEmoji: {
+    fontSize: 22,
+  },
+  postpartumTextWrap: {
+    flex: 1,
+  },
+  postpartumTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#DB2777",
+  },
+  postpartumSub: {
+    fontSize: 12,
+    color: "#BE185D",
+    marginTop: 2,
   },
 });
