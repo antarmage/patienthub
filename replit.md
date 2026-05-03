@@ -61,9 +61,9 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## SaivieMom Postpartum Care Hub
 
-All screens live under `artifacts/mamacare-mobile/app/(trackers)/`:
+All screens live under `artifacts/mamacare-mobile/app/(postpartum)/`:
 
-- `postpartum-hub.tsx` — Hub index; shows baby DOB modal on first entry, two-section card grid (Your Recovery / Your Baby)
+- `index.tsx` — Hub index; shows baby DOB modal on first entry, two-section card grid (Your Recovery / Your Baby)
 - `pp-vaccines.tsx` — Mom postpartum vaccine checklist (Tdap, flu, MMR, COVID, HPV, HepB) — checkable, persisted
 - `pp-lactation.tsx` — Breastfeeding tips + FAQ accordion + support CTA
 - `pp-mental-health.tsx` — 3-question mood check-in with concern detection and resource links
