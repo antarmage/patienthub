@@ -22,7 +22,16 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
   const { data: patient, isLoading } = usePatient(params.id);
   const updatePatient = useUpdatePatient();
 
-  const form = useForm({
+  const form = useForm<{
+    name: string;
+    phone: string;
+    email: string;
+    lmp: string;
+    mode: string;
+    referredBy: string;
+    address: string;
+    clinicianNote: string;
+  }>({
     defaultValues: {
       name: "",
       phone: "",
@@ -54,19 +63,24 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
     }
   }, [patient, form]);
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: {
+    name: string; phone: string; email: string; lmp: string;
+    mode: string; referredBy: string; address: string; clinicianNote: string;
+  }) => {
     try {
-      await updatePatient.mutateAsync({ id: params.id, data });
+      const payload = { ...data, mode: data.mode === "__none__" ? "" : data.mode };
+      await updatePatient.mutateAsync({ id: params.id, data: payload });
       toast({
         title: "Patient Updated",
         description: "The patient information has been saved successfully.",
       });
       setIsEditing(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
       toast({
         variant: "destructive",
         title: "Failed to update",
-        description: err.message || "An error occurred while saving.",
+        description: apiErr.message || "An error occurred while saving.",
       });
     }
   };
@@ -198,7 +212,7 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
                         <SelectItem value="Pregnancy">Pregnancy</SelectItem>
                         <SelectItem value="Gynaecology">Gynaecology</SelectItem>
                         <SelectItem value="Post-op">Post-op</SelectItem>
-                        <SelectItem value="">Unspecified</SelectItem>
+                        <SelectItem value="__none__">Unspecified</SelectItem>
                       </SelectContent>
                     </Select>
                   ) : (

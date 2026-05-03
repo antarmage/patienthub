@@ -2,8 +2,9 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { useLocation } from "wouter";
 
 interface User {
+  id?: number;
   username: string;
-  [key: string]: any;
+  role?: string;
 }
 
 interface DeskAuthContextType {
