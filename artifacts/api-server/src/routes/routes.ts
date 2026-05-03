@@ -426,6 +426,9 @@ export async function registerRoutes(
     if (!message || typeof message !== "string" || message.trim().length === 0) {
       return res.status(400).json({ error: "message is required" });
     }
+    if (message.length > 500) {
+      return res.status(400).json({ error: "message must be 500 characters or fewer" });
+    }
     const week = typeof weekNumber === "number" ? weekNumber : null;
     const tri = typeof trimester === "number" ? trimester : null;
     const trimesterLabel = tri === 1 ? "First" : tri === 2 ? "Second" : tri === 3 ? "Third" : null;
@@ -444,19 +447,17 @@ export async function registerRoutes(
     ].join(" ");
 
     try {
-      const { GoogleGenAI } = await import("@google/genai");
-      const genai = new GoogleGenAI({
-        apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
-        httpOptions: {
-          apiVersion: "",
-          baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL,
-        },
-      });
-      const response = await genai.models.generateContent({
+      const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: [
-          { role: "user", parts: [{ text: systemPrompt + "\n\nPatient: " + message.trim() }] },
+          {
+            role: "user",
+            parts: [{ text: message.trim() }],
+          },
         ],
+        config: {
+          systemInstruction: systemPrompt,
+        },
       });
       const reply = response.candidates?.[0]?.content?.parts?.[0]?.text ?? "I'm sorry, I couldn't generate a response right now.";
       res.json({ reply });
