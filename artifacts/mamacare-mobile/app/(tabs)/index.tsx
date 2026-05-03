@@ -148,6 +148,8 @@ export default function HomeScreen() {
     },
   ];
 
+  const trimesterLabel = trimester === 1 ? "First" : trimester === 2 ? "Second" : "Third";
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -165,6 +167,27 @@ export default function HomeScreen() {
           <ThemedText style={styles.todayTitle}>Today</ThemedText>
           <ThemedText style={styles.babyMessage}>{getBabyMessage()}</ThemedText>
         </View>
+
+        <Pressable
+          style={styles.aiChatCard}
+          onPress={() => router.push("/(trackers)/ai-chat")}
+        >
+          <View style={styles.aiChatLeft}>
+            <View style={styles.aiChatAvatar}>
+              <ThemedText style={styles.aiChatEmoji}>✨</ThemedText>
+            </View>
+            <View style={styles.aiChatText}>
+              <ThemedText style={styles.aiChatTitle}>Ask Maya</ThemedText>
+              <ThemedText style={styles.aiChatSub}>
+                AI assistant · {trimesterLabel} Trimester
+              </ThemedText>
+            </View>
+          </View>
+          <View style={styles.aiChatCta}>
+            <ThemedText style={styles.aiChatCtaText}>Chat</ThemedText>
+            <Feather name="chevron-right" size={14} color="#FFFFFF" />
+          </View>
+        </Pressable>
 
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
@@ -534,6 +557,65 @@ const styles = StyleSheet.create({
   },
   checkinCtaText: {
     fontSize: 12,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  aiChatCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.xl,
+    borderRadius: 20,
+    padding: Spacing.md,
+    backgroundColor: "#6C63FF",
+    shadowColor: "#6C63FF",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  aiChatLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    flex: 1,
+  },
+  aiChatAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  aiChatEmoji: {
+    fontSize: 22,
+  },
+  aiChatText: {
+    flex: 1,
+  },
+  aiChatTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  aiChatSub: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 2,
+  },
+  aiChatCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.full,
+    gap: 4,
+  },
+  aiChatCtaText: {
+    fontSize: 13,
     fontWeight: "600",
     color: "#FFFFFF",
   },

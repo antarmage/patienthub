@@ -415,6 +415,57 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  app.post("/api/mobile/ai-chat", async (req, res) => {
+    const patientId = getMobilePatientId(req, res);
+    if (!patientId) return;
+    const { message, weekNumber, trimester } = req.body as {
+      message?: string;
+      weekNumber?: number;
+      trimester?: number;
+    };
+    if (!message || typeof message !== "string" || message.trim().length === 0) {
+      return res.status(400).json({ error: "message is required" });
+    }
+    const week = typeof weekNumber === "number" ? weekNumber : null;
+    const tri = typeof trimester === "number" ? trimester : null;
+    const trimesterLabel = tri === 1 ? "First" : tri === 2 ? "Second" : tri === 3 ? "Third" : null;
+    const contextLine = week
+      ? `The patient is currently at week ${week} of her pregnancy${trimesterLabel ? ` (${trimesterLabel} Trimester)` : ""}.`
+      : "The patient's pregnancy week is unknown.";
+
+    const systemPrompt = [
+      "You are Maya, a warm and knowledgeable AI pregnancy assistant for the Saivie maternal health platform.",
+      contextLine,
+      "Your role is to provide supportive, evidence-based information about pregnancy, symptoms, nutrition, baby development, and general wellbeing.",
+      "Always tailor your answer to the patient's current week and trimester when relevant.",
+      "Keep responses concise (2–4 short paragraphs or bullet points), friendly, and reassuring.",
+      "Never diagnose or prescribe. Always end with a reminder to consult her Saivie clinician for any medical concerns.",
+      "Do not repeat the disclaimer if the patient explicitly acknowledges it.",
+    ].join(" ");
+
+    try {
+      const { GoogleGenAI } = await import("@google/genai");
+      const genai = new GoogleGenAI({
+        apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
+        httpOptions: {
+          apiVersion: "",
+          baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL,
+        },
+      });
+      const response = await genai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          { role: "user", parts: [{ text: systemPrompt + "\n\nPatient: " + message.trim() }] },
+        ],
+      });
+      const reply = response.candidates?.[0]?.content?.parts?.[0]?.text ?? "I'm sorry, I couldn't generate a response right now.";
+      res.json({ reply });
+    } catch (err) {
+      req.log?.error({ err }, "ai-chat error");
+      res.status(503).json({ error: "AI assistant is temporarily unavailable. Please try again." });
+    }
+  });
+
   // ── End mobile routes ─────────────────────────────────────────────────────
 
   app.get("/api/patients", async (req, res) => {
