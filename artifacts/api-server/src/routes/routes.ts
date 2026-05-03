@@ -11,6 +11,8 @@ import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../g
 import { ai } from "../replit_integrations/image/client";
 import { whatsapp } from "../whatsapp";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
+import { analyseGenome } from "../genome-engine";
+import multer from "multer";
 
 function parseId(val: string): number | null {
   const n = parseInt(val);
@@ -3804,4 +3806,365 @@ export async function registerDeskRoutes(app: Express) {
       res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
     }
   });
+}
+
+// ── SaivieGene Genome Routes ──────────────────────────────────────────────────
+export async function registerGenomeRoutes(app: Express): Promise<void> {
+  const genomeJobs = new Map<string, { status: "processing" | "done" | "error"; patientId?: number; fileName?: string }>();
+
+  const genomeUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 200 * 1024 * 1024 }, // 200 MB
+  }).single("file");
+
+  // POST /api/genome/upload — accept genome file and start async analysis
+  app.post("/api/genome/upload", (req: Request, res: Response) => {
+    genomeUpload(req, res, async (err) => {
+      if (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : "File upload error" });
+        return;
+      }
+    try {
+      const patientId = getMobilePatientId(req, res);
+      if (!patientId) return;
+
+      const file = (req as Request & { file?: Express.Multer.File }).file;
+      if (!file) {
+        res.status(400).json({ error: "No genome file uploaded" });
+        return;
+      }
+
+      const jobId = crypto.randomBytes(16).toString("hex");
+      const fileName = file.originalname ?? "genome.vcf";
+
+      genomeJobs.set(jobId, { status: "processing", patientId, fileName });
+
+      // Kick off async analysis
+      (async () => {
+        try {
+          const content = file.buffer.toString("utf8");
+          const result = analyseGenome(content, fileName);
+
+          const client = await (await import("../db")).pool.connect();
+          try {
+            await client.query(
+              `INSERT INTO genome_analyses
+                (patient_id, job_id, status, file_name, snp_count, health_risks, predispositions, pharmacogenomics, traits, raw_markers, analysed_at, created_at)
+               VALUES ($1, $2, 'done', $3, $4, $5, $6, $7, $8, $9, $10, $11)
+               ON CONFLICT (job_id) DO UPDATE SET
+                status = 'done',
+                snp_count = EXCLUDED.snp_count,
+                health_risks = EXCLUDED.health_risks,
+                predispositions = EXCLUDED.predispositions,
+                pharmacogenomics = EXCLUDED.pharmacogenomics,
+                traits = EXCLUDED.traits,
+                raw_markers = EXCLUDED.raw_markers,
+                analysed_at = EXCLUDED.analysed_at`,
+              [
+                patientId,
+                jobId,
+                fileName,
+                result.snpCount,
+                JSON.stringify(result.healthRisks),
+                JSON.stringify(result.predispositions),
+                JSON.stringify(result.pharmacogenomics),
+                JSON.stringify(result.traits),
+                JSON.stringify(result.rawMarkers),
+                new Date().toISOString(),
+                new Date().toISOString(),
+              ]
+            );
+          } finally {
+            client.release();
+          }
+
+          genomeJobs.set(jobId, { status: "done", patientId, fileName });
+        } catch (err) {
+          genomeJobs.set(jobId, { status: "error", patientId, fileName });
+        }
+      })();
+
+      res.status(202).json({ jobId, status: "processing" });
+    } catch (err: unknown) {
+      res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
+    }
+    });
+  });
+
+  // GET /api/genome/status/:jobId — poll analysis status
+  app.get("/api/genome/status/:jobId", async (req: Request, res: Response) => {
+    const patientId = getMobilePatientId(req, res);
+    if (!patientId) return;
+
+    const { jobId } = req.params;
+    const job = genomeJobs.get(jobId);
+
+    if (!job) {
+      // Check DB
+      try {
+        const client = await (await import("../db")).pool.connect();
+        try {
+          const result = await client.query(
+            "SELECT status FROM genome_analyses WHERE job_id = $1 AND patient_id = $2",
+            [jobId, patientId]
+          );
+          if (result.rows.length === 0) {
+            res.status(404).json({ error: "Job not found" });
+            return;
+          }
+          res.json({ jobId, status: result.rows[0].status });
+        } finally {
+          client.release();
+        }
+      } catch (err: unknown) {
+        res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
+      }
+      return;
+    }
+
+    if (job.patientId !== patientId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    res.json({ jobId, status: job.status });
+  });
+
+  // GET /api/genome/results — get most recent analysis results for the authenticated patient
+  app.get("/api/genome/results", async (req: Request, res: Response) => {
+    const patientId = getMobilePatientId(req, res);
+    if (!patientId) return;
+
+    try {
+      const client = await (await import("../db")).pool.connect();
+      try {
+        const result = await client.query(
+          `SELECT id, status, file_name, snp_count, health_risks, predispositions, pharmacogenomics, traits, analysed_at
+           FROM genome_analyses
+           WHERE patient_id = $1 AND status = 'done'
+           ORDER BY analysed_at DESC
+           LIMIT 1`,
+          [patientId]
+        );
+
+        if (result.rows.length === 0) {
+          res.status(404).json({ error: "No genome analysis found" });
+          return;
+        }
+
+        const row = result.rows[0];
+        res.json({
+          id: row.id,
+          status: row.status,
+          fileName: row.file_name,
+          snpCount: row.snp_count,
+          healthRisks: row.health_risks ?? [],
+          predispositions: row.predispositions ?? [],
+          pharmacogenomics: row.pharmacogenomics ?? [],
+          traits: row.traits ?? [],
+          analysedAt: row.analysed_at,
+        });
+      } finally {
+        client.release();
+      }
+    } catch (err: unknown) {
+      res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
+    }
+  });
+
+  // GET /api/genome/results/patient/:patientId — clinician portal: get patient genome insights
+  app.get("/api/genome/results/patient/:patientId", async (req: Request, res: Response) => {
+    try {
+      const pid = parseId(req.params.patientId);
+      if (!pid) { res.status(400).json({ error: "Invalid patient ID" }); return; }
+
+      const client = await (await import("../db")).pool.connect();
+      try {
+        const result = await client.query(
+          `SELECT id, status, file_name, snp_count, health_risks, predispositions, pharmacogenomics, traits, analysed_at
+           FROM genome_analyses
+           WHERE patient_id = $1 AND status = 'done'
+           ORDER BY analysed_at DESC
+           LIMIT 1`,
+          [pid]
+        );
+
+        if (result.rows.length === 0) {
+          res.status(404).json({ error: "No genome analysis found for this patient" });
+          return;
+        }
+
+        const row = result.rows[0];
+        res.json({
+          id: row.id,
+          status: row.status,
+          fileName: row.file_name,
+          snpCount: row.snp_count,
+          healthRisks: row.health_risks ?? [],
+          predispositions: row.predispositions ?? [],
+          pharmacogenomics: row.pharmacogenomics ?? [],
+          traits: row.traits ?? [],
+          analysedAt: row.analysed_at,
+        });
+      } finally {
+        client.release();
+      }
+    } catch (err: unknown) {
+      res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
+    }
+  });
+
+  // GET /api/genome/report — generate and download an HTML report
+  app.get("/api/genome/report", async (req: Request, res: Response) => {
+    const patientId = getMobilePatientId(req, res);
+    if (!patientId) return;
+
+    try {
+      const client = await (await import("../db")).pool.connect();
+      try {
+        const result = await client.query(
+          `SELECT file_name, snp_count, health_risks, predispositions, pharmacogenomics, traits, analysed_at
+           FROM genome_analyses
+           WHERE patient_id = $1 AND status = 'done'
+           ORDER BY analysed_at DESC LIMIT 1`,
+          [patientId]
+        );
+
+        if (result.rows.length === 0) {
+          res.status(404).json({ error: "No analysis found" });
+          return;
+        }
+
+        const row = result.rows[0];
+        const date = row.analysed_at ? new Date(row.analysed_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "Unknown date";
+
+        const html = generateReportHtml({
+          fileName: row.file_name,
+          snpCount: row.snp_count,
+          healthRisks: row.health_risks ?? [],
+          predispositions: row.predispositions ?? [],
+          pharmacogenomics: row.pharmacogenomics ?? [],
+          traits: row.traits ?? [],
+          date,
+        });
+
+        res.setHeader("Content-Type", "text/html");
+        res.setHeader("Content-Disposition", `attachment; filename="saiviegene-report.html"`);
+        res.send(html);
+      } finally {
+        client.release();
+      }
+    } catch (err: unknown) {
+      res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
+    }
+  });
+}
+
+function generateReportHtml(data: {
+  fileName: string;
+  snpCount: number;
+  healthRisks: Array<{ name: string; risk: string; score: number; description: string }>;
+  predispositions: Array<{ name: string; likelihood: string; gene: string; description: string }>;
+  pharmacogenomics: Array<{ drug: string; response: string; gene: string; recommendation: string }>;
+  traits: Array<{ trait: string; value: string; description: string }>;
+  date: string;
+}): string {
+  const riskColor = (r: string) => r === "high" ? "#ef4444" : r === "moderate" ? "#f59e0b" : "#22c55e";
+  const likeColor = (l: string) => l === "elevated" ? "#ef4444" : l === "reduced" ? "#22c55e" : "#94a3b8";
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>SaivieGene Genome Report</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #0a0e1a; color: #e2e8f0; margin: 0; padding: 24px; }
+  .header { background: linear-gradient(135deg, #1a1f35, #0f1525); border: 1px solid #2a3050; border-radius: 16px; padding: 32px; margin-bottom: 24px; }
+  .logo { font-size: 14px; font-weight: 700; letter-spacing: 4px; color: #d4a017; margin-bottom: 16px; }
+  h1 { font-size: 28px; margin: 0 0 8px 0; color: #f1f5f9; }
+  .subtitle { color: #64748b; font-size: 14px; }
+  .section { background: #111827; border: 1px solid #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .section h2 { font-size: 16px; font-weight: 700; margin: 0 0 16px 0; color: #d4a017; letter-spacing: 1px; text-transform: uppercase; }
+  .item { border-bottom: 1px solid #1e293b; padding: 12px 0; }
+  .item:last-child { border-bottom: none; }
+  .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .item-name { font-weight: 600; color: #f1f5f9; font-size: 15px; }
+  .badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+  .item-desc { color: #64748b; font-size: 13px; line-height: 1.5; }
+  .gene { color: #7dd3fc; font-family: monospace; font-size: 12px; margin-top: 4px; }
+  .rec { color: #a3e635; font-size: 13px; margin-top: 6px; font-style: italic; }
+  .disclaimer { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 16px; margin-top: 24px; font-size: 12px; color: #475569; line-height: 1.6; }
+  .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; }
+  .stat { background: #0f172a; border-radius: 8px; padding: 12px 16px; }
+  .stat-val { font-size: 20px; font-weight: 700; color: #d4a017; }
+  .stat-lab { font-size: 12px; color: #64748b; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">⬡ SAIVIEGENE</div>
+  <h1>Genome Analysis Report</h1>
+  <div class="subtitle">Analysed: ${data.date} &nbsp;·&nbsp; File: ${data.fileName}</div>
+  <div class="stats">
+    <div class="stat"><div class="stat-val">${data.snpCount.toLocaleString()}</div><div class="stat-lab">SNPs Analysed</div></div>
+    <div class="stat"><div class="stat-val">${data.healthRisks.length + data.predispositions.length}</div><div class="stat-lab">Conditions Screened</div></div>
+    <div class="stat"><div class="stat-val">${data.pharmacogenomics.length}</div><div class="stat-lab">Drug Interactions</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>🛡 Health Risks</h2>
+  ${data.healthRisks.map((r) => `
+  <div class="item">
+    <div class="item-header">
+      <div class="item-name">${r.name}</div>
+      <span class="badge" style="background:${riskColor(r.risk)}22;color:${riskColor(r.risk)}">${r.risk?.toUpperCase()}</span>
+    </div>
+    <div class="item-desc">${r.description}</div>
+  </div>`).join("")}
+</div>
+
+<div class="section">
+  <h2>🧬 Disease Predispositions</h2>
+  ${data.predispositions.map((p) => `
+  <div class="item">
+    <div class="item-header">
+      <div class="item-name">${p.name}</div>
+      <span class="badge" style="background:${likeColor(p.likelihood)}22;color:${likeColor(p.likelihood)}">${p.likelihood?.toUpperCase()}</span>
+    </div>
+    <div class="gene">Gene: ${p.gene}</div>
+    <div class="item-desc">${p.description}</div>
+  </div>`).join("")}
+</div>
+
+<div class="section">
+  <h2>💊 Pharmacogenomics</h2>
+  ${data.pharmacogenomics.map((pgx) => `
+  <div class="item">
+    <div class="item-header">
+      <div class="item-name">${pgx.drug}</div>
+      <span class="badge" style="background:#7c3aed22;color:#a78bfa">${pgx.response?.toUpperCase()}</span>
+    </div>
+    <div class="gene">Gene: ${pgx.gene}</div>
+    <div class="rec">→ ${pgx.recommendation}</div>
+  </div>`).join("")}
+</div>
+
+<div class="section">
+  <h2>✨ Traits & Ancestry</h2>
+  ${data.traits.map((t) => `
+  <div class="item">
+    <div class="item-header">
+      <div class="item-name">${t.trait}</div>
+      <span class="badge" style="background:#0d916022;color:#34d399">${t.value}</span>
+    </div>
+    <div class="item-desc">${t.description}</div>
+  </div>`).join("")}
+</div>
+
+<div class="disclaimer">
+  <strong>Medical Disclaimer:</strong> This report is generated for informational and educational purposes only. It does not constitute medical advice, diagnosis, or treatment recommendations. Genetic predispositions identified here do not guarantee the development of any condition. Always consult a qualified healthcare professional before making any health decisions. SaivieGene complies with applicable data protection and HIPAA privacy regulations.
+</div>
+</body>
+</html>`;
 }

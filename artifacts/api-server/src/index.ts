@@ -1,6 +1,6 @@
 import { createServer } from "http";
 import app from "./app";
-import { registerRoutes, registerDeskRoutes } from "./routes/routes";
+import { registerRoutes, registerDeskRoutes, registerGenomeRoutes } from "./routes/routes";
 import { logger } from "./lib/logger";
 
 const rawPort = process.env["PORT"];
@@ -21,6 +21,7 @@ const httpServer = createServer(app);
 
 registerRoutes(httpServer, app).then(async () => {
   await registerDeskRoutes(app);
+  await registerGenomeRoutes(app);
   httpServer.listen(port, () => {
     logger.info({ port }, "Server listening");
   });

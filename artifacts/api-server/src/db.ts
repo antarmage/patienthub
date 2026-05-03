@@ -91,6 +91,23 @@ export async function ensureSchema(): Promise<void> {
         suggestions_count integer,
         created_at text NOT NULL
       );
+
+      -- SaivieGene genome analyses table (Task #28)
+      CREATE TABLE IF NOT EXISTS genome_analyses (
+        id serial PRIMARY KEY,
+        patient_id integer REFERENCES patients(id),
+        job_id text NOT NULL UNIQUE,
+        status text NOT NULL DEFAULT 'processing',
+        file_name text,
+        snp_count integer,
+        health_risks jsonb,
+        predispositions jsonb,
+        pharmacogenomics jsonb,
+        traits jsonb,
+        raw_markers jsonb,
+        analysed_at text,
+        created_at text NOT NULL
+      );
     `);
   } finally {
     client.release();

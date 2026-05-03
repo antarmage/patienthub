@@ -22,6 +22,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **`artifacts/saivie-recover/`** — SaivieRecover tablet app for nursing staff post-op data collection (React + Vite, preview path: `/recover/`)
 - **`artifacts/saivie-desk/`** — SaivieDesk receptionist/front-desk patient intake app (React + Vite, preview path: `/desk/`)
 - **`artifacts/mamacare-mobile/`** — SaivieMom maternal health mobile app (Expo React Native)
+- **`artifacts/saiviegene/`** — SaivieGene premium genome analysis web app (React + Vite, preview path: `/saiviegene/`); dark navy + gold mobile-first design
 - **`artifacts/api-server/`** — Backend API server (Express 5, preview path: `/api`)
 - **`artifacts/mockup-sandbox/`** — Design/mockup canvas (pre-existing)
 
@@ -35,9 +36,10 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Backend Structure
 
-- `artifacts/api-server/src/routes/routes.ts` — all app route handlers (legacy registerRoutes pattern); includes `/api/postop/*` routes for SaivieRecover and `/api/desk/*` routes for SaivieDesk (staff auth, patient CRUD, providers, appointments — receptionist/admin only via bearer token)
+- `artifacts/api-server/src/routes/routes.ts` — all app route handlers (legacy registerRoutes pattern); includes `/api/postop/*` routes for SaivieRecover, `/api/desk/*` routes for SaivieDesk, and `/api/genome/*` routes for SaivieGene (upload, status polling, results, PDF report)
+- `artifacts/api-server/src/genome-engine.ts` — SNP-to-health-association analysis engine (parses VCF/23andMe/AncestryDNA files)
 - `artifacts/api-server/src/storage.ts` — data access layer
-- `artifacts/api-server/src/db.ts` — database connection + ensureSchema migrations
+- `artifacts/api-server/src/db.ts` — database connection + ensureSchema migrations (includes `genome_analyses` table)
 - `artifacts/api-server/src/google-drive.ts` — Google Drive integration
 - `artifacts/api-server/src/google-sheets.ts` — Google Sheets integration
 - `artifacts/api-server/src/whatsapp.ts` — WhatsApp messaging integration
@@ -49,6 +51,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Schema: `lib/db/src/schema/schema.ts` + `lib/db/src/schema/models/chat.ts`
 - ORM: Drizzle with pg driver
 - Migration: `pnpm --filter @workspace/db run push`
+- `genome_analyses` table: added via `ensureSchema()` in `db.ts` — stores SNP count, health risks, predispositions, pharmacogenomics, traits as JSONB
 
 ## Frontend Structure
 
@@ -58,6 +61,35 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `artifacts/saivie/src/components/` — shared UI components
 - Uses Tailwind v4 via `@tailwindcss/vite` plugin
 - Font: DM Sans (Google Fonts)
+
+## SaivieGene Genome App
+
+Mobile-first React + Vite web app at `/saiviegene/`. Dark navy (#0a0e1a) + gold (hsl 44 87% 55%) branding.
+
+**Screens:**
+- `Onboarding.tsx` — 3-slide animated onboarding (DNA decoded, health risks, personalised medicine)
+- `Auth.tsx` — Phone OTP login (reuses `/api/mobile/auth/login`)
+- `Paywall.tsx` — Monthly/Annual subscription plans (simulated purchase flow)
+- `Upload.tsx` — Drag-and-drop genome file upload (VCF, 23andMe, AncestryDNA)
+- `Processing.tsx` — Animated DNA analysis progress screen (polls `/api/genome/status/:jobId`)
+- `Dashboard.tsx` — Results overview with 4 section cards + PDF download
+- `Section.tsx` — Detailed view for each section (Health Risks, Predispositions, Pharmacogenomics, Traits)
+
+**Backend routes (`/api/genome/*`):**
+- `POST /api/genome/upload` — multer file upload + async genome analysis
+- `GET /api/genome/status/:jobId` — poll analysis status
+- `GET /api/genome/results` — most recent analysis for authenticated patient
+- `GET /api/genome/results/patient/:patientId` — clinician portal: patient genome insights
+- `GET /api/genome/report` — download HTML report
+
+**Genome Insights Badge:** Added to `ClinicianPortal.tsx` patient detail header — shows gold "Genome Insights" badge when the selected patient has a completed genome analysis.
+
+**LocalStorage keys:**
+- `saiviegene_token` — mobile auth token
+- `saiviegene_patient_id` — bound patient ID
+- `saiviegene_subscribed` — subscription status ("true"/"false")
+- `saiviegene_plan` — selected plan ("monthly"/"annual")
+- `saiviegene_onboarded` — whether onboarding was completed
 
 ## SaivieMom Postpartum Care Hub
 

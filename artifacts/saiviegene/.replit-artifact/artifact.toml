@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/saiviegene/"
+title = "SaivieGene"
+version = "1.0.0"
+id = "artifacts/saiviegene"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/saiviegene/" ]
+localPort = 24638
+
+[services.development]
+run = "pnpm --filter @workspace/saiviegene run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/saiviegene", "run", "build" ]
+publicDir = "artifacts/saiviegene/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24638"
+BASE_PATH = "/saiviegene/"

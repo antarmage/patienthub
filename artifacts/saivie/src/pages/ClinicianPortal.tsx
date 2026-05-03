@@ -189,6 +189,28 @@ function PostOpDetailedView({ patientId: _patientId, patientName }: { patientId:
   );
 }
 
+function GenomeInsightsBadge({ patientId }: { patientId: number }) {
+  const { data } = useQuery({
+    queryKey: [`/api/genome/results/patient/${patientId}`],
+    queryFn: async () => {
+      const res = await fetch(`/api/genome/results/patient/${patientId}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  if (!data) return null;
+  return (
+    <Badge
+      variant="outline"
+      className="text-[10px] h-[18px] border-yellow-400 text-yellow-700 bg-yellow-50 font-semibold px-1.5 flex items-center gap-1"
+    >
+      <Dna className="w-2.5 h-2.5" /> Genome Insights
+    </Badge>
+  );
+}
+
 export default function ClinicianPortal() {
   const [, navigate] = useLocation();
   const [activeView, setActiveView] = useState("dashboard");
@@ -3388,6 +3410,7 @@ export default function ClinicianPortal() {
                                  {selectedPatient.status}
                                </Badge>
                              )}
+                             <GenomeInsightsBadge patientId={selectedPatient.id} />
                           </div>
                        </div>
                     </div>
