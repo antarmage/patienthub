@@ -20,6 +20,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 - **`artifacts/saivie/`** — Saivie clinician/patient web portal (React + Vite, preview path: `/`)
 - **`artifacts/saivie-recover/`** — SaivieRecover tablet app for nursing staff post-op data collection (React + Vite, preview path: `/recover/`)
+- **`artifacts/saivie-desk/`** — SaivieDesk receptionist/front-desk patient intake app (React + Vite, preview path: `/desk/`)
+- **`artifacts/mamacare-mobile/`** — SaivieMom maternal health mobile app (Expo React Native)
 - **`artifacts/api-server/`** — Backend API server (Express 5, preview path: `/api`)
 - **`artifacts/mockup-sandbox/`** — Design/mockup canvas (pre-existing)
 
@@ -33,7 +35,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Backend Structure
 
-- `artifacts/api-server/src/routes/routes.ts` — all app route handlers (legacy registerRoutes pattern); includes `/api/postop/*` routes for SaivieRecover
+- `artifacts/api-server/src/routes/routes.ts` — all app route handlers (legacy registerRoutes pattern); includes `/api/postop/*` routes for SaivieRecover and `/api/desk/*` routes for SaivieDesk (staff auth, patient CRUD, providers, appointments — receptionist/admin only via bearer token)
 - `artifacts/api-server/src/storage.ts` — data access layer
 - `artifacts/api-server/src/db.ts` — database connection + ensureSchema migrations
 - `artifacts/api-server/src/google-drive.ts` — Google Drive integration

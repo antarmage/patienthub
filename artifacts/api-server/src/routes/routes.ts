@@ -3573,9 +3573,9 @@ export async function registerDeskRoutes(app: Express) {
     if (!(await getDeskStaffUserId(req, res))) return;
     try {
       const id = parseInt(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ error: "Invalid patient ID" });
+      if (isNaN(id)) { res.status(400).json({ error: "Invalid patient ID" }); return; }
       const patient = await storage.getPatient(id);
-      if (!patient) return res.status(404).json({ error: "Patient not found" });
+      if (!patient) { res.status(404).json({ error: "Patient not found" }); return; }
       res.json(patient);
     } catch (err: unknown) {
       res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
@@ -3588,7 +3588,8 @@ export async function registerDeskRoutes(app: Express) {
     try {
       const parsed = deskCreateSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid patient data", issues: parsed.error.flatten().fieldErrors });
+        res.status(400).json({ error: "Invalid patient data", issues: parsed.error.flatten().fieldErrors });
+        return;
       }
       const data = parsed.data;
       const phone = data.phone?.trim();
@@ -3596,7 +3597,8 @@ export async function registerDeskRoutes(app: Express) {
         const all = await storage.getPatients();
         const duplicate = all.find(p => p.phone === phone);
         if (duplicate) {
-          return res.status(409).json({ error: "A patient with this phone number already exists", existingId: duplicate.id });
+          res.status(409).json({ error: "A patient with this phone number already exists", existingId: duplicate.id });
+          return;
         }
       }
       const patient = await storage.createPatient(data);
@@ -3611,10 +3613,11 @@ export async function registerDeskRoutes(app: Express) {
     if (!(await getDeskStaffUserId(req, res))) return;
     try {
       const id = parseInt(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ error: "Invalid patient ID" });
+      if (isNaN(id)) { res.status(400).json({ error: "Invalid patient ID" }); return; }
       const parsed = deskUpdateSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid patient data", issues: parsed.error.flatten().fieldErrors });
+        res.status(400).json({ error: "Invalid patient data", issues: parsed.error.flatten().fieldErrors });
+        return;
       }
       const data = parsed.data;
       const newPhone = data.phone?.trim();
@@ -3622,11 +3625,12 @@ export async function registerDeskRoutes(app: Express) {
         const all = await storage.getPatients();
         const conflict = all.find(p => p.phone === newPhone && p.id !== id);
         if (conflict) {
-          return res.status(409).json({ error: "Another patient already has this phone number", existingId: conflict.id });
+          res.status(409).json({ error: "Another patient already has this phone number", existingId: conflict.id });
+          return;
         }
       }
       const patient = await storage.updatePatient(id, data);
-      if (!patient) return res.status(404).json({ error: "Patient not found" });
+      if (!patient) { res.status(404).json({ error: "Patient not found" }); return; }
       res.json(patient);
     } catch (err: unknown) {
       res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
