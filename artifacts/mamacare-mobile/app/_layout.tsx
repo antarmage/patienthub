@@ -8,12 +8,13 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AppProvider, useApp } from "@/context/AppContext";
 import { KeyboardWrapper } from "@/components/KeyboardWrapper";
+import { requestNotificationPermissions } from "@/utils/notifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -23,6 +24,7 @@ function RootLayoutNav() {
   const { isLoading, authComplete } = useApp();
   const router = useRouter();
   const segments = useSegments();
+  const permissionRequested = useRef(false);
 
   useEffect(() => {
     if (!isLoading) SplashScreen.hideAsync();
@@ -37,6 +39,13 @@ function RootLayoutNav() {
       router.replace("/(tabs)");
     }
   }, [isLoading, authComplete, segments]);
+
+  useEffect(() => {
+    if (authComplete && !permissionRequested.current) {
+      permissionRequested.current = true;
+      requestNotificationPermissions();
+    }
+  }, [authComplete]);
 
   if (isLoading) return null;
 

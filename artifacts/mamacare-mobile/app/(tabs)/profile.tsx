@@ -4,26 +4,33 @@ import {
   StyleSheet,
   TextInput,
   Pressable,
+  Switch,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useApp } from "@/context/AppContext";
 import { calculateEDD, formatDate } from "@/data/pregnancyData";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
+import {
+  requestNotificationPermissions,
+  scheduleMedicineReminders,
+  scheduleAppointmentReminders,
+  scheduleWaterReminders,
+  cancelAllWaterReminders,
+} from "@/utils/notifications";
+import { getMedicines, getAppointments, updateMedicineNotifications, updateAppointmentNotifications } from "@/utils/careStorage";
 
-interface SettingsItem {
-  id: string;
-  icon: keyof typeof Feather.glyphMap;
-  iconBg: string;
-  iconColor: string;
-  title: string;
-  subtitle?: string;
-  onPress?: () => void;
-}
+const NOTIF_KEYS = {
+  MEDICINE: "@saiviemom_notif_medicine",
+  APPOINTMENT: "@saiviemom_notif_appointment",
+  WATER: "@saiviemom_notif_water",
+};
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -37,6 +44,14 @@ export default function ProfileScreen() {
   const [eddDisplay, setEddDisplay] = useState("");
   const [saved, setSaved] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const [medicineNotifs, setMedicineNotifs] = useState(false);
+  const [appointmentNotifs, setAppointmentNotifs] = useState(false);
+  const [waterNotifs, setWaterNotifs] = useState(false);
+  const [togglingMedicine, setTogglingMedicine] = useState(false);
+  const [togglingAppointment, setTogglingAppointment] = useState(false);
+  const [togglingWater, setTogglingWater] = useState(false);
 
   const trimester = selectedWeek <= 13 ? 1 : selectedWeek <= 26 ? 2 : 3;
 
@@ -68,6 +83,21 @@ export default function ProfileScreen() {
       }
     }
   }, [lmpDay, lmpMonth, lmpYear]);
+
+  useEffect(() => {
+    loadNotifPrefs();
+  }, []);
+
+  const loadNotifPrefs = async () => {
+    const [med, appt, water] = await Promise.all([
+      AsyncStorage.getItem(NOTIF_KEYS.MEDICINE),
+      AsyncStorage.getItem(NOTIF_KEYS.APPOINTMENT),
+      AsyncStorage.getItem(NOTIF_KEYS.WATER),
+    ]);
+    setMedicineNotifs(med === "true");
+    setAppointmentNotifs(appt === "true");
+    setWaterNotifs(water === "true");
+  };
 
   const handleSave = async () => {
     let lmpDate: string | null = null;
@@ -101,43 +131,80 @@ export default function ProfileScreen() {
     await logout();
   };
 
-  const accountItems: SettingsItem[] = [
-    {
-      id: "notifications",
-      icon: "bell",
-      iconBg: "#EFF6FF",
-      iconColor: "#3B82F6",
-      title: "Notifications",
-      subtitle: "Manage alerts",
-    },
-    {
-      id: "preferences",
-      icon: "settings",
-      iconBg: "#F5F3FF",
-      iconColor: "#6C63FF",
-      title: "Preferences",
-      subtitle: "App settings",
-    },
-  ];
+  const handleToggleMedicineNotifs = async (value: boolean) => {
+    if (Platform.OS === "web") return;
+    setTogglingMedicine(true);
+    try {
+      if (value) {
+        const hasPermission = await requestNotificationPermissions();
+        if (!hasPermission) { setTogglingMedicine(false); return; }
+        const medicines = await getMedicines();
+        for (const med of medicines) {
+          const ids = await scheduleMedicineReminders(med.id, med.name, med.dosage, med.times, med.durationDays);
+          await updateMedicineNotifications(med.id, ids);
+        }
+      } else {
+        const medicines = await getMedicines();
+        const { cancelNotifications } = await import("@/utils/notifications");
+        for (const med of medicines) {
+          await cancelNotifications(med.notificationIds);
+          await updateMedicineNotifications(med.id, []);
+        }
+      }
+      await AsyncStorage.setItem(NOTIF_KEYS.MEDICINE, value ? "true" : "false");
+      setMedicineNotifs(value);
+    } finally {
+      setTogglingMedicine(false);
+    }
+  };
 
-  const healthItems: SettingsItem[] = [
-    {
-      id: "devices",
-      icon: "watch",
-      iconBg: "#ECFDF5",
-      iconColor: "#10B981",
-      title: "Health & Devices",
-      subtitle: "Connected",
-    },
-    {
-      id: "emergency",
-      icon: "phone",
-      iconBg: "#FEF3C7",
-      iconColor: "#F59E0B",
-      title: "Emergency Contact",
-      subtitle: userProfile?.name ? `Family` : "Not set",
-    },
-  ];
+  const handleToggleAppointmentNotifs = async (value: boolean) => {
+    if (Platform.OS === "web") return;
+    setTogglingAppointment(true);
+    try {
+      if (value) {
+        const hasPermission = await requestNotificationPermissions();
+        if (!hasPermission) { setTogglingAppointment(false); return; }
+        const appointments = await getAppointments();
+        for (const appt of appointments) {
+          const dateTime = new Date(appt.dateTime);
+          if (dateTime > new Date()) {
+            const ids = await scheduleAppointmentReminders(appt.id, appt.doctorName, appt.clinicName, dateTime);
+            await updateAppointmentNotifications(appt.id, ids);
+          }
+        }
+      } else {
+        const appointments = await getAppointments();
+        const { cancelNotifications } = await import("@/utils/notifications");
+        for (const appt of appointments) {
+          await cancelNotifications(appt.notificationIds);
+          await updateAppointmentNotifications(appt.id, []);
+        }
+      }
+      await AsyncStorage.setItem(NOTIF_KEYS.APPOINTMENT, value ? "true" : "false");
+      setAppointmentNotifs(value);
+    } finally {
+      setTogglingAppointment(false);
+    }
+  };
+
+  const handleToggleWaterNotifs = async (value: boolean) => {
+    if (Platform.OS === "web") return;
+    setTogglingWater(true);
+    try {
+      if (value) {
+        const hasPermission = await requestNotificationPermissions();
+        if (!hasPermission) { setTogglingWater(false); return; }
+        await scheduleWaterReminders();
+      } else {
+        await cancelAllWaterReminders();
+      }
+      await AsyncStorage.setItem(NOTIF_KEYS.WATER, value ? "true" : "false");
+      setWaterNotifs(value);
+    } finally {
+      setTogglingWater(false);
+    }
+  };
 
   const displayName = userProfile?.name || "Mummy";
 
@@ -232,54 +299,135 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <ThemedText style={styles.sectionTitle}>Account</ThemedText>
         <View style={styles.card}>
-          {accountItems.map((item, index) => (
-            <Pressable
-              key={item.id}
-              style={[
-                styles.settingsItem,
-                index < accountItems.length - 1 && styles.settingsItemBorder,
-              ]}
-              onPress={item.onPress}
-            >
-              <View style={[styles.settingsIcon, { backgroundColor: item.iconBg }]}>
-                <Feather name={item.icon} size={18} color={item.iconColor} />
+          <Pressable
+            style={[styles.settingsItem, styles.settingsItemBorder]}
+            onPress={() => setShowNotifications(!showNotifications)}
+          >
+            <View style={[styles.settingsIcon, { backgroundColor: "#EFF6FF" }]}>
+              <Feather name="bell" size={18} color="#3B82F6" />
+            </View>
+            <View style={styles.settingsText}>
+              <ThemedText style={styles.settingsTitle}>Notifications</ThemedText>
+              <ThemedText style={styles.settingsSubtitle}>Manage alerts</ThemedText>
+            </View>
+            <Feather
+              name={showNotifications ? "chevron-down" : "chevron-right"}
+              size={20}
+              color={COLORS.textMuted}
+            />
+          </Pressable>
+
+          {showNotifications && Platform.OS !== "web" && (
+            <View style={styles.notifPanel}>
+              <View style={styles.notifRow}>
+                <View style={styles.notifRowLeft}>
+                  <View style={[styles.notifIcon, { backgroundColor: "#EDE9FF" }]}>
+                    <Feather name="heart" size={16} color="#6C63FF" />
+                  </View>
+                  <View>
+                    <ThemedText style={styles.notifTitle}>Medicine Reminders</ThemedText>
+                    <ThemedText style={styles.notifSubtitle}>Daily dose alerts</ThemedText>
+                  </View>
+                </View>
+                <Switch
+                  value={medicineNotifs}
+                  onValueChange={handleToggleMedicineNotifs}
+                  disabled={togglingMedicine}
+                  trackColor={{ false: "#E5E7EB", true: "#C4B5FD" }}
+                  thumbColor={medicineNotifs ? "#6C63FF" : "#9CA3AF"}
+                />
               </View>
-              <View style={styles.settingsText}>
-                <ThemedText style={styles.settingsTitle}>{item.title}</ThemedText>
-                {item.subtitle && (
-                  <ThemedText style={styles.settingsSubtitle}>{item.subtitle}</ThemedText>
-                )}
+
+              <View style={[styles.notifRow, styles.notifRowBorder]}>
+                <View style={styles.notifRowLeft}>
+                  <View style={[styles.notifIcon, { backgroundColor: "#EFF6FF" }]}>
+                    <Feather name="calendar" size={16} color="#3B82F6" />
+                  </View>
+                  <View>
+                    <ThemedText style={styles.notifTitle}>Appointment Reminders</ThemedText>
+                    <ThemedText style={styles.notifSubtitle}>24h & 1h before</ThemedText>
+                  </View>
+                </View>
+                <Switch
+                  value={appointmentNotifs}
+                  onValueChange={handleToggleAppointmentNotifs}
+                  disabled={togglingAppointment}
+                  trackColor={{ false: "#E5E7EB", true: "#BFDBFE" }}
+                  thumbColor={appointmentNotifs ? "#3B82F6" : "#9CA3AF"}
+                />
               </View>
-              <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
-            </Pressable>
-          ))}
+
+              <View style={styles.notifRow}>
+                <View style={styles.notifRowLeft}>
+                  <View style={[styles.notifIcon, { backgroundColor: "#EFF9FF" }]}>
+                    <Feather name="droplet" size={16} color="#06B6D4" />
+                  </View>
+                  <View>
+                    <ThemedText style={styles.notifTitle}>Water Reminders</ThemedText>
+                    <ThemedText style={styles.notifSubtitle}>Every 2 hours, 9am–7pm</ThemedText>
+                  </View>
+                </View>
+                <Switch
+                  value={waterNotifs}
+                  onValueChange={handleToggleWaterNotifs}
+                  disabled={togglingWater}
+                  trackColor={{ false: "#E5E7EB", true: "#A5F3FC" }}
+                  thumbColor={waterNotifs ? "#06B6D4" : "#9CA3AF"}
+                />
+              </View>
+            </View>
+          )}
+
+          {showNotifications && Platform.OS === "web" && (
+            <View style={styles.notifPanel}>
+              <View style={styles.webNotifNote}>
+                <Feather name="info" size={16} color={COLORS.textMuted} />
+                <ThemedText style={styles.webNotifNoteText}>
+                  Push notifications are available on the mobile app.
+                </ThemedText>
+              </View>
+            </View>
+          )}
+
+          <Pressable style={styles.settingsItem}>
+            <View style={[styles.settingsIcon, { backgroundColor: "#F5F3FF" }]}>
+              <Feather name="settings" size={18} color="#6C63FF" />
+            </View>
+            <View style={styles.settingsText}>
+              <ThemedText style={styles.settingsTitle}>Preferences</ThemedText>
+              <ThemedText style={styles.settingsSubtitle}>App settings</ThemedText>
+            </View>
+            <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
+          </Pressable>
         </View>
       </View>
 
       <View style={styles.section}>
         <ThemedText style={styles.sectionTitle}>Health & Devices</ThemedText>
         <View style={styles.card}>
-          {healthItems.map((item, index) => (
-            <Pressable
-              key={item.id}
-              style={[
-                styles.settingsItem,
-                index < healthItems.length - 1 && styles.settingsItemBorder,
-              ]}
-              onPress={item.onPress}
-            >
-              <View style={[styles.settingsIcon, { backgroundColor: item.iconBg }]}>
-                <Feather name={item.icon} size={18} color={item.iconColor} />
-              </View>
-              <View style={styles.settingsText}>
-                <ThemedText style={styles.settingsTitle}>{item.title}</ThemedText>
-                {item.subtitle && (
-                  <ThemedText style={styles.settingsSubtitle}>{item.subtitle}</ThemedText>
-                )}
-              </View>
-              <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
-            </Pressable>
-          ))}
+          <Pressable style={[styles.settingsItem, styles.settingsItemBorder]}>
+            <View style={[styles.settingsIcon, { backgroundColor: "#ECFDF5" }]}>
+              <Feather name="watch" size={18} color="#10B981" />
+            </View>
+            <View style={styles.settingsText}>
+              <ThemedText style={styles.settingsTitle}>Health & Devices</ThemedText>
+              <ThemedText style={styles.settingsSubtitle}>Connected</ThemedText>
+            </View>
+            <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
+          </Pressable>
+
+          <Pressable style={styles.settingsItem}>
+            <View style={[styles.settingsIcon, { backgroundColor: "#FEF3C7" }]}>
+              <Feather name="phone" size={18} color="#F59E0B" />
+            </View>
+            <View style={styles.settingsText}>
+              <ThemedText style={styles.settingsTitle}>Emergency Contact</ThemedText>
+              <ThemedText style={styles.settingsSubtitle}>
+                {userProfile?.name ? "Family" : "Not set"}
+              </ThemedText>
+            </View>
+            <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
+          </Pressable>
         </View>
       </View>
 
@@ -342,20 +490,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     marginBottom: Spacing.sm,
-  },
-  premiumBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#FFFBEB",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.full,
-  },
-  premiumText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#F59E0B",
   },
   editSection: {
     paddingHorizontal: Spacing.xl,
@@ -481,6 +615,61 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textSecondary,
     marginTop: 2,
+  },
+  notifPanel: {
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+    backgroundColor: "#FAFAFC",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  notifRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.md,
+  },
+  notifRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  notifRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: Spacing.sm,
+  },
+  notifIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notifTitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: COLORS.textPrimary,
+  },
+  notifSubtitle: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 1,
+  },
+  webNotifNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+  },
+  webNotifNoteText: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    flex: 1,
   },
   logoutCard: {
     backgroundColor: "#FFFFFF",
