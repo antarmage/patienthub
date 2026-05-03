@@ -198,8 +198,7 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
                         <SelectItem value="Pregnancy">Pregnancy</SelectItem>
                         <SelectItem value="Gynaecology">Gynaecology</SelectItem>
                         <SelectItem value="Post-op">Post-op</SelectItem>
-                        <SelectItem value="Fertility">Fertility</SelectItem>
-                        <SelectItem value="null">Unspecified</SelectItem>
+                        <SelectItem value="">Unspecified</SelectItem>
                       </SelectContent>
                     </Select>
                   ) : (

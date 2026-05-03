@@ -8,7 +8,6 @@ import { useAuth } from "@/context/DeskAuthContext";
 import { useCreatePatient, useCreateAppointment, useProviders, type DeskProvider } from "@/hooks/use-desk-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -16,7 +15,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-const CARE_MODES = ["Pregnancy", "Gynaecology", "Post-op", "Fertility"] as const;
+const CARE_MODES = ["Pregnancy", "Gynaecology", "Post-op"] as const;
+const APPOINTMENT_TYPES = ["Consultation", "Blood Test", "Scan"] as const;
 
 const formSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -99,25 +99,25 @@ export default function Register() {
       }
 
       setLocation(`/success?patientId=${patient.id}`);
-    } catch (err: any) {
-      if (err.status === 409 && err.data?.existingId) {
-        setDuplicatePhoneId(err.data.existingId);
+    } catch (err: unknown) {
+      const apiErr = err as { status?: number; data?: { existingId?: number }; message?: string };
+      if (apiErr.status === 409 && apiErr.data?.existingId) {
+        setDuplicatePhoneId(apiErr.data.existingId);
       } else {
         toast({
           variant: "destructive",
           title: "Registration Failed",
-          description: err.message || "An unexpected error occurred.",
+          description: apiErr.message || "An unexpected error occurred.",
         });
       }
     }
   };
 
   const validateStep = async () => {
-    let fieldsToValidate: any[] = [];
-    if (step === 1) fieldsToValidate = ["name", "phone", "age", "email", "address"];
-    if (step === 2) fieldsToValidate = ["lmp", "mode", "referredBy", "condition"];
-
-    const isValid = await form.trigger(fieldsToValidate as any);
+    const step1Fields = ["name", "phone", "age", "email", "address"] as const;
+    const step2Fields = ["lmp", "mode", "referredBy", "condition"] as const;
+    const fieldsToValidate = step === 1 ? step1Fields : step === 2 ? step2Fields : [];
+    const isValid = await form.trigger(fieldsToValidate);
     if (isValid) setStep(step + 1);
   };
 
@@ -374,10 +374,9 @@ export default function Register() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="Consultation">Consultation</SelectItem>
-                                <SelectItem value="Scan">Scan</SelectItem>
-                                <SelectItem value="Blood Test">Blood Test</SelectItem>
-                                <SelectItem value="Procedure">Procedure</SelectItem>
+                                {APPOINTMENT_TYPES.map(t => (
+                                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                             <FormMessage />

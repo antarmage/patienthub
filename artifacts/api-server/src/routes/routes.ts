@@ -4,6 +4,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { storage } from "../storage";
+import { insertPatientSchema } from "@workspace/db";
 import { registerOcrRoutes } from "../replit_integrations/ocr";
 import { getUncachableGoogleSheetClient } from "../google-sheets";
 import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../google-drive";
@@ -3498,23 +3499,37 @@ async function getDeskStaffUserId(req: Request, res: Response): Promise<string |
   return userId;
 }
 
-export async function registerDeskRoutes(app: Express) {
-  // POST /api/desk/auth — receptionist / admin login
-  app.post("/api/desk/auth", async (req, res) => {
-    try {
-      const { username, passcode } = req.body;
-      if (!username || !passcode) return res.status(400).json({ error: "username and passcode required" });
-      const user = await storage.getUserByPasscode(passcode);
-      if (!user || user.username !== username) return res.status(401).json({ error: "Invalid credentials" });
-      if (user.role !== "receptionist" && user.role !== "admin") {
-        return res.status(403).json({ error: "Access denied. Receptionist or admin role required." });
-      }
-      const staffToken = issueStaffToken(user.id);
-      res.json({ staffToken, user: { id: user.id, username: user.username, role: user.role } });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message || "Internal server error" });
+// Tightly-scoped intake schema — only the fields a receptionist may set
+const deskIntakeFields = {
+  name: true, phone: true, age: true, email: true, address: true,
+  lmp: true, mode: true, referredBy: true, condition: true, clinicianNote: true,
+} as const;
+
+const deskCreateSchema = insertPatientSchema.pick(deskIntakeFields);
+const deskUpdateSchema = insertPatientSchema.pick(deskIntakeFields).partial();
+
+async function handleDeskAuth(req: Request, res: Response) {
+  try {
+    const { username, passcode } = req.body as { username?: string; passcode?: string };
+    if (!username || !passcode) return res.status(400).json({ error: "username and passcode required" });
+    const user = await storage.getUserByPasscode(passcode);
+    if (!user || user.username !== username) return res.status(401).json({ error: "Invalid credentials" });
+    if (user.role !== "receptionist" && user.role !== "admin") {
+      return res.status(403).json({ error: "Access denied. Receptionist or admin role required." });
     }
-  });
+    const staffToken = issueStaffToken(user.id);
+    res.json({ staffToken, user: { id: user.id, username: user.username, role: user.role } });
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
+  }
+}
+
+export async function registerDeskRoutes(app: Express) {
+  // POST /api/desk/auth — receptionist / admin login (primary path)
+  app.post("/api/desk/auth", handleDeskAuth);
+
+  // POST /api/staff/auth — alias used by some clients
+  app.post("/api/staff/auth", handleDeskAuth);
 
   // GET /api/desk/patients?search= — search patients (receptionist/admin only)
   app.get("/api/desk/patients", async (req, res) => {
@@ -3549,7 +3564,12 @@ export async function registerDeskRoutes(app: Express) {
   app.post("/api/desk/patients", async (req, res) => {
     if (!(await getDeskStaffUserId(req, res))) return;
     try {
-      const phone = (req.body.phone as string | undefined)?.trim();
+      const parsed = deskCreateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid patient data", issues: parsed.error.flatten().fieldErrors });
+      }
+      const data = parsed.data;
+      const phone = data.phone?.trim();
       if (phone) {
         const all = await storage.getPatients();
         const duplicate = all.find(p => p.phone === phone);
@@ -3557,7 +3577,7 @@ export async function registerDeskRoutes(app: Express) {
           return res.status(409).json({ error: "A patient with this phone number already exists", existingId: duplicate.id });
         }
       }
-      const patient = await storage.createPatient(req.body);
+      const patient = await storage.createPatient(data);
       res.status(201).json(patient);
     } catch (err: unknown) {
       res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
@@ -3570,8 +3590,12 @@ export async function registerDeskRoutes(app: Express) {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid patient ID" });
-      // Prevent introducing duplicate phone numbers
-      const newPhone = (req.body.phone as string | undefined)?.trim();
+      const parsed = deskUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid patient data", issues: parsed.error.flatten().fieldErrors });
+      }
+      const data = parsed.data;
+      const newPhone = data.phone?.trim();
       if (newPhone) {
         const all = await storage.getPatients();
         const conflict = all.find(p => p.phone === newPhone && p.id !== id);
@@ -3579,7 +3603,7 @@ export async function registerDeskRoutes(app: Express) {
           return res.status(409).json({ error: "Another patient already has this phone number", existingId: conflict.id });
         }
       }
-      const patient = await storage.updatePatient(id, req.body);
+      const patient = await storage.updatePatient(id, data);
       if (!patient) return res.status(404).json({ error: "Patient not found" });
       res.json(patient);
     } catch (err: unknown) {
