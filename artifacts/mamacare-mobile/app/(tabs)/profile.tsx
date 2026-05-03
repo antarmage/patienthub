@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
@@ -22,15 +23,29 @@ import {
   scheduleMedicineReminders,
   scheduleAppointmentReminders,
   scheduleWaterReminders,
-  cancelAllWaterReminders,
+  cancelWaterNudge,
+  cancelNotifications,
 } from "@/utils/notifications";
-import { getMedicines, getAppointments, updateMedicineNotifications, updateAppointmentNotifications } from "@/utils/careStorage";
+import {
+  getMedicines,
+  getAppointments,
+  updateMedicineNotifications,
+  updateAppointmentNotifications,
+} from "@/utils/careStorage";
 
 const NOTIF_KEYS = {
   MEDICINE: "@saiviemom_notif_medicine",
   APPOINTMENT: "@saiviemom_notif_appointment",
-  WATER: "@saiviemom_notif_water",
+  WATER: "@saiviemom_water_reminders_enabled",
+  MEDICINE_DEFAULT_TIME: "@saiviemom_medicine_default_time",
 };
+
+function defaultReminderDate(hhMm: string): Date {
+  const [hStr, mStr] = hhMm.split(":");
+  const d = new Date();
+  d.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0);
+  return d;
+}
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -53,6 +68,11 @@ export default function ProfileScreen() {
   const [togglingAppointment, setTogglingAppointment] = useState(false);
   const [togglingWater, setTogglingWater] = useState(false);
 
+  const [medicineDefaultTime, setMedicineDefaultTime] = useState<Date>(() =>
+    defaultReminderDate("09:00")
+  );
+  const [showMedicineTimePicker, setShowMedicineTimePicker] = useState(false);
+
   const trimester = selectedWeek <= 13 ? 1 : selectedWeek <= 26 ? 2 : 3;
 
   useEffect(() => {
@@ -64,9 +84,7 @@ export default function ProfileScreen() {
       const edd = calculateEDD(lmp);
       setEddDisplay(formatDate(edd));
     }
-    if (userProfile?.name) {
-      setName(userProfile.name);
-    }
+    if (userProfile?.name) setName(userProfile.name);
   }, [userProfile]);
 
   useEffect(() => {
@@ -89,14 +107,16 @@ export default function ProfileScreen() {
   }, []);
 
   const loadNotifPrefs = async () => {
-    const [med, appt, water] = await Promise.all([
+    const [med, appt, water, medTime] = await Promise.all([
       AsyncStorage.getItem(NOTIF_KEYS.MEDICINE),
       AsyncStorage.getItem(NOTIF_KEYS.APPOINTMENT),
       AsyncStorage.getItem(NOTIF_KEYS.WATER),
+      AsyncStorage.getItem(NOTIF_KEYS.MEDICINE_DEFAULT_TIME),
     ]);
     setMedicineNotifs(med === "true");
     setAppointmentNotifs(appt === "true");
     setWaterNotifs(water === "true");
+    if (medTime) setMedicineDefaultTime(defaultReminderDate(medTime));
   };
 
   const handleSave = async () => {
@@ -131,21 +151,52 @@ export default function ProfileScreen() {
     await logout();
   };
 
+  const onMedicineTimeChange = async (_event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === "android") setShowMedicineTimePicker(false);
+    if (!date) return;
+    setMedicineDefaultTime(date);
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+    await AsyncStorage.setItem(NOTIF_KEYS.MEDICINE_DEFAULT_TIME, `${hh}:${mm}`);
+    if (medicineNotifs) {
+      await rescheduleMedicinesWithTime(date);
+    }
+  };
+
+  const rescheduleMedicinesWithTime = async (baseTime: Date) => {
+    const medicines = await getMedicines();
+    const now = new Date();
+    for (const med of medicines) {
+      const start = new Date(med.startDate);
+      const end = new Date(start);
+      end.setDate(end.getDate() + med.durationDays);
+      if (now > end) continue;
+      await cancelNotifications(med.notificationIds);
+      const h = baseTime.getHours();
+      const m = baseTime.getMinutes();
+      const fmt = (hour: number, min: number) =>
+        `${String(Math.min(hour, 23)).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+      let times: string[];
+      switch (med.frequency) {
+        case "twice": times = [fmt(h, m), fmt((h + 12) % 24, m)]; break;
+        case "thrice": times = [fmt(h, m), fmt(Math.min(h + 5, 23), m), fmt(Math.min(h + 10, 23), m)]; break;
+        default: times = [fmt(h, m)];
+      }
+      const ids = await scheduleMedicineReminders(med.id, med.name, med.dosage, times, med.durationDays);
+      await updateMedicineNotifications(med.id, ids);
+    }
+  };
+
   const handleToggleMedicineNotifs = async (value: boolean) => {
     if (Platform.OS === "web") return;
     setTogglingMedicine(true);
     try {
       if (value) {
         const hasPermission = await requestNotificationPermissions();
-        if (!hasPermission) { setTogglingMedicine(false); return; }
-        const medicines = await getMedicines();
-        for (const med of medicines) {
-          const ids = await scheduleMedicineReminders(med.id, med.name, med.dosage, med.times, med.durationDays);
-          await updateMedicineNotifications(med.id, ids);
-        }
+        if (!hasPermission) return;
+        await rescheduleMedicinesWithTime(medicineDefaultTime);
       } else {
         const medicines = await getMedicines();
-        const { cancelNotifications } = await import("@/utils/notifications");
         for (const med of medicines) {
           await cancelNotifications(med.notificationIds);
           await updateMedicineNotifications(med.id, []);
@@ -164,18 +215,17 @@ export default function ProfileScreen() {
     try {
       if (value) {
         const hasPermission = await requestNotificationPermissions();
-        if (!hasPermission) { setTogglingAppointment(false); return; }
+        if (!hasPermission) return;
         const appointments = await getAppointments();
+        const now = new Date();
         for (const appt of appointments) {
           const dateTime = new Date(appt.dateTime);
-          if (dateTime > new Date()) {
-            const ids = await scheduleAppointmentReminders(appt.id, appt.doctorName, appt.clinicName, dateTime);
-            await updateAppointmentNotifications(appt.id, ids);
-          }
+          if (dateTime <= now) continue;
+          const ids = await scheduleAppointmentReminders(appt.id, appt.doctorName, appt.clinicName, dateTime);
+          await updateAppointmentNotifications(appt.id, ids);
         }
       } else {
         const appointments = await getAppointments();
-        const { cancelNotifications } = await import("@/utils/notifications");
         for (const appt of appointments) {
           await cancelNotifications(appt.notificationIds);
           await updateAppointmentNotifications(appt.id, []);
@@ -194,10 +244,10 @@ export default function ProfileScreen() {
     try {
       if (value) {
         const hasPermission = await requestNotificationPermissions();
-        if (!hasPermission) { setTogglingWater(false); return; }
+        if (!hasPermission) return;
         await scheduleWaterReminders();
       } else {
-        await cancelAllWaterReminders();
+        await cancelWaterNudge();
       }
       await AsyncStorage.setItem(NOTIF_KEYS.WATER, value ? "true" : "false");
       setWaterNotifs(value);
@@ -205,6 +255,9 @@ export default function ProfileScreen() {
       setTogglingWater(false);
     }
   };
+
+  const formatPickerTime = (date: Date) =>
+    date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 
   const displayName = userProfile?.name || "Mummy";
 
@@ -324,7 +377,7 @@ export default function ProfileScreen() {
                   <View style={[styles.notifIcon, { backgroundColor: "#EDE9FF" }]}>
                     <Feather name="heart" size={16} color="#6C63FF" />
                   </View>
-                  <View>
+                  <View style={styles.notifTextBlock}>
                     <ThemedText style={styles.notifTitle}>Medicine Reminders</ThemedText>
                     <ThemedText style={styles.notifSubtitle}>Daily dose alerts</ThemedText>
                   </View>
@@ -338,12 +391,44 @@ export default function ProfileScreen() {
                 />
               </View>
 
+              {medicineNotifs && (
+                <View style={styles.subRow}>
+                  <ThemedText style={styles.subRowLabel}>First reminder at</ThemedText>
+                  {Platform.OS === "android" ? (
+                    <Pressable
+                      style={styles.timeChip}
+                      onPress={() => setShowMedicineTimePicker(true)}
+                    >
+                      <Feather name="clock" size={14} color="#6C63FF" />
+                      <ThemedText style={styles.timeChipText}>{formatPickerTime(medicineDefaultTime)}</ThemedText>
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      style={styles.timeChip}
+                      onPress={() => setShowMedicineTimePicker(!showMedicineTimePicker)}
+                    >
+                      <Feather name="clock" size={14} color="#6C63FF" />
+                      <ThemedText style={styles.timeChipText}>{formatPickerTime(medicineDefaultTime)}</ThemedText>
+                    </Pressable>
+                  )}
+                </View>
+              )}
+
+              {showMedicineTimePicker && medicineNotifs && (
+                <DateTimePicker
+                  value={medicineDefaultTime}
+                  mode="time"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={onMedicineTimeChange}
+                />
+              )}
+
               <View style={[styles.notifRow, styles.notifRowBorder]}>
                 <View style={styles.notifRowLeft}>
                   <View style={[styles.notifIcon, { backgroundColor: "#EFF6FF" }]}>
                     <Feather name="calendar" size={16} color="#3B82F6" />
                   </View>
-                  <View>
+                  <View style={styles.notifTextBlock}>
                     <ThemedText style={styles.notifTitle}>Appointment Reminders</ThemedText>
                     <ThemedText style={styles.notifSubtitle}>24h & 1h before</ThemedText>
                   </View>
@@ -362,9 +447,9 @@ export default function ProfileScreen() {
                   <View style={[styles.notifIcon, { backgroundColor: "#EFF9FF" }]}>
                     <Feather name="droplet" size={16} color="#06B6D4" />
                   </View>
-                  <View>
+                  <View style={styles.notifTextBlock}>
                     <ThemedText style={styles.notifTitle}>Water Reminders</ThemedText>
-                    <ThemedText style={styles.notifSubtitle}>Every 2 hours, 9am–7pm</ThemedText>
+                    <ThemedText style={styles.notifSubtitle}>Nudge at 3 PM if goal unmet</ThemedText>
                   </View>
                 </View>
                 <Switch
@@ -650,6 +735,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  notifTextBlock: {
+    flex: 1,
+  },
   notifTitle: {
     fontSize: 14,
     fontWeight: "500",
@@ -659,6 +747,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.textMuted,
     marginTop: 1,
+  },
+  subRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingBottom: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+  },
+  subRowLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  timeChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#EDE9FF",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+  },
+  timeChipText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#6C63FF",
   },
   webNotifNote: {
     flexDirection: "row",

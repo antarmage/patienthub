@@ -4,6 +4,7 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -24,8 +25,11 @@ import {
 import {
   requestNotificationPermissions,
   scheduleWaterReminders,
+  cancelWaterNudge,
 } from "@/utils/notifications";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
+
+const WATER_REMINDERS_ENABLED_KEY = "@saiviemom_water_reminders_enabled";
 
 const QUICK_ADD_OPTIONS = [
   { ml: 250, label: "Glass", icon: "droplet" as const },
@@ -57,10 +61,23 @@ export default function WaterTrackerScreen() {
   }, [intake.totalMl, goal]);
 
   const loadData = async () => {
-    const todayIntake = await getWaterIntakeToday();
+    const [todayIntake, waterGoal, enabledStr] = await Promise.all([
+      getWaterIntakeToday(),
+      getWaterGoal(),
+      AsyncStorage.getItem(WATER_REMINDERS_ENABLED_KEY),
+    ]);
     setIntake(todayIntake);
-    const waterGoal = await getWaterGoal();
     setGoal(waterGoal);
+    const enabled = enabledStr === "true";
+    setRemindersEnabled(enabled);
+    if (enabled && Platform.OS !== "web") {
+      const goalMet = todayIntake.totalMl >= waterGoal;
+      if (goalMet) {
+        await cancelWaterNudge();
+      } else {
+        await scheduleWaterReminders();
+      }
+    }
   };
 
   const handleAddWater = async (ml: number) => {
@@ -69,13 +86,19 @@ export default function WaterTrackerScreen() {
     });
     const updated = await addWaterIntake(ml);
     setIntake(updated);
+    if (remindersEnabled && Platform.OS !== "web" && updated.totalMl >= goal) {
+      await cancelWaterNudge();
+    }
   };
 
   const handleEnableReminders = async () => {
     const hasPermission = await requestNotificationPermissions();
-    if (hasPermission) {
+    if (!hasPermission) return;
+    await AsyncStorage.setItem(WATER_REMINDERS_ENABLED_KEY, "true");
+    setRemindersEnabled(true);
+    const goalMet = intake.totalMl >= goal;
+    if (!goalMet) {
       await scheduleWaterReminders();
-      setRemindersEnabled(true);
     }
   };
 
@@ -175,7 +198,7 @@ export default function WaterTrackerScreen() {
                 Stay on Track
               </ThemedText>
               <ThemedText type="small" style={{ color: COLORS.textSecondary }}>
-                Get gentle reminders throughout the day
+                Get a nudge at 3 PM if you haven't hit your goal
               </ThemedText>
             </View>
           </View>

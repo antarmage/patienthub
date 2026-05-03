@@ -2,6 +2,8 @@ import { Platform } from "react-native";
 
 type Notifs = typeof import("expo-notifications");
 
+const WATER_NUDGE_ID = "water_nudge_3pm";
+
 let _notifs: Notifs | null = null;
 
 async function getNotifs(): Promise<Notifs | null> {
@@ -27,14 +29,10 @@ async function getNotifs(): Promise<Notifs | null> {
 export async function requestNotificationPermissions(): Promise<boolean> {
   const Notifications = await getNotifs();
   if (!Notifications) return false;
-  try {
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    if (existing === "granted") return true;
-    const { status } = await Notifications.requestPermissionsAsync();
-    return status === "granted";
-  } catch {
-    return false;
-  }
+  const { status: existing } = await Notifications.getPermissionsAsync();
+  if (existing === "granted") return true;
+  const { status } = await Notifications.requestPermissionsAsync();
+  return status === "granted";
 }
 
 export async function cancelNotifications(ids: string[]): Promise<void> {
@@ -43,7 +41,9 @@ export async function cancelNotifications(ids: string[]): Promise<void> {
   for (const id of ids) {
     try {
       await Notifications.cancelScheduledNotificationAsync(id);
-    } catch {}
+    } catch {
+      // Silently ignore — notification may have already fired or been cancelled
+    }
   }
 }
 
@@ -77,7 +77,9 @@ export async function scheduleMedicineReminders(
         },
       });
       ids.push(id);
-    } catch {}
+    } catch {
+      // Silently ignore individual scheduling failures
+    }
   }
   return ids;
 }
@@ -93,17 +95,16 @@ export async function scheduleAppointmentReminders(
 
   const ids: string[] = [];
   const clinic = clinicName ? ` at ${clinicName}` : "";
-
-  const oneDayBefore = new Date(dateTime.getTime() - 24 * 60 * 60 * 1000);
-  const oneHourBefore = new Date(dateTime.getTime() - 60 * 60 * 1000);
+  const timeStr = dateTime.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
   const now = new Date();
 
+  const oneDayBefore = new Date(dateTime.getTime() - 24 * 60 * 60 * 1000);
   if (oneDayBefore > now) {
     try {
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: "Appointment tomorrow",
-          body: `Dr. ${doctorName}${clinic} — tomorrow at ${dateTime.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`,
+          body: `Dr. ${doctorName}${clinic} — tomorrow at ${timeStr}`,
           sound: true,
         },
         trigger: {
@@ -112,9 +113,12 @@ export async function scheduleAppointmentReminders(
         },
       });
       ids.push(id);
-    } catch {}
+    } catch {
+      // Silently ignore
+    }
   }
 
+  const oneHourBefore = new Date(dateTime.getTime() - 60 * 60 * 1000);
   if (oneHourBefore > now) {
     try {
       const id = await Notifications.scheduleNotificationAsync({
@@ -129,58 +133,63 @@ export async function scheduleAppointmentReminders(
         },
       });
       ids.push(id);
-    } catch {}
+    } catch {
+      // Silently ignore
+    }
   }
 
   return ids;
 }
 
-const WATER_REMINDER_HOURS = [9, 11, 13, 15, 17, 19];
-
+/**
+ * Schedules a single one-time water nudge for today at 3 PM.
+ * If it is already past 3 PM, nothing is scheduled.
+ * Call cancelWaterNudge() when the daily goal is met.
+ */
 export async function scheduleWaterReminders(): Promise<void> {
   const Notifications = await getNotifs();
   if (!Notifications) return;
 
-  await cancelWaterReminders(Notifications);
+  try {
+    await Notifications.cancelScheduledNotificationAsync(WATER_NUDGE_ID);
+  } catch {
+    // May not exist yet
+  }
 
-  const messages = [
-    "Time for a glass of water",
-    "Stay hydrated for you and baby",
-    "Drink up! You're doing great",
-    "Hydration check — have you had water lately?",
-    "A glass of water keeps the doctor away",
-    "Evening hydration reminder",
-  ];
+  const now = new Date();
+  const todayAt3PM = new Date(now);
+  todayAt3PM.setHours(15, 0, 0, 0);
 
-  for (let i = 0; i < WATER_REMINDER_HOURS.length; i++) {
-    try {
-      await Notifications.scheduleNotificationAsync({
-        identifier: `water_reminder_${WATER_REMINDER_HOURS[i]}`,
-        content: {
-          title: "Hydration reminder",
-          body: messages[i] ?? "Time for a glass of water",
-          sound: true,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: WATER_REMINDER_HOURS[i],
-          minute: 0,
-        },
-      });
-    } catch {}
+  if (now >= todayAt3PM) return;
+
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: WATER_NUDGE_ID,
+      content: {
+        title: "Hydration check",
+        body: "Don't forget your water intake today — you and baby need it!",
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: todayAt3PM,
+      },
+    });
+  } catch {
+    // Silently ignore
   }
 }
 
-async function cancelWaterReminders(Notifications: Notifs): Promise<void> {
-  for (const hour of WATER_REMINDER_HOURS) {
-    try {
-      await Notifications.cancelScheduledNotificationAsync(`water_reminder_${hour}`);
-    } catch {}
+export async function cancelWaterNudge(): Promise<void> {
+  const Notifications = await getNotifs();
+  if (!Notifications) return;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(WATER_NUDGE_ID);
+  } catch {
+    // May not exist
   }
 }
 
 export async function cancelAllWaterReminders(): Promise<void> {
-  const Notifications = await getNotifs();
-  if (!Notifications) return;
-  await cancelWaterReminders(Notifications);
+  await cancelWaterNudge();
 }

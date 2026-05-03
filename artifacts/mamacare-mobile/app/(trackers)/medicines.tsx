@@ -7,11 +7,14 @@ import {
   Modal,
   Pressable,
   Alert,
+  Platform,
 } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -37,6 +40,8 @@ import {
 } from "@/utils/notifications";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
 
+const MEDICINE_DEFAULT_TIME_KEY = "@saiviemom_medicine_default_time";
+
 type FrequencyOption = "once" | "twice" | "thrice";
 
 const frequencyLabels: Record<FrequencyOption, string> = {
@@ -45,11 +50,27 @@ const frequencyLabels: Record<FrequencyOption, string> = {
   thrice: "Three times daily",
 };
 
-const frequencyTimes: Record<FrequencyOption, string[]> = {
-  once: ["09:00"],
-  twice: ["09:00", "21:00"],
-  thrice: ["09:00", "14:00", "21:00"],
-};
+function computeTimesFromBase(frequency: FrequencyOption, baseDate: Date): string[] {
+  const h = baseDate.getHours();
+  const m = baseDate.getMinutes();
+  const fmt = (hour: number, min: number) =>
+    `${String(Math.min(hour, 23)).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+  switch (frequency) {
+    case "once":
+      return [fmt(h, m)];
+    case "twice":
+      return [fmt(h, m), fmt((h + 12) % 24, m)];
+    case "thrice":
+      return [fmt(h, m), fmt(Math.min(h + 5, 23), m), fmt(Math.min(h + 10, 23), m)];
+  }
+}
+
+function defaultReminderDate(hhMm: string): Date {
+  const [hStr, mStr] = hhMm.split(":");
+  const d = new Date();
+  d.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0);
+  return d;
+}
 
 export default function MedicinesScreen() {
   const headerHeight = useHeaderHeight();
@@ -63,6 +84,8 @@ export default function MedicinesScreen() {
   const [dosage, setDosage] = useState("");
   const [frequency, setFrequency] = useState<FrequencyOption>("once");
   const [durationDays, setDurationDays] = useState("7");
+  const [reminderTime, setReminderTime] = useState<Date>(() => defaultReminderDate("09:00"));
+  const [showTimePicker, setShowTimePicker] = useState(Platform.OS === "ios");
   const [loading, setLoading] = useState(false);
 
   useFocusEffect(
@@ -72,8 +95,13 @@ export default function MedicinesScreen() {
   );
 
   const loadData = async () => {
-    const meds = await getMedicines();
+    const [meds, savedTime] = await Promise.all([
+      getMedicines(),
+      AsyncStorage.getItem(MEDICINE_DEFAULT_TIME_KEY),
+    ]);
     setMedicines(meds);
+    if (savedTime) setReminderTime(defaultReminderDate(savedTime));
+
     const today = new Date().toISOString().split("T")[0];
     const logs = await getMedicineLogs(today);
     setTodayLogs(logs);
@@ -101,10 +129,7 @@ export default function MedicinesScreen() {
 
   const handleAddMedicine = async () => {
     if (!medicineName.trim() || !dosage.trim()) {
-      Alert.alert(
-        "Missing Information",
-        "Please fill in medicine name and dosage",
-      );
+      Alert.alert("Missing Information", "Please fill in medicine name and dosage");
       return;
     }
 
@@ -116,7 +141,12 @@ export default function MedicinesScreen() {
 
     setLoading(true);
     try {
-      const times = frequencyTimes[frequency];
+      const times = computeTimesFromBase(frequency, reminderTime);
+
+      const hh = String(reminderTime.getHours()).padStart(2, "0");
+      const mm = String(reminderTime.getMinutes()).padStart(2, "0");
+      await AsyncStorage.setItem(MEDICINE_DEFAULT_TIME_KEY, `${hh}:${mm}`);
+
       const newMedicine = await saveMedicine({
         name: medicineName.trim(),
         dosage: dosage.trim(),
@@ -144,7 +174,7 @@ export default function MedicinesScreen() {
       setDurationDays("7");
       setShowModal(false);
       loadData();
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to save medicine");
     } finally {
       setLoading(false);
@@ -166,12 +196,20 @@ export default function MedicinesScreen() {
     ]);
   };
 
+  const onTimeChange = (_event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === "android") setShowTimePicker(false);
+    if (date) setReminderTime(date);
+  };
+
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(":").map(Number);
     const period = hours >= 12 ? "PM" : "AM";
     const displayHours = hours % 12 || 12;
     return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
   };
+
+  const formatReminderTime = (date: Date) =>
+    date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 
   const renderMedicine = ({ item }: { item: Medicine }) => {
     const isActive = isActiveMedicine(item);
@@ -366,6 +404,37 @@ export default function MedicinesScreen() {
                 <FrequencySelector />
 
                 <ThemedText type="h4" style={styles.label}>
+                  First reminder time
+                </ThemedText>
+                {Platform.OS === "android" ? (
+                  <Pressable
+                    style={[styles.timeButton, { borderColor: COLORS.border }]}
+                    onPress={() => setShowTimePicker(true)}
+                  >
+                    <Feather name="clock" size={20} color={theme.primary} />
+                    <ThemedText type="body" style={{ color: COLORS.textPrimary }}>
+                      {formatReminderTime(reminderTime)}
+                    </ThemedText>
+                  </Pressable>
+                ) : null}
+                {showTimePicker ? (
+                  <DateTimePicker
+                    value={reminderTime}
+                    mode="time"
+                    display={Platform.OS === "ios" ? "spinner" : "default"}
+                    onChange={onTimeChange}
+                    accentColor={theme.primary}
+                  />
+                ) : null}
+                {frequency !== "once" ? (
+                  <ThemedText type="small" style={styles.timeHint}>
+                    {frequency === "twice"
+                      ? `Also at ${formatReminderTime(new Date(reminderTime.getTime() + 12 * 3600000))}`
+                      : `Also at ${formatReminderTime(new Date(Math.min(reminderTime.getTime() + 5 * 3600000, new Date().setHours(23, 0, 0, 0))))} and ${formatReminderTime(new Date(Math.min(reminderTime.getTime() + 10 * 3600000, new Date().setHours(23, 0, 0, 0))))}`}
+                  </ThemedText>
+                ) : null}
+
+                <ThemedText type="h4" style={styles.label}>
                   Duration (days)
                 </ThemedText>
                 <TextInput
@@ -482,6 +551,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     fontSize: 16,
+  },
+  timeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    borderWidth: 1,
+    borderRadius: BorderRadius.xs,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  timeHint: {
+    color: COLORS.textMuted,
+    marginTop: Spacing.xs,
+    paddingHorizontal: Spacing.xs,
   },
   frequencyContainer: {
     flexDirection: "row",
