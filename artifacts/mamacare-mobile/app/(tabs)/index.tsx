@@ -14,9 +14,11 @@ import {
   getLatestWeight,
   getLatestBP,
   getAppointments,
+  getTodayJournalEntry,
   WeightLog,
   BPLog,
   Appointment,
+  JournalEntry,
 } from "@/utils/careStorage";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
 
@@ -33,6 +35,7 @@ export default function HomeScreen() {
   const [latestWeight, setLatestWeight] = useState<WeightLog | null>(null);
   const [latestBP, setLatestBP] = useState<BPLog | null>(null);
   const [nextAppointment, setNextAppointment] = useState<Appointment | null>(null);
+  const [todayJournal, setTodayJournal] = useState<JournalEntry | null>(null);
 
   const trimester = selectedWeek <= 13 ? 1 : selectedWeek <= 26 ? 2 : 3;
   const trimesterText = trimester === 1 ? "First Trimester" : trimester === 2 ? "Second Trimester" : "Third Trimester";
@@ -45,13 +48,14 @@ export default function HomeScreen() {
 
   const loadAllStats = async () => {
     try {
-      const [stats, water, goal, weight, bp, appointments] = await Promise.all([
+      const [stats, water, goal, weight, bp, appointments, journal] = await Promise.all([
         getTodayMedicineStats(),
         getWaterIntakeToday(),
         getWaterGoal(),
         getLatestWeight(),
         getLatestBP(),
         getAppointments(),
+        getTodayJournalEntry(),
       ]);
       setMedicineStats(stats);
       setWaterIntake(water.totalMl);
@@ -59,6 +63,7 @@ export default function HomeScreen() {
       setWaterProgress(Math.round((water.totalMl / goal) * 100));
       setLatestWeight(weight);
       setLatestBP(bp);
+      setTodayJournal(journal);
 
       const upcoming = appointments
         .filter(a => new Date(a.dateTime) > new Date())
@@ -100,6 +105,14 @@ export default function HomeScreen() {
   const weightStatus = getWeightStatus();
   const bpStatus = getBPStatus();
 
+  const MOOD_META: Record<number, { emoji: string; label: string; color: string }> = {
+    5: { emoji: "😄", label: "Great", color: "#22C55E" },
+    4: { emoji: "🙂", label: "Good", color: "#84CC16" },
+    3: { emoji: "😐", label: "Okay", color: "#F59E0B" },
+    2: { emoji: "😔", label: "Tired", color: "#F97316" },
+    1: { emoji: "😟", label: "Anxious", color: "#EF4444" },
+  };
+
   const quickActions = [
     {
       id: "doctor",
@@ -118,12 +131,12 @@ export default function HomeScreen() {
       onPress: () => router.push("/(trackers)/medicines"),
     },
     {
-      id: "nutrition",
-      label: "Nutrition",
-      icon: "coffee" as const,
-      bgColor: "#ECFDF5",
-      iconColor: "#10B981",
-      onPress: () => router.push("/(trackers)/diagnostics"),
+      id: "journal",
+      label: "Journal",
+      icon: "edit-3" as const,
+      bgColor: "#FDF4FF",
+      iconColor: "#A855F7",
+      onPress: () => router.push("/(trackers)/journal"),
     },
     {
       id: "records",
@@ -173,6 +186,44 @@ export default function HomeScreen() {
             ))}
           </View>
         </View>
+
+        <Pressable
+          style={styles.checkinCard}
+          onPress={() => router.push("/(trackers)/journal")}
+        >
+          {todayJournal ? (
+            <>
+              <View style={styles.checkinIconWrap}>
+                <ThemedText style={styles.checkinEmoji}>
+                  {MOOD_META[todayJournal.mood]?.emoji ?? "😐"}
+                </ThemedText>
+              </View>
+              <View style={styles.checkinTextWrap}>
+                <ThemedText style={styles.checkinTitle}>Today's Check-in Done</ThemedText>
+                <ThemedText style={styles.checkinSub}>
+                  Feeling {MOOD_META[todayJournal.mood]?.label ?? "Okay"}
+                  {todayJournal.symptoms.length > 0
+                    ? ` · ${todayJournal.symptoms.length} symptom${todayJournal.symptoms.length > 1 ? "s" : ""}`
+                    : ""}
+                </ThemedText>
+              </View>
+              <Feather name="chevron-right" size={16} color={COLORS.textMuted} />
+            </>
+          ) : (
+            <>
+              <View style={[styles.checkinIconWrap, { backgroundColor: "#FDF4FF" }]}>
+                <Feather name="edit-3" size={18} color="#A855F7" />
+              </View>
+              <View style={styles.checkinTextWrap}>
+                <ThemedText style={styles.checkinTitle}>Daily Check-in</ThemedText>
+                <ThemedText style={styles.checkinSub}>Log your mood and symptoms today</ThemedText>
+              </View>
+              <View style={styles.checkinCta}>
+                <ThemedText style={styles.checkinCtaText}>Start</ThemedText>
+              </View>
+            </>
+          )}
+        </Pressable>
 
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Your Health Signals</ThemedText>
@@ -433,5 +484,57 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: Spacing.md,
     paddingHorizontal: Spacing.xl,
+  },
+  checkinCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.xl,
+    borderRadius: 20,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+    gap: Spacing.md,
+  },
+  checkinIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F0FDF4",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkinEmoji: {
+    fontSize: 22,
+  },
+  checkinTextWrap: {
+    flex: 1,
+  },
+  checkinTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.textPrimary,
+  },
+  checkinSub: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  checkinCta: {
+    backgroundColor: "#A855F7",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+  },
+  checkinCtaText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
 });

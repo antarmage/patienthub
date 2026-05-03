@@ -11,6 +11,7 @@ const KEYS = {
   PRESCRIPTIONS: "@saiviemom_prescriptions",
   WEIGHT_LOGS: "@saiviemom_weight_logs",
   BP_LOGS: "@saiviemom_bp_logs",
+  MOOD_JOURNAL: "@saiviemom_mood_journal",
 };
 
 function genId(): string {
@@ -832,4 +833,42 @@ async function getBPLogsFromStorage(): Promise<BPLog[]> {
 export async function getLatestBP(): Promise<BPLog | null> {
   const logs = await getBPLogs();
   return logs.length > 0 ? logs[0] : null;
+}
+
+// ─── Mood Journal ──────────────────────────────────────────────────────────────
+
+export interface JournalEntry {
+  id: string;
+  date: string;
+  week: number;
+  mood: number;
+  symptoms: string[];
+  notes?: string;
+  createdAt: string;
+}
+
+export async function getMoodJournal(): Promise<JournalEntry[]> {
+  const v = await AsyncStorage.getItem(KEYS.MOOD_JOURNAL);
+  return v ? JSON.parse(v) : [];
+}
+
+export async function addJournalEntry(
+  data: Omit<JournalEntry, "id" | "date" | "createdAt">
+): Promise<JournalEntry> {
+  const entry: JournalEntry = {
+    ...data,
+    id: genId(),
+    date: today(),
+    createdAt: new Date().toISOString(),
+  };
+  const list = await getMoodJournal();
+  list.unshift(entry);
+  await AsyncStorage.setItem(KEYS.MOOD_JOURNAL, JSON.stringify(list));
+  return entry;
+}
+
+export async function getTodayJournalEntry(): Promise<JournalEntry | null> {
+  const t = today();
+  const list = await getMoodJournal();
+  return list.find((e) => e.date === t) || null;
 }
