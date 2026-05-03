@@ -210,9 +210,18 @@ export async function getAppointments(): Promise<Appointment[]> {
   if (_patientId) {
     const data = await apiGet<ApiAppointment[]>(`/api/mobile/patients/${_patientId}/appointments`);
     if (data) {
+      const existing: Appointment[] = JSON.parse(
+        (await AsyncStorage.getItem(KEYS.APPOINTMENTS)) || "[]"
+      );
+      const existingById: Record<string, Appointment> = Object.fromEntries(
+        existing.map(a => [a.id, a])
+      );
       const mapped = data
         .filter(a => a.status !== "cancelled")
-        .map(mapApiAppointment);
+        .map(a => {
+          const m = mapApiAppointment(a);
+          return { ...m, notificationIds: existingById[m.id]?.notificationIds ?? [] };
+        });
       await AsyncStorage.setItem(KEYS.APPOINTMENTS, JSON.stringify(mapped));
       return mapped;
     }
@@ -337,7 +346,18 @@ export async function getMedicines(): Promise<Medicine[]> {
   if (_patientId) {
     const data = await apiGet<ApiMedication[]>(`/api/mobile/patients/${_patientId}/medications`);
     if (data) {
-      const mapped = data.filter(m => m.status !== "deleted").map(mapApiMedication);
+      const existing: Medicine[] = JSON.parse(
+        (await AsyncStorage.getItem(KEYS.MEDICINES)) || "[]"
+      );
+      const existingById: Record<string, Medicine> = Object.fromEntries(
+        existing.map(m => [m.id, m])
+      );
+      const mapped = data
+        .filter(m => m.status !== "deleted")
+        .map(m => {
+          const med = mapApiMedication(m);
+          return { ...med, notificationIds: existingById[med.id]?.notificationIds ?? [] };
+        });
       await AsyncStorage.setItem(KEYS.MEDICINES, JSON.stringify(mapped));
       return mapped;
     }

@@ -14,6 +14,7 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -166,8 +167,11 @@ export default function AppointmentsScreen() {
         dateTime: dateTime.toISOString(),
       });
 
-      const hasPermission = await requestNotificationPermissions();
-      if (hasPermission) {
+      const [hasPermission, apptNotifsEnabled] = await Promise.all([
+        requestNotificationPermissions(),
+        AsyncStorage.getItem("@saiviemom_notif_appointment"),
+      ]);
+      if (hasPermission && apptNotifsEnabled === "true") {
         const notificationIds = await scheduleAppointmentReminders(
           newAppointment.id,
           newAppointment.doctorName,

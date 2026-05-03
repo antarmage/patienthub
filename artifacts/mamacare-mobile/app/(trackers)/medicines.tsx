@@ -99,9 +99,23 @@ export default function MedicinesScreen() {
       getMedicines(),
       AsyncStorage.getItem(MEDICINE_DEFAULT_TIME_KEY),
     ]);
-    setMedicines(meds);
     if (savedTime) setReminderTime(defaultReminderDate(savedTime));
 
+    // Prune notifications for expired medicine courses
+    const now = new Date();
+    for (const med of meds) {
+      if (!med.notificationIds.length) continue;
+      const start = new Date(med.startDate);
+      const end = new Date(start);
+      end.setDate(end.getDate() + med.durationDays);
+      if (now > end) {
+        await cancelNotifications(med.notificationIds);
+        await updateMedicineNotifications(med.id, []);
+        med.notificationIds = [];
+      }
+    }
+
+    setMedicines(meds);
     const today = new Date().toISOString().split("T")[0];
     const logs = await getMedicineLogs(today);
     setTodayLogs(logs);
@@ -156,8 +170,11 @@ export default function MedicinesScreen() {
         startDate: new Date().toISOString(),
       });
 
-      const hasPermission = await requestNotificationPermissions();
-      if (hasPermission) {
+      const [hasPermission, medicineNotifsEnabled] = await Promise.all([
+        requestNotificationPermissions(),
+        AsyncStorage.getItem("@saiviemom_notif_medicine"),
+      ]);
+      if (hasPermission && medicineNotifsEnabled === "true") {
         const notificationIds = await scheduleMedicineReminders(
           newMedicine.id,
           newMedicine.name,

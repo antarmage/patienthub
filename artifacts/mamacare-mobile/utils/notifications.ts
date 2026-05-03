@@ -142,25 +142,19 @@ export async function scheduleAppointmentReminders(
 }
 
 /**
- * Schedules a single one-time water nudge for today at 3 PM.
- * If it is already past 3 PM, nothing is scheduled.
- * Call cancelWaterNudge() when the daily goal is met.
+ * Schedules a durable daily water nudge at 3 PM.
+ * Repeats every day until explicitly cancelled via cancelWaterNudge().
  */
 export async function scheduleWaterReminders(): Promise<void> {
   const Notifications = await getNotifs();
   if (!Notifications) return;
 
+  // Cancel before re-scheduling to avoid duplicates
   try {
     await Notifications.cancelScheduledNotificationAsync(WATER_NUDGE_ID);
   } catch {
     // May not exist yet
   }
-
-  const now = new Date();
-  const todayAt3PM = new Date(now);
-  todayAt3PM.setHours(15, 0, 0, 0);
-
-  if (now >= todayAt3PM) return;
 
   try {
     await Notifications.scheduleNotificationAsync({
@@ -171,8 +165,9 @@ export async function scheduleWaterReminders(): Promise<void> {
         sound: true,
       },
       trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: todayAt3PM,
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: 15,
+        minute: 0,
       },
     });
   } catch {
