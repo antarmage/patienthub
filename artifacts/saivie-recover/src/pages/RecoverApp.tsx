@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
@@ -23,7 +22,7 @@ function api(path: string, opts?: RequestInit, token?: string) {
 }
 
 type Staff = { id: string; username: string; role: string };
-type Patient = { id: number; name: string; phone?: string; condition?: string; age?: number };
+type Patient = { id: number; name: string; phone?: string; condition?: string; age?: number; dateOfBirth?: string };
 type Observation = {
   id: number; patientId: number; observedAt: string; painScore: number | null;
   systolic: number | null; diastolic: number | null; pulse: number | null;
@@ -39,11 +38,12 @@ const PAIN_LABELS: Record<number, string> = {
 const IDLE_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 
 function PainSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const color = value <= 3 ? "bg-emerald-500" : value <= 6 ? "bg-amber-400" : "bg-rose-500";
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-slate-700">Pain Score: <span className={`font-bold ${value <= 3 ? "text-emerald-600" : value <= 6 ? "text-amber-600" : "text-rose-600"}`}>{PAIN_LABELS[value]}</span></span>
+        <span className="text-sm font-semibold text-slate-700">
+          Pain Score: <span className={`font-bold ${value <= 3 ? "text-emerald-600" : value <= 6 ? "text-amber-600" : "text-rose-600"}`}>{PAIN_LABELS[value]}</span>
+        </span>
       </div>
       <input
         type="range" min={0} max={10} step={1} value={value}
@@ -92,14 +92,17 @@ export default function RecoverApp() {
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
 
-  // ── Auto-lock ──────────────────────────────────────────────────────────────
+  // ── Auto-lock (goes to patient search, keeps session) ─────────────────────
   const idleTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const resetIdle = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     if (token) {
       idleTimer.current = setTimeout(() => {
-        handleLock();
-        toast({ title: "Screen locked", description: "Locked after 2 minutes of inactivity." });
+        // Lock to patient search screen (do NOT log out — keep session active)
+        setSelectedPatient(null);
+        setView("search");
+        setSearch("");
+        toast({ title: "Screen cleared", description: "Patient cleared after 2 min inactivity. Please search again." });
       }, IDLE_TIMEOUT_MS);
     }
   }, [token]);
@@ -114,7 +117,7 @@ export default function RecoverApp() {
     };
   }, [resetIdle]);
 
-  function handleLock() {
+  function handleLogout() {
     sessionStorage.removeItem("recover_token");
     sessionStorage.removeItem("recover_staff");
     setToken(null);
@@ -134,7 +137,7 @@ export default function RecoverApp() {
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
-        setLoginError(err.error || "Login failed");
+        setLoginError((err as any).error || "Login failed");
         return;
       }
       const data = await r.json();
@@ -150,7 +153,8 @@ export default function RecoverApp() {
   }
 
   // ── App state ──────────────────────────────────────────────────────────────
-  const [view, setView] = useState<"search" | "form" | "history">("search");
+  type View = "search" | "confirm" | "form" | "history";
+  const [view, setView] = useState<View>("search");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [search, setSearch] = useState("");
   const [formData, setFormData] = useState({
@@ -158,12 +162,18 @@ export default function RecoverApp() {
     nausea: false, mobility: "", woundCondition: "", notes: "",
   });
 
+  function resetForm() {
+    setFormData({ painScore: 0, systolic: "", diastolic: "", pulse: "", nausea: false, mobility: "", woundCondition: "", notes: "" });
+  }
+
+  const isFormFilled = formData.painScore > 0 || formData.systolic || formData.diastolic || formData.pulse || formData.nausea || formData.mobility || formData.woundCondition || formData.notes;
+
   const { data: patients = [], isFetching } = useQuery<Patient[]>({
     queryKey: ["/api/postop/patients", search],
     queryFn: async () => {
       if (!token) return [];
       const r = await api(`/api/postop/patients?q=${encodeURIComponent(search)}`, {}, token);
-      if (r.status === 401) { handleLock(); return []; }
+      if (r.status === 401) { handleLogout(); return []; }
       return r.json();
     },
     enabled: !!token,
@@ -174,7 +184,7 @@ export default function RecoverApp() {
     queryFn: async () => {
       if (!token || !selectedPatient) return [];
       const r = await api(`/api/postop/observations/${selectedPatient.id}`, {}, token);
-      if (r.status === 401) { handleLock(); return []; }
+      if (r.status === 401) { handleLogout(); return []; }
       return r.json();
     },
     enabled: !!token && !!selectedPatient,
@@ -197,13 +207,13 @@ export default function RecoverApp() {
           notes: formData.notes || null,
         }),
       }, token!);
-      if (r.status === 401) { handleLock(); throw new Error("Session expired"); }
+      if (r.status === 401) { handleLogout(); throw new Error("Session expired"); }
       if (!r.ok) throw new Error("Failed to save");
       return r.json();
     },
     onSuccess: () => {
       toast({ title: "Observation saved", description: "Post-op record submitted successfully." });
-      setFormData({ painScore: 0, systolic: "", diastolic: "", pulse: "", nausea: false, mobility: "", woundCondition: "", notes: "" });
+      resetForm();
       refetchObs();
       setView("history");
     },
@@ -239,7 +249,7 @@ export default function RecoverApp() {
               <div className="space-y-2">
                 <Label htmlFor="passcode" className="text-sm font-semibold text-slate-700">Passcode</Label>
                 <Input
-                  id="passcode" type="password"
+                  id="passcode" type="password" autoComplete="current-password"
                   value={loginForm.passcode} onChange={e => setLoginForm(f => ({ ...f, passcode: e.target.value }))}
                   placeholder="Enter passcode" className="h-13 text-base"
                 />
@@ -278,17 +288,17 @@ export default function RecoverApp() {
             <div className="flex items-center gap-2 bg-sky-50 border border-sky-200 rounded-xl px-4 py-2">
               <span className="text-xs text-slate-500">Patient:</span>
               <span className="text-sm font-semibold text-sky-800">{selectedPatient.name}</span>
-              <button onClick={() => { setSelectedPatient(null); setView("search"); }} className="ml-2 text-slate-400 hover:text-slate-600">
+              <button onClick={() => { setSelectedPatient(null); setView("search"); resetForm(); }} className="ml-2 text-slate-400 hover:text-slate-600">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
           )}
           <div className="text-right">
-            <p className="text-xs font-semibold text-slate-700">{staff.name || staff.username}</p>
+            <p className="text-xs font-semibold text-slate-700">{staff.username}</p>
             <p className="text-xs text-slate-400">{staff.role || "Staff"}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleLock} className="text-xs text-slate-500 border-slate-200">
-            Lock
+          <Button variant="outline" size="sm" onClick={handleLogout} className="text-xs text-slate-500 border-slate-200">
+            Sign Out
           </Button>
         </div>
       </header>
@@ -331,7 +341,7 @@ export default function RecoverApp() {
                 patients.map(p => (
                   <button
                     key={p.id}
-                    onClick={() => { setSelectedPatient(p); setView("form"); }}
+                    onClick={() => { setSelectedPatient(p); setView("confirm"); }}
                     className="w-full text-left bg-white rounded-xl border border-slate-200 hover:border-sky-300 hover:bg-sky-50/40 transition-all px-5 py-4 shadow-sm group"
                   >
                     <div className="flex items-center justify-between">
@@ -348,6 +358,53 @@ export default function RecoverApp() {
                   </button>
                 ))
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Patient confirmation */}
+        {view === "confirm" && selectedPatient && (
+          <div className="max-w-2xl mx-auto px-6 pt-10 pb-20 space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800 mb-1">Confirm Patient Identity</h2>
+              <p className="text-slate-500 text-sm">Please verify the patient's details before recording observations.</p>
+            </div>
+            <Card className="shadow-md border-sky-200 bg-sky-50/30">
+              <CardContent className="pt-6 pb-6 space-y-4">
+                <div className="flex items-center gap-4 pb-4 border-b border-sky-100">
+                  <div className="w-14 h-14 rounded-2xl bg-sky-100 flex items-center justify-center text-sky-700 font-bold text-xl">
+                    {selectedPatient.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-slate-800">{selectedPatient.name}</p>
+                    {selectedPatient.condition && <p className="text-sm text-sky-600 font-medium mt-0.5">{selectedPatient.condition}</p>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Age</p>
+                    <p className="text-slate-800 font-medium">{selectedPatient.age ? `${selectedPatient.age} years` : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Phone</p>
+                    <p className="text-slate-800 font-medium">{selectedPatient.phone || "—"}</p>
+                  </div>
+                  {selectedPatient.dateOfBirth && (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Date of Birth</p>
+                      <p className="text-slate-800 font-medium">{new Date(selectedPatient.dateOfBirth).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1 h-13 text-base font-semibold" onClick={() => { setSelectedPatient(null); setView("search"); }}>
+                Wrong Patient
+              </Button>
+              <Button className="flex-[2] h-13 text-base font-bold bg-sky-600 hover:bg-sky-700 shadow-md" onClick={() => setView("form")}>
+                Confirm — Record Observations
+              </Button>
             </div>
           </div>
         )}
@@ -450,7 +507,10 @@ export default function RecoverApp() {
                       <button
                         key={opt}
                         onClick={() => setFormData(f => ({ ...f, woundCondition: f.woundCondition === opt ? "" : opt }))}
-                        className={`py-3 px-3 rounded-xl border text-sm font-medium transition-all ${formData.woundCondition === opt ? "bg-sky-500 text-white border-sky-500 shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:border-sky-300"} ${opt === "Signs of infection" ? "border-rose-200 text-rose-600 data-[active]:bg-rose-500" : ""}`}
+                        className={`py-3 px-3 rounded-xl border text-sm font-medium transition-all ${formData.woundCondition === opt
+                          ? opt === "Signs of infection" ? "bg-rose-500 text-white border-rose-500 shadow-sm" : "bg-sky-500 text-white border-sky-500 shadow-sm"
+                          : opt === "Signs of infection" ? "bg-white text-rose-600 border-rose-200 hover:border-rose-300" : "bg-white text-slate-600 border-slate-200 hover:border-sky-300"
+                        }`}
                       >
                         {opt}
                       </button>
@@ -469,6 +529,13 @@ export default function RecoverApp() {
               </CardContent>
             </Card>
 
+            {/* Validation warning */}
+            {!isFormFilled && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-3 rounded-xl">
+                Please fill in at least one field (pain score &gt; 0, a vital sign, or a clinical observation).
+              </div>
+            )}
+
             {/* Submit */}
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1 h-14 text-base font-semibold" onClick={() => setView("history")}>
@@ -477,7 +544,7 @@ export default function RecoverApp() {
               <Button
                 className="flex-[2] h-14 text-base font-bold bg-sky-600 hover:bg-sky-700 shadow-md"
                 onClick={() => submitMutation.mutate()}
-                disabled={submitMutation.isPending}
+                disabled={submitMutation.isPending || !isFormFilled}
               >
                 {submitMutation.isPending ? "Saving…" : "Save Observation"}
               </Button>
@@ -493,7 +560,7 @@ export default function RecoverApp() {
                 <h2 className="text-2xl font-bold text-slate-800 mb-1">Observation History</h2>
                 <p className="text-slate-500 text-sm">{selectedPatient.name} — all recorded post-op entries</p>
               </div>
-              <Button onClick={() => setView("form")} className="bg-sky-600 hover:bg-sky-700 h-11 font-semibold">
+              <Button onClick={() => { resetForm(); setView("form"); }} className="bg-sky-600 hover:bg-sky-700 h-11 font-semibold">
                 + New Observation
               </Button>
             </div>
@@ -517,14 +584,14 @@ export default function RecoverApp() {
             {observations.length > 0 && (
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { label: "Latest Pain", value: observations[0].painScore != null ? `${observations[0].painScore}/10` : "—", sub: PAIN_LABELS[observations[0].painScore ?? 0] || "", color: "bg-rose-50 text-rose-700" },
-                  { label: "Latest BP", value: observations[0].systolic && observations[0].diastolic ? `${observations[0].systolic}/${observations[0].diastolic}` : "—", sub: "mmHg", color: "bg-sky-50 text-sky-700" },
-                  { label: "Latest Pulse", value: observations[0].pulse != null ? `${observations[0].pulse}` : "—", sub: "bpm", color: "bg-emerald-50 text-emerald-700" },
+                  { label: "Latest Pain", value: observations[0].painScore != null ? `${observations[0].painScore}/10` : "—", sub: PAIN_LABELS[observations[0].painScore ?? 0] || "", colorText: observations[0].painScore != null && observations[0].painScore <= 3 ? "text-emerald-600" : observations[0].painScore != null && observations[0].painScore <= 6 ? "text-amber-600" : "text-rose-600" },
+                  { label: "Latest BP", value: observations[0].systolic && observations[0].diastolic ? `${observations[0].systolic}/${observations[0].diastolic}` : "—", sub: "mmHg", colorText: "text-sky-700" },
+                  { label: "Latest Pulse", value: observations[0].pulse != null ? `${observations[0].pulse}` : "—", sub: "bpm", colorText: "text-emerald-700" },
                 ].map(card => (
                   <Card key={card.label} className="shadow-sm border-slate-200">
                     <CardContent className="p-5 text-center">
                       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{card.label}</p>
-                      <p className={`text-3xl font-bold ${card.color.split(" ")[1]}`}>{card.value}</p>
+                      <p className={`text-3xl font-bold ${card.colorText}`}>{card.value}</p>
                       <p className="text-xs text-slate-400 mt-1">{card.sub}</p>
                     </CardContent>
                   </Card>

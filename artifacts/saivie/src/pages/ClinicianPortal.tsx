@@ -173,6 +173,124 @@ function PostOpObservationsCard({ patientId }: { patientId: number }) {
   );
 }
 
+function PostOpDetailedView({ patientId, patientName }: { patientId: number; patientName: string }) {
+  const { data: obs = [], isLoading } = useQuery<any[]>({
+    queryKey: [`/api/postop/observations/${patientId}`],
+    queryFn: async () => {
+      const r = await fetch(`/api/postop/observations/${patientId}`);
+      if (!r.ok) return [];
+      return r.json();
+    },
+    retry: false,
+  });
+
+  const painColor = (score: number | null) => {
+    if (score == null) return "text-slate-400";
+    if (score <= 3) return "text-emerald-600 font-bold";
+    if (score <= 6) return "text-amber-600 font-bold";
+    return "text-rose-600 font-bold";
+  };
+
+  const painBg = (score: number | null) => {
+    if (score == null) return "bg-slate-100 text-slate-500";
+    if (score <= 3) return "bg-emerald-100 text-emerald-700";
+    if (score <= 6) return "bg-amber-100 text-amber-700";
+    return "bg-rose-100 text-rose-700";
+  };
+
+  const latest = obs[0];
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-slate-800">Post-Op Observations</h2>
+          <p className="text-sm text-slate-500 mt-0.5">{patientName} — full nursing record</p>
+        </div>
+        <a
+          href="/recover/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-4 py-2 rounded-xl hover:bg-sky-100 transition-colors"
+        >
+          <Stethoscope className="w-4 h-4" /> Open SaivieRecover
+        </a>
+      </div>
+
+      {/* Summary cards */}
+      {latest && (
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { label: "Latest Pain", value: latest.painScore != null ? `${latest.painScore}/10` : "—", extra: painBg(latest.painScore) },
+            { label: "Blood Pressure", value: latest.systolic && latest.diastolic ? `${latest.systolic}/${latest.diastolic}` : "—", extra: "bg-sky-100 text-sky-700" },
+            { label: "Pulse", value: latest.pulse != null ? `${latest.pulse} bpm` : "—", extra: "bg-emerald-100 text-emerald-700" },
+            { label: "Total Records", value: String(obs.length), extra: "bg-slate-100 text-slate-700" },
+          ].map(c => (
+            <Card key={c.label} className="shadow-sm border-slate-200">
+              <CardContent className="p-4 text-center">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{c.label}</p>
+                <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${c.extra}`}>{c.value}</span>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Full observation table */}
+      <Card className="shadow-sm border-slate-200 overflow-hidden">
+        <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
+          <CardTitle className="text-sm font-bold text-slate-700 flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-sky-500" /> All Observations
+            {obs.length > 0 && (
+              <Badge variant="outline" className="ml-auto text-[10px] h-[18px] border-sky-200 text-sky-700 bg-sky-50">
+                {obs.length} record{obs.length !== 1 ? "s" : ""}
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-8 text-center text-slate-400 text-sm">Loading…</div>
+          ) : obs.length === 0 ? (
+            <div className="p-10 text-center">
+              <Stethoscope className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+              <p className="text-slate-500 font-medium text-sm">No post-op observations recorded yet.</p>
+              <p className="text-slate-400 text-xs mt-1">Use SaivieRecover on the ward tablet to add the first record.</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-7 gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                <span>Time</span>
+                <span className="text-center">Pain</span>
+                <span className="text-center">BP</span>
+                <span className="text-center">Pulse</span>
+                <span className="text-center">Nausea</span>
+                <span>Wound</span>
+                <span>Notes</span>
+              </div>
+              {obs.map((o: any) => (
+                <div key={o.id} className="grid grid-cols-7 gap-2 px-4 py-3 border-b border-slate-50 text-xs items-center hover:bg-slate-50/50 transition-colors">
+                  <span className="text-slate-400 text-[11px]">
+                    {new Date(o.observedAt).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <span className={`text-center font-bold ${painColor(o.painScore)}`}>
+                    {o.painScore != null ? `${o.painScore}/10` : "—"}
+                  </span>
+                  <span className="text-center text-slate-600">{o.systolic && o.diastolic ? `${o.systolic}/${o.diastolic}` : "—"}</span>
+                  <span className="text-center text-slate-600">{o.pulse ?? "—"}</span>
+                  <span className="text-center">{o.nausea ? <span className="text-amber-600 font-medium">Yes</span> : <span className="text-slate-300">—</span>}</span>
+                  <span className="text-slate-500 truncate">{o.woundCondition || "—"}</span>
+                  <span className="text-slate-500 truncate">{o.notes || "—"}</span>
+                </div>
+              ))}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function ClinicianPortal() {
   const [, navigate] = useLocation();
   const [activeView, setActiveView] = useState("dashboard");
@@ -184,6 +302,7 @@ export default function ClinicianPortal() {
   const [scheduleViewMode, setScheduleViewMode] = useState("appointments");
   const [calendarViewMode, setCalendarViewMode] = useState("month");
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
+  const [patientDetailTab, setPatientDetailTab] = useState<'overview' | 'postop'>('overview');
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingType, setBookingType] = useState("surgery");
@@ -3557,6 +3676,15 @@ export default function ClinicianPortal() {
 
               {/* Detailed View (Right) - Intelligent Dashboard */}
               <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
+                {/* Post-Op Tab Strip */}
+                <div className="flex gap-1 mb-5 bg-white rounded-xl border border-slate-200 p-1 w-fit shadow-sm">
+                  <button onClick={() => setPatientDetailTab('overview')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${patientDetailTab === 'overview' ? 'bg-slate-100 text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>Overview</button>
+                  <button onClick={() => setPatientDetailTab('postop')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${patientDetailTab === 'postop' ? 'bg-sky-50 text-sky-700' : 'text-slate-500 hover:text-slate-700'}`}>🏥 Post-Op</button>
+                </div>
+                {patientDetailTab === 'postop' && (
+                  <PostOpDetailedView patientId={selectedPatient.id} patientName={selectedPatient.name} />
+                )}
+                <div className={patientDetailTab === 'postop' ? 'hidden' : ''}>
                 <div className="max-w-7xl mx-auto space-y-6">
                    
                    {/* PATIENT HISTORY SUMMARY */}
@@ -6099,12 +6227,10 @@ export default function ClinicianPortal() {
                             </CardContent>
                          </Card>
 
-                         {/* POST-OP OBSERVATIONS */}
-                         <PostOpObservationsCard patientId={selectedPatient.id} />
-
                       </div>
 
                    </div>
+                </div>
                 </div>
               </div>
             </div>

@@ -3441,9 +3441,12 @@ Return a JSON object:
     res.json(results);
   });
 
-  // Get post-op observations for a patient
+  // Get post-op observations for a patient (accessible by session auth OR staff token)
   app.get("/api/postop/observations/:patientId", async (req, res) => {
-    if (!getStaffUserId(req, res)) return;
+    const auth = (req.headers["authorization"] ?? "") as string;
+    if (auth.startsWith("Bearer ")) {
+      if (!getStaffUserId(req, res)) return;
+    }
     const patientId = parseInt(req.params.patientId);
     if (isNaN(patientId)) return res.status(400).json({ error: "Invalid patient ID" });
     const obs = await storage.getPostopObservations(patientId);
