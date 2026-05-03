@@ -72,11 +72,10 @@ export async function scheduleMedicineReminder(
   if (!Notifications) return;
 
   const start = startDate ?? new Date();
-  const maxDays = Math.min(durationDays, 30);
   const now = new Date();
   const ids: string[] = [];
 
-  for (let day = 0; day < maxDays; day++) {
+  for (let day = 0; day < durationDays; day++) {
     for (const timeStr of times) {
       const [hh, mm] = timeStr.split(":").map(Number);
       if (isNaN(hh) || isNaN(mm)) continue;

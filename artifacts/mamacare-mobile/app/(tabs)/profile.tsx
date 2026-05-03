@@ -30,6 +30,8 @@ import {
 import {
   getMedicines,
   getAppointments,
+  getWaterIntakeToday,
+  getWaterGoal,
 } from "@/utils/careStorage";
 
 const NOTIF_KEYS = {
@@ -240,7 +242,10 @@ export default function ProfileScreen() {
       if (value) {
         const hasPermission = await requestNotificationPermissions();
         if (!hasPermission) return;
-        await scheduleWaterNudge();
+        const [intake, goalMl] = await Promise.all([getWaterIntakeToday(), getWaterGoal()]);
+        if (intake.totalMl < goalMl) {
+          await scheduleWaterNudge();
+        }
       } else {
         await cancelAllWaterNudges();
       }

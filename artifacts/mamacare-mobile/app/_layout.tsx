@@ -16,7 +16,18 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { AppProvider, useApp } from "@/context/AppContext";
 import { KeyboardWrapper } from "@/components/KeyboardWrapper";
-import { requestNotificationPermissions } from "@/utils/notifications";
+import {
+  requestNotificationPermissions,
+  scheduleMedicineReminder,
+  scheduleAppointmentReminder,
+  scheduleWaterNudge,
+} from "@/utils/notifications";
+import {
+  getMedicines,
+  getAppointments,
+  getWaterIntakeToday,
+  getWaterGoal,
+} from "@/utils/careStorage";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -52,14 +63,50 @@ function RootLayoutNav() {
       const granted = await requestNotificationPermissions();
       await AsyncStorage.setItem(NOTIF_PERM_ASKED_KEY, "true");
       if (granted) {
-        const [medVal, apptVal] = await AsyncStorage.multiGet([
+        const [medVal, apptVal, waterVal] = await AsyncStorage.multiGet([
           "@saiviemom_notif_medicine",
           "@saiviemom_notif_appointment",
+          "@saiviemom_water_reminders_enabled",
         ]);
         const sets: [string, string][] = [];
+        const medEnabled = medVal[1] ?? "true";
+        const apptEnabled = apptVal[1] ?? "true";
         if (medVal[1] === null) sets.push(["@saiviemom_notif_medicine", "true"]);
         if (apptVal[1] === null) sets.push(["@saiviemom_notif_appointment", "true"]);
         if (sets.length) await AsyncStorage.multiSet(sets);
+
+        const now = new Date();
+
+        if (medEnabled === "true") {
+          const medicines = await getMedicines();
+          for (const med of medicines) {
+            const start = new Date(med.startDate);
+            const end = new Date(start);
+            end.setDate(end.getDate() + med.durationDays);
+            if (now > end) continue;
+            await scheduleMedicineReminder(
+              med.id, med.name, med.dosage, med.times, med.durationDays, start,
+            );
+          }
+        }
+
+        if (apptEnabled === "true") {
+          const appointments = await getAppointments();
+          for (const appt of appointments) {
+            const dt = new Date(appt.dateTime);
+            if (dt <= now) continue;
+            await scheduleAppointmentReminder(
+              appt.id, appt.doctorName, appt.clinicName, dt,
+            );
+          }
+        }
+
+        if (waterVal[1] === "true") {
+          const [intake, goalMl] = await Promise.all([getWaterIntakeToday(), getWaterGoal()]);
+          if (intake.totalMl < goalMl) {
+            await scheduleWaterNudge();
+          }
+        }
       }
     })();
   }, [authComplete]);
