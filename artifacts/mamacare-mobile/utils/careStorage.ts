@@ -712,25 +712,42 @@ interface ApiPregnancyMetric {
   enteredBy: string | null;
 }
 
+interface ApiWeightLog {
+  id: number;
+  patientId: number;
+  weight: number;
+  unit: string;
+  date: string;
+  week: number | null;
+  loggedAt: string;
+}
+
+interface ApiBpLog {
+  id: number;
+  patientId: number;
+  systolic: number;
+  diastolic: number;
+  pulse: number | null;
+  date: string;
+  loggedAt: string;
+}
+
 export async function getWeightLogs(): Promise<WeightLog[]> {
   if (_patientId) {
-    const data = await apiGet<ApiPregnancyMetric[]>(
-      `/api/mobile/patients/${_patientId}/pregnancy-metrics`
+    const data = await apiGet<ApiWeightLog[]>(
+      `/api/mobile/patients/${_patientId}/weight-logs`
     );
-    if (data) {
-      const weightMetrics = data
-        .filter(m => m.weight != null)
-        .sort((a, b) => b.week - a.week);
-      if (weightMetrics.length > 0) {
-        return weightMetrics.map(m => ({
-          id: String(m.id),
-          weight: m.weight!,
-          unit: "kg" as const,
-          date: today(),
-          week: m.week,
-          createdAt: today(),
-        }));
-      }
+    if (data && data.length > 0) {
+      const logs: WeightLog[] = data.map(m => ({
+        id: String(m.id),
+        weight: m.weight,
+        unit: (m.unit === "lb" ? "lb" : "kg") as "kg" | "lb",
+        date: m.date,
+        week: m.week ?? 1,
+        createdAt: m.loggedAt,
+      }));
+      await AsyncStorage.setItem(KEYS.WEIGHT_LOGS, JSON.stringify(logs));
+      return logs;
     }
   }
   const v = await AsyncStorage.getItem(KEYS.WEIGHT_LOGS);
@@ -744,9 +761,11 @@ export async function saveWeightLog(
 ): Promise<WeightLog> {
   const weightKg = unit === "lb" ? parseFloat((weight * 0.453592).toFixed(2)) : weight;
   if (_patientId) {
-    await apiPost(`/api/mobile/patients/${_patientId}/pregnancy-metrics`, {
-      week,
+    await apiPost(`/api/mobile/patients/${_patientId}/weight-logs`, {
       weight: weightKg,
+      unit: "kg",
+      date: today(),
+      week,
     });
   }
   const log: WeightLog = {
@@ -777,22 +796,20 @@ export async function getLatestWeight(): Promise<WeightLog | null> {
 
 export async function getBPLogs(): Promise<BPLog[]> {
   if (_patientId) {
-    const data = await apiGet<ApiPregnancyMetric[]>(
-      `/api/mobile/patients/${_patientId}/pregnancy-metrics`
+    const data = await apiGet<ApiBpLog[]>(
+      `/api/mobile/patients/${_patientId}/bp-logs`
     );
-    if (data) {
-      const bpMetrics = data
-        .filter(m => m.systolic != null && m.diastolic != null)
-        .sort((a, b) => b.week - a.week);
-      if (bpMetrics.length > 0) {
-        return bpMetrics.map(m => ({
-          id: String(m.id),
-          systolic: m.systolic!,
-          diastolic: m.diastolic!,
-          date: today(),
-          createdAt: today(),
-        }));
-      }
+    if (data && data.length > 0) {
+      const logs: BPLog[] = data.map(m => ({
+        id: String(m.id),
+        systolic: m.systolic,
+        diastolic: m.diastolic,
+        pulse: m.pulse ?? undefined,
+        date: m.date,
+        createdAt: m.loggedAt,
+      }));
+      await AsyncStorage.setItem(KEYS.BP_LOGS, JSON.stringify(logs));
+      return logs;
     }
   }
   const v = await AsyncStorage.getItem(KEYS.BP_LOGS);
@@ -805,10 +822,11 @@ export async function saveBPLog(
   pulse?: number
 ): Promise<BPLog> {
   if (_patientId) {
-    await apiPost(`/api/mobile/patients/${_patientId}/pregnancy-metrics`, {
-      week: _currentWeek,
+    await apiPost(`/api/mobile/patients/${_patientId}/bp-logs`, {
       systolic,
       diastolic,
+      pulse,
+      date: today(),
     });
   }
   const log: BPLog = {

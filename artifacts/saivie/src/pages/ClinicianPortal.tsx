@@ -485,6 +485,30 @@ export default function ClinicianPortal() {
   const labResults = labResultsQuery.data || [];
   const labResultsLoaded = labResultsQuery.isSuccess;
 
+  const weightLogsQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/weight-logs`],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${selectedPatient?.id}/weight-logs`);
+      if (!res.ok) throw new Error('Failed to fetch weight logs');
+      return res.json();
+    },
+    enabled: !!selectedPatient
+  });
+  const weightLogs: any[] = weightLogsQuery.data || [];
+  const latestWeight = weightLogs[0] || null;
+
+  const bpLogsQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/bp-logs`],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${selectedPatient?.id}/bp-logs`);
+      if (!res.ok) throw new Error('Failed to fetch BP logs');
+      return res.json();
+    },
+    enabled: !!selectedPatient
+  });
+  const bpLogsData: any[] = bpLogsQuery.data || [];
+  const latestBP = bpLogsData[0] || null;
+
   const labDocumentsQuery = useQuery({
     queryKey: [`/api/patients/${selectedPatient?.id}/documents`, 'lab'],
     queryFn: async () => {
@@ -3801,6 +3825,77 @@ export default function ClinicianPortal() {
                      </Card>
                      );
                    })()}
+
+                   {/* SELF-TRACKED VITALS FROM SAIVIEMOM */}
+                   {(latestWeight || latestBP) && (
+                     <Card className="shadow-sm border-violet-200 bg-gradient-to-br from-violet-50/60 to-purple-50/40 overflow-hidden">
+                       <div className="px-4 py-2.5 border-b border-violet-100 flex items-center gap-2">
+                         <Activity className="w-4 h-4 text-violet-600" />
+                         <h3 className="font-bold text-sm text-violet-800">Self-Tracked Vitals</h3>
+                         <span className="text-[10px] text-violet-500 font-medium ml-1">from SaivieMom app</span>
+                       </div>
+                       <CardContent className="p-3">
+                         <div className="grid grid-cols-2 gap-3">
+                           {latestWeight && (
+                             <div className="bg-white/80 rounded-lg border border-violet-100 px-3 py-2.5">
+                               <div className="flex items-center gap-1.5 mb-1">
+                                 <Scale className="w-3.5 h-3.5 text-violet-500" />
+                                 <span className="text-[10px] font-bold text-violet-600 uppercase tracking-wide">Weight</span>
+                               </div>
+                               <div className="flex items-baseline gap-1">
+                                 <span className="text-xl font-bold text-slate-800">{latestWeight.weight}</span>
+                                 <span className="text-xs text-slate-500 font-medium">{latestWeight.unit}</span>
+                               </div>
+                               <div className="mt-0.5 flex items-center gap-2">
+                                 {latestWeight.week && <span className="text-[10px] text-violet-500">Wk {latestWeight.week}</span>}
+                                 <span className="text-[10px] text-slate-400">{latestWeight.date}</span>
+                               </div>
+                               {weightLogs.length > 1 && (() => {
+                                 const prev = weightLogs[1];
+                                 const diff = (latestWeight.weight - prev.weight).toFixed(1);
+                                 const isUp = latestWeight.weight > prev.weight;
+                                 return (
+                                   <div className={`mt-1 text-[10px] font-medium ${isUp ? 'text-rose-500' : 'text-emerald-600'}`}>
+                                     {isUp ? '▲' : '▼'} {Math.abs(parseFloat(diff))} {latestWeight.unit} vs last
+                                   </div>
+                                 );
+                               })()}
+                             </div>
+                           )}
+                           {latestBP && (
+                             <div className="bg-white/80 rounded-lg border border-violet-100 px-3 py-2.5">
+                               <div className="flex items-center gap-1.5 mb-1">
+                                 <Heart className="w-3.5 h-3.5 text-rose-500" />
+                                 <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wide">Blood Pressure</span>
+                               </div>
+                               <div className="flex items-baseline gap-1">
+                                 <span className="text-xl font-bold text-slate-800">{latestBP.systolic}/{latestBP.diastolic}</span>
+                                 <span className="text-xs text-slate-500 font-medium">mmHg</span>
+                               </div>
+                               <div className="mt-0.5 flex items-center gap-2">
+                                 {latestBP.pulse && <span className="text-[10px] text-rose-500">♥ {latestBP.pulse} bpm</span>}
+                                 <span className="text-[10px] text-slate-400">{latestBP.date}</span>
+                               </div>
+                               <div className={`mt-1 text-[10px] font-semibold ${
+                                 latestBP.systolic >= 140 || latestBP.diastolic >= 90 ? 'text-rose-600' :
+                                 latestBP.systolic >= 130 || latestBP.diastolic >= 80 ? 'text-amber-600' :
+                                 'text-emerald-600'
+                               }`}>
+                                 {latestBP.systolic >= 140 || latestBP.diastolic >= 90 ? '⚠ High — review needed' :
+                                  latestBP.systolic >= 130 || latestBP.diastolic >= 80 ? 'Elevated' :
+                                  'Normal range'}
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                         {(weightLogs.length > 0 || bpLogsData.length > 0) && (
+                           <div className="mt-2 text-[10px] text-slate-400 text-right">
+                             {weightLogs.length} weight {weightLogs.length === 1 ? 'entry' : 'entries'} · {bpLogsData.length} BP {bpLogsData.length === 1 ? 'entry' : 'entries'} recorded
+                           </div>
+                         )}
+                       </CardContent>
+                     </Card>
+                   )}
 
                    {/* TRIMESTER CHECKLIST — shown when pregnancy care mode and checklist data exists */}
                    {careMode === 'pregnancy' && selectedPatient.lmp && (

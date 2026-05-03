@@ -43,6 +43,10 @@ import {
   type PackageItem, type InsertPackageItem,
   waterLogs,
   type WaterLog, type InsertWaterLog,
+  weightLogs,
+  type WeightLog, type InsertWeightLog,
+  bpLogs,
+  type BpLog, type InsertBpLog,
   medicationLogs,
   type MedicationLog, type InsertMedicationLog,
   patientDocuments,
@@ -189,6 +193,12 @@ export interface IStorage {
   getWaterLog(id: number): Promise<WaterLog | undefined>;
   addWaterLog(log: InsertWaterLog): Promise<WaterLog>;
   deleteWaterLog(id: number): Promise<boolean>;
+
+  getWeightLogs(patientId: number): Promise<WeightLog[]>;
+  addWeightLog(log: InsertWeightLog): Promise<WeightLog>;
+
+  getBpLogs(patientId: number): Promise<BpLog[]>;
+  addBpLog(log: InsertBpLog): Promise<BpLog>;
 
   getMedicationLogs(patientId: number, date?: string): Promise<MedicationLog[]>;
   addMedicationLog(log: InsertMedicationLog): Promise<MedicationLog>;
@@ -724,6 +734,24 @@ export class DatabaseStorage implements IStorage {
   async deleteWaterLog(id: number): Promise<boolean> {
     const result = await db.delete(waterLogs).where(eq(waterLogs.id, id)).returning();
     return result.length > 0;
+  }
+
+  async getWeightLogs(patientId: number): Promise<WeightLog[]> {
+    return db.select().from(weightLogs).where(eq(weightLogs.patientId, patientId)).orderBy(desc(weightLogs.loggedAt));
+  }
+
+  async addWeightLog(log: InsertWeightLog): Promise<WeightLog> {
+    const [created] = await db.insert(weightLogs).values(log).returning();
+    return created;
+  }
+
+  async getBpLogs(patientId: number): Promise<BpLog[]> {
+    return db.select().from(bpLogs).where(eq(bpLogs.patientId, patientId)).orderBy(desc(bpLogs.loggedAt));
+  }
+
+  async addBpLog(log: InsertBpLog): Promise<BpLog> {
+    const [created] = await db.insert(bpLogs).values(log).returning();
+    return created;
   }
 
   async getMedicationLogs(patientId: number, date?: string): Promise<MedicationLog[]> {

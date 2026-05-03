@@ -586,4 +586,32 @@ export const insertScheduleOptimisationSchema = createInsertSchema(scheduleOptim
 export type InsertScheduleOptimisation = z.infer<typeof insertScheduleOptimisationSchema>;
 export type ScheduleOptimisation = typeof scheduleOptimisations.$inferSelect;
 
+export const weightLogs = pgTable("weight_logs", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id).notNull(),
+  weight: real("weight").notNull(),
+  unit: text("unit").notNull().default("kg"),
+  date: text("date").notNull(),
+  week: integer("week"),
+  loggedAt: text("logged_at").notNull(),
+});
+
+export const insertWeightLogSchema = createInsertSchema(weightLogs).omit({ id: true });
+export type InsertWeightLog = z.infer<typeof insertWeightLogSchema>;
+export type WeightLog = typeof weightLogs.$inferSelect;
+
+export const bpLogs = pgTable("bp_logs", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id).notNull(),
+  systolic: integer("systolic").notNull(),
+  diastolic: integer("diastolic").notNull(),
+  pulse: integer("pulse"),
+  date: text("date").notNull(),
+  loggedAt: text("logged_at").notNull(),
+});
+
+export const insertBpLogSchema = createInsertSchema(bpLogs).omit({ id: true });
+export type InsertBpLog = z.infer<typeof insertBpLogSchema>;
+export type BpLog = typeof bpLogs.$inferSelect;
+
 export * from "./models/chat";
