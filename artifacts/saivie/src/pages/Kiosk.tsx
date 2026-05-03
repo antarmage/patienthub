@@ -48,6 +48,7 @@ export default function Kiosk() {
   const [patient, setPatient] = useState<KioskPatient | null>(null);
   const [appointments, setAppointments] = useState<KioskAppointment[]>([]);
   const [selected, setSelected] = useState<KioskAppointment | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [intakeData, setIntakeData] = useState({
     chiefComplaint: "",
     currentMeds: "",
@@ -63,12 +64,20 @@ export default function Kiosk() {
   const idleCountdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Helper to build headers with kiosk session token
+  const kioskHeaders = (extra?: Record<string, string>): Record<string, string> => ({
+    "Content-Type": "application/json",
+    ...(sessionToken ? { "X-Kiosk-Session": sessionToken } : {}),
+    ...(extra ?? {}),
+  });
+
   const resetToHome = useCallback(() => {
     setScreen("phone");
     setPhone("");
     setPatient(null);
     setAppointments([]);
     setSelected(null);
+    setSessionToken(null);
     setIntakeData({ chiefComplaint: "", currentMeds: "", allergies: "", newSymptoms: "" });
     setLiveStatus(null);
     setLoading(false);
@@ -109,10 +118,13 @@ export default function Kiosk() {
   }, [resetIdleTimer]);
 
   useEffect(() => {
-    if (screen === "status" && selected) {
+    if (screen === "status" && selected && sessionToken) {
+      const token = sessionToken;
       const poll = async () => {
         try {
-          const res = await fetch(`${BASE}/api/kiosk/appointment/${selected.id}`);
+          const res = await fetch(`${BASE}/api/kiosk/appointment/${selected.id}`, {
+            headers: { "X-Kiosk-Session": token },
+          });
           if (res.ok) {
             const data = await res.json();
             setLiveStatus(data.status);
@@ -123,7 +135,7 @@ export default function Kiosk() {
       pollTimer.current = setInterval(poll, 30000);
     }
     return () => { if (pollTimer.current) clearInterval(pollTimer.current); };
-  }, [screen, selected]);
+  }, [screen, selected, sessionToken]);
 
   const dialPhone = (digit: string) => {
     if (digit === "⌫") {
@@ -156,6 +168,7 @@ export default function Kiosk() {
       const data = await res.json();
       setPatient(data.patient);
       setAppointments(data.appointments);
+      setSessionToken(data.sessionToken ?? null);
       setScreen("appointments");
     } catch {
       setError("Unable to connect. Please ask staff for help.");
@@ -174,18 +187,19 @@ export default function Kiosk() {
     setLoading(true);
     setError("");
     try {
-      const now = new Date().toISOString();
-      const res = await fetch(`${BASE}/api/appointments/${selected.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ checkedInAt: now, status: "checked-in" }),
+      const res = await fetch(`${BASE}/api/kiosk/checkin/${selected.id}`, {
+        method: "POST",
+        headers: kioskHeaders(),
       });
-      if (!res.ok) throw new Error("Check-in failed");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Check-in failed");
+      }
       const updated = await res.json();
-      setSelected(s => s ? { ...s, ...updated } : s);
+      setSelected(s => s ? { ...s, checkedInAt: updated.checkedInAt, status: updated.status } : s);
       setScreen("intake");
-    } catch {
-      setError("Check-in failed. Please ask a staff member for help.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Check-in failed. Please ask a staff member for help.");
     } finally {
       setLoading(false);
     }
@@ -196,33 +210,22 @@ export default function Kiosk() {
     setLoading(true);
     setError("");
     try {
-      // Consolidate all intake fields into appointment notes so we never
-      // partially-overwrite existing patient records (e.g. history JSON).
-      const notesText = [
-        intakeData.chiefComplaint ? `Chief complaint: ${intakeData.chiefComplaint}` : "",
-        intakeData.currentMeds ? `Current medications: ${intakeData.currentMeds}` : "",
-        intakeData.allergies ? `Allergies: ${intakeData.allergies}` : "",
-        intakeData.newSymptoms ? `New symptoms: ${intakeData.newSymptoms}` : "",
-      ].filter(Boolean).join("\n");
-
-      const res = await fetch(`${BASE}/api/appointments/${selected.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chiefComplaint: intakeData.chiefComplaint || undefined,
-          notes: notesText || undefined,
-        }),
+      // All intake fields saved to appointment record only — never mutates patient history JSON.
+      const res = await fetch(`${BASE}/api/kiosk/intake/${selected.id}`, {
+        method: "POST",
+        headers: kioskHeaders(),
+        body: JSON.stringify(intakeData),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.error || "Could not save your details, but you are still checked in.");
+        // Stay on intake form so the patient can retry or ask for help
+        setError(body.error || "Could not save your details. Please try again or ask staff for help.");
+        return;
       }
       setLiveStatus("checked-in");
       setScreen("status");
     } catch {
-      setError("Could not save your details. You are still checked in.");
-      setLiveStatus("checked-in");
-      setScreen("status");
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }

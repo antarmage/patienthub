@@ -104,12 +104,14 @@ Patient-facing tablet kiosk at `/kiosk/` (served via the `saivie` artifact at `/
 
 **Idle reset:** 90-second inactivity timer (any pointer/touch/keyboard event resets it); shows countdown warning at ≤20s; auto-returns to phone screen.
 
+**Security:**
+- Lookup rate-limited (max 10 req/min per IP). All subsequent kiosk endpoints require `X-Kiosk-Session` header (token issued at lookup, 30-min TTL, bound to patient + appointment IDs).
+
 **Backend routes (`/api/kiosk/*`):**
-- `POST /api/kiosk/lookup` — phone → patient + today's appointments + provider names (no auth, trusted terminal)
-- `GET /api/kiosk/appointment/:id` — poll live appointment status/timestamps (no auth)
-- Reuses existing `PATCH /api/appointments/:id` for check-in (sets `checkedInAt` + `status: "checked-in"`)
-- Reuses existing `PATCH /api/appointments/:id` for intake (saves `chiefComplaint` + `notes`)
-- Reuses existing `PATCH /api/patients/:id` for allergy data
+- `POST /api/kiosk/lookup` — phone → patient + today's appointments + session token (rate-limited)
+- `POST /api/kiosk/checkin/:id` — sets `checkedInAt` + `status: "checked-in"` (session-gated)
+- `POST /api/kiosk/intake/:id` — saves `chiefComplaint` + `notes` to appointment (session-gated; all intake data stored on appointment only, never overwrites patient history)
+- `GET /api/kiosk/appointment/:id` — poll live appointment status/timestamps (session-gated)
 
 **Key file:** `artifacts/saivie/src/pages/Kiosk.tsx`
 

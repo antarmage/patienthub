@@ -472,10 +472,74 @@ export async function registerRoutes(
   // ── End mobile routes ─────────────────────────────────────────────────────
 
   // ── Kiosk routes (patient self-service terminal) ──────────────────────────
-  // No auth required — the kiosk is a trusted in-clinic terminal.
+  // The kiosk is a physically-restricted in-clinic device.  We protect it
+  // with two lightweight controls:
+  //   1. IP-based rate limiting on the phone lookup (max 10 req/min per IP)
+  //      to prevent brute-force enumeration of patient phone numbers.
+  //   2. Short-lived kiosk session tokens: lookup returns a token bound to
+  //      the patient + their today's appointment IDs.  Check-in and status
+  //      polling require that token in X-Kiosk-Session, preventing arbitrary
+  //      appointment manipulation or enumeration by appointment ID.
 
-  // POST /api/kiosk/lookup — phone number → patient + today's appointments
+  // In-memory kiosk session store (30-min TTL)
+  const KIOSK_SESSION_TTL_MS = 30 * 60 * 1000;
+  const kioskSessions = new Map<string, {
+    patientId: number;
+    appointmentIds: Set<number>;
+    expiresAt: number;
+  }>();
+
+  function issueKioskSession(patientId: number, appointmentIds: number[]): string {
+    const token = crypto.randomBytes(24).toString("hex");
+    kioskSessions.set(token, {
+      patientId,
+      appointmentIds: new Set(appointmentIds),
+      expiresAt: Date.now() + KIOSK_SESSION_TTL_MS,
+    });
+    return token;
+  }
+
+  function validateKioskSession(req: Request, res: Response, appointmentId?: number): { patientId: number } | null {
+    const token = (req.headers["x-kiosk-session"] ?? "") as string;
+    if (!token) {
+      res.status(401).json({ error: "Kiosk session required" });
+      return null;
+    }
+    const session = kioskSessions.get(token);
+    if (!session || session.expiresAt < Date.now()) {
+      kioskSessions.delete(token);
+      res.status(401).json({ error: "Kiosk session expired — please look up your phone number again" });
+      return null;
+    }
+    if (appointmentId !== undefined && !session.appointmentIds.has(appointmentId)) {
+      res.status(403).json({ error: "Appointment not in your session" });
+      return null;
+    }
+    return { patientId: session.patientId };
+  }
+
+  // Simple IP rate limiter for phone lookup (max 10 req/min per IP)
+  const kioskLookupRateMap = new Map<string, { count: number; resetAt: number }>();
+  function kioskLookupRateLimit(req: Request, res: Response): boolean {
+    const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "unknown";
+    const now = Date.now();
+    const entry = kioskLookupRateMap.get(ip);
+    if (!entry || entry.resetAt < now) {
+      kioskLookupRateMap.set(ip, { count: 1, resetAt: now + 60_000 });
+      return true;
+    }
+    if (entry.count >= 10) {
+      res.status(429).json({ error: "Too many requests. Please try again in a moment." });
+      return false;
+    }
+    entry.count += 1;
+    return true;
+  }
+
+  // POST /api/kiosk/lookup — phone → patient + today's appointments + session token
   app.post("/api/kiosk/lookup", async (req, res) => {
+    if (!kioskLookupRateLimit(req, res)) return;
+
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: "phone required" });
     const normalized = String(phone).replace(/\D/g, "");
@@ -503,19 +567,53 @@ export async function registerRoutes(
       type: a.type,
       status: a.status,
       checkedInAt: a.checkedInAt,
-      providerName: providers.find(p => p.id === a.providerId)?.name ?? "Your Doctor",
+      providerName: providers.find(pr => pr.id === a.providerId)?.name ?? "Your Doctor",
     }));
 
+    const sessionToken = issueKioskSession(patient.id, patientAppts.map(a => a.id));
     res.json({
-      patient: { id: patient.id, name: patient.name, phone: patient.phone },
+      patient: { id: patient.id, name: patient.name },
       appointments,
+      sessionToken,
     });
   });
 
-  // GET /api/kiosk/appointment/:id — poll live appointment status
+  // POST /api/kiosk/checkin/:id — check in an appointment (session-gated)
+  app.post("/api/kiosk/checkin/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!validateKioskSession(req, res, id)) return;
+    const now = new Date().toISOString();
+    const updated = await storage.updateAppointment(id, { checkedInAt: now, status: "checked-in" });
+    if (!updated) return res.status(404).json({ error: "Appointment not found" });
+    res.json(updated);
+  });
+
+  // POST /api/kiosk/intake/:id — save pre-visit intake form (session-gated)
+  app.post("/api/kiosk/intake/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!validateKioskSession(req, res, id)) return;
+    const { chiefComplaint, currentMeds, allergies, newSymptoms } = req.body as Record<string, string | undefined>;
+    const notesText = [
+      chiefComplaint ? `Chief complaint: ${chiefComplaint}` : "",
+      currentMeds ? `Current medications: ${currentMeds}` : "",
+      allergies ? `Allergies: ${allergies}` : "",
+      newSymptoms ? `New symptoms: ${newSymptoms}` : "",
+    ].filter(Boolean).join("\n");
+    const updated = await storage.updateAppointment(id, {
+      chiefComplaint: chiefComplaint || undefined,
+      notes: notesText || undefined,
+    });
+    if (!updated) return res.status(404).json({ error: "Appointment not found" });
+    res.json({ ok: true });
+  });
+
+  // GET /api/kiosk/appointment/:id — poll live appointment status (session-gated)
   app.get("/api/kiosk/appointment/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!validateKioskSession(req, res, id)) return;
     const appts = await storage.getAppointments();
     const appt = appts.find(a => a.id === id);
     if (!appt) return res.status(404).json({ error: "Appointment not found" });
