@@ -20,17 +20,16 @@ import { calculateEDD, formatDate } from "@/data/pregnancyData";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
 import {
   requestNotificationPermissions,
-  scheduleMedicineReminders,
-  scheduleAppointmentReminders,
-  scheduleWaterReminders,
-  cancelWaterNudge,
-  cancelNotifications,
+  scheduleMedicineReminder,
+  cancelMedicineReminder,
+  scheduleAppointmentReminder,
+  cancelAppointmentReminder,
+  scheduleWaterNudge,
+  cancelAllWaterNudges,
 } from "@/utils/notifications";
 import {
   getMedicines,
   getAppointments,
-  updateMedicineNotifications,
-  updateAppointmentNotifications,
 } from "@/utils/careStorage";
 
 const NOTIF_KEYS = {
@@ -166,24 +165,23 @@ export default function ProfileScreen() {
   const rescheduleMedicinesWithTime = async (baseTime: Date) => {
     const medicines = await getMedicines();
     const now = new Date();
+    const h = baseTime.getHours();
+    const m = baseTime.getMinutes();
+    const fmt = (hour: number, min: number) =>
+      `${String(Math.min(hour, 23)).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
     for (const med of medicines) {
       const start = new Date(med.startDate);
       const end = new Date(start);
       end.setDate(end.getDate() + med.durationDays);
       if (now > end) continue;
-      await cancelNotifications(med.notificationIds);
-      const h = baseTime.getHours();
-      const m = baseTime.getMinutes();
-      const fmt = (hour: number, min: number) =>
-        `${String(Math.min(hour, 23)).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+      await cancelMedicineReminder(med.id);
       let times: string[];
       switch (med.frequency) {
         case "twice": times = [fmt(h, m), fmt((h + 12) % 24, m)]; break;
         case "thrice": times = [fmt(h, m), fmt(Math.min(h + 5, 23), m), fmt(Math.min(h + 10, 23), m)]; break;
         default: times = [fmt(h, m)];
       }
-      const ids = await scheduleMedicineReminders(med.id, med.name, med.dosage, times, med.durationDays);
-      await updateMedicineNotifications(med.id, ids);
+      await scheduleMedicineReminder(med.id, med.name, med.dosage, times, med.durationDays, start);
     }
   };
 
@@ -198,8 +196,7 @@ export default function ProfileScreen() {
       } else {
         const medicines = await getMedicines();
         for (const med of medicines) {
-          await cancelNotifications(med.notificationIds);
-          await updateMedicineNotifications(med.id, []);
+          await cancelMedicineReminder(med.id);
         }
       }
       await AsyncStorage.setItem(NOTIF_KEYS.MEDICINE, value ? "true" : "false");
@@ -221,14 +218,12 @@ export default function ProfileScreen() {
         for (const appt of appointments) {
           const dateTime = new Date(appt.dateTime);
           if (dateTime <= now) continue;
-          const ids = await scheduleAppointmentReminders(appt.id, appt.doctorName, appt.clinicName, dateTime);
-          await updateAppointmentNotifications(appt.id, ids);
+          await scheduleAppointmentReminder(appt.id, appt.doctorName, appt.clinicName, dateTime);
         }
       } else {
         const appointments = await getAppointments();
         for (const appt of appointments) {
-          await cancelNotifications(appt.notificationIds);
-          await updateAppointmentNotifications(appt.id, []);
+          await cancelAppointmentReminder(appt.id);
         }
       }
       await AsyncStorage.setItem(NOTIF_KEYS.APPOINTMENT, value ? "true" : "false");
@@ -245,9 +240,9 @@ export default function ProfileScreen() {
       if (value) {
         const hasPermission = await requestNotificationPermissions();
         if (!hasPermission) return;
-        await scheduleWaterReminders();
+        await scheduleWaterNudge();
       } else {
-        await cancelWaterNudge();
+        await cancelAllWaterNudges();
       }
       await AsyncStorage.setItem(NOTIF_KEYS.WATER, value ? "true" : "false");
       setWaterNotifs(value);

@@ -24,8 +24,9 @@ import {
 } from "@/utils/careStorage";
 import {
   requestNotificationPermissions,
-  scheduleWaterReminders,
-  cancelWaterNudge,
+  scheduleWaterNudge,
+  cancelTodayWaterNudge,
+  cancelAllWaterNudges,
 } from "@/utils/notifications";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
 
@@ -72,9 +73,9 @@ export default function WaterTrackerScreen() {
     setRemindersEnabled(enabled);
     if (enabled && Platform.OS !== "web") {
       if (todayIntake.totalMl >= waterGoal) {
-        await cancelWaterNudge();
+        await cancelTodayWaterNudge();
       } else {
-        await scheduleWaterReminders();
+        await scheduleWaterNudge();
       }
     }
   };
@@ -86,7 +87,7 @@ export default function WaterTrackerScreen() {
     const updated = await addWaterIntake(ml);
     setIntake(updated);
     if (remindersEnabled && Platform.OS !== "web" && updated.totalMl >= goal) {
-      await cancelWaterNudge();
+      await cancelTodayWaterNudge();
     }
   };
 
@@ -95,9 +96,8 @@ export default function WaterTrackerScreen() {
     if (!hasPermission) return;
     await AsyncStorage.setItem(WATER_REMINDERS_ENABLED_KEY, "true");
     setRemindersEnabled(true);
-    const goalMet = intake.totalMl >= goal;
-    if (!goalMet) {
-      await scheduleWaterReminders();
+    if (intake.totalMl < goal) {
+      await scheduleWaterNudge();
     }
   };
 

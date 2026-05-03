@@ -29,13 +29,12 @@ import {
   getAppointments,
   saveAppointment,
   deleteAppointment,
-  updateAppointmentNotifications,
   getApiBase,
 } from "@/utils/careStorage";
 import {
   requestNotificationPermissions,
-  scheduleAppointmentReminders,
-  cancelNotifications,
+  scheduleAppointmentReminder,
+  cancelAppointmentReminder,
 } from "@/utils/notifications";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
 
@@ -172,13 +171,12 @@ export default function AppointmentsScreen() {
         AsyncStorage.getItem("@saiviemom_notif_appointment"),
       ]);
       if (hasPermission && apptNotifsEnabled === "true") {
-        const notificationIds = await scheduleAppointmentReminders(
+        await scheduleAppointmentReminder(
           newAppointment.id,
           newAppointment.doctorName,
           newAppointment.clinicName,
-          dateTime
+          dateTime,
         );
-        await updateAppointmentNotifications(newAppointment.id, notificationIds);
       }
 
       setSelectedProvider(null);
@@ -212,7 +210,7 @@ export default function AppointmentsScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await cancelNotifications(appointment.notificationIds);
+            await cancelAppointmentReminder(appointment.id);
             await deleteAppointment(appointment.id);
             loadAppointments();
           },
