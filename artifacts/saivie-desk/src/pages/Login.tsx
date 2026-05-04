@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/DeskAuthContext";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,16 @@ export default function Login() {
   const [otp, setOtp] = useState("");
   const [maskedPhone, setMaskedPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [, setLocation] = useLocation();
   const { login } = useAuth();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +54,29 @@ export default function Login() {
         title: "Connection Error",
         description: "Unable to reach the server. Please try again.",
       });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/staff/otp/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier, passcode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ variant: "destructive", title: "Failed to resend", description: data.error || "Could not send a new code." });
+        return;
+      }
+      setResendCooldown(30);
+      toast({ title: "New code sent", description: `A new code was sent to ${data.phone || maskedPhone} via WhatsApp.` });
+    } catch {
+      toast({ variant: "destructive", title: "Connection Error", description: "Unable to reach the server. Please try again." });
     } finally {
       setIsLoading(false);
     }
@@ -169,9 +199,20 @@ export default function Login() {
                 <Button type="submit" className="w-full mt-6" disabled={isLoading || otp.length !== 6} data-testid="button-otp-submit">
                   {isLoading ? "Verifying…" : "Sign In"}
                 </Button>
-                <p className="text-xs text-slate-400 text-center">
-                  Code expires in 5 minutes. Check your WhatsApp.
-                </p>
+                <div className="flex flex-col items-center gap-1 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={isLoading || resendCooldown > 0}
+                    className="text-sm text-primary hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed"
+                    data-testid="button-resend-otp"
+                  >
+                    {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
+                  </button>
+                  <p className="text-xs text-slate-400 text-center">
+                    Code expires in 5 minutes. Check your WhatsApp.
+                  </p>
+                </div>
               </form>
             )}
           </CardContent>

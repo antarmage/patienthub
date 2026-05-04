@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,70 @@ export default function Landing() {
   // OTP step for patient
   const [patientOtpSent, setPatientOtpSent] = useState(false);
   const [patientOtp, setPatientOtp] = useState("");
+  // Resend cooldowns
+  const [staffResendCooldown, setStaffResendCooldown] = useState(0);
+  const [patientResendCooldown, setPatientResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (staffResendCooldown <= 0) return;
+    const t = setTimeout(() => setStaffResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [staffResendCooldown]);
+
+  useEffect(() => {
+    if (patientResendCooldown <= 0) return;
+    const t = setTimeout(() => setPatientResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [patientResendCooldown]);
+
+  // ── Staff: resend OTP ────────────────────────────────────────────────────
+  const handleStaffResendOtp = async () => {
+    if (staffResendCooldown > 0) return;
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/passcode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passcode: pendingPasscode }),
+      });
+      if (!res.ok) {
+        setError("Could not resend code. Please go back and try again.");
+        setLoading(false);
+        return;
+      }
+      setStaffResendCooldown(30);
+      setError("");
+    } catch {
+      setError("Connection error. Please try again.");
+    }
+    setLoading(false);
+  };
+
+  // ── Patient: resend OTP ──────────────────────────────────────────────────
+  const handlePatientResendOtp = async () => {
+    if (patientResendCooldown > 0) return;
+    const cleaned = patientPhone.replace(/[\s\-\(\)]/g, "");
+    setPatientError("");
+    setPatientLoading(true);
+    try {
+      const res = await fetch("/api/auth/patient-otp/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: cleaned }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPatientError(data.error || "Could not resend code.");
+        setPatientLoading(false);
+        return;
+      }
+      setPatientResendCooldown(30);
+    } catch {
+      setPatientError("Connection error. Please try again.");
+    }
+    setPatientLoading(false);
+  };
 
   // ── Staff: step 1 — validate passcode → trigger OTP ─────────────────────
   const handlePasscodeSubmit = async () => {
@@ -312,6 +376,17 @@ export default function Landing() {
                             )}
                           </Button>
                           <button
+                            onClick={handlePatientResendOtp}
+                            disabled={patientLoading || patientResendCooldown > 0}
+                            className="text-xs text-primary hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed w-full text-center"
+                            data-testid="button-patient-resend-otp"
+                          >
+                            {patientResendCooldown > 0 ? `Resend code in ${patientResendCooldown}s` : "Resend code"}
+                          </button>
+                          {patientResendCooldown > 0 && (
+                            <p className="text-xs text-primary text-center">New code sent</p>
+                          )}
+                          <button
                             onClick={() => { setPatientOtpSent(false); setPatientOtp(""); setPatientError(""); }}
                             className="text-xs text-slate-400 hover:text-slate-600 w-full text-center"
                           >
@@ -449,6 +524,17 @@ export default function Landing() {
                               <>Sign In <ArrowRight className="w-4 h-4 ml-2" /></>
                             )}
                           </Button>
+                          <button
+                            onClick={handleStaffResendOtp}
+                            disabled={loading || staffResendCooldown > 0}
+                            className="text-xs text-blue-600 hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed w-full text-center"
+                            data-testid="button-staff-resend-otp"
+                          >
+                            {staffResendCooldown > 0 ? `Resend code in ${staffResendCooldown}s` : "Resend code"}
+                          </button>
+                          {staffResendCooldown > 0 && (
+                            <p className="text-xs text-blue-600 text-center">New code sent</p>
+                          )}
                           <button
                             onClick={() => { setStaffOtpRequired(false); setStaffOtp(""); setError(""); setPasscode(""); }}
                             className="text-xs text-slate-400 hover:text-slate-600 w-full text-center"

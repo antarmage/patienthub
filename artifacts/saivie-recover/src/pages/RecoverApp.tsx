@@ -92,6 +92,13 @@ export default function RecoverApp() {
   const [loginMaskedPhone, setLoginMaskedPhone] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   // ── Auto-lock (goes to patient search, keeps session) ─────────────────────
   const idleTimer = useRef<ReturnType<typeof setTimeout>>(null);
@@ -143,6 +150,29 @@ export default function RecoverApp() {
       }
       setLoginMaskedPhone((data as any).phone || "");
       setLoginStep("otp");
+    } catch {
+      setLoginError("Network error, please try again.");
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
+  async function handleResendOtp() {
+    if (resendCooldown > 0) return;
+    setLoginError("");
+    setLoginLoading(true);
+    try {
+      const r = await api("/api/staff/otp/request", {
+        method: "POST",
+        body: JSON.stringify({ username: loginForm.username, passcode: loginForm.passcode }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setLoginError((data as any).error || "Could not resend code");
+        return;
+      }
+      setResendCooldown(30);
+      toast({ title: "New code sent", description: `A new verification code was sent to ${(data as any).phone || loginMaskedPhone} via WhatsApp.` });
     } catch {
       setLoginError("Network error, please try again.");
     } finally {
@@ -314,7 +344,17 @@ export default function RecoverApp() {
                 <Button type="submit" className="w-full h-13 text-base font-semibold bg-sky-600 hover:bg-sky-700" disabled={loginLoading || loginOtp.length !== 6}>
                   {loginLoading ? "Verifying…" : "Sign In"}
                 </Button>
-                <p className="text-xs text-slate-400 text-center">Code expires in 5 minutes.</p>
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={loginLoading || resendCooldown > 0}
+                    className="text-sm text-sky-600 hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed"
+                  >
+                    {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
+                  </button>
+                  <p className="text-xs text-slate-400 text-center">Code expires in 5 minutes.</p>
+                </div>
               </form>
             )}
           </CardContent>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Platform, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -18,10 +18,42 @@ export default function AuthScreen() {
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendSuccess, setResendSuccess] = useState(false);
   const otpRefs = useRef<(TextInput | null)[]>([]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
   const insets = useSafeAreaInsets();
   const { completeAuth } = useApp();
   const router = useRouter();
+
+  const handleResend = async () => {
+    if (resendCooldown > 0) return;
+    setLoading(true);
+    setResendSuccess(false);
+    try {
+      const res = await fetch(`${BASE_URL}/api/mobile/auth/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: `+91${phone}` }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        Alert.alert("Error", data.error || "Could not resend code.");
+        return;
+      }
+      setResendCooldown(30);
+      setResendSuccess(true);
+    } catch {
+      Alert.alert("Connection Error", "Unable to reach the server. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSendOtp = async () => {
     if (phone.length < 10) return;
@@ -126,7 +158,19 @@ export default function AuthScreen() {
             <Button onPress={handleVerify} disabled={!isOtpComplete || loading}>
               {loading ? <ActivityIndicator color="#FFF" /> : "Verify & Continue"}
             </Button>
-            <Pressable onPress={() => { setShowOtp(false); setOtp(["", "", "", "", "", ""]); }} style={styles.changeNum}>
+            <Pressable
+              onPress={handleResend}
+              disabled={loading || resendCooldown > 0}
+              style={[styles.resendBtn, (loading || resendCooldown > 0) && styles.resendBtnDisabled]}
+            >
+              <ThemedText type="small" style={{ color: resendCooldown > 0 ? COLORS.textMuted : COLORS.primary }}>
+                {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
+              </ThemedText>
+            </Pressable>
+            {resendSuccess && (
+              <ThemedText type="small" style={styles.resendSuccess}>New code sent</ThemedText>
+            )}
+            <Pressable onPress={() => { setShowOtp(false); setOtp(["", "", "", "", "", ""]); setResendSuccess(false); }} style={styles.changeNum}>
               <Feather name="arrow-left" size={14} color={COLORS.primary} />
               <ThemedText type="small" style={{ color: COLORS.primary }}>Change number</ThemedText>
             </Pressable>
@@ -155,6 +199,9 @@ const styles = StyleSheet.create({
   otpSub: { color: COLORS.textMuted, marginBottom: Spacing.xl },
   otpRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.xl },
   otpBox: { width: 46, height: 54, borderWidth: 1.5, borderRadius: BorderRadius.xs, textAlign: "center", fontSize: 20, fontWeight: "600" },
+  resendBtn: { alignItems: "center", justifyContent: "center", marginTop: Spacing.lg, paddingVertical: Spacing.xs },
+  resendBtnDisabled: { opacity: 0.5 },
+  resendSuccess: { color: "#4CAF50", textAlign: "center", marginTop: Spacing.xs },
   changeNum: { flexDirection: "row", gap: Spacing.xs, alignItems: "center", justifyContent: "center", marginTop: Spacing.lg },
   disclaimer: { color: COLORS.textMuted, textAlign: "center", marginTop: Spacing.xl },
 });

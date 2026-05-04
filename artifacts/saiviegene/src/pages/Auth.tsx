@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Dna, Phone, ArrowLeft, Loader2 } from "lucide-react";
@@ -25,7 +25,15 @@ export default function Auth() {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendSuccess, setResendSuccess] = useState(false);
   const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   async function handleSendOtp() {
     const cleaned = phone.replace(/\D/g, "");
@@ -37,6 +45,23 @@ export default function Auth() {
       setStep("otp");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to send code");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    if (resendCooldown > 0) return;
+    setError("");
+    setResendSuccess(false);
+    setLoading(true);
+    try {
+      const cleaned = phone.replace(/\D/g, "");
+      await apiPost("/api/mobile/auth/request", { phone: `+${cleaned}` });
+      setResendCooldown(30);
+      setResendSuccess(true);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to resend code");
     } finally {
       setLoading(false);
     }
@@ -142,6 +167,16 @@ export default function Auth() {
               {error}
             </motion.p>
           )}
+          {resendSuccess && step === "otp" && (
+            <motion.p
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 text-sm text-center"
+              style={{ color: "hsl(44 87% 45%)" }}
+            >
+              New code sent
+            </motion.p>
+          )}
         </motion.div>
       </div>
 
@@ -158,6 +193,17 @@ export default function Auth() {
             step === "phone" ? "Send Code" : "Verify & Continue"
           )}
         </button>
+
+        {step === "otp" && (
+          <button
+            onClick={handleResend}
+            disabled={loading || resendCooldown > 0}
+            className="w-full mt-3 text-sm text-center disabled:cursor-not-allowed"
+            style={{ color: resendCooldown > 0 ? "hsl(var(--muted-foreground))" : "hsl(44 87% 45%)" }}
+          >
+            {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
+          </button>
+        )}
 
         <p className="text-center text-xs text-muted-foreground mt-4">
           By continuing, you agree to SaivieGene's Terms of Service and Privacy Policy
