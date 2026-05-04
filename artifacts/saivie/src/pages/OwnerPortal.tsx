@@ -39,6 +39,8 @@ import {
   Tag,
   ChevronDown,
   ChevronUp,
+  Phone,
+  PhoneOff,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -320,6 +322,7 @@ export default function OwnerPortal() {
     { id: "performance", label: "Performance", icon: BarChart3 },
     { id: "catalog", label: "Service Catalog", icon: Package },
     { id: "packages", label: "Packages", icon: Layers },
+    { id: "staff-accounts", label: "Staff Accounts", icon: Users },
     { id: "ai-insights", label: "AI Insights", icon: Sparkles },
     { id: "ai-audit-log", label: "AI Audit Log", icon: Activity },
   ];
@@ -1547,6 +1550,11 @@ export default function OwnerPortal() {
               </div>
             )}
 
+            {/* STAFF ACCOUNTS SECTION */}
+            {activeView === "staff-accounts" && (
+              <StaffAccountsView />
+            )}
+
             {/* AI AUDIT LOG SECTION */}
             {activeView === "ai-audit-log" && (
               <AiAuditLogView />
@@ -1752,6 +1760,334 @@ function AiAuditLogView() {
       {!isLoading && entries.length > 0 && (
         <p className="text-xs text-slate-400 text-center">{entries.length} event{entries.length !== 1 ? "s" : ""} recorded</p>
       )}
+    </div>
+  );
+}
+
+type AuthStep = "credentials" | "otp" | "authenticated";
+
+function StaffAccountsView() {
+  const queryClient = useQueryClient();
+
+  // Auth flow state
+  const [authStep, setAuthStep] = useState<AuthStep>(() =>
+    sessionStorage.getItem("desk_token") ? "authenticated" : "credentials"
+  );
+  const [authToken, setAuthToken] = useState<string | null>(() => sessionStorage.getItem("desk_token"));
+  const [loginUser, setLoginUser] = useState("");
+  const [loginPass, setLoginPass] = useState("");
+  const [loginOtp, setLoginOtp] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [otpPhone, setOtpPhone] = useState("");
+
+  // Account editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editPhone, setEditPhone] = useState("");
+
+  const sendOtp = async () => {
+    setLoginError("");
+    setLoginLoading(true);
+    try {
+      const res = await fetch("/api/staff/otp/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: loginUser.trim(), passcode: loginPass.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLoginError(data.error || "Failed to send OTP");
+      } else {
+        setOtpPhone(data.phone || "your registered number");
+        setAuthStep("otp");
+      }
+    } catch {
+      setLoginError("Network error, please try again.");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    setLoginError("");
+    setLoginLoading(true);
+    try {
+      const verifyRes = await fetch("/api/staff/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: loginUser.trim(), passcode: loginPass.trim(), otp: loginOtp.trim() }),
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok) {
+        setLoginError(verifyData.error || "Invalid verification code");
+        setLoginLoading(false);
+        return;
+      }
+      const authRes = await fetch("/api/desk/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: loginUser.trim(), passcode: loginPass.trim(), ticket: verifyData.ticket }),
+      });
+      const authData = await authRes.json();
+      if (!authRes.ok) {
+        setLoginError(authData.error || "Authentication failed");
+        setLoginLoading(false);
+        return;
+      }
+      sessionStorage.setItem("desk_token", authData.staffToken);
+      setAuthToken(authData.staffToken);
+      setLoginOtp("");
+      setLoginPass("");
+      setAuthStep("authenticated");
+    } catch {
+      setLoginError("Network error, please try again.");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const signOut = () => {
+    sessionStorage.removeItem("desk_token");
+    setAuthToken(null);
+    setAuthStep("credentials");
+    setLoginUser("");
+    setLoginPass("");
+    setLoginOtp("");
+    setLoginError("");
+  };
+
+  const { data, isLoading, isError } = useQuery<any[]>({
+    queryKey: ["/api/owner/staff-accounts", authToken],
+    queryFn: async () => {
+      const res = await fetch("/api/owner/staff-accounts", {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.status === 401 || res.status === 403) {
+        signOut();
+        throw new Error("Session expired. Please sign in again.");
+      }
+      if (!res.ok) throw new Error("Failed to load staff accounts");
+      return res.json();
+    },
+    enabled: authStep === "authenticated" && !!authToken,
+    retry: false,
+  });
+
+  const updatePhone = useMutation({
+    mutationFn: async ({ id, phone }: { id: string; phone: string | null }) => {
+      const res = await fetch(`/api/owner/staff-accounts/${id}/phone`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ phone }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).error || "Failed to update phone");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/staff-accounts"] });
+      setEditingId(null);
+      setEditPhone("");
+    },
+  });
+
+  const accounts: any[] = data || [];
+  const missing = accounts.filter((u) => !u.phone);
+
+  const roleBadge = (role: string) => {
+    if (role === "clinician") return <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 text-[11px]">Clinician</Badge>;
+    if (role === "owner") return <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-[11px]">Owner</Badge>;
+    if (role === "staff") return <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-[11px]">Staff</Badge>;
+    return <Badge variant="outline" className="text-[11px]">{role}</Badge>;
+  };
+
+  const startEdit = (user: any) => {
+    setEditingId(user.id);
+    setEditPhone(user.phone || "");
+  };
+
+  const saveEdit = (id: string) => {
+    updatePhone.mutate({ id, phone: editPhone.trim() || null });
+  };
+
+  return (
+    <div className="space-y-6" data-testid="view-staff-accounts">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Staff Accounts</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Manage phone numbers so OTP can be delivered to staff during login</p>
+        </div>
+        {authStep === "authenticated" && !isLoading && missing.length > 0 && (
+          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <PhoneOff className="w-4 h-4 text-amber-600" />
+            <span className="text-sm font-medium text-amber-700">{missing.length} account{missing.length !== 1 ? "s" : ""} missing phone</span>
+          </div>
+        )}
+        {authStep === "authenticated" && !isLoading && missing.length === 0 && accounts.length > 0 && (
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+            <Phone className="w-4 h-4 text-emerald-600" />
+            <span className="text-sm font-medium text-emerald-700">All accounts have a phone number</span>
+          </div>
+        )}
+      </div>
+
+      {/* STEP 1 — credentials */}
+      {authStep === "credentials" && (
+        <Card className="border-slate-200 shadow-sm max-w-sm mx-auto">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Shield className="w-4 h-4 text-indigo-500" /> Owner Sign-in
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-slate-600 block mb-1">Username</label>
+              <Input value={loginUser} onChange={(e) => setLoginUser(e.target.value)} placeholder="owner" className="h-9" data-testid="input-owner-username" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-600 block mb-1">Passcode</label>
+              <Input type="password" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} placeholder="••••" className="h-9" data-testid="input-owner-passcode"
+                onKeyDown={(e) => e.key === "Enter" && sendOtp()} />
+            </div>
+            {loginError && <p className="text-xs text-rose-500">{loginError}</p>}
+            <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-9" onClick={sendOtp}
+              disabled={loginLoading || !loginUser || !loginPass} data-testid="btn-send-otp">
+              {loginLoading ? "Sending…" : "Send Verification Code"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* STEP 2 — OTP */}
+      {authStep === "otp" && (
+        <Card className="border-slate-200 shadow-sm max-w-sm mx-auto">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Phone className="w-4 h-4 text-indigo-500" /> Verify Identity
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-slate-500">A 6-digit code was sent to <span className="font-mono font-medium text-slate-700">{otpPhone}</span></p>
+            <Input value={loginOtp} onChange={(e) => setLoginOtp(e.target.value)} placeholder="000000" maxLength={6}
+              className="h-9 tracking-widest text-center text-lg font-mono" data-testid="input-owner-otp"
+              onKeyDown={(e) => e.key === "Enter" && verifyOtp()} />
+            {loginError && <p className="text-xs text-rose-500">{loginError}</p>}
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 h-9" onClick={() => { setAuthStep("credentials"); setLoginError(""); }} data-testid="btn-back-credentials">Back</Button>
+              <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white h-9" onClick={verifyOtp}
+                disabled={loginLoading || loginOtp.length < 6} data-testid="btn-verify-otp">
+                {loginLoading ? "Verifying…" : "Verify & Sign In"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* STEP 3 — accounts table */}
+      {authStep === "authenticated" && isLoading && (
+        <Card className="border-slate-200 shadow-sm">
+          <CardContent className="py-12 text-center text-slate-400">Loading staff accounts...</CardContent>
+        </Card>
+      )}
+
+      {authStep === "authenticated" && isError && (
+        <Card className="border-rose-200 shadow-sm">
+          <CardContent className="py-8 text-center text-rose-500">Failed to load staff accounts.</CardContent>
+        </Card>
+      )}
+
+      {authStep === "authenticated" && !isLoading && !isError && (
+        <Card className="border-slate-200 shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50">
+                <TableHead className="text-xs font-semibold text-slate-600 w-40">Username</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600 w-28">Role</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600">Phone Number</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600 w-28">OTP Status</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600 w-24"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {accounts.map((user: any) => (
+                <TableRow key={user.id} className="hover:bg-slate-50/60" data-testid={`row-staff-${user.username}`}>
+                  <TableCell className="font-medium text-slate-800">{user.username}</TableCell>
+                  <TableCell>{roleBadge(user.role)}</TableCell>
+                  <TableCell>
+                    {editingId === user.id ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={editPhone}
+                          onChange={(e) => setEditPhone(e.target.value)}
+                          placeholder="+919876543210"
+                          className="h-8 text-sm w-48"
+                          data-testid={`input-phone-${user.username}`}
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-700 font-mono">
+                        {user.phone || <span className="text-slate-400 font-sans italic">No phone set</span>}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {user.phone ? (
+                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[11px] gap-1">
+                        <Phone className="w-3 h-3" /> Ready
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-rose-100 text-rose-700 border-rose-200 text-[11px] gap-1">
+                        <PhoneOff className="w-3 h-3" /> Blocked
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingId === user.id ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          className="h-7 px-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                          onClick={() => saveEdit(user.id)}
+                          disabled={updatePhone.isPending}
+                          data-testid={`btn-save-phone-${user.username}`}
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-slate-500"
+                          onClick={() => { setEditingId(null); setEditPhone(""); }}
+                          data-testid={`btn-cancel-phone-${user.username}`}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-slate-500 hover:text-slate-800"
+                        onClick={() => startEdit(user)}
+                        data-testid={`btn-edit-phone-${user.username}`}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-500">
+        <p className="font-medium text-slate-700 mb-1">About OTP login</p>
+        <p>Staff members with no phone number on file will see <span className="font-mono bg-slate-100 px-1 rounded text-xs">"No phone on file, contact admin"</span> when they try to log in. Add a phone number here to unblock them.</p>
+      </div>
     </div>
   );
 }

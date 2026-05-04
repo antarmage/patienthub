@@ -1,22 +1,49 @@
 import { db } from "./db";
+import { eq, isNull } from "drizzle-orm";
 import {
   patients, providers, services, appointments, labTasks,
   nutritionPlans, workouts, hormoneReadings, pregnancyMetrics,
   follicleData, usgData, users
 } from "@workspace/db";
 
+const SEEDED_PHONES: Record<string, string> = {
+  "dr.sai": "+919876543210",
+  "dr.priya": "+919876543211",
+  "dr.ramesh": "+919876543212",
+  "staff.reception": "+919876543213",
+  "staff.nurse": "+919876543214",
+  "owner": "+919876543215",
+};
+
 export async function seedDatabase() {
   const existingUsers = await db.select().from(users);
   if (existingUsers.length === 0) {
     console.log("Seeding users...");
     await db.insert(users).values([
-      { username: "dr.sai", password: "123", role: "clinician" },
-      { username: "dr.priya", password: "1234", role: "clinician" },
-      { username: "dr.ramesh", password: "5678", role: "clinician" },
-      { username: "staff.reception", password: "0000", role: "staff" },
-      { username: "staff.nurse", password: "1111", role: "staff" },
-      { username: "owner", password: "9999", role: "staff" },
+      { username: "dr.sai", password: "123", role: "clinician", phone: SEEDED_PHONES["dr.sai"] },
+      { username: "dr.priya", password: "1234", role: "clinician", phone: SEEDED_PHONES["dr.priya"] },
+      { username: "dr.ramesh", password: "5678", role: "clinician", phone: SEEDED_PHONES["dr.ramesh"] },
+      { username: "staff.reception", password: "0000", role: "staff", phone: SEEDED_PHONES["staff.reception"] },
+      { username: "staff.nurse", password: "1111", role: "staff", phone: SEEDED_PHONES["staff.nurse"] },
+      { username: "owner", password: "9999", role: "owner", phone: SEEDED_PHONES["owner"] },
     ]);
+  } else {
+    // Backfill phone numbers and fix roles for existing seeded accounts
+    for (const u of existingUsers) {
+      const defaultPhone = SEEDED_PHONES[u.username];
+      const updates: Record<string, string> = {};
+      if (defaultPhone && !u.phone) {
+        updates.phone = defaultPhone;
+      }
+      // Fix owner role: the owner account must have role "owner", not "staff"
+      if (u.username === "owner" && u.role !== "owner") {
+        updates.role = "owner";
+      }
+      if (Object.keys(updates).length > 0) {
+        console.log(`Backfilling ${Object.keys(updates).join(", ")} for ${u.username}`);
+        await db.update(users).set(updates).where(eq(users.id, u.id));
+      }
+    }
   }
 
   const existingPatients = await db.select().from(patients);

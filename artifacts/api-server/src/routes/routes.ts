@@ -3809,6 +3809,58 @@ Only include appointments that should move. If schedule is already optimal, retu
     }
   });
 
+  // Staff accounts management — list all users and their phone status (owner only)
+  app.get("/api/owner/staff-accounts", async (req: any, res: any) => {
+    const callerId = getStaffUserId(req, res);
+    if (!callerId) return;
+    const caller = await storage.getUser(callerId);
+    if (!caller || caller.role !== "owner") {
+      return res.status(403).json({ error: "Owner access required" });
+    }
+    try {
+      const allUsers = await storage.getUsers();
+      const staffRoles = new Set(["owner", "admin", "receptionist", "clinician", "nurse", "staff"]);
+      const safeUsers = allUsers
+        .filter((u: any) => staffRoles.has(u.role))
+        .map((u: any) => ({
+          id: u.id,
+          username: u.username,
+          role: u.role,
+          phone: u.phone ?? null,
+        }));
+      res.json(safeUsers);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Update a staff account's phone number (owner only)
+  app.patch("/api/owner/staff-accounts/:id/phone", async (req: any, res: any) => {
+    const callerId = getStaffUserId(req, res);
+    if (!callerId) return;
+    const caller = await storage.getUser(callerId);
+    if (!caller || caller.role !== "owner") {
+      return res.status(403).json({ error: "Owner access required" });
+    }
+    const { id } = req.params;
+    const { phone } = req.body as { phone?: string | null };
+    if (phone !== undefined && phone !== null && typeof phone !== "string") {
+      return res.status(400).json({ error: "phone must be a string or null" });
+    }
+    const trimmed = typeof phone === "string" ? phone.trim() : null;
+    // Basic E.164-style sanity check: allow null (clear) or a non-empty string with digits
+    if (trimmed !== null && !/^\+?[\d\s\-()]{7,20}$/.test(trimmed)) {
+      return res.status(400).json({ error: "Phone must be a valid number (e.g. +919876543210)" });
+    }
+    try {
+      const updated = await storage.updateUserPhone(id, trimmed || null);
+      if (!updated) return res.status(404).json({ error: "User not found" });
+      res.json({ id: updated.id, username: updated.username, role: updated.role, phone: updated.phone ?? null });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // 5. Owner AI Weekly Insights
   app.post("/api/owner/ai-insights", async (req: any, res: any) => {
     try {
@@ -4046,8 +4098,8 @@ async function handleDeskAuth(req: Request, res: Response) {
       if (userByUsername?.password === secret) user = userByUsername;
     }
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
-    if (user.role !== "receptionist" && user.role !== "admin") {
-      return res.status(403).json({ error: "Access denied. Receptionist or admin role required." });
+    if (user.role !== "receptionist" && user.role !== "admin" && user.role !== "owner") {
+      return res.status(403).json({ error: "Access denied. Receptionist, admin, or owner role required." });
     }
     if (!otp && !ticket) return res.status(400).json({ error: "Verification code required" });
     if (ticket) {
