@@ -105,7 +105,12 @@ function getStaffUserId(req: Request, res: Response): string | null {
 
 // ── OTP Store ─────────────────────────────────────────────────────────────────
 const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const otpStore = new Map<string, { code: string; expiresAt: number }>();
+const OTP_COOLDOWN_MS = 60 * 1000; // 60 seconds between requests
+const OTP_MAX_ATTEMPTS = 5;        // failed verify attempts before invalidation
+
+const otpStore = new Map<string, { code: string; expiresAt: number; attempts: number }>();
+// Tracks when each phone last successfully requested an OTP (for cooldown)
+const otpCooldown = new Map<string, number>();
 
 function generateOtp(): string {
   return String(crypto.randomInt(100000, 1000000));
@@ -141,22 +146,56 @@ function consumeOtpTicket(ticket: string): string | null {
   return entry.userId;
 }
 
-function storeOtp(phone: string, code: string): void {
+/**
+ * Returns the number of seconds remaining in the cooldown, or 0 if the phone
+ * is allowed to request a new OTP right now.
+ */
+function otpCooldownRemaining(phone: string): number {
   const key = phone.replace(/\D/g, "");
-  otpStore.set(key, { code, expiresAt: Date.now() + OTP_TTL_MS });
+  const last = otpCooldown.get(key);
+  if (!last) return 0;
+  const remaining = Math.ceil((last + OTP_COOLDOWN_MS - Date.now()) / 1000);
+  return remaining > 0 ? remaining : 0;
 }
 
-function validateOtp(phone: string, code: string): boolean {
+function storeOtp(phone: string, code: string): void {
+  const key = phone.replace(/\D/g, "");
+  otpStore.set(key, { code, expiresAt: Date.now() + OTP_TTL_MS, attempts: 0 });
+}
+
+/** Call this only after OTP delivery succeeds to start the per-phone cooldown. */
+function recordOtpSent(phone: string): void {
+  const key = phone.replace(/\D/g, "");
+  otpCooldown.set(key, Date.now());
+}
+
+/**
+ * Validates an OTP code for the given phone number.
+ * Tracks failed attempts and invalidates the OTP after OTP_MAX_ATTEMPTS failures.
+ * Returns "ok" | "invalid" | "expired" | "locked"
+ */
+function validateOtp(phone: string, code: string): "ok" | "invalid" | "expired" | "locked" {
   const key = phone.replace(/\D/g, "");
   const entry = otpStore.get(key);
-  if (!entry) return false;
+  if (!entry) return "invalid";
   if (entry.expiresAt < Date.now()) {
     otpStore.delete(key);
-    return false;
+    return "expired";
   }
-  if (entry.code !== String(code)) return false;
+  if (entry.attempts >= OTP_MAX_ATTEMPTS) {
+    otpStore.delete(key);
+    return "locked";
+  }
+  if (entry.code !== String(code)) {
+    entry.attempts += 1;
+    if (entry.attempts >= OTP_MAX_ATTEMPTS) {
+      otpStore.delete(key);
+      return "locked";
+    }
+    return "invalid";
+  }
   otpStore.delete(key);
-  return true;
+  return "ok";
 }
 
 // ── AI Audit Log ──────────────────────────────────────────────────────────────
@@ -203,6 +242,10 @@ export async function registerRoutes(
     if (!phone) return res.status(400).json({ error: "phone required" });
     const normalized = String(phone).replace(/\D/g, "");
     if (normalized.length < 7) return res.status(400).json({ error: "Invalid phone number" });
+    const cooldown = otpCooldownRemaining(normalized);
+    if (cooldown > 0) {
+      return res.status(429).json({ error: `Too many attempts, please wait ${cooldown} second${cooldown !== 1 ? "s" : ""} before requesting a new code.` });
+    }
     const allPatients = await storage.getPatients();
     const patient = allPatients.find(p => {
       if (!p.phone) return false;
@@ -216,6 +259,7 @@ export async function registerRoutes(
     storeOtp(normalized, code);
     try {
       await sendOtp(phone, code);
+      recordOtpSent(normalized);
     } catch (err: unknown) {
       console.error("[OTP] Failed to send:", err instanceof Error ? err.message : err);
       return res.status(503).json({ error: "Failed to send verification code. Please try again." });
@@ -230,7 +274,11 @@ export async function registerRoutes(
     if (!otp) return res.status(400).json({ error: "otp required" });
     const normalized = String(phone).replace(/\D/g, "");
     if (normalized.length < 7) return res.status(400).json({ error: "Invalid phone number" });
-    if (!validateOtp(normalized, String(otp))) {
+    const otpResult = validateOtp(normalized, String(otp));
+    if (otpResult === "locked") {
+      return res.status(429).json({ error: "Too many failed attempts. Your code has been invalidated — please request a new one." });
+    }
+    if (otpResult !== "ok") {
       return res.status(401).json({ error: "Invalid or expired verification code" });
     }
     const allPatients = await storage.getPatients();
@@ -271,10 +319,15 @@ export async function registerRoutes(
     if (!phone) {
       return res.status(400).json({ error: "No phone number registered for this account. Contact your admin." });
     }
+    const cooldown = otpCooldownRemaining(phone);
+    if (cooldown > 0) {
+      return res.status(429).json({ error: `Too many attempts, please wait ${cooldown} second${cooldown !== 1 ? "s" : ""} before requesting a new code.` });
+    }
     const code = generateOtp();
     storeOtp(phone, code);
     try {
       await sendOtp(phone, code);
+      recordOtpSent(phone);
     } catch (err: unknown) {
       console.error("[OTP] Failed to send staff OTP:", err instanceof Error ? err.message : err);
       return res.status(503).json({ error: "Failed to send verification code. Please try again." });
@@ -307,7 +360,12 @@ export async function registerRoutes(
     }
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
     const phone = user.phone;
-    if (!phone || !validateOtp(phone, String(otp))) {
+    if (!phone) return res.status(401).json({ error: "Invalid or expired verification code" });
+    const staffOtpResult = validateOtp(phone, String(otp));
+    if (staffOtpResult === "locked") {
+      return res.status(429).json({ error: "Too many failed attempts. Your code has been invalidated — please request a new one." });
+    }
+    if (staffOtpResult !== "ok") {
       return res.status(401).json({ error: "Invalid or expired verification code" });
     }
     const ticket = issueOtpTicket(user.id);
@@ -322,6 +380,10 @@ export async function registerRoutes(
     if (normalizedPhone.length !== 10 || !/^\d{10}$/.test(normalizedPhone)) {
       return res.status(400).json({ error: "Please enter a valid 10-digit phone number" });
     }
+    const cooldown = otpCooldownRemaining(normalizedPhone);
+    if (cooldown > 0) {
+      return res.status(429).json({ error: `Too many attempts, please wait ${cooldown} second${cooldown !== 1 ? "s" : ""} before requesting a new code.` });
+    }
     const allPatients = await storage.getPatients();
     const patient = allPatients.find((p: any) => {
       if (!p.phone) return false;
@@ -335,6 +397,7 @@ export async function registerRoutes(
     storeOtp(normalizedPhone, code);
     try {
       await sendOtp(patient.phone || phone, code);
+      recordOtpSent(normalizedPhone);
     } catch (err: unknown) {
       console.error("[OTP] Failed to send patient OTP:", err instanceof Error ? err.message : err);
       return res.status(503).json({ error: "Failed to send verification code. Please try again." });
@@ -1800,10 +1863,15 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
     // If OTP not supplied yet, send one to the staff member's registered phone
     if (!otp) {
+      const cooldown = otpCooldownRemaining(phone);
+      if (cooldown > 0) {
+        return res.status(429).json({ error: `Too many attempts, please wait ${cooldown} second${cooldown !== 1 ? "s" : ""} before requesting a new code.` });
+      }
       const code = generateOtp();
       storeOtp(phone, code);
       try {
         await sendOtp(phone, code);
+        recordOtpSent(phone);
       } catch (err: unknown) {
         console.error("[OTP] Failed to send staff passcode OTP:", err instanceof Error ? err.message : err);
         return res.status(503).json({ error: "Failed to send verification code. Please try again." });
@@ -1813,7 +1881,11 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     }
 
     // OTP supplied — validate it
-    if (!validateOtp(phone, String(otp))) {
+    const passcodeOtpResult = validateOtp(phone, String(otp));
+    if (passcodeOtpResult === "locked") {
+      return res.status(429).json({ error: "Too many failed attempts. Your code has been invalidated — please request a new one." });
+    }
+    if (passcodeOtpResult !== "ok") {
       return res.status(401).json({ error: "Invalid or expired verification code" });
     }
 
@@ -1849,7 +1921,11 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       return res.status(400).json({ error: "Please enter a valid 10-digit phone number" });
     }
 
-    if (!validateOtp(normalizedPhone, String(otp))) {
+    const patientLoginOtpResult = validateOtp(normalizedPhone, String(otp));
+    if (patientLoginOtpResult === "locked") {
+      return res.status(429).json({ error: "Too many failed attempts. Your code has been invalidated — please request a new one." });
+    }
+    if (patientLoginOtpResult !== "ok") {
       return res.status(401).json({ error: "Invalid or expired verification code" });
     }
 
@@ -3991,7 +4067,12 @@ Return a JSON object:
       }
     } else {
       const phone = user.phone;
-      if (!phone || !validateOtp(phone, String(otp))) {
+      if (!phone) return res.status(401).json({ error: "Invalid or expired verification code" });
+      const postopOtpResult = validateOtp(phone, String(otp));
+      if (postopOtpResult === "locked") {
+        return res.status(429).json({ error: "Too many failed attempts. Your code has been invalidated — please request a new one." });
+      }
+      if (postopOtpResult !== "ok") {
         return res.status(401).json({ error: "Invalid or expired verification code" });
       }
     }
@@ -4109,7 +4190,12 @@ async function handleDeskAuth(req: Request, res: Response) {
       }
     } else {
       const phone = user.phone;
-      if (!phone || !validateOtp(phone, String(otp))) {
+      if (!phone) return res.status(401).json({ error: "Invalid or expired verification code" });
+      const deskOtpResult = validateOtp(phone, String(otp));
+      if (deskOtpResult === "locked") {
+        return res.status(429).json({ error: "Too many failed attempts. Your code has been invalidated — please request a new one." });
+      }
+      if (deskOtpResult !== "ok") {
         return res.status(401).json({ error: "Invalid or expired verification code" });
       }
     }
