@@ -1,0 +1,44 @@
+# =============================================================================
+# .dockerignore — keeps Docker build context lean
+# =============================================================================
+
+# Version control
+.git
+.gitignore
+
+# Dependencies (reinstalled inside Docker)
+**/node_modules
+**/.pnpm-store
+
+# Build outputs (rebuilt inside Docker)
+**/dist
+**/.turbo
+
+# Artifacts not needed for api-server build
+artifacts/saivie/
+artifacts/saivie-desk/
+artifacts/saivie-recover/
+artifacts/saiviegene/
+artifacts/mamacare-mobile/
+artifacts/mockup-sandbox/
+
+# Local & dev files
+.local/
+.env
+.env.*
+!.env.production.example
+*.log
+*.dump
+
+# Editor & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# CI config (not needed at runtime)
+.github/
+
+# Docs
+*.md
+LICENSE

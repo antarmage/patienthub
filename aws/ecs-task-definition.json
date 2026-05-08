@@ -1,0 +1,90 @@
+{
+  "family": "saivie-api",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/saivie-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/saivie-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "saivie-api",
+      "image": "YOUR_ACCOUNT_ID.dkr.ecr.YOUR_REGION.amazonaws.com/saivie-api:latest",
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "environment": [
+        { "name": "NODE_ENV",          "value": "production" },
+        { "name": "PORT",              "value": "8080" },
+        { "name": "LOG_LEVEL",         "value": "info" },
+        { "name": "WHATSAPP_VERSION",  "value": "v21.0" }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/database_url"
+        },
+        {
+          "name": "SESSION_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/session_secret"
+        },
+        {
+          "name": "WHATSAPP_API_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/whatsapp_api_token"
+        },
+        {
+          "name": "WHATSAPP_PHONE_NUMBER_ID",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/whatsapp_phone_number_id"
+        },
+        {
+          "name": "WHATSAPP_APP_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/whatsapp_app_secret"
+        },
+        {
+          "name": "WHATSAPP_VERIFY_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/whatsapp_verify_token"
+        },
+        {
+          "name": "GOOGLE_CLIENT_EMAIL",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/google_client_email"
+        },
+        {
+          "name": "GOOGLE_PRIVATE_KEY",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/google_private_key"
+        },
+        {
+          "name": "GEMINI_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/gemini_api_key"
+        },
+        {
+          "name": "AWS_S3_BUCKET",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/s3_bucket"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/saivie-api",
+          "awslogs-region": "YOUR_REGION",
+          "awslogs-stream-prefix": "ecs",
+          "awslogs-create-group": "true"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget -qO- http://localhost:8080/api/healthz || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 15
+      },
+      "stopTimeout": 30,
+      "linuxParameters": {
+        "initProcessEnabled": true
+      }
+    }
+  ]
+}

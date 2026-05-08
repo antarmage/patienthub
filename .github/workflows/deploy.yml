@@ -1,0 +1,209 @@
+name: Deploy Saivie API to AWS ECS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'artifacts/api-server/**'
+      - 'lib/db/**'
+      - 'lib/api-zod/**'
+      - 'Dockerfile.api'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+env:
+  AWS_REGION:       ap-south-1          # Mumbai — change to your region
+  ECR_REPOSITORY:   saivie-api
+  ECS_CLUSTER:      saivie-cluster
+  ECS_SERVICE:      saivie-api-service
+  TASK_DEFINITION:  aws/ecs-task-definition.json
+  CONTAINER_NAME:   saivie-api
+
+jobs:
+  # ── Job 1: Run type checks ────────────────────────────────────────────────
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm run typecheck
+
+  # ── Job 2: Build & push Docker image to ECR ──────────────────────────────
+  build-and-push:
+    name: Build & Push to ECR
+    runs-on: ubuntu-latest
+    needs: typecheck
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: tag
+        run: echo "tag=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Build, tag, and push image to ECR
+        id: build-image
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          docker build \
+            -f Dockerfile.api \
+            -t $IMAGE_TAG \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest \
+            .
+          docker push $IMAGE_TAG
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          echo "image=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  # ── Job 3: Deploy to ECS Fargate ─────────────────────────────────────────
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Fill in new image ID in ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ env.TASK_DEFINITION }}
+          container-name:  ${{ env.CONTAINER_NAME }}
+          image:           ${{ needs.build-and-push.outputs.image }}
+
+      - name: Deploy to ECS service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition:  ${{ steps.task-def.outputs.task-definition }}
+          service:          ${{ env.ECS_SERVICE }}
+          cluster:          ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          # Zero-downtime: new tasks start before old ones stop
+          codedeploy-appspec: false
+
+      - name: Verify deployment health
+        run: |
+          echo "Waiting for service to stabilise..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE }}
+          echo "Deployment successful."
+
+  # ── Job 4: Deploy frontends to S3 + CloudFront invalidation ──────────────
+  deploy-frontends:
+    name: Deploy Frontends to S3
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+
+    strategy:
+      matrix:
+        include:
+          - app:       saivie
+            filter:    "@workspace/saivie"
+            base_path: "/"
+            s3_bucket: ${{ vars.S3_BUCKET_SAIVIE }}
+            cf_dist:   ${{ vars.CF_DIST_SAIVIE }}
+          - app:       saivie-desk
+            filter:    "@workspace/saivie-desk"
+            base_path: "/desk/"
+            s3_bucket: ${{ vars.S3_BUCKET_DESK }}
+            cf_dist:   ${{ vars.CF_DIST_DESK }}
+          - app:       saivie-recover
+            filter:    "@workspace/saivie-recover"
+            base_path: "/recover/"
+            s3_bucket: ${{ vars.S3_BUCKET_RECOVER }}
+            cf_dist:   ${{ vars.CF_DIST_RECOVER }}
+          - app:       saiviegene
+            filter:    "@workspace/saiviegene"
+            base_path: "/saiviegene/"
+            s3_bucket: ${{ vars.S3_BUCKET_GENE }}
+            cf_dist:   ${{ vars.CF_DIST_GENE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build ${{ matrix.app }}
+        env:
+          BASE_PATH: ${{ matrix.base_path }}
+          VITE_API_BASE: https://api.saivie.com
+        run: pnpm --filter ${{ matrix.filter }} run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Sync to S3 (hashed assets — long cache)
+        run: |
+          aws s3 sync artifacts/${{ matrix.app }}/dist/public/assets \
+            s3://${{ matrix.s3_bucket }}/assets \
+            --cache-control "public, max-age=31536000, immutable" \
+            --delete
+
+      - name: Sync to S3 (root files — no cache)
+        run: |
+          aws s3 sync artifacts/${{ matrix.app }}/dist/public \
+            s3://${{ matrix.s3_bucket }} \
+            --exclude "assets/*" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ matrix.cf_dist }} \
+            --paths "/*"

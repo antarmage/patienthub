@@ -1,0 +1,73 @@
+# =============================================================================
+# Saivie API Server — Multi-stage Dockerfile
+# Build context: repo root (required for pnpm workspace)
+# Usage:
+#   docker build -f Dockerfile.api -t saivie-api .
+#   docker run -p 8080:8080 --env-file .env.production saivie-api
+# =============================================================================
+
+# ── Base: Node 24 + pnpm ──────────────────────────────────────────────────────
+FROM node:24-alpine AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# ── Stage 1: Install all workspace dependencies ───────────────────────────────
+FROM base AS deps
+WORKDIR /workspace
+
+# Copy workspace manifests and lockfile first (cache layer)
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY tsconfig.base.json tsconfig.json ./
+
+# Copy only the packages required to build the api-server
+COPY lib/db/          ./lib/db/
+COPY lib/api-zod/     ./lib/api-zod/
+COPY artifacts/api-server/ ./artifacts/api-server/
+
+# Full install (dev deps needed for build step)
+RUN pnpm install --frozen-lockfile
+
+# ── Stage 2: Build ────────────────────────────────────────────────────────────
+FROM deps AS builder
+WORKDIR /workspace
+
+# Build composite lib packages first (drizzle schema types, zod schemas)
+RUN pnpm run typecheck:libs
+
+# Build the api-server — esbuild bundles src into dist/index.mjs
+RUN pnpm --filter @workspace/api-server run build
+
+# Create a self-contained standalone folder with production node_modules only.
+# pnpm deploy flattens workspace symlinks so the runner stage needs no pnpm.
+RUN pnpm deploy --filter @workspace/api-server --prod /standalone
+
+# Copy the esbuild output into the standalone folder
+# (pnpm deploy copies package source, not the built dist)
+RUN cp -r /workspace/artifacts/api-server/dist /standalone/dist
+
+# ── Stage 3: Production runtime ───────────────────────────────────────────────
+FROM base AS runner
+WORKDIR /app
+
+# Non-root user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser  --system --uid 1001 saivie
+
+# Copy the self-contained app (flat node_modules + dist)
+COPY --from=builder --chown=saivie:nodejs /standalone ./
+
+USER saivie
+
+ENV NODE_ENV=production
+ENV PORT=8080
+
+EXPOSE 8080
+
+# Graceful shutdown: ECS sends SIGTERM before SIGKILL
+STOPSIGNAL SIGTERM
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget -qO- http://localhost:8080/api/healthz || exit 1
+
+CMD ["node", "--enable-source-maps", "./dist/index.mjs"]
