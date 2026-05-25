@@ -136,7 +136,7 @@ export async function batchProcessWithSSE<T, R>(
         minTimeout,
         maxTimeout,
         factor: 2,
-        onFailedAttempt: (error) => {
+        onFailedAttempt: (error: unknown) => {
           if (!isRateLimitError(error)) {
             throw new AbortError(
               error instanceof Error ? error : new Error(String(error))
