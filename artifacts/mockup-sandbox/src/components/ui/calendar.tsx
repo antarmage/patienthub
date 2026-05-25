@@ -125,16 +125,16 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Root: ({ className, rootRef, ...props }: { className?: string; rootRef?: React.Ref<HTMLDivElement>; [key: string]: unknown }) => {
+        Root: (({ className, rootRef, ...props }: any) => {
           return (
             <div
               data-slot="calendar"
-              ref={rootRef as React.Ref<HTMLDivElement>}
+              ref={rootRef}
               className={cn(className)}
-              {...(props as React.HTMLAttributes<HTMLDivElement>)}
+              {...props}
             />
           )
-        },
+        }) as any,
         Chevron: ({ className, orientation, ...props }) => {
           if (orientation === "left") {
             return (
