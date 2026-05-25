@@ -11,8 +11,15 @@ import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../g
 import { ai } from "../replit_integrations/image/client";
 import { whatsapp } from "../whatsapp";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
-import { analyseGenome } from "../genome-engine";
+import { analyseGenome, analyseGenomeFromKey } from "../genome-engine";
 import multer from "multer";
+import {
+  genomeUpload,
+  documentUpload,
+  uploadBufferToS3,
+  getPresignedDownloadUrl,
+  isS3Configured,
+} from "../lib/s3-storage";
 
 function parseId(val: string): number | null {
   const n = parseInt(val);
@@ -627,26 +634,76 @@ export async function registerRoutes(
     res.json(docs.map(d => ({ ...d, fileData: undefined })));
   });
 
-  app.post("/api/mobile/patients/:id/documents", async (req, res) => {
-    const id = parseId(req.params.id);
-    if (!id) return res.status(400).json({ error: "Invalid ID" });
-    if (!getMobilePatientId(req, res, id)) return;
-    const { fileName, fileData, mimeType, docType, label } = req.body;
-    if (!fileName) return res.status(400).json({ error: "fileName required" });
-    const allowedMime = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-    if (mimeType && !allowedMime.includes(mimeType)) return res.status(400).json({ error: "Unsupported file type" });
-    if (fileData) {
-      const sizeBytes = Math.ceil((fileData.length * 3) / 4);
-      if (sizeBytes > 5 * 1024 * 1024) return res.status(400).json({ error: "File exceeds 5 MB limit" });
-    }
-    try {
-      const doc = await storage.createPatientDocument({
-        patientId: id, fileName, fileData, mimeType, docType, label,
-        uploadedAt: new Date().toISOString(),
-      });
-      res.status(201).json({ ...doc, fileData: undefined });
-    } catch (err: unknown) { res.status(400).json({ error: err instanceof Error ? err.message : "An error occurred" }); }
-  });
+  // POST /api/mobile/patients/:id/documents
+  // Supports two upload modes:
+  //   1. multipart/form-data (field: "file") — streamed to S3 via documentUpload() when configured
+  //   2. application/json with base64 "fileData" — dev / legacy clients
+  app.post(
+    "/api/mobile/patients/:id/documents",
+    // ── Step 1: Auth first, then route to the right upload middleware ─────────
+    (req: Request, res: Response, next) => {
+      const idRaw = req.params.id;
+      const id = parseId(Array.isArray(idRaw) ? idRaw[0] : idRaw);
+      if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
+      if (!getMobilePatientId(req, res, id)) return;
+
+      const ct = req.headers["content-type"] ?? "";
+      if (isS3Configured() && ct.includes("multipart/form-data")) {
+        documentUpload(id).single("file")(req, res, next);
+      } else {
+        next();
+      }
+    },
+    // ── Step 2: Create document record ───────────────────────────────────────
+    async (req: Request, res: Response) => {
+      const idRaw2 = req.params.id;
+      const id = parseId(Array.isArray(idRaw2) ? idRaw2[0] : idRaw2);
+      if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+      // Multipart → S3 streaming path: req.file is populated by multer-s3
+      const s3File = req.file as (Express.Multer.File & { key?: string }) | undefined;
+      if (s3File?.key) {
+        try {
+          const doc = await storage.createPatientDocument({
+            patientId: id,
+            fileName: s3File.originalname ?? s3File.fieldname,
+            s3Key: s3File.key,
+            mimeType: s3File.mimetype,
+            uploadedAt: new Date().toISOString(),
+          });
+          res.status(201).json({ ...doc, fileData: undefined });
+        } catch (err: unknown) { res.status(400).json({ error: err instanceof Error ? err.message : "An error occurred" }); }
+        return;
+      }
+
+      // JSON / base64 path — dev or clients that don't send multipart
+      const { fileName, fileData, mimeType, docType, label } = req.body;
+      if (!fileName) { res.status(400).json({ error: "fileName required" }); return; }
+      const allowedMime = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+      if (mimeType && !allowedMime.includes(mimeType)) { res.status(400).json({ error: "Unsupported file type" }); return; }
+      if (fileData) {
+        const sizeBytes = Math.ceil((fileData.length * 3) / 4);
+        if (sizeBytes > 5 * 1024 * 1024) { res.status(400).json({ error: "File exceeds 5 MB limit" }); return; }
+      }
+      try {
+        let s3Key: string | undefined;
+        let storedFileData: string | undefined = fileData;
+        if (fileData && isS3Configured()) {
+          const ext = fileName.includes(".") ? fileName.slice(fileName.lastIndexOf(".")) : ".bin";
+          const key = `documents/${id}/${Date.now()}${ext}`;
+          const buffer = Buffer.from(fileData, "base64");
+          await uploadBufferToS3(key, buffer, mimeType ?? "application/octet-stream");
+          s3Key = key;
+          storedFileData = undefined;
+        }
+        const doc = await storage.createPatientDocument({
+          patientId: id, fileName, fileData: storedFileData, s3Key, mimeType, docType, label,
+          uploadedAt: new Date().toISOString(),
+        });
+        res.status(201).json({ ...doc, fileData: undefined });
+      } catch (err: unknown) { res.status(400).json({ error: err instanceof Error ? err.message : "An error occurred" }); }
+    },
+  );
 
   app.delete("/api/mobile/patient-documents/:id", async (req, res) => {
     const id = parseId(req.params.id);
@@ -1289,7 +1346,7 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
               };
               const allProviders = await storage.getProviders();
               const provider = pending.type === "nutritionist"
-                ? allProviders.find(p => (p.specialization || "").toLowerCase().includes("nutri")) || allProviders[0]
+                ? allProviders.find(p => ((p as any).specialization || p.specialty || "").toLowerCase().includes("nutri")) || allProviders[0]
                 : allProviders[0];
 
               const newAppt = await storage.createAppointment({
@@ -1395,7 +1452,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
             if (cl.requestedDate && cl.requestedDate >= today) {
               const allProviders = await storage.getProviders();
               const provider = apptType === "nutritionist"
-                ? allProviders.find(p => (p.specialization || "").toLowerCase().includes("nutri")) || allProviders[0]
+                ? allProviders.find(p => ((p as any).specialization || p.specialty || "").toLowerCase().includes("nutri")) || allProviders[0]
                 : allProviders[0];
               const newAppt = await storage.createAppointment({
                 patientId: patient.id,
@@ -1818,7 +1875,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     // When a patient session is active, only allow reading their own documents.
-    const sid = req.session?.patientId;
+    const sid = (req as any).session?.patientId;
     if (sid != null && sid !== id) {
       return res.status(403).json({ error: "Forbidden" });
     }
@@ -1940,7 +1997,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       return res.status(404).json({ error: "No patient found with this phone number. Please contact the clinic." });
     }
 
-    req.session.patientId = patient.id;
+    (req as any).session.patientId = patient.id;
 
     res.json({
       success: true,
@@ -1956,7 +2013,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.post("/api/auth/patient-logout", (req, res) => {
-    req.session.destroy(() => res.status(204).send());
+    (req as any).session.destroy(() => res.status(204).send());
   });
 
   app.get("/api/patient-protocols/:patientId", async (req, res) => {
@@ -2870,26 +2927,105 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const doc = await storage.getPatientDocument(id);
     if (!doc) return res.status(404).json({ error: "Not found" });
     if (!assertPatientSession(req, res, doc.patientId)) return;
+    // If the file is stored in S3, return a pre-signed URL instead of the raw base64
+    if ((doc as { s3Key?: string | null }).s3Key) {
+      try {
+        const presignedUrl = await getPresignedDownloadUrl((doc as { s3Key: string }).s3Key);
+        res.json({ ...doc, fileData: undefined, presignedUrl });
+        return;
+      } catch {
+        res.status(502).json({ error: "Failed to generate download URL" });
+        return;
+      }
+    }
     res.json(doc);
   });
 
-  app.post("/api/patient-documents", async (req, res) => {
-    try {
-      const { patientId, fileName, fileData, mimeType, docType } = req.body;
-      if (!patientId || !fileName) return res.status(400).json({ error: "patientId and fileName required" });
-      if (!assertPatientSession(req, res, parseInt(patientId))) return;
-      const allowedMime = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "image/heic", "image/heif"];
-      if (mimeType && !allowedMime.includes(mimeType)) return res.status(400).json({ error: "Unsupported file type" });
-      if (fileData) {
-        const sizeBytes = Math.ceil((fileData.length * 3) / 4);
-        if (sizeBytes > 5 * 1024 * 1024) return res.status(400).json({ error: "File exceeds 5 MB limit" });
+  // POST /api/patient-documents
+  // Supports two upload modes:
+  //   1. multipart/form-data (field: "file", ?patientId=<id> in query string) —
+  //      streamed to S3 via documentUpload() when S3 is configured.
+  //      patientId MUST be in the query string so auth can run before multer reads the body.
+  //   2. application/json with base64 "fileData" — dev / legacy clients
+  app.post(
+    "/api/patient-documents",
+    // ── Step 1: Auth BEFORE any body bytes are consumed by multer ────────────
+    // For multipart: patientId is taken from ?patientId= query param so we can
+    // validate the session before the upload middleware streams bytes to S3.
+    (req: Request, res: Response, next) => {
+      const ct = req.headers["content-type"] ?? "";
+      if (isS3Configured() && ct.includes("multipart/form-data")) {
+        const pid = parseId((req.query.patientId ?? "") as string);
+        if (!pid) {
+          res.status(400).json({ error: "patientId query param required for multipart upload" });
+          return;
+        }
+        if (!assertPatientSession(req, res, pid)) return; // ← auth enforced before S3 write
+        // Store validated pid so step 2 can use it without re-querying
+        (req as Request & { _validatedPid?: number })._validatedPid = pid;
+        documentUpload(pid).single("file")(req, res, next);
+      } else {
+        next();
       }
-      const allowedDocTypes = ["Diagnostic", "Prescription"];
-      if (docType && !allowedDocTypes.includes(docType)) return res.status(400).json({ error: "docType must be Diagnostic or Prescription" });
-      const doc = await storage.createPatientDocument({ ...req.body, patientId: parseInt(patientId), uploadedAt: new Date().toISOString() });
-      res.status(201).json({ ...doc, fileData: undefined });
-    } catch (e: any) { res.status(400).json({ error: e.message }); }
-  });
+    },
+    // ── Step 2: Create document record ───────────────────────────────────────
+    async (req: Request, res: Response) => {
+      try {
+        // Multipart → S3 streaming path: req.file is populated by multer-s3
+        const s3File = req.file as (Express.Multer.File & { key?: string }) | undefined;
+        if (s3File?.key) {
+          const pid = (req as Request & { _validatedPid?: number })._validatedPid;
+          if (!pid) { res.status(403).json({ error: "Forbidden" }); return; }
+          const { docType } = req.body as { docType?: string };
+          const allowedDocTypes = ["Diagnostic", "Prescription"];
+          if (docType && !allowedDocTypes.includes(docType)) { res.status(400).json({ error: "docType must be Diagnostic or Prescription" }); return; }
+          const doc = await storage.createPatientDocument({
+            patientId: pid,
+            fileName: s3File.originalname ?? s3File.fieldname,
+            s3Key: s3File.key,
+            mimeType: s3File.mimetype,
+            docType: docType ?? null,
+            uploadedAt: new Date().toISOString(),
+          });
+          res.status(201).json({ ...doc, fileData: undefined });
+          return;
+        }
+
+        // JSON / base64 path — dev or clients that don't send multipart
+        const { patientId, fileName, fileData, mimeType, docType } = req.body;
+        if (!patientId || !fileName) { res.status(400).json({ error: "patientId and fileName required" }); return; }
+        if (!assertPatientSession(req, res, parseInt(patientId))) return;
+        const allowedMime = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "image/heic", "image/heif"];
+        if (mimeType && !allowedMime.includes(mimeType)) { res.status(400).json({ error: "Unsupported file type" }); return; }
+        if (fileData) {
+          const sizeBytes = Math.ceil((fileData.length * 3) / 4);
+          if (sizeBytes > 5 * 1024 * 1024) { res.status(400).json({ error: "File exceeds 5 MB limit" }); return; }
+        }
+        const allowedDocTypes = ["Diagnostic", "Prescription"];
+        if (docType && !allowedDocTypes.includes(docType)) { res.status(400).json({ error: "docType must be Diagnostic or Prescription" }); return; }
+
+        let s3Key: string | undefined;
+        let storedFileData: string | undefined = fileData;
+        if (fileData && isS3Configured()) {
+          const ext = fileName.includes(".") ? fileName.slice(fileName.lastIndexOf(".")) : ".bin";
+          const key = `documents/${patientId}/${Date.now()}${ext}`;
+          const buffer = Buffer.from(fileData, "base64");
+          await uploadBufferToS3(key, buffer, mimeType ?? "application/octet-stream");
+          s3Key = key;
+          storedFileData = undefined;
+        }
+
+        const doc = await storage.createPatientDocument({
+          ...req.body,
+          patientId: parseInt(patientId),
+          fileData: storedFileData,
+          s3Key,
+          uploadedAt: new Date().toISOString(),
+        });
+        res.status(201).json({ ...doc, fileData: undefined });
+      } catch (e: any) { res.status(400).json({ error: e.message }); }
+    },
+  );
 
   app.delete("/api/patient-documents/:id", async (req, res) => {
     const id = parseId(req.params.id);
@@ -4345,23 +4481,38 @@ export async function registerDeskRoutes(app: Express) {
 export async function registerGenomeRoutes(app: Express): Promise<void> {
   const genomeJobs = new Map<string, { status: "processing" | "done" | "error"; patientId?: number; fileName?: string }>();
 
-  const genomeUpload = multer({
+  // Fallback multer for dev environments without S3 configured (200 MB RAM limit)
+  const memoryGenomeUpload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 200 * 1024 * 1024 }, // 200 MB
+    limits: { fileSize: 200 * 1024 * 1024 },
   }).single("file");
 
-  // POST /api/genome/upload — accept genome file and start async analysis
-  app.post("/api/genome/upload", (req: Request, res: Response) => {
-    genomeUpload(req, res, async (err) => {
-      if (err) {
-        res.status(400).json({ error: err instanceof Error ? err.message : "File upload error" });
-        return;
-      }
-    try {
+  // POST /api/genome/upload — authenticate FIRST, then stream genome file to S3 (or RAM in dev)
+  app.post(
+    "/api/genome/upload",
+    // ── Step 1: Authenticate BEFORE any body bytes reach multer ──────────────
+    // This prevents unauthenticated requests from creating S3 objects.
+    (req: Request, res: Response, next) => {
       const patientId = getMobilePatientId(req, res);
+      if (!patientId) return; // 401/403 already sent
+      // Stash validated patientId so step 2 can read it without re-parsing headers
+      (req as Request & { _authedPatientId?: number })._authedPatientId = patientId;
+
+      if (isS3Configured()) {
+        genomeUpload(String(patientId)).single("file")(req, res, next);
+      } else {
+        memoryGenomeUpload(req, res, next);
+      }
+    },
+    // ── Step 2: Process the upload result ────────────────────────────────────
+    async (req: Request, res: Response) => {
+      try {
+      // Auth is already verified in step 1; this call is a lightweight re-read.
+      const patientId = (req as Request & { _authedPatientId?: number })._authedPatientId
+        ?? getMobilePatientId(req, res);
       if (!patientId) return;
 
-      const file = (req as Request & { file?: Express.Multer.File }).file;
+      const file = (req as Request & { file?: Express.Multer.File & { key?: string } }).file;
       if (!file) {
         res.status(400).json({ error: "No genome file uploaded" });
         return;
@@ -4369,23 +4520,30 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
 
       const jobId = crypto.randomBytes(16).toString("hex");
       const fileName = file.originalname ?? "genome.vcf";
+      // multer-s3 sets file.key; memoryStorage does not
+      const s3Key: string | undefined = (file as { key?: string }).key;
 
       genomeJobs.set(jobId, { status: "processing", patientId, fileName });
 
-      // Kick off async analysis
+      // Kick off async analysis.
+      // When s3Key is set, analyseGenomeFromKey reads the file from S3
+      // (S3 I/O lives in genome-engine, not here).
+      // When s3Key is absent (dev / memoryStorage), fall back to the in-RAM buffer.
       (async () => {
         try {
-          const content = file.buffer.toString("utf8");
-          const result = analyseGenome(content, fileName);
+          const result = s3Key
+            ? await analyseGenomeFromKey(s3Key, fileName)
+            : analyseGenome((file as Express.Multer.File).buffer.toString("utf8"), fileName);
 
           const client = await (await import("../db")).pool.connect();
           try {
             await client.query(
               `INSERT INTO genome_analyses
-                (patient_id, job_id, status, file_name, snp_count, health_risks, predispositions, pharmacogenomics, traits, raw_markers, analysed_at, created_at)
-               VALUES ($1, $2, 'done', $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                (patient_id, job_id, status, file_name, s3_key, snp_count, health_risks, predispositions, pharmacogenomics, traits, raw_markers, analysed_at, created_at)
+               VALUES ($1, $2, 'done', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                ON CONFLICT (job_id) DO UPDATE SET
                 status = 'done',
+                s3_key = EXCLUDED.s3_key,
                 snp_count = EXCLUDED.snp_count,
                 health_risks = EXCLUDED.health_risks,
                 predispositions = EXCLUDED.predispositions,
@@ -4397,6 +4555,7 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
                 patientId,
                 jobId,
                 fileName,
+                s3Key ?? null,
                 result.snpCount,
                 JSON.stringify(result.healthRisks),
                 JSON.stringify(result.predispositions),
@@ -4421,8 +4580,8 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
     } catch (err: unknown) {
       res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
     }
-    });
-  });
+    },
+  );
 
   // GET /api/genome/status/:jobId — poll analysis status
   app.get("/api/genome/status/:jobId", async (req: Request, res: Response) => {
