@@ -37,6 +37,8 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
+        env:
+          npm_config_user_agent: pnpm/0
         run: pnpm install --frozen-lockfile
 
       - name: Type check
@@ -140,22 +142,22 @@ jobs:
           - app:       saivie
             filter:    "@workspace/saivie"
             base_path: "/"
-            s3_bucket: ${{ vars.S3_BUCKET_SAIVIE }}
+            s3_bucket: saivie-app
             cf_dist:   ${{ vars.CF_DIST_SAIVIE }}
           - app:       saivie-desk
             filter:    "@workspace/saivie-desk"
             base_path: "/desk/"
-            s3_bucket: ${{ vars.S3_BUCKET_DESK }}
+            s3_bucket: saivie-desk
             cf_dist:   ${{ vars.CF_DIST_DESK }}
           - app:       saivie-recover
             filter:    "@workspace/saivie-recover"
             base_path: "/recover/"
-            s3_bucket: ${{ vars.S3_BUCKET_RECOVER }}
+            s3_bucket: saivie-recover
             cf_dist:   ${{ vars.CF_DIST_RECOVER }}
           - app:       saiviegene
             filter:    "@workspace/saiviegene"
             base_path: "/saiviegene/"
-            s3_bucket: ${{ vars.S3_BUCKET_GENE }}
+            s3_bucket: saivie-gene
             cf_dist:   ${{ vars.CF_DIST_GENE }}
 
     steps:
@@ -172,6 +174,8 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
+        env:
+          npm_config_user_agent: pnpm/0
         run: pnpm install --frozen-lockfile
 
       - name: Build ${{ matrix.app }}
