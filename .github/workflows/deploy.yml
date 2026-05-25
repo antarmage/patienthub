@@ -37,9 +37,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        env:
-          npm_config_user_agent: pnpm/0
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Type check
         run: pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --filter "./scripts" --filter "!@workspace/mockup-sandbox" --if-present run typecheck
@@ -174,9 +172,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        env:
-          npm_config_user_agent: pnpm/0
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Build ${{ matrix.app }}
         env:
