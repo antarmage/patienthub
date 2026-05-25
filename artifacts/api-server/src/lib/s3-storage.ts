@@ -4,19 +4,22 @@
  * Replaces multer.memoryStorage() for production. Files are streamed
  * directly to S3 without buffering the entire file in RAM.
  *
- * Prerequisites:
- *   pnpm --filter @workspace/api-server add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner multer-s3
- *
  * Environment variables required:
  *   AWS_REGION        — e.g. ap-south-1
  *   AWS_S3_BUCKET     — e.g. saivie-uploads-prod
  *   (credentials via IAM role on ECS — no ACCESS_KEY_ID needed in prod)
  */
 
-import { S3Client, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import multerS3 from "multer-s3";
 import multer from "multer";
+import { Readable } from "stream";
 import path from "path";
 import { logger } from "./logger";
 
@@ -24,13 +27,17 @@ import { logger } from "./logger";
 // S3 client — uses IAM role in ECS (no hardcoded credentials)
 // ---------------------------------------------------------------------------
 const region = process.env["AWS_REGION"] ?? "ap-south-1";
-const bucket = process.env["AWS_S3_BUCKET"];
-
-if (!bucket) {
-  throw new Error("AWS_S3_BUCKET environment variable is required");
-}
+const bucket = process.env["AWS_S3_BUCKET"] ?? "";
 
 export const s3Client = new S3Client({ region });
+
+/**
+ * Returns true when S3 is explicitly configured via the AWS_S3_BUCKET env var.
+ * When false, routes fall back to in-memory / DB storage so dev still works.
+ */
+export function isS3Configured(): boolean {
+  return !!process.env["AWS_S3_BUCKET"];
+}
 
 // ---------------------------------------------------------------------------
 // Storage engines
@@ -90,7 +97,7 @@ export function documentStorage(patientId: string | number) {
 // Pre-configured multer instances
 // ---------------------------------------------------------------------------
 
-/** Multer instance for genome uploads (50 MB limit) */
+/** Multer instance for genome uploads (50 MB limit) — streams to S3 */
 export const genomeUpload = (patientId: string | number) =>
   multer({
     storage: genomeStorage(patientId),
@@ -106,7 +113,7 @@ export const genomeUpload = (patientId: string | number) =>
     },
   });
 
-/** Multer instance for patient document uploads (10 MB limit) */
+/** Multer instance for patient document uploads (10 MB limit) — streams to S3 */
 export const documentUpload = (patientId: string | number) =>
   multer({
     storage: documentStorage(patientId),
@@ -139,6 +146,45 @@ export async function getPresignedDownloadUrl(
 }
 
 /**
+ * Upload a Buffer directly to S3 (for base64 JSON uploads that bypass multer).
+ * Returns the S3 object key.
+ */
+export async function uploadBufferToS3(
+  key: string,
+  buffer: Buffer,
+  contentType: string,
+): Promise<string> {
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+      ServerSideEncryption: "AES256",
+    }),
+  );
+  logger.info({ key, bytes: buffer.byteLength }, "Uploaded buffer to S3");
+  return key;
+}
+
+/**
+ * Read an S3 object and return its full content as a Buffer.
+ */
+export async function readS3ObjectAsBuffer(s3Key: string): Promise<Buffer> {
+  const command = new GetObjectCommand({ Bucket: bucket, Key: s3Key });
+  const result = await s3Client.send(command);
+  const body = result.Body;
+  if (!body) throw new Error(`Empty body for S3 key: ${s3Key}`);
+  const readable = body as unknown as Readable;
+  return new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    readable.on("data", (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+    readable.on("end", () => resolve(Buffer.concat(chunks)));
+    readable.on("error", reject);
+  });
+}
+
+/**
  * Delete a file from S3 by its key.
  */
 export async function deleteS3Object(s3Key: string): Promise<void> {
@@ -150,25 +196,3 @@ export async function deleteS3Object(s3Key: string): Promise<void> {
     throw err;
   }
 }
-
-// ---------------------------------------------------------------------------
-// Migration note
-// ---------------------------------------------------------------------------
-// To migrate routes from multer memoryStorage to S3:
-//
-// BEFORE (in-memory):
-//   const upload = multer({ storage: multer.memoryStorage() });
-//   app.post("/api/genome/upload", upload.single("file"), (req, res) => {
-//     const buffer = req.file!.buffer;  // ← in-memory buffer
-//   });
-//
-// AFTER (S3):
-//   app.post("/api/genome/upload", (req, res, next) => {
-//     const patientId = req.body.patientId ?? "unknown";
-//     genomeUpload(patientId).single("file")(req, res, next);
-//   }, (req, res) => {
-//     const s3File = req.file as Express.MulterS3.File;
-//     const s3Key  = s3File.key;         // ← S3 object key, store in DB
-//     const s3Url  = s3File.location;    // ← public URL (if bucket is public)
-//     // For private buckets, use getPresignedDownloadUrl(s3Key) when serving
-//   });
