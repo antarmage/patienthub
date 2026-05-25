@@ -80,6 +80,8 @@ export async function ensureSchema(): Promise<void> {
         uploaded_at text NOT NULL
       );
 
+      ALTER TABLE patient_documents ADD COLUMN IF NOT EXISTS s3_key text;
+
       -- Schedule optimisation history table (Task #8)
       CREATE TABLE IF NOT EXISTS schedule_optimisations (
         id serial PRIMARY KEY,
@@ -108,6 +110,8 @@ export async function ensureSchema(): Promise<void> {
         analysed_at text,
         created_at text NOT NULL
       );
+
+      ALTER TABLE genome_analyses ADD COLUMN IF NOT EXISTS s3_key text;
     `);
   } finally {
     client.release();
