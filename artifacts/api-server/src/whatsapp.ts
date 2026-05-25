@@ -201,7 +201,7 @@ export class WhatsAppService {
                 body: JSON.stringify(payload),
             });
 
-            const data = await response.json();
+            const data = await response.json() as { error?: { message?: string } };
             if (!response.ok) {
                 console.error("WhatsApp API error:", data);
                 throw new Error(data.error?.message || "Failed to send WhatsApp message");
