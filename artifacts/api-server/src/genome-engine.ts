@@ -124,6 +124,19 @@ function seededRandom(seed: number, index: number): number {
   return x - Math.floor(x);
 }
 
+/**
+ * Fetch a genome file from S3 by key and analyse it.
+ * Keeps S3 I/O concerns inside the genome processing layer, not in routes.
+ */
+export async function analyseGenomeFromKey(
+  s3Key: string,
+  fileName: string,
+): Promise<GenomeAnalysisResult> {
+  const { readS3ObjectAsBuffer } = await import("./lib/s3-storage.js");
+  const buf = await readS3ObjectAsBuffer(s3Key);
+  return analyseGenome(buf.toString("utf8"), fileName);
+}
+
 export function analyseGenome(fileContent: string, fileName: string): GenomeAnalysisResult {
   const isVcf = fileName.endsWith(".vcf") || fileContent.includes("##fileformat=VCF");
   const rsids = isVcf ? parseVcf(fileContent) : parse23andMe(fileContent);
