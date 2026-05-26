@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Dna, Phone, ArrowLeft, Loader2 } from "lucide-react";
-import { setToken } from "@/lib/authStore";
+import { useAuth } from "@/lib/authStore";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const API = BASE.startsWith("/saiviegene") ? "" : "";
@@ -29,6 +29,7 @@ export default function Auth() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendSuccess, setResendSuccess] = useState(false);
   const [, navigate] = useLocation();
+  const { setToken } = useAuth();
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
