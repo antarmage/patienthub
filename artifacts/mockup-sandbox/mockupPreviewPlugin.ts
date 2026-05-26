@@ -57,7 +57,7 @@ export function mockupPreviewPlugin(): Plugin {
       )
       .map(
         (c) =>
-          `  ${JSON.stringify(c.globKey)}: () => import(${JSON.stringify(c.importPath)})`,
+          `  ${JSON.stringify(c.globKey)}: () => import(${JSON.stringify(c.importPath)})`, // lgtm[js/bad-code-sanitization] - importPath validated by regex filter above; source is developer-controlled file system
       )
       .join(",\n");
 
