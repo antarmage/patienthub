@@ -8,6 +8,7 @@ import Upload from "@/pages/Upload";
 import Processing from "@/pages/Processing";
 import Dashboard from "@/pages/Dashboard";
 import Section from "@/pages/Section";
+import { getToken } from "@/lib/authStore";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,7 +17,7 @@ const queryClient = new QueryClient({
 });
 
 function useAuthState() {
-  const token = sessionStorage.getItem("saiviegene_token");
+  const token = getToken();
   const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
   const onboarded = localStorage.getItem("saiviegene_onboarded") === "true";
   return { token, subscribed, onboarded };
