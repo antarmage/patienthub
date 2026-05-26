@@ -54,7 +54,7 @@ export default function Section() {
   const [result, setResult] = useState<GenomeResult | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("saiviegene_token");
+    const token = sessionStorage.getItem("saiviegene_token");
     const patientId = localStorage.getItem("saiviegene_patient_id");
     (async () => {
       try {
