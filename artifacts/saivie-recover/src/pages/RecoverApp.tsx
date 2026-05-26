@@ -238,7 +238,7 @@ export default function RecoverApp() {
     queryKey: ["/api/postop/observations", selectedPatient?.id],
     queryFn: async () => {
       if (!token || !selectedPatient) return [];
-      const r = await api(`/api/postop/observations/${selectedPatient.id}`, {}, token);
+      const r = await api(`/api/postop/observations`, { headers: { "X-Patient-Id": String(selectedPatient.id) } }, token);
       if (r.status === 401) { handleLogout(); return []; }
       return r.json();
     },
