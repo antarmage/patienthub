@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dna, Upload as UploadIcon, FileText, CheckCircle2, AlertCircle, ChevronRight, Loader2, LogOut } from "lucide-react";
-import { getToken, clearToken } from "@/lib/authStore";
+import { useAuth } from "@/lib/authStore";
 
 const ACCEPTED = [".vcf", ".txt", ".csv", ".zip"];
 const ACCEPTED_LABELS = ["VCF", "23andMe", "AncestryDNA", "ZIP"];
@@ -18,6 +18,7 @@ export default function Upload() {
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [, navigate] = useLocation();
+  const { token, clearToken } = useAuth();
 
   function handleFile(f: File) {
     const ext = "." + f.name.split(".").pop()?.toLowerCase();
@@ -42,7 +43,6 @@ export default function Upload() {
     setError("");
 
     try {
-      const token = getToken();
       const patientId = localStorage.getItem("saiviegene_patient_id");
       const formData = new FormData();
       formData.append("file", file);
