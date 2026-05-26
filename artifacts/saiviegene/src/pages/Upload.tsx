@@ -41,7 +41,7 @@ export default function Upload() {
     setError("");
 
     try {
-      const token = localStorage.getItem("saiviegene_token");
+      const token = sessionStorage.getItem("saiviegene_token");
       const patientId = localStorage.getItem("saiviegene_patient_id");
       const formData = new FormData();
       formData.append("file", file);
@@ -63,7 +63,7 @@ export default function Upload() {
   }
 
   function handleLogout() {
-    localStorage.removeItem("saiviegene_token");
+    sessionStorage.removeItem("saiviegene_token");
     localStorage.removeItem("saiviegene_patient_id");
     navigate("/auth");
   }
