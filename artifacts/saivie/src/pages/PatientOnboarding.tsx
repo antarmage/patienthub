@@ -29,9 +29,11 @@ export default function PatientOnboarding() {
     const [submitted, setSubmitted] = useState(false);
 
     const { data: onboardingData, isLoading } = useQuery({
-        queryKey: [`/api/onboarding/${id}`],
+        queryKey: [`/api/onboarding`, id],
         queryFn: async () => {
-            const res = await fetch(`/api/onboarding/${id}`);
+            const res = await fetch(`/api/onboarding`, {
+                headers: { "X-Appointment-Id": String(id) },
+            });
             if (!res.ok) throw new Error("Failed to load onboarding session");
             return res.json();
         }
