@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { motion } from "framer-motion";
 import { Dna } from "lucide-react";
-import { getToken } from "@/lib/authStore";
+import { useAuth } from "@/lib/authStore";
 
 const STEPS = [
   "Parsing genome file…",
@@ -19,6 +19,7 @@ export default function Processing() {
   const [, navigate] = useLocation();
   const [stepIdx, setStepIdx] = useState(0);
   const [progress, setProgress] = useState(0);
+  const { token } = useAuth();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -33,7 +34,6 @@ export default function Processing() {
 
     async function poll() {
       try {
-        const token = getToken();
         const res = await fetch(`/api/genome/status/${jobId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -56,7 +56,7 @@ export default function Processing() {
       clearInterval(interval);
       clearInterval(polling);
     };
-  }, [jobId, navigate]);
+  }, [jobId, navigate, token]);
 
   const orbits = [80, 120, 160];
 
