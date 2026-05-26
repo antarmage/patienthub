@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, ShieldAlert, Activity, Pill, Sparkles, Dna } from "lucide-react";
+import { getToken } from "@/lib/authStore";
 
 interface GenomeResult {
   healthRisks: Array<{ name: string; risk: string; score: number; description: string }>;
@@ -54,7 +55,7 @@ export default function Section() {
   const [result, setResult] = useState<GenomeResult | null>(null);
 
   useEffect(() => {
-    const token = sessionStorage.getItem("saiviegene_token");
+    const token = getToken();
     const patientId = localStorage.getItem("saiviegene_patient_id");
     (async () => {
       try {
