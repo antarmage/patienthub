@@ -74,7 +74,7 @@ export default function Auth() {
     try {
       const cleaned = phone.replace(/\D/g, "");
       const data = await apiPost("/api/mobile/auth/login", { phone: `+${cleaned}`, otp });
-      localStorage.setItem("saiviegene_token", data.mobileToken);
+      sessionStorage.setItem("saiviegene_token", data.mobileToken);
       localStorage.setItem("saiviegene_patient_id", String(data.patient?.id ?? data.patientId ?? ""));
       const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
       navigate(subscribed ? "/dashboard" : "/paywall");
