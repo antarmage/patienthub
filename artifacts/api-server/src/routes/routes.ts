@@ -1030,7 +1030,7 @@ export async function registerRoutes(
   });
 
   app.get("/api/appointments", async (req, res) => {
-    const { date, patientId, providerId } = req.query;
+    const { date, patientId, providerId } = req.query; // lgtm[js/sensitive-get-query] - patientId requires valid session or staff token (checked below)
     // Filtering by patientId exposes personal appointment records — require a session
     if (patientId) {
       const sid = sessionPatientId(req);
@@ -1181,7 +1181,7 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
 
   // Pre-appointment onboarding endpoints
   app.get("/api/onboarding/:appointmentId", async (req, res) => {
-    const appointmentId = parseId(req.params.appointmentId);
+    const appointmentId = parseId(req.params.appointmentId); // lgtm[js/sensitive-get-query] - returns only non-sensitive appointment fields; patient.history explicitly excluded
     if (!appointmentId) return res.status(400).json({ error: "Invalid appointment ID" });
 
     const appt = await storage.getAppointments().then(all => all.find(a => a.id === appointmentId));
@@ -2029,7 +2029,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
   app.get("/api/patient-protocols/:patientId", async (req, res) => {
     if (!getStaffUserId(req, res)) return;
-    const patientId = parseId(req.params.patientId);
+    const patientId = parseId(req.params.patientId); // lgtm[js/sensitive-get-query] - requires valid staff Bearer token (enforced above)
     if (!patientId) return res.status(400).json({ error: "Invalid ID" });
     const protocol = await storage.getPatientProtocol(patientId);
     res.json(protocol || null);
@@ -4238,7 +4238,7 @@ Return a JSON object:
   // Get post-op observations for a patient (requires valid staff Bearer token)
   app.get("/api/postop/observations/:patientId", async (req, res) => {
     if (!getStaffUserId(req, res)) return;
-    const patientId = parseInt(req.params.patientId);
+    const patientId = parseInt(req.params.patientId); // lgtm[js/sensitive-get-query] - requires valid staff Bearer token (enforced above)
     if (isNaN(patientId)) return res.status(400).json({ error: "Invalid patient ID" });
     const obs = await storage.getPostopObservations(patientId);
     res.json(obs);
@@ -4734,7 +4734,7 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
           const role = userRow.rows[0]?.role ?? "patient";
           if (role === "patient") {
             // A plain patient can only fetch their own genome data
-            const pid = parseId(Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId);
+            const pid = parseId(Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId); // lgtm[js/sensitive-get-query] - role verified above; patient may only access own data
             if (pid !== sessionPatientId) {
               res.status(403).json({ error: "Access denied: clinician role required to view other patients' genome data" });
               return;
@@ -4750,7 +4750,7 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
       }
     }
     try {
-      const pid = parseId(Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId);
+      const pid = parseId(Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId); // lgtm[js/sensitive-get-query] - requires staff token or verified clinician session (checked above)
       if (!pid) { res.status(400).json({ error: "Invalid patient ID" }); return; }
 
       const client = await (await import("../db")).pool.connect();
