@@ -52,10 +52,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [, navigate] = useLocation();
-  const { token, clearToken } = useAuth();
+  const { token, patientId, clearToken } = useAuth();
 
   useEffect(() => {
-    const patientId = localStorage.getItem("saiviegene_patient_id");
     if (!token) { navigate("/auth"); return; }
 
     (async () => {
@@ -75,7 +74,6 @@ export default function Dashboard() {
   }, []);
 
   async function handleDownload() {
-    const patientId = localStorage.getItem("saiviegene_patient_id");
     setDownloading(true);
     try {
       const res = await fetch(`/api/genome/report${patientId ? `?patientId=${patientId}` : ""}`, {
@@ -96,7 +94,6 @@ export default function Dashboard() {
 
   function handleLogout() {
     clearToken();
-    localStorage.removeItem("saiviegene_patient_id");
     navigate("/auth");
   }
 
