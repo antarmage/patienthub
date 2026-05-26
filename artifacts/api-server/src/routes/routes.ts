@@ -1227,8 +1227,11 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
     const challenge = req.query["hub.challenge"];
     const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || "saivie_webhook_verify";
     if (mode === "subscribe" && token === verifyToken) {
-      console.log("WhatsApp webhook verified");
-      res.status(200).send(challenge);
+      // Echo challenge — Meta sends a numeric string; validate format to prevent reflected injection
+      const safeChallenge = typeof challenge === "string" && /^\d{1,20}$/.test(challenge)
+        ? challenge : "";
+      if (!safeChallenge) { res.status(400).send(""); return; }
+      res.status(200).send(safeChallenge);
     } else {
       res.status(403).json({ error: "Verification failed" });
     }
@@ -2798,9 +2801,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   }
 
   app.get("/api/pregnancy-metrics", async (req, res) => {
-    const patientId = parseId(req.query.patientId as string);
-    if (!patientId) return res.status(400).json({ error: "patientId required" });
-    if (!assertPatientSession(req, res, patientId)) return;
+    const patientId = sessionPatientId(req);
+    if (!patientId) return res.status(403).json({ error: "Forbidden" });
     const metrics = await storage.getPregnancyMetrics(patientId);
     res.json(metrics);
   });
@@ -2846,9 +2848,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.get("/api/water-logs", async (req, res) => {
-    const patientId = parseId(req.query.patientId as string);
-    if (!patientId) return res.status(400).json({ error: "patientId required" });
-    if (!assertPatientSession(req, res, patientId)) return;
+    const patientId = sessionPatientId(req);
+    if (!patientId) return res.status(403).json({ error: "Forbidden" });
     const date = req.query.date as string | undefined;
     const logs = await storage.getWaterLogs(patientId, date);
     res.json(logs);
@@ -2877,9 +2878,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.get("/api/medication-logs", async (req, res) => {
-    const patientId = parseId(req.query.patientId as string);
-    if (!patientId) return res.status(400).json({ error: "patientId required" });
-    if (!assertPatientSession(req, res, patientId)) return;
+    const patientId = sessionPatientId(req);
+    if (!patientId) return res.status(403).json({ error: "Forbidden" });
     const date = req.query.date as string | undefined;
     const logs = await storage.getMedicationLogs(patientId, date);
     res.json(logs);
@@ -2914,9 +2914,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.get("/api/patient-documents", async (req, res) => {
-    const patientId = parseId(req.query.patientId as string);
-    if (!patientId) return res.status(400).json({ error: "patientId required" });
-    if (!assertPatientSession(req, res, patientId)) return;
+    const patientId = sessionPatientId(req);
+    if (!patientId) return res.status(403).json({ error: "Forbidden" });
     const docs = await storage.getPatientDocuments(patientId);
     res.json(docs.map((d: any) => ({ ...d, fileData: undefined })));
   });
@@ -4583,8 +4582,27 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
     },
   );
 
+  // Genome API rate limiter: 30 requests per minute per IP to prevent abuse of compute-heavy endpoints
+  const _genomeRateMap = new Map<string, { count: number; resetAt: number }>();
+  function genomeRateLimit(req: Request, res: Response): boolean {
+    const ip = req.ip ?? req.socket?.remoteAddress ?? "unknown";
+    const now = Date.now();
+    const entry = _genomeRateMap.get(ip);
+    if (!entry || entry.resetAt < now) {
+      _genomeRateMap.set(ip, { count: 1, resetAt: now + 60_000 });
+      return true;
+    }
+    if (entry.count >= 30) {
+      res.status(429).json({ error: "Too many requests. Please try again later." });
+      return false;
+    }
+    entry.count += 1;
+    return true;
+  }
+
   // GET /api/genome/status/:jobId — poll analysis status
   app.get("/api/genome/status/:jobId", async (req: Request, res: Response) => {
+    if (!genomeRateLimit(req, res)) return;
     const patientId = getMobilePatientId(req, res);
     if (!patientId) return;
 
@@ -4624,6 +4642,7 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
 
   // GET /api/genome/analyze/:jobId — alias for status polling (matches expected contract)
   app.get("/api/genome/analyze/:jobId", async (req: Request, res: Response) => {
+    if (!genomeRateLimit(req, res)) return;
     const patientId = getMobilePatientId(req, res);
     if (!patientId) return;
     const jobId = Array.isArray(req.params.jobId) ? req.params.jobId[0] : req.params.jobId;
@@ -4650,6 +4669,7 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
 
   // GET /api/genome/results — get most recent analysis results for the authenticated patient
   app.get("/api/genome/results", async (req: Request, res: Response) => {
+    if (!genomeRateLimit(req, res)) return;
     const patientId = getMobilePatientId(req, res);
     if (!patientId) return;
 
@@ -4693,6 +4713,7 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
   // GET /api/genome/results/patient/:patientId — clinician portal: get patient genome insights.
   // Access requires: valid staff Bearer token OR a clinician-role session user.
   app.get("/api/genome/results/patient/:patientId", async (req: Request, res: Response) => {
+    if (!genomeRateLimit(req, res)) return;
     const auth = (req.headers["authorization"] ?? "") as string;
     const hasStaffToken = auth.startsWith("Bearer ") && staffAuthTokens.has(auth.slice(7));
     const sessionPatientId = ((req as any).session)?.patientId as number | undefined;
@@ -4774,6 +4795,7 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
 
   // GET /api/genome/report — generate and download an HTML report
   app.get("/api/genome/report", async (req: Request, res: Response) => {
+    if (!genomeRateLimit(req, res)) return;
     const patientId = getMobilePatientId(req, res);
     if (!patientId) return;
 
