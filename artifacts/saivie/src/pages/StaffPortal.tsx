@@ -1649,7 +1649,7 @@ export default function StaffPortal() {
         fetch(`/api/patients/${patient.id}/medications`),
         fetch(`/api/patients/${patient.id}/clinical-notes`),
         fetch(`/api/appointments`, { headers: { "X-Patient-Id": String(patient.id) } }),
-        fetch(`/api/patient-protocols/${patient.id}`),
+        fetch(`/api/patient-protocols`, { headers: { "X-Patient-Id": String(patient.id) } }),
       ]);
       const [visits, medications, notes, appts, protocol] = await Promise.all([
         visitsRes.ok ? visitsRes.json() : [],
