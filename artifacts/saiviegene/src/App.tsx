@@ -19,9 +19,16 @@ const queryClient = new QueryClient({
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null);
+  const [patientId, setPatientIdState] = useState<string | null>(null);
   return (
     <AuthContext.Provider
-      value={{ token, setToken: setTokenState, clearToken: () => setTokenState(null) }}
+      value={{
+        token,
+        patientId,
+        setToken: setTokenState,
+        setPatientId: setPatientIdState,
+        clearToken: () => { setTokenState(null); setPatientIdState(null); },
+      }}
     >
       {children}
     </AuthContext.Provider>
