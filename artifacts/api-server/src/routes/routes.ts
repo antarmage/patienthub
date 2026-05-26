@@ -1030,19 +1030,22 @@ export async function registerRoutes(
   });
 
   app.get("/api/appointments", async (req, res) => {
-    const { date, patientId, providerId } = req.query; // lgtm[js/sensitive-get-query] - patientId requires valid session or staff token (checked below)
-    // Filtering by patientId exposes personal appointment records — require a session
-    if (patientId) {
-      const sid = sessionPatientId(req);
-      const isStaff = !!(req.headers["x-staff-token"] && staffAuthTokens.has(req.headers["x-staff-token"] as string));
-      if (!sid && !isStaff) return res.status(403).json({ error: "Authentication required" });
-    }
+    const { date, providerId } = req.query;
+    // patientId must NOT come from the URL query string (CodeQL js/sensitive-get-query).
+    // Derive it from the authenticated session, or from the X-Patient-Id header for
+    // staff requests. The URL query param is intentionally not supported.
+    const sid = sessionPatientId(req);
+    const isStaff = !!(req.headers["x-staff-token"] && staffAuthTokens.has(req.headers["x-staff-token"] as string));
+    const headerPid = parseId((req.headers["x-patient-id"] as string) ?? "");
+    const filterPatientId: number | null = sid ?? (isStaff && headerPid ? headerPid : null);
+
     let appts;
     if (date) {
       appts = await storage.getAppointmentsByDate(date as string);
-    } else if (patientId) {
-      appts = await storage.getAppointmentsByPatient(parseInt(patientId as string));
+    } else if (filterPatientId) {
+      appts = await storage.getAppointmentsByPatient(filterPatientId);
     } else {
+      if (!isStaff) return res.status(403).json({ error: "Authentication required" });
       appts = await storage.getAppointments();
     }
     if (providerId) {
