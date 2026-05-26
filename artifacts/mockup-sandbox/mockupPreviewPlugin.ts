@@ -53,6 +53,8 @@ export function mockupPreviewPlugin(): Plugin {
 
   function generateSource(components: Array<DiscoveredComponent>): string {
     const entries = components
+      .filter((c) => /^[./\w-]+\.tsx$/.test(c.importPath) && !c.importPath.includes("../..")
+      )
       .map(
         (c) =>
           `  ${JSON.stringify(c.globKey)}: () => import(${JSON.stringify(c.importPath)})`,
