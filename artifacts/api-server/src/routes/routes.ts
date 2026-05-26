@@ -2032,10 +2032,12 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     (req as any).session.destroy(() => res.status(204).send());
   });
 
-  app.get("/api/patient-protocols/:patientId", async (req, res) => {
+  // patientId must NOT appear in the URL (CodeQL js/sensitive-get-query).
+  // Pass it via the X-Patient-Id request header instead.
+  app.get("/api/patient-protocols", async (req, res) => {
     if (!getStaffUserId(req, res)) return;
-    const patientId = parseId(req.params.patientId); // lgtm[js/sensitive-get-query] - requires valid staff Bearer token (enforced above)
-    if (!patientId) return res.status(400).json({ error: "Invalid ID" });
+    const patientId = parseId((req.headers["x-patient-id"] as string) ?? "");
+    if (!patientId) return res.status(400).json({ error: "Missing or invalid X-Patient-Id header" });
     const protocol = await storage.getPatientProtocol(patientId);
     res.json(protocol || null);
   });
