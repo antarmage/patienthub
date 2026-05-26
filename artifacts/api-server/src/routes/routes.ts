@@ -4238,11 +4238,13 @@ Return a JSON object:
     res.json(results);
   });
 
-  // Get post-op observations for a patient (requires valid staff Bearer token)
-  app.get("/api/postop/observations/:patientId", async (req, res) => {
+  // Get post-op observations for a patient (requires valid staff Bearer token).
+  // patientId must NOT appear in the URL (CodeQL js/sensitive-get-query).
+  // Pass it via the X-Patient-Id request header instead.
+  app.get("/api/postop/observations", async (req, res) => {
     if (!getStaffUserId(req, res)) return;
-    const patientId = parseInt(req.params.patientId); // lgtm[js/sensitive-get-query] - requires valid staff Bearer token (enforced above)
-    if (isNaN(patientId)) return res.status(400).json({ error: "Invalid patient ID" });
+    const patientId = parseId((req.headers["x-patient-id"] as string) ?? "");
+    if (!patientId) return res.status(400).json({ error: "Missing or invalid X-Patient-Id header" });
     const obs = await storage.getPostopObservations(patientId);
     res.json(obs);
   });
