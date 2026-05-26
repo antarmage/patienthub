@@ -1,4 +1,5 @@
-import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
+import { useState } from "react";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import NotFound from "@/pages/not-found";
 import Onboarding from "@/pages/Onboarding";
@@ -8,7 +9,7 @@ import Upload from "@/pages/Upload";
 import Processing from "@/pages/Processing";
 import Dashboard from "@/pages/Dashboard";
 import Section from "@/pages/Section";
-import { getToken } from "@/lib/authStore";
+import { AuthContext, useAuth } from "@/lib/authStore";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,23 +17,29 @@ const queryClient = new QueryClient({
   },
 });
 
-function useAuthState() {
-  const token = getToken();
-  const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
-  const onboarded = localStorage.getItem("saiviegene_onboarded") === "true";
-  return { token, subscribed, onboarded };
+function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [token, setTokenState] = useState<string | null>(null);
+  return (
+    <AuthContext.Provider
+      value={{ token, setToken: setTokenState, clearToken: () => setTokenState(null) }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { token, onboarded } = useAuthState();
-  const [location] = useLocation();
+  const { token } = useAuth();
+  const onboarded = localStorage.getItem("saiviegene_onboarded") === "true";
   if (!onboarded) return <Redirect to="/" />;
   if (!token) return <Redirect to="/auth" />;
   return <>{children}</>;
 }
 
 function RequireSubscription({ children }: { children: React.ReactNode }) {
-  const { token, subscribed, onboarded } = useAuthState();
+  const { token } = useAuth();
+  const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
+  const onboarded = localStorage.getItem("saiviegene_onboarded") === "true";
   if (!onboarded) return <Redirect to="/" />;
   if (!token) return <Redirect to="/auth" />;
   if (!subscribed) return <Redirect to="/paywall" />;
@@ -40,7 +47,9 @@ function RequireSubscription({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { token, subscribed, onboarded } = useAuthState();
+  const { token } = useAuth();
+  const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
+  const onboarded = localStorage.getItem("saiviegene_onboarded") === "true";
 
   return (
     <Switch>
@@ -80,9 +89,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-        <div className="mobile-container">
-          <AppRoutes />
-        </div>
+        <AuthProvider>
+          <div className="mobile-container">
+            <AppRoutes />
+          </div>
+        </AuthProvider>
       </WouterRouter>
     </QueryClientProvider>
   );
