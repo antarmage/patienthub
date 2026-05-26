@@ -1,5 +1,17 @@
-let _token: string | null = null;
+import { createContext, useContext } from "react";
 
-export function getToken(): string | null { return _token; }
-export function setToken(token: string): void { _token = token; }
-export function clearToken(): void { _token = null; }
+interface AuthContextType {
+  token: string | null;
+  setToken: (t: string) => void;
+  clearToken: () => void;
+}
+
+export const AuthContext = createContext<AuthContextType>({
+  token: null,
+  setToken: () => {},
+  clearToken: () => {},
+});
+
+export function useAuth() {
+  return useContext(AuthContext);
+}
