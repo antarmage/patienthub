@@ -4710,9 +4710,11 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
     }
   });
 
-  // GET /api/genome/results/patient/:patientId — clinician portal: get patient genome insights.
+  // GET /api/genome/results/patient — clinician portal: get patient genome insights.
+  // patientId must NOT appear in the URL (CodeQL js/sensitive-get-query).
+  // Pass it via the X-Patient-Id request header instead.
   // Access requires: valid staff Bearer token OR a clinician-role session user.
-  app.get("/api/genome/results/patient/:patientId", genomeLimiter, async (req: Request, res: Response) => {
+  app.get("/api/genome/results/patient", genomeLimiter, async (req: Request, res: Response) => {
     const auth = (req.headers["authorization"] ?? "") as string;
     const hasStaffToken = auth.startsWith("Bearer ") && staffAuthTokens.has(auth.slice(7));
     const sessionPatientId = ((req as any).session)?.patientId as number | undefined;
@@ -4720,6 +4722,9 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
       res.status(401).json({ error: "Authentication required" });
       return;
     }
+    // Derive patientId from X-Patient-Id header — never from URL params.
+    const pid = parseId((req.headers["x-patient-id"] as string) ?? "");
+    if (!pid) { res.status(400).json({ error: "Missing or invalid X-Patient-Id header" }); return; }
     // If accessed via session (not staff token), verify the session user is a clinician.
     if (!hasStaffToken && sessionPatientId) {
       try {
@@ -4732,20 +4737,13 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
              LIMIT 1`,
             [sessionPatientId]
           );
-          // Allow clinician role or fall through to allow portal sessions broadly
-          // (clinician portal sessions are valid for read-only genome access)
           const role = userRow.rows[0]?.role ?? "patient";
-          if (role === "patient") {
-            // A plain patient can only fetch their own genome data
-            const pid = parseId(Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId); // lgtm[js/sensitive-get-query] - role verified above; patient may only access own data
-            if (pid !== sessionPatientId) {
-              res.status(403).json({ error: "Access denied: clinician role required to view other patients' genome data" });
-              return;
-            }
+          if (role === "patient" && pid !== sessionPatientId) {
+            res.status(403).json({ error: "Access denied: clinician role required to view other patients' genome data" });
+            return;
           }
         } finally { authClient.release(); }
       } catch {
-        // DB check failed — fall through conservatively (deny unless staff token)
         if (!hasStaffToken) {
           res.status(403).json({ error: "Unable to verify access permissions" });
           return;
@@ -4753,8 +4751,6 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
       }
     }
     try {
-      const pid = parseId(Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId); // lgtm[js/sensitive-get-query] - requires staff token or verified clinician session (checked above)
-      if (!pid) { res.status(400).json({ error: "Invalid patient ID" }); return; }
 
       const client = await (await import("../db")).pool.connect();
       try {
