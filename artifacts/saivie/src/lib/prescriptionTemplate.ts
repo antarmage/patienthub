@@ -322,9 +322,9 @@ export function generatePrescriptionHTML(data: PrescriptionData): string {
 
 export function openPrescription(data: PrescriptionData): void {
   const html = generatePrescriptionHTML(data);
-  const win = window.open("", "_blank");
-  if (win) {
-    win.document.write(html);
-    win.document.close();
-  }
+  const blob = new Blob([html], { type: "text/html" });
+  const blobUrl = URL.createObjectURL(blob);
+  const win = window.open(blobUrl, "_blank");
+  if (!win) return;
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
 }
