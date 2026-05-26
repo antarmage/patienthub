@@ -156,8 +156,13 @@ export default function PatientPortal() {
   });
 
   const { data: patientAppointments } = useQuery({
-    queryKey: [`/api/appointments?patientId=${patient?.id}`],
-    queryFn: async () => { const r = await fetch(`/api/appointments?patientId=${patient?.id}`); return r.json(); },
+    queryKey: [`/api/appointments/patient/${patient?.id}`],
+    queryFn: async () => {
+      const r = await fetch(`/api/appointments`, {
+        headers: { "X-Patient-Id": String(patient?.id ?? "") },
+      });
+      return r.json();
+    },
     enabled: !!patient?.id,
   });
 
@@ -171,7 +176,7 @@ export default function PatientPortal() {
       return r.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/appointments?patientId=${patient?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/appointments/patient/${patient?.id}`] });
     },
   });
 
