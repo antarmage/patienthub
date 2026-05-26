@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Dna, Phone, ArrowLeft, Loader2 } from "lucide-react";
+import { setToken } from "@/lib/authStore";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const API = BASE.startsWith("/saiviegene") ? "" : "";
@@ -74,7 +75,7 @@ export default function Auth() {
     try {
       const cleaned = phone.replace(/\D/g, "");
       const data = await apiPost("/api/mobile/auth/login", { phone: `+${cleaned}`, otp });
-      sessionStorage.setItem("saiviegene_token", data.mobileToken);
+      setToken(data.mobileToken);
       localStorage.setItem("saiviegene_patient_id", String(data.patient?.id ?? data.patientId ?? ""));
       const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
       navigate(subscribed ? "/dashboard" : "/paywall");
