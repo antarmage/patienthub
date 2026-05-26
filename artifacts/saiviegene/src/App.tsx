@@ -16,7 +16,7 @@ const queryClient = new QueryClient({
 });
 
 function useAuthState() {
-  const token = localStorage.getItem("saiviegene_token");
+  const token = sessionStorage.getItem("saiviegene_token");
   const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
   const onboarded = localStorage.getItem("saiviegene_onboarded") === "true";
   return { token, subscribed, onboarded };
