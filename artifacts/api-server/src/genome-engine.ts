@@ -112,8 +112,9 @@ function parse23andMe(content: string): string[] {
 function deterministicSeed(rsids: string[]): number {
   let hash = 0;
   for (const id of rsids.slice(0, 50)) {
-    for (let i = 0; i < id.length; i++) {
-      hash = (hash * 31 + id.charCodeAt(i)) | 0;
+    const bounded = id.slice(0, 64); // cap string length to prevent DoS on malformed rsids
+    for (let i = 0; i < bounded.length; i++) {
+      hash = (hash * 31 + bounded.charCodeAt(i)) | 0;
     }
   }
   return Math.abs(hash);
