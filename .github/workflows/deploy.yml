@@ -11,6 +11,9 @@ on:
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   AWS_REGION:       ap-south-1          # Mumbai — change to your region
   ECR_REPOSITORY:   saivie-api
