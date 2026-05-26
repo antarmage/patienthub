@@ -175,7 +175,7 @@ export default function StaffPatientProtocol() {
     queryKey: ['/api/patient-protocols', patientId],
     queryFn: async () => {
       if (!patientId) return null;
-      const res = await fetch(`/api/patient-protocols/${patientId}`);
+      const res = await fetch(`/api/patient-protocols`, { headers: { "X-Patient-Id": String(patientId) } });
       if (!res.ok) return null;
       return res.json();
     },
