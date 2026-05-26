@@ -207,7 +207,7 @@ export class WhatsAppService {
                 throw new Error(data.error?.message || "Failed to send WhatsApp message");
             }
 
-            console.log(`WhatsApp message sent to ${payload.to}:`, data);
+            console.log("WhatsApp message sent successfully:", data);
             return data;
         } catch (error: any) {
             console.error("WhatsApp integration error:", error.message);
