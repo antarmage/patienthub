@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dna, ShieldCheck, FlaskConical, ChevronRight } from "lucide-react";
+import { getToken } from "@/lib/authStore";
 
 const slides = [
   {
@@ -41,7 +42,7 @@ export default function Onboarding() {
   function handleNext() {
     if (isLast) {
       localStorage.setItem("saiviegene_onboarded", "true");
-      const token = sessionStorage.getItem("saiviegene_token");
+      const token = getToken();
       if (token) {
         const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
         navigate(subscribed ? "/dashboard" : "/paywall");
@@ -55,7 +56,7 @@ export default function Onboarding() {
 
   function handleSkip() {
     localStorage.setItem("saiviegene_onboarded", "true");
-    const token = sessionStorage.getItem("saiviegene_token");
+    const token = getToken();
     if (token) {
       const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
       navigate(subscribed ? "/dashboard" : "/paywall");
