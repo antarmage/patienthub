@@ -1030,6 +1030,12 @@ export async function registerRoutes(
 
   app.get("/api/appointments", async (req, res) => {
     const { date, patientId, providerId } = req.query;
+    // Filtering by patientId exposes personal appointment records — require a session
+    if (patientId) {
+      const sid = sessionPatientId(req);
+      const isStaff = !!(req.headers["x-staff-token"] && staffAuthTokens.has(req.headers["x-staff-token"] as string));
+      if (!sid && !isStaff) return res.status(403).json({ error: "Authentication required" });
+    }
     let appts;
     if (date) {
       appts = await storage.getAppointmentsByDate(date as string);
@@ -1183,9 +1189,10 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
     const patient = await storage.getPatient(appt.patientId!);
     if (!patient) return res.status(404).json({ error: "Patient not found" });
 
+    // Return only non-sensitive fields — history is restricted to authenticated staff
     res.json({
       appointment: { id: appt.id, date: appt.date, time: appt.time },
-      patient: { id: patient.id, name: patient.name, history: patient.history }
+      patient: { id: patient.id, name: patient.name }
     });
   });
 
@@ -2020,6 +2027,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.get("/api/patient-protocols/:patientId", async (req, res) => {
+    if (!getStaffUserId(req, res)) return;
     const patientId = parseId(req.params.patientId);
     if (!patientId) return res.status(400).json({ error: "Invalid ID" });
     const protocol = await storage.getPatientProtocol(patientId);
