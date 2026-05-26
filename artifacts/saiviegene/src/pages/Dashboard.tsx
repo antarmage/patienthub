@@ -53,7 +53,7 @@ export default function Dashboard() {
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    const token = localStorage.getItem("saiviegene_token");
+    const token = sessionStorage.getItem("saiviegene_token");
     const patientId = localStorage.getItem("saiviegene_patient_id");
     if (!token) { navigate("/auth"); return; }
 
@@ -74,7 +74,7 @@ export default function Dashboard() {
   }, []);
 
   async function handleDownload() {
-    const token = localStorage.getItem("saiviegene_token");
+    const token = sessionStorage.getItem("saiviegene_token");
     const patientId = localStorage.getItem("saiviegene_patient_id");
     setDownloading(true);
     try {
@@ -95,7 +95,7 @@ export default function Dashboard() {
   }
 
   function handleLogout() {
-    localStorage.removeItem("saiviegene_token");
+    sessionStorage.removeItem("saiviegene_token");
     localStorage.removeItem("saiviegene_patient_id");
     navigate("/auth");
   }
@@ -216,7 +216,7 @@ export default function Dashboard() {
                 style={{ background: "hsl(225 35% 11%)", border: "1px solid hsl(225 25% 16%)" }}
               >
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: `${sec.color.replace("hsl(", "hsl(").slice(0, -1)} / 0.12)` }}>
+                  style={{ background: `${sec.color.slice(0, -1)} / 0.12)` }}>
                   <Icon className="w-6 h-6" style={{ color: sec.color }} strokeWidth={1.5} />
                 </div>
                 <div className="flex-1 min-w-0">
