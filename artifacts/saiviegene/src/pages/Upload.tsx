@@ -18,7 +18,7 @@ export default function Upload() {
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [, navigate] = useLocation();
-  const { token, clearToken } = useAuth();
+  const { token, patientId, clearToken } = useAuth();
 
   function handleFile(f: File) {
     const ext = "." + f.name.split(".").pop()?.toLowerCase();
@@ -43,7 +43,6 @@ export default function Upload() {
     setError("");
 
     try {
-      const patientId = localStorage.getItem("saiviegene_patient_id");
       const formData = new FormData();
       formData.append("file", file);
       if (patientId) formData.append("patientId", patientId);
@@ -65,7 +64,6 @@ export default function Upload() {
 
   function handleLogout() {
     clearToken();
-    localStorage.removeItem("saiviegene_patient_id");
     navigate("/auth");
   }
 
