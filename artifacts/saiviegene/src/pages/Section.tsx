@@ -53,10 +53,9 @@ export default function Section() {
   const { key } = useParams<{ key: string }>();
   const [, navigate] = useLocation();
   const [result, setResult] = useState<GenomeResult | null>(null);
-  const { token } = useAuth();
+  const { token, patientId } = useAuth();
 
   useEffect(() => {
-    const patientId = localStorage.getItem("saiviegene_patient_id");
     (async () => {
       try {
         const res = await fetch(`/api/genome/results${patientId ? `?patientId=${patientId}` : ""}`, {
