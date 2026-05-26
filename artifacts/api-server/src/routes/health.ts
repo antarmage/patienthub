@@ -3,6 +3,24 @@ import { pool } from "../db";
 
 const router: IRouter = Router();
 
+// Rate limiter: 120 requests/min per IP — generous for ECS/ALB probes, blocks DoS scanners
+const _healthRateMap = new Map<string, { count: number; resetAt: number }>();
+function healthRateLimit(req: Request, res: Response): boolean {
+  const ip = req.ip ?? req.socket?.remoteAddress ?? "unknown";
+  const now = Date.now();
+  const entry = _healthRateMap.get(ip);
+  if (!entry || entry.resetAt < now) {
+    _healthRateMap.set(ip, { count: 1, resetAt: now + 60_000 });
+    return true;
+  }
+  if (entry.count >= 120) {
+    res.status(429).json({ error: "Too many requests" });
+    return false;
+  }
+  entry.count += 1;
+  return true;
+}
+
 /**
  * GET /api/healthz
  *
@@ -17,6 +35,7 @@ const router: IRouter = Router();
  * Intentionally lightweight — no auth, no heavy queries.
  */
 router.get("/healthz", async (_req: Request, res: Response) => {
+  if (!healthRateLimit(_req, res)) return;
   const start = Date.now();
 
   try {
