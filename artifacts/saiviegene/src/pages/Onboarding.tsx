@@ -41,7 +41,7 @@ export default function Onboarding() {
   function handleNext() {
     if (isLast) {
       localStorage.setItem("saiviegene_onboarded", "true");
-      const token = localStorage.getItem("saiviegene_token");
+      const token = sessionStorage.getItem("saiviegene_token");
       if (token) {
         const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
         navigate(subscribed ? "/dashboard" : "/paywall");
@@ -55,7 +55,7 @@ export default function Onboarding() {
 
   function handleSkip() {
     localStorage.setItem("saiviegene_onboarded", "true");
-    const token = localStorage.getItem("saiviegene_token");
+    const token = sessionStorage.getItem("saiviegene_token");
     if (token) {
       const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
       navigate(subscribed ? "/dashboard" : "/paywall");
