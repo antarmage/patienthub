@@ -29,7 +29,7 @@ export default function Auth() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendSuccess, setResendSuccess] = useState(false);
   const [, navigate] = useLocation();
-  const { setToken } = useAuth();
+  const { setToken, setPatientId } = useAuth();
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -77,7 +77,7 @@ export default function Auth() {
       const cleaned = phone.replace(/\D/g, "");
       const data = await apiPost("/api/mobile/auth/login", { phone: `+${cleaned}`, otp });
       setToken(data.mobileToken);
-      localStorage.setItem("saiviegene_patient_id", String(data.patient?.id ?? data.patientId ?? ""));
+      setPatientId(String(data.patient?.id ?? data.patientId ?? ""));
       const subscribed = localStorage.getItem("saiviegene_subscribed") === "true";
       navigate(subscribed ? "/dashboard" : "/paywall");
     } catch (e: unknown) {
