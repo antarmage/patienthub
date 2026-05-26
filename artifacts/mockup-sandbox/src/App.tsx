@@ -36,7 +36,9 @@ function PreviewRenderer({
     setError(null);
 
     async function loadComponent(): Promise<void> {
-      const key = `./components/mockups/${componentPath}.tsx`;
+      // Keys from import.meta.glob are relative to src/.generated/, so the
+      // prefix is "../components/mockups/" (not "./components/mockups/").
+      const key = `../components/mockups/${componentPath}.tsx`;
       const loader = modules[key];
       if (!loader) {
         setError(`No component found at ${componentPath}.tsx`);
