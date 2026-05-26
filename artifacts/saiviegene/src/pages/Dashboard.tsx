@@ -6,6 +6,7 @@ import {
   Upload, FileDown, ChevronRight, LogOut, RefreshCw,
   AlertTriangle, CheckCircle2, Info
 } from "lucide-react";
+import { getToken, clearToken } from "@/lib/authStore";
 
 interface GenomeResult {
   id: number;
@@ -53,7 +54,7 @@ export default function Dashboard() {
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    const token = sessionStorage.getItem("saiviegene_token");
+    const token = getToken();
     const patientId = localStorage.getItem("saiviegene_patient_id");
     if (!token) { navigate("/auth"); return; }
 
@@ -74,7 +75,7 @@ export default function Dashboard() {
   }, []);
 
   async function handleDownload() {
-    const token = sessionStorage.getItem("saiviegene_token");
+    const token = getToken();
     const patientId = localStorage.getItem("saiviegene_patient_id");
     setDownloading(true);
     try {
@@ -95,7 +96,7 @@ export default function Dashboard() {
   }
 
   function handleLogout() {
-    sessionStorage.removeItem("saiviegene_token");
+    clearToken();
     localStorage.removeItem("saiviegene_patient_id");
     navigate("/auth");
   }
