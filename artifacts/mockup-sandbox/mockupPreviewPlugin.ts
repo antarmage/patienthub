@@ -52,13 +52,18 @@ export function mockupPreviewPlugin(): Plugin {
   }
 
   function generateSource(components: Array<DiscoveredComponent>): string {
+    // Use a strict capture-group regex so only the captured (validated) portion of
+    // importPath flows into the generated code — never the original tainted string.
+    // The pattern allows at most one leading "../" segment, then only word/dash
+    // directory names, preventing any path-traversal injection.
+    const SAFE_IMPORT = /^((\.\.?\/)?(?:[\w-]+\/)*[\w-]+\.tsx)$/;
     const entries = components
-      .filter((c) => /^[./\w-]+\.tsx$/.test(c.importPath) && !c.importPath.includes("../..")
-      )
-      .map(
-        (c) =>
-          `  ${JSON.stringify(c.globKey)}: () => import(${JSON.stringify(c.importPath)})`, // lgtm[js/bad-code-sanitization] - importPath validated by regex filter above; source is developer-controlled file system
-      )
+      .flatMap((c) => {
+        const m = SAFE_IMPORT.exec(c.importPath);
+        if (!m) return [];
+        const safePath = m[1];
+        return [`  ${JSON.stringify(c.globKey)}: () => import(${JSON.stringify(safePath)})`];
+      })
       .join(",\n");
 
     return [
