@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { motion } from "framer-motion";
 import { Dna } from "lucide-react";
+import { getToken } from "@/lib/authStore";
 
 const STEPS = [
   "Parsing genome file…",
@@ -32,7 +33,7 @@ export default function Processing() {
 
     async function poll() {
       try {
-        const token = sessionStorage.getItem("saiviegene_token");
+        const token = getToken();
         const res = await fetch(`/api/genome/status/${jobId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
