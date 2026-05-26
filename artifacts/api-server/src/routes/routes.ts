@@ -1182,10 +1182,12 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
     }
   });
 
-  // Pre-appointment onboarding endpoints
-  app.get("/api/onboarding/:appointmentId", async (req, res) => {
-    const appointmentId = parseId(req.params.appointmentId); // lgtm[js/sensitive-get-query] - returns only non-sensitive appointment fields; patient.history explicitly excluded
-    if (!appointmentId) return res.status(400).json({ error: "Invalid appointment ID" });
+  // Pre-appointment onboarding endpoints.
+  // appointmentId must NOT appear in the URL (CodeQL js/sensitive-get-query).
+  // Pass it via the X-Appointment-Id request header instead.
+  app.get("/api/onboarding", async (req, res) => {
+    const appointmentId = parseId((req.headers["x-appointment-id"] as string) ?? "");
+    if (!appointmentId) return res.status(400).json({ error: "Missing or invalid X-Appointment-Id header" });
 
     const appt = await storage.getAppointments().then(all => all.find(a => a.id === appointmentId));
     if (!appt) return res.status(404).json({ error: "Appointment not found" });
