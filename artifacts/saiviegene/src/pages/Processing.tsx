@@ -32,7 +32,7 @@ export default function Processing() {
 
     async function poll() {
       try {
-        const token = localStorage.getItem("saiviegene_token");
+        const token = sessionStorage.getItem("saiviegene_token");
         const res = await fetch(`/api/genome/status/${jobId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
