@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import rateLimit from "express-rate-limit";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
 import fs from "fs";
@@ -4590,27 +4591,17 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
     },
   );
 
-  // Genome API rate limiter: 30 requests per minute per IP to prevent abuse of compute-heavy endpoints
-  const _genomeRateMap = new Map<string, { count: number; resetAt: number }>();
-  function genomeRateLimit(req: Request, res: Response): boolean {
-    const ip = req.ip ?? req.socket?.remoteAddress ?? "unknown";
-    const now = Date.now();
-    const entry = _genomeRateMap.get(ip);
-    if (!entry || entry.resetAt < now) {
-      _genomeRateMap.set(ip, { count: 1, resetAt: now + 60_000 });
-      return true;
-    }
-    if (entry.count >= 30) {
-      res.status(429).json({ error: "Too many requests. Please try again later." });
-      return false;
-    }
-    entry.count += 1;
-    return true;
-  }
+  // 30 req/min per IP on all genome endpoints — compute-heavy, prevent abuse
+  const genomeLimiter = rateLimit({
+    windowMs: 60_000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests. Please try again later." },
+  });
 
   // GET /api/genome/status/:jobId — poll analysis status
-  app.get("/api/genome/status/:jobId", async (req: Request, res: Response) => {
-    if (!genomeRateLimit(req, res)) return;
+  app.get("/api/genome/status/:jobId", genomeLimiter, async (req: Request, res: Response) => {
     const patientId = getMobilePatientId(req, res);
     if (!patientId) return;
 
@@ -4649,8 +4640,7 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
   });
 
   // GET /api/genome/analyze/:jobId — alias for status polling (matches expected contract)
-  app.get("/api/genome/analyze/:jobId", async (req: Request, res: Response) => {
-    if (!genomeRateLimit(req, res)) return;
+  app.get("/api/genome/analyze/:jobId", genomeLimiter, async (req: Request, res: Response) => {
     const patientId = getMobilePatientId(req, res);
     if (!patientId) return;
     const jobId = Array.isArray(req.params.jobId) ? req.params.jobId[0] : req.params.jobId;
@@ -4676,8 +4666,7 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
   });
 
   // GET /api/genome/results — get most recent analysis results for the authenticated patient
-  app.get("/api/genome/results", async (req: Request, res: Response) => {
-    if (!genomeRateLimit(req, res)) return;
+  app.get("/api/genome/results", genomeLimiter, async (req: Request, res: Response) => {
     const patientId = getMobilePatientId(req, res);
     if (!patientId) return;
 
@@ -4720,8 +4709,7 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
 
   // GET /api/genome/results/patient/:patientId — clinician portal: get patient genome insights.
   // Access requires: valid staff Bearer token OR a clinician-role session user.
-  app.get("/api/genome/results/patient/:patientId", async (req: Request, res: Response) => {
-    if (!genomeRateLimit(req, res)) return;
+  app.get("/api/genome/results/patient/:patientId", genomeLimiter, async (req: Request, res: Response) => {
     const auth = (req.headers["authorization"] ?? "") as string;
     const hasStaffToken = auth.startsWith("Bearer ") && staffAuthTokens.has(auth.slice(7));
     const sessionPatientId = ((req as any).session)?.patientId as number | undefined;
@@ -4802,8 +4790,7 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
   });
 
   // GET /api/genome/report — generate and download an HTML report
-  app.get("/api/genome/report", async (req: Request, res: Response) => {
-    if (!genomeRateLimit(req, res)) return;
+  app.get("/api/genome/report", genomeLimiter, async (req: Request, res: Response) => {
     const patientId = getMobilePatientId(req, res);
     if (!patientId) return;
 
