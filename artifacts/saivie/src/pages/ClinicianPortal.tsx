@@ -191,9 +191,11 @@ function PostOpDetailedView({ patientId: _patientId, patientName }: { patientId:
 
 function GenomeInsightsBadge({ patientId }: { patientId: number }) {
   const { data } = useQuery({
-    queryKey: [`/api/genome/results/patient/${patientId}`],
+    queryKey: [`/api/genome/results/patient`, patientId],
     queryFn: async () => {
-      const res = await fetch(`/api/genome/results/patient/${patientId}`);
+      const res = await fetch(`/api/genome/results/patient`, {
+        headers: { "X-Patient-Id": String(patientId) },
+      });
       if (!res.ok) return null;
       return res.json();
     },
@@ -213,9 +215,11 @@ function GenomeInsightsBadge({ patientId }: { patientId: number }) {
 
 function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; patientName: string }) {
   const { data, isLoading } = useQuery({
-    queryKey: [`/api/genome/results/patient/${patientId}`],
+    queryKey: [`/api/genome/results/patient`, patientId],
     queryFn: async () => {
-      const res = await fetch(`/api/genome/results/patient/${patientId}`);
+      const res = await fetch(`/api/genome/results/patient`, {
+        headers: { "X-Patient-Id": String(patientId) },
+      });
       if (!res.ok) return null;
       return res.json();
     },
