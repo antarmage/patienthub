@@ -42,7 +42,8 @@ RUN pnpm --filter @workspace/api-server run build
 
 # Create a self-contained standalone folder with production node_modules only.
 # pnpm deploy flattens workspace symlinks so the runner stage needs no pnpm.
-RUN pnpm deploy --filter @workspace/api-server --prod /standalone
+# --legacy required in pnpm v10+ for workspaces without inject-workspace-packages.
+RUN pnpm deploy --filter @workspace/api-server --prod --legacy /standalone
 
 # Copy the esbuild output into the standalone folder
 # (pnpm deploy copies package source, not the built dist)
