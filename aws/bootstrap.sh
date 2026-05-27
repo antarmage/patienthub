@@ -208,7 +208,7 @@ create_secret_silent "whatsapp_verify_token"    "REPLACE_ME"
 echo ""
 create_secret_interactive "google_client_email" "GOOGLE_CLIENT_EMAIL (service account, or Enter to skip)"
 create_secret_interactive "google_private_key"  "GOOGLE_PRIVATE_KEY  (full PEM on one line, or Enter to skip)"
-create_secret_interactive "gemini_api_key"       "GEMINI_API_KEY (or Enter to skip)"
+create_secret_silent      "gemini_api_key"        "REPLACE_ME"
 create_secret_silent      "s3_bucket"            "saivie-uploads"
 
 
