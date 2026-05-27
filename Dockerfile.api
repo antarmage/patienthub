@@ -20,9 +20,9 @@ WORKDIR /workspace
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY tsconfig.base.json tsconfig.json ./
 
-# Copy only the packages required to build the api-server
-COPY lib/db/          ./lib/db/
-COPY lib/api-zod/     ./lib/api-zod/
+# Copy all lib packages (root tsconfig.json references all of them via
+# project references — missing any one causes TS5083 in typecheck:libs)
+COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
 
 # Full install (dev deps needed for build step).
