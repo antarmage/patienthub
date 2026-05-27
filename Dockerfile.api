@@ -10,7 +10,7 @@
 FROM node:24-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
 
 # ── Stage 1: Install all workspace dependencies ───────────────────────────────
 FROM base AS deps
@@ -25,8 +25,10 @@ COPY lib/db/          ./lib/db/
 COPY lib/api-zod/     ./lib/api-zod/
 COPY artifacts/api-server/ ./artifacts/api-server/
 
-# Full install (dev deps needed for build step)
-RUN pnpm install --frozen-lockfile
+# Full install (dev deps needed for build step).
+# CI=true bypasses the preinstall pnpm-user-agent guard (intended for dev
+# workstations only — irrelevant in Docker where pnpm is explicit).
+RUN CI=true pnpm install --frozen-lockfile
 
 # ── Stage 2: Build ────────────────────────────────────────────────────────────
 FROM deps AS builder
