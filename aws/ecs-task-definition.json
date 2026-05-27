@@ -4,12 +4,12 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
   "memory": "1024",
-  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/saivie-ecs-execution-role",
-  "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/saivie-ecs-task-role",
+  "executionRoleArn": "arn:aws:iam::599526348275:role/saivie-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::599526348275:role/saivie-ecs-task-role",
   "containerDefinitions": [
     {
       "name": "saivie-api",
-      "image": "YOUR_ACCOUNT_ID.dkr.ecr.YOUR_REGION.amazonaws.com/saivie-api:latest",
+      "image": "599526348275.dkr.ecr.ap-south-1.amazonaws.com/saivie-api:latest",
       "portMappings": [
         {
           "containerPort": 8080,
@@ -26,50 +26,50 @@
       "secrets": [
         {
           "name": "DATABASE_URL",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/database_url"
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/database_url"
         },
         {
           "name": "SESSION_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/session_secret"
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/session_secret"
         },
         {
           "name": "WHATSAPP_API_TOKEN",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/whatsapp_api_token"
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/whatsapp_api_token"
         },
         {
           "name": "WHATSAPP_PHONE_NUMBER_ID",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/whatsapp_phone_number_id"
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/whatsapp_phone_number_id"
         },
         {
           "name": "WHATSAPP_APP_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/whatsapp_app_secret"
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/whatsapp_app_secret"
         },
         {
           "name": "WHATSAPP_VERIFY_TOKEN",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/whatsapp_verify_token"
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/whatsapp_verify_token"
         },
         {
           "name": "GOOGLE_CLIENT_EMAIL",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/google_client_email"
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/google_client_email"
         },
         {
           "name": "GOOGLE_PRIVATE_KEY",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/google_private_key"
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/google_private_key"
         },
         {
           "name": "GEMINI_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/gemini_api_key"
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/gemini_api_key"
         },
         {
           "name": "AWS_S3_BUCKET",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:saivie/prod/s3_bucket"
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/s3_bucket"
         }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/ecs/saivie-api",
-          "awslogs-region": "YOUR_REGION",
+          "awslogs-region": "ap-south-1",
           "awslogs-stream-prefix": "ecs",
           "awslogs-create-group": "true"
         }
