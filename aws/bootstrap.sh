@@ -140,19 +140,19 @@ aws iam put-role-policy \
 info "Attached policies to $TASK_ROLE"
 
 
-# ── 3. Secrets Manager — collect values interactively ────────────────────────
+# ── 3. Secrets Manager ───────────────────────────────────────────────────────
 echo ""
 echo "------------------------------------------------------"
 echo "  Secrets Manager setup"
-echo "  Enter values when prompted. Press Enter to skip and"
-echo "  store a placeholder (you can update later in console)."
+echo "  You will be prompted only for required values."
+echo "  WhatsApp secrets are parked with placeholders for now."
 echo "------------------------------------------------------"
 echo ""
 
-create_secret() {
+# Store a secret — prompts user if $3 is not supplied
+create_secret_interactive() {
   local name="$1"
   local prompt="$2"
-  local default="${3:-REPLACE_ME}"
   local full_name="saivie/prod/${name}"
 
   if aws secretsmanager describe-secret --secret-id "$full_name" --region "$REGION" &>/dev/null; then
@@ -160,9 +160,12 @@ create_secret() {
     return
   fi
 
-  echo -n "  $prompt [$default]: "
+  echo -n "  $prompt: "
   read -r value
-  value="${value:-$default}"
+  if [ -z "$value" ]; then
+    warn "Skipped $full_name — update it later in the console"
+    return
+  fi
 
   aws secretsmanager create-secret \
     --name "$full_name" \
@@ -171,16 +174,42 @@ create_secret() {
   info "Created $full_name"
 }
 
-create_secret "database_url"            "DATABASE_URL (postgres://...)"
-create_secret "session_secret"          "SESSION_SECRET (random 32-char string)"          "$(openssl rand -hex 32)"
-create_secret "whatsapp_api_token"      "WHATSAPP_API_TOKEN"
-create_secret "whatsapp_phone_number_id" "WHATSAPP_PHONE_NUMBER_ID"
-create_secret "whatsapp_app_secret"     "WHATSAPP_APP_SECRET"
-create_secret "whatsapp_verify_token"   "WHATSAPP_VERIFY_TOKEN (custom string)"           "saivie-verify-$(openssl rand -hex 8)"
-create_secret "google_client_email"     "GOOGLE_CLIENT_EMAIL (service account)"
-create_secret "google_private_key"      "GOOGLE_PRIVATE_KEY (paste full PEM, or skip)"
-create_secret "gemini_api_key"          "GEMINI_API_KEY"
-create_secret "s3_bucket"              "AWS_S3_BUCKET name"                               "saivie-uploads"
+# Store a secret silently with a fixed value (no prompt)
+create_secret_silent() {
+  local name="$1"
+  local value="$2"
+  local full_name="saivie/prod/${name}"
+
+  if aws secretsmanager describe-secret --secret-id "$full_name" --region "$REGION" &>/dev/null; then
+    warn "$full_name already exists — skipping"
+    return
+  fi
+
+  aws secretsmanager create-secret \
+    --name "$full_name" \
+    --secret-string "$value" \
+    --region "$REGION" > /dev/null
+  info "Created $full_name (placeholder — update when ready)"
+}
+
+# Required — prompt user
+create_secret_interactive "database_url"       "DATABASE_URL (postgres://user:pass@host:5432/db)"
+create_secret_silent      "session_secret"     "$(openssl rand -hex 32)"
+
+# WhatsApp — parked, placeholders only
+echo ""
+warn "WhatsApp secrets — storing placeholders. Update in Secrets Manager when ready."
+create_secret_silent "whatsapp_api_token"       "REPLACE_ME"
+create_secret_silent "whatsapp_phone_number_id" "REPLACE_ME"
+create_secret_silent "whatsapp_app_secret"      "REPLACE_ME"
+create_secret_silent "whatsapp_verify_token"    "REPLACE_ME"
+
+# Google / AI — prompt user (skip = placeholder)
+echo ""
+create_secret_interactive "google_client_email" "GOOGLE_CLIENT_EMAIL (service account, or Enter to skip)"
+create_secret_interactive "google_private_key"  "GOOGLE_PRIVATE_KEY  (full PEM on one line, or Enter to skip)"
+create_secret_interactive "gemini_api_key"       "GEMINI_API_KEY (or Enter to skip)"
+create_secret_silent      "s3_bucket"            "saivie-uploads"
 
 
 # ── 4. CloudWatch Log Group ───────────────────────────────────────────────────
