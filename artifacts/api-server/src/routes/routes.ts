@@ -9,7 +9,7 @@ import { insertPatientSchema } from "@workspace/db";
 import { registerOcrRoutes } from "../replit_integrations/ocr";
 import { getUncachableGoogleSheetClient } from "../google-sheets";
 import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../google-drive";
-import { ai } from "../replit_integrations/image/client";
+import { ai, AI_AVAILABLE } from "../replit_integrations/image/client";
 import { whatsapp } from "../whatsapp";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
 import { analyseGenome, analyseGenomeFromKey } from "../genome-engine";
@@ -749,6 +749,7 @@ export async function registerRoutes(
       "Do not repeat the disclaimer if the patient explicitly acknowledges it.",
     ].join(" ");
 
+    if (!AI_AVAILABLE) return res.status(503).json({ error: "AI features not available in this environment" });
     try {
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
@@ -2590,6 +2591,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
             continue;
           }
 
+          if (!AI_AVAILABLE) { errors.push("AI features not available in this environment"); continue; }
           const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: [
@@ -3109,6 +3111,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         catalogHint = `\n\nIMPORTANT — This clinic commonly prescribes the following medicines. When the handwriting is ambiguous, prefer matching to one of these known medicines:\n${catalogList}\n\nUse the exact name from this list when there is a match. If a medicine is not in this list, still extract it with your best reading.`;
       }
 
+      if (!AI_AVAILABLE) return res.status(503).json({ error: "AI features not available in this environment" });
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: [
@@ -3771,6 +3774,7 @@ Be thorough — extract every medication mentioned including supplements and vit
     try {
       const { audioData, mimeType, patientContext, patientId } = req.body;
       if (!audioData) return res.status(400).json({ error: "audioData is required" });
+      if (!AI_AVAILABLE) return res.status(503).json({ error: "AI features not available in this environment" });
 
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
@@ -3849,6 +3853,7 @@ Be concise and clinically accurate. Convert spoken language to structured clinic
       const activeMeds = meds.filter(m => m.status === "active" || m.status === "Active" || !m.status);
 
       // Generate plain-language summary using Gemini
+      if (!AI_AVAILABLE) return res.status(503).json({ error: "AI features not available in this environment" });
       const summaryResponse = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: [
@@ -3949,6 +3954,7 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
         return res.json({ date: targetDate, suggestions: [], message: "No appointments to optimise." });
       }
 
+      if (!AI_AVAILABLE) return res.status(503).json({ error: "AI features not available in this environment" });
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: [
@@ -4141,6 +4147,7 @@ Only include appointments that should move. If schedule is already optimal, retu
         highRiskPatientCount: highRiskCount,
       };
 
+      if (!AI_AVAILABLE) return res.status(503).json({ error: "AI features not available in this environment" });
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: [
