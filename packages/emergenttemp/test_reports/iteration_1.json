@@ -1,0 +1,47 @@
+{
+  "summary": "First backend regression run for Saivie Mama MVP. Created /app/backend/tests/backend_test.py with 21 pytest cases covering health, auth contract, demo seed, clinician endpoints (dashboard, mothers, detail, notes, alert acknowledge), mother onboarding, check-ins & wellbeing, care plan, symptom triage (bleeding/mood), AI chat (Claude Sonnet 4.6 via Emergent LLM key — VERIFIED WORKING, returns a real reply and persists conversation history), and alerts. Result: 20 passed / 1 failed. Only failure is a legitimate seed-data bug for the demo mother Kavya Reddy — she should surface as risk=red (Urgent per test_credentials.md) but the current implementation resolves her to risk=orange, so /api/clinician/mothers has no red-tier mother despite the docs saying so.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/demo/seed (function _seed_demo)",
+        "issue": "Kavya Reddy (days_ago=5, fever=True) never gets the 'fever' symptom in any seeded check-in because the loop uses `for i in range(min(7, days_ago))` (i=0..4) but the fever gate is `i >= 5`. Result: Kavya's latest risk is 'orange', not 'red'. This means the Clinician dashboard shows 0 urgent mothers instead of 1, contradicting /app/memory/test_credentials.md ('Kavya Reddy — Urgent — Fever + severe pain + low mood'). Fix suggestion: change gate to something like `i >= max(0, min(7, days_ago) - 2)` so fever appears in the last 1-2 seeded check-ins regardless of days_ago."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix _seed_demo() so Kavya Reddy resolves to risk='red' (add 'fever' symptom to her most-recent check-ins even when days_ago < 6). This will also cause /api/clinician/dashboard counts.urgent to be >= 1 as the PRD expects."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 713 lines — approaching the 700-line split threshold. Consider modularising (routers/auth.py, routers/clinician.py, routers/wellbeing.py, services/scoring.py, services/seed.py) before more features land.",
+    "auth_session inserts a new user_sessions row on every login (line 111) without dedup — repeated logins will accumulate rows for the same user until TTL. Consider upsert on session_token or remove old sessions for user_id first.",
+    "get_current_user relies on `session['expires_at']`; timezone-naive datetimes are patched on read (good), but Mongo TTL index requires timezone-aware — synth-insert path is fine, just noting.",
+    "wellbeing_today is called both as an endpoint and directly from ai_chat (line 416) — that indirect call runs Depends resolution manually; it works but is fragile. Refactor into a helper function that both consume.",
+    "compute_scores' 'support' score is hard-coded to 70 regardless of profile.support_system.",
+    "care_plan_today returns tasks=[] when no profile exists, but returns 200 — frontend must handle empty state.",
+    "CORS is allow_origins=['*'] with allow_credentials=True — browsers ignore credentialed responses from wildcard origins; tighten before prod.",
+    "No pagination on /api/clinician/mothers, /api/alerts, /api/checkins — fine for MVP but flag for scale."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (new)"
+  ],
+  "success_rate": {
+    "backend": "95.2% (20/21)",
+    "frontend": "not tested (backend-only run per request)"
+  },
+  "seed_data_creation": "Synthetic auth session inserted directly in Mongo (user_id='usr_test_backend', session_token='tok_test_backend_xyz', email='TEST_backend@saivie.app'). Cleaned up after run via fixture teardown. Also exercised POST /api/demo/seed which reseeds the 5 demo mothers idempotently.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend tests live in /app/backend/tests/backend_test.py. Run with: `EXPO_PUBLIC_BACKEND_URL=<url> pytest /app/backend/tests/backend_test.py -v -n 0 --junitxml=/app/test_reports/pytest/pytest_results.xml`. The `-n 0` override is required because /app/backend/pytest.ini enforces `-n 2 --dist loadscope`, and with 2 xdist workers our session-scoped Mongo setup fixture inserts the same synthetic user in both workers → DuplicateKeyError on the unique email index. Only Kavya seed bug outstanding as of iteration 1. AI chat with Claude Sonnet 4.6 via EMERGENT_LLM_KEY is confirmed working end-to-end (real reply generated, ~5-10s latency).",
+  "rca_of_issue": "Root cause of Kavya=orange bug: in /app/backend/server.py::_seed_demo the check-in loop is `for i in range(min(7, m['days_ago']))` and fever is appended only when `i >= 5`. For Kavya days_ago=5 → i iterates 0..4 → fever gate never triggers → no fever symptom in any check-in → compute_risk_level short-circuits on mood<=3 to 'orange' instead of the 'red' branch (fever/heavy_bleeding/wound_infection). Repro: hit POST /api/demo/seed then GET /api/clinician/mothers with auth; Kavya's item shows risk='orange'. Mitigation: change gate to `i >= max(0, min(7, m['days_ago']) - 2)` so fever appears in the last 1-2 seeded days for any Kavya-like profile."
+}

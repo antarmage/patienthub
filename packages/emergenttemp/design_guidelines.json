@@ -1,0 +1,159 @@
+{
+  "app_name": "Saivie Mama",
+  "personality": "7 Dark-First Utility",
+  "personality_one_liner": "An athletic, command-center approach that reframes postpartum recovery from a delicate time into a period of active recovery, strength, and clinical precision.",
+  "color": {
+    "surface": "#0C0C0E",
+    "onSurface": "#F4F4F5",
+    "surfaceSecondary": "#18181B",
+    "onSurfaceSecondary": "#A1A1AA",
+    "surfaceTertiary": "#27272A",
+    "onSurfaceTertiary": "#E4E4E7",
+    "surfaceInverse": "#FAFAFA",
+    "onSurfaceInverse": "#09090B",
+    "brand": "#FF6B6B",
+    "brandPrimary": "#FF6B6B",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#E05353",
+    "onBrandSecondary": "#FFFFFF",
+    "brandTertiary": "#3B1A1A",
+    "onBrandTertiary": "#FFB3B3",
+    "success": "#10B981",
+    "onSuccess": "#FFFFFF",
+    "warning": "#F59E0B",
+    "onWarning": "#1C1917",
+    "error": "#EF4444",
+    "onError": "#FFFFFF",
+    "info": "#71717A",
+    "onInfo": "#FFFFFF",
+    "border": "#27272A",
+    "borderStrong": "#3F3F46",
+    "divider": "#27272A"
+  },
+  "typography": {
+    "displayFontFamily": "Outfit",
+    "textFontFamily": "Manrope",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Command-center density: tight grouping for related metrics, clear dividing lines, and generous outer padding. Use the 8pt system to maintain rhythmic precision.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": 0,
+  "navigation": "bottom_tabs",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": false,
+    "do's": ["Use subtle tonal separation (surfaceSecondary) instead of heavy blur in Dark-First Utility", "Rely on dividers and spacing over shadows"],
+    "dont's": ["Do not use glass for basic cards or dense lists; prioritize clarity and contrast over aesthetic blur"]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Home",
+      "purpose": "A command-center cockpit focusing on the tri-domain wellbeing rings and rapid tap-and-go logs.",
+      "states": {
+        "loading": "Skeleton rings and modular blocks fading in.",
+        "empty": "No data logged today. Shows glowing outline rings prompting the first entry.",
+        "error": "Failed to load latest vitals. Shows a subtle retry prompt in the header."
+      },
+      "layout": "Header with date and brief greeting. Top section: Tri-domain wellbeing rings (Mental, Physical, Sleep) prominently displayed like fitness tracking circles. Middle: Quick action chips for \"One-tap logs\" (Feeding, Diaper, Sleep). Bottom: Highlight module for \"Tonight's Sleep Plan\" and \"Ask Saivie AI\" CTA."
+    },
+    {
+      "name": "CheckIn",
+      "purpose": "A tactile, low-friction daily 10-question check-in with haptic sliders and symptom chips.",
+      "states": {
+        "loading": "Spinner centered.",
+        "empty": "N/A - step-by-step wizard.",
+        "error": "Submission failed. Fixed retry button at the bottom."
+      },
+      "layout": "Full-screen stepper. One question per view to maintain focus. Use large, chunky sliders for intensity (with immediate haptic feedback) and selectable brandTertiary chips for specific symptoms. Sticky primary CTA at the bottom to progress."
+    },
+    {
+      "name": "Saivie AI Chat",
+      "purpose": "Intelligent clinical triage and reassurance chat.",
+      "states": {
+        "loading": "Typing indicator bubbles.",
+        "empty": "Welcome screen with suggested prompt chips (e.g., 'Is this normal?').",
+        "error": "Connection lost. Subtle offline banner at the top."
+      },
+      "layout": "Standard conversational layout but elevated. Dark graphite background. User bubbles in brandTertiary, AI bubbles in surfaceSecondary. Sticky input field at the bottom with quick-action chips above the keyboard."
+    },
+    {
+      "name": "Progress Hub",
+      "purpose": "14-day trend charts and clinical data review for the mother.",
+      "states": {
+        "loading": "Skeleton charts.",
+        "empty": "Not enough data for trends. Suggestion card to log more.",
+        "error": "Unable to fetch trends. Retry button centered."
+      },
+      "layout": "Modular grid layout. Top: 14-day glowing line chart (Mental vs Physical vs Sleep). Below: 2-column grid for Care modules (Recovery, Breastfeeding, Nutrition) using tinted icons."
+    },
+    {
+      "name": "Clinician Dashboard",
+      "purpose": "Denser, data-heavy view for clinicians to review patient risks and details.",
+      "states": {
+        "loading": "Skeleton rows for the patient queue.",
+        "empty": "No patients currently flagged in the risk queue.",
+        "error": "Failed to sync clinical data. Actionable retry banner."
+      },
+      "layout": "Tabular risk queue mimicking a high-end Bloomberg terminal. Week-over-week indicators prominently displayed. Side-by-side modular panels for reviewing historical notes alongside real-time vitals. Navigation toolbar at the top."
+    }
+  ],
+  "images": {
+    "hero_background": {
+      "url": "https://images.pexels.com/photos/7430452/pexels-photo-7430452.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "dark": "https://images.pexels.com/photos/7430452/pexels-photo-7430452.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Abstract glowing warmth representing vitality and strength on a dark background."
+    },
+    "profile_cover": {
+      "url": "https://images.pexels.com/photos/9854110/pexels-photo-9854110.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "dark": "https://images.pexels.com/photos/9854110/pexels-photo-9854110.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Portrait of a modern Indian woman resting with elegant moody lighting."
+    },
+    "clinical_chart": {
+      "url": "https://images.pexels.com/photos/6203473/pexels-photo-6203473.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "dark": "https://images.pexels.com/photos/6203473/pexels-photo-6203473.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Abstract clinical glowing ECG chart on a dark grid."
+    }
+  },
+  "instructions_to_main_agent": [
+    "Redesign the app moving entirely away from the old warm/terracotta/editorial style into the new Dark-First Utility aesthetic. Treat postpartum recovery with the athletic, clinical seriousness of a command center, empowering the mother.",
+    "Implement the strict Dark-First Palette: use #0C0C0E (Obsidian) for main backgrounds and #FF6B6B (Vivid Coral/Vermilion) as the primary action accent. DO NOT use any blues or purples anywhere, even for info states.",
+    "Utilize Outfit (geometric/athletic) for all headers, metrics, and numbers. Use Manrope for high-legibility body text.",
+    "For the daily check-in, heavily rely on haptics for the sliders (ensure to include the 'haptics' block wiring for interaction feedback).",
+    "For the Clinician Dashboard, use a denser, tabular layout. Retain the dark theme to create a cohesive 'pro' ecosystem and reduce eye strain for clinicians.",
+    "Avoid all cartoon, baby-tracker clichés, and literal stereotypes. Rely on typography, spacing, and glowing metrics (like the tri-domain rings) to convey meaning.",
+    "Do not use heavy glassmorphism or blur effects. Stick to subtle tonal separation (surfaceSecondary) and borders/dividers to define hierarchy, fitting the utility/performance personality.",
+    "Ensure any text overlaying images uses a strict vertical gradient scrim (transparent to surfaceInverse) to guarantee contrast."
+  ]
+}
