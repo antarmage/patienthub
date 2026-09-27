@@ -22,6 +22,8 @@ export async function ensureSchema(): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email text;
+
       -- Triage score columns on appointments (Task #8)
       ALTER TABLE appointments ADD COLUMN IF NOT EXISTS triage_score integer;
       ALTER TABLE appointments ADD COLUMN IF NOT EXISTS triage_reason text;

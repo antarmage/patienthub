@@ -27,6 +27,7 @@
     "memorystore": "^1.6.8",
     "multer": "^2.1.1",
     "multer-s3": "^3.0.1",
+    "nodemailer": "^10.0.10",
     "pg": "^8.20.0",
     "pino": "^9",
     "pino-http": "^10"
@@ -40,6 +41,7 @@
     "@types/multer": "^2.1.0",
     "@types/multer-s3": "^3.0.3",
     "@types/node": "catalog:",
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.18.0",
     "esbuild": "^0.27.3",
     "esbuild-plugin-pino": "^2.3.3",

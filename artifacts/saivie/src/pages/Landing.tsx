@@ -19,6 +19,7 @@ export default function Landing() {
   const [staffOtpRequired, setStaffOtpRequired] = useState(false);
   const [staffOtp, setStaffOtp] = useState("");
   const [staffMaskedPhone, setStaffMaskedPhone] = useState("");
+  const [staffDeliveryMethod, setStaffDeliveryMethod] = useState("whatsapp");
   const [pendingPasscode, setPendingPasscode] = useState("");
 
   // ── Patient phone flow ───────────────────────────────────────────────────
@@ -29,6 +30,8 @@ export default function Landing() {
   // OTP step for patient
   const [patientOtpSent, setPatientOtpSent] = useState(false);
   const [patientOtp, setPatientOtp] = useState("");
+  const [patientDeliveryMethod, setPatientDeliveryMethod] = useState("whatsapp");
+  const [patientOtpDestination, setPatientOtpDestination] = useState("");
   // Resend cooldowns
   const [staffResendCooldown, setStaffResendCooldown] = useState(0);
   const [patientResendCooldown, setPatientResendCooldown] = useState(0);
@@ -56,11 +59,14 @@ export default function Landing() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ passcode: pendingPasscode }),
       });
+      const data = await res.json();
       if (!res.ok) {
         setError("Could not resend code. Please go back and try again.");
         setLoading(false);
         return;
       }
+      setStaffMaskedPhone(data.phone || staffMaskedPhone);
+      setStaffDeliveryMethod(data.deliveryMethod || "whatsapp");
       setStaffResendCooldown(30);
       setError("");
     } catch {
@@ -87,6 +93,8 @@ export default function Landing() {
         setPatientLoading(false);
         return;
       }
+      setPatientDeliveryMethod(data.deliveryMethod || "whatsapp");
+      setPatientOtpDestination(data.destination || "");
       setPatientResendCooldown(30);
     } catch {
       setPatientError("Connection error. Please try again.");
@@ -115,6 +123,7 @@ export default function Landing() {
         // Server sent OTP to staff phone; show OTP input
         setPendingPasscode(passcode.trim());
         setStaffMaskedPhone(data.phone || "");
+        setStaffDeliveryMethod(data.deliveryMethod || "whatsapp");
         setStaffOtpRequired(true);
         setLoading(false);
         return;
@@ -182,6 +191,8 @@ export default function Landing() {
         setPatientLoading(false);
         return;
       }
+      setPatientDeliveryMethod(data.deliveryMethod || "whatsapp");
+      setPatientOtpDestination(data.destination || "");
       setPatientOtpSent(true);
     } catch {
       setPatientError("Connection error. Please try again.");
@@ -341,7 +352,7 @@ export default function Landing() {
                       ) : (
                         <>
                           <p className="text-sm text-slate-600 font-medium">
-                            Enter the 6-digit code sent to your WhatsApp
+                            Enter the 6-digit code sent {patientOtpDestination ? `to ${patientOtpDestination} ` : ""}via {patientDeliveryMethod === "email" ? "email" : patientDeliveryMethod === "development" ? "the development console" : "WhatsApp"}
                           </p>
                           <Input
                             type="number"
@@ -490,7 +501,7 @@ export default function Landing() {
                       ) : (
                         <>
                           <p className="text-sm text-slate-600 font-medium">
-                            Enter the 6-digit code sent to <strong>{staffMaskedPhone || "your registered phone"}</strong> via WhatsApp
+                            Enter the 6-digit code sent to <strong>{staffMaskedPhone || "your registered contact"}</strong> via {staffDeliveryMethod === "email" ? "email" : staffDeliveryMethod === "development" ? "the development console" : "WhatsApp"}
                           </p>
                           <Input
                             type="number"

@@ -11,6 +11,7 @@ import { getUncachableGoogleSheetClient } from "../google-sheets";
 import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../google-drive";
 import { ai, AI_AVAILABLE } from "../replit_integrations/image/client";
 import { whatsapp } from "../whatsapp";
+import { isSmtpConfigured, maskEmail, sendOtpEmail, type OtpDeliveryMethod } from "../smtp";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
 import { analyseGenome, analyseGenomeFromKey } from "../genome-engine";
 import multer from "multer";
@@ -124,16 +125,39 @@ function generateOtp(): string {
   return String(crypto.randomInt(100000, 1000000));
 }
 
-async function sendOtp(phone: string, code: string): Promise<void> {
+async function sendOtp(phone: string, code: string, email?: string | null): Promise<OtpDeliveryMethod> {
   const message = `Your Saivie verification code is: ${code}. Valid for 5 minutes.`;
+  let whatsappError: unknown;
   if (whatsapp.isConfigured) {
-    await whatsapp.sendTextMessage(phone, message);
-    // If sendTextMessage throws, the error propagates to the caller
-  } else {
+    try {
+      await whatsapp.sendTextMessage(phone, message);
+      return "whatsapp";
+    } catch (err) {
+      whatsappError = err;
+      console.error("[OTP] WhatsApp delivery failed; trying email fallback:", err instanceof Error ? err.message : err);
+    }
+  }
+  if (email && isSmtpConfigured()) {
+    try {
+      await sendOtpEmail(email, code);
+      return "email";
+    } catch (err) {
+      console.error("[OTP] SMTP email delivery failed:", err instanceof Error ? err.message : err);
+      throw new Error("All configured OTP delivery methods failed", { cause: err });
+    }
+  }
+  if (process.env["NODE_ENV"] !== "production") {
     console.log("------------------------------------------");
     console.log(`🔑 OTP for ${phone}: ${code}`);
     console.log("------------------------------------------");
+    return "development";
   }
+  throw new Error(whatsappError ? "OTP delivery failed and no email fallback is available" : "No OTP delivery method is configured for this recipient");
+}
+
+function otpDestination(phone: string, email: string | null | undefined, deliveryMethod: OtpDeliveryMethod): string {
+  if (deliveryMethod === "email" && email) return maskEmail(email);
+  return phone.replace(/(\d{2})\d+(\d{2})$/, "$1****$2");
 }
 
 // ── OTP Verification Tickets ───────────────────────────────────────────────
@@ -169,6 +193,10 @@ function otpCooldownRemaining(phone: string): number {
 function storeOtp(phone: string, code: string): void {
   const key = phone.replace(/\D/g, "");
   otpStore.set(key, { code, expiresAt: Date.now() + OTP_TTL_MS, attempts: 0 });
+}
+
+function clearOtp(phone: string): void {
+  otpStore.delete(phone.replace(/\D/g, ""));
 }
 
 /** Call this only after OTP delivery succeeds to start the per-phone cooldown. */
@@ -244,7 +272,7 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
-  // Mobile app: request OTP — generates a real 6-digit code and delivers it via WhatsApp
+  // Mobile app: request OTP — prefers WhatsApp and falls back to registered email via SMTP
   app.post("/api/mobile/auth/request", async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: "phone required" });
@@ -266,13 +294,15 @@ export async function registerRoutes(
     const code = generateOtp();
     storeOtp(normalized, code);
     try {
-      await sendOtp(phone, code);
+      const deliveryMethod = await sendOtp(phone, code, patient.email);
       recordOtpSent(normalized);
+      res.json({ success: true, message: "Verification code sent", deliveryMethod, destination: otpDestination(phone, patient.email, deliveryMethod) });
+      return;
     } catch (err: unknown) {
+      clearOtp(normalized);
       console.error("[OTP] Failed to send:", err instanceof Error ? err.message : err);
       return res.status(503).json({ error: "Failed to send verification code. Please try again." });
     }
-    res.json({ success: true, message: "Verification code sent" });
   });
 
   // Mobile app: verify OTP and issue mobile token
@@ -302,7 +332,7 @@ export async function registerRoutes(
     res.json({ patient, mobileToken });
   });
 
-  // Staff OTP request — validates credentials then sends OTP to the staff member's registered phone
+  // Staff OTP request — validates credentials then delivers OTP to registered phone or email
   app.post("/api/staff/otp/request", async (req, res) => {
     const { identifier, username, passcode, pin } = req.body as {
       identifier?: string; username?: string; passcode?: string; pin?: string;
@@ -334,14 +364,16 @@ export async function registerRoutes(
     const code = generateOtp();
     storeOtp(phone, code);
     try {
-      await sendOtp(phone, code);
+      const deliveryMethod = await sendOtp(phone, code, user.email);
       recordOtpSent(phone);
+      const masked = otpDestination(phone, user.email, deliveryMethod);
+      res.json({ success: true, message: "OTP sent", phone: masked, deliveryMethod });
+      return;
     } catch (err: unknown) {
+      clearOtp(phone);
       console.error("[OTP] Failed to send staff OTP:", err instanceof Error ? err.message : err);
       return res.status(503).json({ error: "Failed to send verification code. Please try again." });
     }
-    const masked = phone.replace(/(\d{2})\d+(\d{2})$/, "$1****$2");
-    res.json({ success: true, message: "OTP sent", phone: masked });
   });
 
   // Staff OTP verify — validates OTP and returns a short-lived one-time ticket
@@ -404,13 +436,15 @@ export async function registerRoutes(
     const code = generateOtp();
     storeOtp(normalizedPhone, code);
     try {
-      await sendOtp(patient.phone || phone, code);
+      const deliveryMethod = await sendOtp(patient.phone || phone, code, patient.email);
       recordOtpSent(normalizedPhone);
+      res.json({ success: true, message: "Verification code sent", deliveryMethod, destination: otpDestination(patient.phone || phone, patient.email, deliveryMethod) });
+      return;
     } catch (err: unknown) {
+      clearOtp(normalizedPhone);
       console.error("[OTP] Failed to send patient OTP:", err instanceof Error ? err.message : err);
       return res.status(503).json({ error: "Failed to send verification code. Please try again." });
     }
-    res.json({ success: true, message: "Verification code sent" });
   });
 
   // ── Mobile self-tracking routes ────────────────────────────────────────────
@@ -1944,14 +1978,15 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       const code = generateOtp();
       storeOtp(phone, code);
       try {
-        await sendOtp(phone, code);
+        const deliveryMethod = await sendOtp(phone, code, user.email);
         recordOtpSent(phone);
+        const masked = otpDestination(phone, user.email, deliveryMethod);
+        return res.json({ otpRequired: true, phone: masked, deliveryMethod });
       } catch (err: unknown) {
+        clearOtp(phone);
         console.error("[OTP] Failed to send staff passcode OTP:", err instanceof Error ? err.message : err);
         return res.status(503).json({ error: "Failed to send verification code. Please try again." });
       }
-      const masked = phone.replace(/(\d{2})\d+(\d{2})$/, "$1****$2");
-      return res.json({ otpRequired: true, phone: masked });
     }
 
     // OTP supplied — validate it
@@ -4060,6 +4095,7 @@ Only include appointments that should move. If schedule is already optimal, retu
           username: u.username,
           role: u.role,
           phone: u.phone ?? null,
+          email: u.email ?? null,
         }));
       res.json(safeUsers);
     } catch (err: any) {
@@ -4089,6 +4125,32 @@ Only include appointments that should move. If schedule is already optimal, retu
       const updated = await storage.updateUserPhone(id, trimmed || null);
       if (!updated) return res.status(404).json({ error: "User not found" });
       res.json({ id: updated.id, username: updated.username, role: updated.role, phone: updated.phone ?? null });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Update a staff account's OTP fallback email (owner only)
+  app.patch("/api/owner/staff-accounts/:id/email", async (req: any, res: any) => {
+    const callerId = getStaffUserId(req, res);
+    if (!callerId) return;
+    const caller = await storage.getUser(callerId);
+    if (!caller || caller.role !== "owner") {
+      return res.status(403).json({ error: "Owner access required" });
+    }
+    const { id } = req.params;
+    const { email } = req.body as { email?: string | null };
+    if (email !== undefined && email !== null && typeof email !== "string") {
+      return res.status(400).json({ error: "email must be a string or null" });
+    }
+    const trimmed = typeof email === "string" ? email.trim().toLowerCase() : null;
+    if (trimmed && (trimmed.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed))) {
+      return res.status(400).json({ error: "Enter a valid email address" });
+    }
+    try {
+      const updated = await storage.updateUserEmail(id, trimmed || null);
+      if (!updated) return res.status(404).json({ error: "User not found" });
+      res.json({ id: updated.id, username: updated.username, role: updated.role, phone: updated.phone ?? null, email: updated.email ?? null });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

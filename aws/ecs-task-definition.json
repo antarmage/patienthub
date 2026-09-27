@@ -63,6 +63,30 @@
         {
           "name": "AWS_S3_BUCKET",
           "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/s3_bucket"
+        },
+        {
+          "name": "SMTP_HOST",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/smtp_host"
+        },
+        {
+          "name": "SMTP_PORT",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/smtp_port"
+        },
+        {
+          "name": "SMTP_SECURE",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/smtp_secure"
+        },
+        {
+          "name": "SMTP_USER",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/smtp_user"
+        },
+        {
+          "name": "SMTP_PASS",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/smtp_pass"
+        },
+        {
+          "name": "SMTP_FROM",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/smtp_from"
         }
       ],
       "logConfiguration": {

@@ -16,6 +16,7 @@ export default function Login() {
   const [passcode, setPasscode] = useState("");
   const [otp, setOtp] = useState("");
   const [maskedPhone, setMaskedPhone] = useState("");
+  const [deliveryMethod, setDeliveryMethod] = useState("whatsapp");
   const [isLoading, setIsLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [, setLocation] = useLocation();
@@ -47,6 +48,7 @@ export default function Login() {
         return;
       }
       setMaskedPhone(data.phone || "");
+      setDeliveryMethod(data.deliveryMethod || "whatsapp");
       setStep("otp");
     } catch {
       toast({
@@ -73,8 +75,11 @@ export default function Login() {
         toast({ variant: "destructive", title: "Failed to resend", description: data.error || "Could not send a new code." });
         return;
       }
+      setMaskedPhone(data.phone || maskedPhone);
+      const method = data.deliveryMethod || "whatsapp";
+      setDeliveryMethod(method);
       setResendCooldown(30);
-      toast({ title: "New code sent", description: `A new code was sent to ${data.phone || maskedPhone} via WhatsApp.` });
+      toast({ title: "New code sent", description: `A new code was sent to ${data.phone || maskedPhone} via ${method === "email" ? "email" : method === "development" ? "the development console" : "WhatsApp"}.` });
     } catch {
       toast({ variant: "destructive", title: "Connection Error", description: "Unable to reach the server. Please try again." });
     } finally {
@@ -142,7 +147,7 @@ export default function Login() {
             <CardDescription>
               {step === "credentials"
                 ? "Enter your staff credentials to access the desk system."
-                : `Enter the 6-digit code sent to ${maskedPhone || "your registered phone"} via WhatsApp.`}
+                : `Enter the 6-digit code sent to ${maskedPhone || "your registered contact"} via ${deliveryMethod === "email" ? "email" : deliveryMethod === "development" ? "the development console" : "WhatsApp"}.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -210,7 +215,7 @@ export default function Login() {
                     {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
                   </button>
                   <p className="text-xs text-slate-400 text-center">
-                    Code expires in 5 minutes. Check your WhatsApp.
+                    Code expires in 5 minutes. Check your ${deliveryMethod === "email" ? "email inbox" : deliveryMethod === "development" ? "development console" : "WhatsApp"}.
                   </p>
                 </div>
               </form>

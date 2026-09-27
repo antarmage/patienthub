@@ -2,6 +2,7 @@ import { createServer } from "http";
 import app from "./app";
 import { registerRoutes, registerDeskRoutes, registerGenomeRoutes } from "./routes/routes";
 import { logger } from "./lib/logger";
+import { ensureSchema } from "./db";
 
 const rawPort = process.env["PORT"];
 
@@ -19,7 +20,8 @@ if (Number.isNaN(port) || port <= 0) {
 
 const httpServer = createServer(app);
 
-registerRoutes(httpServer, app).then(async () => {
+ensureSchema().then(async () => {
+  await registerRoutes(httpServer, app);
   await registerDeskRoutes(app);
   await registerGenomeRoutes(app);
   httpServer.listen(port, () => {

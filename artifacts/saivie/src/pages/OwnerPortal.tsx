@@ -1784,6 +1784,7 @@ function StaffAccountsView() {
   // Account editing state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
 
   const sendOtp = async () => {
     setLoginError("");
@@ -1873,23 +1874,33 @@ function StaffAccountsView() {
     retry: false,
   });
 
-  const updatePhone = useMutation({
-    mutationFn: async ({ id, phone }: { id: string; phone: string | null }) => {
-      const res = await fetch(`/api/owner/staff-accounts/${id}/phone`, {
+  const updateContact = useMutation({
+    mutationFn: async ({ id, phone, email }: { id: string; phone: string | null; email: string | null }) => {
+      const requests = [
+        fetch(`/api/owner/staff-accounts/${id}/phone`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ phone }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as any).error || "Failed to update phone");
+        }),
+        fetch(`/api/owner/staff-accounts/${id}/email`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ email }),
+        }),
+      ];
+      const responses = await Promise.all(requests);
+      for (const res of responses) {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as any).error || "Failed to update contact details");
+        }
       }
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/owner/staff-accounts"] });
       setEditingId(null);
       setEditPhone("");
+      setEditEmail("");
     },
   });
 
@@ -1906,10 +1917,11 @@ function StaffAccountsView() {
   const startEdit = (user: any) => {
     setEditingId(user.id);
     setEditPhone(user.phone || "");
+    setEditEmail(user.email || "");
   };
 
   const saveEdit = (id: string) => {
-    updatePhone.mutate({ id, phone: editPhone.trim() || null });
+    updateContact.mutate({ id, phone: editPhone.trim() || null, email: editEmail.trim() || null });
   };
 
   return (
@@ -1917,7 +1929,7 @@ function StaffAccountsView() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Staff Accounts</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Manage phone numbers so OTP can be delivered to staff during login</p>
+          <p className="text-sm text-slate-500 mt-0.5">Manage staff phone numbers and SMTP fallback email addresses for login codes</p>
         </div>
         {authStep === "authenticated" && !isLoading && missing.length > 0 && (
           <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
@@ -2006,6 +2018,7 @@ function StaffAccountsView() {
                 <TableHead className="text-xs font-semibold text-slate-600 w-40">Username</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-600 w-28">Role</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-600">Phone Number</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600">Fallback Email</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-600 w-28">OTP Status</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-600 w-24"></TableHead>
               </TableRow>
@@ -2033,6 +2046,22 @@ function StaffAccountsView() {
                     )}
                   </TableCell>
                   <TableCell>
+                    {editingId === user.id ? (
+                      <Input
+                        type="email"
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        placeholder="staff@example.com"
+                        className="h-8 text-sm w-52"
+                        data-testid={`input-email-${user.username}`}
+                      />
+                    ) : (
+                      <span className="text-sm text-slate-700">
+                        {user.email || <span className="text-slate-400 italic">No fallback email</span>}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     {user.phone ? (
                       <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[11px] gap-1">
                         <Phone className="w-3 h-3" /> Ready
@@ -2050,7 +2079,7 @@ function StaffAccountsView() {
                           size="sm"
                           className="h-7 px-2 bg-indigo-600 hover:bg-indigo-700 text-white"
                           onClick={() => saveEdit(user.id)}
-                          disabled={updatePhone.isPending}
+                          disabled={updateContact.isPending}
                           data-testid={`btn-save-phone-${user.username}`}
                         >
                           <Check className="w-3.5 h-3.5" />
@@ -2059,7 +2088,7 @@ function StaffAccountsView() {
                           size="sm"
                           variant="ghost"
                           className="h-7 px-2 text-slate-500"
-                          onClick={() => { setEditingId(null); setEditPhone(""); }}
+                          onClick={() => { setEditingId(null); setEditPhone(""); setEditEmail(""); }}
                           data-testid={`btn-cancel-phone-${user.username}`}
                         >
                           <X className="w-3.5 h-3.5" />
@@ -2086,7 +2115,7 @@ function StaffAccountsView() {
 
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-500">
         <p className="font-medium text-slate-700 mb-1">About OTP login</p>
-        <p>Staff members with no phone number on file will see <span className="font-mono bg-slate-100 px-1 rounded text-xs">"No phone on file, contact admin"</span> when they try to log in. Add a phone number here to unblock them.</p>
+        <p>Staff OTPs are sent through WhatsApp first and fall back to the registered email when SMTP is configured. Add both contact details here so email delivery is available if WhatsApp fails.</p>
       </div>
     </div>
   );
