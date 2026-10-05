@@ -130,6 +130,8 @@ const consultationPaths = [
   'Other',
 ];
 
+const consultationPathIcons = [Heart, CalendarIcon, Activity, FlaskConical, Baby, Sparkles, Users, Plus];
+
 const consultationDirectionsByPath: Record<string, string[]> = {
   'Fertility evaluation': ['Ovulatory timing', 'Tubal or uterine factors', 'Partner evaluation'],
   'Menstrual concern': ['Cycle pattern and timing', 'Bleeding impact', 'Hormonal or structural context'],
@@ -142,7 +144,7 @@ const consultationDirectionsByPath: Record<string, string[]> = {
 };
 
 const guidedQuestionsByDirection: Record<string, string[]> = {
-  'Ovulatory timing': ['Are cycles regular?', 'What is the average cycle length?', 'Are there signs of ovulation?', 'Have follicular scans or ovulation medicines been used?'],
+  'Ovulatory timing': ['What is the average cycle length?', 'Has ovulation been confirmed previously?', 'Are cycles regular?', 'Have follicular scans or ovulation medicines been used?'],
   'Tubal or uterine factors': ['Any history of pelvic infection or surgery?', 'Has an ultrasound or tubal assessment been done?', 'Any prior pregnancy or procedure?', 'What findings need review?'],
   'Partner evaluation': ['Has partner evaluation been discussed?', 'Any relevant partner history?', 'Are semen analysis results available?', 'What would the patient like help understanding?'],
   'Cycle pattern and timing': ['When was the last menstrual period?', 'How long are cycles typically?', 'How many days does bleeding last?', 'Has the pattern changed recently?'],
@@ -166,6 +168,20 @@ const guidedQuestionsByDirection: Record<string, string[]> = {
   'Symptom timeline': ['When did the concern begin?', 'Is it constant or intermittent?', 'Has it changed over time?', 'What prompted the visit now?'],
   'Related symptoms': ['What other symptoms occur with it?', 'Any urgent or severe symptoms?', 'What makes it better or worse?', 'What has already been tried?'],
   'Relevant medical history': ['What past conditions may be relevant?', 'Any prior procedures or treatment?', 'Any medication or allergy concerns?', 'What records should be reviewed?'],
+};
+
+const guidedQuestionHints: Record<string, string> = {
+  'What is the average cycle length?': 'Helps estimate likely ovulatory timing.',
+  'Has ovulation been confirmed previously?': 'Ask about scan, LH kit, BBT, or progesterone evidence.',
+  'Are cycles regular?': 'Record the patient’s usual pattern.',
+  'Have follicular scans or ovulation medicines been used?': 'Capture prior monitoring or treatment response.',
+};
+
+const guidedQuestionOptions: Record<string, string[]> = {
+  'What is the average cycle length?': ['26–30 days', 'Variable', 'Unsure'],
+  'Has ovulation been confirmed previously?': ['Yes', 'No', 'Not confirmed'],
+  'Are cycles regular?': ['Regular', 'Irregular', 'Unsure'],
+  'Have follicular scans or ovulation medicines been used?': ['Scans', 'Medication', 'Neither', 'Unsure'],
 };
 
 const directionRationales: Record<string, string> = {
@@ -469,6 +485,8 @@ export default function ClinicianPortal() {
   const [patientDetailTab, setPatientDetailTab] = useState<'consultation' | 'record' | 'postop' | 'genome'>('consultation');
   const [consultationStep, setConsultationStep] = useState<ConsultationStep>('reason');
   const [consultationPath, setConsultationPath] = useState('');
+  const [customDirectionDraft, setCustomDirectionDraft] = useState('');
+  const [showCustomDirectionInput, setShowCustomDirectionInput] = useState(false);
   const [selectedDirections, setSelectedDirections] = useState<string[]>([]);
   const [guidedQuestionPage, setGuidedQuestionPage] = useState(0);
   const [guidedAnswers, setGuidedAnswers] = useState<Record<string, string>>({});
@@ -1229,7 +1247,9 @@ export default function ClinicianPortal() {
   }, [patients, patientSearch, queueDateFrom, queueDateTo, queuePatients]);
 
   const guidedQuestions = [...new Set(selectedDirections.flatMap((direction) => guidedQuestionsByDirection[direction] || []))];
-  const currentGuidedQuestions = guidedQuestions.slice(guidedQuestionPage * 4, guidedQuestionPage * 4 + 4);
+  const questionsPerPage = 2;
+  const currentGuidedQuestions = guidedQuestions.slice(guidedQuestionPage * questionsPerPage, guidedQuestionPage * questionsPerPage + questionsPerPage);
+  const answeredGuidedQuestionCount = guidedQuestions.filter((question) => guidedAnswers[question] && guidedAnswers[question] !== '__SKIPPED__').length;
 
   const filteredDirectoryPatients = useMemo(() => {
     const query = patientDirectorySearch.trim().toLowerCase();
@@ -1296,6 +1316,8 @@ export default function ClinicianPortal() {
     setPatientDetailTab('consultation');
     setConsultationStep('reason');
     setConsultationPath('');
+    setCustomDirectionDraft('');
+    setShowCustomDirectionInput(false);
     setSelectedDirections([]);
     setGuidedQuestionPage(0);
     setGuidedAnswers({});
@@ -4160,6 +4182,16 @@ export default function ClinicianPortal() {
                    <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Next</span> {selectedPatient.nextReview}</span>
                  )}
               </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 border-t border-amber-100 bg-[#fffaf2] text-[10px]">
+                <span className="flex items-center gap-2 font-semibold text-slate-700"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700"><AlertCircle className="h-3 w-3" /></span>Clinical attention</span>
+                <span className={`${selectedPatient.riskScore?.level === 'Critical' || selectedPatient.riskScore?.level === 'High' || selectedPatient.status === 'High Risk' ? 'text-rose-700' : 'text-slate-600'}`}>
+                  {selectedPatient.riskScore?.level ? `${selectedPatient.riskScore.level} risk score recorded` : selectedPatient.status === 'High Risk' ? 'High-risk status recorded' : selectedPatient.status === 'Monitor' ? 'Monitoring status recorded' : 'No risk flag recorded'}
+                </span>
+                <span className="hidden sm:block h-4 w-px bg-amber-200" />
+                <span className="font-semibold uppercase tracking-wide text-slate-400">Allergies</span>
+                <span className="text-slate-700">{selectedPatient.history?.allergies?.length ? selectedPatient.history.allergies.join(', ') : 'No known drug allergies recorded'}</span>
+                <button type="button" onClick={() => setPatientDetailTab('record')} className="ml-auto text-[#7255d9] font-semibold hover:text-[#4b3795]">View history</button>
+              </div>
               <nav className="flex gap-1 px-5 py-2 border-t border-slate-100 overflow-x-auto" aria-label="Patient workspace sections">
                 {[
                   { id: 'consultation' as const, label: 'Consultation' },
@@ -4182,7 +4214,7 @@ export default function ClinicianPortal() {
 
             {patientDetailTab === 'consultation' && (
               <div className="flex-1 overflow-y-auto bg-[#f5f4f8] p-3 sm:p-5">
-                <div className="max-w-[1440px] mx-auto grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-4 lg:gap-5">
+                <div className="max-w-[1440px] mx-auto grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_240px] gap-3 lg:gap-5">
                   <section className="min-w-0">
                     <nav className="grid grid-cols-5 gap-1 mb-4" aria-label="Consultation journey">
                       {consultationSteps.map((step, index) => (
@@ -4235,21 +4267,25 @@ export default function ClinicianPortal() {
                               {soapTranscript && <p className="mt-2 text-xs text-emerald-700">Dictation is a draft. Review and edit it before adding it to the record.</p>}
                             </div>
                             <div>
-                              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Choose a starting direction</p>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {consultationPaths.map((path) => (
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Or choose a common starting point</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                                {consultationPaths.map((path, index) => {
+                                  const PathIcon = consultationPathIcons[index];
+                                  return (
                                   <button
                                     key={path}
                                     type="button"
-                                    onClick={() => { setConsultationPath(path); setSelectedDirections([]); setGuidedQuestionPage(0); setGuidedAnswers({}); setShowGuidedReview(false); }}
+                                    onClick={() => { setConsultationPath(path); setSelectedDirections([]); setGuidedQuestionPage(0); setGuidedAnswers({}); setShowGuidedReview(false); setCustomDirectionDraft(''); setShowCustomDirectionInput(false); }}
                                     aria-pressed={consultationPath === path}
-                                    className={`flex items-center gap-2 rounded-md border px-3 py-2.5 text-left text-xs font-medium transition-colors ${consultationPath === path ? 'border-[#b9a6f2] bg-[#f5f1ff] text-[#6047a5]' : 'border-slate-200 text-slate-600 hover:border-[#cfc3ef] hover:bg-[#faf9fd]'}`}
+                                    className={`flex min-h-[52px] items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-medium transition-colors ${consultationPath === path ? 'border-[#b9a6f2] bg-[#faf8ff] text-[#6047a5]' : 'border-slate-200 text-slate-600 hover:border-[#cfc3ef] hover:bg-[#faf9fd]'}`}
                                     data-testid={`consultation-path-${path.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                                   >
-                                    <span className={`flex h-5 w-5 items-center justify-center rounded ${consultationPath === path ? 'bg-white text-[#7255d9]' : 'bg-slate-50 text-slate-400'}`}>{consultationPath === path ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}</span>
+                                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${consultationPath === path ? 'bg-white text-[#7255d9]' : 'bg-[#f7f5fc] text-[#8068c6]'}`}><PathIcon className="h-4 w-4" /></span>
                                     {path}
+                                    {consultationPath === path && <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-[#7255d9]" />}
                                   </button>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           </div>
@@ -4258,12 +4294,18 @@ export default function ClinicianPortal() {
                         {consultationStep === 'explore' && (
                           <div className="space-y-5">
                             <div>
-                              <p className="text-sm font-semibold text-slate-800">Possible directions to explore</p>
-                              <p className="mt-1 text-xs text-slate-500">Prompts based on the selected consultation path, not diagnoses. Select up to three, add others later, or continue without any.</p>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-slate-800">What would you like to explore first?</p>
+                                  <p className="mt-1 text-xs text-slate-500">These are lines of inquiry based on the first impression, not diagnoses.</p>
+                                </div>
+                                {selectedDirections.length > 0 && <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-medium text-emerald-700">Clinician controlled</span>}
+                              </div>
                               {!consultationPath && <p className="mt-3 text-xs text-amber-700">Choose a starting direction in Reason to see tailored prompts.</p>}
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {(consultationDirectionsByPath[consultationPath] || []).map((direction) => {
+                              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+                                {(consultationDirectionsByPath[consultationPath] || []).map((direction, index) => {
                                   const selected = selectedDirections.includes(direction);
+                                  const DirectionIcon = [CalendarIcon, Activity, Users][index % 3];
                                   return (
                                     <button
                                       key={direction}
@@ -4277,14 +4319,34 @@ export default function ClinicianPortal() {
                                         setGuidedQuestionPage(0);
                                         setShowGuidedReview(false);
                                       }}
-                                      className={`rounded-md border px-3 py-2 text-xs font-medium transition-colors ${selected ? 'border-[#b9a6f2] bg-[#f5f1ff] text-[#6047a5]' : 'border-slate-200 bg-white text-slate-600 hover:border-[#cfc3ef]'}`}
+                                      className={`min-h-[116px] rounded-lg border p-3 text-left transition-colors ${selected ? 'border-[#a991ed] bg-[#faf8ff] shadow-[0_0_0_1px_rgba(114,85,217,0.16)]' : 'border-slate-200 bg-white hover:border-[#cfc3ef]'}`}
                                       data-testid={`direction-${direction.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                                     >
-                                      {selected ? '✓ ' : '+ '}{direction}
+                                      <span className="flex items-start justify-between">
+                                        <span className={`flex h-8 w-8 items-center justify-center rounded-md ${selected ? 'bg-white text-[#7255d9]' : 'bg-[#f7f5fc] text-[#8068c6]'}`}><DirectionIcon className="h-4 w-4" /></span>
+                                        <span className="text-lg font-semibold text-slate-100">0{index + 1}</span>
+                                      </span>
+                                      <span className="mt-3 block text-xs font-semibold text-slate-900">{direction}</span>
+                                      <span className="mt-1 block text-[10px] leading-relaxed text-slate-500 line-clamp-2">{directionRationales[direction] || 'A clinician-added direction for this consultation.'}</span>
+                                      <span className={`mt-2 block text-[10px] font-semibold ${selected ? 'text-[#6047a5]' : 'text-slate-400'}`}>{selected ? '✓ Exploring' : 'Explore'}</span>
                                     </button>
                                   );
                                 })}
                               </div>
+                              <div className="mt-3 flex flex-wrap items-center gap-3">
+                                {selectedDirections.length < 3 && (
+                                  <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-[#6047a5] hover:text-[#48347f]" onClick={() => setShowCustomDirectionInput((shown) => !shown)}>
+                                    <Plus className="h-3.5 w-3.5" /> Add another clinical direction
+                                  </button>
+                                )}
+                                {selectedDirections.length > 0 && <button type="button" className="text-xs text-slate-500 hover:text-slate-800" onClick={() => { setSelectedDirections([]); setGuidedQuestionPage(0); setShowGuidedReview(false); }}>Dismiss all</button>}
+                              </div>
+                              {showCustomDirectionInput && (
+                                <div className="mt-2 flex gap-2">
+                                  <Input value={customDirectionDraft} onChange={(event) => setCustomDirectionDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && customDirectionDraft.trim() && selectedDirections.length < 3) { setSelectedDirections((current) => [...current, customDirectionDraft.trim()]); setCustomDirectionDraft(''); setShowCustomDirectionInput(false); } }} placeholder="Add a direction to explore" className="h-9 text-xs" aria-label="Custom clinical direction" />
+                                  <Button type="button" size="sm" disabled={!customDirectionDraft.trim() || selectedDirections.length >= 3} onClick={() => { if (customDirectionDraft.trim()) { setSelectedDirections((current) => [...current, customDirectionDraft.trim()]); setCustomDirectionDraft(''); setShowCustomDirectionInput(false); } }}>Add</Button>
+                                </div>
+                              )}
                             </div>
 
                             {selectedDirections.length > 0 && (
@@ -4297,33 +4359,47 @@ export default function ClinicianPortal() {
                                 </div>
                                 <div className="flex items-center justify-between gap-3 mb-3">
                                   <div>
-                                    <h4 className="text-sm font-semibold text-slate-800">Guided questions</h4>
-                                    <p className="text-xs text-slate-500 mt-0.5">Ask, record, mark unsure, or skip. Answers remain drafts until reviewed.</p>
+                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[#8068c6]">Guided questions · {selectedDirections[0]}</p>
+                                    <h4 className="mt-1 text-sm font-semibold text-slate-800">Questions that may clarify this direction</h4>
                                   </div>
-                                  <span className="text-[10px] text-slate-400">{Math.min(guidedQuestionPage * 4 + 1, guidedQuestions.length)}–{Math.min(guidedQuestionPage * 4 + currentGuidedQuestions.length, guidedQuestions.length)} of {guidedQuestions.length}</span>
+                                  <span className="text-[10px] text-slate-500">{answeredGuidedQuestionCount} of {guidedQuestions.length} answered</span>
                                 </div>
-                                <div className="space-y-3">
-                                  {currentGuidedQuestions.map((question) => (
-                                    <div key={question} className="rounded-md border border-slate-200 p-3">
-                                      <label className="block text-xs font-medium text-slate-800" htmlFor={`guided-${question.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>{question}</label>
-                                      <div className="mt-2 flex flex-col sm:flex-row gap-2">
-                                        <Input
-                                          id={`guided-${question.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-                                          value={guidedAnswers[question] === '__SKIPPED__' ? '' : guidedAnswers[question] || ''}
-                                          onChange={(event) => setGuidedAnswers((current) => ({ ...current, [question]: event.target.value }))}
-                                          placeholder="Record answer"
-                                          className="h-9 text-xs"
-                                        />
-                                        <Button type="button" variant="outline" size="sm" className="h-9 shrink-0 text-[10px]" onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: 'Patient unsure' }))}>Patient unsure</Button>
-                                        <Button type="button" variant="ghost" size="sm" className="h-9 shrink-0 text-[10px] text-slate-500" onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: '__SKIPPED__' }))}>Skip</Button>
+                                <div className="divide-y divide-slate-100 border-y border-slate-100">
+                                  {currentGuidedQuestions.map((question, questionOffset) => {
+                                    const questionId = `guided-${question.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+                                    const answerOptions = guidedQuestionOptions[question];
+                                    const answer = guidedAnswers[question];
+                                    return (
+                                      <div key={question} className="py-3">
+                                        <div className="flex items-start gap-2">
+                                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] text-slate-500">{guidedQuestionPage * questionsPerPage + questionOffset + 1}</span>
+                                          <div className="min-w-0 flex-1">
+                                            <label className="block text-xs font-semibold text-slate-800" htmlFor={questionId}>{question}</label>
+                                            {guidedQuestionHints[question] && <p className="mt-0.5 text-[10px] text-slate-400">{guidedQuestionHints[question]}</p>}
+                                          </div>
+                                          {answer && answer !== '__SKIPPED__' && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
+                                        </div>
+                                        <div className="mt-2 ml-7 flex flex-wrap gap-1.5">
+                                          {answerOptions ? answerOptions.map((option) => (
+                                            <button key={option} type="button" aria-pressed={answer === option} onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: option }))} className={`rounded-md border px-2.5 py-1.5 text-[10px] font-medium transition-colors ${answer === option ? 'border-[#b9a6f2] bg-[#f5f1ff] text-[#6047a5]' : 'border-slate-200 text-slate-600 hover:border-[#cfc3ef]'}`}>
+                                              {option}
+                                            </button>
+                                          )) : (
+                                            <>
+                                              <Input id={questionId} value={answer === '__SKIPPED__' ? '' : answer || ''} onChange={(event) => setGuidedAnswers((current) => ({ ...current, [question]: event.target.value }))} placeholder="Record answer" className="h-8 max-w-sm text-xs" />
+                                              <Button type="button" variant="outline" size="sm" className="h-8 text-[10px]" onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: 'Patient unsure' }))}>Unsure</Button>
+                                            </>
+                                          )}
+                                          <button type="button" className={`px-2 py-1 text-[10px] ${answer === '__SKIPPED__' ? 'font-semibold text-slate-700' : 'text-slate-400 hover:text-slate-700'}`} onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: '__SKIPPED__' }))}>{answer === '__SKIPPED__' ? 'Skipped' : 'Skip'}</button>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                                   <div className="flex gap-2">
                                     {guidedQuestionPage > 0 && <Button type="button" variant="ghost" size="sm" onClick={() => setGuidedQuestionPage((page) => page - 1)}>Previous questions</Button>}
-                                    {(guidedQuestionPage + 1) * 4 < guidedQuestions.length && <Button type="button" variant="outline" size="sm" onClick={() => setGuidedQuestionPage((page) => page + 1)}>Ask next questions</Button>}
+                                    {(guidedQuestionPage + 1) * questionsPerPage < guidedQuestions.length && <Button type="button" variant="ghost" size="sm" className="text-[#6047a5]" onClick={() => setGuidedQuestionPage((page) => page + 1)}>Ask next question <ChevronRight className="ml-1 h-3 w-3" /></Button>}
                                   </div>
                                   <Button type="button" variant="outline" size="sm" onClick={() => setShowGuidedReview((current) => !current)} disabled={!Object.values(guidedAnswers).some((answer) => answer && answer !== '__SKIPPED__')}>
                                     {showGuidedReview ? 'Hide review' : 'Review answers'}
@@ -4426,21 +4502,35 @@ export default function ClinicianPortal() {
                       <div className="px-4 sm:px-6 py-3 border-t border-slate-100 flex items-center justify-between gap-2">
                         <Button type="button" variant="ghost" size="sm" onClick={() => setConsultationStep(consultationSteps[Math.max(0, consultationSteps.findIndex((step) => step.id === consultationStep) - 1)].id)} disabled={consultationStep === 'reason'}>Back</Button>
                         <Button type="button" size="sm" onClick={() => setConsultationStep(consultationSteps[Math.min(consultationSteps.length - 1, consultationSteps.findIndex((step) => step.id === consultationStep) + 1)].id)} disabled={consultationStep === 'plan'}>
-                          {consultationStep === 'evidence' ? 'Review plan' : 'Continue'} <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                          {consultationStep === 'reason' ? 'Explore possible directions' :
+                           consultationStep === 'explore' ? 'Continue to examination' :
+                           consultationStep === 'examine' ? 'Continue to evidence' : 'Review plan'} <ChevronRight className="ml-1 h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
                   </section>
 
                   <aside className="space-y-3">
-                    <Card className="shadow-none border-slate-200 rounded-lg">
-                      <CardHeader className="py-3 px-4 border-b border-slate-100">
-                        <CardTitle className="text-xs font-semibold text-slate-800">Patient context</CardTitle>
+                    <Card className="shadow-none border-[#ddd3f7] rounded-lg overflow-hidden">
+                      <CardHeader className="py-3 px-4 border-b border-[#eee9fb] flex flex-row items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#eee9fb] text-[#7255d9]"><Sparkles className="h-3.5 w-3.5" /></span>
+                        <div className="min-w-0"><p className="text-[9px] font-semibold uppercase tracking-wider text-[#8068c6]">Clinical copilot</p><CardTitle className="text-xs font-semibold text-slate-800">Visit support</CardTitle></div>
                       </CardHeader>
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex items-center gap-2"><Avatar className="h-8 w-8"><AvatarFallback className="bg-[#eee9fb] text-[#55408f] text-[10px]">{getInitials(selectedPatient.name)}</AvatarFallback></Avatar><div className="min-w-0"><p className="text-xs font-semibold text-slate-900 truncate">{selectedPatient.name}</p><p className="text-[10px] text-slate-500">{selectedPatient.age ? `${selectedPatient.age} years` : 'Age not recorded'}{selectedPatient.type ? ` · ${selectedPatient.type}` : ''}</p></div></div>
-                        <div className="border-t border-slate-100 pt-2"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Allergies</p><p className="mt-1 text-xs text-slate-700">{selectedPatient.history?.allergies?.length ? selectedPatient.history.allergies.join(', ') : 'No known allergies recorded'}</p></div>
-                        <div><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Cycle context</p><p className="mt-1 text-xs text-slate-700">{selectedPatient.lmp ? `LMP ${new Date(selectedPatient.lmp).toLocaleDateString('en-IN')}` : 'LMP not recorded'}{selectedPatient.cycleDay ? ` · Cycle day ${selectedPatient.cycleDay}` : ''}</p></div>
+                      <CardContent className="p-3 space-y-3">
+                        <div className="rounded-md bg-[#f5f1ff] p-3">
+                          <p className="text-[10px] leading-relaxed text-slate-700">Curated prompts for clinician review. These are not AI-generated diagnoses or recommendations.</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">First impression</p>
+                          <p className="mt-1 text-[10px] leading-relaxed text-slate-700 line-clamp-3">{soapSubjectiveDraft || 'Add the patient’s concern to begin.'}</p>
+                        </div>
+                        <div className="border-t border-slate-100 pt-2">
+                          <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Possible directions</p>
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {selectedDirections.length ? selectedDirections.map((direction) => <span key={direction} className="rounded bg-white px-2 py-1 text-[9px] text-[#6047a5] border border-[#e6ddfa]">{direction}</span>) : <span className="text-[10px] text-slate-500">Choose a direction in Explore.</span>}
+                          </div>
+                        </div>
+                        <Button type="button" variant="ghost" size="sm" className="h-7 w-full justify-between px-1 text-[10px] text-[#6047a5]" onClick={() => setConsultationStep('evidence')}>Review evidence <ChevronRight className="h-3 w-3" /></Button>
                       </CardContent>
                     </Card>
 
@@ -4456,6 +4546,19 @@ export default function ClinicianPortal() {
                     </Card>
 
                     <Card className="shadow-none border-slate-200 rounded-lg">
+                      <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
+                        <CardTitle className="flex items-center gap-1.5 text-xs font-semibold text-slate-800"><CalendarIcon className="h-3.5 w-3.5 text-[#8068c6]" />Cycle overview</CardTitle>
+                        <span className="text-[10px] text-slate-500">{selectedPatient.cycleDay ? `CD ${selectedPatient.cycleDay}` : 'Cycle day —'}</span>
+                      </CardHeader>
+                      <CardContent className="p-3">
+                        <p className="text-[10px] text-slate-600">{selectedPatient.lmp ? `LMP ${new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : 'Last menstrual period not recorded'}</p>
+                        {selectedPatient.cycleLength && <p className="mt-1 text-[10px] text-slate-500">Recorded cycle length: {selectedPatient.cycleLength} days</p>}
+                        {selectedPatient.cycleDay && selectedPatient.cycleLength && <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#8e77dc]" style={{ width: `${Math.min(100, selectedPatient.cycleDay / selectedPatient.cycleLength * 100)}%` }} /></div>}
+                        <p className="mt-2 text-[9px] text-slate-400">No cycle length is assumed when it is not on file.</p>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="shadow-none border-slate-200 rounded-lg">
                       <CardHeader className="py-3 px-4 border-b border-slate-100"><CardTitle className="text-xs font-semibold text-slate-800">Recent reports</CardTitle></CardHeader>
                       <CardContent className="p-0">
                         {labResults.slice(-4).reverse().map((result: any, index: number) => <div key={result.id || `${result.testName}-${index}`} className="px-4 py-2.5 border-b border-slate-50 last:border-0"><p className="text-xs font-medium text-slate-800">{result.testName}</p><p className="text-[10px] text-slate-500">{result.value}{result.unit ? ` ${result.unit}` : ''}{result.status ? ` · ${result.status}` : ''}</p></div>)}
@@ -4463,10 +4566,7 @@ export default function ClinicianPortal() {
                       </CardContent>
                     </Card>
 
-                    <div className="rounded-lg border border-[#e3dcf5] bg-[#f6f2ff] p-3">
-                      <p className="text-xs font-semibold text-[#6047a5] flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Clinical reasoning support</p>
-                      <p className="mt-1.5 text-[10px] leading-relaxed text-slate-600">Directions are prompts, not diagnoses. Distinguish recorded facts from assumptions, note what is missing, and confirm every entry before saving.</p>
-                    </div>
+                    <Button type="button" className="w-full bg-[#7255d9] hover:bg-[#6047c5]" onClick={() => setConsultationStep('plan')} data-testid="button-review-visit-plan"><FileText className="mr-1.5 h-3.5 w-3.5" />Review &amp; complete visit</Button>
                   </aside>
                 </div>
               </div>
