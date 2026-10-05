@@ -54,4 +54,9 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Deploy frontend bundles
+        env:
+          CF_DIST_SAIVIE: ${{ vars.CF_DIST_SAIVIE }}
+          CF_DIST_DESK: ${{ vars.CF_DIST_DESK }}
+          CF_DIST_RECOVER: ${{ vars.CF_DIST_RECOVER }}
+          CF_DIST_GENE: ${{ vars.CF_DIST_GENE }}
         run: bash scripts/deploy-frontends.sh

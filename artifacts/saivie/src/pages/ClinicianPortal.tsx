@@ -366,7 +366,7 @@ function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; pa
 export default function ClinicianPortal() {
   const [, navigate] = useLocation();
   const [activeView, setActiveView] = useState("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 640);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [careMode, setCareMode] = useState("natural_conception"); 
   const [showDocumentation, setShowDocumentation] = useState(false);
@@ -388,6 +388,7 @@ export default function ClinicianPortal() {
     return null;
   }, []);
   const providerName = clinicianProvider?.name || "Doctor";
+  const providerFirstName = providerName.replace(/^Dr\.?\s*/i, '').split(' ')[0] || 'Doctor';
   const providerSpecialty = clinicianProvider?.specialty || "Clinician";
   const providerInitials = providerName.split(" ").filter((w: string) => w[0]?.match(/[A-Z]/)).map((w: string) => w[0]).join("").slice(0, 2) || "DR";
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -1172,32 +1173,36 @@ export default function ClinicianPortal() {
     setPostVisitSummaryResult(null);
   };
 
+  const chronologicalQueue = [...queuePatients].sort((a: any, b: any) =>
+    `${a.appointmentDate || ''} ${a.appointmentTime || ''}`.localeCompare(`${b.appointmentDate || ''} ${b.appointmentTime || ''}`)
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 overflow-hidden">
       
       {/* Sidebar */}
-      <aside className={`bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 z-20 transition-all duration-300 ${sidebarOpen ? "w-64" : "w-20"}`}>
-        <div className="p-3 border-b border-slate-800 flex items-center justify-between gap-2">
+      <aside className={`bg-white text-slate-600 flex flex-col shrink-0 border-r border-slate-200 z-20 transition-all duration-300 ${sidebarOpen ? "w-64 max-sm:w-16" : "w-20"}`}>
+        <div className="p-3 max-sm:p-2 border-b border-slate-100 flex items-center justify-between gap-2 max-sm:justify-center">
           {sidebarOpen ? (
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
-                <Stethoscope className="w-4 h-4 text-white" />
+              <div className="w-8 h-8 rounded-full bg-[#e9e2ff] flex items-center justify-center shrink-0">
+                <Stethoscope className="w-4 h-4 text-[#6047a5]" />
               </div>
-              <div className="min-w-0">
-                <h1 className="text-white font-serif text-xl tracking-tight truncate">Helix<span className="text-blue-400">Care</span></h1>
+              <div className="min-w-0 max-sm:hidden">
+                <h1 className="text-slate-900 font-serif text-xl tracking-tight truncate">Helix<span className="text-[#8068c6]">Care</span></h1>
                 <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium">Clinician OS v2.1</p>
               </div>
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto shrink-0">
-              <Stethoscope className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-full bg-[#e9e2ff] flex items-center justify-center mx-auto shrink-0">
+              <Stethoscope className="w-4 h-4 text-[#6047a5]" />
             </div>
           )}
 
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800/60 shrink-0"
+            className="h-8 w-8 text-slate-400 hover:text-slate-900 hover:bg-slate-100 shrink-0 max-sm:hidden"
             onClick={() => setSidebarOpen(!sidebarOpen)}
             aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
           >
@@ -1217,29 +1222,31 @@ export default function ClinicianPortal() {
             <Button
               key={id}
               variant={activeView === id ? 'secondary' : 'ghost'}
-              className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center'} ${activeView === id ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800/50'}`}
+              aria-label={label}
+              title={label}
+              className={`w-full max-sm:justify-center ${sidebarOpen ? 'justify-start' : 'justify-center'} ${activeView === id ? 'bg-[#eee9fb] text-[#55408f] hover:bg-[#e7e0f8]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
               onClick={() => setActiveView(id)}
             >
-              <Icon className={`${sidebarOpen ? 'mr-3' : 'mr-0'} h-4 w-4`} />
-              {sidebarOpen && label}
+              <Icon className={`${sidebarOpen ? 'mr-3 max-sm:mr-0' : 'mr-0'} h-4 w-4`} />
+              <span className="max-sm:hidden">{sidebarOpen && label}</span>
             </Button>
           ))}
         </nav>
 
-        <div className="p-3 border-t border-slate-800 bg-slate-900/50">
-          <div className={`flex items-center ${sidebarOpen ? 'gap-3' : 'justify-center'}`}>
-            <Avatar className="h-9 w-9 border border-slate-600 shrink-0">
-              <AvatarFallback className="bg-slate-700 text-slate-300">{providerInitials}</AvatarFallback>
+        <div className="p-3 border-t border-slate-100 bg-white">
+          <div className={`flex max-sm:flex-col max-sm:items-center max-sm:gap-2 ${sidebarOpen ? 'items-center gap-3' : 'flex-col items-center gap-2'}`}>
+            <Avatar className="h-9 w-9 border border-slate-200 shrink-0">
+              <AvatarFallback className="bg-[#eee9fb] text-[#55408f]">{providerInitials}</AvatarFallback>
             </Avatar>
             {sidebarOpen && (
-              <div className="text-sm flex-1 min-w-0">
-                <p className="text-white font-medium truncate">{providerName}</p>
+              <div className="text-sm flex-1 min-w-0 max-sm:hidden">
+                <p className="text-slate-900 font-medium truncate">{providerName}</p>
                 <p className="text-xs text-slate-500 truncate">{providerSpecialty}</p>
               </div>
             )}
             <button
               onClick={() => { localStorage.removeItem("clinicianProvider"); navigate("/"); }}
-              className={`p-1.5 rounded-md hover:bg-slate-700 text-slate-400 hover:text-red-400 transition-colors ${sidebarOpen ? '' : 'mt-0'}`}
+              className="p-1.5 rounded-md hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
               title="Sign Out"
               data-testid="button-signout"
             >
@@ -1250,75 +1257,100 @@ export default function ClinicianPortal() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-slate-50">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-[#f5f4f8]">
         
         {/* NEW DASHBOARD VIEW */}
         {activeView === 'dashboard' && (
-          <div className="flex-1 overflow-y-auto p-6">
-             <div className="max-w-7xl mx-auto space-y-6">
+           <div className="flex-1 overflow-y-auto p-4 md:p-6">
+             <div className="max-w-[1440px] mx-auto space-y-5">
+               <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Clinician workspace</p>
+                    <h2 className="mt-1 text-2xl font-semibold text-slate-900">Good morning, {providerFirstName}</h2>
+                  <p className="mt-1 text-sm text-slate-500">Here is your clinic at a glance.</p>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-600 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                  <CalendarIcon className="w-4 h-4 text-[#725bb1]" />
+                  {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </div>
+               </div>
+
+               <section className="rounded-xl bg-[#ded5fb] px-5 py-5 md:px-7 md:py-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 overflow-hidden" aria-label="Clinic at a glance">
+                <div className="max-w-xl">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-[#5b4b8b]">Today's clinic</p>
+                  <h3 className="mt-2 text-2xl md:text-3xl font-semibold text-slate-900">{queuePatients.length} visits in flow</h3>
+                  <p className="mt-1 text-sm text-slate-700">Your selected date range, with triage priorities ready to review.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                   { label: 'Fertility', count: queuePatients.filter((p: any) => ['fertility', 'ttc', 'iui', 'ivf', 'iui cycle', 'pcos'].some(t => (p.type || '').toLowerCase().includes(t))), className: 'bg-white/80 text-[#6047a5]' },
+                   { label: 'Pregnancy', count: queuePatients.filter((p: any) => ['pregnancy', 'pregnant', 'antenatal'].some(t => (p.type || '').toLowerCase().includes(t))), className: 'bg-[#f6eaf0] text-[#9b5877]' },
+                   { label: 'Postpartum', count: queuePatients.filter((p: any) => (p.type || '').toLowerCase().includes('postpartum')), className: 'bg-[#e6f1dc] text-[#4d733c]' },
+                  ].map((item) => (
+                   <div key={item.label} className={`min-w-[112px] rounded-lg px-3 py-2 ${item.className}`}>
+                    <p className="text-xs font-medium">{item.label}</p>
+                    <p className="mt-0.5 text-lg font-semibold">{item.count.length}<span className="ml-1 text-xs font-medium">visits</span></p>
+                   </div>
+                  ))}
+                </div>
+               </section>
                 
                 {/* TOP BAR - TODAY AT A GLANCE */}
-                <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                   <div className="flex items-center gap-8">
-                      <div className="flex items-center gap-3 cursor-pointer hover:bg-blue-50/50 rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors" onClick={() => navigate('/clinician/patients/today-appointments')} data-testid="link-today-appointments">
-                         <div className="p-2 bg-blue-50 rounded-lg text-blue-600"><Users className="w-5 h-5" /></div>
+               <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-6 gap-3">
+                 <div className="flex items-center gap-3 cursor-pointer bg-white border border-slate-200 hover:border-[#c9baf1] rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/today-appointments')} data-testid="link-today-appointments">
+                     <div className="p-2 bg-[#f0ebfc] rounded-lg text-[#6a52a9]"><Users className="w-5 h-5" /></div>
                          <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Today's Appointments</p>
+                       <p className="text-xs text-slate-500 font-medium">Today's appointments</p>
                             <p className="text-xl font-bold text-slate-900" data-testid="stat-today-appointments">{dashStats?.todayAppointments ?? '—'}</p>
                          </div>
-                      </div>
-                      <div className="h-8 w-px bg-slate-100"></div>
-                      <div className="flex items-center gap-3 cursor-pointer hover:bg-purple-50/50 rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors" onClick={() => navigate('/clinician/patients/fertility')} data-testid="link-fertility-active">
-                         <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><Dna className="w-5 h-5" /></div>
+                 </div>
+                 <div className="flex items-center gap-3 cursor-pointer bg-white border border-slate-200 hover:border-[#c9baf1] rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/fertility')} data-testid="link-fertility-active">
+                     <div className="p-2 bg-[#f0ebfc] rounded-lg text-[#6a52a9]"><Dna className="w-5 h-5" /></div>
                          <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Fertility Active</p>
+                       <p className="text-xs text-slate-500 font-medium">Fertility active</p>
                             <p className="text-xl font-bold text-slate-900" data-testid="stat-fertility-active">{dashStats?.fertilityActive ?? '—'}</p>
                          </div>
-                      </div>
-                      <div className="h-8 w-px bg-slate-100"></div>
-                      <div className="flex items-center gap-3 cursor-pointer hover:bg-pink-50/50 rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors" onClick={() => navigate('/clinician/patients/pregnancy')} data-testid="link-pregnancy-followups">
-                         <div className="p-2 bg-pink-50 rounded-lg text-pink-600"><Baby className="w-5 h-5" /></div>
+                 </div>
+                 <div className="flex items-center gap-3 cursor-pointer bg-white border border-slate-200 hover:border-[#c9baf1] rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/pregnancy')} data-testid="link-pregnancy-followups">
+                     <div className="p-2 bg-[#f8edf2] rounded-lg text-[#a65e7d]"><Baby className="w-5 h-5" /></div>
                          <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Pregnancy Follow-ups</p>
+                       <p className="text-xs text-slate-500 font-medium">Pregnancy follow-ups</p>
                             <p className="text-xl font-bold text-slate-900" data-testid="stat-pregnancy-followups">{dashStats?.pregnancyFollowups ?? '—'}</p>
                          </div>
-                      </div>
-                      <div className="h-8 w-px bg-slate-100"></div>
-                      <div className="flex items-center gap-3 cursor-pointer hover:bg-indigo-50/50 rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors" onClick={() => navigate('/clinician/patients/referrals')} data-testid="link-referrals">
-                         <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><FileText className="w-5 h-5" /></div>
+                 </div>
+                 <div className="flex items-center gap-3 cursor-pointer bg-white border border-slate-200 hover:border-[#c9baf1] rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/referrals')} data-testid="link-referrals">
+                     <div className="p-2 bg-[#eef2fa] rounded-lg text-[#5875ac]"><FileText className="w-5 h-5" /></div>
                          <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Referrals</p>
+                       <p className="text-xs text-slate-500 font-medium">Referrals</p>
                             <p className="text-xl font-bold text-slate-900" data-testid="stat-referrals">{dashStats?.totalReferrals ?? '—'}</p>
                          </div>
-                      </div>
-                      <div className="h-8 w-px bg-slate-100"></div>
-                      <div className="flex items-center gap-3 cursor-pointer hover:bg-rose-50/50 rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors" onClick={() => navigate('/clinician/patients/high-risk')} data-testid="link-high-risk">
-                         <div className="p-2 bg-rose-50 rounded-lg text-rose-600"><AlertTriangle className="w-5 h-5" /></div>
+                 </div>
+                 <div className="flex items-center gap-3 cursor-pointer bg-white border border-slate-200 hover:border-[#e8c5c8] rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/high-risk')} data-testid="link-high-risk">
+                     <div className="p-2 bg-[#fff0ef] rounded-lg text-[#b4555b]"><AlertTriangle className="w-5 h-5" /></div>
                          <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">High Risk Alerts</p>
+                       <p className="text-xs text-slate-500 font-medium">High-risk alerts</p>
                             <p className="text-xl font-bold text-slate-900" data-testid="stat-high-risk">{dashStats?.highRiskAlerts ?? '—'}</p>
                          </div>
-                      </div>
-                   </div>
-                   <div className="text-right">
-                      <p className="text-sm font-medium text-slate-900">{new Date().toLocaleDateString('en-IN', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-                      <p className="text-xs text-slate-500">Total Patients: {dashStats?.totalPatients ?? '—'}</p>
-                   </div>
+                 </div>
+                 <div className="bg-white border border-slate-200 rounded-lg p-3">
+                   <p className="text-xs text-slate-500 font-medium">Total patients</p>
+                   <p className="text-xl font-bold text-slate-900" data-testid="stat-total-patients">{dashStats?.totalPatients ?? patients.length ?? '—'}</p>
+                 </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-6">
+               <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.85fr)] gap-5">
                   
                   {/* LEFT COLUMN - URGENT & SCHEDULE */}
                   <div className="col-span-2 space-y-6">
                      
                      {/* SECTION 1 - PRIORITY ATTENTION PANEL */}
-                     <div className="space-y-3">
+                    <div className="space-y-3">
                         <div className="flex items-center gap-2">
-                           <AlertCircle className="w-4 h-4 text-rose-600" />
-                           <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Needs Doctor Attention</h3>
+                        <AlertCircle className="w-4 h-4 text-[#a15b78]" />
+                        <h3 className="text-sm font-semibold text-slate-800">Needs your attention</h3>
                         </div>
                         
-                        <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3">
                            {(dashStats?.priorityPatients || []).length > 0 ? (dashStats.priorityPatients as any[]).map((pp: any, idx: number) => {
                               const borderColors: Record<string, string> = { action: 'border-l-rose-500', review: 'border-l-amber-500', alert: 'border-l-amber-500' };
                               const badgeColors: Record<string, string> = { action: 'bg-rose-100 text-rose-700', review: 'bg-amber-100 text-amber-700', alert: 'bg-amber-100 text-amber-700' };
@@ -1356,12 +1388,12 @@ export default function ClinicianPortal() {
                      </div>
 
                      {/* SECTION 2 - TODAY'S PATIENT FLOW */}
-                     <Card className="shadow-sm border-slate-200">
+                     <Card className="shadow-none border-slate-200 rounded-lg overflow-hidden">
                         <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
                            <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
                               <CalendarCheck className="w-4 h-4 text-blue-600" /> Patient Flow
                            </CardTitle>
-                           <div className="flex items-center gap-1.5">
+                           <div className="flex flex-wrap items-center justify-end gap-1.5">
                               <Input
                                 type="date"
                                 value={queueDateFrom}
@@ -1395,7 +1427,8 @@ export default function ClinicianPortal() {
                                  No patients scheduled {queueDateFrom !== queueDateTo ? 'for this date range' : 'for this date'}
                               </div>
                            ) : (
-                           <table className="w-full text-sm text-left">
+                           <div className="overflow-x-auto">
+                           <table className="min-w-[720px] w-full text-sm text-left">
                               <thead className="text-xs text-slate-500 bg-slate-50 uppercase border-b border-slate-100">
                                  <tr>
                                     {queueDateFrom !== queueDateTo && <th className="px-3 py-3 font-medium w-20">Date</th>}
@@ -1486,18 +1519,19 @@ export default function ClinicianPortal() {
                                  })}
                               </tbody>
                            </table>
+                           </div>
                            )}
                         </CardContent>
                      </Card>
 
                      {/* SECTION 7 - CLINIC INSIGHTS (Bottom Panel) */}
-                     <div className="grid grid-cols-4 gap-4">
-                        <Card className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white border-none shadow-md cursor-pointer hover:from-indigo-700 hover:to-indigo-800 transition-colors" onClick={() => navigate('/clinician/patients/pregnancy')} data-testid="link-pregnancy-insights">
+                     <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                        <Card className="bg-[#e6f1dc] text-slate-800 border border-[#d8e7cc] shadow-none cursor-pointer hover:bg-[#deebd2] transition-colors" onClick={() => navigate('/clinician/patients/pregnancy')} data-testid="link-pregnancy-insights">
                            <CardContent className="p-4">
-                              <p className="text-[10px] text-indigo-200 uppercase tracking-wider font-bold mb-1">Pregnancy Patients</p>
+                            <p className="text-[10px] text-[#587146] uppercase tracking-wider font-bold mb-1">Pregnancy Patients</p>
                               <div className="flex items-end justify-between">
                                  <p className="text-3xl font-bold" data-testid="stat-pregnancies-month">{dashStats?.pregnancyFollowups ?? '—'}</p>
-                                 <TrendingUp className="w-4 h-4 text-indigo-300 mb-1" />
+                              <TrendingUp className="w-4 h-4 text-[#668452] mb-1" />
                               </div>
                            </CardContent>
                         </Card>
@@ -1533,6 +1567,45 @@ export default function ClinicianPortal() {
 
                   {/* RIGHT COLUMN - INTELLIGENCE SNAPSHOTS */}
                   <div className="space-y-6">
+
+                     <Card className="shadow-none border-slate-200 rounded-lg overflow-hidden" data-testid="panel-up-next">
+                       <CardHeader className="py-4 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
+                         <div>
+                           <CardTitle className="text-sm font-semibold text-slate-900">Up next</CardTitle>
+                           <p className="text-xs text-slate-500 mt-1">Appointments in time order</p>
+                         </div>
+                         <Button variant="ghost" size="sm" className="h-8 text-xs text-[#6047a5]" onClick={() => setActiveView('schedule')}>
+                           Full schedule <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                         </Button>
+                       </CardHeader>
+                       <CardContent className="p-0">
+                         {chronologicalQueue.length === 0 ? (
+                           <div className="px-4 py-8 text-center text-sm text-slate-500">No appointments in this date range.</div>
+                         ) : (
+                           <div className="divide-y divide-slate-100">
+                             {chronologicalQueue.slice(0, 5).map((patient: any) => (
+                               <button
+                                 key={`${patient.appointmentId}-${patient.id}`}
+                                 type="button"
+                                 data-testid={`up-next-patient-${patient.id}`}
+                                 className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#faf9fd] transition-colors"
+                                 onClick={() => navigateToPatient(patient)}
+                               >
+                                 <span className="w-12 shrink-0 text-xs font-semibold text-slate-700">{patient.appointmentTime || '--:--'}</span>
+                                 <Avatar className="h-8 w-8 shrink-0">
+                                   <AvatarFallback className="bg-[#eee9fb] text-[#55408f] text-[10px] font-semibold">{getInitials(patient.name)}</AvatarFallback>
+                                 </Avatar>
+                                 <span className="min-w-0 flex-1">
+                                   <span className="block text-sm font-medium text-slate-900 truncate">{patient.name}</span>
+                                   <span className="block text-xs text-slate-500 truncate">{patient.type || 'General appointment'}</span>
+                                 </span>
+                                 <span className="shrink-0 text-[10px] font-medium text-slate-600 bg-slate-100 rounded px-2 py-1 capitalize">{patient.appointmentStatus || 'Scheduled'}</span>
+                               </button>
+                             ))}
+                           </div>
+                         )}
+                       </CardContent>
+                     </Card>
 
                      {/* RISK ALERTS PANEL */}
                      {riskAlerts.length > 0 && (
