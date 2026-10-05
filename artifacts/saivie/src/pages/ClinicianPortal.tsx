@@ -519,6 +519,7 @@ export default function ClinicianPortal() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [soapTranscript, setSoapTranscript] = useState<{subjective: string; objective: string; assessment: string; plan: string; rawTranscript: string} | null>(null);
   const [soapSubjectiveDraft, setSoapSubjectiveDraft] = useState("");
+  const [treatmentResponseDraft, setTreatmentResponseDraft] = useState('');
   const [soapObjectiveDraft, setSoapObjectiveDraft] = useState("");
   const [soapAssessmentDraft, setSoapAssessmentDraft] = useState("");
   const [soapPlanDraft, setSoapPlanDraft] = useState("");
@@ -759,6 +760,42 @@ export default function ClinicianPortal() {
     new Date(a.date).getTime() - new Date(b.date).getTime() || a.id - b.id
   );
   const latestVisit = sortedVisitHistory.length > 0 ? sortedVisitHistory[sortedVisitHistory.length - 1] : null;
+  const latestVisitMatchesAppointment = Boolean(
+    selectedPatient?.appointmentId && latestVisit?.appointmentId &&
+    String(latestVisit.appointmentId) === String(selectedPatient.appointmentId)
+  );
+  const currentEncounterVisit = latestVisitMatchesAppointment ? latestVisit : null;
+  const previousVisit = latestVisitMatchesAppointment
+    ? sortedVisitHistory[sortedVisitHistory.length - 2] || null
+    : latestVisit;
+  const isFollowUpVisit = Boolean(previousVisit);
+
+  const pregnancyContext = useMemo(() => {
+    const lmpValue = selectedPatient?.lmp;
+    if (!lmpValue) return null;
+    const match = String(lmpValue).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!match) return null;
+    const [, year, month, day] = match;
+    const lmpUtc = Date.UTC(Number(year), Number(month) - 1, Number(day));
+    const today = new Date();
+    const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    const elapsedDays = Math.floor((todayUtc - lmpUtc) / 86_400_000);
+    if (!Number.isFinite(elapsedDays) || elapsedDays < 0) return null;
+    const weeks = Math.floor(elapsedDays / 7);
+    const days = elapsedDays % 7;
+    const trimester = weeks < 14 ? 'First trimester' : weeks < 28 ? 'Second trimester' : 'Third trimester';
+    const dueDate = new Date(lmpUtc + 280 * 86_400_000);
+    return {
+      weeks,
+      days,
+      trimester,
+      dueDate: dueDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }),
+    };
+  }, [selectedPatient?.lmp]);
+
+  const showPregnancyContext = careMode === 'pregnancy' || consultationPath === 'Pregnancy-related concern' ||
+    String(selectedPatient?.pregnancyStatus || '').toLowerCase() === 'pregnant' ||
+    String(selectedPatient?.type || '').toLowerCase().includes('pregnan');
 
   const clinicalNotesQuery = useQuery({
     queryKey: [`/api/patients/${selectedPatient?.id}/clinical-notes`],
@@ -787,6 +824,35 @@ export default function ClinicianPortal() {
     enabled: !!selectedPatient
   });
   const medications = medicationsQuery.data || [];
+  const previousVisitPrescriptionItems: any[] = Array.isArray(previousVisit?.prescriptions) ? previousVisit.prescriptions : [];
+  const datedMedicationRecords = [...medications]
+    .filter((med: any) => med.startDate)
+    .sort((a: any, b: any) => String(b.startDate).localeCompare(String(a.startDate)));
+  const latestMedicationDate = datedMedicationRecords[0]?.startDate;
+  const latestMedicationRecords = latestMedicationDate
+    ? datedMedicationRecords.filter((med: any) => med.startDate === latestMedicationDate)
+    : medications.filter((med: any) => String(med.status || '').toLowerCase() === 'active');
+  const lastPrescriptionItems = previousVisitPrescriptionItems.length > 0
+    ? previousVisitPrescriptionItems.map((item: any) => typeof item === 'string'
+      ? item
+      : [item.name || item.medication || item.drug, item.dose, item.frequency].filter(Boolean).join(' · ')).filter(Boolean)
+    : latestMedicationRecords.slice(0, 5).map((med: any) => [med.name, med.dose, med.frequency].filter(Boolean).join(' · '));
+  const lastPrescriptionDate = previousVisitPrescriptionItems.length > 0 ? previousVisit?.date : latestMedicationDate;
+  const lastPrescriptionLabel = previousVisitPrescriptionItems.length > 0
+    ? 'Prescription from previous visit'
+    : latestMedicationDate
+      ? 'Most recently recorded medication'
+      : latestMedicationRecords.length > 0
+        ? 'Active medication list · prescription date unavailable'
+      : 'No prior prescription recorded';
+  const priorVisitContext = [
+    previousVisit?.date ? `Previous visit date: ${previousVisit.date}` : '',
+    previousVisit?.chiefComplaint || previousVisit?.subjective ? `Previous concern: ${previousVisit.chiefComplaint || previousVisit.subjective}` : '',
+    previousVisit?.assessment || previousVisit?.diagnosis ? `Previous assessment: ${previousVisit.assessment || previousVisit.diagnosis}` : '',
+    previousVisit?.planNotes ? `Previous plan: ${previousVisit.planNotes}` : '',
+    lastPrescriptionItems.length ? `${lastPrescriptionLabel}${lastPrescriptionDate ? ` (${lastPrescriptionDate})` : ''}: ${lastPrescriptionItems.join('; ')}` : '',
+    showPregnancyContext && pregnancyContext ? `LMP-derived gestational age: ${pregnancyContext.weeks} weeks ${pregnancyContext.days} days; ${pregnancyContext.trimester}.` : '',
+  ].filter(Boolean).join('\n').slice(0, 4000);
 
   const labResultsQuery = useQuery({
     queryKey: [`/api/patients/${selectedPatient?.id}/lab-results`],
@@ -1328,6 +1394,7 @@ export default function ClinicianPortal() {
     // Reset voice SOAP drafts when switching patients
     setSoapTranscript(null);
     setSoapSubjectiveDraft("");
+    setTreatmentResponseDraft('');
     setSoapObjectiveDraft("");
     setSoapAssessmentDraft("");
     setSoapPlanDraft("");
@@ -1363,7 +1430,7 @@ export default function ClinicianPortal() {
                 audioData,
                 mimeType: 'audio/webm',
                 patientContext: `${selectedPatient?.name}, ${selectedPatient?.age}y, ${selectedPatient?.type || ''}`,
-                patientId: selectedPatient?.id,
+                priorVisitContext,
               }),
             });
             const data = await response.json();
@@ -1398,6 +1465,13 @@ export default function ClinicianPortal() {
     setConsultationStep('reason');
   };
 
+  const addFollowUpResponseToNote = () => {
+    if (!treatmentResponseDraft.trim()) return;
+    const responseSection = `Follow-up treatment response:\n${treatmentResponseDraft.trim()}`;
+    setSoapSubjectiveDraft((current) => [current.trim(), responseSection].filter(Boolean).join('\n\n'));
+    setTreatmentResponseDraft('');
+  };
+
   const addReviewedContextToPlan = () => {
     const contextLines = [
       selectedDirections.length ? `Working directions explored (not diagnoses): ${selectedDirections.join(', ')}` : '',
@@ -1425,8 +1499,8 @@ export default function ClinicianPortal() {
     setSoapSavedMsg(null);
     try {
       let response: Response;
-      if (latestVisit?.id) {
-        response = await fetch(`/api/visit-history/${latestVisit.id}`, {
+      if (currentEncounterVisit?.id) {
+        response = await fetch(`/api/visit-history/${currentEncounterVisit.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -4237,7 +4311,7 @@ export default function ClinicianPortal() {
                         <div>
                           <p className="text-[10px] font-semibold uppercase tracking-wider text-[#7255d9]">Step {consultationSteps.findIndex((step) => step.id === consultationStep) + 1} of 5 · Current visit</p>
                           <h3 className="mt-1 text-base sm:text-lg font-semibold text-slate-900">
-                            {consultationStep === 'reason' ? 'Start with your first impression' :
+                            {consultationStep === 'reason' ? (isFollowUpVisit ? 'Review progress since the last visit' : 'Start with your first impression') :
                              consultationStep === 'explore' ? 'Choose what to explore' :
                              consultationStep === 'examine' ? 'Record examination findings' :
                              consultationStep === 'evidence' ? 'Review supporting evidence' : 'Conclude and plan'}
@@ -4253,6 +4327,21 @@ export default function ClinicianPortal() {
                       <div className="p-4 sm:p-6 min-h-[360px]">
                         {consultationStep === 'reason' && (
                           <div className="space-y-5">
+                            {isFollowUpVisit && previousVisit && (
+                              <div className="rounded-md border border-[#ddd3f7] bg-[#faf8ff] p-3" data-testid="follow-up-context">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <p className="text-xs font-semibold text-[#6047a5]">Follow-up visit</p>
+                                  <span className="text-[10px] text-slate-500">Previous visit {new Date(previousVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                </div>
+                                {(previousVisit.chiefComplaint || previousVisit.subjective) && <p className="mt-2 text-xs text-slate-700"><span className="font-semibold">Previous concern:</span> {previousVisit.chiefComplaint || previousVisit.subjective}</p>}
+                                {(previousVisit.assessment || previousVisit.diagnosis) && <p className="mt-1 text-xs text-slate-700"><span className="font-semibold">Previous assessment:</span> {previousVisit.assessment || previousVisit.diagnosis}</p>}
+                                {previousVisit.planNotes && <p className="mt-1 text-xs text-slate-700"><span className="font-semibold">Previous plan:</span> {previousVisit.planNotes}</p>}
+                                <label className="mt-3 block text-xs font-semibold text-slate-800">Since the last visit, how has the patient responded?
+                                  <Textarea value={treatmentResponseDraft} onChange={(event) => setTreatmentResponseDraft(event.target.value)} placeholder="Ask whether the plan was started, what changed, and any benefit or side effects." className="mt-1.5 min-h-[72px] border-slate-200 bg-white text-xs font-normal" data-testid="input-treatment-response" />
+                                </label>
+                                <Button type="button" variant="outline" size="sm" className="mt-2 h-8 text-[10px]" disabled={!treatmentResponseDraft.trim()} onClick={addFollowUpResponseToNote} data-testid="button-add-treatment-response">Add reviewed response to today’s note</Button>
+                              </div>
+                            )}
                             <div>
                               <label htmlFor="consultation-first-impression" className="text-sm font-semibold text-slate-800">What brings the patient in today?</label>
                               <p className="text-xs text-slate-500 mt-1">Describe what you’re noticing, or choose a common consultation path.</p>
@@ -4530,6 +4619,14 @@ export default function ClinicianPortal() {
                             {selectedDirections.length ? selectedDirections.map((direction) => <span key={direction} className="rounded bg-white px-2 py-1 text-[9px] text-[#6047a5] border border-[#e6ddfa]">{direction}</span>) : <span className="text-[10px] text-slate-500">Choose a direction in Explore.</span>}
                           </div>
                         </div>
+                        {isFollowUpVisit && previousVisit && (
+                          <div className="border-t border-slate-100 pt-2" data-testid="copilot-follow-up-context">
+                            <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Follow-up from {new Date(previousVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
+                            <p className="mt-1 text-[10px] text-slate-700">{lastPrescriptionLabel}{lastPrescriptionDate ? ` · ${lastPrescriptionDate}` : ''}</p>
+                            {lastPrescriptionItems.length > 0 ? <ul className="mt-1 space-y-1">{lastPrescriptionItems.map((item: string, index: number) => <li key={`${item}-${index}`} className="text-[10px] leading-relaxed text-slate-600">{item}</li>)}</ul> : <p className="mt-1 text-[10px] text-slate-500">No prescription recorded for the previous visit.</p>}
+                            <p className="mt-2 text-[10px] leading-relaxed text-slate-500">Ask whether it was started, what changed, and whether there were benefits or side effects. These are prompts, not recorded responses.</p>
+                          </div>
+                        )}
                         <Button type="button" variant="ghost" size="sm" className="h-7 w-full justify-between px-1 text-[10px] text-[#6047a5]" onClick={() => setConsultationStep('evidence')}>Review evidence <ChevronRight className="h-3 w-3" /></Button>
                       </CardContent>
                     </Card>
@@ -4551,10 +4648,21 @@ export default function ClinicianPortal() {
                         <span className="text-[10px] text-slate-500">{selectedPatient.cycleDay ? `CD ${selectedPatient.cycleDay}` : 'Cycle day —'}</span>
                       </CardHeader>
                       <CardContent className="p-3">
-                        <p className="text-[10px] text-slate-600">{selectedPatient.lmp ? `LMP ${new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : 'Last menstrual period not recorded'}</p>
-                        {selectedPatient.cycleLength && <p className="mt-1 text-[10px] text-slate-500">Recorded cycle length: {selectedPatient.cycleLength} days</p>}
-                        {selectedPatient.cycleDay && selectedPatient.cycleLength && <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#8e77dc]" style={{ width: `${Math.min(100, selectedPatient.cycleDay / selectedPatient.cycleLength * 100)}%` }} /></div>}
-                        <p className="mt-2 text-[9px] text-slate-400">No cycle length is assumed when it is not on file.</p>
+                        {showPregnancyContext ? (
+                          pregnancyContext ? (
+                            <>
+                              <div className="flex items-end justify-between gap-2"><div><p className="text-xl font-semibold text-slate-900">{pregnancyContext.weeks}w {pregnancyContext.days}d</p><p className="text-[10px] text-[#6047a5]">{pregnancyContext.trimester}</p></div><span className="text-[9px] text-slate-500">LMP-derived estimate</span></div>
+                              <p className="mt-2 text-[10px] text-slate-600">Estimated due date: {pregnancyContext.dueDate}</p>
+                            </>
+                          ) : <p className="text-[10px] text-amber-700">A valid LMP is needed to estimate gestational age and trimester.</p>
+                        ) : (
+                          <>
+                            <p className="text-[10px] text-slate-600">{selectedPatient.lmp ? `LMP ${new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : 'Last menstrual period not recorded'}</p>
+                            {selectedPatient.cycleLength && <p className="mt-1 text-[10px] text-slate-500">Recorded cycle length: {selectedPatient.cycleLength} days</p>}
+                            {selectedPatient.cycleDay && selectedPatient.cycleLength && <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#8e77dc]" style={{ width: `${Math.min(100, selectedPatient.cycleDay / selectedPatient.cycleLength * 100)}%` }} /></div>}
+                            <p className="mt-2 text-[9px] text-slate-400">No cycle length is assumed when it is not on file.</p>
+                          </>
+                        )}
                       </CardContent>
                     </Card>
 

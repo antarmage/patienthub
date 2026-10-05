@@ -3796,9 +3796,10 @@ Be thorough — extract every medication mentioned including supplements and vit
   // 2. Voice-to-SOAP transcription — accept base64 audio, return structured SOAP
   app.post("/api/voice/soap-transcribe", async (req: any, res: any) => {
     try {
-      const { audioData, mimeType, patientContext, patientId } = req.body;
+      const { audioData, mimeType, patientContext, priorVisitContext } = req.body;
       if (!audioData) return res.status(400).json({ error: "audioData is required" });
       if (!AI_AVAILABLE) return res.status(503).json({ error: "AI features not available in this environment" });
+      const boundedPriorVisitContext = typeof priorVisitContext === "string" ? priorVisitContext.slice(0, 4000) : "";
 
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
@@ -3813,7 +3814,9 @@ Be thorough — extract every medication mentioned including supplements and vit
                 },
               },
               {
-                text: `You are a medical transcription AI for a women's reproductive health clinic in India. Transcribe and structure this voice recording into a SOAP note.${patientContext ? `\n\nPatient context: ${patientContext}` : ""}
+                text: `You are a medical transcription AI for a women's reproductive health clinic in India. Transcribe and structure only the current voice recording into a SOAP note.${patientContext ? `\n\nPatient context: ${patientContext}` : ""}${boundedPriorVisitContext ? `\n\nPrior visit and prescription context (historical reference only; not today's findings):\n${boundedPriorVisitContext}` : ""}
+
+Use prior context only to understand references such as medication names. Do not copy previous symptoms, findings, assessments, prescriptions, or plans into today's note unless they are explicitly stated in the recording. Do not infer adherence, treatment response, or side effects from the prescription. If the recording does not state a current fact, leave it out.
 
 Return a JSON object with exactly these fields (use empty string if not mentioned):
 {
@@ -3835,22 +3838,6 @@ Be concise and clinically accurate. Convert spoken language to structured clinic
       const text = response.text || "{}";
       const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       const parsed = JSON.parse(cleaned);
-
-      // Save SOAP draft as a permanent clinical note on the patient record
-      if (patientId) {
-        const pid = parseInt(patientId);
-        if (!isNaN(pid)) {
-          storage.createClinicalNote({
-            patientId: pid,
-            date: new Date().toISOString().split("T")[0],
-            type: "voice_soap",
-            title: "Voice SOAP Draft",
-            content: `Subjective: ${parsed.subjective || ""}\n\nObjective: ${parsed.objective || ""}\n\nAssessment: ${parsed.assessment || ""}\n\nPlan: ${parsed.plan || ""}`,
-            tags: ["voice", "soap-draft"],
-            isPrivate: 0,
-          }).catch((e: any) => console.error("[voice-soap] ClinicalNote save failed:", e.message));
-        }
-      }
 
       res.json({ success: true, soap: parsed });
     } catch (err: any) {
