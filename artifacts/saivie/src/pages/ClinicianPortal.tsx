@@ -9,6 +9,7 @@ import {
   Activity, 
   Search, 
   Bell, 
+  Menu,
   AlertCircle, 
   CheckCircle2, 
   TrendingUp, 
@@ -365,6 +366,7 @@ function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; pa
 export default function ClinicianPortal() {
   const [, navigate] = useLocation();
   const [activeView, setActiveView] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [careMode, setCareMode] = useState("natural_conception"); 
   const [showDocumentation, setShowDocumentation] = useState(false);
@@ -1174,79 +1176,75 @@ export default function ClinicianPortal() {
     <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 overflow-hidden">
       
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 z-20">
-        <div className="p-6">
-          <h1 className="text-white font-serif text-xl tracking-tight flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-               <Stethoscope className="w-4 h-4 text-white" />
+      <aside className={`bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 z-20 transition-all duration-300 ${sidebarOpen ? "w-64" : "w-20"}`}>
+        <div className="p-3 border-b border-slate-800 flex items-center justify-between gap-2">
+          {sidebarOpen ? (
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
+                <Stethoscope className="w-4 h-4 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-white font-serif text-xl tracking-tight truncate">Helix<span className="text-blue-400">Care</span></h1>
+                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium">Clinician OS v2.1</p>
+              </div>
             </div>
-            Helix<span className="text-blue-400">Care</span>
-          </h1>
-          <p className="text-[10px] uppercase tracking-widest text-slate-500 mt-2 font-medium">Clinician OS v2.1</p>
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto shrink-0">
+              <Stethoscope className="w-4 h-4 text-white" />
+            </div>
+          )}
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800/60 shrink-0"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            <Menu className="w-4 h-4" />
+          </Button>
         </div>
         
-        <nav className="flex-1 px-3 space-y-1">
-          <Button 
-            variant={activeView === 'dashboard' ? 'secondary' : 'ghost'} 
-            className={`w-full justify-start ${activeView === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800/50'}`}
-            onClick={() => setActiveView('dashboard')}
-          >
-            <LayoutDashboard className="mr-3 h-4 w-4" /> Dashboard
-          </Button>
-          <Button 
-            variant={activeView === 'patient_detail' ? 'secondary' : 'ghost'} 
-            className={`w-full justify-start ${activeView === 'patient_detail' ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20' : 'text-slate-300 hover:text-white hover:bg-slate-800/50'}`}
-            onClick={() => setActiveView('patient_detail')}
-          >
-            <Users className="mr-3 h-4 w-4" /> Patients
-          </Button>
-          <Button 
-            variant={activeView === 'schedule' ? 'secondary' : 'ghost'} 
-            className={`w-full justify-start ${activeView === 'schedule' ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20' : 'text-slate-300 hover:text-white hover:bg-slate-800/50'}`}
-            onClick={() => setActiveView('schedule')}
-          >
-            <CalendarIcon className="mr-3 h-4 w-4" /> Schedule
-          </Button>
-          <Button 
-            variant={activeView === 'analytics' ? 'secondary' : 'ghost'} 
-            className={`w-full justify-start ${activeView === 'analytics' ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20' : 'text-slate-300 hover:text-white hover:bg-slate-800/50'}`}
-            onClick={() => setActiveView('analytics')}
-          >
-            <Activity className="mr-3 h-4 w-4" /> Analytics
-          </Button>
-          <Button 
-            variant={activeView === 'revenue' ? 'secondary' : 'ghost'} 
-            className={`w-full justify-start ${activeView === 'revenue' ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20' : 'text-slate-300 hover:text-white hover:bg-slate-800/50'}`}
-            onClick={() => setActiveView('revenue')}
-          >
-            <Briefcase className="mr-3 h-4 w-4" /> Revenue
-          </Button>
-          <Button 
-            variant={activeView === 'settings' ? 'secondary' : 'ghost'} 
-            className={`w-full justify-start ${activeView === 'settings' ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20' : 'text-slate-300 hover:text-white hover:bg-slate-800/50'}`}
-            onClick={() => setActiveView('settings')}
-          >
-            <Settings className="mr-3 h-4 w-4" /> Profile & Settings
-          </Button>
+        <nav className="flex-1 px-3 py-3 space-y-1">
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+            { id: 'patient_detail', label: 'Patients', icon: Users },
+            { id: 'schedule', label: 'Schedule', icon: CalendarIcon },
+            { id: 'analytics', label: 'Analytics', icon: Activity },
+            { id: 'revenue', label: 'Revenue', icon: Briefcase },
+            { id: 'settings', label: 'Profile & Settings', icon: Settings },
+          ].map(({ id, label, icon: Icon }) => (
+            <Button
+              key={id}
+              variant={activeView === id ? 'secondary' : 'ghost'}
+              className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center'} ${activeView === id ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800/50'}`}
+              onClick={() => setActiveView(id)}
+            >
+              <Icon className={`${sidebarOpen ? 'mr-3' : 'mr-0'} h-4 w-4`} />
+              {sidebarOpen && label}
+            </Button>
+          ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-800 bg-slate-900/50">
-          <div className="flex items-center gap-3">
-             <Avatar className="h-9 w-9 border border-slate-600">
-                <AvatarFallback className="bg-slate-700 text-slate-300">{providerInitials}</AvatarFallback>
-             </Avatar>
-             <div className="text-sm flex-1 min-w-0">
+        <div className="p-3 border-t border-slate-800 bg-slate-900/50">
+          <div className={`flex items-center ${sidebarOpen ? 'gap-3' : 'justify-center'}`}>
+            <Avatar className="h-9 w-9 border border-slate-600 shrink-0">
+              <AvatarFallback className="bg-slate-700 text-slate-300">{providerInitials}</AvatarFallback>
+            </Avatar>
+            {sidebarOpen && (
+              <div className="text-sm flex-1 min-w-0">
                 <p className="text-white font-medium truncate">{providerName}</p>
                 <p className="text-xs text-slate-500 truncate">{providerSpecialty}</p>
-             </div>
-             <button
-               onClick={() => { localStorage.removeItem("clinicianProvider"); navigate("/"); }}
-               className="p-1.5 rounded-md hover:bg-slate-700 text-slate-400 hover:text-red-400 transition-colors"
-               title="Sign Out"
-               data-testid="button-signout"
-             >
-               <LogOut className="w-4 h-4" />
-             </button>
+              </div>
+            )}
+            <button
+              onClick={() => { localStorage.removeItem("clinicianProvider"); navigate("/"); }}
+              className={`p-1.5 rounded-md hover:bg-slate-700 text-slate-400 hover:text-red-400 transition-colors ${sidebarOpen ? '' : 'mt-0'}`}
+              title="Sign Out"
+              data-testid="button-signout"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>
