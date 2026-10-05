@@ -109,6 +109,94 @@ interface ClinicianBpLog {
   loggedAt: string;
 }
 
+type ConsultationStep = 'reason' | 'explore' | 'examine' | 'evidence' | 'plan';
+
+const consultationSteps: { id: ConsultationStep; label: string }[] = [
+  { id: 'reason', label: 'Reason' },
+  { id: 'explore', label: 'Explore' },
+  { id: 'examine', label: 'Examine' },
+  { id: 'evidence', label: 'Evidence' },
+  { id: 'plan', label: 'Plan' },
+];
+
+const consultationPaths = [
+  'Fertility evaluation',
+  'Menstrual concern',
+  'Pelvic pain',
+  'Vaginal discharge or infection',
+  'Pregnancy-related concern',
+  'Menopause',
+  'Routine gynecology',
+  'Other',
+];
+
+const consultationDirectionsByPath: Record<string, string[]> = {
+  'Fertility evaluation': ['Ovulatory timing', 'Tubal or uterine factors', 'Partner evaluation'],
+  'Menstrual concern': ['Cycle pattern and timing', 'Bleeding impact', 'Hormonal or structural context'],
+  'Pelvic pain': ['Pain timing and pattern', 'Pregnancy or infection safety screen', 'Relevant pelvic history'],
+  'Vaginal discharge or infection': ['Discharge pattern and duration', 'Exposure and infection risk', 'Previous treatment response'],
+  'Pregnancy-related concern': ['Gestational timing', 'Maternal symptoms', 'Fetal wellbeing'],
+  'Menopause': ['Vasomotor or genitourinary symptoms', 'Bleeding after menopause', 'Bone and cardiometabolic context'],
+  'Routine gynecology': ['Preventive care due', 'Current symptoms', 'Screening and contraception'],
+  Other: ['Symptom timeline', 'Related symptoms', 'Relevant medical history'],
+};
+
+const guidedQuestionsByDirection: Record<string, string[]> = {
+  'Ovulatory timing': ['Are cycles regular?', 'What is the average cycle length?', 'Are there signs of ovulation?', 'Have follicular scans or ovulation medicines been used?'],
+  'Tubal or uterine factors': ['Any history of pelvic infection or surgery?', 'Has an ultrasound or tubal assessment been done?', 'Any prior pregnancy or procedure?', 'What findings need review?'],
+  'Partner evaluation': ['Has partner evaluation been discussed?', 'Any relevant partner history?', 'Are semen analysis results available?', 'What would the patient like help understanding?'],
+  'Cycle pattern and timing': ['When was the last menstrual period?', 'How long are cycles typically?', 'How many days does bleeding last?', 'Has the pattern changed recently?'],
+  'Bleeding impact': ['How heavy is the bleeding?', 'Is there bleeding between periods?', 'Any dizziness, fatigue, or impact on daily activities?', 'What treatments have been tried?'],
+  'Hormonal or structural context': ['Any known thyroid or hormonal condition?', 'Any relevant medication changes?', 'Has pelvic imaging been done?', 'Any previous related diagnosis?'],
+  'Pain timing and pattern': ['When did the pain begin?', 'Where is it located and how severe is it?', 'Is it related to the cycle or activity?', 'What makes it better or worse?'],
+  'Pregnancy or infection safety screen': ['Could the patient be pregnant?', 'Any fever, fainting, or sudden severe pain?', 'Any urinary or bowel symptoms?', 'Any new discharge or bleeding?'],
+  'Relevant pelvic history': ['Any prior pelvic surgery or infection?', 'Any history of endometriosis or cysts?', 'What investigations are available?', 'What previous treatments were tried?'],
+  'Discharge pattern and duration': ['When did the discharge start?', 'What are the color, consistency, and odor?', 'Any itching, irritation, or pain?', 'Any associated bleeding or urinary symptoms?'],
+  'Exposure and infection risk': ['Any recent new sexual partner?', 'Any known exposure or partner symptoms?', 'Any recent antibiotics or treatment?', 'Are there relevant test results to review?'],
+  'Previous treatment response': ['What treatment was used?', 'When was it started and completed?', 'Did symptoms improve or return?', 'Were there side effects?'],
+  'Gestational timing': ['What is the last menstrual period or estimated gestational age?', 'Has antenatal care started?', 'Any recent scan or laboratory results?', 'What is the main concern today?'],
+  'Maternal symptoms': ['Any pain, bleeding, fluid loss, or fever?', 'Any headache, vision change, or swelling?', 'Any change in fetal movement when applicable?', 'When did symptoms begin?'],
+  'Fetal wellbeing': ['Are fetal movements as expected for gestation?', 'What were the latest growth or wellbeing findings?', 'Any prior pregnancy complications?', 'What follow-up has already been arranged?'],
+  'Vasomotor or genitourinary symptoms': ['Which symptoms are most bothersome?', 'How often do they occur?', 'How are sleep or daily activities affected?', 'What treatments have been tried?'],
+  'Bleeding after menopause': ['When was the last menstrual period?', 'Has there been any bleeding since?', 'How much and for how long?', 'What evaluation has already been completed?'],
+  'Bone and cardiometabolic context': ['Any history of fracture or low bone density?', 'Any cardiovascular risk factors?', 'What screening is current?', 'Any relevant medicines or supplements?'],
+  'Preventive care due': ['When was the last cervical screening?', 'Are vaccines or routine screenings due?', 'Any family history relevant to screening?', 'What preventive care does the patient want to discuss?'],
+  'Current symptoms': ['What symptoms, if any, are present today?', 'When did they start?', 'What affects them?', 'What is the patient most concerned about?'],
+  'Screening and contraception': ['Is contraception or preconception planning relevant?', 'What screening history is available?', 'Any preferences or concerns?', 'What follow-up is desired?'],
+  'Symptom timeline': ['When did the concern begin?', 'Is it constant or intermittent?', 'Has it changed over time?', 'What prompted the visit now?'],
+  'Related symptoms': ['What other symptoms occur with it?', 'Any urgent or severe symptoms?', 'What makes it better or worse?', 'What has already been tried?'],
+  'Relevant medical history': ['What past conditions may be relevant?', 'Any prior procedures or treatment?', 'Any medication or allergy concerns?', 'What records should be reviewed?'],
+};
+
+const directionRationales: Record<string, string> = {
+  'Ovulatory timing': 'Cycle pattern, ovulation signs, and prior monitoring help clarify timing without assuming a cause.',
+  'Tubal or uterine factors': 'Prior procedures, infections, and imaging can identify which structural questions remain open.',
+  'Partner evaluation': 'Fertility evaluation may involve both partners; existing results can prevent unnecessary repetition.',
+  'Cycle pattern and timing': 'Timing and pattern help distinguish a change from the patient’s usual cycle.',
+  'Bleeding impact': 'Amount, duration, and associated symptoms help assess impact and urgency.',
+  'Hormonal or structural context': 'Relevant conditions, medicines, and imaging can guide what information is still needed.',
+  'Pain timing and pattern': 'Onset, location, severity, and triggers help characterize the symptom before conclusions are drawn.',
+  'Pregnancy or infection safety screen': 'These questions check for time-sensitive symptoms that may need prompt assessment.',
+  'Relevant pelvic history': 'Prior procedures, diagnoses, and treatments can change what should be reviewed next.',
+  'Discharge pattern and duration': 'Description and associated symptoms help decide which examination or tests are relevant.',
+  'Exposure and infection risk': 'Exposure history can inform appropriate testing and partner considerations.',
+  'Previous treatment response': 'Response and side effects help avoid repeating ineffective or poorly tolerated treatment.',
+  'Gestational timing': 'Gestational age and existing care establish which findings and follow-up are relevant.',
+  'Maternal symptoms': 'Associated symptoms help identify whether the concern needs urgent assessment.',
+  'Fetal wellbeing': 'Movement, growth findings, and prior complications clarify what evidence is available.',
+  'Vasomotor or genitourinary symptoms': 'Symptom pattern and daily impact help focus management on the patient’s priorities.',
+  'Bleeding after menopause': 'Any postmenopausal bleeding warrants clear characterization and review of completed evaluation.',
+  'Bone and cardiometabolic context': 'Relevant history and screening can inform preventive-care discussion.',
+  'Preventive care due': 'Screening history helps identify what is current and what the patient wants to address.',
+  'Current symptoms': 'Clarifying timing, impact, and priorities keeps the consultation grounded in the patient’s concern.',
+  'Screening and contraception': 'Preferences and prior screening help tailor preventive and reproductive-health discussion.',
+  'Symptom timeline': 'A clear timeline helps characterize change and identify relevant next questions.',
+  'Related symptoms': 'Associated symptoms can change which examination or evidence is relevant.',
+  'Relevant medical history': 'Past conditions, procedures, medicines, and allergies can affect the next steps.',
+};
+
+const evidenceOptions = ['Examination', 'Ultrasound', 'Laboratory reports', 'Previous treatment response', 'Partner information'];
+
 import medicalDashboardBg from "../assets/images/medical-dashboard-bg.png";
 import pregnancyGrowthBg from "../assets/images/pregnancy-growth-bg.png";
 import postpartumRecoveryBg from "../assets/images/postpartum-recovery-bg.png";
@@ -378,7 +466,16 @@ export default function ClinicianPortal() {
   const [scheduleViewMode, setScheduleViewMode] = useState("appointments");
   const [calendarViewMode, setCalendarViewMode] = useState("month");
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
-  const [patientDetailTab, setPatientDetailTab] = useState<'overview' | 'postop' | 'genome'>('overview');
+  const [patientDetailTab, setPatientDetailTab] = useState<'consultation' | 'record' | 'postop' | 'genome'>('consultation');
+  const [consultationStep, setConsultationStep] = useState<ConsultationStep>('reason');
+  const [consultationPath, setConsultationPath] = useState('');
+  const [selectedDirections, setSelectedDirections] = useState<string[]>([]);
+  const [guidedQuestionPage, setGuidedQuestionPage] = useState(0);
+  const [guidedAnswers, setGuidedAnswers] = useState<Record<string, string>>({});
+  const [showGuidedReview, setShowGuidedReview] = useState(false);
+  const [consultationEvidence, setConsultationEvidence] = useState<string[]>([]);
+  const [directionEvidence, setDirectionEvidence] = useState<Record<string, { supporting: string; missing: string }>>({});
+  const [consultationContextAdded, setConsultationContextAdded] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingType, setBookingType] = useState("surgery");
@@ -1131,6 +1228,9 @@ export default function ClinicianPortal() {
       .slice(0, 20);
   }, [patients, patientSearch, queueDateFrom, queueDateTo, queuePatients]);
 
+  const guidedQuestions = [...new Set(selectedDirections.flatMap((direction) => guidedQuestionsByDirection[direction] || []))];
+  const currentGuidedQuestions = guidedQuestions.slice(guidedQuestionPage * 4, guidedQuestionPage * 4 + 4);
+
   const filteredDirectoryPatients = useMemo(() => {
     const query = patientDirectorySearch.trim().toLowerCase();
     const normalizeDate = (value: unknown) => {
@@ -1193,6 +1293,16 @@ export default function ClinicianPortal() {
     setSelectedPatient(patient);
     setSelectedTrailVisitId(null);
     setActiveView("patient_detail");
+    setPatientDetailTab('consultation');
+    setConsultationStep('reason');
+    setConsultationPath('');
+    setSelectedDirections([]);
+    setGuidedQuestionPage(0);
+    setGuidedAnswers({});
+    setShowGuidedReview(false);
+    setConsultationEvidence([]);
+    setDirectionEvidence({});
+    setConsultationContextAdded(false);
     // Reset voice SOAP drafts when switching patients
     setSoapTranscript(null);
     setSoapSubjectiveDraft("");
@@ -1200,6 +1310,136 @@ export default function ClinicianPortal() {
     setSoapAssessmentDraft("");
     setSoapPlanDraft("");
     setPostVisitSummaryResult(null);
+  };
+
+  const toggleVoiceCapture = async () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const audioData = (reader.result as string).split(',')[1];
+          setIsTranscribing(true);
+          try {
+            const response = await fetch('/api/voice/soap-transcribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                audioData,
+                mimeType: 'audio/webm',
+                patientContext: `${selectedPatient?.name}, ${selectedPatient?.age}y, ${selectedPatient?.type || ''}`,
+                patientId: selectedPatient?.id,
+              }),
+            });
+            const data = await response.json();
+            if (data.soap) {
+              setSoapTranscript(data.soap);
+              setSoapSubjectiveDraft(data.soap.subjective || '');
+              setSoapObjectiveDraft(data.soap.objective || '');
+              setSoapAssessmentDraft(data.soap.assessment || '');
+              setSoapPlanDraft(data.soap.plan || '');
+            }
+          } finally {
+            setIsTranscribing(false);
+          }
+        };
+        reader.readAsDataURL(new Blob(audioChunksRef.current, { type: 'audio/webm' }));
+      };
+      recorder.start();
+      setIsRecording(true);
+    } catch {
+      alert('Microphone access denied');
+    }
+  };
+
+  const addReviewedAnswersToNote = () => {
+    const reviewedAnswers = guidedQuestions
+      .filter((question) => guidedAnswers[question]?.trim() && guidedAnswers[question] !== '__SKIPPED__')
+      .map((question) => `${question} ${guidedAnswers[question].trim()}`);
+    if (reviewedAnswers.length === 0) return;
+    const reviewedSection = `Clinician-reviewed history:\n${reviewedAnswers.map((answer) => `- ${answer}`).join('\n')}`;
+    setSoapSubjectiveDraft((current) => [current.trim(), reviewedSection].filter(Boolean).join('\n\n'));
+    setShowGuidedReview(false);
+    setConsultationStep('reason');
+  };
+
+  const addReviewedContextToPlan = () => {
+    const contextLines = [
+      selectedDirections.length ? `Working directions explored (not diagnoses): ${selectedDirections.join(', ')}` : '',
+      consultationEvidence.length ? `Evidence reviewed: ${consultationEvidence.join(', ')}` : '',
+      ...selectedDirections.flatMap((direction) => {
+        const evidence = directionEvidence[direction];
+        return [
+          evidence?.supporting ? `${direction} — supporting evidence: ${evidence.supporting}` : '',
+          evidence?.missing ? `${direction} — missing or conflicting evidence: ${evidence.missing}` : '',
+        ];
+      }),
+    ].filter(Boolean);
+    if (contextLines.length === 0) return;
+    setSoapPlanDraft((current) => {
+      const marker = 'Consultation context:';
+      const markerIndex = current.indexOf(marker);
+      const existingPlan = markerIndex >= 0 ? current.slice(0, markerIndex).trim() : current.trim();
+      return [existingPlan, `${marker}\n${contextLines.map((line) => `- ${line}`).join('\n')}`].filter(Boolean).join('\n\n');
+    });
+    setConsultationContextAdded(true);
+  };
+
+  const saveConsultationNote = async () => {
+    setSoapSaving(true);
+    setSoapSavedMsg(null);
+    try {
+      let response: Response;
+      if (latestVisit?.id) {
+        response = await fetch(`/api/visit-history/${latestVisit.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...(soapSubjectiveDraft ? { subjective: soapSubjectiveDraft } : {}),
+            ...(soapObjectiveDraft ? { objective: soapObjectiveDraft } : {}),
+            ...(soapAssessmentDraft ? { assessment: soapAssessmentDraft } : {}),
+            ...(soapPlanDraft ? { planNotes: soapPlanDraft } : {}),
+          }),
+        });
+      } else {
+        response = await fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: new Date().toISOString().split('T')[0],
+            visitType: 'consultation',
+            ...(selectedPatient.appointmentId ? { appointmentId: selectedPatient.appointmentId } : {}),
+            subjective: soapSubjectiveDraft,
+            objective: soapObjectiveDraft,
+            assessment: soapAssessmentDraft,
+            planNotes: soapPlanDraft,
+          }),
+        });
+      }
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.error || `Server error ${response.status}`);
+      }
+      setSoapSavedMsg('Clinician-reviewed note saved to visit record.');
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] });
+    } catch (error: any) {
+      setSoapSavedMsg(`Failed to save: ${error.message || 'Please try again.'}`);
+    } finally {
+      setSoapSaving(false);
+    }
   };
 
   const chronologicalQueue = [...queuePatients].sort((a: any, b: any) =>
@@ -3920,9 +4160,319 @@ export default function ClinicianPortal() {
                    <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Next</span> {selectedPatient.nextReview}</span>
                  )}
               </div>
+              <nav className="flex gap-1 px-5 py-2 border-t border-slate-100 overflow-x-auto" aria-label="Patient workspace sections">
+                {[
+                  { id: 'consultation' as const, label: 'Consultation' },
+                  { id: 'record' as const, label: 'Record' },
+                  { id: 'postop' as const, label: 'Post-Op' },
+                  { id: 'genome' as const, label: 'Genome' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setPatientDetailTab(tab.id)}
+                    aria-current={patientDetailTab === tab.id ? 'page' : undefined}
+                    className={`shrink-0 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${patientDetailTab === tab.id ? 'bg-[#eee9fb] text-[#55408f]' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
             </header>
 
-            <div className="flex-1 flex overflow-hidden z-0">
+            {patientDetailTab === 'consultation' && (
+              <div className="flex-1 overflow-y-auto bg-[#f5f4f8] p-3 sm:p-5">
+                <div className="max-w-[1440px] mx-auto grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-4 lg:gap-5">
+                  <section className="min-w-0">
+                    <nav className="grid grid-cols-5 gap-1 mb-4" aria-label="Consultation journey">
+                      {consultationSteps.map((step, index) => (
+                        <button
+                          key={step.id}
+                          type="button"
+                          onClick={() => setConsultationStep(step.id)}
+                          aria-current={consultationStep === step.id ? 'step' : undefined}
+                          className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 border-b-2 px-1 sm:px-3 py-2 text-[10px] sm:text-xs font-semibold transition-colors ${consultationStep === step.id ? 'border-[#7255d9] text-[#6047a5]' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
+                          data-testid={`consultation-step-${step.id}`}
+                        >
+                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] ${consultationStep === step.id ? 'bg-[#7255d9] text-white' : 'bg-slate-200 text-slate-500'}`}>{index + 1}</span>
+                          {step.label}
+                        </button>
+                      ))}
+                    </nav>
+
+                    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                      <div className="px-4 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#7255d9]">Step {consultationSteps.findIndex((step) => step.id === consultationStep) + 1} of 5 · Current visit</p>
+                          <h3 className="mt-1 text-base sm:text-lg font-semibold text-slate-900">
+                            {consultationStep === 'reason' ? 'Start with your first impression' :
+                             consultationStep === 'explore' ? 'Choose what to explore' :
+                             consultationStep === 'examine' ? 'Record examination findings' :
+                             consultationStep === 'evidence' ? 'Review supporting evidence' : 'Conclude and plan'}
+                          </h3>
+                        </div>
+                        {consultationStep === 'reason' && (
+                          <Button type="button" variant="outline" size="sm" onClick={toggleVoiceCapture} disabled={isTranscribing} className={`${isRecording ? 'border-rose-300 text-rose-700 bg-rose-50' : ''}`} data-testid="button-consultation-dictate">
+                            <Mic className="mr-1.5 h-3.5 w-3.5" />{isRecording ? 'Stop' : isTranscribing ? 'Transcribing…' : 'Dictate'}
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="p-4 sm:p-6 min-h-[360px]">
+                        {consultationStep === 'reason' && (
+                          <div className="space-y-5">
+                            <div>
+                              <label htmlFor="consultation-first-impression" className="text-sm font-semibold text-slate-800">What brings the patient in today?</label>
+                              <p className="text-xs text-slate-500 mt-1">Describe what you’re noticing, or choose a common consultation path.</p>
+                              <Textarea
+                                id="consultation-first-impression"
+                                value={soapSubjectiveDraft}
+                                onChange={(event) => setSoapSubjectiveDraft(event.target.value)}
+                                placeholder="e.g. Trying to conceive for six months; cycles are regular, but she is unsure if ovulation is occurring."
+                                className="mt-3 min-h-[112px] border-slate-200 text-sm"
+                                data-testid="input-consultation-first-impression"
+                              />
+                              {soapTranscript && <p className="mt-2 text-xs text-emerald-700">Dictation is a draft. Review and edit it before adding it to the record.</p>}
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Choose a starting direction</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {consultationPaths.map((path) => (
+                                  <button
+                                    key={path}
+                                    type="button"
+                                    onClick={() => { setConsultationPath(path); setSelectedDirections([]); setGuidedQuestionPage(0); setGuidedAnswers({}); setShowGuidedReview(false); }}
+                                    aria-pressed={consultationPath === path}
+                                    className={`flex items-center gap-2 rounded-md border px-3 py-2.5 text-left text-xs font-medium transition-colors ${consultationPath === path ? 'border-[#b9a6f2] bg-[#f5f1ff] text-[#6047a5]' : 'border-slate-200 text-slate-600 hover:border-[#cfc3ef] hover:bg-[#faf9fd]'}`}
+                                    data-testid={`consultation-path-${path.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                                  >
+                                    <span className={`flex h-5 w-5 items-center justify-center rounded ${consultationPath === path ? 'bg-white text-[#7255d9]' : 'bg-slate-50 text-slate-400'}`}>{consultationPath === path ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}</span>
+                                    {path}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {consultationStep === 'explore' && (
+                          <div className="space-y-5">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-800">Possible directions to explore</p>
+                              <p className="mt-1 text-xs text-slate-500">Prompts based on the selected consultation path, not diagnoses. Select up to three, add others later, or continue without any.</p>
+                              {!consultationPath && <p className="mt-3 text-xs text-amber-700">Choose a starting direction in Reason to see tailored prompts.</p>}
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {(consultationDirectionsByPath[consultationPath] || []).map((direction) => {
+                                  const selected = selectedDirections.includes(direction);
+                                  return (
+                                    <button
+                                      key={direction}
+                                      type="button"
+                                      aria-pressed={selected}
+                                      onClick={() => {
+                                        setSelectedDirections((current) => {
+                                          if (selected) return current.filter((item) => item !== direction);
+                                          return current.length < 3 ? [...current, direction] : current;
+                                        });
+                                        setGuidedQuestionPage(0);
+                                        setShowGuidedReview(false);
+                                      }}
+                                      className={`rounded-md border px-3 py-2 text-xs font-medium transition-colors ${selected ? 'border-[#b9a6f2] bg-[#f5f1ff] text-[#6047a5]' : 'border-slate-200 bg-white text-slate-600 hover:border-[#cfc3ef]'}`}
+                                      data-testid={`direction-${direction.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                                    >
+                                      {selected ? '✓ ' : '+ '}{direction}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {selectedDirections.length > 0 && (
+                              <div className="border-t border-slate-100 pt-4">
+                                <div className="mb-3 rounded-md bg-[#f7f5fc] p-3">
+                                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[#6047a5]">Why these questions?</p>
+                                  <div className="mt-2 space-y-1.5 text-xs text-slate-600">
+                                    {selectedDirections.map((direction) => <p key={direction}><span className="font-medium text-slate-800">{direction}:</span> {directionRationales[direction]}</p>)}
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between gap-3 mb-3">
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-slate-800">Guided questions</h4>
+                                    <p className="text-xs text-slate-500 mt-0.5">Ask, record, mark unsure, or skip. Answers remain drafts until reviewed.</p>
+                                  </div>
+                                  <span className="text-[10px] text-slate-400">{Math.min(guidedQuestionPage * 4 + 1, guidedQuestions.length)}–{Math.min(guidedQuestionPage * 4 + currentGuidedQuestions.length, guidedQuestions.length)} of {guidedQuestions.length}</span>
+                                </div>
+                                <div className="space-y-3">
+                                  {currentGuidedQuestions.map((question) => (
+                                    <div key={question} className="rounded-md border border-slate-200 p-3">
+                                      <label className="block text-xs font-medium text-slate-800" htmlFor={`guided-${question.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>{question}</label>
+                                      <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                                        <Input
+                                          id={`guided-${question.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                                          value={guidedAnswers[question] === '__SKIPPED__' ? '' : guidedAnswers[question] || ''}
+                                          onChange={(event) => setGuidedAnswers((current) => ({ ...current, [question]: event.target.value }))}
+                                          placeholder="Record answer"
+                                          className="h-9 text-xs"
+                                        />
+                                        <Button type="button" variant="outline" size="sm" className="h-9 shrink-0 text-[10px]" onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: 'Patient unsure' }))}>Patient unsure</Button>
+                                        <Button type="button" variant="ghost" size="sm" className="h-9 shrink-0 text-[10px] text-slate-500" onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: '__SKIPPED__' }))}>Skip</Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                                  <div className="flex gap-2">
+                                    {guidedQuestionPage > 0 && <Button type="button" variant="ghost" size="sm" onClick={() => setGuidedQuestionPage((page) => page - 1)}>Previous questions</Button>}
+                                    {(guidedQuestionPage + 1) * 4 < guidedQuestions.length && <Button type="button" variant="outline" size="sm" onClick={() => setGuidedQuestionPage((page) => page + 1)}>Ask next questions</Button>}
+                                  </div>
+                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowGuidedReview((current) => !current)} disabled={!Object.values(guidedAnswers).some((answer) => answer && answer !== '__SKIPPED__')}>
+                                    {showGuidedReview ? 'Hide review' : 'Review answers'}
+                                  </Button>
+                                </div>
+                                {showGuidedReview && (
+                                  <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50/50 p-4">
+                                    <p className="text-xs font-semibold text-emerald-900">Review before adding to the note</p>
+                                    <ul className="mt-2 space-y-2 text-xs text-slate-700">
+                                      {guidedQuestions.filter((question) => guidedAnswers[question] && guidedAnswers[question] !== '__SKIPPED__').map((question) => <li key={question}><strong>{question}</strong> {guidedAnswers[question]}</li>)}
+                                    </ul>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                      <Button type="button" size="sm" onClick={addReviewedAnswersToNote}>Add reviewed answers to note</Button>
+                                      <Button type="button" variant="ghost" size="sm" onClick={() => setShowGuidedReview(false)}>Keep editing</Button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {consultationStep === 'examine' && (
+                          <div className="space-y-4">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-800">What did you observe?</p>
+                              <p className="text-xs text-slate-500 mt-1">Existing values below are from the latest chart entry{latestVisit?.date ? ` (${new Date(latestVisit.date).toLocaleDateString('en-IN')})` : ''}. Enter today’s findings in the note.</p>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {[
+                                { label: 'Last recorded blood pressure', value: latestVisit?.vitals?.bp || selectedPatient.bp || 'Not recorded' },
+                                { label: 'Last recorded weight', value: latestVisit?.vitals?.weight || selectedPatient.weight ? `${latestVisit?.vitals?.weight || selectedPatient.weight} kg` : 'Not recorded' },
+                                { label: 'Last recorded hemoglobin', value: latestVisit?.vitals?.hb || selectedPatient.hb ? `${latestVisit?.vitals?.hb || selectedPatient.hb} g/dL` : 'Not recorded' },
+                              ].map((vital) => <div key={vital.label} className="rounded-md border border-slate-200 bg-slate-50/70 p-3"><p className="text-[10px] uppercase tracking-wide text-slate-500">{vital.label}</p><p className="mt-1 text-xs font-semibold text-slate-800">{vital.value}</p></div>)}
+                            </div>
+                            <Textarea value={soapObjectiveDraft} onChange={(event) => setSoapObjectiveDraft(event.target.value)} placeholder="Examination findings, vitals, and observations from today..." className="min-h-[160px] text-sm" data-testid="input-consultation-examination" />
+                          </div>
+                        )}
+
+                        {consultationStep === 'evidence' && (
+                          <div className="space-y-5">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-800">What would you like to review?</p>
+                              <p className="mt-1 text-xs text-slate-500">Select available evidence. The summary below is clinician-entered; no evidence is inferred from missing data.</p>
+                              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {evidenceOptions.map((item) => (
+                                  <label key={item} className="flex items-center gap-2 rounded-md border border-slate-200 p-3 text-xs text-slate-700 hover:bg-slate-50 cursor-pointer">
+                                    <Checkbox checked={consultationEvidence.includes(item)} onCheckedChange={(checked) => setConsultationEvidence((current) => checked ? [...current, item] : current.filter((value) => value !== item))} />
+                                    {item}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                            {selectedDirections.length > 0 ? selectedDirections.map((direction) => (
+                              <div key={direction} className="rounded-md border border-slate-200 p-3">
+                                <h4 className="text-xs font-semibold text-slate-800">{direction}</h4>
+                                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  <label className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Supporting evidence
+                                    <Textarea value={directionEvidence[direction]?.supporting || ''} onChange={(event) => setDirectionEvidence((current) => ({ ...current, [direction]: { supporting: event.target.value, missing: current[direction]?.missing || '' } }))} placeholder="What supports this direction?" className="mt-1 min-h-[76px] text-xs font-normal normal-case tracking-normal" />
+                                  </label>
+                                  <label className="text-[10px] font-semibold uppercase tracking-wide text-amber-700">Missing or conflicting
+                                    <Textarea value={directionEvidence[direction]?.missing || ''} onChange={(event) => setDirectionEvidence((current) => ({ ...current, [direction]: { supporting: current[direction]?.supporting || '', missing: event.target.value } }))} placeholder="What is missing or does not fit?" className="mt-1 min-h-[76px] text-xs font-normal normal-case tracking-normal" />
+                                  </label>
+                                </div>
+                              </div>
+                            )) : <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-500">No working directions selected. You can still record evidence to review.</p>}
+                          </div>
+                        )}
+
+                        {consultationStep === 'plan' && (
+                          <div className="space-y-4">
+                            <div className="rounded-md border border-[#e3dcf5] bg-[#faf9fd] p-3">
+                              <p className="text-xs font-semibold text-slate-800">Clinical summary</p>
+                              <p className="mt-1 text-xs text-slate-600">{soapSubjectiveDraft || 'No first impression entered yet.'}</p>
+                              {selectedDirections.length > 0 && <p className="mt-2 text-xs text-[#6047a5]">Directions explored: {selectedDirections.join(' · ')}</p>}
+                              {consultationEvidence.length > 0 && <p className="mt-1 text-xs text-slate-500">Evidence reviewed: {consultationEvidence.join(', ')}</p>}
+                            </div>
+                            {(selectedDirections.length > 0 || consultationEvidence.length > 0) && (
+                              <Button type="button" variant="outline" size="sm" onClick={addReviewedContextToPlan} data-testid="button-add-consultation-context">
+                                <FileText className="mr-1.5 h-3.5 w-3.5" />{consultationContextAdded ? 'Refresh reviewed context in plan' : 'Add reviewed context to plan'}
+                              </Button>
+                            )}
+                            <label className="block text-xs font-semibold text-slate-700">Working assessment
+                              <Textarea value={soapAssessmentDraft} onChange={(event) => setSoapAssessmentDraft(event.target.value)} placeholder="Your working assessment, uncertainty, and clinical reasoning..." className="mt-1.5 min-h-[92px] text-sm font-normal" data-testid="input-consultation-assessment" />
+                            </label>
+                            <label className="block text-xs font-semibold text-slate-700">Plan, advice, follow-up, and safety-net
+                              <Textarea value={soapPlanDraft} onChange={(event) => setSoapPlanDraft(event.target.value)} placeholder="Medication, investigations, advice, follow-up, and when to seek urgent care..." className="mt-1.5 min-h-[120px] text-sm font-normal" data-testid="input-consultation-plan" />
+                            </label>
+                            <p className="text-[10px] text-slate-500">Nothing is saved until you choose “Save clinician-reviewed note.” Review every draft before saving.</p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button type="button" onClick={saveConsultationNote} disabled={soapSaving || ![soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft].some((value) => value.trim())} data-testid="button-save-consultation-note">
+                                <Save className="mr-1.5 h-3.5 w-3.5" />{soapSaving ? 'Saving…' : 'Save clinician-reviewed note'}
+                              </Button>
+                              {soapSavedMsg && <span className={`text-xs ${soapSavedMsg.startsWith('Failed') ? 'text-rose-700' : 'text-emerald-700'}`} role="status">{soapSavedMsg}</span>}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="px-4 sm:px-6 py-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setConsultationStep(consultationSteps[Math.max(0, consultationSteps.findIndex((step) => step.id === consultationStep) - 1)].id)} disabled={consultationStep === 'reason'}>Back</Button>
+                        <Button type="button" size="sm" onClick={() => setConsultationStep(consultationSteps[Math.min(consultationSteps.length - 1, consultationSteps.findIndex((step) => step.id === consultationStep) + 1)].id)} disabled={consultationStep === 'plan'}>
+                          {consultationStep === 'evidence' ? 'Review plan' : 'Continue'} <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <aside className="space-y-3">
+                    <Card className="shadow-none border-slate-200 rounded-lg">
+                      <CardHeader className="py-3 px-4 border-b border-slate-100">
+                        <CardTitle className="text-xs font-semibold text-slate-800">Patient context</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center gap-2"><Avatar className="h-8 w-8"><AvatarFallback className="bg-[#eee9fb] text-[#55408f] text-[10px]">{getInitials(selectedPatient.name)}</AvatarFallback></Avatar><div className="min-w-0"><p className="text-xs font-semibold text-slate-900 truncate">{selectedPatient.name}</p><p className="text-[10px] text-slate-500">{selectedPatient.age ? `${selectedPatient.age} years` : 'Age not recorded'}{selectedPatient.type ? ` · ${selectedPatient.type}` : ''}</p></div></div>
+                        <div className="border-t border-slate-100 pt-2"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Allergies</p><p className="mt-1 text-xs text-slate-700">{selectedPatient.history?.allergies?.length ? selectedPatient.history.allergies.join(', ') : 'No known allergies recorded'}</p></div>
+                        <div><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Cycle context</p><p className="mt-1 text-xs text-slate-700">{selectedPatient.lmp ? `LMP ${new Date(selectedPatient.lmp).toLocaleDateString('en-IN')}` : 'LMP not recorded'}{selectedPatient.cycleDay ? ` · Cycle day ${selectedPatient.cycleDay}` : ''}</p></div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="shadow-none border-slate-200 rounded-lg">
+                      <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
+                        <CardTitle className="text-xs font-semibold text-slate-800">Active medications</CardTitle>
+                        <Badge variant="outline" className="text-[10px]">{medications.filter((med: any) => String(med.status || '').toLowerCase() === 'active').length}</Badge>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        {medications.filter((med: any) => String(med.status || '').toLowerCase() === 'active').slice(0, 5).map((med: any) => <div key={med.id} className="px-4 py-2.5 border-b border-slate-50 last:border-0"><p className="text-xs font-medium text-slate-800">{med.name} {med.dose}</p><p className="text-[10px] text-slate-500">{med.frequency || med.notes || 'Active'}</p></div>)}
+                        {medications.filter((med: any) => String(med.status || '').toLowerCase() === 'active').length === 0 && <p className="px-4 py-3 text-xs text-slate-500">No active medications recorded.</p>}
+                      </CardContent>
+                    </Card>
+
+                    <Card className="shadow-none border-slate-200 rounded-lg">
+                      <CardHeader className="py-3 px-4 border-b border-slate-100"><CardTitle className="text-xs font-semibold text-slate-800">Recent reports</CardTitle></CardHeader>
+                      <CardContent className="p-0">
+                        {labResults.slice(-4).reverse().map((result: any, index: number) => <div key={result.id || `${result.testName}-${index}`} className="px-4 py-2.5 border-b border-slate-50 last:border-0"><p className="text-xs font-medium text-slate-800">{result.testName}</p><p className="text-[10px] text-slate-500">{result.value}{result.unit ? ` ${result.unit}` : ''}{result.status ? ` · ${result.status}` : ''}</p></div>)}
+                        {labResults.length === 0 && <p className="px-4 py-3 text-xs text-slate-500">No laboratory reports recorded.</p>}
+                      </CardContent>
+                    </Card>
+
+                    <div className="rounded-lg border border-[#e3dcf5] bg-[#f6f2ff] p-3">
+                      <p className="text-xs font-semibold text-[#6047a5] flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Clinical reasoning support</p>
+                      <p className="mt-1.5 text-[10px] leading-relaxed text-slate-600">Directions are prompts, not diagnoses. Distinguish recorded facts from assumptions, note what is missing, and confirm every entry before saving.</p>
+                    </div>
+                  </aside>
+                </div>
+              </div>
+            )}
+
+            <div className={patientDetailTab === 'consultation' ? 'hidden' : 'flex-1 flex overflow-hidden z-0'}>
               
               {/* Patient List Column (Left) */}
               <div className="w-72 border-r border-slate-200 bg-white flex flex-col shrink-0">
@@ -4027,19 +4577,13 @@ export default function ClinicianPortal() {
 
               {/* Detailed View (Right) - Intelligent Dashboard */}
               <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
-                {/* Tab Strip */}
-                <div className="flex gap-1 mb-5 bg-white rounded-xl border border-slate-200 p-1 w-fit shadow-sm">
-                  <button onClick={() => setPatientDetailTab('overview')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${patientDetailTab === 'overview' ? 'bg-slate-100 text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>Overview</button>
-                  <button onClick={() => setPatientDetailTab('postop')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${patientDetailTab === 'postop' ? 'bg-sky-50 text-sky-700' : 'text-slate-500 hover:text-slate-700'}`}>🏥 Post-Op</button>
-                  <button onClick={() => setPatientDetailTab('genome')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${patientDetailTab === 'genome' ? 'bg-yellow-50 text-yellow-800' : 'text-slate-500 hover:text-slate-700'}`}><Dna className="w-3.5 h-3.5" /> Genome</button>
-                </div>
                 {patientDetailTab === 'postop' && (
                   <PostOpDetailedView patientId={selectedPatient.id} patientName={selectedPatient.name} />
                 )}
                 {patientDetailTab === 'genome' && (
                   <GenomeInsightsPanel patientId={selectedPatient.id} patientName={selectedPatient.name} />
                 )}
-                <div className={patientDetailTab !== 'overview' ? 'hidden' : ''}>
+                <div className={patientDetailTab !== 'record' ? 'hidden' : ''}>
                 <div className="max-w-7xl mx-auto space-y-6">
                    
                    {/* PATIENT HISTORY SUMMARY */}
@@ -4452,56 +4996,7 @@ export default function ClinicianPortal() {
                             {/* Voice-to-SOAP button */}
                             <button
                               data-testid="btn-voice-soap"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (isRecording) {
-                                  mediaRecorderRef.current?.stop();
-                                  setIsRecording(false);
-                                } else {
-                                  try {
-                                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                                    audioChunksRef.current = [];
-                                    const mr = new MediaRecorder(stream);
-                                    mediaRecorderRef.current = mr;
-                                    mr.ondataavailable = (ev) => { if (ev.data.size > 0) audioChunksRef.current.push(ev.data); };
-                                    mr.onstop = async () => {
-                                      stream.getTracks().forEach(t => t.stop());
-                                      const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                                      const reader = new FileReader();
-                                      reader.onloadend = async () => {
-                                        const base64 = (reader.result as string).split(',')[1];
-                                        setIsTranscribing(true);
-                                        try {
-                                          const resp = await fetch('/api/voice/soap-transcribe', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({
-                                              audioData: base64,
-                                              mimeType: 'audio/webm',
-                                              patientContext: `${selectedPatient?.name}, ${selectedPatient?.age}y, ${selectedPatient?.type || ''}`,
-                                              patientId: selectedPatient?.id,
-                                            }),
-                                          });
-                                          const data = await resp.json();
-                                          if (data.soap) {
-                                            setSoapTranscript(data.soap);
-                                            setSoapSubjectiveDraft(data.soap.subjective || "");
-                                            setSoapObjectiveDraft(data.soap.objective || "");
-                                            setSoapAssessmentDraft(data.soap.assessment || "");
-                                            setSoapPlanDraft(data.soap.plan || "");
-                                            queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient?.id}/clinical-notes`] });
-                                          }
-                                        } finally {
-                                          setIsTranscribing(false);
-                                        }
-                                      };
-                                      reader.readAsDataURL(blob);
-                                    };
-                                    mr.start();
-                                    setIsRecording(true);
-                                  } catch { alert('Microphone access denied'); }
-                                }
-                              }}
+                              onClick={(event) => { event.stopPropagation(); void toggleVoiceCapture(); }}
                               className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border transition-colors ${isRecording ? 'bg-red-100 border-red-300 text-red-700 animate-pulse' : 'bg-white border-slate-200 text-slate-500 hover:border-blue-200 hover:text-blue-600'}`}
                               title="Voice-to-SOAP documentation"
                             >
