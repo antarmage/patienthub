@@ -1133,16 +1133,24 @@ export default function ClinicianPortal() {
 
   const filteredDirectoryPatients = useMemo(() => {
     const query = patientDirectorySearch.trim().toLowerCase();
+    const normalizeDate = (value: unknown) => {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
+      const match = String(value || '').trim().match(/^(\d{4}-\d{2}-\d{2})/);
+      return match?.[1] || '';
+    };
+    const fromDate = normalizeDate(patientDirectoryDateFrom);
+    const toDate = normalizeDate(patientDirectoryDateTo);
     return [...patients]
       .filter((patient: any) => {
         const matchesSearch = !query || [patient.name, patient.phone, patient.email, patient.type, patient.condition]
           .some((value) => String(value || '').toLowerCase().includes(query));
-        const hasDateFilter = Boolean(patientDirectoryDateFrom || patientDirectoryDateTo);
+        const hasDateFilter = Boolean(fromDate || toDate);
         const matchesAppointmentDate = !hasDateFilter || appointments.some((appointment: any) => {
-          if (appointment.patientId !== patient.id || !appointment.date || ['cancelled', 'canceled'].includes(String(appointment.status || '').toLowerCase())) return false;
-          const date = String(appointment.date).slice(0, 10);
-          return (!patientDirectoryDateFrom || date >= patientDirectoryDateFrom) &&
-            (!patientDirectoryDateTo || date <= patientDirectoryDateTo);
+          if (String(appointment.patientId ?? '') !== String(patient.id ?? '') || !appointment.date || ['cancelled', 'canceled'].includes(String(appointment.status || '').toLowerCase())) return false;
+          const appointmentDate = normalizeDate(appointment.date);
+          return Boolean(appointmentDate) &&
+            (!fromDate || appointmentDate >= fromDate) &&
+            (!toDate || appointmentDate <= toDate);
         });
         return matchesSearch && matchesAppointmentDate;
       })
