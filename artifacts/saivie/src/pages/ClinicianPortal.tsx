@@ -368,6 +368,9 @@ export default function ClinicianPortal() {
   const [activeView, setActiveView] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 640);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [patientDirectorySearch, setPatientDirectorySearch] = useState('');
+  const [patientDirectoryDateFrom, setPatientDirectoryDateFrom] = useState('');
+  const [patientDirectoryDateTo, setPatientDirectoryDateTo] = useState('');
   const [careMode, setCareMode] = useState("natural_conception"); 
   const [showDocumentation, setShowDocumentation] = useState(false);
   const [showPastRecords, setShowPastRecords] = useState(true);
@@ -1128,6 +1131,24 @@ export default function ClinicianPortal() {
       .slice(0, 20);
   }, [patients, patientSearch, queueDateFrom, queueDateTo, queuePatients]);
 
+  const filteredDirectoryPatients = useMemo(() => {
+    const query = patientDirectorySearch.trim().toLowerCase();
+    return [...patients]
+      .filter((patient: any) => {
+        const matchesSearch = !query || [patient.name, patient.phone, patient.email, patient.type, patient.condition]
+          .some((value) => String(value || '').toLowerCase().includes(query));
+        const hasDateFilter = Boolean(patientDirectoryDateFrom || patientDirectoryDateTo);
+        const matchesAppointmentDate = !hasDateFilter || appointments.some((appointment: any) => {
+          if (appointment.patientId !== patient.id || !appointment.date || ['cancelled', 'canceled'].includes(String(appointment.status || '').toLowerCase())) return false;
+          const date = String(appointment.date).slice(0, 10);
+          return (!patientDirectoryDateFrom || date >= patientDirectoryDateFrom) &&
+            (!patientDirectoryDateTo || date <= patientDirectoryDateTo);
+        });
+        return matchesSearch && matchesAppointmentDate;
+      })
+      .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+  }, [patients, appointments, patientDirectorySearch, patientDirectoryDateFrom, patientDirectoryDateTo]);
+
   const appointmentsByDay = useMemo(() => {
     const map: Record<number, any[]> = {};
     appointments.forEach((apt: any) => {
@@ -1213,7 +1234,7 @@ export default function ClinicianPortal() {
         <nav className="flex-1 px-3 py-3 space-y-1">
           {[
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-            { id: 'patient_detail', label: 'Patients', icon: Users },
+            { id: 'patient_list', label: 'Patients', icon: Users },
             { id: 'schedule', label: 'Schedule', icon: CalendarIcon },
             { id: 'analytics', label: 'Analytics', icon: Activity },
             { id: 'revenue', label: 'Revenue', icon: Briefcase },
@@ -1224,7 +1245,7 @@ export default function ClinicianPortal() {
               variant={activeView === id ? 'secondary' : 'ghost'}
               aria-label={label}
               title={label}
-              className={`w-full max-sm:justify-center ${sidebarOpen ? 'justify-start' : 'justify-center'} ${activeView === id ? 'bg-[#eee9fb] text-[#55408f] hover:bg-[#e7e0f8]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+              className={`w-full max-sm:justify-center ${sidebarOpen ? 'justify-start' : 'justify-center'} ${activeView === id || (id === 'patient_list' && activeView === 'patient_detail') ? 'bg-[#eee9fb] text-[#55408f] hover:bg-[#e7e0f8]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
               onClick={() => setActiveView(id)}
             >
               <Icon className={`${sidebarOpen ? 'mr-3 max-sm:mr-0' : 'mr-0'} h-4 w-4`} />
@@ -3598,7 +3619,157 @@ export default function ClinicianPortal() {
           </div>
         )}
 
-        {/* PATIENT DETAIL VIEW (Previous Implementation) */}
+        {activeView === 'patient_list' && (
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="max-w-[1440px] mx-auto space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Clinical workspace</p>
+                  <h2 className="mt-1 text-2xl font-semibold text-slate-900">Patients</h2>
+                  <p className="mt-1 text-sm text-slate-500">Search your patient directory and open a record to continue care.</p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <span className="rounded-md bg-white border border-slate-200 px-3 py-2 text-slate-600"><strong className="text-slate-900">{patients.length}</strong> patients</span>
+                  <span className="rounded-md bg-[#fff0ef] border border-[#f2d9d8] px-3 py-2 text-[#9c4e53]"><strong>{riskAlerts.length}</strong> high-risk</span>
+                  <span className="rounded-md bg-[#e6f1dc] border border-[#d8e7cc] px-3 py-2 text-[#587146]"><strong>{queuePatients.length}</strong> in selected schedule</span>
+                </div>
+              </div>
+
+              <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">Patient directory</h3>
+                    <p className="mt-0.5 text-xs text-slate-500">{filteredDirectoryPatients.length} of {patients.length} records</p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input
+                        value={patientDirectorySearch}
+                        onChange={(event) => setPatientDirectorySearch(event.target.value)}
+                        placeholder="Search patients"
+                        className="h-9 pl-9 text-sm border-slate-200"
+                        data-testid="input-patient-directory-search"
+                      />
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-slate-500">
+                      <span className="whitespace-nowrap">Appointment date</span>
+                      <Input
+                        type="date"
+                        value={patientDirectoryDateFrom}
+                        max={patientDirectoryDateTo || undefined}
+                        onChange={(event) => setPatientDirectoryDateFrom(event.target.value)}
+                        aria-label="Appointment date from"
+                        className="h-9 w-[142px] text-xs border-slate-200"
+                        data-testid="input-patient-directory-date-from"
+                      />
+                      <span>to</span>
+                      <Input
+                        type="date"
+                        value={patientDirectoryDateTo}
+                        min={patientDirectoryDateFrom || undefined}
+                        onChange={(event) => setPatientDirectoryDateTo(event.target.value)}
+                        aria-label="Appointment date to"
+                        className="h-9 w-[142px] text-xs border-slate-200"
+                        data-testid="input-patient-directory-date-to"
+                      />
+                    </label>
+                    {(patientDirectorySearch || patientDirectoryDateFrom || patientDirectoryDateTo) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 text-slate-500"
+                        onClick={() => {
+                          setPatientDirectorySearch('');
+                          setPatientDirectoryDateFrom('');
+                          setPatientDirectoryDateTo('');
+                        }}
+                        aria-label="Clear patient filters"
+                        title="Clear patient filters"
+                        data-testid="button-clear-patient-directory-filters"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-[760px] w-full text-left text-sm">
+                    <thead className="bg-[#f7f6fa] text-[10px] uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-4 py-3 font-semibold">Patient</th>
+                        <th className="px-4 py-3 font-semibold">Care pathway</th>
+                        <th className="px-4 py-3 font-semibold">Status</th>
+                        <th className="px-4 py-3 font-semibold">Last visit</th>
+                        <th className="px-4 py-3 font-semibold">Next follow-up</th>
+                        <th className="px-4 py-3 font-semibold">Risk</th>
+                        <th className="px-3 py-3" aria-label="Open patient record" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredDirectoryPatients.map((patient: any) => {
+                        const riskLevel = patient.riskScore?.level || (patient.status === 'High Risk' ? 'High' : '');
+                        const riskClass = riskLevel === 'Critical' || riskLevel === 'High'
+                          ? 'bg-[#fff0ef] text-[#a34d52]'
+                          : riskLevel === 'Medium'
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'bg-[#eaf3e4] text-[#587146]';
+                        return (
+                          <tr
+                            key={patient.id}
+                            data-testid={`patient-directory-row-${patient.id}`}
+                            tabIndex={0}
+                            role="button"
+                            onClick={() => navigateToPatient(patient)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                navigateToPatient(patient);
+                              }
+                            }}
+                            className="cursor-pointer hover:bg-[#faf9fd] focus-visible:outline-none focus-visible:bg-[#f5f1ff]"
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <Avatar className="h-9 w-9 shrink-0">
+                                  <AvatarFallback className="bg-[#eee9fb] text-[#55408f] text-xs font-semibold">{getInitials(patient.name)}</AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-slate-900 truncate">{patient.name || 'Unnamed patient'}</p>
+                                  <p className="text-xs text-slate-500 truncate">{patient.phone || patient.email || 'Contact not provided'}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">{patient.type || patient.condition || patient.mode || 'General care'}</td>
+                            <td className="px-4 py-3 text-slate-600">{patient.status || 'Active'}</td>
+                            <td className="px-4 py-3 text-slate-600">{patient.lastVisit || '—'}</td>
+                            <td className="px-4 py-3 text-slate-600">{patient.nextReview || '—'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex rounded px-2 py-1 text-[10px] font-medium ${riskClass}`}>{riskLevel || 'Low'}</span>
+                            </td>
+                            <td className="px-3 py-3"><ChevronRight className="h-4 w-4 text-slate-400" /></td>
+                          </tr>
+                        );
+                      })}
+                      {filteredDirectoryPatients.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-14 text-center">
+                            <Users className="mx-auto h-6 w-6 text-slate-300" />
+                            <p className="mt-2 text-sm font-medium text-slate-700">No matching patients</p>
+                            <p className="mt-1 text-xs text-slate-500">Try a different name, phone number, email, or care type.</p>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </div>
+        )}
+
+        {/* PATIENT DETAIL VIEW */}
         {activeView === 'patient_detail' && selectedPatient && (
           <div className="flex-1 flex flex-col overflow-hidden z-0 relative">
             {/* Background for Detail View */}
@@ -3611,8 +3782,8 @@ export default function ClinicianPortal() {
             <header className="bg-white border-b border-slate-200 shrink-0 z-10 shadow-sm relative w-full">
               <div className="flex items-center justify-between px-5 py-2">
                  <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setActiveView('dashboard')}>
-                       <LayoutDashboard className="w-4 h-4 text-slate-500" />
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setActiveView('patient_list')} aria-label="Back to patients">
+                        <ChevronRight className="w-4 h-4 text-slate-500 rotate-180" />
                     </Button>
                     <div className="flex items-center gap-3">
                        <Avatar className="h-9 w-9 border border-slate-200 bg-slate-100 text-slate-600 text-sm">
