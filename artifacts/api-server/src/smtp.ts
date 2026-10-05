@@ -1,6 +1,6 @@
 import nodemailer, { type Transporter } from "nodemailer";
 
-export type OtpDeliveryMethod = "whatsapp" | "email" | "development";
+export type OtpDeliveryMethod = "email" | "development";
 
 let transporter: Transporter | undefined;
 

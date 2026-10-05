@@ -1115,8 +1115,15 @@ export default function ClinicianPortal() {
   const searchResults = useMemo(() => {
     if (!patientSearch.trim()) return [];
     const q = patientSearch.toLowerCase().trim();
-    return patients.filter((p: any) => p.name?.toLowerCase().includes(q)).slice(0, 20);
-  }, [patients, patientSearch]);
+    const dateFilteredPatients = queueDateFrom && queueDateTo ? queuePatients : patients;
+    return dateFilteredPatients
+      .filter((p: any) =>
+        p.name?.toLowerCase().includes(q) ||
+        p.phone?.includes(q) ||
+        p.email?.toLowerCase().includes(q)
+      )
+      .slice(0, 20);
+  }, [patients, patientSearch, queueDateFrom, queueDateTo, queuePatients]);
 
   const appointmentsByDay = useMemo(() => {
     const map: Record<number, any[]> = {};
@@ -3685,28 +3692,26 @@ export default function ClinicianPortal() {
                         </button>
                       )}
                     </div>
-                    {!isSearching && (
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="date"
-                            value={queueDateFrom}
-                            onChange={(e) => { setQueueDateFrom(e.target.value); if (e.target.value > queueDateTo) setQueueDateTo(e.target.value); }}
-                            className="h-8 text-xs border border-slate-200 rounded-md flex-1 min-w-[120px] px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-                            data-testid="input-queue-date-from-sidebar"
-                          />
-                          <span className="text-[10px] text-slate-400 shrink-0">to</span>
-                          <input
-                            type="date"
-                            value={queueDateTo}
-                            onChange={(e) => { setQueueDateTo(e.target.value); if (e.target.value < queueDateFrom) setQueueDateFrom(e.target.value); }}
-                            className="h-8 text-xs border border-slate-200 rounded-md flex-1 min-w-[120px] px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-                            data-testid="input-queue-date-to-sidebar"
-                          />
-                          <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-medium shrink-0">{queuePatients.length}</span>
-                        </div>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="date"
+                          value={queueDateFrom}
+                          onChange={(e) => { setQueueDateFrom(e.target.value); if (e.target.value > queueDateTo) setQueueDateTo(e.target.value); }}
+                          className="h-8 text-xs border border-slate-200 rounded-md flex-1 min-w-[120px] px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          data-testid="input-queue-date-from-sidebar"
+                        />
+                        <span className="text-[10px] text-slate-400 shrink-0">to</span>
+                        <input
+                          type="date"
+                          value={queueDateTo}
+                          onChange={(e) => { setQueueDateTo(e.target.value); if (e.target.value < queueDateFrom) setQueueDateFrom(e.target.value); }}
+                          className="h-8 text-xs border border-slate-200 rounded-md flex-1 min-w-[120px] px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          data-testid="input-queue-date-to-sidebar"
+                        />
+                        <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-medium shrink-0">{queuePatients.length}</span>
                       </div>
-                    )}
+                    </div>
                     {isSearching && searchResults.length > 0 && (
                       <div className="text-[10px] text-slate-400">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</div>
                     )}

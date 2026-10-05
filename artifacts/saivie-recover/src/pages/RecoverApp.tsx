@@ -8,8 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 
+const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
+
 function api(path: string, opts?: RequestInit, token?: string) {
-  return fetch(path, {
+  const url = /^https?:\/\//i.test(path) || path.startsWith("//") ? path : `${API_BASE}${path}`;
+  return fetch(url, {
     ...opts,
     headers: {
       "Content-Type": "application/json",

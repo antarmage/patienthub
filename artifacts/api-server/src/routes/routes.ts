@@ -126,17 +126,6 @@ function generateOtp(): string {
 }
 
 async function sendOtp(phone: string, code: string, email?: string | null): Promise<OtpDeliveryMethod> {
-  const message = `Your Saivie verification code is: ${code}. Valid for 5 minutes.`;
-  let whatsappError: unknown;
-  if (whatsapp.isConfigured) {
-    try {
-      await whatsapp.sendTextMessage(phone, message);
-      return "whatsapp";
-    } catch (err) {
-      whatsappError = err;
-      console.error("[OTP] WhatsApp delivery failed; trying email fallback:", err instanceof Error ? err.message : err);
-    }
-  }
   if (email && isSmtpConfigured()) {
     try {
       await sendOtpEmail(email, code);
@@ -152,7 +141,7 @@ async function sendOtp(phone: string, code: string, email?: string | null): Prom
     console.log("------------------------------------------");
     return "development";
   }
-  throw new Error(whatsappError ? "OTP delivery failed and no email fallback is available" : "No OTP delivery method is configured for this recipient");
+  throw new Error("No email OTP delivery method is configured for this recipient");
 }
 
 function otpDestination(phone: string, email: string | null | undefined, deliveryMethod: OtpDeliveryMethod): string {

@@ -21,7 +21,10 @@
         { "name": "NODE_ENV",          "value": "production" },
         { "name": "PORT",              "value": "8080" },
         { "name": "LOG_LEVEL",         "value": "info" },
-        { "name": "WHATSAPP_VERSION",  "value": "v21.0" }
+        { "name": "WHATSAPP_VERSION",  "value": "v21.0" },
+        { "name": "SMTP_HOST",         "value": "smtp.gmail.com" },
+        { "name": "SMTP_PORT",         "value": "465" },
+        { "name": "SMTP_SECURE",       "value": "true" }
       ],
       "secrets": [
         {
@@ -63,18 +66,6 @@
         {
           "name": "AWS_S3_BUCKET",
           "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/s3_bucket"
-        },
-        {
-          "name": "SMTP_HOST",
-          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/smtp_host"
-        },
-        {
-          "name": "SMTP_PORT",
-          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/smtp_port"
-        },
-        {
-          "name": "SMTP_SECURE",
-          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/smtp_secure"
         },
         {
           "name": "SMTP_USER",

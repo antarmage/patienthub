@@ -204,10 +204,8 @@ create_secret_silent "whatsapp_phone_number_id" "REPLACE_ME"
 create_secret_silent "whatsapp_app_secret"      "REPLACE_ME"
 create_secret_silent "whatsapp_verify_token"    "REPLACE_ME"
 
-# SMTP OTP email fallback — placeholders are safe until replaced with real values
-create_secret_silent "smtp_host"   "REPLACE_ME"
-create_secret_silent "smtp_port"   "587"
-create_secret_silent "smtp_secure" "false"
+# SMTP OTP email fallback — Gmail transport defaults live in the ECS task definition.
+# Only authentication values are stored as optional Secrets Manager secrets.
 create_secret_silent "smtp_user"   "REPLACE_ME"
 create_secret_silent "smtp_pass"   "REPLACE_ME"
 create_secret_silent "smtp_from"   "REPLACE_ME"
