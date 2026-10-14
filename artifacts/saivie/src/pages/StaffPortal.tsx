@@ -9,6 +9,7 @@ import {
   FlaskConical, 
   CalendarCheck,
   ChevronRight,
+  ChevronDown,
   Search,
   Bell,
   Menu,
@@ -59,6 +60,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Progress } from "@/components/ui/progress";
 import { 
   Dialog,
@@ -1438,6 +1441,7 @@ export default function StaffPortal() {
   const [followUpCallFilter, setFollowUpCallFilter] = useState<'pending' | 'completed' | 'all'>('pending');
 
   const [billingPatientId, setBillingPatientId] = useState<number | null>(null);
+  const [isBillingPatientPickerOpen, setIsBillingPatientPickerOpen] = useState(false);
   const [billingItems, setBillingItems] = useState<{catalogItemId: number; name: string; price: number; quantity: number; taxRate: number; isEstimated?: boolean}[]>([]);
   const [billingPaymentMethod, setBillingPaymentMethod] = useState("cash");
   const [billingNotes, setBillingNotes] = useState("");
@@ -3908,6 +3912,7 @@ export default function StaffPortal() {
                             setBillingEstimateSource("");
                             createInvoiceMutation.reset();
                           };
+                          const selectedPatient = patients.find((p: any) => p.id === billingPatientId);
 
                           return (
                             <>
@@ -3945,18 +3950,54 @@ export default function StaffPortal() {
 
                               <div className="pt-2 border-t border-slate-100">
                                 <p className="text-xs text-slate-400 mb-2">Or search all patients</p>
-                                <Select value={billingPatientId?.toString() || ""} onValueChange={(v) => selectPatient(parseInt(v))}>
-                                  <SelectTrigger data-testid="select-billing-patient" className="h-9">
-                                    <SelectValue placeholder="Search other patients..." />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {patients.map((p: any) => (
-                                      <SelectItem key={p.id} value={p.id.toString()}>
-                                        {p.name} {p.isPrimeMember ? '⭐' : ''} ({p.type || 'General'})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <Popover open={isBillingPatientPickerOpen} onOpenChange={setIsBillingPatientPickerOpen}>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={isBillingPatientPickerOpen}
+                                      className="h-10 w-full justify-between font-normal"
+                                      data-testid="select-billing-patient"
+                                    >
+                                      {selectedPatient ? (
+                                        <span className="flex min-w-0 items-center gap-2">
+                                          <span className="truncate">{selectedPatient.name}</span>
+                                          {selectedPatient.isPrimeMember && <span className="shrink-0 text-xs text-amber-600">Prime</span>}
+                                          <Badge variant="secondary" className="shrink-0 text-xs">{selectedPatient.type || "General"}</Badge>
+                                        </span>
+                                      ) : (
+                                        <span className="text-slate-500">Search by name or patient type...</span>
+                                      )}
+                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                                    <Command>
+                                      <CommandInput placeholder="Search name or patient type..." />
+                                      <CommandList>
+                                        <CommandEmpty>No matching patients.</CommandEmpty>
+                                        <CommandGroup>
+                                          {patients.map((p: any) => (
+                                            <CommandItem
+                                              key={p.id}
+                                              value={`${p.name} ${p.type || "General"} ${p.isPrimeMember ? "Prime" : ""}`}
+                                              onSelect={() => {
+                                                selectPatient(p.id);
+                                                setIsBillingPatientPickerOpen(false);
+                                              }}
+                                            >
+                                              <CheckCircle2 className={`h-4 w-4 ${billingPatientId === p.id ? "opacity-100" : "opacity-0"}`} />
+                                              <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                                              {p.isPrimeMember && <span className="text-xs text-amber-600">Prime</span>}
+                                              <Badge variant="secondary" className="ml-2 shrink-0 text-xs">{p.type || "General"}</Badge>
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
                               </div>
                             </>
                           );
