@@ -60,6 +60,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { InvoiceTemplateEditor } from "@/components/InvoiceTemplateEditor";
+import { PrimePricingRulesEditor } from "@/components/PrimePricingRulesEditor";
 
 function formatINR(amount: number): string {
   if (amount === undefined || amount === null || isNaN(amount)) return "₹0";
@@ -325,6 +326,7 @@ export default function OwnerPortal() {
     { id: "catalog", label: "Service Catalog", icon: Package },
     { id: "packages", label: "Packages", icon: Layers },
     { id: "invoice-template", label: "Invoice Template", icon: Receipt },
+    { id: "prime-pricing", label: "Prime Pricing", icon: IndianRupee },
     { id: "staff-accounts", label: "Staff Accounts", icon: Users },
     { id: "ai-insights", label: "AI Insights", icon: Sparkles },
     { id: "ai-audit-log", label: "AI Audit Log", icon: Activity },
@@ -1102,6 +1104,7 @@ export default function OwnerPortal() {
             )}
 
             {activeView === "invoice-template" && <InvoiceTemplateEditor />}
+            {activeView === "prime-pricing" && <PrimePricingRulesEditor />}
 
             {activeView === "catalog" && (
               <div className="space-y-6">

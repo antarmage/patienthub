@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import { storage } from "../storage";
 import { insertPatientSchema } from "@workspace/db";
+import { calculateInvoiceQuote } from "../prime-pricing";
 import { registerOcrRoutes } from "../replit_integrations/ocr";
 import { getUncachableGoogleSheetClient } from "../google-sheets";
 import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../google-drive";
@@ -38,6 +39,18 @@ const defaultInvoiceTemplate = {
   footerText: "",
   sections: { patientContact: true, taxBreakdown: true, paymentMethod: true, notes: true },
 };
+
+const defaultPrimePricingRules = {
+  id: 1,
+  consultationFee: 600,
+  consultationItemIds: [] as number[],
+  labDiscountPercent: 20,
+  updatedAt: "",
+};
+
+async function readPrimePricingRules() {
+  return { ...defaultPrimePricingRules, ...(await storage.getPrimePricingRules()) };
+}
 
 const invoiceLogoUpload = multer({
   storage: multer.memoryStorage(),
@@ -1908,14 +1921,54 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     }))));
   });
 
+  app.post("/api/patients/:id/invoice-quote", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid patient ID" });
+    const patient = await storage.getPatient(id);
+    if (!patient) return res.status(404).json({ error: "Patient not found" });
+    const catalog = await storage.getBillingCatalog();
+    const rules = await readPrimePricingRules();
+    try {
+      const requestedItems = Array.isArray(req.body?.items) ? req.body.items.map((item: any) => ({
+        catalogItemId: Number(item.catalogItemId),
+        quantity: Number(item.quantity),
+      })) : [];
+      res.json(calculateInvoiceQuote(requestedItems, catalog, patient, rules));
+    } catch (err: any) {
+      res.status(400).json({ error: err.message || "Could not calculate invoice" });
+    }
+  });
+
   app.post("/api/patients/:id/invoices", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid patient ID" });
+    const patient = await storage.getPatient(id);
+    if (!patient) return res.status(404).json({ error: "Patient not found" });
+    const catalog = await storage.getBillingCatalog();
+    const rules = await readPrimePricingRules();
+    let quote;
+    try {
+      const requestedItems = Array.isArray(req.body?.items) ? req.body.items.map((item: any) => ({
+        catalogItemId: Number(item.catalogItemId),
+        quantity: Number(item.quantity),
+      })) : [];
+      quote = calculateInvoiceQuote(requestedItems, catalog, patient, rules);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message || "Could not calculate invoice" });
+    }
     const templateSnapshot = await storage.getInvoiceTemplateSettings() || defaultInvoiceTemplate;
     const inv = await storage.createInvoice({
-      ...req.body,
       patientId: id,
       date: req.body.date || new Date().toISOString().split("T")[0],
+      items: quote.items,
+      subtotal: quote.subtotal,
+      tax: quote.tax,
+      discountTotal: quote.discountTotal,
+      discountDetails: quote.discountDetails,
+      total: quote.total,
+      paymentMethod: req.body.paymentMethod,
+      paymentStatus: "paid",
+      notes: req.body.notes,
       templateSnapshot,
     });
     res.status(201).json({ ...inv, templateSnapshot: await presentInvoiceTemplate(templateSnapshot) });
@@ -2015,6 +2068,50 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       res.json(await presentInvoiceTemplate(settings));
     } catch (err: any) {
       res.status(500).json({ error: err.message || "Failed to remove logo" });
+    }
+  });
+
+  app.get("/api/owner/prime-pricing", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    try {
+      res.json(await readPrimePricingRules());
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Failed to load Prime pricing rules" });
+    }
+  });
+
+  app.patch("/api/owner/prime-pricing", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    const body = req.body || {};
+    const current = await readPrimePricingRules();
+    const consultationFee = body.consultationFee ?? current.consultationFee;
+    const labDiscountPercent = body.labDiscountPercent ?? current.labDiscountPercent;
+    const consultationItemIds = body.consultationItemIds ?? current.consultationItemIds;
+
+    if (typeof consultationFee !== "number" || !Number.isFinite(consultationFee) || consultationFee < 0 || consultationFee > 100000) {
+      return res.status(400).json({ error: "Consultation fee must be between ₹0 and ₹100,000" });
+    }
+    if (typeof labDiscountPercent !== "number" || !Number.isFinite(labDiscountPercent) || labDiscountPercent < 0 || labDiscountPercent > 100) {
+      return res.status(400).json({ error: "Lab discount must be between 0% and 100%" });
+    }
+    if (!Array.isArray(consultationItemIds) || consultationItemIds.length > 500 || consultationItemIds.some((id: unknown) => !Number.isInteger(id) || Number(id) <= 0)) {
+      return res.status(400).json({ error: "Select valid consultation catalog items" });
+    }
+
+    const catalog = await storage.getBillingCatalog();
+    const allowedConsultationIds = new Set(catalog
+      .filter((item) => item.isActive !== false && (item.category || "").trim().toLowerCase() === "consultation")
+      .map((item) => item.id));
+    const selectedIds = [...new Set(consultationItemIds as number[])];
+    if (selectedIds.some((id) => !allowedConsultationIds.has(id))) {
+      return res.status(400).json({ error: "Prime consultation rules can only include active Consultation catalog items" });
+    }
+
+    try {
+      const saved = await storage.savePrimePricingRules({ consultationFee, labDiscountPercent, consultationItemIds: selectedIds });
+      res.json(saved);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Failed to save Prime pricing rules" });
     }
   });
 

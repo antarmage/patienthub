@@ -38,6 +38,16 @@ export async function ensureSchema(): Promise<void> {
       );
 
       ALTER TABLE invoices ADD COLUMN IF NOT EXISTS template_snapshot jsonb;
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount_total real NOT NULL DEFAULT 0;
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount_details jsonb;
+
+      CREATE TABLE IF NOT EXISTS prime_pricing_rules (
+        id integer PRIMARY KEY DEFAULT 1,
+        consultation_fee real NOT NULL DEFAULT 600,
+        consultation_item_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+        lab_discount_percent real NOT NULL DEFAULT 20,
+        updated_at text NOT NULL DEFAULT CURRENT_TIMESTAMP::text
+      );
 
       -- Triage score columns on appointments (Task #8)
       ALTER TABLE appointments ADD COLUMN IF NOT EXISTS triage_score integer;

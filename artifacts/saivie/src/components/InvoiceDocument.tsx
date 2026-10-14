@@ -15,10 +15,17 @@ export interface InvoiceTemplateData {
 }
 
 export interface InvoiceDocumentItem {
+  catalogItemId?: number;
   name: string;
   price: number;
   quantity: number;
+  taxableSubtotal?: number;
   taxRate?: number;
+  taxAmount?: number;
+  catalogPriceIncludesTax?: boolean;
+  discountAmount?: number;
+  discountLabel?: string | null;
+  lineTotal?: number;
 }
 
 interface InvoiceDocumentProps {
@@ -27,6 +34,8 @@ interface InvoiceDocumentProps {
   items: InvoiceDocumentItem[];
   subtotal: number;
   tax: number;
+  discountTotal?: number;
+  discountDetails?: Array<{ catalogItemId: number; name: string; amount: number; label: string }>;
   total: number;
   date?: string;
   paymentMethod?: string;
@@ -45,6 +54,8 @@ export function InvoiceDocument({
   items,
   subtotal,
   tax,
+  discountTotal = 0,
+  discountDetails = [],
   total,
   date = new Date().toISOString().slice(0, 10),
   paymentMethod,
@@ -129,32 +140,44 @@ export function InvoiceDocument({
           <thead>
             <tr className="border-y border-slate-300 bg-slate-50">
               <th className="px-2 py-3 font-bold uppercase tracking-wide">Service</th>
-              <th className="px-2 py-3 text-right font-bold uppercase tracking-wide">Rate</th>
+              <th className="px-2 py-3 text-right font-bold uppercase tracking-wide">MRP / rate</th>
               <th className="px-2 py-3 text-right font-bold uppercase tracking-wide">Qty</th>
               {sections.taxBreakdown && <th className="px-2 py-3 text-right font-bold uppercase tracking-wide">Tax</th>}
-              <th className="px-2 py-3 text-right font-bold uppercase tracking-wide">Amount</th>
+              <th className="px-2 py-3 text-right font-bold uppercase tracking-wide">Discount</th>
+              <th className="px-2 py-3 text-right font-bold uppercase tracking-wide">Line total</th>
             </tr>
           </thead>
           <tbody>
             {items.length ? items.map((item, index) => (
               <tr key={`${item.name}-${index}`} className="border-b border-slate-200">
                 <td className="px-2 py-3 font-medium">{item.name}</td>
-                <td className="px-2 py-3 text-right">{formatAmount(item.price)}</td>
+                <td className="px-2 py-3 text-right">{formatAmount(item.price)}{item.catalogPriceIncludesTax && <span className="block text-[9px] text-slate-500">GST incl. MRP</span>}</td>
                 <td className="px-2 py-3 text-right">{item.quantity}</td>
-                {sections.taxBreakdown && <td className="px-2 py-3 text-right">{item.taxRate || 0}%</td>}
-                <td className="px-2 py-3 text-right font-semibold">{formatAmount(item.price * item.quantity)}</td>
+                {sections.taxBreakdown && <td className="px-2 py-3 text-right">{item.taxRate || 0}%<br />{formatAmount(item.taxAmount || 0)}</td>}
+                <td className="px-2 py-3 text-right text-emerald-700">{item.discountAmount ? `−${formatAmount(item.discountAmount)}` : "—"}</td>
+                <td className="px-2 py-3 text-right font-semibold">{formatAmount(item.lineTotal ?? (item.price * item.quantity + (item.taxAmount || 0) - (item.discountAmount || 0)))}</td>
               </tr>
             )) : (
               <tr className="border-b border-slate-200">
-                <td colSpan={sections.taxBreakdown ? 5 : 4} className="px-2 py-8 text-center text-slate-400">No services added</td>
+                <td colSpan={sections.taxBreakdown ? 6 : 5} className="px-2 py-8 text-center text-slate-400">No services added</td>
               </tr>
             )}
           </tbody>
         </table>
 
         <div className="mt-6 ml-auto w-64 space-y-2 text-sm">
-          <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>{formatAmount(subtotal)}</span></div>
-          {sections.taxBreakdown && <div className="flex justify-between text-slate-600"><span>Tax</span><span>{formatAmount(tax)}</span></div>}
+          <div className="flex justify-between text-slate-600"><span>Taxable subtotal</span><span>{formatAmount(subtotal)}</span></div>
+          {sections.taxBreakdown && <div className="flex justify-between text-slate-600"><span>GST after discount</span><span>{formatAmount(tax)}</span></div>}
+          {items.some((item) => item.catalogPriceIncludesTax) && <p className="text-right text-[10px] text-slate-500">Lab Test MRP includes GST. The Prime discount is applied to its pre-tax value, then GST is recalculated on the discounted value.</p>}
+          <div className="border-t border-slate-200 pt-2">
+            <div className="flex justify-between font-semibold text-emerald-800"><span>Prime discounts</span><span>−{formatAmount(discountTotal)}</span></div>
+            {discountDetails.length > 0 ? discountDetails.map((discount, index) => (
+              <div key={`${discount.catalogItemId}-${index}`} className="mt-1 flex justify-between gap-3 text-xs text-emerald-700">
+                <span className="truncate">{discount.name} · {discount.label}</span>
+                <span className="shrink-0">−{formatAmount(discount.amount)}</span>
+              </div>
+            )) : <p className="mt-1 text-xs text-slate-400">No Prime discount applied</p>}
+          </div>
           <div className="flex justify-between border-t border-slate-900 pt-3 text-base font-bold"><span>Total</span><span>{formatAmount(total)}</span></div>
         </div>
 

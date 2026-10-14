@@ -77,11 +77,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { InvoiceDocument, type InvoiceTemplateData } from "@/components/InvoiceDocument";
+import { InvoiceDocument, type InvoiceDocumentItem, type InvoiceTemplateData } from "@/components/InvoiceDocument";
 
 
 
 import { Link, useLocation } from "wouter";
+
+interface BillingQuote {
+  items: InvoiceDocumentItem[];
+  subtotal: number;
+  tax: number;
+  discountTotal: number;
+  discountDetails: Array<{ catalogItemId: number; name: string; amount: number; label: string }>;
+  total: number;
+  isPrimeMember: boolean;
+}
 
 function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isOpen: boolean; onClose: () => void; patient: any; onSaveComplete?: () => void }) {
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string; preview: string; type: string } | null>(null);
@@ -1461,6 +1471,21 @@ export default function StaffPortal() {
       return res.json();
     },
   });
+  const requestedBillingItems = billingItems.map(({ catalogItemId, quantity }) => ({ catalogItemId, quantity }));
+  const billingQuoteQuery = useQuery<BillingQuote>({
+    queryKey: ["/api/patients", billingPatientId, "invoice-quote", requestedBillingItems],
+    enabled: !!billingPatientId && requestedBillingItems.length > 0,
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${billingPatientId}/invoice-quote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: requestedBillingItems }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to calculate Prime pricing");
+      return data;
+    },
+  });
 
   const estimationTemplates: Record<string, { label: string; items: string[] }> = {
     "gynec_initial": { label: "Gynec Initial Consultation", items: ["Initial Consultation", "Complete Blood Count (CBC)", "Thyroid Profile (TSH, T3, T4)", "Urine Routine & Culture"] },
@@ -1529,7 +1554,7 @@ export default function StaffPortal() {
   }, [billingPatientId, billingCatalogItems, patients, appointments, getAutoEstimate]);
 
   const createInvoiceMutation = useMutation({
-    mutationFn: async (data: { patientId: number; items: any[]; subtotal: number; tax: number; total: number; paymentMethod: string; notes: string }) => {
+    mutationFn: async (data: { patientId: number; items: { catalogItemId: number; quantity: number }[]; paymentMethod: string; notes: string }) => {
       const res = await fetch(`/api/patients/${data.patientId}/invoices`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1537,11 +1562,7 @@ export default function StaffPortal() {
           patientId: data.patientId,
           date: new Date().toISOString().split("T")[0],
           items: data.items,
-          subtotal: data.subtotal,
-          tax: data.tax,
-          total: data.total,
           paymentMethod: data.paymentMethod,
-          paymentStatus: "paid",
           notes: data.notes,
         }),
       });
@@ -4172,7 +4193,8 @@ export default function StaffPortal() {
                           <div className="space-y-2">
                             {billingItems.map((item: any, idx: number) => {
                               const itemSubtotal = item.price * item.quantity;
-                              const itemTax = itemSubtotal * (item.taxRate / 100);
+                              const quoteItem = billingQuoteQuery.data?.items.find((quotedItem) => quotedItem.catalogItemId === item.catalogItemId);
+                              const itemTax = quoteItem?.taxAmount || 0;
                               return (
                                 <div key={idx} className="flex items-start justify-between py-2 border-b border-slate-100 last:border-0" data-testid={`billing-line-${idx}`}>
                                   <div className="flex-1">
@@ -4185,10 +4207,14 @@ export default function StaffPortal() {
                                       <span className="text-xs font-medium text-slate-600">Qty: {item.quantity}</span>
                                       <button className="text-xs text-slate-400 hover:text-slate-600" onClick={() => { const updated = [...billingItems]; updated[idx] = { ...item, quantity: item.quantity + 1 }; setBillingItems(updated); }}>+</button>
                                     </div>
-                                    {item.taxRate > 0 && <p className="text-xs text-slate-400 mt-0.5">GST {item.taxRate}%: ₹{itemTax.toLocaleString('en-IN')}</p>}
+                                    {quoteItem && <p className="text-xs text-slate-400 mt-0.5">GST {quoteItem.taxRate}% after discount: ₹{itemTax.toLocaleString('en-IN')}</p>}
+                                    {quoteItem?.discountAmount ? <p className="text-xs text-emerald-700 mt-0.5">{quoteItem.discountLabel}: −₹{quoteItem.discountAmount.toLocaleString('en-IN')}</p> : null}
                                   </div>
                                   <div className="text-right flex items-start gap-2">
-                                    <p className="text-sm font-bold text-slate-900">₹{itemSubtotal.toLocaleString('en-IN')}</p>
+                                    <div className="text-right">
+                                      <p className="text-[10px] text-slate-400">MRP ₹{itemSubtotal.toLocaleString('en-IN')}</p>
+                                      <p className="text-sm font-bold text-slate-900">₹{quoteItem?.lineTotal?.toLocaleString('en-IN') ?? "…"}</p>
+                                    </div>
                                     <button className="text-slate-400 hover:text-red-500 mt-0.5" onClick={() => setBillingItems(billingItems.filter((_: any, i: number) => i !== idx))} data-testid={`btn-remove-item-${idx}`}>
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
@@ -4200,15 +4226,20 @@ export default function StaffPortal() {
                         )}
 
                         {billingItems.length > 0 && (() => {
-                          const subtotal = billingItems.reduce((s: number, item: any) => s + item.price * item.quantity, 0);
-                          const tax = billingItems.reduce((s: number, item: any) => s + (item.price * item.quantity * (item.taxRate / 100)), 0);
-                          const total = subtotal + tax;
+                          const quote = billingQuoteQuery.data;
+                          if (!quote) {
+                            return <p role={billingQuoteQuery.isError ? "alert" : undefined} className={`text-sm ${billingQuoteQuery.isError ? "text-rose-600" : "text-slate-500"}`}>
+                              {billingQuoteQuery.isError ? billingQuoteQuery.error.message : "Calculating bill..."}
+                            </p>;
+                          }
+                          const { subtotal, tax, discountTotal, total } = quote;
 
                           return (
                             <div className="space-y-3 pt-2">
                               <div className="space-y-1 text-sm">
                                 <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>₹{subtotal.toLocaleString('en-IN')}</span></div>
-                                <div className="flex justify-between text-slate-600"><span>GST</span><span>₹{Math.round(tax).toLocaleString('en-IN')}</span></div>
+                                <div className="flex justify-between text-slate-600"><span>GST after discount</span><span>₹{Math.round(tax).toLocaleString('en-IN')}</span></div>
+                                <div className="flex justify-between font-medium text-emerald-700"><span>Prime discounts</span><span>−₹{discountTotal.toLocaleString('en-IN')}</span></div>
                                 <Separator />
                                 <div className="flex justify-between font-bold text-lg text-slate-900">
                                   <span>{billingIsEstimate ? 'Estimated Total' : 'Total'}</span>
@@ -4238,7 +4269,7 @@ export default function StaffPortal() {
 
                               <Button
                                 className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold"
-                                disabled={!billingPatientId || billingItems.length === 0 || invoiceTemplateQuery.isLoading || invoiceTemplateQuery.isError}
+                                disabled={!billingPatientId || billingItems.length === 0 || !quote || billingQuoteQuery.isFetching || invoiceTemplateQuery.isLoading || invoiceTemplateQuery.isError}
                                 onClick={() => {
                                   setIsIssuedInvoicePreview(false);
                                   setIsInvoicePreviewOpen(true);
@@ -4249,6 +4280,7 @@ export default function StaffPortal() {
                                 Preview Invoice
                               </Button>
                               {invoiceTemplateQuery.isError && <p role="alert" className="text-xs text-rose-600">Invoice template could not be loaded.</p>}
+                              {billingQuoteQuery.isError && <p role="alert" className="text-xs text-rose-600">{billingQuoteQuery.error.message}</p>}
 
                               {createInvoiceMutation.isSuccess && (
                                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
@@ -4275,11 +4307,14 @@ export default function StaffPortal() {
                     </DialogHeader>
                     {(() => {
                       const issuedInvoice = isIssuedInvoicePreview ? lastCreatedInvoice : null;
-                      const previewItems = issuedInvoice?.items || billingItems;
+                      const previewQuote = billingQuoteQuery.data;
+                      const previewItems = issuedInvoice?.items || previewQuote?.items || [];
                       const previewPatient = issuedInvoice?.patient || patients.find((patient: any) => patient.id === billingPatientId) || {};
-                      const previewSubtotal = issuedInvoice?.subtotal ?? previewItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
-                      const previewTax = issuedInvoice?.tax ?? previewItems.reduce((sum: number, item: any) => sum + item.price * item.quantity * ((item.taxRate || 0) / 100), 0);
-                      const previewTotal = issuedInvoice?.total ?? previewSubtotal + previewTax;
+                      const previewSubtotal = issuedInvoice?.subtotal ?? previewQuote?.subtotal ?? 0;
+                      const previewTax = issuedInvoice?.tax ?? previewQuote?.tax ?? 0;
+                      const previewDiscountTotal = issuedInvoice?.discountTotal ?? previewQuote?.discountTotal ?? 0;
+                      const previewDiscountDetails = issuedInvoice?.discountDetails ?? previewQuote?.discountDetails ?? [];
+                      const previewTotal = issuedInvoice?.total ?? previewQuote?.total ?? 0;
                       const previewTemplate = issuedInvoice?.templateSnapshot || invoiceTemplateQuery.data || {};
 
                       return (
@@ -4290,6 +4325,8 @@ export default function StaffPortal() {
                             items={previewItems}
                             subtotal={previewSubtotal}
                             tax={previewTax}
+                            discountTotal={previewDiscountTotal}
+                            discountDetails={previewDiscountDetails}
                             total={previewTotal}
                             date={issuedInvoice?.date}
                             paymentMethod={issuedInvoice?.paymentMethod || billingPaymentMethod}
@@ -4305,13 +4342,10 @@ export default function StaffPortal() {
                             ) : (
                               <Button
                                 className="bg-emerald-700 hover:bg-emerald-800"
-                                disabled={!billingPatientId || billingItems.length === 0 || createInvoiceMutation.isPending}
+                                disabled={!billingPatientId || billingItems.length === 0 || !previewQuote || billingQuoteQuery.isFetching || createInvoiceMutation.isPending}
                                 onClick={() => createInvoiceMutation.mutate({
                                   patientId: billingPatientId!,
-                                  items: billingItems,
-                                  subtotal: previewSubtotal,
-                                  tax: Math.round(previewTax),
-                                  total: Math.round(previewTotal),
+                                  items: requestedBillingItems,
                                   paymentMethod: billingPaymentMethod,
                                   notes: billingNotes,
                                 })}

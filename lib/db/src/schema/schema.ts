@@ -346,6 +346,18 @@ export const insertInvoiceTemplateSettingsSchema = createInsertSchema(invoiceTem
 export type InsertInvoiceTemplateSettings = z.infer<typeof insertInvoiceTemplateSettingsSchema>;
 export type InvoiceTemplateSettings = typeof invoiceTemplateSettings.$inferSelect;
 
+export const primePricingRules = pgTable("prime_pricing_rules", {
+  id: integer("id").primaryKey().default(1),
+  consultationFee: real("consultation_fee").notNull().default(600),
+  consultationItemIds: jsonb("consultation_item_ids").$type<number[]>().notNull().default(sql`'[]'::jsonb`),
+  labDiscountPercent: real("lab_discount_percent").notNull().default(20),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP::text`),
+});
+
+export const insertPrimePricingRulesSchema = createInsertSchema(primePricingRules).omit({ id: true, updatedAt: true });
+export type InsertPrimePricingRules = z.infer<typeof insertPrimePricingRulesSchema>;
+export type PrimePricingRules = typeof primePricingRules.$inferSelect;
+
 export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").references(() => patients.id),
@@ -360,6 +372,8 @@ export const invoices = pgTable("invoices", {
   insuranceClaimId: text("insurance_claim_id"),
   notes: text("notes"),
   templateSnapshot: jsonb("template_snapshot"),
+  discountTotal: real("discount_total").notNull().default(0),
+  discountDetails: jsonb("discount_details"),
 });
 
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true });

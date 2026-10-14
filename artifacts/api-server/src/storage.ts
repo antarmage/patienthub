@@ -53,6 +53,8 @@ import {
   type PatientDocument, type InsertPatientDocument,
   invoiceTemplateSettings,
   type InvoiceTemplateSettings, type InsertInvoiceTemplateSettings,
+  primePricingRules,
+  type PrimePricingRules, type InsertPrimePricingRules,
   postopObservations,
   type PostopObservation, type InsertPostopObservation,
 } from "@workspace/db";
@@ -141,6 +143,8 @@ export interface IStorage {
   deleteInvoice(id: number): Promise<boolean>;
   getInvoiceTemplateSettings(): Promise<InvoiceTemplateSettings | undefined>;
   saveInvoiceTemplateSettings(data: Partial<InsertInvoiceTemplateSettings>): Promise<InvoiceTemplateSettings>;
+  getPrimePricingRules(): Promise<PrimePricingRules | undefined>;
+  savePrimePricingRules(data: Partial<InsertPrimePricingRules>): Promise<PrimePricingRules>;
 
   getConsentForms(patientId: number): Promise<ConsentForm[]>;
   createConsentForm(form: InsertConsentForm): Promise<ConsentForm>;
@@ -528,6 +532,20 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoUpdate({ target: invoiceTemplateSettings.id, set: { ...data, updatedAt } })
       .returning();
     return settings;
+  }
+
+  async getPrimePricingRules(): Promise<PrimePricingRules | undefined> {
+    const [rules] = await db.select().from(primePricingRules).where(eq(primePricingRules.id, 1)).limit(1);
+    return rules;
+  }
+
+  async savePrimePricingRules(data: Partial<InsertPrimePricingRules>): Promise<PrimePricingRules> {
+    const updatedAt = new Date().toISOString();
+    const [rules] = await db.insert(primePricingRules)
+      .values({ id: 1, ...data, updatedAt })
+      .onConflictDoUpdate({ target: primePricingRules.id, set: { ...data, updatedAt } })
+      .returning();
+    return rules;
   }
 
   async getConsentForms(patientId: number): Promise<ConsentForm[]> {
