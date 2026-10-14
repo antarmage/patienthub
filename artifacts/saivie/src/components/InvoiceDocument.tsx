@@ -46,6 +46,7 @@ interface InvoiceDocumentProps {
   notes?: string;
   invoiceId?: number;
   draft?: boolean;
+  duplicate?: boolean;
 }
 
 function formatAmount(amount: number, showPaise = true): string {
@@ -76,6 +77,7 @@ function InvoiceArticle({
   notes,
   invoiceId,
   draft = false,
+  duplicate = false,
 }: InvoiceDocumentProps) {
   const sections = {
     patientContact: true,
@@ -130,7 +132,7 @@ function InvoiceArticle({
           <div className="shrink-0 text-right">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-800">Medical Invoice</p>
             <p className="mt-1 text-3xl font-extrabold tracking-normal">{invoiceStatus}</p>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{draft ? "Review copy" : "Patient billing"}</p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{draft ? "Review copy" : duplicate ? "Duplicate copy" : "Patient billing"}</p>
           </div>
         </header>
 
@@ -218,14 +220,8 @@ function InvoiceArticle({
           <div className="border border-slate-300 p-3">
             <div className="space-y-1.5 text-[10px]">
               <div className="flex justify-between gap-3"><span className="text-slate-600">Taxable subtotal</span><span className="font-medium">{formatAmount(subtotal)}</span></div>
-              {sections.taxBreakdown && <div className="flex justify-between gap-3"><span className="text-slate-600">GST after discount</span><span className="font-medium">{formatAmount(tax)}</span></div>}
-              <div className="flex justify-between gap-3 text-emerald-800"><span>Prime discounts</span><span className="font-semibold">−{formatAmount(discountTotal)}</span></div>
-              {discountDetails.length > 0 && discountDetails.map((discount, index) => (
-                <div key={`${discount.catalogItemId}-${index}`} className="flex justify-between gap-3 text-[8px] text-slate-500">
-                  <span className="truncate">{discount.name} · {discount.label}</span>
-                  <span className="shrink-0">−{formatAmount(discount.amount)}</span>
-                </div>
-              ))}
+              {sections.taxBreakdown && tax > 0 && <div className="flex justify-between gap-3"><span className="text-slate-600">GST after discount</span><span className="font-medium">{formatAmount(tax)}</span></div>}
+              {discountTotal > 0 && <div className="flex justify-between gap-3 text-emerald-800"><span>Prime discounts</span><span className="font-semibold">−{formatAmount(discountTotal)}</span></div>}
               <div className="flex justify-between gap-3 border-t-2 border-emerald-800 pt-2 text-sm font-extrabold"><span>Total</span><span>{formatAmount(total)}</span></div>
             </div>
             {items.some((item) => item.catalogPriceIncludesTax) && <p className="mt-2 text-[8px] leading-3 text-slate-500">Lab Test MRP includes GST. Prime discount is applied to its pre-tax value, then GST is recalculated on the discounted value.</p>}

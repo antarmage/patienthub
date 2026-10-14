@@ -1628,6 +1628,7 @@ export default function StaffPortal() {
   const openHistoryInvoice = (invoice: any) => {
     setLastCreatedInvoice({
       ...invoice,
+      isReprint: true,
       patient: patients.find((p: any) => p.id === invoice.patientId),
     });
     setIsIssuedInvoicePreview(true);
@@ -4432,6 +4433,7 @@ export default function StaffPortal() {
                             paymentStatus={issuedInvoice?.paymentStatus}
                             notes={issuedInvoice?.notes ?? billingNotes}
                             invoiceId={issuedInvoice?.id}
+                            duplicate={!!issuedInvoice?.isReprint}
                             draft={!issuedInvoice}
                           />
                           <DialogFooter className="gap-2 sm:justify-between">
