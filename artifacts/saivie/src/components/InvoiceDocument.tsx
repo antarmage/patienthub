@@ -44,8 +44,12 @@ interface InvoiceDocumentProps {
   draft?: boolean;
 }
 
-function formatAmount(amount: number): string {
-  return `₹${Math.round(amount || 0).toLocaleString("en-IN")}`;
+function formatAmount(amount: number, showPaise = false): string {
+  const value = amount || 0;
+  const formatted = showPaise
+    ? value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : Math.round(value).toLocaleString("en-IN");
+  return `₹${formatted}`;
 }
 
 export function InvoiceDocument({
@@ -69,6 +73,19 @@ export function InvoiceDocument({
     paymentMethod: true,
     notes: true,
     ...template.sections,
+  };
+  const lineTaxWeights = items.map((item) => {
+    if (typeof item.taxableSubtotal === "number") return item.taxableSubtotal * ((item.taxRate || 0) / 100);
+    const amount = item.price * item.quantity;
+    if (item.catalogPriceIncludesTax && item.taxRate) return amount - amount / (1 + item.taxRate / 100);
+    return amount * ((item.taxRate || 0) / 100);
+  });
+  const missingTaxTotal = Math.max(0, tax - items.reduce((sum, item) => sum + (typeof item.taxAmount === "number" ? item.taxAmount : 0), 0));
+  const missingTaxWeight = items.reduce((sum, item, index) => sum + (typeof item.taxAmount === "number" ? 0 : lineTaxWeights[index]), 0);
+  const getLineTax = (item: InvoiceDocumentItem, index: number) => {
+    if (typeof item.taxAmount === "number") return item.taxAmount;
+    if (missingTaxWeight > 0) return missingTaxTotal * lineTaxWeights[index] / missingTaxWeight;
+    return lineTaxWeights[index];
   };
 
   return (
@@ -153,8 +170,8 @@ export function InvoiceDocument({
                 <td className="px-2 py-3 font-medium">{item.name}</td>
                 <td className="px-2 py-3 text-right">{formatAmount(item.price)}{item.catalogPriceIncludesTax && <span className="block text-[9px] text-slate-500">GST incl. MRP</span>}</td>
                 <td className="px-2 py-3 text-right">{item.quantity}</td>
-                {sections.taxBreakdown && <td className="px-2 py-3 text-right">{item.taxRate || 0}%<br />{formatAmount(item.taxAmount || 0)}</td>}
-                <td className="px-2 py-3 text-right text-emerald-700">{item.discountAmount ? `−${formatAmount(item.discountAmount)}` : "—"}</td>
+                {sections.taxBreakdown && <td className="px-2 py-3 text-right">{item.taxRate || 0}%<br />{formatAmount(getLineTax(item, index), true)}</td>}
+                <td className="px-2 py-3 text-right text-emerald-700">{item.discountAmount ? `−${formatAmount(item.discountAmount, true)}` : "—"}</td>
                 <td className="px-2 py-3 text-right font-semibold">{formatAmount(item.lineTotal ?? (item.price * item.quantity + (item.taxAmount || 0) - (item.discountAmount || 0)))}</td>
               </tr>
             )) : (

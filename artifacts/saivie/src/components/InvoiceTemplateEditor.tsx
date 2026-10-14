@@ -295,12 +295,12 @@ export function InvoiceTemplateEditor() {
             template={draft}
             patient={{ name: "Aarohi Sharma", phone: "+91 98765 43210", email: "aarohi@example.com", address: "Bengaluru, Karnataka" }}
             items={[
-              { name: "Initial Consultation", price: 1200, quantity: 1, taxRate: 0 },
-              { name: "Complete Blood Count (CBC)", price: 450, quantity: 1, taxRate: 5 },
+              { name: "Initial Consultation", price: 1200, taxableSubtotal: 1200, quantity: 1, taxRate: 0, taxAmount: 0, lineTotal: 1200 },
+              { name: "Complete Blood Count (CBC)", price: 450, taxableSubtotal: 428.57, quantity: 1, taxRate: 5, taxAmount: 21.43, catalogPriceIncludesTax: true, discountAmount: 0, lineTotal: 450 },
             ]}
-            subtotal={1650}
-            tax={22.5}
-            total={1672.5}
+            subtotal={1628.57}
+            tax={21.43}
+            total={1650}
             paymentMethod="UPI"
             notes="Sample invoice note"
             draft
