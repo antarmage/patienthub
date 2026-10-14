@@ -293,14 +293,16 @@ export function InvoiceTemplateEditor() {
           <div className="flex items-center gap-2"><ImagePlus className="h-4 w-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Live A4 preview</h3></div>
           <InvoiceDocument
             template={draft}
-            patient={{ name: "Aarohi Sharma", phone: "+91 98765 43210", email: "aarohi@example.com", address: "Bengaluru, Karnataka" }}
+            patient={{ name: "Aarohi Sharma", phone: "+91 98765 43210", email: "aarohi@example.com", address: "Bengaluru, Karnataka", type: "Fertility", isPrimeMember: true }}
             items={[
               { name: "Initial Consultation", price: 1200, taxableSubtotal: 1200, quantity: 1, taxRate: 0, taxAmount: 0, lineTotal: 1200 },
-              { name: "Complete Blood Count (CBC)", price: 450, taxableSubtotal: 428.57, quantity: 1, taxRate: 5, taxAmount: 21.43, catalogPriceIncludesTax: true, discountAmount: 0, lineTotal: 450 },
+              { name: "Complete Blood Count (CBC)", category: "Lab Test", price: 450, taxableSubtotal: 428.57, quantity: 1, taxRate: 5, taxAmount: 17.14, catalogPriceIncludesTax: true, discountAmount: 85.71, discountLabel: "Prime lab discount 20%", lineTotal: 360 },
             ]}
             subtotal={1628.57}
-            tax={21.43}
-            total={1650}
+            tax={17.14}
+            discountTotal={85.71}
+            discountDetails={[{ catalogItemId: 2, name: "Complete Blood Count (CBC)", amount: 85.71, label: "Prime lab discount 20%" }]}
+            total={1560}
             paymentMethod="UPI"
             notes="Sample invoice note"
             draft

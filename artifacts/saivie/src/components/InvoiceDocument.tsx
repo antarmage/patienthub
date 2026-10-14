@@ -17,6 +17,7 @@ export interface InvoiceTemplateData {
 export interface InvoiceDocumentItem {
   catalogItemId?: number;
   name: string;
+  category?: string;
   price: number;
   quantity: number;
   taxableSubtotal?: number;
@@ -30,7 +31,7 @@ export interface InvoiceDocumentItem {
 
 interface InvoiceDocumentProps {
   template: InvoiceTemplateData;
-  patient: { name?: string; phone?: string | null; email?: string | null; address?: string | null };
+  patient: { name?: string; phone?: string | null; email?: string | null; address?: string | null; type?: string | null; isPrimeMember?: boolean };
   items: InvoiceDocumentItem[];
   subtotal: number;
   tax: number;
@@ -39,17 +40,23 @@ interface InvoiceDocumentProps {
   total: number;
   date?: string;
   paymentMethod?: string;
+  paymentStatus?: string;
   notes?: string;
   invoiceId?: number;
   draft?: boolean;
 }
 
-function formatAmount(amount: number, showPaise = false): string {
+function formatAmount(amount: number, showPaise = true): string {
   const value = amount || 0;
   const formatted = showPaise
     ? value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : Math.round(value).toLocaleString("en-IN");
   return `₹${formatted}`;
+}
+
+function formatInvoiceDate(value: string): string {
+  const [year, month, day] = value.split("-");
+  return year && month && day ? `${day}/${month}/${year}` : value;
 }
 
 export function InvoiceDocument({
@@ -63,6 +70,7 @@ export function InvoiceDocument({
   total,
   date = new Date().toISOString().slice(0, 10),
   paymentMethod,
+  paymentStatus,
   notes,
   invoiceId,
   draft = false,
@@ -87,6 +95,7 @@ export function InvoiceDocument({
     if (missingTaxWeight > 0) return missingTaxTotal * lineTaxWeights[index] / missingTaxWeight;
     return lineTaxWeights[index];
   };
+  const invoiceStatus = draft ? "Draft" : paymentStatus || "Paid";
 
   return (
     <div className="invoice-document-preview overflow-auto bg-slate-100 p-3 sm:p-6">
@@ -102,111 +111,143 @@ export function InvoiceDocument({
       `}</style>
       <article
         id="invoice-print-root"
-        className="relative mx-auto flex min-h-[297mm] w-[210mm] max-w-none flex-col bg-white p-[15mm] text-slate-900 shadow-xl print:shadow-none"
+        className="relative mx-auto flex min-h-[297mm] w-[210mm] max-w-none flex-col border-l-[5px] border-l-emerald-700 bg-white p-[14mm] text-slate-900 shadow-xl print:shadow-none"
         style={{ boxSizing: "border-box" }}
       >
         {draft && (
-          <div className="mb-6 border border-dashed border-amber-400 bg-amber-50 px-4 py-2 text-center text-xs font-bold uppercase tracking-wider text-amber-800">
+          <div className="mb-4 border border-dashed border-amber-400 bg-amber-50 px-4 py-2 text-center text-[10px] font-bold uppercase tracking-widest text-amber-800">
             Draft preview · Not an issued invoice
           </div>
         )}
 
-        <header className="flex items-start justify-between gap-8 border-b-2 border-slate-900 pb-6">
-          <div className="flex min-w-0 items-start gap-4">
+        <header className="flex items-start justify-between gap-6 border-b-2 border-emerald-800 pb-5">
+          <div className="flex min-w-0 items-center gap-4">
             {template.logoUrl ? (
-              <img src={template.logoUrl} alt="Clinic logo" className="h-16 w-20 shrink-0 object-contain" />
+              <img src={template.logoUrl} alt="Clinic logo" className="h-20 w-24 shrink-0 object-contain" />
             ) : (
-              <div className="flex h-16 w-20 shrink-0 items-center justify-center border border-slate-200 text-[10px] font-semibold uppercase text-slate-400">Logo</div>
+              <div className="flex h-20 w-24 shrink-0 items-center justify-center border border-dashed border-slate-300 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Clinic logo</div>
             )}
             <div className="min-w-0">
-              <h1 className="break-words text-xl font-bold">{template.clinicName || "Clinic Name"}</h1>
-              {template.clinicAddress && <p className="mt-1 whitespace-pre-line text-xs leading-5 text-slate-600">{template.clinicAddress}</p>}
-              {template.clinicPhone && <p className="text-xs text-slate-600">Phone: {template.clinicPhone}</p>}
-              {template.clinicEmail && <p className="text-xs text-slate-600">Email: {template.clinicEmail}</p>}
-              {template.taxRegistration && <p className="mt-1 text-xs font-medium text-slate-700">Tax registration: {template.taxRegistration}</p>}
+              <h1 className="break-words text-xl font-extrabold uppercase">{template.clinicName || "Clinic Name"}</h1>
+              {template.clinicAddress && <p className="mt-1 whitespace-pre-line text-[11px] leading-4 text-slate-600">{template.clinicAddress}</p>}
+              <div className="mt-1 flex flex-wrap gap-x-3 text-[10px] text-slate-600">
+                {template.clinicPhone && <span>Tel: {template.clinicPhone}</span>}
+                {template.clinicEmail && <span>{template.clinicEmail}</span>}
+              </div>
+              {template.taxRegistration && <p className="mt-1 text-[10px] font-medium text-slate-700">Tax registration: {template.taxRegistration}</p>}
             </div>
           </div>
           <div className="shrink-0 text-right">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">{draft ? "Estimate" : "Invoice"}</p>
-            <p className="mt-1 text-2xl font-bold">{draft ? "DRAFT" : invoiceId ? `#${invoiceId}` : "Invoice"}</p>
-            <p className="mt-2 text-xs text-slate-500">Date: {date}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-800">Medical Invoice</p>
+            <p className="mt-1 text-3xl font-extrabold tracking-normal">{invoiceStatus}</p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{draft ? "Review copy" : "Patient billing"}</p>
           </div>
         </header>
 
-        <section className="mt-7 grid grid-cols-2 gap-8">
-          <div>
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Bill to</h2>
-            <p className="mt-2 text-base font-semibold">{patient.name || "Patient name"}</p>
+        <section className="mt-5 grid grid-cols-2 gap-4">
+          <div className="border border-slate-300 p-3">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-emerald-800">Patient Information</h2>
+            <p className="mt-2 text-sm font-bold">{patient.name || "Patient name"}</p>
             {sections.patientContact && (
-              <div className="mt-1 space-y-0.5 text-xs text-slate-600">
+              <div className="mt-1 space-y-0.5 text-[10px] leading-4 text-slate-600">
                 {patient.phone && <p>{patient.phone}</p>}
                 {patient.email && <p>{patient.email}</p>}
                 {patient.address && <p className="whitespace-pre-line">{patient.address}</p>}
               </div>
             )}
           </div>
-          {sections.paymentMethod && paymentMethod && (
-            <div className="text-right">
-              <h2 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Payment method</h2>
-              <p className="mt-2 text-sm font-semibold capitalize">{paymentMethod}</p>
+          <div className="border border-slate-300 p-3">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-emerald-800">Billing Information</h2>
+            <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+              {patient.type && <><span className="text-slate-500">Care type</span><span className="text-right font-medium">{patient.type}</span></>}
+              {patient.isPrimeMember && <><span className="text-slate-500">Membership</span><span className="text-right font-semibold text-emerald-800">Prime</span></>}
+              {sections.paymentMethod && paymentMethod && <><span className="text-slate-500">Payment method</span><span className="text-right font-medium capitalize">{paymentMethod}</span></>}
             </div>
-          )}
+          </div>
         </section>
 
-        <table className="mt-8 w-full border-collapse text-left text-xs">
+        <section className="mt-4 grid grid-cols-4 border border-slate-400">
+          {[
+            { label: "Invoice number", value: invoiceId ? `${invoiceId}` : "Pending" },
+            { label: "Date", value: formatInvoiceDate(date) },
+            { label: "Status", value: invoiceStatus },
+            { label: "Invoice total", value: formatAmount(total) },
+          ].map((field, index) => (
+            <div key={field.label} className={`min-w-0 px-3 py-2.5 ${index > 0 ? "border-l border-slate-300" : ""}`}>
+              <p className="text-[8px] font-bold uppercase tracking-wider text-emerald-800">{field.label}</p>
+              <p className="mt-1 truncate text-[11px] font-bold">{field.value}</p>
+            </div>
+          ))}
+        </section>
+
+        <table className="mt-5 w-full border-collapse text-left text-[10px]">
           <thead>
-            <tr className="border-y border-slate-300 bg-slate-50">
-              <th className="px-2 py-3 font-bold uppercase tracking-wide">Service</th>
-              <th className="px-2 py-3 text-right font-bold uppercase tracking-wide">MRP / rate</th>
-              <th className="px-2 py-3 text-right font-bold uppercase tracking-wide">Qty</th>
-              {sections.taxBreakdown && <th className="px-2 py-3 text-right font-bold uppercase tracking-wide">Tax</th>}
-              <th className="px-2 py-3 text-right font-bold uppercase tracking-wide">Discount</th>
-              <th className="px-2 py-3 text-right font-bold uppercase tracking-wide">Line total</th>
+            <tr className="bg-emerald-800 text-white">
+              <th className="px-2.5 py-2.5 font-bold uppercase tracking-wider">Item / description</th>
+              <th className="px-2 py-2.5 text-right font-bold uppercase tracking-wider">Qty</th>
+              <th className="px-2 py-2.5 text-right font-bold uppercase tracking-wider">MRP</th>
+              {sections.taxBreakdown && <th className="px-2 py-2.5 text-right font-bold uppercase tracking-wider">GST</th>}
+              <th className="px-2 py-2.5 text-right font-bold uppercase tracking-wider">Discount</th>
+              <th className="px-2.5 py-2.5 text-right font-bold uppercase tracking-wider">Amount</th>
             </tr>
           </thead>
           <tbody>
             {items.length ? items.map((item, index) => (
-              <tr key={`${item.name}-${index}`} className="border-b border-slate-200">
-                <td className="px-2 py-3 font-medium">{item.name}</td>
-                <td className="px-2 py-3 text-right">{formatAmount(item.price)}{item.catalogPriceIncludesTax && <span className="block text-[9px] text-slate-500">GST incl. MRP</span>}</td>
-                <td className="px-2 py-3 text-right">{item.quantity}</td>
-                {sections.taxBreakdown && <td className="px-2 py-3 text-right">{item.taxRate || 0}%<br />{formatAmount(getLineTax(item, index), true)}</td>}
-                <td className="px-2 py-3 text-right text-emerald-700">{item.discountAmount ? `−${formatAmount(item.discountAmount, true)}` : "—"}</td>
-                <td className="px-2 py-3 text-right font-semibold">{formatAmount(item.lineTotal ?? (item.price * item.quantity + (item.taxAmount || 0) - (item.discountAmount || 0)))}</td>
+              <tr key={`${item.name}-${index}`} className={`border-b border-x border-slate-300 ${index % 2 === 0 ? "bg-slate-50" : "bg-white"}`}>
+                <td className="px-2.5 py-2.5">
+                  <p className="font-semibold">{item.name}</p>
+                  <p className="mt-0.5 text-[9px] text-slate-500">{item.category || "Clinical service"}{item.catalogPriceIncludesTax ? " · GST included in MRP" : ""}</p>
+                </td>
+                <td className="px-2 py-2.5 text-right">{item.quantity}</td>
+                <td className="px-2 py-2.5 text-right">{formatAmount(item.price * item.quantity)}</td>
+                {sections.taxBreakdown && <td className="px-2 py-2.5 text-right">{item.taxRate || 0}%<br />{formatAmount(getLineTax(item, index), true)}</td>}
+                <td className="px-2 py-2.5 text-right text-emerald-800">
+                  {item.discountAmount ? <><span>−{formatAmount(item.discountAmount)}</span>{item.discountLabel && <span className="mt-0.5 block text-[8px] text-slate-500">{item.discountLabel}</span>}</> : "—"}
+                </td>
+                <td className="px-2.5 py-2.5 text-right font-bold">{formatAmount(item.lineTotal ?? (item.price * item.quantity + (item.taxAmount || 0) - (item.discountAmount || 0)))}</td>
               </tr>
             )) : (
-              <tr className="border-b border-slate-200">
+              <tr className="border border-slate-300">
                 <td colSpan={sections.taxBreakdown ? 6 : 5} className="px-2 py-8 text-center text-slate-400">No services added</td>
               </tr>
             )}
           </tbody>
         </table>
 
-        <div className="mt-6 ml-auto w-64 space-y-2 text-sm">
-          <div className="flex justify-between text-slate-600"><span>Taxable subtotal</span><span>{formatAmount(subtotal)}</span></div>
-          {sections.taxBreakdown && <div className="flex justify-between text-slate-600"><span>GST after discount</span><span>{formatAmount(tax)}</span></div>}
-          {items.some((item) => item.catalogPriceIncludesTax) && <p className="text-right text-[10px] text-slate-500">Lab Test MRP includes GST. The Prime discount is applied to its pre-tax value, then GST is recalculated on the discounted value.</p>}
-          <div className="border-t border-slate-200 pt-2">
-            <div className="flex justify-between font-semibold text-emerald-800"><span>Prime discounts</span><span>−{formatAmount(discountTotal)}</span></div>
-            {discountDetails.length > 0 ? discountDetails.map((discount, index) => (
-              <div key={`${discount.catalogItemId}-${index}`} className="mt-1 flex justify-between gap-3 text-xs text-emerald-700">
-                <span className="truncate">{discount.name} · {discount.label}</span>
-                <span className="shrink-0">−{formatAmount(discount.amount)}</span>
-              </div>
-            )) : <p className="mt-1 text-xs text-slate-400">No Prime discount applied</p>}
+        <section className="mt-6 grid grid-cols-[minmax(0,1fr)_minmax(220px,0.72fr)] gap-6">
+          <div className="min-h-24 border border-slate-300 p-3">
+            {sections.notes && notes ? (
+              <>
+                <h2 className="text-[9px] font-bold uppercase tracking-widest text-emerald-800">Notes</h2>
+                <p className="mt-2 whitespace-pre-line text-[10px] leading-4 text-slate-700">{notes}</p>
+              </>
+            ) : (
+              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Thank you for choosing {template.clinicName || "our clinic"}.</p>
+            )}
           </div>
-          <div className="flex justify-between border-t border-slate-900 pt-3 text-base font-bold"><span>Total</span><span>{formatAmount(total)}</span></div>
-        </div>
+          <div className="border border-slate-300 p-3">
+            <div className="space-y-1.5 text-[10px]">
+              <div className="flex justify-between gap-3"><span className="text-slate-600">Taxable subtotal</span><span className="font-medium">{formatAmount(subtotal)}</span></div>
+              {sections.taxBreakdown && <div className="flex justify-between gap-3"><span className="text-slate-600">GST after discount</span><span className="font-medium">{formatAmount(tax)}</span></div>}
+              <div className="flex justify-between gap-3 text-emerald-800"><span>Prime discounts</span><span className="font-semibold">−{formatAmount(discountTotal)}</span></div>
+              {discountDetails.length > 0 && discountDetails.map((discount, index) => (
+                <div key={`${discount.catalogItemId}-${index}`} className="flex justify-between gap-3 text-[8px] text-slate-500">
+                  <span className="truncate">{discount.name} · {discount.label}</span>
+                  <span className="shrink-0">−{formatAmount(discount.amount)}</span>
+                </div>
+              ))}
+              <div className="flex justify-between gap-3 border-t-2 border-emerald-800 pt-2 text-sm font-extrabold"><span>Total</span><span>{formatAmount(total)}</span></div>
+            </div>
+            {items.some((item) => item.catalogPriceIncludesTax) && <p className="mt-2 text-[8px] leading-3 text-slate-500">Lab Test MRP includes GST. Prime discount is applied to its pre-tax value, then GST is recalculated on the discounted value.</p>}
+          </div>
+        </section>
 
-        {sections.notes && notes && (
-          <section className="mt-8 border-t border-slate-200 pt-4">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Notes</h2>
-            <p className="mt-2 whitespace-pre-line text-xs leading-5 text-slate-700">{notes}</p>
-          </section>
-        )}
-
-        <footer className="mt-auto border-t border-slate-200 pt-5 text-center text-xs text-slate-500">
-          {template.footerText || "Thank you for choosing us."}
+        <footer className="mt-auto flex items-end justify-between gap-4 border-t border-slate-300 pt-4 text-[9px] text-slate-500">
+          <div className="max-w-[65%]">
+            {template.footerText && <p className="mb-1 font-medium text-slate-700">{template.footerText}</p>}
+            <p>{template.clinicEmail || template.clinicPhone ? "For billing enquiries:" : ""} {[template.clinicPhone, template.clinicEmail].filter(Boolean).join(" · ")}</p>
+          </div>
+          <div className="text-right font-semibold uppercase tracking-wider text-emerald-900">{template.clinicName || "Saivie"}</div>
         </footer>
       </article>
     </div>
