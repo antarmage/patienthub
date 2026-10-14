@@ -51,6 +51,8 @@ import {
   type MedicationLog, type InsertMedicationLog,
   patientDocuments,
   type PatientDocument, type InsertPatientDocument,
+  invoiceTemplateSettings,
+  type InvoiceTemplateSettings, type InsertInvoiceTemplateSettings,
   postopObservations,
   type PostopObservation, type InsertPostopObservation,
 } from "@workspace/db";
@@ -137,6 +139,8 @@ export interface IStorage {
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
   updateInvoice(id: number, data: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: number): Promise<boolean>;
+  getInvoiceTemplateSettings(): Promise<InvoiceTemplateSettings | undefined>;
+  saveInvoiceTemplateSettings(data: Partial<InsertInvoiceTemplateSettings>): Promise<InvoiceTemplateSettings>;
 
   getConsentForms(patientId: number): Promise<ConsentForm[]>;
   createConsentForm(form: InsertConsentForm): Promise<ConsentForm>;
@@ -510,6 +514,20 @@ export class DatabaseStorage implements IStorage {
   async deleteInvoice(id: number): Promise<boolean> {
     const [deleted] = await db.delete(invoices).where(eq(invoices.id, id)).returning();
     return !!deleted;
+  }
+
+  async getInvoiceTemplateSettings(): Promise<InvoiceTemplateSettings | undefined> {
+    const [settings] = await db.select().from(invoiceTemplateSettings).where(eq(invoiceTemplateSettings.id, 1)).limit(1);
+    return settings;
+  }
+
+  async saveInvoiceTemplateSettings(data: Partial<InsertInvoiceTemplateSettings>): Promise<InvoiceTemplateSettings> {
+    const updatedAt = new Date().toISOString();
+    const [settings] = await db.insert(invoiceTemplateSettings)
+      .values({ id: 1, ...data, updatedAt })
+      .onConflictDoUpdate({ target: invoiceTemplateSettings.id, set: { ...data, updatedAt } })
+      .returning();
+    return settings;
   }
 
   async getConsentForms(patientId: number): Promise<ConsentForm[]> {

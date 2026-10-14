@@ -24,6 +24,21 @@ export async function ensureSchema(): Promise<void> {
     await client.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email text;
 
+      CREATE TABLE IF NOT EXISTS invoice_template_settings (
+        id integer PRIMARY KEY DEFAULT 1,
+        clinic_name text NOT NULL DEFAULT '',
+        clinic_address text,
+        clinic_phone text,
+        clinic_email text,
+        tax_registration text,
+        logo_url text,
+        footer_text text,
+        sections jsonb NOT NULL DEFAULT '{}'::jsonb,
+        updated_at text NOT NULL DEFAULT CURRENT_TIMESTAMP::text
+      );
+
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS template_snapshot jsonb;
+
       -- Triage score columns on appointments (Task #8)
       ALTER TABLE appointments ADD COLUMN IF NOT EXISTS triage_score integer;
       ALTER TABLE appointments ADD COLUMN IF NOT EXISTS triage_reason text;

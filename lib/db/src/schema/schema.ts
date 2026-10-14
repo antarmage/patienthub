@@ -329,6 +329,23 @@ export const insertReferralSchema = createInsertSchema(referrals).omit({ id: tru
 export type InsertReferral = z.infer<typeof insertReferralSchema>;
 export type Referral = typeof referrals.$inferSelect;
 
+export const invoiceTemplateSettings = pgTable("invoice_template_settings", {
+  id: integer("id").primaryKey().default(1),
+  clinicName: text("clinic_name").notNull().default(""),
+  clinicAddress: text("clinic_address"),
+  clinicPhone: text("clinic_phone"),
+  clinicEmail: text("clinic_email"),
+  taxRegistration: text("tax_registration"),
+  logoUrl: text("logo_url"),
+  footerText: text("footer_text"),
+  sections: jsonb("sections").$type<Record<string, boolean>>().notNull().default(sql`'{}'::jsonb`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP::text`),
+});
+
+export const insertInvoiceTemplateSettingsSchema = createInsertSchema(invoiceTemplateSettings).omit({ id: true, updatedAt: true });
+export type InsertInvoiceTemplateSettings = z.infer<typeof insertInvoiceTemplateSettingsSchema>;
+export type InvoiceTemplateSettings = typeof invoiceTemplateSettings.$inferSelect;
+
 export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").references(() => patients.id),
@@ -342,6 +359,7 @@ export const invoices = pgTable("invoices", {
   paymentStatus: text("payment_status"),
   insuranceClaimId: text("insurance_claim_id"),
   notes: text("notes"),
+  templateSnapshot: jsonb("template_snapshot"),
 });
 
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true });

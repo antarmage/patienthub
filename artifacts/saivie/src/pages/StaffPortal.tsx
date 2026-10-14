@@ -77,6 +77,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { InvoiceDocument, type InvoiceTemplateData } from "@/components/InvoiceDocument";
 
 
 
@@ -1447,8 +1448,19 @@ export default function StaffPortal() {
   const [billingNotes, setBillingNotes] = useState("");
   const [billingIsEstimate, setBillingIsEstimate] = useState(false);
   const [billingEstimateSource, setBillingEstimateSource] = useState("");
+  const [isInvoicePreviewOpen, setIsInvoicePreviewOpen] = useState(false);
+  const [isIssuedInvoicePreview, setIsIssuedInvoicePreview] = useState(false);
+  const [lastCreatedInvoice, setLastCreatedInvoice] = useState<any>(null);
   const billingCatalogQuery = useQuery<any[]>({ queryKey: ["/api/billing-catalog"] });
   const billingCatalogItems = billingCatalogQuery.data || [];
+  const invoiceTemplateQuery = useQuery<InvoiceTemplateData>({
+    queryKey: ["/api/invoice-template"],
+    queryFn: async () => {
+      const res = await fetch("/api/invoice-template");
+      if (!res.ok) throw new Error("Failed to load invoice template");
+      return res.json();
+    },
+  });
 
   const estimationTemplates: Record<string, { label: string; items: string[] }> = {
     "gynec_initial": { label: "Gynec Initial Consultation", items: ["Initial Consultation", "Complete Blood Count (CBC)", "Thyroid Profile (TSH, T3, T4)", "Urine Routine & Culture"] },
@@ -1536,7 +1548,14 @@ export default function StaffPortal() {
       if (!res.ok) throw new Error("Failed to create invoice");
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (invoice, variables) => {
+      setLastCreatedInvoice({
+        ...invoice,
+        patient: patients.find((patient: any) => patient.id === variables.patientId),
+        paymentMethod: variables.paymentMethod,
+        notes: variables.notes,
+      });
+      setIsIssuedInvoicePreview(true);
       setBillingItems([]);
       setBillingPatientId(null);
       setBillingNotes("");
@@ -4217,41 +4236,19 @@ export default function StaffPortal() {
                                 <Textarea value={billingNotes} onChange={(e) => setBillingNotes(e.target.value)} placeholder="Add notes..." className="mt-1 min-h-[60px]" data-testid="input-billing-notes" />
                               </div>
 
-                              {billingIsEstimate ? (
-                                <Button
-                                  className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold"
-                                  disabled={!billingPatientId}
-                                  onClick={() => {
-                                    setBillingIsEstimate(false);
-                                    setBillingItems(billingItems.map(item => ({ ...item, isEstimated: false })));
-                                  }}
-                                  data-testid="btn-confirm-estimate"
-                                >
-                                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                                  Confirm Estimate & Finalize
-                                </Button>
-                              ) : (
-                                <Button
-                                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-                                  disabled={!billingPatientId || createInvoiceMutation.isPending}
-                                  onClick={() => {
-                                    if (!billingPatientId) return;
-                                    createInvoiceMutation.mutate({
-                                      patientId: billingPatientId,
-                                      items: billingItems,
-                                      subtotal,
-                                      tax: Math.round(tax),
-                                      total: Math.round(total),
-                                      paymentMethod: billingPaymentMethod,
-                                      notes: billingNotes,
-                                    });
-                                  }}
-                                  data-testid="btn-generate-invoice"
-                                >
-                                  {createInvoiceMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Receipt className="w-4 h-4 mr-2" />}
-                                  Generate Invoice
-                                </Button>
-                              )}
+                              <Button
+                                className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold"
+                                disabled={!billingPatientId || billingItems.length === 0 || invoiceTemplateQuery.isLoading || invoiceTemplateQuery.isError}
+                                onClick={() => {
+                                  setIsIssuedInvoicePreview(false);
+                                  setIsInvoicePreviewOpen(true);
+                                }}
+                                data-testid="btn-preview-invoice"
+                              >
+                                <Receipt className="mr-2 h-4 w-4" />
+                                Preview Invoice
+                              </Button>
+                              {invoiceTemplateQuery.isError && <p role="alert" className="text-xs text-rose-600">Invoice template could not be loaded.</p>}
 
                               {createInvoiceMutation.isSuccess && (
                                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
@@ -4267,6 +4264,70 @@ export default function StaffPortal() {
                     </Card>
                   </div>
                 </div>
+
+                <Dialog open={isInvoicePreviewOpen} onOpenChange={setIsInvoicePreviewOpen}>
+                  <DialogContent className="max-h-[95vh] max-w-5xl overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>{isIssuedInvoicePreview ? `Invoice #${lastCreatedInvoice?.id || ""}` : "Review invoice"}</DialogTitle>
+                      <DialogDescription>
+                        {isIssuedInvoicePreview ? "Invoice created. Print it or save a PDF copy." : "Review the clinic-branded A4 bill before creating the invoice."}
+                      </DialogDescription>
+                    </DialogHeader>
+                    {(() => {
+                      const issuedInvoice = isIssuedInvoicePreview ? lastCreatedInvoice : null;
+                      const previewItems = issuedInvoice?.items || billingItems;
+                      const previewPatient = issuedInvoice?.patient || patients.find((patient: any) => patient.id === billingPatientId) || {};
+                      const previewSubtotal = issuedInvoice?.subtotal ?? previewItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
+                      const previewTax = issuedInvoice?.tax ?? previewItems.reduce((sum: number, item: any) => sum + item.price * item.quantity * ((item.taxRate || 0) / 100), 0);
+                      const previewTotal = issuedInvoice?.total ?? previewSubtotal + previewTax;
+                      const previewTemplate = issuedInvoice?.templateSnapshot || invoiceTemplateQuery.data || {};
+
+                      return (
+                        <>
+                          <InvoiceDocument
+                            template={previewTemplate}
+                            patient={previewPatient}
+                            items={previewItems}
+                            subtotal={previewSubtotal}
+                            tax={previewTax}
+                            total={previewTotal}
+                            date={issuedInvoice?.date}
+                            paymentMethod={issuedInvoice?.paymentMethod || billingPaymentMethod}
+                            notes={issuedInvoice?.notes ?? billingNotes}
+                            invoiceId={issuedInvoice?.id}
+                            draft={!issuedInvoice}
+                          />
+                          <DialogFooter className="gap-2 sm:justify-between">
+                            {issuedInvoice ? (
+                              <Button variant="outline" onClick={() => window.print()} data-testid="btn-print-invoice">
+                                <Printer className="mr-2 h-4 w-4" />Print / Save PDF
+                              </Button>
+                            ) : (
+                              <Button
+                                className="bg-emerald-700 hover:bg-emerald-800"
+                                disabled={!billingPatientId || billingItems.length === 0 || createInvoiceMutation.isPending}
+                                onClick={() => createInvoiceMutation.mutate({
+                                  patientId: billingPatientId!,
+                                  items: billingItems,
+                                  subtotal: previewSubtotal,
+                                  tax: Math.round(previewTax),
+                                  total: Math.round(previewTotal),
+                                  paymentMethod: billingPaymentMethod,
+                                  notes: billingNotes,
+                                })}
+                                data-testid="btn-generate-invoice"
+                              >
+                                {createInvoiceMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Create Invoice
+                              </Button>
+                            )}
+                            {createInvoiceMutation.isError && <p role="alert" className="self-center text-sm text-rose-600">{createInvoiceMutation.error.message}</p>}
+                          </DialogFooter>
+                        </>
+                      );
+                    })()}
+                  </DialogContent>
+                </Dialog>
               </div>
             )}
 

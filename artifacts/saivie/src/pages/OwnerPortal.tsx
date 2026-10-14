@@ -41,6 +41,7 @@ import {
   ChevronUp,
   Phone,
   PhoneOff,
+  Receipt,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { InvoiceTemplateEditor } from "@/components/InvoiceTemplateEditor";
 
 function formatINR(amount: number): string {
   if (amount === undefined || amount === null || isNaN(amount)) return "₹0";
@@ -322,6 +324,7 @@ export default function OwnerPortal() {
     { id: "performance", label: "Performance", icon: BarChart3 },
     { id: "catalog", label: "Service Catalog", icon: Package },
     { id: "packages", label: "Packages", icon: Layers },
+    { id: "invoice-template", label: "Invoice Template", icon: Receipt },
     { id: "staff-accounts", label: "Staff Accounts", icon: Users },
     { id: "ai-insights", label: "AI Insights", icon: Sparkles },
     { id: "ai-audit-log", label: "AI Audit Log", icon: Activity },
@@ -1097,6 +1100,8 @@ export default function OwnerPortal() {
                 </div>
               </div>
             )}
+
+            {activeView === "invoice-template" && <InvoiceTemplateEditor />}
 
             {activeView === "catalog" && (
               <div className="space-y-6">

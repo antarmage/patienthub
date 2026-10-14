@@ -28,6 +28,53 @@ function parseId(val: string): number | null {
   return isNaN(n) ? null : n;
 }
 
+const defaultInvoiceTemplate = {
+  clinicName: "",
+  clinicAddress: "",
+  clinicPhone: "",
+  clinicEmail: "",
+  taxRegistration: "",
+  logoUrl: null as string | null,
+  footerText: "",
+  sections: { patientContact: true, taxBreakdown: true, paymentMethod: true, notes: true },
+};
+
+const invoiceLogoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 1024 * 1024 },
+  fileFilter(_req, file, cb) {
+    if (["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Upload a JPG, PNG, or WebP logo."));
+  },
+});
+
+async function presentInvoiceTemplate(template: any) {
+  const presented = {
+    ...defaultInvoiceTemplate,
+    ...template,
+    sections: { ...defaultInvoiceTemplate.sections, ...(template?.sections || {}) },
+  };
+  if (typeof presented.logoUrl === "string" && presented.logoUrl.startsWith("s3:")) {
+    try {
+      presented.logoUrl = await getPresignedDownloadUrl(presented.logoUrl.slice(3));
+    } catch {
+      presented.logoUrl = null;
+    }
+  }
+  return presented;
+}
+
+async function requireInvoiceTemplateOwner(req: Request, res: Response): Promise<boolean> {
+  const userId = getStaffUserId(req, res);
+  if (!userId) return false;
+  const user = await storage.getUser(userId);
+  if (user?.role !== "owner") {
+    res.status(403).json({ error: "Owner access required" });
+    return false;
+  }
+  return true;
+}
+
 // Tracks appointment IDs that have already had a post-visit summary sent
 // (prevents duplicate sends if appointment is PATCH'd to "completed" more than once)
 const postVisitSummarySentIds = new Set<number>();
@@ -1855,14 +1902,120 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     const inv = await storage.getInvoices(id);
-    res.json(inv);
+    res.json(await Promise.all(inv.map(async (invoice) => ({
+      ...invoice,
+      templateSnapshot: invoice.templateSnapshot ? await presentInvoiceTemplate(invoice.templateSnapshot) : null,
+    }))));
   });
 
   app.post("/api/patients/:id/invoices", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid patient ID" });
-    const inv = await storage.createInvoice({ ...req.body, patientId: id, date: req.body.date || new Date().toISOString().split("T")[0] });
-    res.status(201).json(inv);
+    const templateSnapshot = await storage.getInvoiceTemplateSettings() || defaultInvoiceTemplate;
+    const inv = await storage.createInvoice({
+      ...req.body,
+      patientId: id,
+      date: req.body.date || new Date().toISOString().split("T")[0],
+      templateSnapshot,
+    });
+    res.status(201).json({ ...inv, templateSnapshot: await presentInvoiceTemplate(templateSnapshot) });
+  });
+
+  app.get("/api/invoice-template", async (_req, res) => {
+    try {
+      res.json(await presentInvoiceTemplate(await storage.getInvoiceTemplateSettings()));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Failed to load invoice template" });
+    }
+  });
+
+  app.get("/api/owner/invoice-template", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    try {
+      res.json(await presentInvoiceTemplate(await storage.getInvoiceTemplateSettings()));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Failed to load invoice template" });
+    }
+  });
+
+  app.patch("/api/owner/invoice-template", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    const body = req.body || {};
+    const textLimits: Record<string, number> = {
+      clinicName: 120,
+      clinicAddress: 500,
+      clinicPhone: 40,
+      clinicEmail: 254,
+      taxRegistration: 80,
+      footerText: 500,
+    };
+    const data: Record<string, unknown> = {};
+    for (const [field, maxLength] of Object.entries(textLimits)) {
+      if (body[field] === undefined) continue;
+      if (typeof body[field] !== "string" || body[field].length > maxLength) {
+        return res.status(400).json({ error: `${field} must be text under ${maxLength} characters` });
+      }
+      const trimmed = body[field].trim();
+      if (field === "clinicEmail" && trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        return res.status(400).json({ error: "clinicEmail must be a valid email address" });
+      }
+      data[field] = field === "clinicName" ? trimmed : trimmed || null;
+    }
+    if (body.sections !== undefined) {
+      const allowedSections = ["patientContact", "taxBreakdown", "paymentMethod", "notes"];
+      if (!body.sections || typeof body.sections !== "object" || Array.isArray(body.sections)) {
+        return res.status(400).json({ error: "sections must be an object of boolean values" });
+      }
+      const sections: Record<string, boolean> = {};
+      for (const key of allowedSections) {
+        if (body.sections[key] !== undefined && typeof body.sections[key] !== "boolean") {
+          return res.status(400).json({ error: `sections.${key} must be boolean` });
+        }
+        sections[key] = body.sections[key] ?? defaultInvoiceTemplate.sections[key as keyof typeof defaultInvoiceTemplate.sections];
+      }
+      data.sections = sections;
+    }
+    try {
+      const settings = await storage.saveInvoiceTemplateSettings(data as any);
+      res.json(await presentInvoiceTemplate(settings));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Failed to save invoice template" });
+    }
+  });
+
+  app.post(
+    "/api/owner/invoice-template/logo",
+    async (req, res, next) => {
+      if (!(await requireInvoiceTemplateOwner(req, res))) return;
+      invoiceLogoUpload.single("logo")(req, res, (err) => {
+        if (err) return res.status(400).json({ error: err.message || "Logo upload failed" });
+        next();
+      });
+    },
+    async (req, res) => {
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: "Choose a logo image to upload" });
+      try {
+        const extension = file.mimetype === "image/png" ? "png" : file.mimetype === "image/webp" ? "webp" : "jpg";
+        const logoUrl = isS3Configured()
+          ? `s3:${await uploadBufferToS3(`branding/invoice-template/${Date.now()}-${crypto.randomBytes(5).toString("hex")}.${extension}`, file.buffer, file.mimetype)}`
+          : `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+        const settings = await storage.saveInvoiceTemplateSettings({ logoUrl });
+        res.status(201).json(await presentInvoiceTemplate(settings));
+      } catch (err: any) {
+        res.status(500).json({ error: err.message || "Logo upload failed" });
+      }
+    },
+  );
+
+  app.delete("/api/owner/invoice-template/logo", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    try {
+      const settings = await storage.saveInvoiceTemplateSettings({ logoUrl: null });
+      res.json(await presentInvoiceTemplate(settings));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Failed to remove logo" });
+    }
   });
 
   app.patch("/api/invoices/:id", async (req, res) => {
