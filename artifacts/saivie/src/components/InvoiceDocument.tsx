@@ -247,13 +247,39 @@ export function InvoiceDocument(props: InvoiceDocumentProps) {
   return (
     <div className="invoice-document-preview overflow-auto bg-slate-100 p-3 sm:p-6">
       <style>{`
-        @page { size: A4; margin: 0; }
+        @page { size: A4 portrait; margin: 0; }
         .invoice-print-only { display: none; }
         @media print {
-          html, body { background: #fff !important; }
+          html, body {
+            display: block !important;
+            width: 210mm !important;
+            min-width: 0 !important;
+            height: auto !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            background: #fff !important;
+          }
           body > *:not(.invoice-print-only) { display: none !important; }
-          .invoice-print-only { display: block !important; }
-          .invoice-print-only > article { margin: 0 !important; box-shadow: none !important; }
+          .invoice-print-only {
+            display: block !important;
+            width: 210mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
+          .invoice-print-only > article {
+            display: flex !important;
+            box-sizing: border-box !important;
+            width: 210mm !important;
+            min-height: 297mm !important;
+            max-width: none !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+            transform: none !important;
+          }
         }
       `}</style>
       <InvoiceArticle {...props} />
