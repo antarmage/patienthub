@@ -12,6 +12,8 @@ import {
   ChevronDown,
   Search,
   Bell,
+  Calendar,
+  UserPlus,
   Menu,
   Apple,
   Heart,
@@ -80,6 +82,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InvoiceDocument, type InvoiceDocumentItem, type InvoiceTemplateData } from "@/components/InvoiceDocument";
+import { ReceptionDashboard, type ReceptionFollowUp } from "@/components/ReceptionDashboard";
 
 
 
@@ -1264,7 +1267,8 @@ export default function StaffPortal() {
   }, [appointmentsRaw, patients, providers]);
 
   const todayAppointments = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return appointments.filter((apt: any) => apt.date === todayStr);
   }, [appointments]);
 
@@ -1495,7 +1499,8 @@ export default function StaffPortal() {
       if (!res.ok) throw new Error("Failed to load invoices");
       return res.json();
     },
-  });  const queryClient = useQueryClient();
+  });
+  const queryClient = useQueryClient();
   const requestedBillingItems = billingItems.map(({ catalogItemId, quantity }) => ({ catalogItemId, quantity }));
   const billingQuoteQuery = useQuery<BillingQuote>({
     queryKey: ["/api/patients", billingPatientId, "invoice-quote", requestedBillingItems],
@@ -1734,6 +1739,7 @@ export default function StaffPortal() {
       .catch(() => setFollowUpSheetStatus({ connected: false, rowCount: 0 }));
   }, []);
 
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const handleSheetSync = async () => {
     setIsSyncing(true);
     setSyncResult(null);
@@ -1742,6 +1748,7 @@ export default function StaffPortal() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Sync failed');
       setSyncResult(data);
+      setLastSyncedAt(new Date());
       patientsQuery.refetch();
     } catch (err: any) {
       setSyncResult({ error: err.message });
@@ -1749,6 +1756,70 @@ export default function StaffPortal() {
       setIsSyncing(false);
     }
   };
+
+  const updateAppointmentMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Record<string, unknown> }) => {
+      const res = await fetch(`/api/appointments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to update appointment');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+    },
+    onError: (err: Error) => alert(err.message),
+  });
+
+  const receptionFollowUps = useMemo<ReceptionFollowUp[]>(() => {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return followUpCalls
+      .filter((c: any) => (c.status || 'pending') === 'pending')
+      .map((c: any) => {
+        const patient = patients.find((p: any) => p.id === c.patientId);
+        const overdue = !!c.plannedDate && c.plannedDate < todayStr;
+        return {
+          id: c.id,
+          name: c.patientName,
+          detail: c.plannedDate ? `${overdue ? 'Overdue' : 'Planned'} · ${c.plannedDate}` : 'No call date planned',
+          lastVisit: c.consultationDate,
+          phone: c.phone || patient?.phone || null,
+          overdue,
+          sortKey: c.plannedDate || '9999',
+        };
+      })
+      .sort((a: any, b: any) => a.sortKey.localeCompare(b.sortKey));
+  }, [followUpCalls, patients]);
+
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [registerForm, setRegisterForm] = useState({ name: '', age: '', phone: '', email: '', type: 'General' });
+  const [isUploadPickerOpen, setIsUploadPickerOpen] = useState(false);
+
+  const registerPatientMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/patients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: registerForm.name.trim(),
+          age: Number(registerForm.age),
+          phone: registerForm.phone.trim() || null,
+          email: registerForm.email.trim() || null,
+          type: registerForm.type,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to register patient');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+      setIsRegisterOpen(false);
+      setRegisterForm({ name: '', age: '', phone: '', email: '', type: 'General' });
+    },
+  });
 
   const handleLabImport = async () => {
     setIsImportingLabs(true);
@@ -1996,8 +2067,19 @@ export default function StaffPortal() {
                     {currentRole && <currentRole.icon className={`w-5 h-5 ${currentRole.color}`} />}
                 </div>
                 <div>
-                    <h1 className="text-lg font-bold text-slate-900">{currentRole?.label} Dashboard</h1>
-                    <p className="text-xs text-slate-500">Welcome back, here's your daily overview.</p>
+                    {activeRole === 'receptionist' && activeView === 'dashboard' ? (
+                      <>
+                        <h1 className="text-lg font-bold text-slate-900">
+                          Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, Receptionist
+                        </h1>
+                        <p className="text-xs text-slate-500">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                      </>
+                    ) : (
+                      <>
+                        <h1 className="text-lg font-bold text-slate-900">{currentRole?.label} Dashboard</h1>
+                        <p className="text-xs text-slate-500">Welcome back, here's your daily overview.</p>
+                      </>
+                    )}
                 </div>
             </div>
             <div className="flex items-center gap-3">
@@ -2073,6 +2155,18 @@ export default function StaffPortal() {
                     <Bell className="w-4 h-4 text-slate-500" />
                     <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white"></span>
                 </Button>
+                {activeRole === 'receptionist' && (
+                  <>
+                    <Link href="/staff/booking">
+                      <Button variant="outline" className="h-9" data-testid="button-new-appointment">
+                        <Calendar className="w-4 h-4 mr-2" /> New appointment
+                      </Button>
+                    </Link>
+                    <Button className="h-9" onClick={() => setIsRegisterOpen(true)} data-testid="button-register-patient">
+                      <UserPlus className="w-4 h-4 mr-2" /> Register patient
+                    </Button>
+                  </>
+                )}
             </div>
         </header>
 
@@ -3359,455 +3453,25 @@ export default function StaffPortal() {
 
             {/* 6. RECEPTIONIST VIEW */}
             {activeRole === 'receptionist' && activeView === 'dashboard' && (
-                <div className="max-w-6xl mx-auto space-y-6">
-                    {/* Top Stats */}
-                    <div className="grid grid-cols-4 gap-4">
-                        <Card className="shadow-sm border-slate-200" data-testid="stat-today-visits">
-                            <CardContent className="p-4">
-                                <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Today's Visits</p>
-                                <p className="text-2xl font-bold text-slate-900">{todayAppointments.length}</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="shadow-sm border-slate-200" data-testid="stat-checked-in">
-                            <CardContent className="p-4">
-                                <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Checked In</p>
-                                <p className="text-2xl font-bold text-emerald-600">{todayAppointments.filter((a: any) => a.status === 'On Time' || a.status === 'Completed').length}</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="shadow-sm border-slate-200" data-testid="stat-late">
-                            <CardContent className="p-4">
-                                <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Late</p>
-                                <p className="text-2xl font-bold text-rose-600">{todayAppointments.filter((a: any) => a.status === 'Late').length}</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="shadow-sm border-slate-200" data-testid="stat-pending-tasks">
-                            <CardContent className="p-4">
-                                <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Pending Tasks</p>
-                                <p className="text-2xl font-bold text-amber-600">{labTasks.filter((t: any) => t.status === 'Pending' || t.status === 'Delayed').length}</p>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    <div className="grid grid-cols-12 gap-6">
-                        {/* LEFT COLUMN: Action Items */}
-                        <div className="col-span-8 space-y-6">
-                            
-                            {/* Patient Queue */}
-                            <Card className="shadow-sm border-slate-200">
-                                <CardHeader className="py-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50/30">
-                                    <div className="flex items-center gap-2">
-                                        <Users className="w-5 h-5 text-indigo-600" />
-                                        <CardTitle className="text-base font-bold text-slate-800">Patient Queue (Onboarding/Vitals)</CardTitle>
-                                    </div>
-                                    <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">{patientQueue.length} Waiting</Badge>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    <div className="divide-y divide-slate-100">
-                                        {patientQueue.length === 0 && (
-                                            <div className="p-6 text-center text-sm text-slate-400">No patients currently waiting</div>
-                                        )}
-                                        {patientQueue.map((p: any) => (
-                                            <div key={p.id} className="p-4 flex items-center justify-between hover:bg-slate-50">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="bg-indigo-100 w-10 h-10 rounded-full flex items-center justify-center text-indigo-700 font-bold text-xs">
-                                                        {p.name.split(' ').map((n: string) => n[0]).join('')}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                                                            {p.name}
-                                                            {p.visitMode === 'telemedicine' && <span title="Video Consultation"><Video className="w-3 h-3 text-indigo-500" /></span>}
-                                                            {p.visitMode === 'home-visit' && <span title="Home Visit"><Home className="w-3 h-3 text-amber-500" /></span>}
-                                                        </p>
-                                                        <p className="text-xs text-slate-500 flex items-center gap-1">
-                                                            <Clock className="w-3 h-3" /> {p.time} — {p.type || 'Appointment'}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-3">
-                                                    <Badge variant="outline" className={`
-                                                        ${p.status === 'Waiting' ? 'bg-amber-50 text-amber-700 border-amber-200' : 
-                                                          p.status === 'Check-in' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
-                                                          'bg-slate-100 text-slate-600 border-slate-200'}
-                                                    `}>
-                                                        {p.status}
-                                                    </Badge>
-                                                    
-                                                    {p.action === "Checkout" && (
-                                                        <Button 
-                                                            size="sm" 
-                                                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs"
-                                                            onClick={() => {
-                                                                setSelectedPatientForCheckout(p);
-                                                                setIsCheckoutOpen(true);
-                                                            }}
-                                                        >
-                                                            Process Checkout
-                                                        </Button>
-                                                    )}
-                                                    {p.action === "Onboard" && (
-                                                        <Button 
-                                                            size="sm" 
-                                                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs"
-                                                            onClick={() => {
-                                                                setSelectedPatientForOnboarding(p);
-                                                                setIsOnboardingOpen(true);
-                                                            }}
-                                                        >
-                                                            Start Onboarding
-                                                        </Button>
-                                                    )}
-                                                    {p.action === "Take Vitals" && (
-                                                        <Button 
-                                                            size="sm" 
-                                                            variant="outline" 
-                                                            className="border-indigo-200 text-indigo-700 bg-indigo-50 h-8 text-xs hover:bg-indigo-100"
-                                                            onClick={() => {
-                                                                setSelectedPatientForVitals(p);
-                                                                setIsVitalsOpen(true);
-                                                            }}
-                                                        >
-                                                            <Activity className="w-3 h-3 mr-1" /> Take Vitals
-                                                        </Button>
-                                                    )}
-                                                    {p.action === "Upload Records" && (
-                                                        <Button 
-                                                            size="sm" 
-                                                            variant="outline" 
-                                                            className="border-slate-200 text-slate-700 h-8 text-xs hover:bg-slate-50"
-                                                            onClick={() => {
-                                                                setSelectedPatientForUpload(p);
-                                                                setIsUploadOpen(true);
-                                                            }}
-                                                        >
-                                                            <FileText className="w-3 h-3 mr-1" /> Upload Records
-                                                        </Button>
-                                                    )}
-                                                    {p.visitMode === 'telemedicine' && p.telemedicineLink && (
-                                                        <Button
-                                                            size="sm"
-                                                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs"
-                                                            onClick={() => window.open(p.telemedicineLink, '_blank')}
-                                                        >
-                                                            <Video className="w-3 h-3 mr-1" /> Join Call
-                                                        </Button>
-                                                    )}
-                                                    {p.phone && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="border-emerald-200 text-emerald-700 bg-emerald-50 h-8 text-xs hover:bg-emerald-100"
-                                                            onClick={() => {
-                                                                const pt = patients.find((pt: any) => pt.id === p.patientId);
-                                                                setWhatsAppTarget({ patientId: p.patientId, name: p.name, phone: p.phone });
-                                                                setWhatsAppMessage('');
-                                                                setIsWhatsAppOpen(true);
-                                                            }}
-                                                        >
-                                                            <MessageSquare className="w-3 h-3 mr-1" /> WhatsApp
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Clinical Action Items */}
-                            <Card className="shadow-sm border-slate-200">
-                                <CardHeader className="py-4 border-b border-slate-100 flex justify-between items-center bg-amber-50/30">
-                                    <div className="flex items-center gap-2">
-                                        <AlertCircle className="w-5 h-5 text-amber-600" />
-                                        <CardTitle className="text-base font-bold text-slate-800">Pending Clinical Actions</CardTitle>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    <div className="divide-y divide-slate-100">
-                                        {receptionistTasks.map((task: any) => (
-                                            <div key={task.id} className="p-4 flex items-center justify-between hover:bg-slate-50">
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <Badge variant="outline" className={`text-[10px] uppercase ${
-                                                            task.type === 'lab' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                                            task.type === 'usg' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                                                            'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                        }`}>
-                                                            {task.type === 'lab' ? 'Blood Test' : task.type === 'usg' ? 'USG Appointment' : 'Registration'}
-                                                        </Badge>
-                                                        <span className="text-xs font-medium text-slate-500">for {task.patient}</span>
-                                                    </div>
-                                                    <p className="text-sm font-bold text-slate-800">{task.title}</p>
-                                                </div>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="outline" 
-                                                    className="text-xs h-8"
-                                                    onClick={() => {
-                                                        setSelectedTaskForAction(task);
-                                                        setIsClinicalActionOpen(true);
-                                                    }}
-                                                >
-                                                    Action
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                             {/* Appointment Flow (Existing) */}
-                             <Card className="shadow-sm border-slate-200">
-                                <CardHeader className="py-4 border-b border-slate-100 flex justify-between items-center">
-                                    <CardTitle className="text-base font-bold text-slate-800">Appointment Schedule</CardTitle>
-                                    <Link href="/staff/booking">
-                                        <Button size="sm" className="bg-slate-900 text-white hover:bg-slate-800 text-xs">
-                                            + New Booking
-                                        </Button>
-                                    </Link>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                     <table className="w-full text-sm text-left">
-                                        <thead className="bg-slate-50 text-slate-500 uppercase text-xs border-b border-slate-100">
-                                            <tr>
-                                                <th className="px-4 py-3 font-medium">Time</th>
-                                                <th className="px-4 py-3 font-medium">Patient</th>
-                                                <th className="px-4 py-3 font-medium">Type</th>
-                                                <th className="px-4 py-3 font-medium">Doctor/Staff</th>
-                                                <th className="px-4 py-3 font-medium">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {todayAppointments.map((apt: any, i: number) => (
-                                                <tr key={i} className="hover:bg-slate-50/50">
-                                                    <td className="px-4 py-3 font-medium text-slate-500">{apt.time}</td>
-                                                    <td className="px-4 py-3 font-semibold text-slate-900">{apt.patient}</td>
-                                                    <td className="px-4 py-3 text-slate-600">{apt.type}</td>
-                                                    <td className="px-4 py-3 text-slate-500">{apt.doctor}</td>
-                                                    <td className="px-4 py-3 flex gap-2">
-                                                        {apt.status === 'Completed' ? (
-                                                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">Done</Badge>
-                                                        ) : (
-                                                            <Link href="/staff/check-in">
-                                                                <Button size="sm" variant="outline" className="h-7 text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100">Check In</Button>
-                                                            </Link>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {todayAppointments.length === 0 && (
-                                                <tr>
-                                                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">No appointments scheduled for today</td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                     </table>
-                                </CardContent>
-                            </Card>
-
-
-                        </div>
-
-                        {/* RIGHT COLUMN: Growth & Follow-up */}
-                        <div className="col-span-4 space-y-6">
-                            
-                            {/* Follow-up Indicators */}
-                            <Card className="shadow-sm border-slate-200 bg-rose-50/30">
-                                <CardHeader className="py-3 border-b border-rose-100 bg-rose-50/50">
-                                    <div className="flex items-center gap-2">
-                                        <CalendarCheck className="w-4 h-4 text-rose-600" />
-                                        <CardTitle className="text-sm font-bold text-rose-900 uppercase tracking-wide">Follow-up Needed</CardTitle>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    <div className="divide-y divide-rose-100">
-                                        {followUpList.map((item: any) => (
-                                            <div key={item.id} className="p-3 hover:bg-rose-50/50">
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <span className="text-sm font-bold text-slate-800">{item.patient}</span>
-                                                    <Badge variant="outline" className="text-[10px] bg-white border-rose-200 text-rose-600">{item.type}</Badge>
-                                                </div>
-                                                <p className="text-xs text-slate-500 mb-2">{item.daysAgo !== null ? (item.daysAgo === 0 ? 'Today' : `${item.daysAgo} day${item.daysAgo !== 1 ? 's' : ''} since last visit`) : 'No visit on record'}</p>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="ghost" 
-                                                    className="w-full h-7 text-xs bg-white border border-rose-200 text-rose-700 hover:bg-rose-100 flex items-center justify-center gap-1.5"
-                                                    onClick={() => {
-                                                        setSelectedFollowUp(item);
-                                                        setIsFollowUpOpen(true);
-                                                    }}
-                                                >
-                                                    {item.action.includes("Call") ? <Phone className="w-3 h-3" /> : <Mail className="w-3 h-3" />}
-                                                    {item.action}
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Cross-sell Opportunities */}
-                            <Card className="shadow-sm border-slate-200 bg-emerald-50/30">
-                                <CardHeader className="py-3 border-b border-emerald-100 bg-emerald-50/50">
-                                    <div className="flex items-center gap-2">
-                                        <Sparkles className="w-4 h-4 text-emerald-600" />
-                                        <CardTitle className="text-sm font-bold text-emerald-900 uppercase tracking-wide">Growth Opportunities</CardTitle>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    <div className="divide-y divide-emerald-100">
-                                        {crossSellOpportunities.map((opp: any) => (
-                                            <div key={opp.id} className="p-3 hover:bg-emerald-50/50">
-                                                <div className="mb-2">
-                                                    <span className="text-xs font-medium text-slate-500 block mb-0.5">Recommend for {opp.patient}</span>
-                                                    <span className="text-sm font-bold text-emerald-800 flex items-center gap-1">
-                                                        {opp.service}
-                                                    </span>
-                                                </div>
-                                                <div className="bg-white/60 p-2 rounded text-[10px] text-slate-600 italic mb-2">
-                                                    "{opp.reason}"
-                                                </div>
-                                                <Button size="sm" className="w-full h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-sm">
-                                                    Suggest Service
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                             {/* Google Sheets Sync */}
-                             <Card className="shadow-sm border-slate-200 bg-blue-50/30">
-                                <CardHeader className="py-3 border-b border-blue-100 bg-blue-50/50">
-                                    <div className="flex items-center gap-2">
-                                        <FileText className="w-4 h-4 text-blue-600" />
-                                        <CardTitle className="text-sm font-bold text-blue-900 uppercase tracking-wide">Google Sheets Import</CardTitle>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-4 space-y-3">
-                                    <div className="text-xs text-slate-600">
-                                        <p>Import patient data from the clinic's Google Sheet registration form.</p>
-                                        {sheetStatus && (
-                                            <div className="mt-2 flex items-center gap-2">
-                                                <span className={`w-2 h-2 rounded-full ${sheetStatus.connected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                                                <span>{sheetStatus.connected ? `${sheetStatus.rowCount} records available` : 'Not connected'}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    {syncResult && (
-                                        <div className={`p-2 rounded text-xs ${syncResult.error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`} data-testid="sync-result">
-                                            {syncResult.error ? syncResult.error : syncResult.message}
-                                            {syncResult.errors && syncResult.errors.length > 0 && (
-                                                <div className="mt-1 text-[10px] text-amber-700">
-                                                    {syncResult.errors.slice(0, 3).map((e: string, i: number) => <div key={i}>{e}</div>)}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    <Button 
-                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs h-9"
-                                        onClick={handleSheetSync}
-                                        disabled={isSyncing}
-                                        data-testid="button-sync-sheets"
-                                    >
-                                        {isSyncing ? (
-                                            <><RefreshCw className="w-3 h-3 mr-2 animate-spin" /> Syncing...</>
-                                        ) : (
-                                            <><RefreshCw className="w-3 h-3 mr-2" /> Sync Patient Data</>
-                                        )}
-                                    </Button>
-                                </CardContent>
-                            </Card>
-
-                             {/* Google Drive Lab Reports Import */}
-                             <Card className="shadow-sm border-slate-200 bg-purple-50/30">
-                                <CardHeader className="py-3 border-b border-purple-100 bg-purple-50/50">
-                                    <div className="flex items-center gap-2">
-                                        <FlaskConical className="w-4 h-4 text-purple-600" />
-                                        <CardTitle className="text-sm font-bold text-purple-900 uppercase tracking-wide">Lab Reports Import</CardTitle>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-4 space-y-3">
-                                    <div className="text-xs text-slate-600">
-                                        <p>Import lab reports from Google Drive and map them to patients.</p>
-                                        {driveStatus && (
-                                            <div className="mt-2 space-y-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`w-2 h-2 rounded-full ${driveStatus.connected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                                                    <span>{driveStatus.connected ? `${driveStatus.testReports} lab reports found` : 'Not connected'}</span>
-                                                </div>
-                                                {driveStatus.connected && driveStatus.alreadyImported > 0 && (
-                                                    <div className="flex items-center gap-2 text-emerald-600">
-                                                        <CheckCircle2 className="w-3 h-3" />
-                                                        <span>{driveStatus.alreadyImported} already imported</span>
-                                                    </div>
-                                                )}
-                                                {driveStatus.connected && driveStatus.pendingImport > 0 && (
-                                                    <div className="flex items-center gap-2 text-amber-600">
-                                                        <AlertCircle className="w-3 h-3" />
-                                                        <span>{driveStatus.pendingImport} pending import</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {labImportResult && (
-                                        <div className={`p-2 rounded text-xs ${labImportResult.error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`} data-testid="lab-import-result">
-                                            {labImportResult.error ? labImportResult.error : (
-                                                <div className="space-y-1">
-                                                    <div className="font-medium">{labImportResult.imported} reports imported, {labImportResult.skipped} skipped</div>
-                                                    {labImportResult.unmatched?.length > 0 && (
-                                                        <div className="text-amber-700 text-[10px]">
-                                                            <div className="font-medium">Unmatched patients:</div>
-                                                            {labImportResult.unmatched.map((name: string, i: number) => <div key={i}>{name}</div>)}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    <Button 
-                                        className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs h-9"
-                                        onClick={handleLabImport}
-                                        disabled={isImportingLabs}
-                                        data-testid="button-import-labs"
-                                    >
-                                        {isImportingLabs ? (
-                                            <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Importing...</>
-                                        ) : (
-                                            <><Upload className="w-3 h-3 mr-2" /> Import Lab Reports</>
-                                        )}
-                                    </Button>
-                                </CardContent>
-                            </Card>
-
-                             {/* Quick Actions */}
-                             <Card className="shadow-sm border-slate-200">
-                                <CardHeader className="py-3 border-b border-slate-100">
-                                    <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-wide">Quick Tools</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-3 grid grid-cols-2 gap-2">
-                                    <Button variant="outline" className="h-20 flex flex-col gap-1 hover:border-indigo-300 hover:bg-indigo-50 border-slate-200">
-                                        <Users className="w-5 h-5 text-indigo-500" />
-                                        <span className="text-xs font-medium text-slate-600">New Patient</span>
-                                    </Button>
-                                    <Button variant="outline" className="h-20 flex flex-col gap-1 hover:border-blue-300 hover:bg-blue-50 border-slate-200">
-                                        <CalendarCheck className="w-5 h-5 text-blue-500" />
-                                        <span className="text-xs font-medium text-slate-600">Schedule</span>
-                                    </Button>
-                                    <Button variant="outline" className="h-20 flex flex-col gap-1 hover:border-emerald-300 hover:bg-emerald-50 border-slate-200">
-                                        <Activity className="w-5 h-5 text-emerald-500" />
-                                        <span className="text-xs font-medium text-slate-600">Log Vitals</span>
-                                    </Button>
-                                    <Button variant="outline" className="h-20 flex flex-col gap-1 hover:border-purple-300 hover:bg-purple-50 border-slate-200">
-                                        <FileText className="w-5 h-5 text-purple-500" />
-                                        <span className="text-xs font-medium text-slate-600">Uploads</span>
-                                    </Button>
-                                </CardContent>
-                            </Card>
-
-                        </div>
-                    </div>
-                </div>
+                <ReceptionDashboard
+                    appointments={todayAppointments}
+                    patients={patients}
+                    tasks={receptionistTasks}
+                    followUps={receptionFollowUps}
+                    pendingAppointmentId={updateAppointmentMutation.isPending ? (updateAppointmentMutation.variables?.id ?? null) : null}
+                    sheetStatus={sheetStatus}
+                    syncResult={syncResult}
+                    lastSyncedAt={lastSyncedAt}
+                    isSyncing={isSyncing}
+                    onSync={handleSheetSync}
+                    onUpdateAppointment={(id, data) => updateAppointmentMutation.mutate({ id, data })}
+                    onOpenTask={(task) => { setSelectedTaskForAction(task); setIsClinicalActionOpen(true); }}
+                    onOpenPatient={openViewLog}
+                    onRegisterPatient={() => setIsRegisterOpen(true)}
+                    onUploadReport={() => setIsUploadPickerOpen(true)}
+                    onViewSchedule={() => setActiveView('schedule')}
+                    onViewFollowUps={() => setActiveView('followup')}
+                />
             )}
 
             {/* FOLLOW-UP CALLS TAB (Receptionist only) */}
@@ -5162,6 +4826,74 @@ export default function StaffPortal() {
             />
 
             {/* Onboarding Dialog */}
+            <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Register patient</DialogTitle>
+                  <DialogDescription>Add a new patient to the clinic records.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label>Full name *</Label>
+                    <Input value={registerForm.name} onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })} data-testid="input-register-name" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label>Age *</Label>
+                      <Input type="number" min={0} value={registerForm.age} onChange={(e) => setRegisterForm({ ...registerForm, age: e.target.value })} data-testid="input-register-age" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Phone</Label>
+                      <Input value={registerForm.phone} onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })} data-testid="input-register-phone" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Email</Label>
+                    <Input type="email" value={registerForm.email} onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })} />
+                  </div>
+                  {registerPatientMutation.isError && (
+                    <p className="text-sm text-rose-600">{(registerPatientMutation.error as Error).message}</p>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsRegisterOpen(false)}>Cancel</Button>
+                  <Button
+                    disabled={!registerForm.name.trim() || !registerForm.age || registerPatientMutation.isPending}
+                    onClick={() => registerPatientMutation.mutate()}
+                    data-testid="button-submit-register"
+                  >
+                    {registerPatientMutation.isPending ? 'Saving...' : 'Register'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isUploadPickerOpen} onOpenChange={setIsUploadPickerOpen}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Upload report</DialogTitle>
+                  <DialogDescription>Choose the patient this report belongs to.</DialogDescription>
+                </DialogHeader>
+                <Select
+                  onValueChange={(id) => {
+                    const p = patients.find((x: any) => String(x.id) === id);
+                    if (p) {
+                      setSelectedPatientForUpload(p);
+                      setIsUploadPickerOpen(false);
+                      setIsUploadOpen(true);
+                    }
+                  }}
+                >
+                  <SelectTrigger data-testid="select-upload-patient"><SelectValue placeholder="Select patient" /></SelectTrigger>
+                  <SelectContent>
+                    {patients.map((p: any) => (
+                      <SelectItem key={p.id} value={String(p.id)}>{p.name}{p.phone ? ` · ${p.phone}` : ''}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </DialogContent>
+            </Dialog>
+
             <Dialog open={isOnboardingOpen} onOpenChange={setIsOnboardingOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
