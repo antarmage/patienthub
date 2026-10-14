@@ -1487,7 +1487,15 @@ export default function StaffPortal() {
     },
   });
   const patientInvoices = patientInvoicesQuery.data || [];
-  const queryClient = useQueryClient();
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const allInvoicesQuery = useQuery<any[]>({
+    queryKey: ["/api/invoices"],
+    queryFn: async () => {
+      const res = await fetch("/api/invoices");
+      if (!res.ok) throw new Error("Failed to load invoices");
+      return res.json();
+    },
+  });  const queryClient = useQueryClient();
   const requestedBillingItems = billingItems.map(({ catalogItemId, quantity }) => ({ catalogItemId, quantity }));
   const billingQuoteQuery = useQuery<BillingQuote>({
     queryKey: ["/api/patients", billingPatientId, "invoice-quote", requestedBillingItems],
@@ -1601,6 +1609,7 @@ export default function StaffPortal() {
       setBillingIsEstimate(false);
       setBillingEstimateSource("");
       queryClient.invalidateQueries({ queryKey: ["/api/patients", variables.patientId, "invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
     },
   });
 
@@ -1616,6 +1625,7 @@ export default function StaffPortal() {
     },
     onSuccess: (_updated, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", variables.patientId, "invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       setLastCreatedInvoice((prev: any) =>
         prev?.id === variables.id
           ? { ...prev, paymentStatus: variables.paymentStatus, paymentMethod: variables.paymentMethod, notes: variables.notes }
@@ -1624,6 +1634,27 @@ export default function StaffPortal() {
       setEditingInvoice(null);
     },
   });
+
+  const deleteInvoiceMutation = useMutation({
+    mutationFn: async (invoice: any) => {
+      const res = await fetch(`/api/invoices/${invoice.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete invoice");
+      return invoice;
+    },
+    onSuccess: (invoice) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", invoice.patientId, "invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      setLastCreatedInvoice((prev: any) => (prev?.id === invoice.id ? null : prev));
+    },
+    onError: (err: Error) => alert(err.message),
+  });
+
+  const confirmDeleteInvoice = (invoice: any) => {
+    const name = patients.find((p: any) => p.id === invoice.patientId)?.name || `patient #${invoice.patientId}`;
+    if (window.confirm(`Delete invoice #${invoice.id} for ${name}? This cannot be undone.`)) {
+      deleteInvoiceMutation.mutate(invoice);
+    }
+  };
 
   const openHistoryInvoice = (invoice: any) => {
     setLastCreatedInvoice({
@@ -4249,6 +4280,9 @@ export default function StaffPortal() {
                                       <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => openEditInvoice(inv)} data-testid={`btn-edit-invoice-${inv.id}`}>
                                         <Pencil className="w-3.5 h-3.5" />
                                       </Button>
+                                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-slate-400 hover:text-red-600" onClick={() => confirmDeleteInvoice(inv)} disabled={deleteInvoiceMutation.isPending} data-testid={`btn-delete-invoice-${inv.id}`}>
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
                                     </div>
                                   </div>
                                 ))}
@@ -4267,6 +4301,61 @@ export default function StaffPortal() {
                         <p className="text-xs text-slate-400 mt-1">The system will auto-estimate charges based on their visit type</p>
                       </div>
                     )}
+
+                    <Card className="border-slate-200 shadow-sm" data-testid="card-all-invoices">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                          <History className="w-4 h-4 text-emerald-600" />
+                          All Invoices
+                        </CardTitle>
+                        <Input
+                          value={invoiceSearch}
+                          onChange={(e) => setInvoiceSearch(e.target.value)}
+                          placeholder="Search by patient name or invoice #"
+                          className="mt-2 h-8 text-xs"
+                          data-testid="input-search-invoices"
+                        />
+                      </CardHeader>
+                      <CardContent>
+                        {(() => {
+                          const q = invoiceSearch.trim().toLowerCase().replace(/^#/, "");
+                          const rows = (allInvoicesQuery.data || [])
+                            .map((inv: any) => ({ inv, patient: patients.find((p: any) => p.id === inv.patientId) }))
+                            .filter(({ inv, patient }) => !q || (patient?.name || "").toLowerCase().includes(q) || String(inv.id) === q)
+                            .sort((a, b) => (b.inv.date || "").localeCompare(a.inv.date || "") || b.inv.id - a.inv.id);
+                          if (allInvoicesQuery.isLoading) return <p className="text-sm text-slate-400 text-center py-4">Loading invoices...</p>;
+                          if (rows.length === 0) return <p className="text-sm text-slate-400 text-center py-4">{q ? "No matching invoices" : "No invoices yet"}</p>;
+                          return (
+                            <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                              {rows.map(({ inv, patient }) => (
+                                <div key={inv.id} className="py-2.5 flex items-center justify-between gap-3" data-testid={`all-invoices-row-${inv.id}`}>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-bold text-slate-900 truncate">{patient?.name || `Patient #${inv.patientId}`}</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                      Invoice #{inv.id} · {inv.date} · ₹{Math.round(inv.total || 0).toLocaleString('en-IN')}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <Badge variant="outline" className={`text-[10px] capitalize ${(inv.paymentStatus || 'paid') === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                      {inv.paymentStatus || 'paid'}
+                                    </Badge>
+                                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openHistoryInvoice(inv)} data-testid={`btn-all-view-invoice-${inv.id}`}>
+                                      <Eye className="w-3.5 h-3.5 mr-1" />View / Print
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => openEditInvoice(inv)} data-testid={`btn-all-edit-invoice-${inv.id}`}>
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-slate-400 hover:text-red-600" onClick={() => confirmDeleteInvoice(inv)} disabled={deleteInvoiceMutation.isPending} data-testid={`btn-all-delete-invoice-${inv.id}`}>
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </CardContent>
+                    </Card>
                   </div>
 
                   <div className="space-y-4">

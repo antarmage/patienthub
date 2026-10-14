@@ -1911,6 +1911,14 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.status(204).send();
   });
 
+  app.get("/api/invoices", async (_req, res) => {
+    const inv = await storage.getAllInvoices();
+    res.json(await Promise.all(inv.map(async (invoice) => ({
+      ...invoice,
+      templateSnapshot: invoice.templateSnapshot ? await presentInvoiceTemplate(invoice.templateSnapshot) : null,
+    }))));
+  });
+
   app.get("/api/patients/:id/invoices", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
