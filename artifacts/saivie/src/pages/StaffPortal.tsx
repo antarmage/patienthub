@@ -83,6 +83,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InvoiceDocument, type InvoiceDocumentItem, type InvoiceTemplateData } from "@/components/InvoiceDocument";
 import { ReceptionDashboard, type ReceptionFollowUp } from "@/components/ReceptionDashboard";
+import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialogs";
 
 
 
@@ -1795,6 +1796,8 @@ export default function StaffPortal() {
   }, [followUpCalls, patients]);
 
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [vitalsAppointment, setVitalsAppointment] = useState<any | null>(null);
+  const [afterVisitAppointment, setAfterVisitAppointment] = useState<any | null>(null);
   const [registerForm, setRegisterForm] = useState({ name: '', age: '', phone: '', email: '', type: 'General' });
   const [isUploadPickerOpen, setIsUploadPickerOpen] = useState(false);
 
@@ -3465,6 +3468,12 @@ export default function StaffPortal() {
                     isSyncing={isSyncing}
                     onSync={handleSheetSync}
                     onUpdateAppointment={(id, data) => updateAppointmentMutation.mutate({ id, data })}
+                    onCheckIn={(apt) => setVitalsAppointment(apt)}
+                    onComplete={(apt) => {
+                      updateAppointmentMutation.mutate({ id: apt.id, data: { status: 'Completed', completedAt: new Date().toISOString() } });
+                      setAfterVisitAppointment(apt);
+                    }}
+                    onAfterVisit={(apt) => setAfterVisitAppointment(apt)}
                     onOpenTask={(task) => { setSelectedTaskForAction(task); setIsClinicalActionOpen(true); }}
                     onOpenPatient={openViewLog}
                     onRegisterPatient={() => setIsRegisterOpen(true)}
@@ -4826,6 +4835,28 @@ export default function StaffPortal() {
             />
 
             {/* Onboarding Dialog */}
+            <VitalsDialog
+              appointment={vitalsAppointment}
+              patient={patients.find((p: any) => p.id === vitalsAppointment?.patientId) || null}
+              saving={updateAppointmentMutation.isPending}
+              onClose={() => setVitalsAppointment(null)}
+              onSave={(vitals) => {
+                if (!vitalsAppointment) return;
+                updateAppointmentMutation.mutate(
+                  {
+                    id: vitalsAppointment.id,
+                    data: { status: 'checked-in', checkedInAt: new Date().toISOString(), ...(vitals ? { vitals } : {}) },
+                  },
+                  { onSuccess: () => setVitalsAppointment(null) },
+                );
+              }}
+            />
+            <AfterVisitDialog
+              appointment={afterVisitAppointment}
+              patient={patients.find((p: any) => p.id === afterVisitAppointment?.patientId) || null}
+              onClose={() => setAfterVisitAppointment(null)}
+            />
+
             <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
               <DialogContent className="max-w-md">
                 <DialogHeader>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   AlertCircle,
+  Baby,
   Bell,
   CalendarCheck,
   CalendarPlus,
@@ -21,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getPregnancyReminders } from "@/lib/pregnancyMilestones";
 
 export type ArrivalState = "upcoming" | "late" | "waiting" | "in-consultation" | "completed";
 type FlowFilter = "all" | "upcoming" | "arrived" | "waiting" | "completed";
@@ -46,6 +48,9 @@ interface ReceptionDashboardProps {
   isSyncing: boolean;
   onSync: () => void;
   onUpdateAppointment: (id: number, data: Record<string, unknown>) => void;
+  onCheckIn: (apt: any) => void;
+  onComplete: (apt: any) => void;
+  onAfterVisit: (apt: any) => void;
   onOpenTask: (task: any) => void;
   onOpenPatient: (patient: any) => void;
   onRegisterPatient: () => void;
@@ -110,6 +115,9 @@ export function ReceptionDashboard({
   isSyncing,
   onSync,
   onUpdateAppointment,
+  onCheckIn,
+  onComplete,
+  onAfterVisit,
   onOpenTask,
   onOpenPatient,
   onRegisterPatient,
@@ -156,6 +164,7 @@ export function ReceptionDashboard({
     .sort((a, b) => new Date(a.apt.checkedInAt || 0).getTime() - new Date(b.apt.checkedInAt || 0).getTime());
 
   const findPatient = (apt: any) => patients.find((p) => p.id === apt.patientId);
+  const pregnancyReminders = useMemo(() => getPregnancyReminders(patients), [patients]);
   const isPending = (id: number) => pendingAppointmentId === id;
   const stamp = () => new Date().toISOString();
 
@@ -165,7 +174,7 @@ export function ReceptionDashboard({
     if (state === "upcoming" || state === "late") {
       return (
         <Button size="sm" variant="outline" className={base} disabled={busy} data-testid={`btn-checkin-${apt.id}`}
-          onClick={() => onUpdateAppointment(apt.id, { status: "checked-in", checkedInAt: stamp() })}>
+          onClick={() => onCheckIn(apt)}>
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Check in"}
         </Button>
       );
@@ -181,22 +190,27 @@ export function ReceptionDashboard({
     if (state === "in-consultation") {
       return (
         <Button size="sm" variant="outline" className={base} disabled={busy} data-testid={`btn-complete-${apt.id}`}
-          onClick={() => onUpdateAppointment(apt.id, { status: "Completed", completedAt: stamp() })}>
+          onClick={() => onComplete(apt)}>
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Complete"}
         </Button>
       );
     }
     return (
-      <Button size="sm" variant="outline" className={base} data-testid={`btn-view-${apt.id}`}
-        onClick={() => { const patient = findPatient(apt); if (patient) onOpenPatient(patient); }}>
-        View
-      </Button>
+      <div className="flex justify-end gap-1.5">
+        <Button size="sm" variant="outline" className={base} data-testid={`btn-next-steps-${apt.id}`} onClick={() => onAfterVisit(apt)}>
+          Next steps
+        </Button>
+        <Button size="sm" variant="outline" className={base} data-testid={`btn-view-${apt.id}`}
+          onClick={() => { const patient = findPatient(apt); if (patient) onOpenPatient(patient); }}>
+          View
+        </Button>
+      </div>
     );
   };
 
   const handleWaitingStatus = (apt: any, value: string) => {
     if (value === "in-consultation") onUpdateAppointment(apt.id, { status: "in-consultation", seenAt: stamp() });
-    else if (value === "completed") onUpdateAppointment(apt.id, { status: "Completed", completedAt: stamp() });
+    else if (value === "completed") onComplete(apt);
     else if (value === "undo") onUpdateAppointment(apt.id, { status: "On Time", checkedInAt: null });
   };
 
@@ -431,6 +445,39 @@ export function ReceptionDashboard({
                 View all follow-up calls
               </button>
             )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200 shadow-sm" data-testid="card-pregnancy-reminders">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+              <Baby className="h-5 w-5 text-pink-500" /> Pregnancy milestones
+            </CardTitle>
+            <Badge className="border-0 bg-pink-100 text-pink-700">{pregnancyReminders.length} due</Badge>
+          </CardHeader>
+          <CardContent className="divide-y divide-slate-100 p-0">
+            {pregnancyReminders.slice(0, 5).map((item, index) => (
+              <div key={`${item.patient.id}-${index}`} className="flex items-center justify-between gap-3 px-5 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-800">{item.patient.name} · {item.week}w</p>
+                  <p className="truncate text-xs text-slate-600">{item.label}</p>
+                  <p className={`text-[11px] ${item.status === "due" ? "text-rose-600" : "text-slate-400"}`}>
+                    {item.status === "due" ? "Due now" : "Coming up"} · {item.windowText}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col gap-1.5">
+                  {item.patient.phone && (
+                    <Button asChild size="sm" variant="outline" className="h-7 border-teal-200 bg-teal-50 text-xs text-teal-700 hover:bg-teal-100">
+                      <a href={`tel:${item.patient.phone}`}><Phone className="mr-1 h-3 w-3" />Call</a>
+                    </Button>
+                  )}
+                  <Button asChild size="sm" variant="ghost" className="h-7 text-xs text-slate-600">
+                    <Link href="/staff/booking">Book</Link>
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {pregnancyReminders.length === 0 && <p className="px-5 py-6 text-center text-sm text-slate-400">No milestones due</p>}
           </CardContent>
         </Card>
 
