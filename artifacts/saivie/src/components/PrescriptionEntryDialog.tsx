@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Camera, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,9 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
   const [followUp, setFollowUp] = useState("");
   const [newTest, setNewTest] = useState("");
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const patientId = appointment?.patientId;
 
@@ -87,6 +90,40 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointment?.id, isFetched, existing?.id]);
 
+  const scanFile = async (file: File) => {
+    if (!patientId) return;
+    setScanning(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch(`/api/patients/${patientId}/parse-prescription`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileData: base64, mimeType: file.type || "application/pdf", fileName: file.name }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not read the prescription");
+      if (data.medicines?.length) setMedicines(data.medicines);
+      if (data.tests?.length) {
+        setTests((prev) => [...prev, ...data.tests.filter((t: TestLine) => !prev.some((x) => x.name.toLowerCase() === t.name.toLowerCase()))]);
+      }
+      if (data.diagnosis) setDiagnosis(data.diagnosis);
+      if (data.advice) setAdvice(data.advice);
+      if (data.followUp) setFollowUp(data.followUp);
+      setScanned(true);
+      toast({ title: "Prescription read", description: "Please check every field against the paper copy before saving." });
+    } catch (err: any) {
+      toast({ title: "Could not read prescription", description: err.message, variant: "destructive" });
+    } finally {
+      setScanning(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
   const addTest = (t: TestLine) => {
     if (tests.some((x) => x.name.toLowerCase() === t.name.toLowerCase())) return;
     setTests([...tests, t]);
@@ -110,7 +147,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
         planNotes: advice,
         followUpPlan: followUp,
         prescriptions: {
-          source: "paper-transcribed",
+          source: scanned ? "paper-scanned-reviewed" : "paper-transcribed",
           enteredAt: existing?.prescriptions?.enteredAt || new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           medicines: medicines.filter((m) => m.name.trim()),
@@ -145,6 +182,20 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
         </DialogHeader>
 
         <div className="space-y-5">
+          <div className="rounded-lg border border-dashed border-teal-300 bg-teal-50/50 p-3">
+            <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" data-testid="input-rx-file"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) scanFile(f); }} />
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-slate-600">
+                {scanned ? "Filled from the photo — review and correct below." : "Have a photo of the paper prescription? Upload it and the fields below are filled in for you to check."}
+              </p>
+              <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={scanning} onClick={() => fileRef.current?.click()} data-testid="btn-rx-scan">
+                {scanning ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />}
+                {scanning ? "Reading..." : "Upload photo"}
+              </Button>
+            </div>
+          </div>
+
           <div className="space-y-1">
             <Label>Diagnosis / notes</Label>
             <Textarea rows={2} value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} data-testid="input-rx-diagnosis" />

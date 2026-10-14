@@ -3498,6 +3498,76 @@ Be thorough — extract every medication mentioned including supplements and vit
     }
   });
 
+  // Reads a prescription photo/PDF and returns structured data for review; nothing is saved.
+  app.post("/api/patients/:id/parse-prescription", async (req, res) => {
+    try {
+      const patientId = parseId(req.params.id);
+      if (!patientId) return res.status(400).json({ error: "Invalid ID" });
+      const { fileData, mimeType } = req.body;
+      if (!fileData || !mimeType) return res.status(400).json({ error: "Missing fileData or mimeType" });
+      const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+      if (!allowedMimes.includes(mimeType)) {
+        return res.status(400).json({ error: "Unsupported file type. Please upload a PDF or image (JPEG, PNG)." });
+      }
+      if (Buffer.byteLength(fileData, 'base64') > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "File too large. Maximum size is 10 MB." });
+      }
+      if (!AI_AVAILABLE) return res.status(503).json({ error: "AI features not available in this environment" });
+
+      const catalogEntries = await storage.getMedicineCatalog();
+      const catalogHint = catalogEntries.length > 0
+        ? `\n\nThis clinic commonly prescribes these medicines. When handwriting is ambiguous, prefer matching one of them (use the exact name):\n${catalogEntries.map(m => `${m.name}${m.genericName ? ` (${m.genericName})` : ''}`).join('\n')}`
+        : '';
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { inlineData: { mimeType, data: fileData } },
+              {
+                text: `Read this clinic prescription (image or PDF, possibly handwritten) and return a single JSON object with these fields:
+- "diagnosis": diagnosis / impression / complaints as a string, or "".
+- "medicines": array of { "name", "dose", "frequency", "duration", "instructions" } (strings, "" if unknown). Include supplements and vitamins.
+- "tests": array of { "name", "type" } for every lab test or investigation advised; "type" is "usg" for ultrasound/scan/sonography, otherwise "lab".
+- "advice": general advice / counselling notes as a string, or "".
+- "followUp": follow-up instruction (e.g. "Review after 2 weeks"), or "".
+- "prescriptionDate": date on the document as YYYY-MM-DD, or null.
+Only include what is actually written. Do not invent anything.${catalogHint}`,
+              },
+            ],
+          },
+        ],
+        config: { responseMimeType: "application/json" },
+      });
+
+      const cleaned = (response.text || "").replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      let parsed: any;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        return res.status(422).json({ error: "Could not read the prescription. Please enter it manually." });
+      }
+      const str = (v: any) => (typeof v === 'string' ? v.trim() : '');
+      res.json({
+        diagnosis: str(parsed.diagnosis),
+        medicines: (Array.isArray(parsed.medicines) ? parsed.medicines : []).filter((m: any) => str(m?.name)).map((m: any) => ({
+          name: str(m.name), dose: str(m.dose), frequency: str(m.frequency), duration: str(m.duration), instructions: str(m.instructions),
+        })),
+        tests: (Array.isArray(parsed.tests) ? parsed.tests : []).filter((t: any) => str(t?.name)).map((t: any) => ({
+          name: str(t.name), type: t.type === 'usg' ? 'usg' : 'lab',
+        })),
+        advice: str(parsed.advice),
+        followUp: str(parsed.followUp),
+        prescriptionDate: str(parsed.prescriptionDate) || null,
+      });
+    } catch (err: any) {
+      console.error("Prescription parse error:", err);
+      res.status(500).json({ error: "Failed to read prescription: " + err.message });
+    }
+  });
+
   app.get("/api/google-drive/status", async (_req, res) => {
     try {
       const files = await listLabReportFiles();
