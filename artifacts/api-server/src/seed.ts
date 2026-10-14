@@ -296,10 +296,10 @@ export async function seedDatabase() {
   ]).returning();
 
   const [svc1, svc2, svc3, svc4] = await db.insert(services).values([
-    { serviceId: "consult", name: "Initial Consultation", duration: "60 min", price: "$200" },
-    { serviceId: "followup", name: "Follow-up Review", duration: "30 min", price: "$100" },
-    { serviceId: "scan", name: "Ultrasound Scan", duration: "45 min", price: "$150" },
-    { serviceId: "lab", name: "Blood Work", duration: "15 min", price: "$50" },
+    { serviceId: "consult", name: "Initial Consultation", duration: "60 min" },
+    { serviceId: "followup", name: "Follow-up Review", duration: "30 min" },
+    { serviceId: "scan", name: "Ultrasound Scan", duration: "45 min" },
+    { serviceId: "lab", name: "Blood Work", duration: "15 min" },
   ]).returning();
 
   const today = new Date().toISOString().split('T')[0];

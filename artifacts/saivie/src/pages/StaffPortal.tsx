@@ -4527,41 +4527,6 @@ export default function StaffPortal() {
                             </div>
                         </div>
 
-                        <Separator />
-
-                        {/* 4. Product Sales (Cross-Sell) */}
-                        <div className="space-y-3">
-                            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                                <ShoppingBag className="w-4 h-4 text-rose-600" /> Recommended Products
-                            </h3>
-                            <div className="grid grid-cols-1 gap-2">
-                                <div className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:border-rose-200 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-slate-100 rounded-md flex items-center justify-center">
-                                            <span className="text-xs font-bold text-slate-400">IMG</span>
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-sm text-slate-900">Prenatal Multi-Vitamin Pack</p>
-                                            <p className="text-xs text-slate-500">$45.00 • In Stock</p>
-                                        </div>
-                                    </div>
-                                    <Button size="sm" variant="outline" className="h-8 text-xs border-slate-200 text-slate-600">Add to Bill</Button>
-                                </div>
-                                <div className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:border-rose-200 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-slate-100 rounded-md flex items-center justify-center">
-                                            <span className="text-xs font-bold text-slate-400">IMG</span>
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-sm text-slate-900">Magnesium Glycinate</p>
-                                            <p className="text-xs text-slate-500">$28.00 • In Stock</p>
-                                        </div>
-                                    </div>
-                                    <Button size="sm" variant="outline" className="h-8 text-xs border-slate-200 text-slate-600">Add to Bill</Button>
-                                </div>
-                            </div>
-                        </div>
-
                     </div>
 
                     <DialogFooter className="py-4 border-t border-slate-100">

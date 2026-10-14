@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
     Calendar as CalendarIcon,
@@ -34,6 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 export default function NewBooking() {
     const [_, setLocation] = useLocation();
+    const queryClient = useQueryClient();
     const [step, setStep] = useState(1);
     const [date, setDate] = useState<Date | undefined>(new Date());
 
@@ -90,11 +91,13 @@ export default function NewBooking() {
 
     const services = useMemo(() => {
         if (!servicesData) return [];
-        return servicesData
-            .filter((s: any) => s.isActive !== false && /consult|scan|usg|ultra/i.test(s.category || ''))
+        const active = servicesData.filter((s: any) => s.isActive !== false);
+        const visitItems = active.filter((s: any) => /consult|scan|usg|ultra/i.test(s.category || ''));
+        return (visitItems.length > 0 ? visitItems : active)
             .map((s: any) => ({
                 id: String(s.id),
                 name: s.name,
+                price: Number(s.price) || 0,
                 duration: '',
             }));
     }, [servicesData]);
@@ -123,6 +126,7 @@ export default function NewBooking() {
             return res.json();
         },
         onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
             setCreatedAppointmentId(data.id);
             setCreatedTelemedicineLink(data.telemedicineLink || null);
             setIsSuccess(true);
@@ -130,6 +134,9 @@ export default function NewBooking() {
                 title: "Appointment Booked",
                 description: "The appointment has been successfully scheduled.",
             });
+        },
+        onError: (err: Error) => {
+            toast({ title: "Booking failed", description: err.message, variant: "destructive" });
         }
     });
 
@@ -148,7 +155,7 @@ export default function NewBooking() {
             providerId: providersData?.find((p: any) => p.name.toLowerCase().replace(/\s+/g, '-').replace(/\./g, '') === selectedProvider)?.id || 1,
             type: services.find((s: any) => s.id === selectedService)?.name,
             visitType: services.find((s: any) => s.id === selectedService)?.name,
-            date: date.toISOString().split('T')[0],
+            date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
             time: selectedSlot,
             status: "scheduled",
             visitMode,
@@ -535,7 +542,14 @@ export default function NewBooking() {
 
                             <div className="flex items-center gap-2 p-4 bg-amber-50 border border-amber-100 rounded-lg text-amber-800 text-sm">
                                 <CreditCard className="w-5 h-5 shrink-0" />
-                                <p>Payment of <span className="font-bold">$200</span> will be collected at the time of check-in.</p>
+                                <p>
+                                    {(() => {
+                                        const price = services.find((s: any) => s.id === selectedService)?.price;
+                                        return price
+                                            ? <>Payment of <span className="font-bold">₹{price.toLocaleString("en-IN")}</span> will be collected at the time of check-in.</>
+                                            : "Payment will be collected at the time of check-in.";
+                                    })()}
+                                </p>
                             </div>
                         </div>
                     )}

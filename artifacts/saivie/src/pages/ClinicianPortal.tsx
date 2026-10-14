@@ -1244,6 +1244,30 @@ export default function ClinicianPortal() {
     enabled: patients.length > 0
   });
   const invoices = invoicesQuery.data || [];
+  const inr = (n: number) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
+  const billingStats = useMemo(() => {
+    const isPaid = (inv: any) => inv.paymentStatus === 'paid';
+    const sum = (list: any[]) => list.reduce((acc, inv) => acc + (Number(inv.total) || 0), 0);
+    const months: { key: string; month: string; total: number }[] = [];
+    const now = new Date();
+    for (let k = 5; k >= 0; k--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+      months.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, month: d.toLocaleString('en-IN', { month: 'short' }), total: 0 });
+    }
+    invoices.forEach((inv: any) => {
+      const m = months.find((x) => String(inv.date || '').startsWith(x.key));
+      if (m) m.total += Number(inv.total) || 0;
+    });
+    return {
+      total: sum(invoices),
+      paid: sum(invoices.filter(isPaid)),
+      paidCount: invoices.filter(isPaid).length,
+      pending: sum(invoices.filter((i: any) => !isPaid(i))),
+      pendingCount: invoices.filter((i: any) => !isPaid(i)).length,
+      discount: invoices.reduce((acc: number, inv: any) => acc + (Number(inv.discountTotal) || 0), 0),
+      monthly: months,
+    };
+  }, [invoices]);
 
   const riskAlerts = useMemo(() => {
     return patients
@@ -3158,49 +3182,47 @@ export default function ClinicianPortal() {
                                <CreditCard className="w-4 h-4" />
                             </div>
                          </div>
-                         <p className="text-2xl font-bold text-slate-900">$124,500</p>
-                         <div className="flex items-center gap-1 mt-2 text-xs font-medium text-emerald-600">
-                            <TrendingUp className="w-3 h-3" /> +8.2% vs last month
-                         </div>
+                         <p className="text-2xl font-bold text-slate-900">{inr(billingStats.total)}</p>
+                         <p className="text-xs text-slate-500 mt-2">{invoices.length} invoices</p>
                       </CardContent>
                    </Card>
                    
                    <Card className="shadow-sm border-slate-200">
                       <CardContent className="p-4">
                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Consultations</p>
+                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Collected</p>
                             <div className="p-1.5 bg-blue-50 rounded-md text-blue-600">
                                <Users className="w-4 h-4" />
                             </div>
                          </div>
-                         <p className="text-2xl font-bold text-slate-900">$42,300</p>
-                         <p className="text-xs text-slate-500 mt-2">320 appointments</p>
+                         <p className="text-2xl font-bold text-slate-900">{inr(billingStats.paid)}</p>
+                         <p className="text-xs text-slate-500 mt-2">{billingStats.paidCount} paid invoices</p>
                       </CardContent>
                    </Card>
 
                    <Card className="shadow-sm border-slate-200">
                       <CardContent className="p-4">
                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Procedures (IVF/IUI)</p>
+                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Discounts given</p>
                             <div className="p-1.5 bg-purple-50 rounded-md text-purple-600">
                                <Dna className="w-4 h-4" />
                             </div>
                          </div>
-                         <p className="text-2xl font-bold text-slate-900">$68,100</p>
-                         <p className="text-xs text-slate-500 mt-2">18 procedures</p>
+                         <p className="text-2xl font-bold text-slate-900">{inr(billingStats.discount)}</p>
+                         <p className="text-xs text-slate-500 mt-2">Across all invoices</p>
                       </CardContent>
                    </Card>
 
                    <Card className="shadow-sm border-slate-200">
                       <CardContent className="p-4">
                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Pending Claims</p>
+                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Pending payments</p>
                             <div className="p-1.5 bg-amber-50 rounded-md text-amber-600">
                                <AlertCircle className="w-4 h-4" />
                             </div>
                          </div>
-                         <p className="text-2xl font-bold text-slate-900">$14,100</p>
-                         <p className="text-xs text-slate-500 mt-2">5 claims requiring action</p>
+                         <p className="text-2xl font-bold text-slate-900">{inr(billingStats.pending)}</p>
+                         <p className="text-xs text-slate-500 mt-2">{billingStats.pendingCount} invoices awaiting payment</p>
                       </CardContent>
                    </Card>
                 </div>
@@ -3214,17 +3236,10 @@ export default function ClinicianPortal() {
                       <CardContent>
                          <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                               <BarChart data={[
-                                  { month: 'May', total: 98000 },
-                                  { month: 'Jun', total: 105000 },
-                                  { month: 'Jul', total: 110000 },
-                                  { month: 'Aug', total: 102000 },
-                                  { month: 'Sep', total: 118000 },
-                                  { month: 'Oct', total: 124500 },
-                               ]}>
+                               <BarChart data={billingStats.monthly}>
                                   <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                                  <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value/1000}k`} />
-                                  <Tooltip cursor={{fill: '#f1f5f9'}} formatter={(value) => [`$${value}`, 'Revenue']} />
+                                  <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value >= 1000 ? `${Math.round(value / 1000)}k` : value}`} />
+                                  <Tooltip cursor={{fill: '#f1f5f9'}} formatter={(value) => [inr(Number(value)), 'Revenue']} />
                                   <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Revenue" />
                                </BarChart>
                             </ResponsiveContainer>
@@ -3243,21 +3258,10 @@ export default function ClinicianPortal() {
                             {(invoices.length > 0 ? invoices.slice(0, 5).map((inv: any) => ({
                                patient: inv.patientName || 'Patient',
                                service: (inv.items as any)?.[0]?.name || 'Service',
-                               amount: `$${inv.total?.toLocaleString() || '0'}`,
+                               amount: `₹${Number(inv.total || 0).toLocaleString('en-IN')}`,
                                status: inv.paymentStatus === 'paid' ? 'Paid' : 'Pending',
                                date: inv.date || 'Recent',
-                            })) : patients.slice(0, 5).map((p: any, idx: number) => {
-                               const services = ['Consultation', 'Fetal Scan', 'Follow-up', 'Care Visit', 'Hormone Panel'];
-                               const amounts = ['$150', '$350', '$150', '$200', '$450'];
-                               const statuses = ['Paid', 'Paid', 'Pending', 'Paid', 'Paid'];
-                               return {
-                                  patient: p.name || 'Patient',
-                                  service: services[idx] || 'Consultation',
-                                  amount: amounts[idx] || '$150',
-                                  status: statuses[idx] || 'Paid',
-                                  date: idx < 2 ? 'Today' : 'Yesterday',
-                               };
-                            })).map((tx: any, i: number) => (
+                            })) : []).map((tx: any, i: number) => (
                                <div key={i} data-testid={`billing-transaction-${i}`} className="p-4 hover:bg-slate-50 transition-colors">
                                   <div className="flex justify-between items-start mb-1">
                                      <p className="text-sm font-bold text-slate-900" data-testid={`text-billing-patient-${i}`}>{tx.patient}</p>
