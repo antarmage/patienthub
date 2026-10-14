@@ -50,7 +50,9 @@ import {
   Trash2,
   Video,
   Home,
-  Send
+  Send,
+  Pencil,
+  History
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1461,6 +1463,10 @@ export default function StaffPortal() {
   const [isInvoicePreviewOpen, setIsInvoicePreviewOpen] = useState(false);
   const [isIssuedInvoicePreview, setIsIssuedInvoicePreview] = useState(false);
   const [lastCreatedInvoice, setLastCreatedInvoice] = useState<any>(null);
+  const [editingInvoice, setEditingInvoice] = useState<any>(null);
+  const [editPaymentStatus, setEditPaymentStatus] = useState("paid");
+  const [editPaymentMethod, setEditPaymentMethod] = useState("cash");
+  const [editNotes, setEditNotes] = useState("");
   const billingCatalogQuery = useQuery<any[]>({ queryKey: ["/api/billing-catalog"] });
   const billingCatalogItems = billingCatalogQuery.data || [];
   const invoiceTemplateQuery = useQuery<InvoiceTemplateData>({
@@ -1471,6 +1477,16 @@ export default function StaffPortal() {
       return res.json();
     },
   });
+  const patientInvoicesQuery = useQuery<any[]>({
+    queryKey: ["/api/patients", billingPatientId, "invoices"],
+    enabled: !!billingPatientId,
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${billingPatientId}/invoices`);
+      if (!res.ok) throw new Error("Failed to load invoices");
+      return res.json();
+    },
+  });
+  const patientInvoices = patientInvoicesQuery.data || [];
   const requestedBillingItems = billingItems.map(({ catalogItemId, quantity }) => ({ catalogItemId, quantity }));
   const billingQuoteQuery = useQuery<BillingQuote>({
     queryKey: ["/api/patients", billingPatientId, "invoice-quote", requestedBillingItems],
@@ -1583,8 +1599,46 @@ export default function StaffPortal() {
       setBillingPaymentMethod("cash");
       setBillingIsEstimate(false);
       setBillingEstimateSource("");
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", variables.patientId, "invoices"] });
     },
   });
+
+  const updateInvoiceMutation = useMutation({
+    mutationFn: async (data: { id: number; patientId: number; paymentStatus: string; paymentMethod: string; notes: string }) => {
+      const res = await fetch(`/api/invoices/${data.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentStatus: data.paymentStatus, paymentMethod: data.paymentMethod, notes: data.notes }),
+      });
+      if (!res.ok) throw new Error("Failed to update invoice");
+      return res.json();
+    },
+    onSuccess: (_updated, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", variables.patientId, "invoices"] });
+      setLastCreatedInvoice((prev: any) =>
+        prev?.id === variables.id
+          ? { ...prev, paymentStatus: variables.paymentStatus, paymentMethod: variables.paymentMethod, notes: variables.notes }
+          : prev
+      );
+      setEditingInvoice(null);
+    },
+  });
+
+  const openHistoryInvoice = (invoice: any) => {
+    setLastCreatedInvoice({
+      ...invoice,
+      patient: patients.find((p: any) => p.id === invoice.patientId),
+    });
+    setIsIssuedInvoicePreview(true);
+    setIsInvoicePreviewOpen(true);
+  };
+
+  const openEditInvoice = (invoice: any) => {
+    setEditingInvoice(invoice);
+    setEditPaymentStatus((invoice.paymentStatus || "paid").toLowerCase());
+    setEditPaymentMethod(invoice.paymentMethod || "cash");
+    setEditNotes(invoice.notes || "");
+  };
 
   const followUpCallsQuery = useQuery({
     queryKey: ['/api/follow-up-calls'],
@@ -4158,6 +4212,50 @@ export default function StaffPortal() {
                       </Card>
                     )}
 
+                    {billingPatientId && (
+                      <Card className="border-slate-200 shadow-sm">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                            <History className="w-4 h-4 text-emerald-600" />
+                            Invoice History
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {patientInvoicesQuery.isLoading ? (
+                            <p className="text-sm text-slate-400 text-center py-4">Loading invoices...</p>
+                          ) : patientInvoices.length === 0 ? (
+                            <p className="text-sm text-slate-400 text-center py-4">No invoices yet for this patient</p>
+                          ) : (
+                            <div className="divide-y divide-slate-100">
+                              {[...patientInvoices]
+                                .sort((a: any, b: any) => (b.date || "").localeCompare(a.date || "") || (b.id - a.id))
+                                .map((inv: any) => (
+                                  <div key={inv.id} className="py-2.5 flex items-center justify-between gap-3" data-testid={`invoice-history-row-${inv.id}`}>
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-bold text-slate-900">Invoice #{inv.id} · ₹{Math.round(inv.total || 0).toLocaleString('en-IN')}</p>
+                                      <p className="text-xs text-slate-500 mt-0.5">
+                                        {inv.date} · {(inv.items || []).length} item{(inv.items || []).length === 1 ? "" : "s"} · <span className="capitalize">{inv.paymentMethod || "cash"}</span>
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <Badge variant="outline" className={`text-[10px] capitalize ${(inv.paymentStatus || 'paid') === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                        {inv.paymentStatus || 'paid'}
+                                      </Badge>
+                                      <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openHistoryInvoice(inv)} data-testid={`btn-view-invoice-${inv.id}`}>
+                                        <Eye className="w-3.5 h-3.5 mr-1" />View / Print
+                                      </Button>
+                                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => openEditInvoice(inv)} data-testid={`btn-edit-invoice-${inv.id}`}>
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+
                     {!billingPatientId && (
                       <div className="flex flex-col items-center justify-center py-16 text-center">
                         <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
@@ -4330,15 +4428,21 @@ export default function StaffPortal() {
                             total={previewTotal}
                             date={issuedInvoice?.date}
                             paymentMethod={issuedInvoice?.paymentMethod || billingPaymentMethod}
+                            paymentStatus={issuedInvoice?.paymentStatus}
                             notes={issuedInvoice?.notes ?? billingNotes}
                             invoiceId={issuedInvoice?.id}
                             draft={!issuedInvoice}
                           />
                           <DialogFooter className="gap-2 sm:justify-between">
                             {issuedInvoice ? (
-                              <Button variant="outline" onClick={() => window.print()} data-testid="btn-print-invoice">
-                                <Printer className="mr-2 h-4 w-4" />Print / Save PDF
-                              </Button>
+                              <>
+                                <Button variant="outline" onClick={() => window.print()} data-testid="btn-print-invoice">
+                                  <Printer className="mr-2 h-4 w-4" />Print / Save PDF
+                                </Button>
+                                <Button variant="outline" onClick={() => openEditInvoice(issuedInvoice)} data-testid="btn-edit-issued-invoice">
+                                  <Pencil className="mr-2 h-4 w-4" />Edit Details
+                                </Button>
+                              </>
                             ) : (
                               <Button
                                 className="bg-emerald-700 hover:bg-emerald-800"
@@ -4360,6 +4464,56 @@ export default function StaffPortal() {
                         </>
                       );
                     })()}
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={!!editingInvoice} onOpenChange={(open) => { if (!open) setEditingInvoice(null); }}>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Edit Invoice #{editingInvoice?.id}</DialogTitle>
+                      <DialogDescription>Update payment status, method, or notes. Billed items and amounts cannot be changed on an issued invoice.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-xs font-medium text-slate-600">Payment Status</Label>
+                        <Select value={editPaymentStatus} onValueChange={setEditPaymentStatus}>
+                          <SelectTrigger className="mt-1" data-testid="select-edit-payment-status"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="paid">Paid</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium text-slate-600">Payment Method</Label>
+                        <Select value={editPaymentMethod} onValueChange={setEditPaymentMethod}>
+                          <SelectTrigger className="mt-1" data-testid="select-edit-payment-method"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cash">Cash</SelectItem>
+                            <SelectItem value="card">Card</SelectItem>
+                            <SelectItem value="upi">UPI</SelectItem>
+                            <SelectItem value="insurance">Insurance</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium text-slate-600">Notes</Label>
+                        <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="mt-1 min-h-[60px]" data-testid="input-edit-invoice-notes" />
+                      </div>
+                    </div>
+                    <DialogFooter className="gap-2">
+                      {updateInvoiceMutation.isError && <p role="alert" className="self-center text-sm text-rose-600">{updateInvoiceMutation.error.message}</p>}
+                      <Button variant="outline" onClick={() => setEditingInvoice(null)}>Cancel</Button>
+                      <Button
+                        className="bg-emerald-700 hover:bg-emerald-800"
+                        disabled={updateInvoiceMutation.isPending}
+                        onClick={() => editingInvoice && updateInvoiceMutation.mutate({ id: editingInvoice.id, patientId: editingInvoice.patientId, paymentStatus: editPaymentStatus, paymentMethod: editPaymentMethod, notes: editNotes })}
+                        data-testid="btn-save-invoice-edit"
+                      >
+                        {updateInvoiceMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Changes
+                      </Button>
+                    </DialogFooter>
                   </DialogContent>
                 </Dialog>
               </div>

@@ -1,3 +1,5 @@
+import { createPortal } from "react-dom";
+
 export interface InvoiceTemplateData {
   clinicName?: string | null;
   clinicAddress?: string | null;
@@ -59,7 +61,7 @@ function formatInvoiceDate(value: string): string {
   return year && month && day ? `${day}/${month}/${year}` : value;
 }
 
-export function InvoiceDocument({
+function InvoiceArticle({
   template,
   patient,
   items,
@@ -98,22 +100,10 @@ export function InvoiceDocument({
   const invoiceStatus = draft ? "Draft" : paymentStatus || "Paid";
 
   return (
-    <div className="invoice-document-preview overflow-auto bg-slate-100 p-3 sm:p-6">
-      <style>{`
-        @page { size: A4; margin: 0; }
-        @media print {
-          html, body { background: #fff !important; }
-          body * { visibility: hidden !important; }
-          #invoice-print-root, #invoice-print-root * { visibility: visible !important; }
-          #invoice-print-root { position: fixed !important; inset: 0 auto auto 0 !important; width: 210mm !important; min-height: 297mm !important; margin: 0 !important; box-shadow: none !important; }
-          .invoice-document-preview { overflow: visible !important; padding: 0 !important; background: #fff !important; }
-        }
-      `}</style>
-      <article
-        id="invoice-print-root"
-        className="relative mx-auto flex min-h-[297mm] w-[210mm] max-w-none flex-col border-l-[5px] border-l-emerald-700 bg-white p-[14mm] text-slate-900 shadow-xl print:shadow-none"
-        style={{ boxSizing: "border-box" }}
-      >
+    <article
+      className="relative mx-auto flex min-h-[297mm] w-[210mm] max-w-none flex-col border-l-[5px] border-l-emerald-700 bg-white p-[14mm] text-slate-900 shadow-xl print:shadow-none"
+      style={{ boxSizing: "border-box" }}
+    >
         {draft && (
           <div className="mb-4 border border-dashed border-amber-400 bg-amber-50 px-4 py-2 text-center text-[10px] font-bold uppercase tracking-widest text-amber-800">
             Draft preview · Not an issued invoice
@@ -250,6 +240,29 @@ export function InvoiceDocument({
           <div className="text-right font-semibold uppercase tracking-wider text-emerald-900">{template.clinicName || "Saivie"}</div>
         </footer>
       </article>
+  );
+}
+
+export function InvoiceDocument(props: InvoiceDocumentProps) {
+  return (
+    <div className="invoice-document-preview overflow-auto bg-slate-100 p-3 sm:p-6">
+      <style>{`
+        @page { size: A4; margin: 0; }
+        .invoice-print-only { display: none; }
+        @media print {
+          html, body { background: #fff !important; }
+          body > *:not(.invoice-print-only) { display: none !important; }
+          .invoice-print-only { display: block !important; }
+          .invoice-print-only > article { margin: 0 !important; box-shadow: none !important; }
+        }
+      `}</style>
+      <InvoiceArticle {...props} />
+      {createPortal(
+        <div className="invoice-print-only">
+          <InvoiceArticle {...props} />
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
