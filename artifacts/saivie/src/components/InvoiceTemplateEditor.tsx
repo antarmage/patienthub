@@ -249,7 +249,7 @@ export function InvoiceTemplateEditor() {
               <div className="space-y-1.5"><label htmlFor="invoice-clinic-phone" className="text-sm font-medium">Phone</label><Input id="invoice-clinic-phone" value={draft.clinicPhone || ""} onChange={(e) => updateField("clinicPhone", e.target.value)} maxLength={40} /></div>
               <div className="space-y-1.5"><label htmlFor="invoice-clinic-email" className="text-sm font-medium">Email</label><Input id="invoice-clinic-email" type="email" value={draft.clinicEmail || ""} onChange={(e) => updateField("clinicEmail", e.target.value)} maxLength={254} /></div>
             </div>
-            <div className="space-y-1.5"><label htmlFor="invoice-tax-registration" className="text-sm font-medium">Tax registration number</label><Input id="invoice-tax-registration" value={draft.taxRegistration || ""} onChange={(e) => updateField("taxRegistration", e.target.value)} maxLength={80} /></div>
+            <div className="space-y-1.5"><label htmlFor="invoice-tax-registration" className="text-sm font-medium">GST number</label><Input id="invoice-tax-registration" value={draft.taxRegistration || ""} onChange={(e) => updateField("taxRegistration", e.target.value)} maxLength={80} /></div>
             <div className="space-y-2">
               <label htmlFor="invoice-logo" className="text-sm font-medium">Clinic logo</label>
               <div className="flex flex-wrap items-center gap-3">

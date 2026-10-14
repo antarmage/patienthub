@@ -134,7 +134,7 @@ export function InvoiceDocument({
                 {template.clinicPhone && <span>Tel: {template.clinicPhone}</span>}
                 {template.clinicEmail && <span>{template.clinicEmail}</span>}
               </div>
-              {template.taxRegistration && <p className="mt-1 text-[10px] font-medium text-slate-700">Tax registration: {template.taxRegistration}</p>}
+              {template.taxRegistration && <p className="mt-1 text-[10px] font-medium text-slate-700">GST Number: {template.taxRegistration}</p>}
             </div>
           </div>
           <div className="shrink-0 text-right">
