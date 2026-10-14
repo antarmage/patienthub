@@ -82,7 +82,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InvoiceDocument, type InvoiceDocumentItem, type InvoiceTemplateData } from "@/components/InvoiceDocument";
-import { ReceptionDashboard, type ReceptionFollowUp } from "@/components/ReceptionDashboard";
+import { ReceptionDashboard, getArrivalState, type ReceptionFollowUp } from "@/components/ReceptionDashboard";
+import { useToast } from "@/hooks/use-toast";
 import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialogs";
 import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
 
@@ -1818,6 +1819,20 @@ export default function StaffPortal() {
   const [vitalsAppointment, setVitalsAppointment] = useState<any | null>(null);
   const [afterVisitAppointment, setAfterVisitAppointment] = useState<any | null>(null);
   const [prescriptionAppointment, setPrescriptionAppointment] = useState<any | null>(null);
+  const { toast } = useToast();
+  const openManualPrescription = (patient: any) => {
+    if (!patient) return;
+    const mine = (appointmentsRaw as any[])
+      .filter((a: any) => a.patientId === patient.id)
+      .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
+    const target = mine.find((a: any) => getArrivalState(a) === "completed") || mine[0];
+    if (!target) {
+      toast({ title: "No appointment found", description: "Book an appointment for this patient first.", variant: "destructive" });
+      return;
+    }
+    setIsViewLogOpen(false);
+    setPrescriptionAppointment(target);
+  };
   const { data: allVisitHistory = [] } = useQuery<any[]>({
     queryKey: ["/api/visit-history"],
     queryFn: async () => {
@@ -5296,6 +5311,9 @@ export default function StaffPortal() {
                                             >
                                               <Upload className="w-4 h-4 mr-2" /> Upload Prescription
                                             </Button>
+                                            <Button size="sm" variant="outline" className="mt-3 ml-2" data-testid="btn-upload-rx-no-meds-manual" onClick={() => openManualPrescription(selectedPatientForLog)}>
+                                              Add manually
+                                            </Button>
                                         </div>
                                         )}
                                     </div>
@@ -5398,6 +5416,9 @@ export default function StaffPortal() {
                                                       }}
                                                     >
                                                       <Upload className="w-4 h-4 mr-2" /> Upload Prescription
+                                                    </Button>
+                                                    <Button size="sm" variant="outline" className="mt-3 ml-2" data-testid="btn-upload-rx-empty-manual" onClick={() => openManualPrescription(selectedPatientForLog)}>
+                                                      Add manually
                                                     </Button>
                                                 </div>
                                             );
