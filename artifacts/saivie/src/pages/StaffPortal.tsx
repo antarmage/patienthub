@@ -1270,7 +1270,7 @@ export default function StaffPortal() {
   const todayAppointments = useMemo(() => {
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    return appointments.filter((apt: any) => apt.date === todayStr);
+    return appointments.filter((apt: any) => String(apt.date || '').slice(0, 10) === todayStr);
   }, [appointments]);
 
   const patientQueue = useMemo(() => {
