@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { gestationalWeeks, parseLmp } from "@/lib/pregnancyMilestones";
 
 const localDate = (offsetDays = 0) => {
   const d = new Date();
@@ -21,14 +22,19 @@ interface VitalsDialogProps {
   patient: any | null;
   saving: boolean;
   onClose: () => void;
-  onSave: (vitals: Record<string, unknown> | null) => void;
+  onSave: (vitals: Record<string, unknown> | null, lmp: string | null) => void;
 }
 
 export function VitalsDialog({ appointment, patient, saving, onClose, onSave }: VitalsDialogProps) {
   const [form, setForm] = useState(emptyVitals);
+  const [lmp, setLmp] = useState("");
 
   useEffect(() => {
-    if (appointment) setForm({ ...emptyVitals, height: patient?.height ? String(patient.height) : "" });
+    if (appointment) {
+      setForm({ ...emptyVitals, height: patient?.height ? String(patient.height) : "" });
+      const parsed = parseLmp(patient?.lmp);
+      setLmp(parsed ? `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}` : "");
+    }
   }, [appointment, patient]);
 
   const set = (key: keyof typeof emptyVitals) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -37,6 +43,9 @@ export function VitalsDialog({ appointment, patient, saving, onClose, onSave }: 
   const bmi =
     form.height && form.weight ? Number(form.weight) / Math.pow(Number(form.height) / 100, 2) : null;
   const hasAny = Object.values(form).some((v) => v.trim() !== "");
+
+  const weeks = gestationalWeeks(lmp);
+  const lmpValue = lmp || null;
 
   const submit = () =>
     onSave(
@@ -52,6 +61,7 @@ export function VitalsDialog({ appointment, patient, saving, onClose, onSave }: 
             recordedAt: new Date().toISOString(),
           }
         : null,
+      lmpValue,
     );
 
   return (
@@ -93,10 +103,15 @@ export function VitalsDialog({ appointment, patient, saving, onClose, onSave }: 
           <div className="flex items-end pb-2 text-sm text-slate-600">
             BMI: <span className="ml-1 font-semibold">{bmi && Number.isFinite(bmi) ? bmi.toFixed(1) : "--"}</span>
           </div>
+          <div className="col-span-2 space-y-1">
+            <Label>LMP (last menstrual period)</Label>
+            <Input type="date" value={lmp} max={new Date().toISOString().split("T")[0]} onChange={(e) => setLmp(e.target.value)} data-testid="input-vitals-lmp" />
+            {weeks !== null && <p className="text-xs text-slate-500">Gestational age: {weeks} weeks</p>}
+          </div>
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={() => onSave(null)} disabled={saving}>Skip vitals</Button>
-          <Button onClick={submit} disabled={saving || !hasAny} data-testid="button-save-vitals">
+          <Button variant="ghost" onClick={() => onSave(null, lmpValue)} disabled={saving}>Skip vitals</Button>
+          <Button onClick={submit} disabled={saving || (!hasAny && !lmpValue)} data-testid="button-save-vitals">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save & check in"}
           </Button>
         </DialogFooter>

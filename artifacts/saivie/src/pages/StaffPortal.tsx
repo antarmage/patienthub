@@ -84,6 +84,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { InvoiceDocument, type InvoiceDocumentItem, type InvoiceTemplateData } from "@/components/InvoiceDocument";
 import { ReceptionDashboard, type ReceptionFollowUp } from "@/components/ReceptionDashboard";
 import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialogs";
+import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
 
 
 
@@ -1816,6 +1817,18 @@ export default function StaffPortal() {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [vitalsAppointment, setVitalsAppointment] = useState<any | null>(null);
   const [afterVisitAppointment, setAfterVisitAppointment] = useState<any | null>(null);
+  const [prescriptionAppointment, setPrescriptionAppointment] = useState<any | null>(null);
+  const { data: allVisitHistory = [] } = useQuery<any[]>({
+    queryKey: ["/api/visit-history"],
+    queryFn: async () => {
+      const res = await fetch("/api/visit-history");
+      return res.ok ? res.json() : [];
+    },
+  });
+  const prescribedAppointmentIds = useMemo(
+    () => new Set<number>(allVisitHistory.filter((v: any) => v.appointmentId && v.prescriptions?.medicines?.length).map((v: any) => v.appointmentId)),
+    [allVisitHistory],
+  );
   const [registerForm, setRegisterForm] = useState({ name: '', age: '', phone: '', email: '', type: 'General' });
   const [isUploadPickerOpen, setIsUploadPickerOpen] = useState(false);
 
@@ -3492,6 +3505,8 @@ export default function StaffPortal() {
                       setAfterVisitAppointment(apt);
                     }}
                     onAfterVisit={(apt) => setAfterVisitAppointment(apt)}
+                    onRecordPrescription={(apt) => setPrescriptionAppointment(apt)}
+                    prescribedAppointmentIds={prescribedAppointmentIds}
                     onOpenTask={(task) => { setSelectedTaskForAction(task); setIsClinicalActionOpen(true); }}
                     onOpenPatient={openViewLog}
                     onRegisterPatient={() => setIsRegisterOpen(true)}
@@ -4839,8 +4854,17 @@ export default function StaffPortal() {
               patient={patients.find((p: any) => p.id === vitalsAppointment?.patientId) || null}
               saving={updateAppointmentMutation.isPending}
               onClose={() => setVitalsAppointment(null)}
-              onSave={(vitals) => {
+              onSave={async (vitals, lmp) => {
                 if (!vitalsAppointment) return;
+                const patientRecord = patients.find((p: any) => p.id === vitalsAppointment.patientId);
+                if (lmp && patientRecord && lmp !== patientRecord.lmp) {
+                  await fetch(`/api/patients/${patientRecord.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lmp, pregnancyStatus: patientRecord.pregnancyStatus || 'pregnant' }),
+                  });
+                  queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+                }
                 updateAppointmentMutation.mutate(
                   {
                     id: vitalsAppointment.id,
@@ -4849,6 +4873,11 @@ export default function StaffPortal() {
                   { onSuccess: () => setVitalsAppointment(null) },
                 );
               }}
+            />
+            <PrescriptionEntryDialog
+              appointment={prescriptionAppointment}
+              patient={patients.find((p: any) => p.id === prescriptionAppointment?.patientId) || null}
+              onClose={() => setPrescriptionAppointment(null)}
             />
             <AfterVisitDialog
               appointment={afterVisitAppointment}

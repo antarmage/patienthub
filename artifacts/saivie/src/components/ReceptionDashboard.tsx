@@ -51,6 +51,8 @@ interface ReceptionDashboardProps {
   onCheckIn: (apt: any) => void;
   onComplete: (apt: any) => void;
   onAfterVisit: (apt: any) => void;
+  onRecordPrescription: (apt: any) => void;
+  prescribedAppointmentIds: Set<number>;
   onOpenTask: (task: any) => void;
   onOpenPatient: (patient: any) => void;
   onRegisterPatient: () => void;
@@ -119,6 +121,8 @@ export function ReceptionDashboard({
   onCheckIn,
   onComplete,
   onAfterVisit,
+  onRecordPrescription,
+  prescribedAppointmentIds,
   onOpenTask,
   onOpenPatient,
   onRegisterPatient,
@@ -166,6 +170,7 @@ export function ReceptionDashboard({
     .sort((a, b) => new Date(a.apt.checkedInAt || 0).getTime() - new Date(b.apt.checkedInAt || 0).getTime());
 
   const findPatient = (apt: any) => patients.find((p) => p.id === apt.patientId);
+  const pendingRx = appointments.filter((apt) => getArrivalState(apt) === "completed" && !prescribedAppointmentIds.has(apt.id));
   const pregnancyReminders = useMemo(() => getPregnancyReminders(patients), [patients]);
   const isPending = (id: number) => pendingAppointmentId === id;
   const stamp = () => new Date().toISOString();
@@ -199,6 +204,9 @@ export function ReceptionDashboard({
     }
     return (
       <div className="flex justify-end gap-1.5">
+        <Button size="sm" variant="outline" className={base} data-testid={`btn-rx-${apt.id}`} onClick={() => onRecordPrescription(apt)}>
+          {prescribedAppointmentIds.has(apt.id) ? "Rx ✓" : "Record Rx"}
+        </Button>
         <Button size="sm" variant="outline" className={base} data-testid={`btn-next-steps-${apt.id}`} onClick={() => onAfterVisit(apt)}>
           Next steps
         </Button>
@@ -409,6 +417,29 @@ export function ReceptionDashboard({
               </div>
             ))}
             {tasks.length === 0 && <p className="px-5 py-6 text-center text-sm text-slate-400">No pending tasks</p>}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200 shadow-sm" data-testid="card-pending-prescriptions">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+              <ClipboardList className="h-5 w-5 text-violet-500" /> Prescriptions to record
+            </CardTitle>
+            <Badge className="border-0 bg-violet-100 text-violet-700">{pendingRx.length} pending</Badge>
+          </CardHeader>
+          <CardContent className="divide-y divide-slate-100 p-0">
+            {pendingRx.slice(0, 6).map((apt) => (
+              <div key={apt.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-800">{findPatient(apt)?.name || "Patient"}</p>
+                  <p className="truncate text-xs text-slate-500">{String(apt.date).slice(0, 10)} · {apt.type || apt.visitType}</p>
+                </div>
+                <Button size="sm" variant="outline" className="h-8 shrink-0 border-teal-200 bg-teal-50 text-xs text-teal-700 hover:bg-teal-100" onClick={() => onRecordPrescription(apt)}>
+                  Record
+                </Button>
+              </div>
+            ))}
+            {pendingRx.length === 0 && <p className="px-5 py-6 text-center text-sm text-slate-400">All prescriptions recorded</p>}
           </CardContent>
         </Card>
 

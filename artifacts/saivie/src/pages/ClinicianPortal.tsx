@@ -510,8 +510,8 @@ export default function ClinicianPortal() {
   const providerSpecialty = clinicianProvider?.specialty || "Clinician";
   const providerInitials = providerName.split(" ").filter((w: string) => w[0]?.match(/[A-Z]/)).map((w: string) => w[0]).join("").slice(0, 2) || "DR";
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [queueDateFrom, setQueueDateFrom] = useState(() => new Date().toISOString().split('T')[0]);
-  const [queueDateTo, setQueueDateTo] = useState(() => new Date().toISOString().split('T')[0]);
+  const [queueDateFrom, setQueueDateFrom] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
+  const [queueDateTo, setQueueDateTo] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
   const [queueTriageSort, setQueueTriageSort] = useState(true);
   const [patientSearch, setPatientSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -1216,13 +1216,25 @@ export default function ClinicianPortal() {
   });
   const pcosSymptomData = pcosQuery.data || [];
 
+  // The unfiltered list needs a staff token, so fetch each day in the selected range instead.
   const appointmentsQuery = useQuery({
-    queryKey: ['/api/appointments'],
+    queryKey: ['/api/appointments', queueDateFrom, queueDateTo],
     queryFn: async () => {
-      const res = await fetch('/api/appointments');
-      if (!res.ok) throw new Error('Failed to fetch');
-      return res.json();
-    }
+      const days: string[] = [];
+      const cursor = new Date(`${queueDateFrom}T00:00:00`);
+      const end = new Date(`${queueDateTo}T00:00:00`);
+      while (cursor <= end && days.length < 31) {
+        days.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`);
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      const results = await Promise.all(days.map(async (day) => {
+        const res = await fetch(`/api/appointments?date=${day}`);
+        if (!res.ok) throw new Error('Failed to fetch');
+        return res.json();
+      }));
+      return results.flat();
+    },
+    refetchInterval: 30000,
   });
   const appointments = appointmentsQuery.data || [];
 
