@@ -1487,6 +1487,7 @@ export default function StaffPortal() {
     },
   });
   const patientInvoices = patientInvoicesQuery.data || [];
+  const queryClient = useQueryClient();
   const requestedBillingItems = billingItems.map(({ catalogItemId, quantity }) => ({ catalogItemId, quantity }));
   const billingQuoteQuery = useQuery<BillingQuote>({
     queryKey: ["/api/patients", billingPatientId, "invoice-quote", requestedBillingItems],
