@@ -1254,7 +1254,25 @@ export default function StaffPortal() {
       return res.json();
     }
   });
-  const appointmentsRaw = appointmentsQuery.data || [];
+  const todayDateStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+  // The full list needs a staff token; the by-date list works for the portal and powers the dashboard.
+  const todayAppointmentsQuery = useQuery({
+    queryKey: ['/api/appointments', 'today', todayDateStr],
+    queryFn: async () => {
+      const res = await fetch(`/api/appointments?date=${todayDateStr}`);
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    },
+    refetchInterval: 30000,
+  });
+  const appointmentsRaw = useMemo(() => {
+    const byId = new Map<number, any>();
+    [...(appointmentsQuery.data || []), ...(todayAppointmentsQuery.data || [])].forEach((a: any) => byId.set(a.id, a));
+    return Array.from(byId.values());
+  }, [appointmentsQuery.data, todayAppointmentsQuery.data]);
   const appointments = useMemo(() => {
     return appointmentsRaw.map((apt: any) => {
       const patient = patients.find((p: any) => p.id === apt.patientId);
