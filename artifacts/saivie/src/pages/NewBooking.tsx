@@ -71,9 +71,9 @@ export default function NewBooking() {
     }, [patientsData, searchQuery]);
 
     const { data: servicesData } = useQuery({
-        queryKey: ['/api/services'],
+        queryKey: ['/api/billing-catalog'],
         queryFn: async () => {
-            const res = await fetch('/api/services');
+            const res = await fetch('/api/billing-catalog');
             if (!res.ok) throw new Error('Failed to fetch');
             return res.json();
         }
@@ -90,12 +90,13 @@ export default function NewBooking() {
 
     const services = useMemo(() => {
         if (!servicesData) return [];
-        return servicesData.map((s: any) => ({
-            id: s.serviceId || String(s.id),
-            name: s.name,
-            duration: s.duration,
-            price: s.price,
-        }));
+        return servicesData
+            .filter((s: any) => s.isActive !== false && /consult|scan|usg|ultra/i.test(s.category || ''))
+            .map((s: any) => ({
+                id: String(s.id),
+                name: s.name,
+                duration: '',
+            }));
     }, [servicesData]);
 
     const providers = useMemo(() => {
@@ -145,7 +146,8 @@ export default function NewBooking() {
         mutation.mutate({
             patientId: selectedPatientId,
             providerId: providersData?.find((p: any) => p.name.toLowerCase().replace(/\s+/g, '-').replace(/\./g, '') === selectedProvider)?.id || 1,
-            serviceId: parseInt(selectedService) || 1,
+            type: services.find((s: any) => s.id === selectedService)?.name,
+            visitType: services.find((s: any) => s.id === selectedService)?.name,
             date: date.toISOString().split('T')[0],
             time: selectedSlot,
             status: "scheduled",
@@ -382,10 +384,8 @@ export default function NewBooking() {
                                                 </div>
                                                 <div>
                                                     <p className="font-bold text-slate-900 text-sm">{s.name}</p>
-                                                    <p className="text-xs text-slate-500">{s.duration}</p>
                                                 </div>
                                             </div>
-                                            <span className="font-medium text-slate-700">{s.price}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -508,7 +508,6 @@ export default function NewBooking() {
                                         <div>
                                             <p className="text-xs text-indigo-500 uppercase font-bold tracking-wide mb-1">Service</p>
                                             <p className="font-medium text-slate-900">{services.find((s: any) => s.id?.toString() === selectedService)?.name || "Not selected"}</p>
-                                            <p className="text-xs text-slate-500">{services.find((s: any) => s.id?.toString() === selectedService)?.duration || ""} mins</p>
                                         </div>
                                         <div>
                                             <p className="text-xs text-indigo-500 uppercase font-bold tracking-wide mb-1">Provider</p>

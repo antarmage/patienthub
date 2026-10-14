@@ -57,6 +57,7 @@ interface ReceptionDashboardProps {
   onUploadReport: () => void;
   onViewSchedule: () => void;
   onViewFollowUps: () => void;
+  onCallFollowUp: (id: number) => void;
 }
 
 export function getArrivalState(apt: any): ArrivalState {
@@ -124,6 +125,7 @@ export function ReceptionDashboard({
   onUploadReport,
   onViewSchedule,
   onViewFollowUps,
+  onCallFollowUp,
 }: ReceptionDashboardProps) {
   const [filter, setFilter] = useState<FlowFilter>("all");
   const [now, setNow] = useState(() => Date.now());
@@ -426,13 +428,9 @@ export function ReceptionDashboard({
                   {item.lastVisit && <p className="truncate text-[11px] text-slate-400">Last visit: {item.lastVisit}</p>}
                 </div>
                 <div className="flex shrink-0 flex-col gap-1.5">
-                  {item.phone ? (
-                    <Button asChild size="sm" variant="outline" className="h-7 border-teal-200 bg-teal-50 text-xs text-teal-700 hover:bg-teal-100">
-                      <a href={`tel:${item.phone}`}><Phone className="mr-1 h-3 w-3" />Call patient</a>
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onViewFollowUps}>Open</Button>
-                  )}
+                  <Button size="sm" variant="outline" className="h-7 border-teal-200 bg-teal-50 text-xs text-teal-700 hover:bg-teal-100" onClick={() => onCallFollowUp(item.id)} data-testid={`btn-call-followup-${item.id}`}>
+                    <Phone className="mr-1 h-3 w-3" />Call patient
+                  </Button>
                   <Button asChild size="sm" variant="ghost" className="h-7 text-xs text-slate-600">
                     <Link href="/staff/booking">Book visit</Link>
                   </Button>

@@ -3480,6 +3480,22 @@ export default function StaffPortal() {
                     onUploadReport={() => setIsUploadPickerOpen(true)}
                     onViewSchedule={() => setActiveView('schedule')}
                     onViewFollowUps={() => setActiveView('followup')}
+                    onCallFollowUp={(id) => {
+                      const call = followUpCalls.find((c: any) => c.id === id);
+                      if (!call) return;
+                      setSelectedCallPatient(call);
+                      setFollowUpCallForm({
+                        feeling: call.feeling || '',
+                        gotMedicines: call.gotMedicines || '',
+                        concerns: call.concerns || '',
+                        crossSell: call.crossSell || '',
+                        nextVisit: call.nextVisit || '',
+                        notes: call.notes || '',
+                        nextMilestone: call.nextMilestone || '',
+                        didntPickCallTime: call.didntPickCallTime || '',
+                      });
+                      setIsFollowUpCallOpen(true);
+                    }}
                 />
             )}
 
