@@ -3506,6 +3506,7 @@ export default function StaffPortal() {
                     }}
                     onAfterVisit={(apt) => setAfterVisitAppointment(apt)}
                     onRecordPrescription={(apt) => setPrescriptionAppointment(apt)}
+                    onUploadPrescription={(patient) => { setSelectedPatientForUpload(patient); setIsUploadOpen(true); }}
                     prescribedAppointmentIds={prescribedAppointmentIds}
                     onOpenTask={(task) => { setSelectedTaskForAction(task); setIsClinicalActionOpen(true); }}
                     onOpenPatient={openViewLog}

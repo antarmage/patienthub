@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getPregnancyReminders } from "@/lib/pregnancyMilestones";
@@ -52,6 +53,7 @@ interface ReceptionDashboardProps {
   onComplete: (apt: any) => void;
   onAfterVisit: (apt: any) => void;
   onRecordPrescription: (apt: any) => void;
+  onUploadPrescription: (patient: any) => void;
   prescribedAppointmentIds: Set<number>;
   onOpenTask: (task: any) => void;
   onOpenPatient: (patient: any) => void;
@@ -122,6 +124,7 @@ export function ReceptionDashboard({
   onComplete,
   onAfterVisit,
   onRecordPrescription,
+  onUploadPrescription,
   prescribedAppointmentIds,
   onOpenTask,
   onOpenPatient,
@@ -204,16 +207,27 @@ export function ReceptionDashboard({
     }
     return (
       <div className="flex justify-end gap-1.5">
-        <Button size="sm" variant="outline" className={base} data-testid={`btn-rx-${apt.id}`} onClick={() => onRecordPrescription(apt)}>
-          {prescribedAppointmentIds.has(apt.id) ? "Rx ✓" : "Record Rx"}
-        </Button>
         <Button size="sm" variant="outline" className={base} data-testid={`btn-next-steps-${apt.id}`} onClick={() => onAfterVisit(apt)}>
           Next steps
         </Button>
-        <Button size="sm" variant="outline" className={base} data-testid={`btn-view-${apt.id}`}
-          onClick={() => { const patient = findPatient(apt); if (patient) onOpenPatient(patient); }}>
-          View
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" className={base} data-testid={`btn-view-${apt.id}`}>
+              View
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => { const patient = findPatient(apt); if (patient) onUploadPrescription(patient); }} data-testid={`menu-upload-rx-${apt.id}`}>
+              Upload prescription
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onRecordPrescription(apt)} data-testid={`menu-manual-rx-${apt.id}`}>
+              {prescribedAppointmentIds.has(apt.id) ? "Edit data manually ✓" : "Add data manually"}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { const patient = findPatient(apt); if (patient) onOpenPatient(patient); }}>
+              Open patient record
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     );
   };
