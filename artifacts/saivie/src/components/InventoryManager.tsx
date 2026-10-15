@@ -14,7 +14,6 @@ export interface InventoryItem {
   id: number;
   name: string;
   category: string;
-  catalogItemId: number | null;
   taxRate: number;
   sellingPrice: number | null;
   unit: string;
@@ -63,19 +62,12 @@ export function getInventoryAlerts(items: InventoryItem[]) {
   };
 }
 
-const emptyForm = { name: "", category: "Supplement", catalogItemId: "none", taxRate: "0", unit: "units", quantity: "0", lowStockThreshold: "5", batchNumber: "", expiryDate: "", supplier: "", sellingPrice: "", costPrice: "" };
+const emptyForm = { name: "", category: "Supplement", taxRate: "0", unit: "units", quantity: "0", lowStockThreshold: "5", batchNumber: "", expiryDate: "", supplier: "", sellingPrice: "", costPrice: "" };
 
 export function InventoryManager({ token, onSignOut }: { token: string; onSignOut: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: items = [], isLoading } = useInventory();
-  const { data: catalog = [] } = useQuery<any[]>({
-    queryKey: ["/api/billing-catalog"],
-    queryFn: async () => {
-      const res = await fetch("/api/billing-catalog");
-      return res.ok ? res.json() : [];
-    },
-  });
   const ownerCosts = useOwnerCosts(token);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -106,7 +98,6 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
       const body = {
         name: form.name,
         category: form.category,
-        catalogItemId: form.catalogItemId === "none" ? null : Number(form.catalogItemId),
         taxRate: Number(form.taxRate) || 0,
         unit: form.unit,
         quantity: Number(form.quantity) || 0,
@@ -155,7 +146,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
   const openEdit = (item: InventoryItem) => {
     setEditing(item);
     setForm({
-      name: item.name, category: item.category, catalogItemId: item.catalogItemId ? String(item.catalogItemId) : "none", unit: item.unit, quantity: String(item.quantity),
+      name: item.name, category: item.category, unit: item.unit, quantity: String(item.quantity),
       taxRate: String(item.taxRate ?? 0),
       lowStockThreshold: String(item.lowStockThreshold), batchNumber: item.batchNumber || "",
       expiryDate: item.expiryDate ? String(item.expiryDate).slice(0, 10) : "", supplier: item.supplier || "",
@@ -221,7 +212,6 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
                   <td className="px-4 py-3">
                     <p className="font-semibold text-slate-900">{item.name}</p>
                     {item.batchNumber && <p className="text-xs text-slate-500">Batch {item.batchNumber}</p>}
-                    {item.catalogItemId && <p className="text-xs text-teal-600">Auto-deducts when billed</p>}
                   </td>
                   <td className="px-3 py-3 text-slate-600">{item.category}</td>
                   <td className="px-3 py-3 font-semibold text-slate-900">{item.quantity} <span className="text-xs font-normal text-slate-500">{item.unit}</span></td>
@@ -304,18 +294,6 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
             <div className="col-span-2 space-y-1">
               <Label>GST rate (%)</Label>
               <Input type="number" min={0} max={100} step="0.01" value={form.taxRate} onChange={(e) => setForm({ ...form, taxRate: e.target.value })} data-testid="input-inv-tax-rate" />
-            </div>
-            <div className="col-span-2 space-y-1">
-              <Label>Billing item (deduct stock when billed)</Label>
-              <Select value={form.catalogItemId} onValueChange={(v) => setForm({ ...form, catalogItemId: v })}>
-                <SelectTrigger data-testid="select-inv-catalog"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Not linked to billing</SelectItem>
-                  {catalog.filter((c: any) => c.isActive !== false).map((c: any) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.name} · {c.category}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
             <div className="col-span-2 space-y-1">
               <Label>Purchase price per {form.unit || "unit"} (₹, owner only)</Label>

@@ -743,6 +743,8 @@ export class DatabaseStorage implements IStorage {
         await this.adjustInventoryItem(inventoryItemId, direction * quantity, reason);
         continue;
       }
+      // Keep restoring quantities for invoices created before products were billed directly.
+      if (direction !== 1) continue;
       const catalogItemId = Number(line?.catalogItemId);
       if (!catalogItemId || !(quantity > 0)) continue;
       const linked = await db.select().from(inventoryItems).where(and(eq(inventoryItems.catalogItemId, catalogItemId), eq(inventoryItems.isActive, true)));

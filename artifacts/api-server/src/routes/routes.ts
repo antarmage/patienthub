@@ -3135,7 +3135,6 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const item = await storage.createInventoryItem({
       name,
       category: req.body.category || "Supplement",
-      catalogItemId: req.body.catalogItemId ? Number(req.body.catalogItemId) : null,
       taxRate,
       unit: req.body.unit || "units",
       quantity: Math.max(0, Number(req.body.quantity) || 0),
@@ -3155,13 +3154,12 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     if (!(await requireInvoiceTemplateOwner(req, res))) return;
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
-    const { name, category, catalogItemId, unit, lowStockThreshold, batchNumber, expiryDate, supplier, notes, isActive } = req.body || {};
+    const { name, category, unit, lowStockThreshold, batchNumber, expiryDate, supplier, notes, isActive } = req.body || {};
     if (req.body?.taxRate !== undefined) {
       const taxRate = Number(req.body.taxRate);
       if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) return res.status(400).json({ error: "Invalid tax rate" });
     }
     const data: Record<string, unknown> = { name, category, unit, batchNumber, expiryDate: expiryDate || null, supplier, notes, isActive };
-    if (catalogItemId !== undefined) data.catalogItemId = catalogItemId ? Number(catalogItemId) : null;
     if (req.body?.taxRate !== undefined) data.taxRate = Number(req.body.taxRate);
     if (req.body?.sellingPrice !== undefined) data.sellingPrice = parseCost(req.body.sellingPrice);
     if (req.body?.costPrice !== undefined) data.costPrice = parseCost(req.body.costPrice);
