@@ -1251,7 +1251,7 @@ export default function OwnerPortal() {
                               </datalist>
                             </div>
                             <div>
-                              <label className="text-xs font-medium text-slate-500 mb-1 block">Price (₹) *</label>
+                              <label className="text-xs font-medium text-slate-500 mb-1 block">MRP (₹) *</label>
                               <Input name="price" type="number" step="0.01" required placeholder="0.00" data-testid="input-catalog-price" />
                             </div>
                           </div>
@@ -1300,8 +1300,8 @@ export default function OwnerPortal() {
                           <TableRow className="bg-slate-50">
                             <TableHead className="text-xs font-bold text-slate-500">Name</TableHead>
                             <TableHead className="text-xs font-bold text-slate-500">Category</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500">Price</TableHead>
-                            {ownerCosts.unlocked && <TableHead className="text-xs font-bold text-slate-500">Cost / Lab price</TableHead>}
+                            <TableHead className="text-xs font-bold text-slate-500">MRP (patient pays)</TableHead>
+                            {ownerCosts.unlocked && <TableHead className="text-xs font-bold text-slate-500">B2B price (our cost)</TableHead>}
                             <TableHead className="text-xs font-bold text-slate-500">Tax Rate</TableHead>
                             <TableHead className="text-xs font-bold text-slate-500">HSN Code</TableHead>
                             <TableHead className="text-xs font-bold text-slate-500">Active</TableHead>
@@ -1374,6 +1374,7 @@ export default function OwnerPortal() {
                                           value={editingItem._cost ?? ""}
                                           onChange={(e) => setEditingItem({ ...editingItem, _cost: e.target.value })}
                                           className="h-8 text-sm w-24"
+                                          placeholder="B2B"
                                           data-testid="input-edit-cost"
                                         />
                                       </TableCell>
