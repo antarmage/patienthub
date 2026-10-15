@@ -1945,14 +1945,15 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     if (!id) return res.status(400).json({ error: "Invalid patient ID" });
     const patient = await storage.getPatient(id);
     if (!patient) return res.status(404).json({ error: "Patient not found" });
-    const catalog = await storage.getBillingCatalog();
+    const [catalog, inventory] = await Promise.all([storage.getBillingCatalog(), storage.getInventoryItems()]);
     const rules = await readPrimePricingRules();
     try {
       const requestedItems = Array.isArray(req.body?.items) ? req.body.items.map((item: any) => ({
-        catalogItemId: Number(item.catalogItemId),
+        ...(item.catalogItemId != null ? { catalogItemId: Number(item.catalogItemId) } : {}),
+        ...(item.inventoryItemId != null ? { inventoryItemId: Number(item.inventoryItemId) } : {}),
         quantity: Number(item.quantity),
       })) : [];
-      res.json(calculateInvoiceQuote(requestedItems, catalog, patient, rules));
+      res.json(calculateInvoiceQuote(requestedItems, catalog, patient, rules, inventory));
     } catch (err: any) {
       res.status(400).json({ error: err.message || "Could not calculate invoice" });
     }
@@ -1963,15 +1964,16 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     if (!id) return res.status(400).json({ error: "Invalid patient ID" });
     const patient = await storage.getPatient(id);
     if (!patient) return res.status(404).json({ error: "Patient not found" });
-    const catalog = await storage.getBillingCatalog();
+    const [catalog, inventory] = await Promise.all([storage.getBillingCatalog(), storage.getInventoryItems()]);
     const rules = await readPrimePricingRules();
     let quote;
     try {
       const requestedItems = Array.isArray(req.body?.items) ? req.body.items.map((item: any) => ({
-        catalogItemId: Number(item.catalogItemId),
+        ...(item.catalogItemId != null ? { catalogItemId: Number(item.catalogItemId) } : {}),
+        ...(item.inventoryItemId != null ? { inventoryItemId: Number(item.inventoryItemId) } : {}),
         quantity: Number(item.quantity),
       })) : [];
-      quote = calculateInvoiceQuote(requestedItems, catalog, patient, rules);
+      quote = calculateInvoiceQuote(requestedItems, catalog, patient, rules, inventory);
     } catch (err: any) {
       return res.status(400).json({ error: err.message || "Could not calculate invoice" });
     }
@@ -3128,10 +3130,13 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     if (!(await requireInvoiceTemplateOwner(req, res))) return;
     const name = String(req.body?.name || "").trim();
     if (!name) return res.status(400).json({ error: "Name is required" });
+    const taxRate = Number(req.body?.taxRate ?? 0);
+    if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) return res.status(400).json({ error: "Invalid tax rate" });
     const item = await storage.createInventoryItem({
       name,
       category: req.body.category || "Supplement",
       catalogItemId: req.body.catalogItemId ? Number(req.body.catalogItemId) : null,
+      taxRate,
       unit: req.body.unit || "units",
       quantity: Math.max(0, Number(req.body.quantity) || 0),
       lowStockThreshold: Math.max(0, Number(req.body.lowStockThreshold) || 0),
@@ -3139,6 +3144,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       expiryDate: req.body.expiryDate || null,
       supplier: req.body.supplier || null,
       notes: req.body.notes || null,
+      sellingPrice: parseCost(req.body.sellingPrice),
       costPrice: parseCost(req.body.costPrice),
       isActive: true,
     });
@@ -3150,8 +3156,14 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     const { name, category, catalogItemId, unit, lowStockThreshold, batchNumber, expiryDate, supplier, notes, isActive } = req.body || {};
+    if (req.body?.taxRate !== undefined) {
+      const taxRate = Number(req.body.taxRate);
+      if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) return res.status(400).json({ error: "Invalid tax rate" });
+    }
     const data: Record<string, unknown> = { name, category, unit, batchNumber, expiryDate: expiryDate || null, supplier, notes, isActive };
     if (catalogItemId !== undefined) data.catalogItemId = catalogItemId ? Number(catalogItemId) : null;
+    if (req.body?.taxRate !== undefined) data.taxRate = Number(req.body.taxRate);
+    if (req.body?.sellingPrice !== undefined) data.sellingPrice = parseCost(req.body.sellingPrice);
     if (req.body?.costPrice !== undefined) data.costPrice = parseCost(req.body.costPrice);
     if (lowStockThreshold !== undefined) data.lowStockThreshold = Math.max(0, Number(lowStockThreshold) || 0);
     Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
@@ -4364,19 +4376,28 @@ Only include what is actually written. Do not invent anything.${catalogHint}`,
       for (const inv of costInventory) {
         if (inv.catalogItemId && inv.costPrice != null && !inventoryCost.has(inv.catalogItemId)) inventoryCost.set(inv.catalogItemId, inv.costPrice);
       }
+      const inventoryItemCost = new Map(costInventory.filter(item => item.costPrice != null).map(item => [item.id, item.costPrice as number]));
       let monthlyCostOfGoods = 0;
       let uncostedLines = 0;
       for (const inv of allInvoices.filter(i => i.date?.startsWith(thisMonth))) {
         for (const line of (Array.isArray(inv.items) ? inv.items : []) as any[]) {
+          const rawInventoryItemId = Number(line?.inventoryItemId);
+          const inventoryItemId = Number.isInteger(rawInventoryItemId) && rawInventoryItemId > 0 ? rawInventoryItemId : 0;
+          const rawQuantity = Number(line?.quantity ?? line?.qty ?? 1);
+          const qty = Number.isFinite(rawQuantity) ? rawQuantity : 0;
+          if (qty <= 0) continue;
+          if (inventoryItemId) {
+            const unitCost = inventoryItemCost.get(inventoryItemId);
+            if (unitCost == null) uncostedLines += 1;
+            else monthlyCostOfGoods += unitCost * qty;
+            continue;
+          }
           const rawCatalogItemId = Number(line?.catalogItemId);
           let catalogItemId = Number.isInteger(rawCatalogItemId) && rawCatalogItemId > 0 ? rawCatalogItemId : 0;
           if (!catalogItemId) {
             const matches = catalogByName.get(normalizeCatalogName(line?.name ?? line?.serviceName)) || [];
             if (matches.length === 1) catalogItemId = matches[0];
           }
-          const rawQuantity = Number(line?.quantity ?? line?.qty ?? 1);
-          const qty = Number.isFinite(rawQuantity) ? rawQuantity : 0;
-          if (qty <= 0) continue;
           if (!catalogItemId) {
             uncostedLines += 1;
             continue;

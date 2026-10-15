@@ -18,6 +18,7 @@ export interface InvoiceTemplateData {
 
 export interface InvoiceDocumentItem {
   catalogItemId?: number;
+  inventoryItemId?: number;
   name: string;
   category?: string;
   price: number;
@@ -228,7 +229,7 @@ function InvoiceArticle({
               {discountTotal > 0 && <div className="flex justify-between gap-3 text-emerald-800"><span>Prime discounts</span><span className="font-semibold">−{formatAmount(discountTotal)}</span></div>}
               <div className="flex justify-between gap-3 border-t-2 border-emerald-800 pt-2 text-sm font-extrabold"><span>Total</span><span>{formatAmount(total)}</span></div>
             </div>
-            {items.some((item) => item.catalogPriceIncludesTax) && <p className="mt-2 text-[8px] leading-3 text-slate-500">Lab Test MRP includes GST. Prime discount is applied to its pre-tax value, then GST is recalculated on the discounted value.</p>}
+            {items.some((item) => item.catalogPriceIncludesTax) && <p className="mt-2 text-[8px] leading-3 text-slate-500">MRP for items marked GST included includes GST in the listed price.</p>}
           </div>
         </section>
 

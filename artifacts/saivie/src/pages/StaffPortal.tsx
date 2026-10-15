@@ -1481,7 +1481,7 @@ export default function StaffPortal() {
 
   const [billingPatientId, setBillingPatientId] = useState<number | null>(null);
   const [isBillingPatientPickerOpen, setIsBillingPatientPickerOpen] = useState(false);
-  const [billingItems, setBillingItems] = useState<{catalogItemId: number; name: string; price: number; quantity: number; taxRate: number; isEstimated?: boolean}[]>([]);
+  const [billingItems, setBillingItems] = useState<{catalogItemId?: number; inventoryItemId?: number; name: string; price: number; quantity: number; taxRate: number; isEstimated?: boolean}[]>([]);
   const [billingPaymentMethod, setBillingPaymentMethod] = useState("cash");
   const [billingNotes, setBillingNotes] = useState("");
   const [billingIsEstimate, setBillingIsEstimate] = useState(false);
@@ -1495,6 +1495,15 @@ export default function StaffPortal() {
   const [editNotes, setEditNotes] = useState("");
   const billingCatalogQuery = useQuery<any[]>({ queryKey: ["/api/billing-catalog"] });
   const billingCatalogItems = billingCatalogQuery.data || [];
+  const billingInventoryQuery = useQuery<any[]>({
+    queryKey: ["/api/inventory"],
+    queryFn: async () => {
+      const res = await fetch("/api/inventory");
+      if (!res.ok) throw new Error("Failed to load products");
+      return res.json();
+    },
+  });
+  const billingProducts = (billingInventoryQuery.data || []).filter((item: any) => item.isActive && item.sellingPrice != null);
   const invoiceTemplateQuery = useQuery<InvoiceTemplateData>({
     queryKey: ["/api/invoice-template"],
     queryFn: async () => {
@@ -1523,7 +1532,11 @@ export default function StaffPortal() {
     },
   });
   const queryClient = useQueryClient();
-  const requestedBillingItems = billingItems.map(({ catalogItemId, quantity }) => ({ catalogItemId, quantity }));
+  const requestedBillingItems = billingItems.map(({ catalogItemId, inventoryItemId, quantity }) => ({
+    ...(catalogItemId != null ? { catalogItemId } : {}),
+    ...(inventoryItemId != null ? { inventoryItemId } : {}),
+    quantity,
+  }));
   const billingQuoteQuery = useQuery<BillingQuote>({
     queryKey: ["/api/patients", billingPatientId, "invoice-quote", requestedBillingItems],
     enabled: !!billingPatientId && requestedBillingItems.length > 0,
@@ -1606,7 +1619,7 @@ export default function StaffPortal() {
   }, [billingPatientId, billingCatalogItems, patients, appointments, getAutoEstimate]);
 
   const createInvoiceMutation = useMutation({
-    mutationFn: async (data: { patientId: number; items: { catalogItemId: number; quantity: number }[]; paymentMethod: string; notes: string }) => {
+    mutationFn: async (data: { patientId: number; items: { catalogItemId?: number; inventoryItemId?: number; quantity: number }[]; paymentMethod: string; notes: string }) => {
       const res = await fetch(`/api/patients/${data.patientId}/invoices`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1637,6 +1650,7 @@ export default function StaffPortal() {
       setBillingEstimateSource("");
       queryClient.invalidateQueries({ queryKey: ["/api/patients", variables.patientId, "invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
     },
   });
 
@@ -1671,6 +1685,7 @@ export default function StaffPortal() {
     onSuccess: (invoice) => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", invoice.patientId, "invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       setLastCreatedInvoice((prev: any) => (prev?.id === invoice.id ? null : prev));
     },
     onError: (err: Error) => alert(err.message),
@@ -3908,6 +3923,59 @@ export default function StaffPortal() {
 
                     {billingPatientId && (
                       <Card className="border-slate-200 shadow-sm">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">Add Products Directly</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {billingInventoryQuery.isLoading ? (
+                            <p className="text-sm text-slate-400">Loading products...</p>
+                          ) : billingProducts.length === 0 ? (
+                            <p className="text-sm text-slate-400">No active products with a selling price. Add a selling price in Inventory to make products available here.</p>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                              {billingProducts.map((product: any) => {
+                                const alreadyAdded = billingItems.some((line) => line.inventoryItemId === product.id);
+                                return (
+                                  <div key={product.id} className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 ${alreadyAdded ? "border-emerald-200 bg-emerald-50" : "border-slate-200"}`} data-testid={`billing-product-${product.id}`}>
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-medium text-slate-900">{product.name}</p>
+                                      <p className="text-xs text-slate-500">
+                                        MRP ₹{Number(product.sellingPrice).toLocaleString("en-IN")} · GST {Number(product.taxRate) || 0}% · Stock {product.quantity} {product.unit}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant={alreadyAdded ? "outline" : "default"}
+                                      disabled={!alreadyAdded && Number(product.quantity) <= 0}
+                                      className="h-7 shrink-0 text-xs"
+                                      onClick={() => {
+                                        if (alreadyAdded) {
+                                          setBillingItems(billingItems.filter((line) => line.inventoryItemId !== product.id));
+                                        } else {
+                                          setBillingItems([...billingItems, {
+                                            inventoryItemId: product.id,
+                                            name: product.name,
+                                            price: Number(product.sellingPrice),
+                                            quantity: 1,
+                                            taxRate: Number(product.taxRate) || 0,
+                                          }]);
+                                        }
+                                      }}
+                                      data-testid={`btn-add-product-${product.id}`}
+                                    >
+                                      {alreadyAdded ? "✓ Added" : Number(product.quantity) <= 0 ? "Out of stock" : "+ Add"}
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {billingPatientId && (
+                      <Card className="border-slate-200 shadow-sm">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">Quick Estimate Templates</CardTitle>
                         </CardHeader>
@@ -4159,7 +4227,11 @@ export default function StaffPortal() {
                           <div className="space-y-2">
                             {billingItems.map((item: any, idx: number) => {
                               const itemSubtotal = item.price * item.quantity;
-                              const quoteItem = billingQuoteQuery.data?.items.find((quotedItem) => quotedItem.catalogItemId === item.catalogItemId);
+                              const quoteItem = billingQuoteQuery.data?.items.find((quotedItem) =>
+                                item.inventoryItemId != null
+                                  ? quotedItem.inventoryItemId === item.inventoryItemId
+                                  : quotedItem.catalogItemId === item.catalogItemId
+                              );
                               const itemTax = quoteItem?.taxAmount || 0;
                               return (
                                 <div key={idx} className="flex items-start justify-between py-2 border-b border-slate-100 last:border-0" data-testid={`billing-line-${idx}`}>

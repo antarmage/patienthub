@@ -15,6 +15,8 @@ export interface InventoryItem {
   name: string;
   category: string;
   catalogItemId: number | null;
+  taxRate: number;
+  sellingPrice: number | null;
   unit: string;
   quantity: number;
   lowStockThreshold: number;
@@ -61,7 +63,7 @@ export function getInventoryAlerts(items: InventoryItem[]) {
   };
 }
 
-const emptyForm = { name: "", category: "Supplement", catalogItemId: "none", unit: "units", quantity: "0", lowStockThreshold: "5", batchNumber: "", expiryDate: "", supplier: "", costPrice: "" };
+const emptyForm = { name: "", category: "Supplement", catalogItemId: "none", taxRate: "0", unit: "units", quantity: "0", lowStockThreshold: "5", batchNumber: "", expiryDate: "", supplier: "", sellingPrice: "", costPrice: "" };
 
 export function InventoryManager({ token, onSignOut }: { token: string; onSignOut: () => void }) {
   const { toast } = useToast();
@@ -105,12 +107,14 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
         name: form.name,
         category: form.category,
         catalogItemId: form.catalogItemId === "none" ? null : Number(form.catalogItemId),
+        taxRate: Number(form.taxRate) || 0,
         unit: form.unit,
         quantity: Number(form.quantity) || 0,
         lowStockThreshold: Number(form.lowStockThreshold) || 0,
         batchNumber: form.batchNumber || null,
         expiryDate: form.expiryDate || null,
         supplier: form.supplier || null,
+        sellingPrice: form.sellingPrice === "" ? null : Number(form.sellingPrice),
         costPrice: form.costPrice === "" ? null : Number(form.costPrice),
       };
       const res = await fetch(editing ? `/api/inventory/${editing.id}` : "/api/inventory", {
@@ -152,8 +156,10 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
     setEditing(item);
     setForm({
       name: item.name, category: item.category, catalogItemId: item.catalogItemId ? String(item.catalogItemId) : "none", unit: item.unit, quantity: String(item.quantity),
+      taxRate: String(item.taxRate ?? 0),
       lowStockThreshold: String(item.lowStockThreshold), batchNumber: item.batchNumber || "",
       expiryDate: item.expiryDate ? String(item.expiryDate).slice(0, 10) : "", supplier: item.supplier || "",
+      sellingPrice: item.sellingPrice != null ? String(item.sellingPrice) : "",
       costPrice: ownerCosts.costs?.inventory[item.id] != null ? String(ownerCosts.costs.inventory[item.id]) : "",
     });
     setIsFormOpen(true);
@@ -199,6 +205,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
               <th className="px-3 py-3">Category</th>
               <th className="px-3 py-3">In stock</th>
               <th className="px-3 py-3">Alert at</th>
+              <th className="px-3 py-3">Selling price</th>
               <th className="px-3 py-3">Purchase price</th>
               <th className="px-3 py-3">Expiry</th>
               <th className="px-3 py-3">Status</th>
@@ -219,6 +226,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
                   <td className="px-3 py-3 text-slate-600">{item.category}</td>
                   <td className="px-3 py-3 font-semibold text-slate-900">{item.quantity} <span className="text-xs font-normal text-slate-500">{item.unit}</span></td>
                   <td className="px-3 py-3 text-slate-600">{item.lowStockThreshold}</td>
+                  <td className="px-3 py-3 text-slate-600">{item.sellingPrice != null ? `₹${item.sellingPrice.toLocaleString("en-IN")}` : "—"}</td>
                   <td className="px-3 py-3 text-slate-600">{formatCost(ownerCosts.costs?.inventory[item.id])}</td>
                   <td className="px-3 py-3 text-slate-600">{item.expiryDate ? String(item.expiryDate).slice(0, 10) : "—"}</td>
                   <td className="space-x-1 px-3 py-3">
@@ -243,7 +251,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
               );
             })}
             {visible.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">{isLoading ? "Loading..." : "No inventory items yet"}</td></tr>
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-slate-400">{isLoading ? "Loading..." : "No inventory items yet"}</td></tr>
             )}
           </tbody>
         </table>
@@ -288,6 +296,14 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
             <div className="space-y-1">
               <Label>Expiry date</Label>
               <Input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label>Patient selling price / MRP (₹, inclusive of GST)</Label>
+              <Input type="number" min={0} step="0.01" value={form.sellingPrice} onChange={(e) => setForm({ ...form, sellingPrice: e.target.value })} placeholder="Shown in estimate and invoice" data-testid="input-inv-selling-price" />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label>GST rate (%)</Label>
+              <Input type="number" min={0} max={100} step="0.01" value={form.taxRate} onChange={(e) => setForm({ ...form, taxRate: e.target.value })} data-testid="input-inv-tax-rate" />
             </div>
             <div className="col-span-2 space-y-1">
               <Label>Billing item (deduct stock when billed)</Label>

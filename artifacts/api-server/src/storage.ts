@@ -191,7 +191,7 @@ export interface IStorage {
   updateInventoryItem(id: number, data: Partial<InsertInventoryItem>): Promise<InventoryItem | undefined>;
   deleteInventoryItem(id: number): Promise<boolean>;
   adjustInventoryItem(id: number, change: number, reason?: string): Promise<InventoryItem | undefined>;
-  applyInvoiceStock(items: Array<{ catalogItemId?: number; quantity?: number }>, direction: 1 | -1, reason: string): Promise<void>;
+  applyInvoiceStock(items: Array<{ catalogItemId?: number; inventoryItemId?: number; quantity?: number }>, direction: 1 | -1, reason: string): Promise<void>;
   getInventoryMovements(id: number): Promise<InventoryMovement[]>;
   getReferralPartners(): Promise<ReferralPartner[]>;
   createReferralPartner(data: InsertReferralPartner): Promise<ReferralPartner>;
@@ -735,10 +735,15 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async applyInvoiceStock(items: Array<{ catalogItemId?: number; quantity?: number }>, direction: 1 | -1, reason: string): Promise<void> {
+  async applyInvoiceStock(items: Array<{ catalogItemId?: number; inventoryItemId?: number; quantity?: number }>, direction: 1 | -1, reason: string): Promise<void> {
     for (const line of items) {
-      const catalogItemId = Number(line?.catalogItemId);
+      const inventoryItemId = Number(line?.inventoryItemId);
       const quantity = Number(line?.quantity);
+      if (inventoryItemId > 0 && quantity > 0) {
+        await this.adjustInventoryItem(inventoryItemId, direction * quantity, reason);
+        continue;
+      }
+      const catalogItemId = Number(line?.catalogItemId);
       if (!catalogItemId || !(quantity > 0)) continue;
       const linked = await db.select().from(inventoryItems).where(and(eq(inventoryItems.catalogItemId, catalogItemId), eq(inventoryItems.isActive, true)));
       for (const item of linked) {

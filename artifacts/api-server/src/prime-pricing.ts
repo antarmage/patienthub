@@ -1,7 +1,8 @@
-import type { BillingCatalog, Patient, PrimePricingRules } from "@workspace/db";
+import type { BillingCatalog, InventoryItem, Patient, PrimePricingRules } from "@workspace/db";
 
 export interface RequestedInvoiceItem {
-  catalogItemId: number;
+  catalogItemId?: number;
+  inventoryItemId?: number;
   quantity: number;
 }
 
@@ -36,6 +37,7 @@ export function calculateInvoiceQuote(
   catalog: BillingCatalog[],
   patient: Patient,
   rules: PrimePricingRules,
+  inventory: InventoryItem[] = [],
 ): InvoiceQuote {
   if (!Array.isArray(requestedItems) || requestedItems.length === 0) {
     throw new Error("Add at least one billable service");
@@ -44,11 +46,42 @@ export function calculateInvoiceQuote(
   const eligibleConsultationIds = new Set(rules.consultationItemIds || []);
   const isPrimeMember = patient.isPrimeMember === true;
   const items = requestedItems.map((requested) => {
-    if (!Number.isInteger(requested.catalogItemId) || requested.catalogItemId <= 0) {
+    const hasCatalogId = Number.isInteger(requested.catalogItemId) && Number(requested.catalogItemId) > 0;
+    const hasInventoryId = Number.isInteger(requested.inventoryItemId) && Number(requested.inventoryItemId) > 0;
+    if (hasCatalogId === hasInventoryId) {
       throw new Error("Invalid catalog item");
     }
     if (!Number.isInteger(requested.quantity) || requested.quantity < 1 || requested.quantity > 1000) {
       throw new Error("Item quantity must be between 1 and 1000");
+    }
+
+    if (hasInventoryId) {
+      const product = inventory.find((item) => item.id === requested.inventoryItemId && item.isActive);
+      if (!product || product.sellingPrice == null || !Number.isFinite(Number(product.sellingPrice)) || Number(product.sellingPrice) < 0) {
+        throw new Error("A selected product is unavailable or has no selling price");
+      }
+      if (requested.quantity > product.quantity) {
+        throw new Error(`Only ${product.quantity} ${product.unit} of ${product.name} in stock`);
+      }
+      const price = Number(product.sellingPrice);
+      const taxRate = Math.max(0, Number(product.taxRate) || 0);
+      const total = roundCurrency(price * requested.quantity);
+      const taxableSubtotal = taxRate > 0 ? roundCurrency(total / (1 + taxRate / 100)) : total;
+      const taxAmount = roundCurrency(total - taxableSubtotal);
+      return {
+        inventoryItemId: product.id,
+        name: product.name,
+        category: product.category || "Product",
+        price,
+        quantity: requested.quantity,
+        taxableSubtotal,
+        taxRate,
+        taxAmount,
+        catalogPriceIncludesTax: taxRate > 0,
+        discountAmount: 0,
+        discountLabel: null,
+        lineTotal: total,
+      };
     }
 
     const catalogItem = catalog.find((item) => item.id === requested.catalogItemId && item.isActive !== false);
@@ -100,9 +133,9 @@ export function calculateInvoiceQuote(
   const tax = roundCurrency(items.reduce((sum, item) => sum + item.taxAmount, 0));
   const discountTotal = roundCurrency(items.reduce((sum, item) => sum + item.discountAmount, 0));
   const discountDetails = items
-    .filter((item) => item.discountAmount > 0 && item.discountLabel)
+    .filter((item) => item.catalogItemId && item.discountAmount > 0 && item.discountLabel)
     .map((item) => ({
-      catalogItemId: item.catalogItemId,
+      catalogItemId: item.catalogItemId!,
       name: item.name,
       amount: item.discountAmount,
       label: item.discountLabel as string,

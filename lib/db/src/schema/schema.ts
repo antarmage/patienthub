@@ -491,6 +491,7 @@ export const inventoryItems = pgTable("inventory_items", {
   name: text("name").notNull(),
   category: text("category").notNull().default("Supplement"),
   catalogItemId: integer("catalog_item_id"),
+  taxRate: real("tax_rate").notNull().default(0),
   unit: text("unit").notNull().default("units"),
   quantity: real("quantity").notNull().default(0),
   lowStockThreshold: real("low_stock_threshold").notNull().default(5),
@@ -500,6 +501,7 @@ export const inventoryItems = pgTable("inventory_items", {
   notes: text("notes"),
   isActive: boolean("is_active").notNull().default(true),
   updatedAt: text("updated_at"),
+  sellingPrice: real("selling_price"),
   costPrice: real("cost_price"),
 });
 
