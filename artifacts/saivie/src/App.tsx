@@ -16,6 +16,12 @@ import PatientListByCategory from "@/pages/PatientListByCategory";
 import OwnerPortal from "@/pages/OwnerPortal";
 import PatientOnboarding from "@/pages/PatientOnboarding";
 import Kiosk from "@/pages/Kiosk";
+import { useBrandFavicon } from "@/components/BrandLogo";
+
+function BrandFavicon() {
+  useBrandFavicon();
+  return null;
+}
 
 function Router() {
   return (
@@ -43,6 +49,7 @@ function App() {
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <Toaster />
+          <BrandFavicon />
           <Router />
         </WouterRouter>
       </TooltipProvider>

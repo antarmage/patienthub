@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useBrandLogo } from "@/components/BrandLogo";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -43,6 +44,7 @@ function getStatusInfo(status: string | null) {
 }
 
 export default function Kiosk() {
+  const brandLogo = useBrandLogo();
   const [screen, setScreen] = useState<Screen>("phone");
   const [phone, setPhone] = useState("");
   const [patient, setPatient] = useState<KioskPatient | null>(null);
@@ -264,12 +266,16 @@ export default function Kiosk() {
         background: "rgba(0,0,0,0.3)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: "50%",
-            background: "linear-gradient(135deg, #818cf8, #6366f1)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 20, fontWeight: 700,
-          }}>S</div>
+          {brandLogo ? (
+            <img src={brandLogo} alt="Saivie" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "contain", background: "#fff" }} />
+          ) : (
+            <div style={{
+              width: 40, height: 40, borderRadius: "50%",
+              background: "linear-gradient(135deg, #818cf8, #6366f1)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 20, fontWeight: 700,
+            }}>S</div>
+          )}
           <div>
             <div style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.3px" }}>Saivie</div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>Patient Check-In Kiosk</div>

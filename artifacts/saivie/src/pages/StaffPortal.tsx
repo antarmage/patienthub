@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Users, 
@@ -1967,7 +1968,7 @@ export default function StaffPortal() {
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
             <Card className="max-w-md w-full shadow-lg border-slate-200">
                 <CardHeader className="text-center pb-2">
-                    <div className="mx-auto w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-serif font-bold text-2xl mb-4">H</div>
+                    <div className="mx-auto mb-4 w-fit"><BrandLogo fallback="S" className="w-14 h-14 text-2xl" /></div>
                     <CardTitle className="text-2xl font-serif text-slate-900">Saivie Staff Portal</CardTitle>
                     <p className="text-slate-500 text-sm">Select your role to access the care workspace.</p>
                 </CardHeader>
@@ -2000,11 +2001,11 @@ export default function StaffPortal() {
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           {sidebarOpen ? (
             <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-serif font-bold">H</div>
+                <BrandLogo fallback="S" />
                 <span className="font-serif font-bold text-lg text-slate-800">Saivie</span>
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-serif font-bold mx-auto">H</div>
+            <BrandLogo fallback="S" className="w-8 h-8 mx-auto" />
           )}
           <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={() => setSidebarOpen(!sidebarOpen)}>
              <Menu className="w-4 h-4" />

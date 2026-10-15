@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
@@ -359,11 +360,11 @@ export default function OwnerPortal() {
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           {sidebarOpen ? (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-serif font-bold">S</div>
+              <BrandLogo fallback="S" />
               <span className="font-serif font-bold text-lg text-slate-800">Saivie</span>
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-serif font-bold mx-auto">S</div>
+            <BrandLogo fallback="S" className="w-8 h-8 mx-auto" />
           )}
           <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={() => setSidebarOpen(!sidebarOpen)} data-testid="btn-toggle-sidebar">
             <Menu className="w-4 h-4" />
