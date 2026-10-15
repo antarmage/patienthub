@@ -517,6 +517,35 @@ export const inventoryMovements = pgTable("inventory_movements", {
 
 export type InventoryMovement = typeof inventoryMovements.$inferSelect;
 
+export const referralPartners = pgTable("referral_partners", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  commissionPercent: real("commission_percent").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export type ReferralPartner = typeof referralPartners.$inferSelect;
+export type InsertReferralPartner = typeof referralPartners.$inferInsert;
+
+export const diagnosticReferrals = pgTable("diagnostic_referrals", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull(),
+  appointmentId: integer("appointment_id"),
+  partnerId: integer("partner_id").notNull(),
+  serviceName: text("service_name").notNull(),
+  catalogItemId: integer("catalog_item_id"),
+  basePrice: real("base_price").notNull().default(0),
+  status: text("status").notNull().default("referred"),
+  referredAt: text("referred_at").notNull(),
+  reportReceivedAt: text("report_received_at"),
+  commissionPercent: real("commission_percent"),
+  commissionAmount: real("commission_amount"),
+  notes: text("notes"),
+});
+
+export type DiagnosticReferral = typeof diagnosticReferrals.$inferSelect;
+export type InsertDiagnosticReferral = typeof diagnosticReferrals.$inferInsert;
+
 export const attendance = pgTable("attendance", {
   id: serial("id").primaryKey(),
   employeeName: text("employee_name").notNull(),

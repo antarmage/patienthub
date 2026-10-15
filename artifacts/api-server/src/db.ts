@@ -86,6 +86,29 @@ export async function ensureSchema(): Promise<void> {
         updated_at text
       );
 
+      CREATE TABLE IF NOT EXISTS referral_partners (
+        id serial PRIMARY KEY,
+        name text NOT NULL,
+        commission_percent real NOT NULL DEFAULT 0,
+        is_active boolean NOT NULL DEFAULT true
+      );
+
+      CREATE TABLE IF NOT EXISTS diagnostic_referrals (
+        id serial PRIMARY KEY,
+        patient_id integer NOT NULL,
+        appointment_id integer,
+        partner_id integer NOT NULL,
+        service_name text NOT NULL,
+        catalog_item_id integer,
+        base_price real NOT NULL DEFAULT 0,
+        status text NOT NULL DEFAULT 'referred',
+        referred_at text NOT NULL,
+        report_received_at text,
+        commission_percent real,
+        commission_amount real,
+        notes text
+      );
+
       ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS catalog_item_id integer;
       ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS cost_price real;
       ALTER TABLE billing_catalog ADD COLUMN IF NOT EXISTS cost_price real;

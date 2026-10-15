@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { OwnerAuthGate } from "@/components/OwnerAuthGate";
+import { ReferralsManager } from "@/components/ReferralsManager";
 import { InventoryManager, getInventoryAlerts, useInventory } from "@/components/InventoryManager";
 import { UnlockCostsButton, formatCost, useOwnerCosts } from "@/components/OwnerCosts";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -349,6 +350,7 @@ export default function OwnerPortal() {
     { id: "catalog", label: "Service Catalog", icon: Package },
     { id: "packages", label: "Packages", icon: Layers },
     { id: "inventory", label: "Inventory", icon: Package },
+    { id: "referrals", label: "Referral Commission", icon: IndianRupee },
     { id: "invoice-template", label: "Invoice Template", icon: Receipt },
     { id: "prime-pricing", label: "Prime Pricing", icon: IndianRupee },
     { id: "staff-accounts", label: "Staff Accounts", icon: Users },
@@ -470,7 +472,7 @@ export default function OwnerPortal() {
                   {[
                     { title: "Total Patients", value: dashboard.totalPatients || patients.length || 0, icon: Users, color: "from-blue-500 to-indigo-600", bg: "bg-blue-50", textColor: "text-blue-600" },
                     { title: "Staff Present Today", value: dashboard.presentToday ?? presentCount, icon: UserCheck, color: "from-emerald-500 to-green-600", bg: "bg-emerald-50", textColor: "text-emerald-600", subtitle: `${dashboard.absentToday ?? absentCount} absent` },
-                    { title: "Monthly Revenue", value: formatINR(dashboard.monthlyRevenue || 0), icon: TrendingUp, color: "from-violet-500 to-purple-600", bg: "bg-violet-50", textColor: "text-violet-600", isString: true },
+                    { title: "Monthly Revenue", value: formatINR(dashboard.monthlyRevenue || 0), icon: TrendingUp, color: "from-violet-500 to-purple-600", bg: "bg-violet-50", textColor: "text-violet-600", isString: true, subtitle: dashboard.monthlyReferralCommission ? `incl. ${formatINR(dashboard.monthlyReferralCommission)} referral commission` : undefined },
                     { title: "Monthly Expenses", value: formatINR(dashboard.monthlyExpenses || totalExpenseAmount), icon: TrendingDown, color: "from-rose-500 to-pink-600", bg: "bg-rose-50", textColor: "text-rose-600", isString: true },
                     { title: "Net Profit", value: formatINR(dashboard.netProfit || (dashboard.monthlyRevenue || 0) - (dashboard.monthlyExpenses || totalExpenseAmount)), icon: IndianRupee, color: "from-amber-500 to-orange-600", bg: "bg-amber-50", textColor: "text-amber-600", isString: true },
                     { title: "Today's Appointments", value: dashboard.todayAppointments || 0, icon: CalendarCheck, color: "from-cyan-500 to-teal-600", bg: "bg-cyan-50", textColor: "text-cyan-600" },
@@ -1140,6 +1142,9 @@ export default function OwnerPortal() {
 
             {activeView === "inventory" && (
               <OwnerAuthGate>{({ token, signOut }) => <InventoryManager token={token} onSignOut={signOut} />}</OwnerAuthGate>
+            )}
+            {activeView === "referrals" && (
+              <OwnerAuthGate>{({ token, signOut }) => <ReferralsManager token={token} onSignOut={signOut} />}</OwnerAuthGate>
             )}
             {activeView === "invoice-template" && <InvoiceTemplateEditor />}
             {activeView === "prime-pricing" && <PrimePricingRulesEditor />}

@@ -36,6 +36,8 @@ import {
   billingCatalog,
   type BillingCatalog, type InsertBillingCatalog,
   inventoryItems, inventoryMovements,
+  referralPartners, diagnosticReferrals,
+  type ReferralPartner, type InsertReferralPartner, type DiagnosticReferral, type InsertDiagnosticReferral,
   type InventoryItem, type InsertInventoryItem, type InventoryMovement,
   scheduleOptimisations,
   type ScheduleOptimisation, type InsertScheduleOptimisation,
@@ -191,6 +193,14 @@ export interface IStorage {
   adjustInventoryItem(id: number, change: number, reason?: string): Promise<InventoryItem | undefined>;
   applyInvoiceStock(items: Array<{ catalogItemId?: number; quantity?: number }>, direction: 1 | -1, reason: string): Promise<void>;
   getInventoryMovements(id: number): Promise<InventoryMovement[]>;
+  getReferralPartners(): Promise<ReferralPartner[]>;
+  createReferralPartner(data: InsertReferralPartner): Promise<ReferralPartner>;
+  updateReferralPartner(id: number, data: Partial<InsertReferralPartner>): Promise<ReferralPartner | undefined>;
+  deleteReferralPartner(id: number): Promise<boolean>;
+  getDiagnosticReferrals(): Promise<DiagnosticReferral[]>;
+  getDiagnosticReferral(id: number): Promise<DiagnosticReferral | undefined>;
+  createDiagnosticReferral(data: InsertDiagnosticReferral): Promise<DiagnosticReferral>;
+  updateDiagnosticReferral(id: number, data: Partial<InsertDiagnosticReferral>): Promise<DiagnosticReferral | undefined>;
   createBillingCatalogItem(item: InsertBillingCatalog): Promise<BillingCatalog>;
   updateBillingCatalogItem(id: number, data: Partial<InsertBillingCatalog>): Promise<BillingCatalog | undefined>;
   deleteBillingCatalogItem(id: number): Promise<boolean>;
@@ -739,6 +749,49 @@ export class DatabaseStorage implements IStorage {
 
   async getInventoryMovements(id: number): Promise<InventoryMovement[]> {
     return db.select().from(inventoryMovements).where(eq(inventoryMovements.itemId, id)).orderBy(desc(inventoryMovements.id)).limit(30);
+  }
+
+  async getReferralPartners(): Promise<ReferralPartner[]> {
+    return db.select().from(referralPartners).orderBy(referralPartners.name);
+  }
+
+  async createReferralPartner(data: InsertReferralPartner): Promise<ReferralPartner> {
+    const [created] = await db.insert(referralPartners).values(data).returning();
+    return created;
+  }
+
+  async updateReferralPartner(id: number, data: Partial<InsertReferralPartner>): Promise<ReferralPartner | undefined> {
+    const [updated] = await db.update(referralPartners).set(data).where(eq(referralPartners.id, id)).returning();
+    return updated;
+  }
+
+  async deleteReferralPartner(id: number): Promise<boolean> {
+    const used = await db.select({ id: diagnosticReferrals.id }).from(diagnosticReferrals).where(eq(diagnosticReferrals.partnerId, id)).limit(1);
+    if (used.length) {
+      await db.update(referralPartners).set({ isActive: false }).where(eq(referralPartners.id, id));
+      return true;
+    }
+    const result = await db.delete(referralPartners).where(eq(referralPartners.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getDiagnosticReferrals(): Promise<DiagnosticReferral[]> {
+    return db.select().from(diagnosticReferrals).orderBy(desc(diagnosticReferrals.id));
+  }
+
+  async getDiagnosticReferral(id: number): Promise<DiagnosticReferral | undefined> {
+    const [row] = await db.select().from(diagnosticReferrals).where(eq(diagnosticReferrals.id, id));
+    return row;
+  }
+
+  async createDiagnosticReferral(data: InsertDiagnosticReferral): Promise<DiagnosticReferral> {
+    const [created] = await db.insert(diagnosticReferrals).values(data).returning();
+    return created;
+  }
+
+  async updateDiagnosticReferral(id: number, data: Partial<InsertDiagnosticReferral>): Promise<DiagnosticReferral | undefined> {
+    const [updated] = await db.update(diagnosticReferrals).set(data).where(eq(diagnosticReferrals.id, id)).returning();
+    return updated;
   }
 
   async getBillingCatalog(): Promise<BillingCatalog[]> {

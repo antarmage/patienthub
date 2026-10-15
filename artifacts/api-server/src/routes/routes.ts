@@ -3121,6 +3121,133 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.status(204).send();
   });
 
+  // ── Diagnostic referrals (scans sent to partner centres, commission earned) ──
+
+  const todayLocal = () => new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+  const publicReferral = (r: any, partnerNames: Map<number, string>, patientNames: Map<number, string>) => {
+    const { commissionPercent: _p, commissionAmount: _a, ...rest } = r;
+    return { ...rest, partnerName: partnerNames.get(r.partnerId) || "Unknown", patientName: patientNames.get(r.patientId) || "Unknown" };
+  };
+
+  app.get("/api/referral-partners", async (_req, res) => {
+    const partners = await storage.getReferralPartners();
+    res.json(partners.filter((p) => p.isActive).map(({ id, name }) => ({ id, name })));
+  });
+
+  app.get("/api/owner/referral-partners", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    res.json(await storage.getReferralPartners());
+  });
+
+  app.post("/api/owner/referral-partners", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    const name = String(req.body?.name || "").trim();
+    const pct = Number(req.body?.commissionPercent);
+    if (!name) return res.status(400).json({ error: "Name is required" });
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) return res.status(400).json({ error: "Commission must be between 0 and 100" });
+    res.status(201).json(await storage.createReferralPartner({ name, commissionPercent: pct, isActive: true }));
+  });
+
+  app.patch("/api/owner/referral-partners/:id", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const data: Record<string, unknown> = {};
+    if (req.body?.name !== undefined) data.name = String(req.body.name).trim();
+    if (req.body?.isActive !== undefined) data.isActive = !!req.body.isActive;
+    if (req.body?.commissionPercent !== undefined) {
+      const pct = Number(req.body.commissionPercent);
+      if (!Number.isFinite(pct) || pct < 0 || pct > 100) return res.status(400).json({ error: "Commission must be between 0 and 100" });
+      data.commissionPercent = pct;
+    }
+    const updated = await storage.updateReferralPartner(id, data);
+    if (!updated) return res.status(404).json({ error: "Partner not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/owner/referral-partners/:id", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    await storage.deleteReferralPartner(id);
+    res.status(204).send();
+  });
+
+  // Staff view: no commission figures
+  app.get("/api/diagnostic-referrals", async (_req, res) => {
+    const [rows, partners, patients] = await Promise.all([storage.getDiagnosticReferrals(), storage.getReferralPartners(), storage.getPatients()]);
+    const partnerNames = new Map(partners.map((p) => [p.id, p.name]));
+    const patientNames = new Map(patients.map((p: any) => [p.id, p.name]));
+    res.json(rows.map((r) => publicReferral(r, partnerNames, patientNames)));
+  });
+
+  app.post("/api/patients/:id/diagnostic-referrals", async (req, res) => {
+    const patientId = parseId(req.params.id);
+    if (!patientId) return res.status(400).json({ error: "Invalid ID" });
+    const partnerId = Number(req.body?.partnerId);
+    const serviceName = String(req.body?.serviceName || "").trim();
+    if (!partnerId || !serviceName) return res.status(400).json({ error: "Partner and scan name are required" });
+    const partner = (await storage.getReferralPartners()).find((p) => p.id === partnerId && p.isActive);
+    if (!partner) return res.status(400).json({ error: "Unknown referral partner" });
+    const created = await storage.createDiagnosticReferral({
+      patientId,
+      appointmentId: req.body?.appointmentId ? Number(req.body.appointmentId) : null,
+      partnerId,
+      serviceName,
+      catalogItemId: req.body?.catalogItemId ? Number(req.body.catalogItemId) : null,
+      basePrice: Math.max(0, Number(req.body?.basePrice) || 0),
+      status: "referred",
+      referredAt: req.body?.date || todayLocal(),
+      notes: req.body?.notes || null,
+    });
+    res.status(201).json(publicReferral(created, new Map([[partner.id, partner.name]]), new Map()));
+  });
+
+  // Commission is locked in (percentage snapshot) when the report is received.
+  app.patch("/api/diagnostic-referrals/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const status = req.body?.status;
+    if (!["referred", "report_received", "cancelled"].includes(status)) return res.status(400).json({ error: "Invalid status" });
+    const existing = await storage.getDiagnosticReferral(id);
+    if (!existing) return res.status(404).json({ error: "Referral not found" });
+    const data: Record<string, unknown> = { status };
+    if (status === "report_received") {
+      const partner = (await storage.getReferralPartners()).find((p) => p.id === existing.partnerId);
+      const pct = partner?.commissionPercent ?? 0;
+      data.reportReceivedAt = req.body?.receivedDate || todayLocal();
+      data.commissionPercent = pct;
+      data.commissionAmount = Math.round(existing.basePrice * pct) / 100;
+    } else {
+      data.reportReceivedAt = null;
+      data.commissionPercent = null;
+      data.commissionAmount = null;
+    }
+    const updated = await storage.updateDiagnosticReferral(id, data);
+    const { commissionPercent: _p, commissionAmount: _a, ...rest } = updated!;
+    res.json(rest);
+  });
+
+  app.get("/api/owner/referral-summary", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    const [rows, partners, patients] = await Promise.all([storage.getDiagnosticReferrals(), storage.getReferralPartners(), storage.getPatients()]);
+    const partnerNames = new Map(partners.map((p) => [p.id, p.name]));
+    const patientNames = new Map(patients.map((p: any) => [p.id, p.name]));
+    const earned = rows.filter((r) => r.status === "report_received");
+    const byMonth: Record<string, { month: string; count: number; billed: number; commission: number }> = {};
+    for (const r of earned) {
+      const month = (r.reportReceivedAt || r.referredAt).slice(0, 7);
+      byMonth[month] ??= { month, count: 0, billed: 0, commission: 0 };
+      byMonth[month].count += 1;
+      byMonth[month].billed += r.basePrice;
+      byMonth[month].commission += r.commissionAmount || 0;
+    }
+    res.json({
+      months: Object.values(byMonth).sort((a, b) => b.month.localeCompare(a.month)),
+      referrals: rows.map((r) => ({ ...r, partnerName: partnerNames.get(r.partnerId) || "Unknown", patientName: patientNames.get(r.patientId) || "Unknown" })),
+    });
+  });
+
   // ── Billing Catalog ───────────────────────────────────────────────────────
 
   app.get("/api/billing-catalog", async (_req, res) => {
@@ -4097,12 +4224,17 @@ Only include what is actually written. Do not invent anything.${catalogHint}`,
       const totalExpensesAmt = allExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
       const thisMonth = new Date().toISOString().slice(0, 7);
-      const monthlyRevenue = allInvoices.filter(inv => inv.date?.startsWith(thisMonth)).reduce((sum, inv) => sum + (inv.total || 0), 0);
+      const monthlyInvoiceRevenue = allInvoices.filter(inv => inv.date?.startsWith(thisMonth)).reduce((sum, inv) => sum + (inv.total || 0), 0);
+      const monthlyReferralCommission = (await storage.getDiagnosticReferrals())
+        .filter(r => r.status === "report_received" && (r.reportReceivedAt || "").startsWith(thisMonth))
+        .reduce((sum, r) => sum + (r.commissionAmount || 0), 0);
+      const monthlyRevenue = monthlyInvoiceRevenue + monthlyReferralCommission;
       const monthlyExpenses = allExpenses.filter(exp => exp.date?.startsWith(thisMonth)).reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
       const todayAppointments = allAppointments.filter(a => a.date === today);
 
       res.json({
+        monthlyReferralCommission,
         totalPatients: allPatients.length,
         totalStaff,
         presentToday,

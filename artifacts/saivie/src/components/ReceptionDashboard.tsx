@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   AlertCircle,
@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getPregnancyReminders } from "@/lib/pregnancyMilestones";
 import { getInventoryAlerts, getStockStatus, getExpiryStatus, useInventory } from "@/components/InventoryManager";
+import { ReferralsCard, type ReferralRequest } from "@/components/ReferralsCard";
 
 export type ArrivalState = "upcoming" | "late" | "waiting" | "in-consultation" | "completed" | "cancelled" | "no-show";
 type FlowFilter = "all" | "upcoming" | "arrived" | "waiting" | "completed" | "closed";
@@ -143,7 +144,8 @@ export function ReceptionDashboard({
 }: ReceptionDashboardProps) {
   const [filter, setFilter] = useState<FlowFilter>("all");
   const [now, setNow] = useState(() => Date.now());
-
+  const [referRequest, setReferRequest] = useState<ReferralRequest | null>(null);
+  const clearReferRequest = useCallback(() => setReferRequest(null), []);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30000);
     return () => window.clearInterval(timer);
@@ -267,6 +269,9 @@ export function ReceptionDashboard({
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onRecordPrescription(apt)} data-testid={`menu-manual-rx-${apt.id}`}>
               {prescribedAppointmentIds.has(apt.id) ? "Edit data manually ✓" : "Add data manually"}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setReferRequest({ patientId: apt.patientId, appointmentId: apt.id })} data-testid={`menu-refer-scan-${apt.id}`}>
+              Refer for scan
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => { const patient = findPatient(apt); if (patient) onOpenPatient(patient); }}>
               Open patient record
@@ -479,6 +484,8 @@ export function ReceptionDashboard({
             {tasks.length === 0 && <p className="px-5 py-6 text-center text-sm text-slate-400">No pending tasks</p>}
           </CardContent>
         </Card>
+
+        <ReferralsCard patients={patients} request={referRequest} onRequestHandled={clearReferRequest} />
 
         <Card className="border-slate-200 shadow-sm" data-testid="card-inventory-alerts">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
