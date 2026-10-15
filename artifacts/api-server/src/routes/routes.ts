@@ -3248,6 +3248,61 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     });
   });
 
+  // ── Bulk catalog import (MRP + B2B price from a lab's rate card) ──────────
+
+  const normalizeName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+  app.post("/api/owner/catalog-import", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    const input = Array.isArray(req.body?.rows) ? req.body.rows : [];
+    if (!input.length || input.length > 1000) return res.status(400).json({ error: "Provide between 1 and 1000 rows" });
+    const apply = req.body?.apply === true;
+    const updateMrp = req.body?.updateMrp === true;
+    const category = String(req.body?.category || "Lab Test").trim() || "Lab Test";
+
+    const catalog = await storage.getBillingCatalog();
+    const byName = new Map(catalog.map((c) => [normalizeName(c.name), c]));
+    const results: any[] = [];
+    const seen = new Set<string>();
+
+    for (const raw of input) {
+      const name = String(raw?.name || "").trim();
+      const mrp = Number(raw?.mrp);
+      const b2b = Number(raw?.b2b);
+      const key = normalizeName(name);
+      if (!name || !Number.isFinite(mrp) || mrp < 0 || !Number.isFinite(b2b) || b2b < 0) {
+        results.push({ name: name || "(blank)", action: "skip", reason: "Invalid name or price" });
+        continue;
+      }
+      if (seen.has(key)) {
+        results.push({ name, action: "skip", reason: "Duplicate in pasted data" });
+        continue;
+      }
+      seen.add(key);
+      const existing = byName.get(key);
+      if (existing) {
+        results.push({ name, action: "update", id: existing.id, oldMrp: existing.price, mrp, b2b });
+        if (apply) {
+          await storage.updateBillingCatalogItem(existing.id, { costPrice: b2b, ...(updateMrp ? { price: mrp } : {}) });
+        }
+      } else {
+        results.push({ name, action: "create", mrp, b2b });
+        if (apply) {
+          await storage.createBillingCatalogItem({
+            name,
+            category,
+            price: mrp,
+            costPrice: b2b,
+            taxRate: 0,
+            description: raw?.code ? `Lab code ${String(raw.code).trim()}` : null,
+            isActive: true,
+          });
+        }
+      }
+    }
+    res.json({ applied: apply, results });
+  });
+
   // ── Billing Catalog ───────────────────────────────────────────────────────
 
   app.get("/api/billing-catalog", async (_req, res) => {

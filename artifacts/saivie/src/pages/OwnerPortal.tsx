@@ -3,6 +3,7 @@ import { OwnerAuthGate } from "@/components/OwnerAuthGate";
 import { ReferralsManager } from "@/components/ReferralsManager";
 import { InventoryManager, getInventoryAlerts, useInventory } from "@/components/InventoryManager";
 import { UnlockCostsButton, formatCost, useOwnerCosts } from "@/components/OwnerCosts";
+import { CatalogImportButton } from "@/components/CatalogImport";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
@@ -166,11 +167,21 @@ export default function OwnerPortal() {
 
   const queryClient = useQueryClient();
 
+  const ownerCosts = useOwnerCosts();
+
   const createCatalogItem = useMutation({
-    mutationFn: async (item: any) => {
+    mutationFn: async ({ _b2b, ...item }: any) => {
       const res = await fetch("/api/billing-catalog", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(item) });
       if (!res.ok) throw new Error("Failed to create");
-      return res.json();
+      const created = await res.json();
+      if (_b2b != null && ownerCosts.unlocked) {
+        try {
+          await ownerCosts.saveCost("catalog", created.id, _b2b);
+        } catch (err) {
+          alert(`Item added, but the B2B price was not saved: ${(err as Error).message}`);
+        }
+      }
+      return created;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/billing-catalog"] }); setShowAddForm(false); },
   });
@@ -184,7 +195,6 @@ export default function OwnerPortal() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/billing-catalog"] }); setEditingItem(null); },
   });
 
-  const ownerCosts = useOwnerCosts();
   const saveEditedCatalogItem = async () => {
     const { _cost, ...data } = editingItem;
     updateCatalogItem.mutate(data);
@@ -1157,6 +1167,7 @@ export default function OwnerPortal() {
                     <p className="text-sm text-slate-500 mt-1">{catalogItems.length} total items in catalog</p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <CatalogImportButton />
                     {!ownerCosts.unlocked && <UnlockCostsButton onUnlocked={ownerCosts.unlock} />}
                     <Button onClick={() => { setShowAddForm(true); }} className="bg-indigo-600 hover:bg-indigo-700" data-testid="btn-add-catalog-item">
                       <Plus className="w-4 h-4 mr-2" /> Add Item
@@ -1223,7 +1234,9 @@ export default function OwnerPortal() {
                             e.preventDefault();
                             const form = e.target as HTMLFormElement;
                             const formData = new FormData(form);
+                            const b2b = String(formData.get("b2bPrice") ?? "");
                             createCatalogItem.mutate({
+                              _b2b: b2b === "" ? null : Number(b2b),
                               name: formData.get("name") as string,
                               category: formData.get("category") as string,
                               price: parseFloat(formData.get("price") as string) || 0,
@@ -1254,6 +1267,16 @@ export default function OwnerPortal() {
                               <label className="text-xs font-medium text-slate-500 mb-1 block">MRP (₹) *</label>
                               <Input name="price" type="number" step="0.01" required placeholder="0.00" data-testid="input-catalog-price" />
                             </div>
+                            {ownerCosts.unlocked ? (
+                              <div>
+                                <label className="text-xs font-medium text-slate-500 mb-1 block">B2B price (₹, owner only)</label>
+                                <Input name="b2bPrice" type="number" step="0.01" min={0} placeholder="Our cost" data-testid="input-catalog-b2b" />
+                              </div>
+                            ) : (
+                              <div className="flex items-end">
+                                <UnlockCostsButton onUnlocked={ownerCosts.unlock} />
+                              </div>
+                            )}
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
