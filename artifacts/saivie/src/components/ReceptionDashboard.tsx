@@ -12,6 +12,7 @@ import {
   FileText,
   Hourglass,
   Loader2,
+  MoreVertical,
   Phone,
   RefreshCw,
   UserCheck,
@@ -25,8 +26,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getPregnancyReminders } from "@/lib/pregnancyMilestones";
 
-export type ArrivalState = "upcoming" | "late" | "waiting" | "in-consultation" | "completed";
-type FlowFilter = "all" | "upcoming" | "arrived" | "waiting" | "completed";
+export type ArrivalState = "upcoming" | "late" | "waiting" | "in-consultation" | "completed" | "cancelled" | "no-show";
+type FlowFilter = "all" | "upcoming" | "arrived" | "waiting" | "completed" | "closed";
 
 export interface ReceptionFollowUp {
   id: number;
@@ -65,6 +66,9 @@ interface ReceptionDashboardProps {
 }
 
 export function getArrivalState(apt: any): ArrivalState {
+  const status = String(apt.status || "").toLowerCase();
+  if (status.includes("cancel")) return "cancelled";
+  if (status.replace(/[\s_]/g, "-") === "no-show") return "no-show";
   if (apt.completedAt || String(apt.status || "").toLowerCase() === "completed") return "completed";
   if (apt.seenAt) return "in-consultation";
   if (apt.checkedInAt || String(apt.status || "").toLowerCase() === "checked-in") return "waiting";
@@ -106,6 +110,8 @@ const ARRIVAL_BADGE: Record<ArrivalState, { label: string; className: string }> 
   waiting: { label: "Waiting", className: "bg-amber-50 text-amber-700 border-amber-200" },
   "in-consultation": { label: "In consultation", className: "bg-sky-50 text-sky-700 border-sky-200" },
   completed: { label: "Completed", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  cancelled: { label: "Cancelled", className: "bg-slate-100 text-slate-600 border-slate-200" },
+  "no-show": { label: "No-show", className: "bg-orange-50 text-orange-700 border-orange-200" },
 };
 
 export function ReceptionDashboard({
@@ -145,14 +151,15 @@ export function ReceptionDashboard({
   const rows = useMemo(
     () =>
       appointments
-        .filter((apt) => !String(apt.status || "").toLowerCase().includes("cancel"))
         .map((apt) => ({ apt, state: getArrivalState(apt) }))
         .sort((a, b) => timeToMinutes(a.apt.time) - timeToMinutes(b.apt.time)),
     [appointments],
   );
 
+  const isClosed = (state: ArrivalState) => state === "cancelled" || state === "no-show";
   const counts = {
-    all: rows.length,
+    all: rows.filter((r) => !isClosed(r.state)).length,
+    closed: rows.filter((r) => isClosed(r.state)).length,
     upcoming: rows.filter((r) => r.state === "upcoming" || r.state === "late").length,
     arrived: rows.filter((r) => r.state === "waiting" || r.state === "in-consultation").length,
     waiting: rows.filter((r) => r.state === "waiting").length,
@@ -165,7 +172,8 @@ export function ReceptionDashboard({
     if (filter === "arrived") return r.state === "waiting" || r.state === "in-consultation";
     if (filter === "waiting") return r.state === "waiting";
     if (filter === "completed") return r.state === "completed";
-    return true;
+    if (filter === "closed") return isClosed(r.state);
+    return !isClosed(r.state);
   });
 
   const waitingRows = rows
@@ -181,20 +189,53 @@ export function ReceptionDashboard({
   const renderAction = (apt: any, state: ArrivalState) => {
     const base = "h-8 min-w-[88px] text-xs border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100";
     const busy = isPending(apt.id);
+    const closeMenu = (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-500" aria-label="More actions" data-testid={`btn-more-${apt.id}`}>
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem data-testid={`menu-no-show-${apt.id}`}
+            onClick={() => { if (window.confirm(`Mark ${apt.patient} as no-show?`)) onUpdateAppointment(apt.id, { status: "no-show" }); }}>
+            Mark as no-show
+          </DropdownMenuItem>
+          <DropdownMenuItem className="text-rose-600" data-testid={`menu-cancel-${apt.id}`}
+            onClick={() => { if (window.confirm(`Cancel ${apt.patient}'s appointment?`)) onUpdateAppointment(apt.id, { status: "cancelled" }); }}>
+            Cancel appointment
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+    if (state === "cancelled" || state === "no-show") {
+      return (
+        <Button size="sm" variant="outline" className={base} disabled={busy} data-testid={`btn-reinstate-${apt.id}`}
+          onClick={() => onUpdateAppointment(apt.id, { status: "scheduled" })}>
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Reinstate"}
+        </Button>
+      );
+    }
     if (state === "upcoming" || state === "late") {
       return (
-        <Button size="sm" variant="outline" className={base} disabled={busy} data-testid={`btn-checkin-${apt.id}`}
-          onClick={() => onCheckIn(apt)}>
-          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Check in"}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="outline" className={base} disabled={busy} data-testid={`btn-checkin-${apt.id}`}
+            onClick={() => onCheckIn(apt)}>
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Check in"}
+          </Button>
+          {closeMenu}
+        </div>
       );
     }
     if (state === "waiting") {
       return (
-        <Button size="sm" variant="outline" className={base} disabled={busy} data-testid={`btn-start-visit-${apt.id}`}
-          onClick={() => onUpdateAppointment(apt.id, { status: "in-consultation", seenAt: stamp() })}>
-          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Start visit"}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="outline" className={base} disabled={busy} data-testid={`btn-start-visit-${apt.id}`}
+            onClick={() => onUpdateAppointment(apt.id, { status: "in-consultation", seenAt: stamp() })}>
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Start visit"}
+          </Button>
+          {closeMenu}
+        </div>
       );
     }
     if (state === "in-consultation") {
@@ -251,6 +292,7 @@ export function ReceptionDashboard({
     { id: "arrived", label: "Arrived" },
     { id: "waiting", label: "Waiting" },
     { id: "completed", label: "Completed" },
+    { id: "closed", label: "Cancelled / No-show" },
   ];
 
   return (
