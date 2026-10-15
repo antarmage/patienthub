@@ -2175,7 +2175,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       ${t.taxRegistration ? `<p style="margin:2px 0;color:#555">Tax reg: ${esc(t.taxRegistration)}</p>` : ""}
       <hr style="border:none;border-top:1px solid #ddd;margin:14px 0"/>
       <p>Dear ${esc(patient.name)},</p>
-      <p>Thank you for visiting us. Here is your invoice <strong>#${inv.id}</strong> dated ${esc(inv.date)}.</p>
+      <p>Thank you for visiting us. Here is your invoice <strong>SAI-${inv.id}</strong> dated ${esc(inv.date)}.</p>
       <table style="width:100%;border-collapse:collapse;font-size:14px">
         <thead><tr style="background:#f5f5f5"><th style="padding:6px 8px;text-align:left">Item</th><th style="padding:6px 8px">Qty</th><th style="padding:6px 8px;text-align:right">Amount</th></tr></thead>
         <tbody>${rows}</tbody>
@@ -2191,14 +2191,14 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       ${t.footerText ? `<p style="color:#777;font-size:12px;margin-top:18px">${esc(t.footerText)}</p>` : ""}
     </div>`;
     const text = [
-      `${clinic} - Invoice #${inv.id} (${inv.date})`,
+      `${clinic} - Invoice SAI-${inv.id} (${inv.date})`,
       ...items.map((l) => `${l.name} x${l.quantity}: ${money(l.lineTotal)}`),
       `Total: ${money(inv.total)}`,
       `Payment: ${inv.paymentMethod || "-"} (${inv.paymentStatus || "paid"})`,
     ].join("\n");
 
     try {
-      await sendEmail({ to: email, subject: `Your invoice #${inv.id} from ${clinic}`, text, html, ...(t.clinicEmail ? { replyTo: t.clinicEmail } : {}) });
+      await sendEmail({ to: email, subject: `Your invoice SAI-${inv.id} from ${clinic}`, text, html, ...(t.clinicEmail ? { replyTo: t.clinicEmail } : {}) });
     } catch (err) {
       console.error("Invoice email failed", id, err);
       return res.status(502).json({ error: "Could not send the email. Please check the address and try again." });

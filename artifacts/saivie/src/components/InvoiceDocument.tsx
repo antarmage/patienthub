@@ -57,6 +57,10 @@ function formatAmount(amount: number, showPaise = true): string {
   return `₹${formatted}`;
 }
 
+export function formatInvoiceNumber(id: number | string): string {
+  return `SAI-${id}`;
+}
+
 function formatInvoiceDate(value: string): string {
   const [year, month, day] = value.split("-");
   return year && month && day ? `${day}/${month}/${year}` : value;
@@ -160,7 +164,7 @@ function InvoiceArticle({
 
         <section className="mt-4 grid grid-cols-4 border border-slate-400">
           {[
-            { label: "Invoice number", value: invoiceId ? `${invoiceId}` : "Pending" },
+            { label: "Invoice number", value: invoiceId ? formatInvoiceNumber(invoiceId) : "Pending" },
             { label: "Date", value: formatInvoiceDate(date) },
             { label: "Status", value: invoiceStatus },
             { label: "Invoice total", value: formatAmount(total) },

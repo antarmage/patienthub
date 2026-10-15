@@ -82,7 +82,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { InvoiceDocument, type InvoiceDocumentItem, type InvoiceTemplateData } from "@/components/InvoiceDocument";
+import { formatInvoiceNumber, InvoiceDocument, type InvoiceDocumentItem, type InvoiceTemplateData } from "@/components/InvoiceDocument";
 import { ReceptionDashboard, getArrivalState, type ReceptionFollowUp } from "@/components/ReceptionDashboard";
 import { useToast } from "@/hooks/use-toast";
 import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialogs";
@@ -4039,7 +4039,7 @@ export default function StaffPortal() {
                                 .map((inv: any) => (
                                   <div key={inv.id} className="py-2.5 flex items-center justify-between gap-3" data-testid={`invoice-history-row-${inv.id}`}>
                                     <div className="min-w-0">
-                                      <p className="text-sm font-bold text-slate-900">Invoice #{inv.id} · ₹{Math.round(inv.total || 0).toLocaleString('en-IN')}</p>
+                                      <p className="text-sm font-bold text-slate-900">Invoice {formatInvoiceNumber(inv.id)} · ₹{Math.round(inv.total || 0).toLocaleString('en-IN')}</p>
                                       <p className="text-xs text-slate-500 mt-0.5">
                                         {inv.date} · {(inv.items || []).length} item{(inv.items || []).length === 1 ? "" : "s"} · <span className="capitalize">{inv.paymentMethod || "cash"}</span>
                                       </p>
@@ -4092,7 +4092,7 @@ export default function StaffPortal() {
                       </CardHeader>
                       <CardContent>
                         {(() => {
-                          const q = invoiceSearch.trim().toLowerCase().replace(/^#/, "");
+                          const q = invoiceSearch.trim().toLowerCase().replace(/^#/, "").replace(/^sai-/, "");
                           const rows = (allInvoicesQuery.data || [])
                             .map((inv: any) => ({ inv, patient: patients.find((p: any) => p.id === inv.patientId) }))
                             .filter(({ inv, patient }) => !q || (patient?.name || "").toLowerCase().includes(q) || String(inv.id) === q)
@@ -4106,7 +4106,7 @@ export default function StaffPortal() {
                                   <div className="min-w-0">
                                     <p className="text-sm font-bold text-slate-900 truncate">{patient?.name || `Patient #${inv.patientId}`}</p>
                                     <p className="text-xs text-slate-500 mt-0.5">
-                                      Invoice #{inv.id} · {inv.date} · ₹{Math.round(inv.total || 0).toLocaleString('en-IN')}
+                                      Invoice {formatInvoiceNumber(inv.id)} · {inv.date} · ₹{Math.round(inv.total || 0).toLocaleString('en-IN')}
                                     </p>
                                   </div>
                                   <div className="flex items-center gap-2 shrink-0">
@@ -4271,7 +4271,7 @@ export default function StaffPortal() {
                       </Button>
                     </div>
                     <DialogHeader>
-                      <DialogTitle>{isIssuedInvoicePreview ? `Invoice #${lastCreatedInvoice?.id || ""}` : "Review invoice"}</DialogTitle>
+                      <DialogTitle>{isIssuedInvoicePreview ? `Invoice ${formatInvoiceNumber(lastCreatedInvoice?.id || "")}` : "Review invoice"}</DialogTitle>
                       <DialogDescription>
                         {isIssuedInvoicePreview ? "Invoice created. Print it or save a PDF copy." : "Review the clinic-branded A4 bill before creating the invoice."}
                       </DialogDescription>
@@ -4350,7 +4350,7 @@ export default function StaffPortal() {
                 <Dialog open={!!emailInvoiceTarget} onOpenChange={(open) => { if (!open && !emailInvoiceSending) setEmailInvoiceTarget(null); }}>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Email invoice #{emailInvoiceTarget?.id}</DialogTitle>
+                      <DialogTitle>Email invoice {emailInvoiceTarget ? formatInvoiceNumber(emailInvoiceTarget.id) : ""}</DialogTitle>
                       <DialogDescription>
                         {emailInvoiceTarget?.patient?.email
                           ? `Send to ${emailInvoiceTarget.patient.name}. Change the address if needed.`
@@ -4383,7 +4383,7 @@ export default function StaffPortal() {
                 <Dialog open={!!editingInvoice} onOpenChange={(open) => { if (!open) setEditingInvoice(null); }}>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Edit Invoice #{editingInvoice?.id}</DialogTitle>
+                      <DialogTitle>Edit Invoice {editingInvoice ? formatInvoiceNumber(editingInvoice.id) : ""}</DialogTitle>
                       <DialogDescription>Update payment status, method, or notes. Billed items and amounts cannot be changed on an issued invoice.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
