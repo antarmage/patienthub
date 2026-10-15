@@ -3923,59 +3923,6 @@ export default function StaffPortal() {
 
                     {billingPatientId && (
                       <Card className="border-slate-200 shadow-sm">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">Add Products Directly</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          {billingInventoryQuery.isLoading ? (
-                            <p className="text-sm text-slate-400">Loading products...</p>
-                          ) : billingProducts.length === 0 ? (
-                            <p className="text-sm text-slate-400">No active products with a selling price. Add a selling price in Inventory to make products available here.</p>
-                          ) : (
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                              {billingProducts.map((product: any) => {
-                                const alreadyAdded = billingItems.some((line) => line.inventoryItemId === product.id);
-                                return (
-                                  <div key={product.id} className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 ${alreadyAdded ? "border-emerald-200 bg-emerald-50" : "border-slate-200"}`} data-testid={`billing-product-${product.id}`}>
-                                    <div className="min-w-0">
-                                      <p className="truncate text-sm font-medium text-slate-900">{product.name}</p>
-                                      <p className="text-xs text-slate-500">
-                                        MRP ₹{Number(product.sellingPrice).toLocaleString("en-IN")} · GST {Number(product.taxRate) || 0}% · Stock {product.quantity} {product.unit}
-                                      </p>
-                                    </div>
-                                    <Button
-                                      size="sm"
-                                      variant={alreadyAdded ? "outline" : "default"}
-                                      disabled={!alreadyAdded && Number(product.quantity) <= 0}
-                                      className="h-7 shrink-0 text-xs"
-                                      onClick={() => {
-                                        if (alreadyAdded) {
-                                          setBillingItems(billingItems.filter((line) => line.inventoryItemId !== product.id));
-                                        } else {
-                                          setBillingItems([...billingItems, {
-                                            inventoryItemId: product.id,
-                                            name: product.name,
-                                            price: Number(product.sellingPrice),
-                                            quantity: 1,
-                                            taxRate: Number(product.taxRate) || 0,
-                                          }]);
-                                        }
-                                      }}
-                                      data-testid={`btn-add-product-${product.id}`}
-                                    >
-                                      {alreadyAdded ? "✓ Added" : Number(product.quantity) <= 0 ? "Out of stock" : "+ Add"}
-                                    </Button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {billingPatientId && (
-                      <Card className="border-slate-200 shadow-sm">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">Quick Estimate Templates</CardTitle>
                         </CardHeader>
@@ -4016,8 +3963,8 @@ export default function StaffPortal() {
                             <Sparkles className="w-4 h-4 text-amber-600" />
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm font-bold text-amber-900">Auto-Estimated: {billingEstimateSource}</p>
-                            <p className="text-xs text-amber-700 mt-0.5">Items below are suggested based on the patient's type and visit. Review, add or remove items, then confirm the bill.</p>
+                            <p className="text-sm font-bold text-amber-900">Estimate: {billingEstimateSource}</p>
+                            <p className="text-xs text-amber-700 mt-0.5">Review the selected services and products below. Add or remove items, then confirm the bill.</p>
                           </div>
                           <Badge className="bg-amber-200 text-amber-800 border-amber-300 shrink-0">Estimated</Badge>
                         </CardContent>
@@ -4028,7 +3975,7 @@ export default function StaffPortal() {
                       <Card className="border-slate-200 shadow-sm">
                         <CardHeader className="pb-3">
                           <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
-                            <span>{billingIsEstimate ? 'Adjust Estimated Items' : 'Add Services from Catalog'}</span>
+                            <span>{billingIsEstimate ? 'Adjust Estimated Items' : 'Add Services and Products'}</span>
                             {billingIsEstimate && (
                               <Button variant="ghost" size="sm" className="text-xs text-slate-500 h-6" onClick={() => { setBillingItems([]); setBillingIsEstimate(false); }} data-testid="btn-clear-estimate">
                                 Clear All
@@ -4037,6 +3984,57 @@ export default function StaffPortal() {
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                          <section className="space-y-2" aria-label="Products">
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Products</p>
+                            {billingInventoryQuery.isLoading ? (
+                              <p className="text-sm text-slate-400">Loading products...</p>
+                            ) : billingInventoryQuery.isError ? (
+                              <p role="alert" className="text-sm text-rose-600">Could not load products: {billingInventoryQuery.error.message}</p>
+                            ) : billingProducts.length === 0 ? (
+                              <p className="text-sm text-slate-400">No active products with a selling price. Add a selling price in Inventory to make products available here.</p>
+                            ) : (
+                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                {billingProducts.map((product: any) => {
+                                  const alreadyAdded = billingItems.some((line) => line.inventoryItemId === product.id);
+                                  return (
+                                    <div key={product.id} className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 ${alreadyAdded ? "border-emerald-200 bg-emerald-50" : "border-slate-200"}`} data-testid={`billing-product-${product.id}`}>
+                                      <div className="min-w-0">
+                                        <p className="truncate text-sm font-medium text-slate-900">{product.name}</p>
+                                        <p className="text-xs text-slate-500">
+                                          MRP ₹{Number(product.sellingPrice).toLocaleString("en-IN")} · GST {Number(product.taxRate) || 0}% · Stock {product.quantity} {product.unit}
+                                        </p>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant={alreadyAdded ? "outline" : "default"}
+                                        disabled={!alreadyAdded && Number(product.quantity) <= 0}
+                                        className="h-7 shrink-0 text-xs"
+                                        onClick={() => {
+                                          if (alreadyAdded) {
+                                            setBillingItems(billingItems.filter((line) => line.inventoryItemId !== product.id));
+                                          } else {
+                                            setBillingItems([...billingItems, {
+                                              inventoryItemId: product.id,
+                                              name: product.name,
+                                              price: Number(product.sellingPrice),
+                                              quantity: 1,
+                                              taxRate: Number(product.taxRate) || 0,
+                                            }]);
+                                            setBillingIsEstimate(true);
+                                            if (!billingEstimateSource) setBillingEstimateSource("Product selection");
+                                          }
+                                        }}
+                                        data-testid={`btn-add-product-${product.id}`}
+                                      >
+                                        {alreadyAdded ? "✓ Added" : Number(product.quantity) <= 0 ? "Out of stock" : "+ Add"}
+                                      </Button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </section>
+                          <Separator />
                           {Object.entries(
                             billingCatalogItems
                               .filter((c: any) => c.isActive !== false)
