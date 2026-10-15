@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { OwnerAuthGate } from "@/components/OwnerAuthGate";
 import { InventoryManager, getInventoryAlerts, useInventory } from "@/components/InventoryManager";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1123,7 +1124,9 @@ export default function OwnerPortal() {
               </div>
             )}
 
-            {activeView === "inventory" && <InventoryManager />}
+            {activeView === "inventory" && (
+              <OwnerAuthGate>{({ token, signOut }) => <InventoryManager token={token} onSignOut={signOut} />}</OwnerAuthGate>
+            )}
             {activeView === "invoice-template" && <InvoiceTemplateEditor />}
             {activeView === "prime-pricing" && <PrimePricingRulesEditor />}
 

@@ -62,7 +62,7 @@ export function getInventoryAlerts(items: InventoryItem[]) {
 
 const emptyForm = { name: "", category: "Supplement", catalogItemId: "none", unit: "units", quantity: "0", lowStockThreshold: "5", batchNumber: "", expiryDate: "", supplier: "" };
 
-export function InventoryManager() {
+export function InventoryManager({ token, onSignOut }: { token: string; onSignOut: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: items = [], isLoading } = useInventory();
@@ -83,7 +83,19 @@ export function InventoryManager() {
   const [reason, setReason] = useState("");
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
-  const onError = (err: Error) => toast({ title: "Inventory update failed", description: err.message, variant: "destructive" });
+  const authHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+  const onError = (err: Error) => {
+    if (err.message === "AUTH") {
+      onSignOut();
+      toast({ title: "Session expired", description: "Please sign in again.", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Inventory update failed", description: err.message, variant: "destructive" });
+  };
+  const failure = async (res: Response, fallback: string) => {
+    if (res.status === 401 || res.status === 403) return new Error("AUTH");
+    return new Error((await res.json().catch(() => ({}))).error || fallback);
+  };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -100,10 +112,10 @@ export function InventoryManager() {
       };
       const res = await fetch(editing ? `/api/inventory/${editing.id}` : "/api/inventory", {
         method: editing ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders,
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to save");
+      if (!res.ok) throw await failure(res, "Failed to save");
     },
     onSuccess: () => { refresh(); setIsFormOpen(false); toast({ title: editing ? "Item updated" : "Item added" }); },
     onError,
@@ -114,10 +126,10 @@ export function InventoryManager() {
       if (!adjusting) return;
       const res = await fetch(`/api/inventory/${adjusting.item.id}/adjust`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders,
         body: JSON.stringify({ change: adjusting.direction * (Number(amount) || 0), reason }),
       });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to adjust");
+      if (!res.ok) throw await failure(res, "Failed to adjust");
     },
     onSuccess: () => { refresh(); setAdjusting(null); },
     onError,
@@ -125,8 +137,8 @@ export function InventoryManager() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/inventory/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      const res = await fetch(`/api/inventory/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw await failure(res, "Failed to delete");
     },
     onSuccess: () => { refresh(); toast({ title: "Item removed" }); },
     onError,
@@ -158,7 +170,10 @@ export function InventoryManager() {
             {alerts.stock.length} low or out of stock · {alerts.expiry.length} expiring or expired
           </p>
         </div>
-        <Button onClick={openAdd} data-testid="btn-add-inventory"><PackagePlus className="mr-2 h-4 w-4" /> Add item</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onSignOut}>Sign out</Button>
+          <Button onClick={openAdd} data-testid="btn-add-inventory"><PackagePlus className="mr-2 h-4 w-4" /> Add item</Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">

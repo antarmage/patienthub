@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { InventoryManager } from "@/components/InventoryManager";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
@@ -1821,7 +1820,6 @@ export default function StaffPortal() {
   const [vitalsAppointment, setVitalsAppointment] = useState<any | null>(null);
   const [afterVisitAppointment, setAfterVisitAppointment] = useState<any | null>(null);
   const [prescriptionAppointment, setPrescriptionAppointment] = useState<any | null>(null);
-  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const { toast } = useToast();
   const openManualPrescription = (patient: any) => {
     if (!patient) return;
@@ -3524,7 +3522,6 @@ export default function StaffPortal() {
                     }}
                     onAfterVisit={(apt) => setAfterVisitAppointment(apt)}
                     onRecordPrescription={(apt) => setPrescriptionAppointment(apt)}
-                    onManageInventory={() => setIsInventoryOpen(true)}
                     onUploadPrescription={(patient) => { setSelectedPatientForUpload(patient); setIsUploadOpen(true); }}
                     prescribedAppointmentIds={prescribedAppointmentIds}
                     onOpenTask={(task) => { setSelectedTaskForAction(task); setIsClinicalActionOpen(true); }}
@@ -4894,16 +4891,6 @@ export default function StaffPortal() {
                 );
               }}
             />
-            <Dialog open={isInventoryOpen} onOpenChange={setIsInventoryOpen}>
-              <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader className="sr-only">
-                  <DialogTitle>Inventory</DialogTitle>
-                  <DialogDescription>Manage stock levels.</DialogDescription>
-                </DialogHeader>
-                <InventoryManager />
-              </DialogContent>
-            </Dialog>
-
             <PrescriptionEntryDialog
               appointment={prescriptionAppointment}
               patient={patients.find((p: any) => p.id === prescriptionAppointment?.patientId) || null}

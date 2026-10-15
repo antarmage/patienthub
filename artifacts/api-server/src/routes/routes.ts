@@ -3025,6 +3025,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.post("/api/inventory", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
     const name = String(req.body?.name || "").trim();
     if (!name) return res.status(400).json({ error: "Name is required" });
     const item = await storage.createInventoryItem({
@@ -3044,6 +3045,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.patch("/api/inventory/:id", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     const { name, category, catalogItemId, unit, lowStockThreshold, batchNumber, expiryDate, supplier, notes, isActive } = req.body || {};
@@ -3057,6 +3059,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.post("/api/inventory/:id/adjust", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     const change = Number(req.body?.change);
@@ -3073,6 +3076,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.delete("/api/inventory/:id", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     const deleted = await storage.deleteInventoryItem(id);

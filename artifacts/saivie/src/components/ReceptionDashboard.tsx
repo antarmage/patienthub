@@ -64,7 +64,6 @@ interface ReceptionDashboardProps {
   onViewSchedule: () => void;
   onViewFollowUps: () => void;
   onCallFollowUp: (id: number) => void;
-  onManageInventory: () => void;
 }
 
 export function getArrivalState(apt: any): ArrivalState {
@@ -141,7 +140,6 @@ export function ReceptionDashboard({
   onViewSchedule,
   onViewFollowUps,
   onCallFollowUp,
-  onManageInventory,
 }: ReceptionDashboardProps) {
   const [filter, setFilter] = useState<FlowFilter>("all");
   const [now, setNow] = useState(() => Date.now());
@@ -504,9 +502,6 @@ export function ReceptionDashboard({
               </div>
             ))}
             {inventoryAlertCount === 0 && <p className="px-5 py-4 text-center text-sm text-slate-400">No low-stock or expiring items</p>}
-            <div className="px-5 py-3">
-              <Button size="sm" variant="outline" className="h-8 w-full text-xs" onClick={onManageInventory} data-testid="btn-manage-inventory">Manage inventory</Button>
-            </div>
           </CardContent>
         </Card>
 
