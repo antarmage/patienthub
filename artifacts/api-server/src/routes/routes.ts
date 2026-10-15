@@ -4354,6 +4354,12 @@ Only include what is actually written. Do not invent anything.${catalogHint}`,
       // Cost of goods: B2B price of billed lab tests / linked inventory purchase price, at current cost prices.
       const [costCatalog, costInventory] = await Promise.all([storage.getBillingCatalog(), storage.getInventoryItems()]);
       const catalogCost = new Map(costCatalog.filter(c => c.costPrice != null).map(c => [c.id, c.costPrice as number]));
+      const normalizeCatalogName = (name: unknown) => String(name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+      const catalogByName = new Map<string, number[]>();
+      for (const item of costCatalog) {
+        const key = normalizeCatalogName(item.name);
+        if (key) catalogByName.set(key, [...(catalogByName.get(key) || []), item.id]);
+      }
       const inventoryCost = new Map<number, number>();
       for (const inv of costInventory) {
         if (inv.catalogItemId && inv.costPrice != null && !inventoryCost.has(inv.catalogItemId)) inventoryCost.set(inv.catalogItemId, inv.costPrice);
@@ -4362,9 +4368,19 @@ Only include what is actually written. Do not invent anything.${catalogHint}`,
       let uncostedLines = 0;
       for (const inv of allInvoices.filter(i => i.date?.startsWith(thisMonth))) {
         for (const line of (Array.isArray(inv.items) ? inv.items : []) as any[]) {
-          const catalogItemId = Number(line?.catalogItemId);
-          const qty = Number(line?.quantity) || 0;
-          if (!catalogItemId || qty <= 0) continue;
+          const rawCatalogItemId = Number(line?.catalogItemId);
+          let catalogItemId = Number.isInteger(rawCatalogItemId) && rawCatalogItemId > 0 ? rawCatalogItemId : 0;
+          if (!catalogItemId) {
+            const matches = catalogByName.get(normalizeCatalogName(line?.name ?? line?.serviceName)) || [];
+            if (matches.length === 1) catalogItemId = matches[0];
+          }
+          const rawQuantity = Number(line?.quantity ?? line?.qty ?? 1);
+          const qty = Number.isFinite(rawQuantity) ? rawQuantity : 0;
+          if (qty <= 0) continue;
+          if (!catalogItemId) {
+            uncostedLines += 1;
+            continue;
+          }
           const unitCost = catalogCost.get(catalogItemId) ?? inventoryCost.get(catalogItemId);
           if (unitCost == null) uncostedLines += 1;
           else monthlyCostOfGoods += unitCost * qty;
