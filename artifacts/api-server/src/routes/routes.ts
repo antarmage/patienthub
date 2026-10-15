@@ -1978,26 +1978,27 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       return res.status(400).json({ error: err.message || "Could not calculate invoice" });
     }
     const templateSnapshot = await storage.getInvoiceTemplateSettings() || defaultInvoiceTemplate;
-    const inv = await storage.createInvoice({
-      patientId: id,
-      date: req.body.date || new Date().toISOString().split("T")[0],
-      items: quote.items,
-      subtotal: quote.subtotal,
-      tax: quote.tax,
-      discountTotal: quote.discountTotal,
-      discountDetails: quote.discountDetails,
-      total: quote.total,
-      paymentMethod: req.body.paymentMethod,
-      paymentStatus: "paid",
-      notes: req.body.notes,
-      templateSnapshot,
-    });
     try {
-      await storage.applyInvoiceStock(quote.items as any[], -1, `Billed: invoice #${inv.id}`);
+      const inv = await storage.createInvoiceWithStock({
+        patientId: id,
+        date: req.body.date || new Date().toISOString().split("T")[0],
+        items: quote.items,
+        subtotal: quote.subtotal,
+        tax: quote.tax,
+        discountTotal: quote.discountTotal,
+        discountDetails: quote.discountDetails,
+        total: quote.total,
+        paymentMethod: req.body.paymentMethod,
+        paymentStatus: "paid",
+        notes: req.body.notes,
+        templateSnapshot,
+      }, "Sold on invoice SAI");
+      return res.status(201).json({ ...inv, templateSnapshot: await presentInvoiceTemplate(templateSnapshot) });
     } catch (err) {
-      console.error("Inventory deduction failed for invoice", inv.id, err);
+      const message = err instanceof Error ? err.message : "Could not create invoice";
+      console.error("Invoice creation / stock deduction failed", err);
+      return res.status(message.startsWith("Not enough stock") || message.includes("product is no longer available") ? 409 : 500).json({ error: message });
     }
-    res.status(201).json({ ...inv, templateSnapshot: await presentInvoiceTemplate(templateSnapshot) });
   });
 
   app.get("/api/invoice-template", async (_req, res) => {
@@ -2222,7 +2223,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     if (!deleted) return res.status(404).json({ error: "Invoice not found" });
     if (existing && Array.isArray(existing.items)) {
       try {
-        await storage.applyInvoiceStock(existing.items as any[], 1, `Invoice #${id} deleted`);
+        await storage.applyInvoiceStock(existing.items as any[], 1, `Returned to stock: invoice SAI-${id} deleted`);
       } catch (err) {
         console.error("Inventory restore failed for invoice", id, err);
       }
@@ -3184,6 +3185,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.get("/api/inventory/:id/movements", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const item = (await storage.getInventoryItems()).find((inventoryItem) => inventoryItem.id === id);
+    if (!item) return res.status(404).json({ error: "Inventory item not found" });
     res.json(await storage.getInventoryMovements(id));
   });
 

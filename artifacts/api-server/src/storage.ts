@@ -143,6 +143,7 @@ export interface IStorage {
 
   getInvoices(patientId: number): Promise<Invoice[]>;
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  createInvoiceWithStock(invoice: InsertInvoice, reason: string): Promise<Invoice>;
   updateInvoice(id: number, data: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: number): Promise<boolean>;
   getInvoiceTemplateSettings(): Promise<InvoiceTemplateSettings | undefined>;
@@ -529,6 +530,49 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async createInvoiceWithStock(invoice: InsertInvoice, reason: string): Promise<Invoice> {
+    return db.transaction(async (tx) => {
+      const [created] = await tx.insert(invoices).values(invoice).returning();
+      const lines = Array.isArray(invoice.items) ? invoice.items as Array<{ inventoryItemId?: number; quantity?: number }> : [];
+      const quantitiesByItem = new Map<number, number>();
+      for (const line of lines) {
+        const itemId = Number(line.inventoryItemId);
+        const quantity = Number(line.quantity);
+        if (!Number.isInteger(itemId) || itemId <= 0 || !Number.isFinite(quantity) || quantity <= 0) continue;
+        quantitiesByItem.set(itemId, (quantitiesByItem.get(itemId) || 0) + quantity);
+      }
+
+      for (const [itemId, quantity] of quantitiesByItem) {
+        const [updated] = await tx.update(inventoryItems)
+          .set({
+            quantity: sql`${inventoryItems.quantity} - ${quantity}`,
+            updatedAt: new Date().toISOString(),
+          })
+          .where(and(
+            eq(inventoryItems.id, itemId),
+            eq(inventoryItems.isActive, true),
+            gte(inventoryItems.quantity, quantity),
+          ))
+          .returning({ id: inventoryItems.id });
+        if (!updated) {
+          const [item] = await tx.select({ name: inventoryItems.name, quantity: inventoryItems.quantity })
+            .from(inventoryItems)
+            .where(eq(inventoryItems.id, itemId));
+          if (!item) throw new Error("A selected product is no longer available");
+          throw new Error(`Not enough stock for ${item.name}. Available: ${item.quantity}; requested: ${quantity}`);
+        }
+
+        await tx.insert(inventoryMovements).values({
+          itemId,
+          change: -quantity,
+          reason: `${reason} · invoice #${created.id}`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      return created;
+    });
+  }
+
   async updateInvoice(id: number, data: Partial<InsertInvoice>): Promise<Invoice | undefined> {
     const [updated] = await db.update(invoices).set(data).where(eq(invoices.id, id)).returning();
     return updated;
@@ -755,7 +799,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getInventoryMovements(id: number): Promise<InventoryMovement[]> {
-    return db.select().from(inventoryMovements).where(eq(inventoryMovements.itemId, id)).orderBy(desc(inventoryMovements.id)).limit(30);
+    return db.select().from(inventoryMovements).where(eq(inventoryMovements.itemId, id)).orderBy(desc(inventoryMovements.id));
   }
 
   async getReferralPartners(): Promise<ReferralPartner[]> {

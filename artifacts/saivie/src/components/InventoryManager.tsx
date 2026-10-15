@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { formatCost, useOwnerCosts } from "@/components/OwnerCosts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Minus, PackagePlus, Plus, Trash2 } from "lucide-react";
+import { History, Minus, PackagePlus, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -24,6 +24,14 @@ export interface InventoryItem {
   supplier: string | null;
   notes: string | null;
   isActive: boolean;
+}
+
+interface InventoryMovement {
+  id: number;
+  itemId: number;
+  change: number;
+  reason: string | null;
+  createdAt: string;
 }
 
 export const INVENTORY_CATEGORIES = ["Supplement", "Vaccine", "Medicine", "Consumable", "Other"];
@@ -75,8 +83,18 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [adjusting, setAdjusting] = useState<{ item: InventoryItem; direction: 1 | -1 } | null>(null);
+  const [historyItem, setHistoryItem] = useState<InventoryItem | null>(null);
   const [amount, setAmount] = useState("1");
   const [reason, setReason] = useState("");
+  const movementsQuery = useQuery<InventoryMovement[]>({
+    queryKey: ["/api/inventory", historyItem?.id, "movements"],
+    enabled: !!historyItem,
+    queryFn: async () => {
+      const res = await fetch(`/api/inventory/${historyItem!.id}/movements`);
+      if (!res.ok) throw new Error("Failed to load product history");
+      return res.json();
+    },
+  });
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
   const authHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
@@ -230,6 +248,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
                     <div className="flex items-center justify-end gap-1">
                       <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => openAdjust(item, -1)} aria-label="Use stock" data-testid={`btn-inv-use-${item.id}`}><Minus className="h-4 w-4" /></Button>
                       <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => openAdjust(item, 1)} aria-label="Add stock" data-testid={`btn-inv-add-${item.id}`}><Plus className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="outline" className="h-8 px-2" onClick={() => setHistoryItem(item)} aria-label={`View ${item.name} stock history`} data-testid={`btn-inv-history-${item.id}`}><History className="mr-1 h-4 w-4" />History</Button>
                       <Button size="sm" variant="ghost" className="h-8" onClick={() => openEdit(item)}>Edit</Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500" aria-label="Delete item"
                         onClick={() => { if (window.confirm(`Remove ${item.name} from inventory?`)) deleteMutation.mutate(item.id); }}>
@@ -246,6 +265,39 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
           </tbody>
         </table>
       </div>
+
+      <Dialog open={!!historyItem} onOpenChange={(open) => !open && setHistoryItem(null)}>
+        <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Product history — {historyItem?.name}</DialogTitle>
+            <DialogDescription>All recorded sales and stock changes for this product.</DialogDescription>
+          </DialogHeader>
+          {movementsQuery.isLoading ? (
+            <p className="py-6 text-center text-sm text-slate-500">Loading product history...</p>
+          ) : movementsQuery.isError ? (
+            <p role="alert" className="py-6 text-center text-sm text-rose-600">{movementsQuery.error.message}</p>
+          ) : movementsQuery.data?.length ? (
+            <div className="divide-y rounded-md border">
+              {movementsQuery.data.map((movement) => (
+                <div key={movement.id} className="flex items-start justify-between gap-4 p-3" data-testid={`inventory-movement-${movement.id}`}>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{movement.reason || "Stock adjustment"}</p>
+                    <p className="mt-1 text-xs text-slate-500">{new Date(movement.createdAt).toLocaleString()}</p>
+                  </div>
+                  <span className={`shrink-0 text-sm font-semibold ${movement.change < 0 ? "text-rose-700" : "text-emerald-700"}`}>
+                    {movement.change > 0 ? "+" : ""}{movement.change} {historyItem?.unit}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="py-6 text-center text-sm text-slate-500">No product movements recorded yet. Sales and stock adjustments will appear here.</p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHistoryItem(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-md">
