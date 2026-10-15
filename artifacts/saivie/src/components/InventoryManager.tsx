@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { formatCost, useOwnerCosts } from "@/components/OwnerCosts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Minus, PackagePlus, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -60,7 +61,7 @@ export function getInventoryAlerts(items: InventoryItem[]) {
   };
 }
 
-const emptyForm = { name: "", category: "Supplement", catalogItemId: "none", unit: "units", quantity: "0", lowStockThreshold: "5", batchNumber: "", expiryDate: "", supplier: "" };
+const emptyForm = { name: "", category: "Supplement", catalogItemId: "none", unit: "units", quantity: "0", lowStockThreshold: "5", batchNumber: "", expiryDate: "", supplier: "", costPrice: "" };
 
 export function InventoryManager({ token, onSignOut }: { token: string; onSignOut: () => void }) {
   const { toast } = useToast();
@@ -73,6 +74,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
       return res.ok ? res.json() : [];
     },
   });
+  const ownerCosts = useOwnerCosts(token);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [editing, setEditing] = useState<InventoryItem | null>(null);
@@ -109,6 +111,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
         batchNumber: form.batchNumber || null,
         expiryDate: form.expiryDate || null,
         supplier: form.supplier || null,
+        costPrice: form.costPrice === "" ? null : Number(form.costPrice),
       };
       const res = await fetch(editing ? `/api/inventory/${editing.id}` : "/api/inventory", {
         method: editing ? "PATCH" : "POST",
@@ -117,7 +120,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
       });
       if (!res.ok) throw await failure(res, "Failed to save");
     },
-    onSuccess: () => { refresh(); setIsFormOpen(false); toast({ title: editing ? "Item updated" : "Item added" }); },
+    onSuccess: () => { refresh(); ownerCosts.refresh(); setIsFormOpen(false); toast({ title: editing ? "Item updated" : "Item added" }); },
     onError,
   });
 
@@ -151,6 +154,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
       name: item.name, category: item.category, catalogItemId: item.catalogItemId ? String(item.catalogItemId) : "none", unit: item.unit, quantity: String(item.quantity),
       lowStockThreshold: String(item.lowStockThreshold), batchNumber: item.batchNumber || "",
       expiryDate: item.expiryDate ? String(item.expiryDate).slice(0, 10) : "", supplier: item.supplier || "",
+      costPrice: ownerCosts.costs?.inventory[item.id] != null ? String(ownerCosts.costs.inventory[item.id]) : "",
     });
     setIsFormOpen(true);
   };
@@ -195,6 +199,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
               <th className="px-3 py-3">Category</th>
               <th className="px-3 py-3">In stock</th>
               <th className="px-3 py-3">Alert at</th>
+              <th className="px-3 py-3">Purchase price</th>
               <th className="px-3 py-3">Expiry</th>
               <th className="px-3 py-3">Status</th>
               <th className="px-3 py-3 text-right">Actions</th>
@@ -214,6 +219,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
                   <td className="px-3 py-3 text-slate-600">{item.category}</td>
                   <td className="px-3 py-3 font-semibold text-slate-900">{item.quantity} <span className="text-xs font-normal text-slate-500">{item.unit}</span></td>
                   <td className="px-3 py-3 text-slate-600">{item.lowStockThreshold}</td>
+                  <td className="px-3 py-3 text-slate-600">{formatCost(ownerCosts.costs?.inventory[item.id])}</td>
                   <td className="px-3 py-3 text-slate-600">{item.expiryDate ? String(item.expiryDate).slice(0, 10) : "—"}</td>
                   <td className="space-x-1 px-3 py-3">
                     {stock === "out" && <Badge className="border-0 bg-rose-100 text-rose-700">Out of stock</Badge>}
@@ -237,7 +243,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
               );
             })}
             {visible.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-400">{isLoading ? "Loading..." : "No inventory items yet"}</td></tr>
+              <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">{isLoading ? "Loading..." : "No inventory items yet"}</td></tr>
             )}
           </tbody>
         </table>
@@ -294,6 +300,10 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label>Purchase price per {form.unit || "unit"} (₹, owner only)</Label>
+              <Input type="number" min={0} step="0.01" value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} data-testid="input-inv-cost" />
             </div>
             <div className="col-span-2 space-y-1">
               <Label>Supplier</Label>

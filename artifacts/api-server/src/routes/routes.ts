@@ -88,6 +88,17 @@ async function requireInvoiceTemplateOwner(req: Request, res: Response): Promise
   return true;
 }
 
+function withoutCost<T extends { costPrice?: unknown }>(row: T): Omit<T, "costPrice"> {
+  const { costPrice: _cost, ...rest } = row;
+  return rest;
+}
+
+function parseCost(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 // Tracks appointment IDs that have already had a post-visit summary sent
 // (prevents duplicate sends if appointment is PATCH'd to "completed" more than once)
 const postVisitSummarySentIds = new Set<number>();
@@ -3021,7 +3032,31 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   // ── Inventory ─────────────────────────────────────────────────────────────
 
   app.get("/api/inventory", async (_req, res) => {
-    res.json(await storage.getInventoryItems());
+    res.json((await storage.getInventoryItems()).map(withoutCost));
+  });
+
+  // Purchase / lab cost prices are owner-only and never included in the public lists.
+  app.get("/api/owner/costs", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    const [inventory, catalog] = await Promise.all([storage.getInventoryItems(), storage.getBillingCatalog()]);
+    const toMap = (rows: { id: number; costPrice: number | null }[]) =>
+      Object.fromEntries(rows.filter((r) => r.costPrice != null).map((r) => [r.id, r.costPrice]));
+    res.json({ inventory: toMap(inventory), catalog: toMap(catalog) });
+  });
+
+  app.put("/api/owner/costs/:kind/:id", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const raw = req.body?.costPrice;
+    const costPrice = raw === null || raw === "" || raw === undefined ? null : Number(raw);
+    if (costPrice !== null && (!Number.isFinite(costPrice) || costPrice < 0)) return res.status(400).json({ error: "Invalid cost price" });
+    let updated;
+    if (req.params.kind === "inventory") updated = await storage.updateInventoryItem(id, { costPrice });
+    else if (req.params.kind === "catalog") updated = await storage.updateBillingCatalogItem(id, { costPrice });
+    else return res.status(400).json({ error: "Invalid kind" });
+    if (!updated) return res.status(404).json({ error: "Item not found" });
+    res.json({ id, costPrice });
   });
 
   app.post("/api/inventory", async (req, res) => {
@@ -3039,6 +3074,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       expiryDate: req.body.expiryDate || null,
       supplier: req.body.supplier || null,
       notes: req.body.notes || null,
+      costPrice: parseCost(req.body.costPrice),
       isActive: true,
     });
     res.status(201).json(item);
@@ -3051,6 +3087,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const { name, category, catalogItemId, unit, lowStockThreshold, batchNumber, expiryDate, supplier, notes, isActive } = req.body || {};
     const data: Record<string, unknown> = { name, category, unit, batchNumber, expiryDate: expiryDate || null, supplier, notes, isActive };
     if (catalogItemId !== undefined) data.catalogItemId = catalogItemId ? Number(catalogItemId) : null;
+    if (req.body?.costPrice !== undefined) data.costPrice = parseCost(req.body.costPrice);
     if (lowStockThreshold !== undefined) data.lowStockThreshold = Math.max(0, Number(lowStockThreshold) || 0);
     Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
     const updated = await storage.updateInventoryItem(id, data);
@@ -3088,20 +3125,22 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
   app.get("/api/billing-catalog", async (_req, res) => {
     const catalog = await storage.getBillingCatalog();
-    res.json(catalog);
+    res.json(catalog.map(withoutCost));
   });
 
   app.post("/api/billing-catalog", async (req, res) => {
-    const item = await storage.createBillingCatalogItem(req.body);
-    res.status(201).json(item);
+    const { costPrice: _ignored, ...body } = req.body || {};
+    const item = await storage.createBillingCatalogItem(body);
+    res.status(201).json(withoutCost(item));
   });
 
   app.patch("/api/billing-catalog/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
-    const updated = await storage.updateBillingCatalogItem(id, req.body);
+    const { costPrice: _ignored, ...body } = req.body || {};
+    const updated = await storage.updateBillingCatalogItem(id, body);
     if (!updated) return res.status(404).json({ error: "Item not found" });
-    res.json(updated);
+    res.json(withoutCost(updated));
   });
 
   app.delete("/api/billing-catalog/:id", async (req, res) => {

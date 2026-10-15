@@ -87,6 +87,8 @@ export async function ensureSchema(): Promise<void> {
       );
 
       ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS catalog_item_id integer;
+      ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS cost_price real;
+      ALTER TABLE billing_catalog ADD COLUMN IF NOT EXISTS cost_price real;
 
       CREATE TABLE IF NOT EXISTS inventory_movements (
         id serial PRIMARY KEY,

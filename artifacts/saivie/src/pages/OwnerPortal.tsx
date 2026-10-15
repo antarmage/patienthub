@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { OwnerAuthGate } from "@/components/OwnerAuthGate";
 import { InventoryManager, getInventoryAlerts, useInventory } from "@/components/InventoryManager";
+import { UnlockCostsButton, formatCost, useOwnerCosts } from "@/components/OwnerCosts";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
@@ -181,6 +182,19 @@ export default function OwnerPortal() {
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/billing-catalog"] }); setEditingItem(null); },
   });
+
+  const ownerCosts = useOwnerCosts();
+  const saveEditedCatalogItem = async () => {
+    const { _cost, ...data } = editingItem;
+    updateCatalogItem.mutate(data);
+    if (ownerCosts.unlocked) {
+      try {
+        await ownerCosts.saveCost("catalog", data.id, _cost === "" || _cost == null ? null : Number(_cost));
+      } catch (err) {
+        alert((err as Error).message);
+      }
+    }
+  };
 
   const deleteCatalogItem = useMutation({
     mutationFn: async (id: number) => {
@@ -1137,9 +1151,12 @@ export default function OwnerPortal() {
                     <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-catalog-title">Service Catalog</h2>
                     <p className="text-sm text-slate-500 mt-1">{catalogItems.length} total items in catalog</p>
                   </div>
-                  <Button onClick={() => { setShowAddForm(true); }} className="bg-indigo-600 hover:bg-indigo-700" data-testid="btn-add-catalog-item">
-                    <Plus className="w-4 h-4 mr-2" /> Add Item
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {!ownerCosts.unlocked && <UnlockCostsButton onUnlocked={ownerCosts.unlock} />}
+                    <Button onClick={() => { setShowAddForm(true); }} className="bg-indigo-600 hover:bg-indigo-700" data-testid="btn-add-catalog-item">
+                      <Plus className="w-4 h-4 mr-2" /> Add Item
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1279,6 +1296,7 @@ export default function OwnerPortal() {
                             <TableHead className="text-xs font-bold text-slate-500">Name</TableHead>
                             <TableHead className="text-xs font-bold text-slate-500">Category</TableHead>
                             <TableHead className="text-xs font-bold text-slate-500">Price</TableHead>
+                            {ownerCosts.unlocked && <TableHead className="text-xs font-bold text-slate-500">Cost / Lab price</TableHead>}
                             <TableHead className="text-xs font-bold text-slate-500">Tax Rate</TableHead>
                             <TableHead className="text-xs font-bold text-slate-500">HSN Code</TableHead>
                             <TableHead className="text-xs font-bold text-slate-500">Active</TableHead>
@@ -1288,7 +1306,7 @@ export default function OwnerPortal() {
                         <TableBody>
                           {filteredCatalog.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={7} className="text-center py-8 text-slate-400">No catalog items found.</TableCell>
+                              <TableCell colSpan={8} className="text-center py-8 text-slate-400">No catalog items found.</TableCell>
                             </TableRow>
                           ) : (
                             filteredCatalog.map((item: any, idx: number) => {
@@ -1342,6 +1360,19 @@ export default function OwnerPortal() {
                                         data-testid="input-edit-price"
                                       />
                                     </TableCell>
+                                    {ownerCosts.unlocked && (
+                                      <TableCell>
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          min={0}
+                                          value={editingItem._cost ?? ""}
+                                          onChange={(e) => setEditingItem({ ...editingItem, _cost: e.target.value })}
+                                          className="h-8 text-sm w-24"
+                                          data-testid="input-edit-cost"
+                                        />
+                                      </TableCell>
+                                    )}
                                     <TableCell>
                                       <Select value={String(editingItem.taxRate || 0)} onValueChange={(v) => setEditingItem({ ...editingItem, taxRate: parseFloat(v) })}>
                                         <SelectTrigger className="h-8 text-sm w-20" data-testid="select-edit-tax-rate">
@@ -1373,7 +1404,7 @@ export default function OwnerPortal() {
                                           variant="ghost"
                                           size="icon"
                                           className="h-7 w-7 text-emerald-600 hover:text-emerald-700"
-                                          onClick={() => updateCatalogItem.mutate(editingItem)}
+                                          onClick={saveEditedCatalogItem}
                                           disabled={updateCatalogItem.isPending}
                                           data-testid="btn-save-edit"
                                         >
@@ -1406,6 +1437,7 @@ export default function OwnerPortal() {
                                     <Badge className={catalogCategoryColors[item.category] || "bg-slate-100 text-slate-700"}>{item.category}</Badge>
                                   </TableCell>
                                   <TableCell className="text-sm font-bold text-slate-900">{formatINR(item.price)}</TableCell>
+                                  {ownerCosts.unlocked && <TableCell className="text-sm text-slate-600">{formatCost(ownerCosts.costs?.catalog[item.id])}</TableCell>}
                                   <TableCell>
                                     <Badge className={taxBadgeColor(item.taxRate || 0)}>{item.taxRate || 0}%</Badge>
                                   </TableCell>
@@ -1421,7 +1453,7 @@ export default function OwnerPortal() {
                                         variant="ghost"
                                         size="icon"
                                         className="h-7 w-7 text-slate-400 hover:text-indigo-600"
-                                        onClick={() => setEditingItem({ ...item })}
+                                        onClick={() => setEditingItem({ ...item, _cost: ownerCosts.costs?.catalog[item.id] ?? "" })}
                                         data-testid={`btn-edit-catalog-${idx}`}
                                       >
                                         <Pencil className="w-3.5 h-3.5" />

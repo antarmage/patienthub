@@ -479,6 +479,7 @@ export const billingCatalog = pgTable("billing_catalog", {
   hsnCode: text("hsn_code"),
   description: text("description"),
   isActive: boolean("is_active").default(true),
+  costPrice: real("cost_price"),
 });
 
 export const insertBillingCatalogSchema = createInsertSchema(billingCatalog).omit({ id: true });
@@ -499,6 +500,7 @@ export const inventoryItems = pgTable("inventory_items", {
   notes: text("notes"),
   isActive: boolean("is_active").notNull().default(true),
   updatedAt: text("updated_at"),
+  costPrice: real("cost_price"),
 });
 
 export const insertInventoryItemSchema = createInsertSchema(inventoryItems).omit({ id: true });
