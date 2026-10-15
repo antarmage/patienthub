@@ -25,10 +25,9 @@ export function isSmtpConfigured(): boolean {
   return smtpConfig() !== null;
 }
 
-export async function sendOtpEmail(to: string, code: string): Promise<void> {
+function getTransporter() {
   const config = smtpConfig();
   if (!config) throw new Error("SMTP is not fully configured");
-
   transporter ??= nodemailer.createTransport({
     host: config.host,
     port: config.port,
@@ -38,8 +37,18 @@ export async function sendOtpEmail(to: string, code: string): Promise<void> {
     greetingTimeout: 10_000,
     socketTimeout: 15_000,
   });
+  return { config, mailer: transporter };
+}
 
-  await transporter.sendMail({
+export async function sendEmail(message: { to: string; subject: string; text: string; html: string; replyTo?: string }): Promise<void> {
+  const { config, mailer } = getTransporter();
+  await mailer.sendMail({ from: config.from, ...message });
+}
+
+export async function sendOtpEmail(to: string, code: string): Promise<void> {
+  const { config, mailer } = getTransporter();
+
+  await mailer.sendMail({
     from: config.from,
     to,
     subject: "Your Saivie verification code",

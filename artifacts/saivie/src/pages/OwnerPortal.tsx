@@ -484,7 +484,7 @@ export default function OwnerPortal() {
                     { title: "Staff Present Today", value: dashboard.presentToday ?? presentCount, icon: UserCheck, color: "from-emerald-500 to-green-600", bg: "bg-emerald-50", textColor: "text-emerald-600", subtitle: `${dashboard.absentToday ?? absentCount} absent` },
                     { title: "Monthly Revenue", value: formatINR(dashboard.monthlyRevenue || 0), icon: TrendingUp, color: "from-violet-500 to-purple-600", bg: "bg-violet-50", textColor: "text-violet-600", isString: true, subtitle: dashboard.monthlyReferralCommission ? `incl. ${formatINR(dashboard.monthlyReferralCommission)} referral commission` : undefined },
                     { title: "Monthly Expenses", value: formatINR(dashboard.monthlyExpenses || totalExpenseAmount), icon: TrendingDown, color: "from-rose-500 to-pink-600", bg: "bg-rose-50", textColor: "text-rose-600", isString: true },
-                    { title: "Net Profit", value: formatINR(dashboard.netProfit || (dashboard.monthlyRevenue || 0) - (dashboard.monthlyExpenses || totalExpenseAmount)), icon: IndianRupee, color: "from-amber-500 to-orange-600", bg: "bg-amber-50", textColor: "text-amber-600", isString: true },
+                    { title: "Net Profit", value: formatINR(dashboard.netProfit ?? ((dashboard.monthlyRevenue || 0) - (dashboard.monthlyExpenses || totalExpenseAmount))), icon: IndianRupee, color: "from-amber-500 to-orange-600", bg: "bg-amber-50", textColor: "text-amber-600", isString: true, subtitle: dashboard.monthlyCostOfGoods ? `after ${formatINR(dashboard.monthlyCostOfGoods)} lab/product cost${dashboard.uncostedLines ? ` · ${dashboard.uncostedLines} billed item(s) have no B2B price` : ""}` : (dashboard.uncostedLines ? `${dashboard.uncostedLines} billed item(s) have no B2B price` : undefined) },
                     { title: "Today's Appointments", value: dashboard.todayAppointments || 0, icon: CalendarCheck, color: "from-cyan-500 to-teal-600", bg: "bg-cyan-50", textColor: "text-cyan-600" },
                   ].map((kpi, i) => (
                     <motion.div key={kpi.title} custom={i} variants={cardVariants} initial="hidden" animate="visible">
@@ -543,11 +543,17 @@ export default function OwnerPortal() {
                               />
                             </div>
                           </div>
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="text-slate-600">Lab & product cost (B2B)</span>
+                              <span className="font-bold text-amber-600">{formatINR(dashboard.monthlyCostOfGoods || 0)}</span>
+                            </div>
+                          </div>
                         </div>
                         <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
                           <span className="text-sm text-slate-500">Net Profit</span>
                           <span className={`text-lg font-bold ${(dashboard.netProfit || 0) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                            {formatINR(dashboard.netProfit || (dashboard.monthlyRevenue || 0) - (dashboard.monthlyExpenses || totalExpenseAmount))}
+                            {formatINR(dashboard.netProfit ?? ((dashboard.monthlyRevenue || 0) - (dashboard.monthlyExpenses || totalExpenseAmount)))}
                           </span>
                         </div>
                       </CardContent>

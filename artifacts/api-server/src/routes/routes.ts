@@ -12,7 +12,7 @@ import { getUncachableGoogleSheetClient } from "../google-sheets";
 import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../google-drive";
 import { ai, AI_AVAILABLE } from "../replit_integrations/image/client";
 import { whatsapp } from "../whatsapp";
-import { isSmtpConfigured, maskEmail, sendOtpEmail, type OtpDeliveryMethod } from "../smtp";
+import { isSmtpConfigured, maskEmail, sendEmail, sendOtpEmail, type OtpDeliveryMethod } from "../smtp";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
 import { analyseGenome, analyseGenomeFromKey } from "../genome-engine";
 import multer from "multer";
@@ -2147,6 +2147,71 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.json(updated);
   });
 
+  // Emails the invoice to the patient; saves the address on the patient record when none is stored yet.
+  app.post("/api/invoices/:id/email", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!isSmtpConfigured()) return res.status(503).json({ error: "Email is not set up on the server yet" });
+    const inv = (await storage.getAllInvoices()).find((i) => i.id === id);
+    if (!inv || !inv.patientId) return res.status(404).json({ error: "Invoice not found" });
+    const patient = await storage.getPatient(inv.patientId);
+    if (!patient) return res.status(404).json({ error: "Patient not found" });
+
+    const email = String(req.body?.email || patient.email || "").trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return res.status(400).json({ error: "Enter a valid email address" });
+
+    const t: any = inv.templateSnapshot || (await storage.getInvoiceTemplateSettings()) || defaultInvoiceTemplate;
+    const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+    const money = (n: unknown) => `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const items = (Array.isArray(inv.items) ? inv.items : []) as any[];
+    const clinic = t.clinicName || "Saivie";
+    const discounts = Array.isArray(inv.discountDetails) ? (inv.discountDetails as any[]) : [];
+
+    const rows = items.map((l) => `<tr><td style="padding:6px 8px;border-bottom:1px solid #eee">${esc(l.name)}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">${esc(l.quantity)}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${money(l.lineTotal)}</td></tr>`).join("");
+    const totalsRow = (label: string, value: string, bold = false) => `<tr><td colspan="2" style="padding:4px 8px;text-align:right;${bold ? "font-weight:700" : "color:#555"}">${label}</td><td style="padding:4px 8px;text-align:right;${bold ? "font-weight:700" : ""}">${value}</td></tr>`;
+    const html = `<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;color:#222">
+      <h2 style="margin-bottom:0">${esc(clinic)}</h2>
+      <p style="margin:2px 0;color:#555">${esc(t.clinicAddress || "")}${t.clinicPhone ? ` · ${esc(t.clinicPhone)}` : ""}</p>
+      ${t.taxRegistration ? `<p style="margin:2px 0;color:#555">Tax reg: ${esc(t.taxRegistration)}</p>` : ""}
+      <hr style="border:none;border-top:1px solid #ddd;margin:14px 0"/>
+      <p>Dear ${esc(patient.name)},</p>
+      <p>Thank you for visiting us. Here is your invoice <strong>#${inv.id}</strong> dated ${esc(inv.date)}.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead><tr style="background:#f5f5f5"><th style="padding:6px 8px;text-align:left">Item</th><th style="padding:6px 8px">Qty</th><th style="padding:6px 8px;text-align:right">Amount</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          ${totalsRow("Subtotal", money(inv.subtotal))}
+          ${inv.discountTotal ? totalsRow("Discounts", `−${money(inv.discountTotal)}`) : ""}
+          ${inv.tax ? totalsRow("GST", money(inv.tax)) : ""}
+          ${totalsRow("Total", money(inv.total), true)}
+        </tfoot>
+      </table>
+      <p style="color:#555;font-size:13px">Payment: ${esc(inv.paymentMethod || "—")} · ${esc(inv.paymentStatus || "paid")}</p>
+      ${inv.notes ? `<p style="color:#555;font-size:13px">Notes: ${esc(inv.notes)}</p>` : ""}
+      ${t.footerText ? `<p style="color:#777;font-size:12px;margin-top:18px">${esc(t.footerText)}</p>` : ""}
+    </div>`;
+    const text = [
+      `${clinic} - Invoice #${inv.id} (${inv.date})`,
+      ...items.map((l) => `${l.name} x${l.quantity}: ${money(l.lineTotal)}`),
+      `Total: ${money(inv.total)}`,
+      `Payment: ${inv.paymentMethod || "-"} (${inv.paymentStatus || "paid"})`,
+    ].join("\n");
+
+    try {
+      await sendEmail({ to: email, subject: `Your invoice #${inv.id} from ${clinic}`, text, html, ...(t.clinicEmail ? { replyTo: t.clinicEmail } : {}) });
+    } catch (err) {
+      console.error("Invoice email failed", id, err);
+      return res.status(502).json({ error: "Could not send the email. Please check the address and try again." });
+    }
+
+    let emailSaved = false;
+    if (!patient.email) {
+      await storage.updatePatient(patient.id, { email });
+      emailSaved = true;
+    }
+    res.json({ sent: true, email, emailSaved });
+  });
+
   app.delete("/api/invoices/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
@@ -3294,7 +3359,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
             price: mrp,
             costPrice: b2b,
             taxRate: 0,
-            description: raw?.code ? `Lab code ${String(raw.code).trim()}` : null,
+            hsnCode: raw?.code ? String(raw.code).trim() : null,
+            description: null,
             isActive: true,
           });
         }
@@ -4284,12 +4350,35 @@ Only include what is actually written. Do not invent anything.${catalogHint}`,
         .filter(r => r.status === "report_received" && (r.reportReceivedAt || "").startsWith(thisMonth))
         .reduce((sum, r) => sum + (r.commissionAmount || 0), 0);
       const monthlyRevenue = monthlyInvoiceRevenue + monthlyReferralCommission;
+
+      // Cost of goods: B2B price of billed lab tests / linked inventory purchase price, at current cost prices.
+      const [costCatalog, costInventory] = await Promise.all([storage.getBillingCatalog(), storage.getInventoryItems()]);
+      const catalogCost = new Map(costCatalog.filter(c => c.costPrice != null).map(c => [c.id, c.costPrice as number]));
+      const inventoryCost = new Map<number, number>();
+      for (const inv of costInventory) {
+        if (inv.catalogItemId && inv.costPrice != null && !inventoryCost.has(inv.catalogItemId)) inventoryCost.set(inv.catalogItemId, inv.costPrice);
+      }
+      let monthlyCostOfGoods = 0;
+      let uncostedLines = 0;
+      for (const inv of allInvoices.filter(i => i.date?.startsWith(thisMonth))) {
+        for (const line of (Array.isArray(inv.items) ? inv.items : []) as any[]) {
+          const catalogItemId = Number(line?.catalogItemId);
+          const qty = Number(line?.quantity) || 0;
+          if (!catalogItemId || qty <= 0) continue;
+          const unitCost = catalogCost.get(catalogItemId) ?? inventoryCost.get(catalogItemId);
+          if (unitCost == null) uncostedLines += 1;
+          else monthlyCostOfGoods += unitCost * qty;
+        }
+      }
+      monthlyCostOfGoods = Math.round(monthlyCostOfGoods * 100) / 100;
       const monthlyExpenses = allExpenses.filter(exp => exp.date?.startsWith(thisMonth)).reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
       const todayAppointments = allAppointments.filter(a => a.date === today);
 
       res.json({
         monthlyReferralCommission,
+        monthlyCostOfGoods,
+        uncostedLines,
         totalPatients: allPatients.length,
         totalStaff,
         presentToday,
@@ -4298,8 +4387,7 @@ Only include what is actually written. Do not invent anything.${catalogHint}`,
         totalExpenses: totalExpensesAmt,
         monthlyRevenue,
         monthlyExpenses,
-        netProfit: monthlyRevenue - monthlyExpenses,
-        todayAppointments: todayAppointments.length,
+        netProfit: monthlyRevenue - monthlyCostOfGoods - monthlyExpenses,
         totalAppointments: allAppointments.length,
       });
     } catch (err: any) {

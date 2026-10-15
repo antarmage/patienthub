@@ -1693,6 +1693,41 @@ export default function StaffPortal() {
     setIsInvoicePreviewOpen(true);
   };
 
+  const [emailInvoiceTarget, setEmailInvoiceTarget] = useState<any>(null);
+  const [emailInvoiceAddress, setEmailInvoiceAddress] = useState("");
+  const [emailInvoiceSending, setEmailInvoiceSending] = useState(false);
+  const [emailInvoiceError, setEmailInvoiceError] = useState("");
+
+  const sendInvoiceEmail = async (invoice: any, email: string) => {
+    setEmailInvoiceSending(true);
+    setEmailInvoiceError("");
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const raw = await res.text();
+      let body: any = {};
+      try { body = JSON.parse(raw); } catch { /* non-JSON response */ }
+      if (!res.ok) throw new Error(body.error || "Could not send email. Make sure the latest API is deployed.");
+      toast({ title: "Invoice emailed", description: `Sent to ${body.email}${body.emailSaved ? " and saved to the patient record" : ""}` });
+      if (body.emailSaved) queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      setEmailInvoiceTarget(null);
+    } catch (err: any) {
+      setEmailInvoiceError(err.message || "Could not send email");
+    } finally {
+      setEmailInvoiceSending(false);
+    }
+  };
+
+  const startEmailInvoice = (invoice: any) => {
+    const patient = invoice.patient || patients.find((p: any) => p.id === invoice.patientId);
+    setEmailInvoiceError("");
+    setEmailInvoiceAddress(patient?.email || "");
+    setEmailInvoiceTarget({ ...invoice, patient });
+  };
+
   const openEditInvoice = (invoice: any) => {
     setEditingInvoice(invoice);
     setEditPaymentStatus((invoice.paymentStatus || "paid").toLowerCase());
@@ -4081,6 +4116,9 @@ export default function StaffPortal() {
                                     <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openHistoryInvoice(inv)} data-testid={`btn-all-view-invoice-${inv.id}`}>
                                       <Eye className="w-3.5 h-3.5 mr-1" />View / Print
                                     </Button>
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => startEmailInvoice(inv)} title="Email invoice" data-testid={`btn-all-email-invoice-${inv.id}`}>
+                                      <Mail className="w-3.5 h-3.5" />
+                                    </Button>
                                     <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => openEditInvoice(inv)} data-testid={`btn-all-edit-invoice-${inv.id}`}>
                                       <Pencil className="w-3.5 h-3.5" />
                                     </Button>
@@ -4227,6 +4265,11 @@ export default function StaffPortal() {
 
                 <Dialog open={isInvoicePreviewOpen} onOpenChange={setIsInvoicePreviewOpen}>
                   <DialogContent className="max-h-[95vh] max-w-5xl overflow-y-auto">
+                    <div className="sticky top-0 z-10 -mt-2 flex justify-end bg-white/90 py-1 print:hidden">
+                      <Button variant="secondary" size="sm" className="h-10 px-4" onClick={() => setIsInvoicePreviewOpen(false)} data-testid="btn-close-invoice-top">
+                        <X className="mr-1.5 h-4 w-4" />Close
+                      </Button>
+                    </div>
                     <DialogHeader>
                       <DialogTitle>{isIssuedInvoicePreview ? `Invoice #${lastCreatedInvoice?.id || ""}` : "Review invoice"}</DialogTitle>
                       <DialogDescription>
@@ -4270,6 +4313,9 @@ export default function StaffPortal() {
                                 <Button variant="outline" onClick={() => window.print()} data-testid="btn-print-invoice">
                                   <Printer className="mr-2 h-4 w-4" />Print / Save PDF
                                 </Button>
+                                <Button variant="outline" onClick={() => startEmailInvoice(issuedInvoice)} data-testid="btn-email-invoice">
+                                  <Mail className="mr-2 h-4 w-4" />Email
+                                </Button>
                                 <Button variant="outline" onClick={() => openEditInvoice(issuedInvoice)} data-testid="btn-edit-issued-invoice">
                                   <Pencil className="mr-2 h-4 w-4" />Edit Details
                                 </Button>
@@ -4291,10 +4337,46 @@ export default function StaffPortal() {
                               </Button>
                             )}
                             {createInvoiceMutation.isError && <p role="alert" className="self-center text-sm text-rose-600">{createInvoiceMutation.error.message}</p>}
+                            <Button variant="secondary" onClick={() => setIsInvoicePreviewOpen(false)} data-testid="btn-close-invoice">
+                              Close
+                            </Button>
                           </DialogFooter>
                         </>
                       );
                     })()}
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={!!emailInvoiceTarget} onOpenChange={(open) => { if (!open && !emailInvoiceSending) setEmailInvoiceTarget(null); }}>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Email invoice #{emailInvoiceTarget?.id}</DialogTitle>
+                      <DialogDescription>
+                        {emailInvoiceTarget?.patient?.email
+                          ? `Send to ${emailInvoiceTarget.patient.name}. Change the address if needed.`
+                          : `No email on record for ${emailInvoiceTarget?.patient?.name || "this patient"}. Enter one — it will be saved to their profile.`}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Input
+                      type="email"
+                      value={emailInvoiceAddress}
+                      onChange={(e) => setEmailInvoiceAddress(e.target.value)}
+                      placeholder="patient@example.com"
+                      data-testid="input-invoice-email"
+                    />
+                    {emailInvoiceError && <p role="alert" className="text-sm text-rose-600">{emailInvoiceError}</p>}
+                    <DialogFooter>
+                      <Button variant="outline" disabled={emailInvoiceSending} onClick={() => setEmailInvoiceTarget(null)}>Cancel</Button>
+                      <Button
+                        className="bg-emerald-700 hover:bg-emerald-800"
+                        disabled={emailInvoiceSending || !emailInvoiceAddress.trim()}
+                        onClick={() => sendInvoiceEmail(emailInvoiceTarget, emailInvoiceAddress.trim())}
+                        data-testid="btn-send-invoice-email"
+                      >
+                        {emailInvoiceSending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Send
+                      </Button>
+                    </DialogFooter>
                   </DialogContent>
                 </Dialog>
 

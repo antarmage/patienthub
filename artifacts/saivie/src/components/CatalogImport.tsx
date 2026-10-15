@@ -54,7 +54,13 @@ function ImportBody({ token, onSignOut, onDone }: { token: string; onSignOut: ()
         onSignOut();
         return;
       }
-      const data = await res.json();
+      const raw = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error("The server doesn't have this feature yet. Deploy the latest API, then try again.");
+      }
       if (!res.ok) throw new Error(data.error || "Import failed");
       setPreview(data.results);
       if (apply) {
