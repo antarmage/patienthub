@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { InventoryManager, getInventoryAlerts, useInventory } from "@/components/InventoryManager";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
@@ -318,6 +319,12 @@ export default function OwnerPortal() {
     return patients.filter((p: any) => p.status === "High Risk" || p.riskLevel === "high");
   }, [patients]);
 
+  const { data: inventoryItems = [] } = useInventory();
+  const inventoryAlertCount = (() => {
+    const a = getInventoryAlerts(inventoryItems);
+    return new Set([...a.stock, ...a.expiry].map((i) => i.id)).size;
+  })();
+
   const navItems = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "attendance", label: "Attendance", icon: UserCheck },
@@ -326,6 +333,7 @@ export default function OwnerPortal() {
     { id: "performance", label: "Performance", icon: BarChart3 },
     { id: "catalog", label: "Service Catalog", icon: Package },
     { id: "packages", label: "Packages", icon: Layers },
+    { id: "inventory", label: "Inventory", icon: Package },
     { id: "invoice-template", label: "Invoice Template", icon: Receipt },
     { id: "prime-pricing", label: "Prime Pricing", icon: IndianRupee },
     { id: "staff-accounts", label: "Staff Accounts", icon: Users },
@@ -382,6 +390,9 @@ export default function OwnerPortal() {
             >
               <item.icon className={`w-4 h-4 ${sidebarOpen ? "mr-3" : ""}`} />
               {sidebarOpen && item.label}
+              {sidebarOpen && item.id === "inventory" && inventoryAlertCount > 0 && (
+                <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700" data-testid="badge-inventory-alerts">{inventoryAlertCount}</span>
+              )}
             </Button>
           ))}
         </div>
@@ -432,6 +443,14 @@ export default function OwnerPortal() {
             {activeView === "overview" && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-overview-title">Business Overview</h2>
+                {inventoryAlertCount > 0 && (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3" data-testid="banner-inventory-alerts">
+                    <p className="flex items-center gap-2 text-sm font-medium text-amber-800">
+                      <AlertTriangle className="h-4 w-4" /> {inventoryAlertCount} inventory item{inventoryAlertCount > 1 ? "s" : ""} low, out of stock or expiring
+                    </p>
+                    <Button size="sm" variant="outline" className="border-amber-300 bg-white text-amber-800" onClick={() => setActiveView("inventory")}>View inventory</Button>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {[
                     { title: "Total Patients", value: dashboard.totalPatients || patients.length || 0, icon: Users, color: "from-blue-500 to-indigo-600", bg: "bg-blue-50", textColor: "text-blue-600" },
@@ -1104,6 +1123,7 @@ export default function OwnerPortal() {
               </div>
             )}
 
+            {activeView === "inventory" && <InventoryManager />}
             {activeView === "invoice-template" && <InvoiceTemplateEditor />}
             {activeView === "prime-pricing" && <PrimePricingRulesEditor />}
 

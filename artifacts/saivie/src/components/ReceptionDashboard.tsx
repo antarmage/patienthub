@@ -25,6 +25,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getPregnancyReminders } from "@/lib/pregnancyMilestones";
+import { getInventoryAlerts, getStockStatus, getExpiryStatus, useInventory } from "@/components/InventoryManager";
 
 export type ArrivalState = "upcoming" | "late" | "waiting" | "in-consultation" | "completed" | "cancelled" | "no-show";
 type FlowFilter = "all" | "upcoming" | "arrived" | "waiting" | "completed" | "closed";
@@ -63,6 +64,7 @@ interface ReceptionDashboardProps {
   onViewSchedule: () => void;
   onViewFollowUps: () => void;
   onCallFollowUp: (id: number) => void;
+  onManageInventory: () => void;
 }
 
 export function getArrivalState(apt: any): ArrivalState {
@@ -139,6 +141,7 @@ export function ReceptionDashboard({
   onViewSchedule,
   onViewFollowUps,
   onCallFollowUp,
+  onManageInventory,
 }: ReceptionDashboardProps) {
   const [filter, setFilter] = useState<FlowFilter>("all");
   const [now, setNow] = useState(() => Date.now());
@@ -182,6 +185,9 @@ export function ReceptionDashboard({
 
   const findPatient = (apt: any) => patients.find((p) => p.id === apt.patientId);
   const pendingRx = appointments.filter((apt) => getArrivalState(apt) === "completed" && !prescribedAppointmentIds.has(apt.id));
+  const { data: inventoryItems = [] } = useInventory();
+  const inventoryAlerts = useMemo(() => getInventoryAlerts(inventoryItems), [inventoryItems]);
+  const inventoryAlertCount = new Set([...inventoryAlerts.stock, ...inventoryAlerts.expiry].map((i) => i.id)).size;
   const pregnancyReminders = useMemo(() => getPregnancyReminders(patients), [patients]);
   const isPending = (id: number) => pendingAppointmentId === id;
   const stamp = () => new Date().toISOString();
@@ -473,6 +479,34 @@ export function ReceptionDashboard({
               </div>
             ))}
             {tasks.length === 0 && <p className="px-5 py-6 text-center text-sm text-slate-400">No pending tasks</p>}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200 shadow-sm" data-testid="card-inventory-alerts">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+              <AlertCircle className="h-5 w-5 text-amber-500" /> Stock alerts
+            </CardTitle>
+            <Badge className={`border-0 ${inventoryAlertCount ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+              {inventoryAlertCount ? `${inventoryAlertCount} need attention` : "All stocked"}
+            </Badge>
+          </CardHeader>
+          <CardContent className="divide-y divide-slate-100 p-0">
+            {[...inventoryAlerts.stock, ...inventoryAlerts.expiry.filter((i) => !inventoryAlerts.stock.includes(i))].slice(0, 5).map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-800">{item.name}</p>
+                  <p className="truncate text-xs text-slate-500">
+                    {getStockStatus(item) === "out" ? "Out of stock" : getStockStatus(item) === "low" ? `Low: ${item.quantity} ${item.unit} left` : `${item.quantity} ${item.unit}`}
+                    {getExpiryStatus(item) !== "ok" && ` · ${getExpiryStatus(item) === "expired" ? "Expired" : "Expiring soon"}`}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {inventoryAlertCount === 0 && <p className="px-5 py-4 text-center text-sm text-slate-400">No low-stock or expiring items</p>}
+            <div className="px-5 py-3">
+              <Button size="sm" variant="outline" className="h-8 w-full text-xs" onClick={onManageInventory} data-testid="btn-manage-inventory">Manage inventory</Button>
+            </div>
           </CardContent>
         </Card>
 

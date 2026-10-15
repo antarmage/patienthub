@@ -69,6 +69,33 @@ export async function ensureSchema(): Promise<void> {
         created_at text NOT NULL
       );
 
+      -- Inventory (supplements, vaccines, consumables)
+      CREATE TABLE IF NOT EXISTS inventory_items (
+        id serial PRIMARY KEY,
+        name text NOT NULL,
+        category text NOT NULL DEFAULT 'Supplement',
+        catalog_item_id integer,
+        unit text NOT NULL DEFAULT 'units',
+        quantity real NOT NULL DEFAULT 0,
+        low_stock_threshold real NOT NULL DEFAULT 5,
+        batch_number text,
+        expiry_date date,
+        supplier text,
+        notes text,
+        is_active boolean NOT NULL DEFAULT true,
+        updated_at text
+      );
+
+      ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS catalog_item_id integer;
+
+      CREATE TABLE IF NOT EXISTS inventory_movements (
+        id serial PRIMARY KEY,
+        item_id integer NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+        change real NOT NULL,
+        reason text,
+        created_at text NOT NULL
+      );
+
       CREATE TABLE IF NOT EXISTS package_items (
         id serial PRIMARY KEY,
         package_id integer NOT NULL REFERENCES service_packages(id) ON DELETE CASCADE,

@@ -485,6 +485,36 @@ export const insertBillingCatalogSchema = createInsertSchema(billingCatalog).omi
 export type InsertBillingCatalog = z.infer<typeof insertBillingCatalogSchema>;
 export type BillingCatalog = typeof billingCatalog.$inferSelect;
 
+export const inventoryItems = pgTable("inventory_items", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  category: text("category").notNull().default("Supplement"),
+  catalogItemId: integer("catalog_item_id"),
+  unit: text("unit").notNull().default("units"),
+  quantity: real("quantity").notNull().default(0),
+  lowStockThreshold: real("low_stock_threshold").notNull().default(5),
+  batchNumber: text("batch_number"),
+  expiryDate: date("expiry_date"),
+  supplier: text("supplier"),
+  notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
+  updatedAt: text("updated_at"),
+});
+
+export const insertInventoryItemSchema = createInsertSchema(inventoryItems).omit({ id: true });
+export type InsertInventoryItem = z.infer<typeof insertInventoryItemSchema>;
+export type InventoryItem = typeof inventoryItems.$inferSelect;
+
+export const inventoryMovements = pgTable("inventory_movements", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull().references(() => inventoryItems.id, { onDelete: "cascade" }),
+  change: real("change").notNull(),
+  reason: text("reason"),
+  createdAt: text("created_at").notNull(),
+});
+
+export type InventoryMovement = typeof inventoryMovements.$inferSelect;
+
 export const attendance = pgTable("attendance", {
   id: serial("id").primaryKey(),
   employeeName: text("employee_name").notNull(),

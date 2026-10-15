@@ -1979,6 +1979,11 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       notes: req.body.notes,
       templateSnapshot,
     });
+    try {
+      await storage.applyInvoiceStock(quote.items as any[], -1, `Billed: invoice #${inv.id}`);
+    } catch (err) {
+      console.error("Inventory deduction failed for invoice", inv.id, err);
+    }
     res.status(201).json({ ...inv, templateSnapshot: await presentInvoiceTemplate(templateSnapshot) });
   });
 
@@ -2134,8 +2139,16 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.delete("/api/invoices/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const existing = (await storage.getAllInvoices()).find((inv) => inv.id === id);
     const deleted = await storage.deleteInvoice(id);
     if (!deleted) return res.status(404).json({ error: "Invoice not found" });
+    if (existing && Array.isArray(existing.items)) {
+      try {
+        await storage.applyInvoiceStock(existing.items as any[], 1, `Invoice #${id} deleted`);
+      } catch (err) {
+        console.error("Inventory restore failed for invoice", id, err);
+      }
+    }
     res.status(204).send();
   });
 
@@ -3003,6 +3016,68 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const result = await generateTrimesterChecklist(id);
     if (!result) return res.status(500).json({ error: "Checklist generation failed" });
     res.json(result);
+  });
+
+  // ── Inventory ─────────────────────────────────────────────────────────────
+
+  app.get("/api/inventory", async (_req, res) => {
+    res.json(await storage.getInventoryItems());
+  });
+
+  app.post("/api/inventory", async (req, res) => {
+    const name = String(req.body?.name || "").trim();
+    if (!name) return res.status(400).json({ error: "Name is required" });
+    const item = await storage.createInventoryItem({
+      name,
+      category: req.body.category || "Supplement",
+      catalogItemId: req.body.catalogItemId ? Number(req.body.catalogItemId) : null,
+      unit: req.body.unit || "units",
+      quantity: Math.max(0, Number(req.body.quantity) || 0),
+      lowStockThreshold: Math.max(0, Number(req.body.lowStockThreshold) || 0),
+      batchNumber: req.body.batchNumber || null,
+      expiryDate: req.body.expiryDate || null,
+      supplier: req.body.supplier || null,
+      notes: req.body.notes || null,
+      isActive: true,
+    });
+    res.status(201).json(item);
+  });
+
+  app.patch("/api/inventory/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const { name, category, catalogItemId, unit, lowStockThreshold, batchNumber, expiryDate, supplier, notes, isActive } = req.body || {};
+    const data: Record<string, unknown> = { name, category, unit, batchNumber, expiryDate: expiryDate || null, supplier, notes, isActive };
+    if (catalogItemId !== undefined) data.catalogItemId = catalogItemId ? Number(catalogItemId) : null;
+    if (lowStockThreshold !== undefined) data.lowStockThreshold = Math.max(0, Number(lowStockThreshold) || 0);
+    Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
+    const updated = await storage.updateInventoryItem(id, data);
+    if (!updated) return res.status(404).json({ error: "Item not found" });
+    res.json(updated);
+  });
+
+  app.post("/api/inventory/:id/adjust", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const change = Number(req.body?.change);
+    if (!Number.isFinite(change) || change === 0) return res.status(400).json({ error: "A non-zero change is required" });
+    const updated = await storage.adjustInventoryItem(id, change, req.body?.reason);
+    if (!updated) return res.status(404).json({ error: "Item not found" });
+    res.json(updated);
+  });
+
+  app.get("/api/inventory/:id/movements", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    res.json(await storage.getInventoryMovements(id));
+  });
+
+  app.delete("/api/inventory/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const deleted = await storage.deleteInventoryItem(id);
+    if (!deleted) return res.status(404).json({ error: "Item not found" });
+    res.status(204).send();
   });
 
   // ── Billing Catalog ───────────────────────────────────────────────────────

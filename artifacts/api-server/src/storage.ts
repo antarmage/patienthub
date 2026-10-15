@@ -35,6 +35,8 @@ import {
   type Expense, type InsertExpense,
   billingCatalog,
   type BillingCatalog, type InsertBillingCatalog,
+  inventoryItems, inventoryMovements,
+  type InventoryItem, type InsertInventoryItem, type InventoryMovement,
   scheduleOptimisations,
   type ScheduleOptimisation, type InsertScheduleOptimisation,
   servicePackages,
@@ -182,6 +184,13 @@ export interface IStorage {
   getAllInvoices(): Promise<Invoice[]>;
 
   getBillingCatalog(): Promise<BillingCatalog[]>;
+  getInventoryItems(): Promise<InventoryItem[]>;
+  createInventoryItem(item: InsertInventoryItem): Promise<InventoryItem>;
+  updateInventoryItem(id: number, data: Partial<InsertInventoryItem>): Promise<InventoryItem | undefined>;
+  deleteInventoryItem(id: number): Promise<boolean>;
+  adjustInventoryItem(id: number, change: number, reason?: string): Promise<InventoryItem | undefined>;
+  applyInvoiceStock(items: Array<{ catalogItemId?: number; quantity?: number }>, direction: 1 | -1, reason: string): Promise<void>;
+  getInventoryMovements(id: number): Promise<InventoryMovement[]>;
   createBillingCatalogItem(item: InsertBillingCatalog): Promise<BillingCatalog>;
   updateBillingCatalogItem(id: number, data: Partial<InsertBillingCatalog>): Promise<BillingCatalog | undefined>;
   deleteBillingCatalogItem(id: number): Promise<boolean>;
@@ -680,6 +689,56 @@ export class DatabaseStorage implements IStorage {
 
   async getAllInvoices(): Promise<Invoice[]> {
     return db.select().from(invoices);
+  }
+
+  async getInventoryItems(): Promise<InventoryItem[]> {
+    return db.select().from(inventoryItems).orderBy(inventoryItems.category, inventoryItems.name);
+  }
+
+  async createInventoryItem(item: InsertInventoryItem): Promise<InventoryItem> {
+    const [created] = await db.insert(inventoryItems).values({ ...item, updatedAt: new Date().toISOString() }).returning();
+    if (created.quantity) {
+      await db.insert(inventoryMovements).values({ itemId: created.id, change: created.quantity, reason: "Opening stock", createdAt: new Date().toISOString() });
+    }
+    return created;
+  }
+
+  async updateInventoryItem(id: number, data: Partial<InsertInventoryItem>): Promise<InventoryItem | undefined> {
+    const [updated] = await db.update(inventoryItems).set({ ...data, updatedAt: new Date().toISOString() }).where(eq(inventoryItems.id, id)).returning();
+    return updated;
+  }
+
+  async deleteInventoryItem(id: number): Promise<boolean> {
+    const result = await db.delete(inventoryItems).where(eq(inventoryItems.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async adjustInventoryItem(id: number, change: number, reason?: string): Promise<InventoryItem | undefined> {
+    const [updated] = await db
+      .update(inventoryItems)
+      .set({ quantity: sql`GREATEST(0, ${inventoryItems.quantity} + ${change})`, updatedAt: new Date().toISOString() })
+      .where(eq(inventoryItems.id, id))
+      .returning();
+    if (updated) {
+      await db.insert(inventoryMovements).values({ itemId: id, change, reason: reason || null, createdAt: new Date().toISOString() });
+    }
+    return updated;
+  }
+
+  async applyInvoiceStock(items: Array<{ catalogItemId?: number; quantity?: number }>, direction: 1 | -1, reason: string): Promise<void> {
+    for (const line of items) {
+      const catalogItemId = Number(line?.catalogItemId);
+      const quantity = Number(line?.quantity);
+      if (!catalogItemId || !(quantity > 0)) continue;
+      const linked = await db.select().from(inventoryItems).where(and(eq(inventoryItems.catalogItemId, catalogItemId), eq(inventoryItems.isActive, true)));
+      for (const item of linked) {
+        await this.adjustInventoryItem(item.id, direction * quantity, reason);
+      }
+    }
+  }
+
+  async getInventoryMovements(id: number): Promise<InventoryMovement[]> {
+    return db.select().from(inventoryMovements).where(eq(inventoryMovements.itemId, id)).orderBy(desc(inventoryMovements.id)).limit(30);
   }
 
   async getBillingCatalog(): Promise<BillingCatalog[]> {
