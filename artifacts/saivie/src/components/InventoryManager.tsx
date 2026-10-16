@@ -16,6 +16,8 @@ export interface InventoryItem {
   category: string;
   taxRate: number;
   sellingPrice: number | null;
+  primeDiscountPercent: number;
+  nonPrimeDiscountPercent: number;
   unit: string;
   quantity: number;
   lowStockThreshold: number;
@@ -70,7 +72,7 @@ export function getInventoryAlerts(items: InventoryItem[]) {
   };
 }
 
-const emptyForm = { name: "", category: "Supplement", taxRate: "0", unit: "units", quantity: "0", lowStockThreshold: "5", batchNumber: "", expiryDate: "", supplier: "", sellingPrice: "", costPrice: "" };
+const emptyForm = { name: "", category: "Supplement", taxRate: "0", unit: "units", quantity: "0", lowStockThreshold: "5", batchNumber: "", expiryDate: "", supplier: "", sellingPrice: "", primeDiscountPercent: "0", nonPrimeDiscountPercent: "0", costPrice: "" };
 
 export function InventoryManager({ token, onSignOut }: { token: string; onSignOut: () => void }) {
   const { toast } = useToast();
@@ -124,6 +126,8 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
         expiryDate: form.expiryDate || null,
         supplier: form.supplier || null,
         sellingPrice: form.sellingPrice === "" ? null : Number(form.sellingPrice),
+        primeDiscountPercent: Number(form.primeDiscountPercent),
+        nonPrimeDiscountPercent: Number(form.nonPrimeDiscountPercent),
         costPrice: form.costPrice === "" ? null : Number(form.costPrice),
       };
       const res = await fetch(editing ? `/api/inventory/${editing.id}` : "/api/inventory", {
@@ -169,6 +173,8 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
       lowStockThreshold: String(item.lowStockThreshold), batchNumber: item.batchNumber || "",
       expiryDate: item.expiryDate ? String(item.expiryDate).slice(0, 10) : "", supplier: item.supplier || "",
       sellingPrice: item.sellingPrice != null ? String(item.sellingPrice) : "",
+      primeDiscountPercent: String(item.primeDiscountPercent ?? 0),
+      nonPrimeDiscountPercent: String(item.nonPrimeDiscountPercent ?? 0),
       costPrice: ownerCosts.costs?.inventory[item.id] != null ? String(ownerCosts.costs.inventory[item.id]) : "",
     });
     setIsFormOpen(true);
@@ -214,7 +220,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
               <th className="px-3 py-3">Category</th>
               <th className="px-3 py-3">In stock</th>
               <th className="px-3 py-3">Alert at</th>
-              <th className="px-3 py-3">Selling price</th>
+              <th className="px-3 py-3">Selling price / discounts</th>
               <th className="px-3 py-3">Purchase price</th>
               <th className="px-3 py-3">Expiry</th>
               <th className="px-3 py-3">Status</th>
@@ -234,7 +240,12 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
                   <td className="px-3 py-3 text-slate-600">{item.category}</td>
                   <td className="px-3 py-3 font-semibold text-slate-900">{item.quantity} <span className="text-xs font-normal text-slate-500">{item.unit}</span></td>
                   <td className="px-3 py-3 text-slate-600">{item.lowStockThreshold}</td>
-                  <td className="px-3 py-3 text-slate-600">{item.sellingPrice != null ? `₹${item.sellingPrice.toLocaleString("en-IN")}` : "—"}</td>
+                  <td className="px-3 py-3 text-slate-600">
+                    {item.sellingPrice != null ? `₹${item.sellingPrice.toLocaleString("en-IN")}` : "—"}
+                    {(item.primeDiscountPercent > 0 || item.nonPrimeDiscountPercent > 0) && (
+                      <p className="mt-0.5 text-[10px] text-emerald-700">Prime {item.primeDiscountPercent || 0}% · Non-Prime {item.nonPrimeDiscountPercent || 0}%</p>
+                    )}
+                  </td>
                   <td className="px-3 py-3 text-slate-600">{formatCost(ownerCosts.costs?.inventory[item.id])}</td>
                   <td className="px-3 py-3 text-slate-600">{item.expiryDate ? String(item.expiryDate).slice(0, 10) : "—"}</td>
                   <td className="space-x-1 px-3 py-3">
@@ -347,6 +358,15 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
               <Label>GST rate (%)</Label>
               <Input type="number" min={0} max={100} step="0.01" value={form.taxRate} onChange={(e) => setForm({ ...form, taxRate: e.target.value })} data-testid="input-inv-tax-rate" />
             </div>
+            <div className="space-y-1">
+              <Label>Prime discount (%)</Label>
+              <Input type="number" min={0} max={100} step="0.01" value={form.primeDiscountPercent} onChange={(e) => setForm({ ...form, primeDiscountPercent: e.target.value })} data-testid="input-inv-prime-discount" />
+            </div>
+            <div className="space-y-1">
+              <Label>Non-Prime discount (%)</Label>
+              <Input type="number" min={0} max={100} step="0.01" value={form.nonPrimeDiscountPercent} onChange={(e) => setForm({ ...form, nonPrimeDiscountPercent: e.target.value })} data-testid="input-inv-non-prime-discount" />
+            </div>
+            <p className="col-span-2 text-xs text-slate-500">The matching discount is applied automatically to the product when billing a Prime or non-Prime patient. Leave at 0% for no discount.</p>
             <div className="col-span-2 space-y-1">
               <Label>Purchase price per {form.unit || "unit"} (₹, owner only)</Label>
               <Input type="number" min={0} step="0.01" value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} data-testid="input-inv-cost" />

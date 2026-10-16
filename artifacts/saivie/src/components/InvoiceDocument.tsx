@@ -39,7 +39,7 @@ interface InvoiceDocumentProps {
   subtotal: number;
   tax: number;
   discountTotal?: number;
-  discountDetails?: Array<{ catalogItemId: number; name: string; amount: number; label: string }>;
+  discountDetails?: Array<{ catalogItemId?: number; inventoryItemId?: number; name: string; amount: number; label: string }>;
   total: number;
   date?: string;
   paymentMethod?: string;
@@ -226,7 +226,7 @@ function InvoiceArticle({
             <div className="space-y-1.5 text-[10px]">
               <div className="flex justify-between gap-3"><span className="text-slate-600">Taxable subtotal</span><span className="font-medium">{formatAmount(subtotal)}</span></div>
               {sections.taxBreakdown && tax > 0 && <div className="flex justify-between gap-3"><span className="text-slate-600">GST after discount</span><span className="font-medium">{formatAmount(tax)}</span></div>}
-              {discountTotal > 0 && <div className="flex justify-between gap-3 text-emerald-800"><span>Prime discounts</span><span className="font-semibold">−{formatAmount(discountTotal)}</span></div>}
+              {discountTotal > 0 && <div className="flex justify-between gap-3 text-emerald-800"><span>Discounts</span><span className="font-semibold">−{formatAmount(discountTotal)}</span></div>}
               <div className="flex justify-between gap-3 border-t-2 border-emerald-800 pt-2 text-sm font-extrabold"><span>Total</span><span>{formatAmount(total)}</span></div>
             </div>
             {items.some((item) => item.catalogPriceIncludesTax) && <p className="mt-2 text-[8px] leading-3 text-slate-500">MRP for items marked GST included includes GST in the listed price.</p>}

@@ -24,7 +24,7 @@ export interface InvoiceQuote {
   subtotal: number;
   tax: number;
   discountTotal: number;
-  discountDetails: Array<{ catalogItemId: number; name: string; amount: number; label: string }>;
+  discountDetails: Array<{ catalogItemId?: number; inventoryItemId?: number; name: string; amount: number; label: string }>;
   total: number;
   isPrimeMember: boolean;
 }
@@ -67,7 +67,9 @@ export function calculateInvoiceQuote(
       const taxRate = Math.max(0, Number(product.taxRate) || 0);
       const total = roundCurrency(price * requested.quantity);
       const taxableSubtotal = taxRate > 0 ? roundCurrency(total / (1 + taxRate / 100)) : total;
-      const taxAmount = roundCurrency(total - taxableSubtotal);
+      const discountPercent = Math.min(100, Math.max(0, Number(isPrimeMember ? product.primeDiscountPercent : product.nonPrimeDiscountPercent) || 0));
+      const discountAmount = roundCurrency(taxableSubtotal * discountPercent / 100);
+      const taxAmount = roundCurrency((taxableSubtotal - discountAmount) * taxRate / 100);
       return {
         inventoryItemId: product.id,
         name: product.name,
@@ -78,9 +80,11 @@ export function calculateInvoiceQuote(
         taxRate,
         taxAmount,
         catalogPriceIncludesTax: taxRate > 0,
-        discountAmount: 0,
-        discountLabel: null,
-        lineTotal: total,
+        discountAmount,
+        discountLabel: discountAmount > 0
+          ? `${isPrimeMember ? "Prime" : "Non-Prime"} product discount ${discountPercent}%`
+          : null,
+        lineTotal: roundCurrency(taxableSubtotal + taxAmount - discountAmount),
       };
     }
 
@@ -133,12 +137,13 @@ export function calculateInvoiceQuote(
   const tax = roundCurrency(items.reduce((sum, item) => sum + item.taxAmount, 0));
   const discountTotal = roundCurrency(items.reduce((sum, item) => sum + item.discountAmount, 0));
   const discountDetails = items
-    .filter((item) => item.catalogItemId && item.discountAmount > 0 && item.discountLabel)
+    .filter((item) => (item.catalogItemId || item.inventoryItemId) && item.discountAmount > 0 && item.discountLabel)
     .map((item) => ({
-      catalogItemId: item.catalogItemId!,
+      ...(item.catalogItemId ? { catalogItemId: item.catalogItemId } : {}),
+      ...(item.inventoryItemId ? { inventoryItemId: item.inventoryItemId } : {}),
       name: item.name,
       amount: item.discountAmount,
-      label: item.discountLabel as string,
+      label: item.discountLabel!,
     }));
 
   return {

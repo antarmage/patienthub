@@ -97,7 +97,7 @@ interface BillingQuote {
   subtotal: number;
   tax: number;
   discountTotal: number;
-  discountDetails: Array<{ catalogItemId: number; name: string; amount: number; label: string }>;
+  discountDetails: Array<{ catalogItemId?: number; inventoryItemId?: number; name: string; amount: number; label: string }>;
   total: number;
   isPrimeMember: boolean;
 }
@@ -4003,6 +4003,11 @@ export default function StaffPortal() {
                                         <p className="text-xs text-slate-500">
                                           MRP ₹{Number(product.sellingPrice).toLocaleString("en-IN")} · GST {Number(product.taxRate) || 0}% · Stock {product.quantity} {product.unit}
                                         </p>
+                                        {(Number(product.primeDiscountPercent) > 0 || Number(product.nonPrimeDiscountPercent) > 0) && (
+                                          <p className="text-[10px] text-emerald-700">
+                                            Prime {Number(product.primeDiscountPercent) || 0}% · Non-Prime {Number(product.nonPrimeDiscountPercent) || 0}% off
+                                          </p>
+                                        )}
                                       </div>
                                       <Button
                                         size="sm"
@@ -4275,7 +4280,7 @@ export default function StaffPortal() {
                               <div className="space-y-1 text-sm">
                                 <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>₹{subtotal.toLocaleString('en-IN')}</span></div>
                                 <div className="flex justify-between text-slate-600"><span>GST after discount</span><span>₹{Math.round(tax).toLocaleString('en-IN')}</span></div>
-                                <div className="flex justify-between font-medium text-emerald-700"><span>Prime discounts</span><span>−₹{discountTotal.toLocaleString('en-IN')}</span></div>
+                                <div className="flex justify-between font-medium text-emerald-700"><span>Discounts</span><span>−₹{discountTotal.toLocaleString('en-IN')}</span></div>
                                 <Separator />
                                 <div className="flex justify-between font-bold text-lg text-slate-900">
                                   <span>{billingIsEstimate ? 'Estimated Total' : 'Total'}</span>

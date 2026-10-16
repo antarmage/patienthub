@@ -152,6 +152,8 @@ export async function ensureSchema(): Promise<void> {
       ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS tax_rate real NOT NULL DEFAULT 0;
       ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS selling_price real;
       ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS cost_price real;
+      ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS prime_discount_percent real NOT NULL DEFAULT 0;
+      ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS non_prime_discount_percent real NOT NULL DEFAULT 0;
       ALTER TABLE billing_catalog ADD COLUMN IF NOT EXISTS cost_price real;
 
       CREATE TABLE IF NOT EXISTS inventory_movements (

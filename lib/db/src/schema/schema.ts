@@ -503,6 +503,8 @@ export const inventoryItems = pgTable("inventory_items", {
   updatedAt: text("updated_at"),
   sellingPrice: real("selling_price"),
   costPrice: real("cost_price"),
+  primeDiscountPercent: real("prime_discount_percent").notNull().default(0),
+  nonPrimeDiscountPercent: real("non_prime_discount_percent").notNull().default(0),
 });
 
 export const insertInventoryItemSchema = createInsertSchema(inventoryItems).omit({ id: true });

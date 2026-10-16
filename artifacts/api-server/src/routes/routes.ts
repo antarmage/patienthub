@@ -99,6 +99,11 @@ function parseCost(value: unknown): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
+function parseProductDiscountPercent(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 && n <= 100 ? n : null;
+}
+
 // Tracks appointment IDs that have already had a post-visit summary sent
 // (prevents duplicate sends if appointment is PATCH'd to "completed" more than once)
 const postVisitSummarySentIds = new Set<number>();
@@ -3133,6 +3138,9 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     if (!name) return res.status(400).json({ error: "Name is required" });
     const taxRate = Number(req.body?.taxRate ?? 0);
     if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) return res.status(400).json({ error: "Invalid tax rate" });
+    const primeDiscountPercent = parseProductDiscountPercent(req.body?.primeDiscountPercent ?? 0);
+    const nonPrimeDiscountPercent = parseProductDiscountPercent(req.body?.nonPrimeDiscountPercent ?? 0);
+    if (primeDiscountPercent === null || nonPrimeDiscountPercent === null) return res.status(400).json({ error: "Product discounts must be between 0 and 100%" });
     const item = await storage.createInventoryItem({
       name,
       category: req.body.category || "Supplement",
@@ -3146,6 +3154,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       notes: req.body.notes || null,
       sellingPrice: parseCost(req.body.sellingPrice),
       costPrice: parseCost(req.body.costPrice),
+      primeDiscountPercent,
+      nonPrimeDiscountPercent,
       isActive: true,
     });
     res.status(201).json(item);
@@ -3160,10 +3170,15 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       const taxRate = Number(req.body.taxRate);
       if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) return res.status(400).json({ error: "Invalid tax rate" });
     }
+    const primeDiscountPercent = req.body?.primeDiscountPercent === undefined ? undefined : parseProductDiscountPercent(req.body.primeDiscountPercent);
+    const nonPrimeDiscountPercent = req.body?.nonPrimeDiscountPercent === undefined ? undefined : parseProductDiscountPercent(req.body.nonPrimeDiscountPercent);
+    if (primeDiscountPercent === null || nonPrimeDiscountPercent === null) return res.status(400).json({ error: "Product discounts must be between 0 and 100%" });
     const data: Record<string, unknown> = { name, category, unit, batchNumber, expiryDate: expiryDate || null, supplier, notes, isActive };
     if (req.body?.taxRate !== undefined) data.taxRate = Number(req.body.taxRate);
     if (req.body?.sellingPrice !== undefined) data.sellingPrice = parseCost(req.body.sellingPrice);
     if (req.body?.costPrice !== undefined) data.costPrice = parseCost(req.body.costPrice);
+    if (primeDiscountPercent !== undefined) data.primeDiscountPercent = primeDiscountPercent;
+    if (nonPrimeDiscountPercent !== undefined) data.nonPrimeDiscountPercent = nonPrimeDiscountPercent;
     if (lowStockThreshold !== undefined) data.lowStockThreshold = Math.max(0, Number(lowStockThreshold) || 0);
     Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
     const updated = await storage.updateInventoryItem(id, data);
