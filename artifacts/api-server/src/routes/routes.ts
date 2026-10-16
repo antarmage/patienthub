@@ -1297,8 +1297,8 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
 
     // Return only non-sensitive fields — history is restricted to authenticated staff
     res.json({
-      appointment: { id: appt.id, date: appt.date, time: appt.time },
-      patient: { id: patient.id, name: patient.name }
+      appointment: { id: appt.id, date: appt.date, time: appt.time, chiefComplaint: appt.chiefComplaint },
+      patient: { id: patient.id, name: patient.name, dob: patient.dob, referredBy: patient.referredBy }
     });
   });
 
@@ -1638,7 +1638,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const appointmentId = parseId(req.params.appointmentId);
     if (!appointmentId) return res.status(400).json({ error: "Invalid appointment ID" });
 
-    const { chiefComplaint, history } = req.body;
+    const { chiefComplaint, history, patientDetails } = req.body;
 
     const appt = await storage.getAppointments().then(all => all.find(a => a.id === appointmentId));
     if (!appt) return res.status(404).json({ error: "Appointment not found" });
@@ -1646,11 +1646,27 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     // Update appointment chief complaint
     await storage.updateAppointment(appointmentId, { chiefComplaint });
 
-    // Update patient history
-    if (history) {
-      const patient = await storage.getPatient(appt.patientId!);
-      const existingHistory = patient?.history && typeof patient.history === "object" ? patient.history : {};
-      await storage.updatePatient(appt.patientId!, { history: { ...existingHistory, ...history } });
+    const patient = await storage.getPatient(appt.patientId!);
+    if (!patient) return res.status(404).json({ error: "Patient not found" });
+
+    if (patientDetails && typeof patientDetails === "object") {
+      const updates: Record<string, string> = {};
+      if (typeof patientDetails.name === "string" && patientDetails.name.trim()) {
+        updates.name = patientDetails.name.trim().slice(0, 200);
+      }
+      if (typeof patientDetails.dob === "string" && /^\d{4}-\d{2}-\d{2}$/.test(patientDetails.dob)) {
+        updates.dob = patientDetails.dob;
+      }
+      if (typeof patientDetails.referredBy === "string") {
+        updates.referredBy = patientDetails.referredBy.trim().slice(0, 200);
+      }
+      if (Object.keys(updates).length) await storage.updatePatient(patient.id, updates);
+    }
+
+    // Merge submitted history so empty sections do not erase existing records.
+    if (history && typeof history === "object" && !Array.isArray(history)) {
+      const existingHistory = patient.history && typeof patient.history === "object" && !Array.isArray(patient.history) ? patient.history : {};
+      await storage.updatePatient(patient.id, { history: { ...existingHistory, ...history } });
     }
 
     res.json({ success: true });

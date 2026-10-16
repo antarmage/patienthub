@@ -1,300 +1,499 @@
-
-import React, { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams, useLocation } from "wouter";
-import {
-    UserPlus,
-    Stethoscope,
-    History,
-    CheckCircle2,
-    ArrowRight,
-    Sparkles,
-    ShieldCheck
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useLocation, useParams } from "wouter";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Heart, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Separator } from "@/components/ui/separator";
-import { motion, AnimatePresence } from "framer-motion";
+
+const sections = [
+    { key: "about", title: "About you", eyebrow: "First things first" },
+    { key: "concern", title: "Your concern", eyebrow: "What brings you in?" },
+    { key: "cycle", title: "Cycle", eyebrow: "Your cycle story" },
+    { key: "gyn", title: "GYN history", eyebrow: "A little more context" },
+    { key: "pregnancy", title: "Pregnancies", eyebrow: "Your pregnancy history" },
+    { key: "lifestyle", title: "Lifestyle", eyebrow: "Everyday wellbeing" },
+    { key: "health", title: "Health history", eyebrow: "The bigger picture" },
+    { key: "review", title: "Review", eyebrow: "Almost there" },
+];
+
+const concernOptions = [
+    "Missed or late period",
+    "Possible pregnancy",
+    "I am pregnant",
+    "Pregnancy care",
+    "Abdominal or pelvic pain",
+    "Irregular or heavy bleeding",
+    "Fertility",
+    "Birth control",
+    "Routine checkup",
+    "Other",
+];
+
+const conditions = [
+    "Allergies", "Anemia", "Anxiety", "Asthma / lung disease", "ADHD", "Cancer",
+    "Breast problem", "Blood coagulation disorder", "Depression", "Postpartum depression",
+    "Diabetes", "Eating disorder", "Epilepsy", "GERD / reflux", "Gestational diabetes",
+    "Heart disease", "Headaches / migraine", "High cholesterol", "Hypertension",
+    "Irritable bowel syndrome", "Thyroid condition", "Kidney disease / stones",
+    "Liver disease / hepatitis", "Osteoporosis", "Stroke", "Urinary incontinence",
+];
+
+type IntakeForm = {
+    name: string;
+    dob: string;
+    referredBy: string;
+    occupation: string;
+    chiefComplaint: string;
+    concerns: string[];
+    pain: { location: string[]; duration: string; severity: string; relatedSymptoms: string[] };
+    cycle: { lastPeriod: string; regularity: string; lateBy: string; pregnancyTest: string; menarcheAge: string; cycleLength: string; flow: string; symptoms: string[]; details: string };
+    gyn: { firstEncounterAge: string; partnerCount: string; lastPap: string; sexuallyActive: string; hpvVaccine: string; birthControl: string[]; concerns: string[]; details: string };
+    pregnancies: { currentStatus: string; weeksPregnant: string; dueDate: string; total: string; vaginal: string; cesarean: string; miscarriages: string; terminations: string; premature: string; details: string };
+    lifestyle: { smoking: string; relationship: string; alcohol: string; exercise: string; mammogram: string; colonoscopy: string; other: string };
+    health: { conditions: string[]; medicalDetails: string; surgeries: string; medications: string; allergies: string; familyHistory: string };
+};
+
+const initialForm: IntakeForm = {
+    name: "",
+    dob: "",
+    referredBy: "",
+    occupation: "",
+    chiefComplaint: "",
+    concerns: [],
+    pain: { location: [], duration: "", severity: "", relatedSymptoms: [] },
+    cycle: { lastPeriod: "", regularity: "", lateBy: "", pregnancyTest: "", menarcheAge: "", cycleLength: "", flow: "", symptoms: [], details: "" },
+    gyn: { firstEncounterAge: "", partnerCount: "", lastPap: "", sexuallyActive: "", hpvVaccine: "", birthControl: [], concerns: [], details: "" },
+    pregnancies: { currentStatus: "", weeksPregnant: "", dueDate: "", total: "0", vaginal: "0", cesarean: "0", miscarriages: "0", terminations: "0", premature: "0", details: "" },
+    lifestyle: { smoking: "", relationship: "", alcohol: "", exercise: "", mammogram: "", colonoscopy: "", other: "" },
+    health: { conditions: [], medicalDetails: "", surgeries: "", medications: "", allergies: "", familyHistory: "" },
+};
+
+const inputClass = "w-full rounded-lg border border-[#dfe6dd] bg-[#fbfcfa] px-3 py-2.5 text-sm text-[#29483f] placeholder:text-[#a0aaa2] outline-none transition focus:border-[#7a9b4d] focus:ring-2 focus:ring-[#c9dc8b]/40";
+const labelClass = "mb-1.5 block text-xs font-semibold text-[#536b61]";
+const cardClass = "rounded-2xl border border-[#e5e9e1] bg-white p-6 shadow-[0_8px_30px_rgba(35,66,54,0.04)] sm:p-8";
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+    return <label className="block min-w-0"><span className={labelClass}>{label}</span>{children}</label>;
+}
+
+function TextInput({ label, value, onChange, placeholder, type = "text" }: {
+    label: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string;
+}) {
+    return <Field label={label}><input className={inputClass} type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} /></Field>;
+}
+
+function TextArea({ label, value, onChange, placeholder }: {
+    label: string; value: string; onChange: (value: string) => void; placeholder?: string;
+}) {
+    return <Field label={label}><textarea className={`${inputClass} min-h-24 resize-y`} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} /></Field>;
+}
+
+function ChoiceGroup({ label, options, value, onChange }: {
+    label: string; options: string[]; value: string; onChange: (value: string) => void;
+}) {
+    return (
+        <fieldset>
+            <legend className={labelClass}>{label}</legend>
+            <div className="flex flex-wrap gap-2">
+                {options.map((option) => (
+                    <button key={option} type="button" onClick={() => onChange(value === option ? "" : option)}
+                        aria-pressed={value === option}
+                        className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${value === option ? "border-[#244e43] bg-[#244e43] text-white" : "border-[#e0e6de] bg-[#fbfcfa] text-[#536b61] hover:border-[#99b56c]"}`}>
+                        {option}
+                    </button>
+                ))}
+            </div>
+        </fieldset>
+    );
+}
+
+function CheckGrid({ label, options, value, onChange }: {
+    label: string; options: string[]; value: string[]; onChange: (value: string[]) => void;
+}) {
+    const toggle = (option: string) => onChange(value.includes(option) ? value.filter((item) => item !== option) : [...value, option]);
+    return (
+        <fieldset>
+            <legend className={labelClass}>{label}</legend>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {options.map((option) => (
+                    <label key={option} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${value.includes(option) ? "border-[#9dbd50] bg-[#f5f8e9] text-[#35564a]" : "border-[#e5e9e3] bg-[#fcfdfa] text-[#64756d]"}`}>
+                        <input type="checkbox" checked={value.includes(option)} onChange={() => toggle(option)} className="accent-[#769d35]" />
+                        {option}
+                    </label>
+                ))}
+            </div>
+        </fieldset>
+    );
+}
 
 export default function PatientOnboarding() {
     const { id } = useParams();
-    const [_, setLocation] = useLocation();
+    const [, setLocation] = useLocation();
     const { toast } = useToast();
-    const [step, setStep] = useState(1);
-    const [chiefComplaint, setChiefComplaint] = useState("");
-    const [medicalHistory, setMedicalHistory] = useState("");
-    const [surgicalHistory, setSurgicalHistory] = useState("");
-    const [currentMedications, setCurrentMedications] = useState("");
-    const [allergies, setAllergies] = useState("");
+    const [step, setStep] = useState("about");
+    const [form, setForm] = useState<IntakeForm>(initialForm);
     const [submitted, setSubmitted] = useState(false);
 
     const { data: onboardingData, isLoading } = useQuery({
-        queryKey: [`/api/onboarding`, id],
+        queryKey: ["/api/onboarding", id],
         queryFn: async () => {
-            const res = await fetch(`/api/onboarding`, {
-                headers: { "X-Appointment-Id": String(id) },
-            });
-            if (!res.ok) throw new Error("Failed to load onboarding session");
-            return res.json();
-        }
+            const response = await fetch("/api/onboarding", { headers: { "X-Appointment-Id": String(id) } });
+            if (!response.ok) throw new Error("Failed to load onboarding session");
+            return response.json();
+        },
     });
 
-    const historyEntries = (value: string) =>
-        value.split("\n").map((entry) => entry.trim()).filter(Boolean);
+    const needsCycle = form.concerns.some((concern) =>
+        ["Missed or late period", "Possible pregnancy", "I am pregnant", "Pregnancy care", "Irregular or heavy bleeding"].includes(concern));
+    const needsGyn = form.concerns.some((concern) =>
+        ["Abdominal or pelvic pain", "Irregular or heavy bleeding", "Fertility", "Birth control", "Routine checkup", "Other"].includes(concern));
+    const needsPregnancy = form.concerns.some((concern) =>
+        ["Possible pregnancy", "I am pregnant", "Pregnancy care"].includes(concern));
+    const visibleSections = [
+        sections[0],
+        sections[1],
+        ...(needsCycle ? [sections[2]] : []),
+        ...(needsGyn ? [sections[3]] : []),
+        ...(needsPregnancy ? [sections[4]] : []),
+        sections[5],
+        sections[6],
+        sections[7],
+    ];
+    const visibleSectionKeys = visibleSections.map((section) => section.key).join(",");
+
+    useEffect(() => {
+        if (!visibleSectionKeys.split(",").includes(step)) setStep("concern");
+    }, [step, visibleSectionKeys]);
+
+    useEffect(() => {
+        const patient = onboardingData?.patient;
+        if (!patient) return;
+        setForm((current) => ({
+            ...current,
+            name: current.name || patient.name || "",
+            dob: current.dob || patient.dob || "",
+            referredBy: current.referredBy || patient.referredBy || "",
+            chiefComplaint: current.chiefComplaint || onboardingData?.appointment?.chiefComplaint || "",
+        }));
+    }, [onboardingData]);
 
     const mutation = useMutation({
-        mutationFn: async (data: { chiefComplaint: string; history?: { medical?: string[]; surgical?: string[]; drug?: string[]; allergies?: string[] } }) => {
-            const res = await fetch(`/api/onboarding/${id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
+        mutationFn: async () => {
+            const historyEntries = (value: string) => value.split("\n").map((entry) => entry.trim()).filter(Boolean);
+            const medical = [...form.health.conditions, ...historyEntries(form.health.medicalDetails)];
+            const surgical = historyEntries(form.health.surgeries);
+            const drug = historyEntries(form.health.medications);
+            const allergies = historyEntries(form.health.allergies);
+            const history = {
+                ...(medical.length ? { medical } : {}),
+                ...(surgical.length ? { surgical } : {}),
+                ...(drug.length ? { drug } : {}),
+                ...(allergies.length ? { allergies } : {}),
+                ...(form.health.familyHistory.trim() ? { family: historyEntries(form.health.familyHistory) } : {}),
+                onboarding: form,
+            };
+            const complaint = [
+                form.concerns.length ? `Visit concerns: ${form.concerns.join(", ")}` : "",
+                form.chiefComplaint.trim(),
+            ].filter(Boolean).join("\n");
+            const response = await fetch(`/api/onboarding/${id}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    chiefComplaint: complaint,
+                    history,
+                    patientDetails: {
+                        name: form.name,
+                        dob: form.dob,
+                        referredBy: form.referredBy,
+                    },
+                }),
             });
-            if (!res.ok) throw new Error("Failed to save onboarding data");
-            return res.json();
+            if (!response.ok) throw new Error("Failed to save onboarding information");
+            return response.json();
         },
         onSuccess: () => {
             setSubmitted(true);
-            toast({
-                title: "Onboarding Complete",
-                description: "Your information has been securely shared with our clinical team.",
-            });
+            toast({ title: "Intake submitted", description: "Your information has been securely shared with the care team." });
         },
-        onError: (error: any) => {
-            toast({
-                title: "Submission Failed",
-                description: error.message,
-                variant: "destructive",
-            });
-        }
+        onError: (error: Error) => toast({ title: "Submission failed", description: error.message, variant: "destructive" }),
     });
 
+    const update = <K extends keyof IntakeForm>(key: K, value: IntakeForm[K]) => setForm((current) => ({ ...current, [key]: value }));
+    const updateGroup = <K extends "cycle" | "gyn" | "pregnancies" | "lifestyle" | "health" | "pain">(
+        group: K, key: keyof IntakeForm[K], value: string | string[],
+    ) => setForm((current) => ({
+        ...current,
+        [group]: { ...current[group], [key]: value },
+    }));
+
     if (isLoading) {
-        return (
-            <div className="min-h-screen bg-white flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <Sparkles className="w-10 h-10 text-indigo-400 animate-spin" />
-                    <p className="text-slate-400 font-medium font-serif">Initializing your onboarding...</p>
-                </div>
-            </div>
-        );
+        return <div className="flex min-h-screen items-center justify-center bg-[#f7f8f2] text-sm text-[#536b61]">Preparing your care journey…</div>;
     }
 
     if (submitted) {
         return (
-            <div className="min-h-screen bg-[slate-50] flex items-center justify-center p-6 font-sans">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="max-w-md w-full"
-                >
-                    <Card className="border-none shadow-2xl shadow-indigo-100/50 text-center overflow-hidden bg-white">
-                        <div className="h-2 bg-indigo-600 w-full" />
-                        <CardContent className="pt-12 pb-12 space-y-6">
-                            <div className="w-24 h-24 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-emerald-100">
-                                <CheckCircle2 className="w-12 h-12" />
-                            </div>
-                            <div className="space-y-2 px-4">
-                                <h2 className="text-3xl font-serif font-bold text-slate-900 leading-tight">You're All Set!</h2>
-                                <p className="text-slate-500 text-lg">
-                                    Welcome to the clinic, <span className="text-indigo-600 font-bold">{onboardingData?.patient?.name}</span>. Your data is now with your doctor.
-                                </p>
-                            </div>
-                            <Separator className="bg-slate-100" />
-                            <div className="space-y-1">
-                                <p className="text-sm font-medium text-slate-400 uppercase tracking-widest">Appointment Confirmed</p>
-                                <p className="text-slate-700 font-serif text-lg">
-                                    {new Date(onboardingData?.appointment?.date).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
-                                </p>
-                            </div>
-                            <Button
-                                className="w-full h-12 bg-slate-900 hover:bg-black text-white rounded-xl transition-all font-bold"
-                                onClick={() => setLocation("/")}
-                            >
-                                Go to Dashboard
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </motion.div>
-            </div>
+            <main className="flex min-h-screen items-center justify-center bg-[#f7f8f2] p-6">
+                <section className={`${cardClass} w-full max-w-lg text-center`}>
+                    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#eaf2d8] text-[#416a42]"><CheckCircle2 size={32} /></div>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-[#78914c]">Thank you</p>
+                    <h1 className="font-serif text-3xl font-semibold text-[#21463c]">Your care team is ready</h1>
+                    <p className="mt-3 text-sm leading-6 text-[#718078]">Thanks, {form.name || onboardingData?.patient?.name}. Your answers have been securely shared with the team.</p>
+                    <Button className="mt-7 bg-[#244e43] hover:bg-[#1b3f36]" onClick={() => setLocation("/")}>Done</Button>
+                </section>
+            </main>
         );
     }
 
+    const currentIndex = visibleSections.findIndex((section) => section.key === step);
+    const currentSection = visibleSections[currentIndex] ?? visibleSections[0];
+    const progress = Math.round(((currentIndex + 1) / visibleSections.length) * 100);
+
+    const goToSection = (offset: number) => {
+        const next = visibleSections[currentIndex + offset];
+        if (next) setStep(next.key);
+    };
+
     return (
-        <div className="min-h-screen bg-white text-slate-900 selection:bg-indigo-100">
+        <main className="min-h-screen bg-[#f7f8f2] text-[#29483f]">
+            <aside className="fixed inset-y-0 left-0 z-20 hidden w-[230px] flex-col bg-[#17483e] px-5 py-6 text-white lg:flex">
+                <div className="flex items-center gap-2.5 font-semibold"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#c8e65b] text-[#21483c]"><Heart size={18} /></span>Saivie</div>
+                <p className="mt-10 text-[10px] font-bold uppercase tracking-[0.18em] text-[#a7c0b3]">Your care journey</p>
+                <nav className="mt-4 space-y-1" aria-label="Onboarding sections">
+                    {visibleSections.map((section, index) => (
+                        <button key={section.key} type="button" onClick={() => setStep(section.key)}
+                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs transition ${step === section.key ? "bg-white/15 text-white" : "text-[#c1d0c9] hover:bg-white/10"}`}>
+                            <span className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] ${index < currentIndex ? "border-[#c8e65b] bg-[#c8e65b] text-[#21483c]" : step === section.key ? "border-[#c8e65b] text-[#c8e65b]" : "border-white/30"}`}>
+                                {index < currentIndex ? <Check size={12} /> : index + 1}
+                            </span>
+                            {section.title}
+                        </button>
+                    ))}
+                </nav>
+                <div className="mt-auto rounded-xl border border-white/10 bg-white/5 p-3.5">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold"><LockKeyhole size={13} className="text-[#c8e65b]" /> Your privacy matters</div>
+                    <p className="mt-1.5 pl-5 text-[10px] leading-4 text-[#c1d0c9]">Your answers are shared only with your care team.</p>
+                </div>
+            </aside>
 
-            {/* Dynamic Progress Bar */}
-            <div className="fixed top-0 left-0 w-full h-1.5 bg-slate-50 z-50">
-                <motion.div
-                    initial={{ width: "33%" }}
-                    animate={{ width: step === 1 ? "33%" : step === 2 ? "66%" : "100%" }}
-                    className="h-full bg-indigo-600"
-                />
-            </div>
+            <div className="lg:pl-[230px]">
+                <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-[#e8ebe4] bg-white/90 px-5 backdrop-blur sm:px-8">
+                    <span className="text-sm font-semibold text-[#31594c] lg:hidden">Saivie care journey</span>
+                    <span className="hidden items-center gap-2 text-xs text-[#728078] sm:flex"><ShieldCheck size={15} className="text-[#78914c]" /> Secure patient onboarding</span>
+                    <span className="ml-auto rounded-full border border-[#e0e8c9] bg-[#f6f8e9] px-3 py-1.5 text-[11px] font-medium text-[#5d7047]">Step {currentIndex + 1} of {visibleSections.length}</span>
+                </header>
 
-            <div className="max-w-3xl mx-auto px-6 pt-20 pb-20">
-
-                <AnimatePresence mode="wait">
-                    {step === 1 && (
-                        <motion.div
-                            key="step1"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            className="space-y-10"
-                        >
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 text-indigo-600 font-bold text-sm tracking-widest uppercase">
-                                    <UserPlus className="w-4 h-4" />
-                                    Onboarding Stage 01
-                                </div>
-                                <h1 className="text-5xl md:text-6xl font-serif font-bold leading-[1.1] text-slate-900">
-                                    Help us understand <br /> your <span className="text-indigo-600 underline decoration-indigo-200 underline-offset-8">needs</span>.
-                                </h1>
-                                <p className="text-slate-500 text-xl max-w-xl">
-                                    Hi {onboardingData?.patient?.name}, before your visit on {onboardingData?.appointment?.date}, please tell us what's on your mind.
-                                </p>
-                            </div>
-
-                            <Card className="border-slate-100 shadow-xl shadow-slate-200/40 rounded-3xl overflow-hidden bg-white">
-                                <CardContent className="p-8 md:p-10 space-y-8">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-3">
-                                            <span className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 text-lg font-bold">1</span>
-                                            <Label className="text-xl font-bold text-slate-800">Your Chief Complaint</Label>
-                                        </div>
-                                        <Textarea
-                                            placeholder="Share what symptoms or concerns you want to discuss..."
-                                            className="min-h-[180px] bg-slate-50/50 border-slate-200 rounded-2xl p-6 text-lg focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none resize-none"
-                                            value={chiefComplaint}
-                                            onChange={(e) => setChiefComplaint(e.target.value)}
-                                        />
-                                    </div>
-                                    <Button
-                                        className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xl font-bold transition-all shadow-lg shadow-indigo-100"
-                                        disabled={!chiefComplaint}
-                                        onClick={() => setStep(2)}
-                                    >
-                                        Next Step
-                                        <ArrowRight className="ml-3 w-6 h-6" />
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        </motion.div>
-                    )}
-
-                    {step === 2 && (
-                        <motion.div
-                            key="step2"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            className="space-y-10"
-                        >
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 text-indigo-600 font-bold text-sm tracking-widest uppercase">
-                                    <ShieldCheck className="w-4 h-4" />
-                                    Onboarding Stage 02
-                                </div>
-                                <h1 className="text-5xl md:text-6xl font-serif font-bold leading-[1.1] text-slate-900">
-                                    Previous <span className="text-indigo-600 italic">Medical</span> Records.
-                                </h1>
-                                <p className="text-slate-500 text-xl max-w-xl">
-                                    Share any health conditions, surgeries, medications, and allergies that could help your doctor prepare for your visit.
-                                </p>
-                            </div>
-
-                            <Card className="border-slate-100 shadow-xl shadow-slate-200/40 rounded-3xl overflow-hidden bg-white">
-                                <CardContent className="p-8 md:p-10 space-y-6">
-                                    <div className="flex items-center gap-3">
-                                        <span className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 text-lg font-bold">2</span>
-                                        <div>
-                                            <Label className="text-xl font-bold text-slate-800">Your Health History</Label>
-                                            <p className="text-sm text-slate-500">These questions are optional. Enter one item per line.</p>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-base font-semibold text-slate-800">Past or ongoing medical conditions</Label>
-                                        <Textarea
-                                            placeholder="e.g. asthma, diabetes, thyroid condition"
-                                            className="min-h-[100px] bg-slate-50/50 border-slate-200 rounded-xl p-4 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none resize-y"
-                                            value={medicalHistory}
-                                            onChange={(e) => setMedicalHistory(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-base font-semibold text-slate-800">Past surgeries or procedures</Label>
-                                        <Textarea
-                                            placeholder="Include approximate dates if you know them"
-                                            className="min-h-[100px] bg-slate-50/50 border-slate-200 rounded-xl p-4 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none resize-y"
-                                            value={surgicalHistory}
-                                            onChange={(e) => setSurgicalHistory(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-base font-semibold text-slate-800">Current medications and supplements</Label>
-                                        <Textarea
-                                            placeholder="Include dose or frequency if known"
-                                            className="min-h-[100px] bg-slate-50/50 border-slate-200 rounded-xl p-4 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none resize-y"
-                                            value={currentMedications}
-                                            onChange={(e) => setCurrentMedications(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-base font-semibold text-slate-800">Known allergies or medication reactions</Label>
-                                        <Textarea
-                                            placeholder="List the allergen and reaction, or enter “None known”"
-                                            className="min-h-[100px] bg-slate-50/50 border-slate-200 rounded-xl p-4 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none resize-y"
-                                            value={allergies}
-                                            onChange={(e) => setAllergies(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="flex gap-4 pt-2">
-                                        <Button variant="outline" className="h-16 flex-1 rounded-2xl text-lg font-bold border-slate-200" onClick={() => setStep(1)}>
-                                            Go Back
-                                        </Button>
-                                        <Button
-                                            className="h-16 flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xl font-bold transition-all shadow-lg shadow-indigo-100"
-                                            disabled={mutation.isPending}
-                                            onClick={() => {
-                                                const medical = historyEntries(medicalHistory);
-                                                const surgical = historyEntries(surgicalHistory);
-                                                const drug = historyEntries(currentMedications);
-                                                const allergyList = historyEntries(allergies);
-                                                const history = {
-                                                    ...(medical.length ? { medical } : {}),
-                                                    ...(surgical.length ? { surgical } : {}),
-                                                    ...(drug.length ? { drug } : {}),
-                                                    ...(allergyList.length ? { allergies: allergyList } : {}),
-                                                };
-                                                mutation.mutate({
-                                                    chiefComplaint,
-                                                    history: Object.keys(history).length ? history : undefined,
-                                                });
-                                            }}
-                                        >
-                                            {mutation.isPending ? "Submitting..." : "Complete Onboarding"}
-                                            <Sparkles className="ml-3 w-6 h-6" />
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                <footer className="mt-20 text-center space-y-4">
-                    <div className="flex items-center justify-center gap-2 text-slate-300">
-                        <ShieldCheck className="w-4 h-4" />
-                        <span className="text-xs font-bold tracking-widest uppercase">Saivie Secure Clinical Protocol</span>
+                <div className="mx-auto max-w-[900px] px-4 pb-12 pt-8 sm:px-8 sm:pt-12">
+                    <div className="mb-6 flex items-end justify-between gap-4">
+                        <div>
+                            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[#82964f]">{currentSection.eyebrow}</p>
+                            <h1 className="font-serif text-3xl font-semibold tracking-tight text-[#21463c] sm:text-4xl">{currentSection.title}</h1>
+                        </div>
+                        <p className="shrink-0 pb-1 text-xs font-semibold text-[#416a5b]"><span className="text-base">{progress}%</span> complete</p>
                     </div>
-                    <p className="text-slate-400 text-sm max-w-md mx-auto italic">
-                        Your clinical data is encrypted and shared only with your attending physician at Saivie Reproductive Intelligence.
-                    </p>
-                </footer>
+                    <div className="mb-7 h-1.5 overflow-hidden rounded-full bg-[#e5e9df]">
+                        <div className="h-full rounded-full bg-[#a8cc45] transition-all duration-300" style={{ width: `${progress}%` }} />
+                    </div>
+
+                    {step === "about" && (
+                        <div className="space-y-4">
+                            <div className="flex gap-3 rounded-2xl border border-[#dce9d7] bg-[#edf4e8] p-5">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#d8e9bc] text-[#426b4c]"><Heart size={18} /></span>
+                                <div><h2 className="font-serif text-base font-semibold text-[#31594c]">Let’s get to know you</h2><p className="mt-1 text-xs leading-5 text-[#6e8076]">This helps your care team prepare for your visit. Take your time—your answers are saved when you submit.</p></div>
+                            </div>
+                            <section className={cardClass}>
+                                <SectionHeading number="01" title="Your details" subtitle="Tell us the basics." />
+                                <div className="mt-6 grid gap-5 border-t border-[#edf0ea] pt-6 sm:grid-cols-2">
+                                    <TextInput label="Full name" value={form.name} onChange={(value) => update("name", value)} placeholder="Your full name" />
+                                    <TextInput label="Date of birth" value={form.dob} onChange={(value) => update("dob", value)} type="date" />
+                                    <TextInput label="Referred by" value={form.referredBy} onChange={(value) => update("referredBy", value)} placeholder="Provider name (optional)" />
+                                    <TextInput label="Occupation" value={form.occupation} onChange={(value) => update("occupation", value)} placeholder="What you do (optional)" />
+                                </div>
+                            </section>
+                        </div>
+                    )}
+
+                    {step === "concern" && (
+                        <section className={cardClass}>
+                            <SectionHeading number="02" title="What brings you in today?" subtitle="Choose all the topics you would like help with. We’ll ask a few relevant follow-up questions." />
+                            <div className="mt-6 space-y-6 border-t border-[#edf0ea] pt-6">
+                                <CheckGrid label="Your visit concerns" options={concernOptions} value={form.concerns} onChange={(value) => update("concerns", value)} />
+                                {form.concerns.includes("Abdominal or pelvic pain") && (
+                                    <div className="space-y-5 rounded-xl border border-[#e5e9e3] bg-[#fcfdfa] p-4">
+                                        <h3 className="font-serif text-sm font-semibold text-[#31594c]">About the pain</h3>
+                                        <CheckGrid label="Where do you feel it?" options={["Lower abdomen", "One side", "Pelvis", "Back", "Not sure"]} value={form.pain.location} onChange={(value) => updateGroup("pain", "location", value)} />
+                                        <div className="grid gap-5 sm:grid-cols-2">
+                                            <TextInput label="How long have you had it?" value={form.pain.duration} onChange={(value) => updateGroup("pain", "duration", value)} placeholder="e.g. since yesterday" />
+                                            <ChoiceGroup label="How would you describe it?" options={["Mild", "Moderate", "Severe", "Comes and goes"]} value={form.pain.severity} onChange={(value) => updateGroup("pain", "severity", value)} />
+                                        </div>
+                                        <CheckGrid label="Anything else happening with it?" options={["Fever", "Nausea or vomiting", "Bleeding", "Dizziness", "None of these", "Prefer not to say"]} value={form.pain.relatedSymptoms} onChange={(value) => updateGroup("pain", "relatedSymptoms", value)} />
+                                    </div>
+                                )}
+                                {needsCycle && (
+                                    <div className="space-y-5 rounded-xl border border-[#dce9d7] bg-[#f5f8ef] p-4">
+                                        <h3 className="font-serif text-sm font-semibold text-[#31594c]">A little about your cycle</h3>
+                                        {(form.concerns.includes("Missed or late period") || form.concerns.includes("Possible pregnancy") || form.concerns.includes("Pregnancy care")) && (
+                                            <>
+                                                <TextInput label="When did your last period start?" value={form.cycle.lastPeriod} onChange={(value) => updateGroup("cycle", "lastPeriod", value)} type="date" />
+                                                {form.concerns.includes("Missed or late period") && (
+                                                    <ChoiceGroup label="How late is your period?" options={["Less than a week", "1–2 weeks", "More than 2 weeks", "Not sure"]} value={form.cycle.lateBy} onChange={(value) => updateGroup("cycle", "lateBy", value)} />
+                                                )}
+                                            </>
+                                        )}
+                                        {form.concerns.some((concern) => ["Missed or late period", "Irregular or heavy bleeding"].includes(concern)) && (
+                                            <ChoiceGroup label="Are your periods usually regular?" options={["Usually regular", "Often irregular", "Not sure"]} value={form.cycle.regularity} onChange={(value) => updateGroup("cycle", "regularity", value)} />
+                                        )}
+                                        {needsPregnancy && (
+                                            <ChoiceGroup label="Have you taken a pregnancy test?" options={["Positive", "Negative", "Not yet", "Prefer not to answer"]} value={form.cycle.pregnancyTest} onChange={(value) => updateGroup("cycle", "pregnancyTest", value)} />
+                                        )}
+                                    </div>
+                                )}
+                                <TextArea label="Tell us anything else about your concern" value={form.chiefComplaint} onChange={(value) => update("chiefComplaint", value)} placeholder="Add any details you think would help your care team (optional)" />
+                                {!form.concerns.length && <p className="text-xs text-[#7b887f]">Select a topic to see relevant questions. You can also continue without selecting one.</p>}
+                            </div>
+                        </section>
+                    )}
+
+                    {step === "cycle" && (
+                        <section className={cardClass}>
+                            <SectionHeading number="03" title="Menstrual history" subtitle="Share what your typical cycle looks like." />
+                            <div className="mt-6 grid gap-5 border-t border-[#edf0ea] pt-6 sm:grid-cols-2">
+                                <TextInput label="Age when periods started" value={form.cycle.menarcheAge} onChange={(value) => updateGroup("cycle", "menarcheAge", value)} placeholder="Age" type="number" />
+                                <TextInput label="Typical cycle length" value={form.cycle.cycleLength} onChange={(value) => updateGroup("cycle", "cycleLength", value)} placeholder="Days between periods" type="number" />
+                                {form.concerns.includes("Irregular or heavy bleeding") && <div className="sm:col-span-2"><ChoiceGroup label="How would you describe your flow?" options={["Light", "Average", "Heavy", "Not sure"]} value={form.cycle.flow} onChange={(value) => updateGroup("cycle", "flow", value)} /></div>}
+                                <div className="sm:col-span-2"><CheckGrid label="Do you experience any of these?" options={["PMS", "Menstrual cramps", "Bleeding between periods", "Pain with intercourse"]} value={form.cycle.symptoms} onChange={(value) => updateGroup("cycle", "symptoms", value)} /></div>
+                                <div className="sm:col-span-2"><TextArea label="Anything else you’d like us to know?" value={form.cycle.details} onChange={(value) => updateGroup("cycle", "details", value)} placeholder="Optional details" /></div>
+                            </div>
+                        </section>
+                    )}
+
+                    {step === "gyn" && (
+                        <section className={cardClass}>
+                            <SectionHeading number="04" title="Gynecological history" subtitle="Sensitive questions help us provide better care. You may skip any question." />
+                            <div className="mt-6 grid gap-5 border-t border-[#edf0ea] pt-6 sm:grid-cols-2">
+                                <TextInput label="Age at first sexual encounter" value={form.gyn.firstEncounterAge} onChange={(value) => updateGroup("gyn", "firstEncounterAge", value)} placeholder="Age or prefer not to answer" type="number" />
+                                <TextInput label="Total number of partners" value={form.gyn.partnerCount} onChange={(value) => updateGroup("gyn", "partnerCount", value)} placeholder="Number or prefer not to answer" type="number" />
+                                <TextInput label="Date of last Pap smear" value={form.gyn.lastPap} onChange={(value) => updateGroup("gyn", "lastPap", value)} type="date" />
+                                <div className="sm:col-span-2"><ChoiceGroup label="Are you currently sexually active?" options={["Yes", "No", "Prefer not to answer"]} value={form.gyn.sexuallyActive} onChange={(value) => updateGroup("gyn", "sexuallyActive", value)} /></div>
+                                <div className="sm:col-span-2"><ChoiceGroup label="Have you received the HPV vaccine?" options={["Yes", "No", "Not sure", "Prefer not to answer"]} value={form.gyn.hpvVaccine} onChange={(value) => updateGroup("gyn", "hpvVaccine", value)} /></div>
+                                <div className="sm:col-span-2"><CheckGrid label="Current birth control methods" options={["None", "Pill", "Condoms", "IUD", "Implant", "Other"]} value={form.gyn.birthControl} onChange={(value) => updateGroup("gyn", "birthControl", value)} /></div>
+                                <div className="sm:col-span-2"><CheckGrid label="Have you experienced any of the following?" options={["Abnormal pap", "Ectopic pregnancy", "Endometriosis", "Genital warts", "Infertility", "Irregular periods", "Ovarian cysts", "Recurrent miscarriage", "Fibroids", "Vaginal infections", "Vaginal discharge", "Vulvar pain"]} value={form.gyn.concerns} onChange={(value) => updateGroup("gyn", "concerns", value)} /></div>
+                                <div className="sm:col-span-2"><TextArea label="Details or past birth control methods" value={form.gyn.details} onChange={(value) => updateGroup("gyn", "details", value)} placeholder="Add dates or details your care team should know" /></div>
+                            </div>
+                        </section>
+                    )}
+
+                    {step === "pregnancy" && (
+                        <section className={cardClass}>
+                            <SectionHeading number="05" title="Pregnancy history" subtitle="Share what you are comfortable sharing. These answers help your care team prepare." />
+                            <div className="mt-6 space-y-5 border-t border-[#edf0ea] pt-6">
+                                <ChoiceGroup label="Are you currently pregnant?" options={["Yes", "No", "Not sure", "Prefer not to answer"]} value={form.pregnancies.currentStatus} onChange={(value) => updateGroup("pregnancies", "currentStatus", value)} />
+                                {form.pregnancies.currentStatus === "Yes" && (
+                                    <div className="grid gap-5 rounded-xl bg-[#f5f8ef] p-4 sm:grid-cols-2">
+                                        <TextInput label="About how many weeks pregnant?" value={form.pregnancies.weeksPregnant} onChange={(value) => updateGroup("pregnancies", "weeksPregnant", value)} placeholder="Weeks, if known" type="number" />
+                                        <TextInput label="Estimated due date" value={form.pregnancies.dueDate} onChange={(value) => updateGroup("pregnancies", "dueDate", value)} type="date" />
+                                    </div>
+                                )}
+                                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                                <TextInput label="Pregnancies" value={form.pregnancies.total} onChange={(value) => updateGroup("pregnancies", "total", value)} type="number" />
+                                <TextInput label="Vaginal deliveries" value={form.pregnancies.vaginal} onChange={(value) => updateGroup("pregnancies", "vaginal", value)} type="number" />
+                                <TextInput label="Cesarean sections" value={form.pregnancies.cesarean} onChange={(value) => updateGroup("pregnancies", "cesarean", value)} type="number" />
+                                <TextInput label="Miscarriages" value={form.pregnancies.miscarriages} onChange={(value) => updateGroup("pregnancies", "miscarriages", value)} type="number" />
+                                <TextInput label="Elective terminations" value={form.pregnancies.terminations} onChange={(value) => updateGroup("pregnancies", "terminations", value)} type="number" />
+                                <TextInput label="Premature births" value={form.pregnancies.premature} onChange={(value) => updateGroup("pregnancies", "premature", value)} type="number" />
+                                </div>
+                                <TextArea label="Pregnancy details" value={form.pregnancies.details} onChange={(value) => updateGroup("pregnancies", "details", value)} placeholder="Dates, weeks at delivery, delivery type, baby weight, and any complications" />
+                            </div>
+                        </section>
+                    )}
+
+                    {step === "lifestyle" && (
+                        <section className={cardClass}>
+                            <SectionHeading number="06" title="Social & lifestyle" subtitle="Daily habits can offer useful context for your care." />
+                            <div className="mt-6 space-y-6 border-t border-[#edf0ea] pt-6">
+                                <ChoiceGroup label="Smoking history" options={["Never", "Former", "Current"]} value={form.lifestyle.smoking} onChange={(value) => updateGroup("lifestyle", "smoking", value)} />
+                                <ChoiceGroup label="Relationship status" options={["Single", "Married", "Partnered", "Divorced", "Widowed", "Prefer not to answer"]} value={form.lifestyle.relationship} onChange={(value) => updateGroup("lifestyle", "relationship", value)} />
+                                <div className="grid gap-5 sm:grid-cols-2">
+                                    <TextInput label="Alcohol use" value={form.lifestyle.alcohol} onChange={(value) => updateGroup("lifestyle", "alcohol", value)} placeholder="e.g. 2 drinks per week" />
+                                    <TextInput label="Exercise" value={form.lifestyle.exercise} onChange={(value) => updateGroup("lifestyle", "exercise", value)} placeholder="e.g. 3 times per week" />
+                                    <TextInput label="Last mammogram" value={form.lifestyle.mammogram} onChange={(value) => updateGroup("lifestyle", "mammogram", value)} placeholder="Date or not applicable" />
+                                    <TextInput label="Last colonoscopy" value={form.lifestyle.colonoscopy} onChange={(value) => updateGroup("lifestyle", "colonoscopy", value)} placeholder="Date or not applicable" />
+                                </div>
+                                <TextArea label="Recreational drug use or other context" value={form.lifestyle.other} onChange={(value) => updateGroup("lifestyle", "other", value)} placeholder="Optional" />
+                            </div>
+                        </section>
+                    )}
+
+                    {step === "health" && (
+                        <section className={cardClass}>
+                            <SectionHeading number="07" title="Medical history" subtitle="Select all that apply. Details can be added below." />
+                            <div className="mt-6 space-y-6 border-t border-[#edf0ea] pt-6">
+                                <CheckGrid label="Have you ever experienced or been diagnosed with:" options={conditions} value={form.health.conditions} onChange={(value) => updateGroup("health", "conditions", value)} />
+                                <TextArea label="Condition details" value={form.health.medicalDetails} onChange={(value) => updateGroup("health", "medicalDetails", value)} placeholder="Include approximate dates or treatment, if known" />
+                                <TextArea label="Surgeries and approximate dates" value={form.health.surgeries} onChange={(value) => updateGroup("health", "surgeries", value)} placeholder="Type none if not applicable" />
+                                <TextArea label="Current medications and doses" value={form.health.medications} onChange={(value) => updateGroup("health", "medications", value)} placeholder="Include prescriptions, over-the-counter medications, and supplements" />
+                                <TextArea label="Medication allergies and reactions" value={form.health.allergies} onChange={(value) => updateGroup("health", "allergies", value)} placeholder="Type none if not applicable" />
+                                <TextArea label="Relevant family history" value={form.health.familyHistory} onChange={(value) => updateGroup("health", "familyHistory", value)} placeholder="Condition, relative, maternal or paternal side, and age at diagnosis" />
+                            </div>
+                        </section>
+                    )}
+
+                    {step === "review" && (
+                        <section className={cardClass}>
+                            <SectionHeading number="08" title="Review your answers" subtitle="Please check your information before sharing it with your care team." />
+                            <div className="mt-6 space-y-3 border-t border-[#edf0ea] pt-6">
+                                {[
+                                    ["About you", [form.name, form.dob, form.referredBy && `Referred by ${form.referredBy}`, form.occupation]],
+                                    ["Your concern", [...form.concerns, form.chiefComplaint, ...form.pain.location, form.pain.duration, form.pain.severity, ...form.pain.relatedSymptoms]],
+                                    ["Cycle", [form.cycle.lastPeriod && `Last period began ${form.cycle.lastPeriod}`, form.cycle.lateBy && `Period late: ${form.cycle.lateBy}`, form.cycle.regularity, form.cycle.pregnancyTest && `Pregnancy test: ${form.cycle.pregnancyTest}`, form.cycle.menarcheAge && `Periods started at ${form.cycle.menarcheAge}`, form.cycle.cycleLength && `${form.cycle.cycleLength}-day cycle`, form.cycle.flow, ...form.cycle.symptoms, form.cycle.details]],
+                                    ["GYN history", [form.gyn.sexuallyActive, form.gyn.hpvVaccine && `HPV vaccine: ${form.gyn.hpvVaccine}`, ...form.gyn.birthControl, ...form.gyn.concerns, form.gyn.details]],
+                                    ["Pregnancies", [form.pregnancies.currentStatus && `Currently pregnant: ${form.pregnancies.currentStatus}`, form.pregnancies.weeksPregnant && `${form.pregnancies.weeksPregnant} weeks pregnant`, form.pregnancies.dueDate && `Due date: ${form.pregnancies.dueDate}`, `${form.pregnancies.total} pregnancies`, `${form.pregnancies.vaginal} vaginal deliveries`, `${form.pregnancies.cesarean} cesarean sections`, form.pregnancies.details]],
+                                    ["Lifestyle", [form.lifestyle.smoking, form.lifestyle.relationship, form.lifestyle.alcohol, form.lifestyle.exercise, form.lifestyle.other]],
+                                    ["Health history", [...form.health.conditions, form.health.medicalDetails, form.health.surgeries && `Surgeries: ${form.health.surgeries}`, form.health.medications && `Medications: ${form.health.medications}`, form.health.allergies && `Allergies: ${form.health.allergies}`, form.health.familyHistory && `Family history: ${form.health.familyHistory}`]],
+                                ].map(([title, rawItems]) => {
+                                    const items = (rawItems as (string | false)[]).filter(Boolean);
+                                    return <div key={title as string} className="rounded-xl border border-[#e9ede6] bg-[#fcfdfa] p-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <h3 className="font-serif text-base font-semibold text-[#31594c]">{title}</h3>
+                                            <button type="button" onClick={() => {
+                                                const targetKey = sections.find((section) => section.title === title)?.key;
+                                                if (targetKey && visibleSections.some((section) => section.key === targetKey)) setStep(targetKey);
+                                                else setStep("concern");
+                                            }} className="text-xs font-semibold text-[#66843f] hover:underline">Edit</button>
+                                        </div>
+                                        <p className="mt-2 text-xs leading-5 text-[#718078]">{items.length ? items.join(" · ") : "No details added"}</p>
+                                    </div>;
+                                })}
+                            </div>
+                            <div className="mt-5 flex gap-2 rounded-xl bg-[#f1f5eb] p-4 text-xs leading-5 text-[#60736a]">
+                                <ShieldCheck size={16} className="mt-0.5 shrink-0 text-[#66843f]" />
+                                Your information is securely shared with your care team to help prepare for your visit.
+                            </div>
+                        </section>
+                    )}
+
+                    <div className="mt-5 flex items-center justify-between">
+                        {currentIndex > 0 ? (
+                            <Button variant="ghost" className="text-xs text-[#718078] hover:text-[#31594c]" onClick={() => goToSection(-1)}><ArrowLeft className="mr-2 h-3.5 w-3.5" />Back</Button>
+                        ) : <span />}
+                        {currentIndex < visibleSections.length - 1 ? (
+                            <Button className="h-11 rounded-lg bg-[#244e43] px-5 text-xs font-semibold text-white shadow-lg shadow-[#244e43]/10 hover:bg-[#1b3f36]" onClick={() => goToSection(1)}>Continue<ArrowRight className="ml-2 h-3.5 w-3.5" /></Button>
+                        ) : (
+                            <Button className="h-11 rounded-lg bg-[#244e43] px-5 text-xs font-semibold text-white shadow-lg shadow-[#244e43]/10 hover:bg-[#1b3f36]" disabled={mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Submitting…" : "Submit to care team"}<ArrowRight className="ml-2 h-3.5 w-3.5" /></Button>
+                        )}
+                    </div>
+                    <p className="mt-8 text-center text-[10px] text-[#849188]">You may skip sensitive questions. Your information is only shared with your care team.</p>
+                </div>
             </div>
+        </main>
+    );
+}
+
+function SectionHeading({ number, title, subtitle }: { number: string; title: string; subtitle: string }) {
+    return (
+        <div className="flex items-center gap-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f0f4e3] text-[10px] font-bold text-[#748b45]">{number}</span>
+            <div><h2 className="font-serif text-lg font-semibold text-[#31594c]">{title}</h2><p className="mt-0.5 text-xs text-[#819087]">{subtitle}</p></div>
         </div>
     );
 }
