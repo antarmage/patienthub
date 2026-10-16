@@ -26,6 +26,9 @@ export default function PatientOnboarding() {
     const [step, setStep] = useState(1);
     const [chiefComplaint, setChiefComplaint] = useState("");
     const [medicalHistory, setMedicalHistory] = useState("");
+    const [surgicalHistory, setSurgicalHistory] = useState("");
+    const [currentMedications, setCurrentMedications] = useState("");
+    const [allergies, setAllergies] = useState("");
     const [submitted, setSubmitted] = useState(false);
 
     const { data: onboardingData, isLoading } = useQuery({
@@ -39,8 +42,11 @@ export default function PatientOnboarding() {
         }
     });
 
+    const historyEntries = (value: string) =>
+        value.split("\n").map((entry) => entry.trim()).filter(Boolean);
+
     const mutation = useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: { chiefComplaint: string; history?: { medical?: string[]; surgical?: string[]; drug?: string[]; allergies?: string[] } }) => {
             const res = await fetch(`/api/onboarding/${id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -196,25 +202,56 @@ export default function PatientOnboarding() {
                                     Previous <span className="text-indigo-600 italic">Medical</span> Records.
                                 </h1>
                                 <p className="text-slate-500 text-xl max-w-xl">
-                                    Providing your past medical history or surgeries helps your doctor build a safer care plan.
+                                    Share any health conditions, surgeries, medications, and allergies that could help your doctor prepare for your visit.
                                 </p>
                             </div>
 
                             <Card className="border-slate-100 shadow-xl shadow-slate-200/40 rounded-3xl overflow-hidden bg-white">
-                                <CardContent className="p-8 md:p-10 space-y-8">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-3">
-                                            <span className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 text-lg font-bold">2</span>
-                                            <Label className="text-xl font-bold text-slate-800">History & Surgeries</Label>
+                                <CardContent className="p-8 md:p-10 space-y-6">
+                                    <div className="flex items-center gap-3">
+                                        <span className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 text-lg font-bold">2</span>
+                                        <div>
+                                            <Label className="text-xl font-bold text-slate-800">Your Health History</Label>
+                                            <p className="text-sm text-slate-500">These questions are optional. Enter one item per line.</p>
                                         </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-base font-semibold text-slate-800">Past or ongoing medical conditions</Label>
                                         <Textarea
-                                            placeholder="Past diagnoses, surgeries (with dates if known), or major health events..."
-                                            className="min-h-[180px] bg-slate-50/50 border-slate-200 rounded-2xl p-6 text-lg focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none resize-none"
+                                            placeholder="e.g. asthma, diabetes, thyroid condition"
+                                            className="min-h-[100px] bg-slate-50/50 border-slate-200 rounded-xl p-4 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none resize-y"
                                             value={medicalHistory}
                                             onChange={(e) => setMedicalHistory(e.target.value)}
                                         />
                                     </div>
-                                    <div className="flex gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-base font-semibold text-slate-800">Past surgeries or procedures</Label>
+                                        <Textarea
+                                            placeholder="Include approximate dates if you know them"
+                                            className="min-h-[100px] bg-slate-50/50 border-slate-200 rounded-xl p-4 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none resize-y"
+                                            value={surgicalHistory}
+                                            onChange={(e) => setSurgicalHistory(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-base font-semibold text-slate-800">Current medications and supplements</Label>
+                                        <Textarea
+                                            placeholder="Include dose or frequency if known"
+                                            className="min-h-[100px] bg-slate-50/50 border-slate-200 rounded-xl p-4 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none resize-y"
+                                            value={currentMedications}
+                                            onChange={(e) => setCurrentMedications(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-base font-semibold text-slate-800">Known allergies or medication reactions</Label>
+                                        <Textarea
+                                            placeholder="List the allergen and reaction, or enter “None known”"
+                                            className="min-h-[100px] bg-slate-50/50 border-slate-200 rounded-xl p-4 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none resize-y"
+                                            value={allergies}
+                                            onChange={(e) => setAllergies(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex gap-4 pt-2">
                                         <Button variant="outline" className="h-16 flex-1 rounded-2xl text-lg font-bold border-slate-200" onClick={() => setStep(1)}>
                                             Go Back
                                         </Button>
@@ -222,12 +259,19 @@ export default function PatientOnboarding() {
                                             className="h-16 flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xl font-bold transition-all shadow-lg shadow-indigo-100"
                                             disabled={mutation.isPending}
                                             onClick={() => {
+                                                const medical = historyEntries(medicalHistory);
+                                                const surgical = historyEntries(surgicalHistory);
+                                                const drug = historyEntries(currentMedications);
+                                                const allergyList = historyEntries(allergies);
+                                                const history = {
+                                                    ...(medical.length ? { medical } : {}),
+                                                    ...(surgical.length ? { surgical } : {}),
+                                                    ...(drug.length ? { drug } : {}),
+                                                    ...(allergyList.length ? { allergies: allergyList } : {}),
+                                                };
                                                 mutation.mutate({
                                                     chiefComplaint,
-                                                    history: medicalHistory ? {
-                                                        medical: [medicalHistory],
-                                                        manual_entry: medicalHistory
-                                                    } : undefined
+                                                    history: Object.keys(history).length ? history : undefined,
                                                 });
                                             }}
                                         >

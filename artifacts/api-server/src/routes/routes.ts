@@ -1648,7 +1648,9 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
     // Update patient history
     if (history) {
-      await storage.updatePatient(appt.patientId!, { history });
+      const patient = await storage.getPatient(appt.patientId!);
+      const existingHistory = patient?.history && typeof patient.history === "object" ? patient.history : {};
+      await storage.updatePatient(appt.patientId!, { history: { ...existingHistory, ...history } });
     }
 
     res.json({ success: true });
