@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { openPrescription } from "@/lib/prescriptionTemplate";
+import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSettings";
 import { 
   LayoutDashboard, 
   Users, 
@@ -534,6 +535,38 @@ export default function ClinicianPortal() {
   const [fetalHeartRateVal, setFetalHeartRateVal] = useState('');
 
   const queryClient = useQueryClient();
+  const vaccinationSchedulesQuery = useQuery<any[]>({
+    queryKey: ["/api/vaccination-schedules"],
+    queryFn: async () => {
+      const res = await fetch("/api/vaccination-schedules");
+      if (!res.ok) throw new Error("Could not load vaccination schedules");
+      return res.json();
+    },
+  });
+  const patientVaccinationRecordsQuery = useQuery<any[]>({
+    queryKey: ["/api/vaccination-records", selectedPatient?.id],
+    enabled: Boolean(selectedPatient?.id),
+    queryFn: async () => {
+      const res = await fetch(`/api/vaccination-records?patientId=${selectedPatient.id}`);
+      if (!res.ok) throw new Error("Could not load vaccination records");
+      return res.json();
+    },
+  });
+  const recordPatientVaccinationMutation = useMutation({
+    mutationFn: async (dose: { scheduleId: number; doseNumber: number }) => {
+      const res = await fetch("/api/vaccination-records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: selectedPatient.id, ...dose }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not record vaccine dose");
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/vaccination-records", selectedPatient?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/vaccination-reminders"] });
+    },
+  });
 
   const autoExtractTriggeredRef = React.useRef<Set<number>>(new Set());
 
@@ -3346,6 +3379,13 @@ export default function ClinicianPortal() {
                             >
                                <Pill className="w-4 h-4 mr-3" /> Medicine Catalog
                             </Button>
+                            <Button
+                               variant="ghost"
+                               className={`w-full justify-start font-medium ${activeSettingsTab === 'vaccination-schedules' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                               onClick={() => setActiveSettingsTab('vaccination-schedules')}
+                            >
+                               <Syringe className="w-4 h-4 mr-3" /> Vaccination Rules
+                            </Button>
                             <Button variant="ghost" className="w-full justify-start text-slate-500 hover:text-slate-900">
                                <Settings className="w-4 h-4 mr-3" /> System Preferences
                             </Button>
@@ -3973,6 +4013,7 @@ export default function ClinicianPortal() {
                               </Card>
                           </div>
                       )}
+                      {activeSettingsTab === 'vaccination-schedules' && <VaccinationScheduleSettings />}
                    </div>
                 </div>
              </div>
@@ -6348,19 +6389,12 @@ export default function ClinicianPortal() {
 
                                {/* IMMUNISATION SECTION - Pregnancy */}
                                {careMode === 'pregnancy' && (() => {
-                                 const pregnancyWeekImm = selectedPatient.lmp ? Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7))) : 0;
-                                 const immunisations = [
-                                   { name: 'TT-1 (Tetanus Toxoid)', weekRange: '12-16 weeks', recWeek: 12, icon: '💉' },
-                                   { name: 'TT-2 (Tetanus Toxoid)', weekRange: '16-20 weeks (4 wks after TT-1)', recWeek: 16, icon: '💉' },
-                                   { name: 'Tdap (Tetanus, Diphtheria, Pertussis)', weekRange: '27-36 weeks', recWeek: 27, icon: '🛡️' },
-                                   { name: 'Influenza Vaccine', weekRange: 'Any trimester (seasonal)', recWeek: 14, icon: '🦠' },
-                                   { name: 'COVID-19 Vaccine', weekRange: 'Any trimester (if due)', recWeek: -1, icon: '💊' },
-                                   { name: 'Hepatitis B (if non-immune)', weekRange: 'Booking visit', recWeek: 8, icon: '🔬' },
-                                   { name: 'TT Booster (if previously immunised)', weekRange: '16-20 weeks', recWeek: -1, icon: '💉' },
-                                 ];
-                                 const vitals = (latestVisit?.vitals as any) || {};
-                                 const givenVaccines: Record<string, { date: string }> = vitals.immunisations || {};
-                                 const givenCount = Object.keys(givenVaccines).length;
+                                 const schedules = (vaccinationSchedulesQuery.data || []).filter((schedule) => schedule.isActive && schedule.eligibility === 'pregnancy');
+                                 const records = patientVaccinationRecordsQuery.data || [];
+                                 const doseCount = schedules.reduce((total, schedule) => total + schedule.doseGestationalWeeks.length, 0);
+                                 const givenCount = records.filter((record) => schedules.some((schedule) => schedule.id === record.scheduleId)).length;
+                                 const todayDate = new Date();
+                                 todayDate.setHours(0, 0, 0, 0);
 
                                  return (
                                    <div className="p-4 bg-teal-50/30" data-testid="card-immunisation">
@@ -6368,50 +6402,53 @@ export default function ClinicianPortal() {
                                        <div className="flex items-center gap-2">
                                          <Badge className="bg-teal-100 text-teal-800 border-teal-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded"><Shield className="w-3 h-3" /></Badge>
                                          <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Immunisation</span>
-                                         <Badge className="text-[10px] bg-teal-100 text-teal-700 border-teal-200">{givenCount}/{immunisations.length}</Badge>
+                                         <Badge className="text-[10px] bg-teal-100 text-teal-700 border-teal-200">{givenCount}/{doseCount}</Badge>
                                        </div>
                                      </div>
-                                     <div className="space-y-1.5">
-                                       {immunisations.map((vax, i) => {
-                                         const given = givenVaccines[vax.name];
-                                         const isDue = !given && pregnancyWeekImm >= vax.recWeek && vax.recWeek > 0;
-                                         const isPast = !given && pregnancyWeekImm > vax.recWeek + 8 && vax.recWeek > 0;
+                                     {vaccinationSchedulesQuery.isLoading || patientVaccinationRecordsQuery.isLoading ? (
+                                       <p className="py-3 text-xs text-slate-500">Loading configured vaccine doses...</p>
+                                     ) : vaccinationSchedulesQuery.isError || patientVaccinationRecordsQuery.isError ? (
+                                       <p role="alert" className="py-3 text-xs text-rose-600">Could not load vaccination schedule or records.</p>
+                                     ) : schedules.length === 0 ? (
+                                       <p className="py-3 text-xs text-slate-500">No pregnancy vaccine rules are configured. Add them in Settings → Vaccination Rules.</p>
+                                     ) : <div className="space-y-1.5">
+                                       {schedules.flatMap((schedule) => schedule.doseGestationalWeeks.map((week: number, index: number) => {
+                                         const doseNumber = index + 1;
+                                         const record = records.find((entry) => entry.scheduleId === schedule.id && entry.doseNumber === doseNumber);
+                                         const dueDate = selectedPatient.lmp ? new Date(new Date(selectedPatient.lmp).getTime() + week * 7 * 24 * 60 * 60 * 1000) : null;
+                                         const daysUntilDue = dueDate ? Math.floor((dueDate.getTime() - todayDate.getTime()) / 86400000) : null;
+                                         const isDue = !record && daysUntilDue !== null && daysUntilDue <= 0;
+                                         const isSoon = !record && daysUntilDue !== null && daysUntilDue > 0 && daysUntilDue <= schedule.reminderLeadDays;
+                                         const isPast = !record && daysUntilDue !== null && daysUntilDue < 0;
                                          return (
-                                           <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all ${given ? 'bg-emerald-50 border-emerald-200' : isDue ? 'bg-amber-50 border-amber-300 shadow-sm' : isPast ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-100'}`} data-testid={`immunisation-${i}`}>
+                                           <div key={`${schedule.id}-${doseNumber}`} className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all ${record ? 'bg-emerald-50 border-emerald-200' : isDue ? 'bg-amber-50 border-amber-300 shadow-sm' : isPast ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-100'}`} data-testid={`immunisation-${schedule.id}-${doseNumber}`}>
                                              <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                                               <span className="text-sm">{vax.icon}</span>
+                                               <span className="text-sm">💉</span>
                                                <div className="min-w-0">
-                                                 <div className={`text-xs font-semibold truncate ${given ? 'text-emerald-700 line-through opacity-70' : isDue ? 'text-amber-800' : isPast ? 'text-rose-700' : 'text-slate-700'}`}>{vax.name}</div>
-                                                 <div className="text-[10px] text-slate-400">{vax.weekRange}</div>
+                                                 <div className={`text-xs font-semibold truncate ${record ? 'text-emerald-700 line-through opacity-70' : isDue ? 'text-amber-800' : isPast ? 'text-rose-700' : 'text-slate-700'}`}>{schedule.vaccineName} · Dose {doseNumber}</div>
+                                                 <div className="text-[10px] text-slate-400">Week {week}{dueDate ? ` · ${dueDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : ''}</div>
                                                </div>
                                              </div>
                                              <div className="flex items-center gap-2 shrink-0">
-                                               {given ? (
-                                                 <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border-emerald-200 gap-1"><Check className="w-2.5 h-2.5" /> {given.date ? new Date(given.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Done'}</Badge>
-                                               ) : isDue ? (
-                                                 <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-300 animate-pulse">DUE NOW</Badge>
+                                               {record ? (
+                                                 <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border-emerald-200 gap-1"><Check className="w-2.5 h-2.5" /> {record.administeredDate ? new Date(`${record.administeredDate}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Done'}</Badge>
                                                ) : isPast ? (
                                                  <Badge className="text-[9px] bg-rose-100 text-rose-700 border-rose-200">OVERDUE</Badge>
+                                               ) : isDue ? (
+                                                 <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-300 animate-pulse">DUE NOW</Badge>
+                                               ) : isSoon ? (
+                                                 <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">DUE SOON</Badge>
                                                ) : (
                                                  <Badge variant="outline" className="text-[9px] text-slate-400 border-slate-200">Upcoming</Badge>
                                                )}
-                                               {!given && (
+                                               {!record && (
                                                  <Button
                                                    variant="ghost"
                                                    size="sm"
                                                    className={`h-6 px-2 text-[10px] ${isDue || isPast ? 'text-emerald-600 hover:bg-emerald-100' : 'text-slate-400 hover:bg-slate-100'}`}
-                                                   data-testid={`button-mark-vaccine-${i}`}
-                                                   onClick={() => {
-                                                     if (latestVisit?.id) {
-                                                       const currentVitals = (latestVisit.vitals as any) || {};
-                                                       const updatedImm = { ...(currentVitals.immunisations || {}), [vax.name]: { date: new Date().toISOString().split('T')[0] } };
-                                                       fetch(`/api/visit-history/${latestVisit.id}`, {
-                                                         method: 'PATCH',
-                                                         headers: { 'Content-Type': 'application/json' },
-                                                         body: JSON.stringify({ vitals: { ...currentVitals, immunisations: updatedImm } })
-                                                       }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
-                                                     }
-                                                   }}
+                                                   data-testid={`button-mark-vaccine-${schedule.id}-${doseNumber}`}
+                                                   onClick={() => recordPatientVaccinationMutation.mutate({ scheduleId: schedule.id, doseNumber })}
+                                                   disabled={recordPatientVaccinationMutation.isPending}
                                                  >
                                                    <Check className="w-3 h-3 mr-0.5" /> Mark Given
                                                  </Button>
@@ -6419,8 +6456,9 @@ export default function ClinicianPortal() {
                                              </div>
                                            </div>
                                          );
-                                       })}
-                                     </div>
+                                       }))}
+                                     </div>}
+                                     {recordPatientVaccinationMutation.isError && <p role="alert" className="mt-2 text-xs text-rose-600">{recordPatientVaccinationMutation.error.message}</p>}
                                    </div>
                                  );
                                })()}
@@ -6436,7 +6474,6 @@ export default function ClinicianPortal() {
                                  const progressPct = Math.min(100, (totalDays / 280) * 100);
 
                                  const vitals = (latestVisit?.vitals as any) || {};
-                                 const givenVaccines = vitals.immunisations || {};
                                  const completedMap = getCompletedInvestigations();
 
                                  const investigationsByWeekPT: Record<string, string[]> = {
@@ -6462,8 +6499,9 @@ export default function ClinicianPortal() {
 
                                  const allTests = Object.values(investigationsByWeekPT).flat();
                                  const completedTests = allTests.filter(t => isInvestigationCompleted(t, completedMap));
-                                 const totalVaccines = 7;
-                                 const givenVaccineCount = Object.keys(givenVaccines).length;
+                                 const pregnancySchedules = (vaccinationSchedulesQuery.data || []).filter((schedule) => schedule.isActive && schedule.eligibility === 'pregnancy');
+                                 const totalVaccines = pregnancySchedules.reduce((total, schedule) => total + schedule.doseGestationalWeeks.length, 0);
+                                 const givenVaccineCount = (patientVaccinationRecordsQuery.data || []).filter((record) => pregnancySchedules.some((schedule) => schedule.id === record.scheduleId)).length;
 
                                  const hasVitals = !!(vitals.bp || vitals.weight || vitals.fundalHeight || vitals.fetalHeartRate);
                                  const hasPVPS = !!(vitals.pvExam || vitals.psExam);

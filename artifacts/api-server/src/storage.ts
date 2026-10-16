@@ -36,6 +36,8 @@ import {
   billingCatalog,
   type BillingCatalog, type InsertBillingCatalog,
   inventoryItems, inventoryMovements,
+  vaccinationSchedules, vaccinationRecords,
+  type VaccinationSchedule, type InsertVaccinationSchedule, type VaccinationRecord, type InsertVaccinationRecord,
   referralPartners, diagnosticReferrals,
   type ReferralPartner, type InsertReferralPartner, type DiagnosticReferral, type InsertDiagnosticReferral,
   type InventoryItem, type InsertInventoryItem, type InventoryMovement,
@@ -194,6 +196,12 @@ export interface IStorage {
   adjustInventoryItem(id: number, change: number, reason?: string): Promise<InventoryItem | undefined>;
   applyInvoiceStock(items: Array<{ catalogItemId?: number; inventoryItemId?: number; quantity?: number }>, direction: 1 | -1, reason: string): Promise<void>;
   getInventoryMovements(id: number): Promise<InventoryMovement[]>;
+  getVaccinationSchedules(): Promise<VaccinationSchedule[]>;
+  createVaccinationSchedule(schedule: InsertVaccinationSchedule): Promise<VaccinationSchedule>;
+  updateVaccinationSchedule(id: number, data: Partial<InsertVaccinationSchedule>): Promise<VaccinationSchedule | undefined>;
+  deleteVaccinationSchedule(id: number): Promise<boolean>;
+  getVaccinationRecords(): Promise<VaccinationRecord[]>;
+  createVaccinationRecord(record: InsertVaccinationRecord): Promise<VaccinationRecord>;
   getReferralPartners(): Promise<ReferralPartner[]>;
   createReferralPartner(data: InsertReferralPartner): Promise<ReferralPartner>;
   updateReferralPartner(id: number, data: Partial<InsertReferralPartner>): Promise<ReferralPartner | undefined>;
@@ -800,6 +808,34 @@ export class DatabaseStorage implements IStorage {
 
   async getInventoryMovements(id: number): Promise<InventoryMovement[]> {
     return db.select().from(inventoryMovements).where(eq(inventoryMovements.itemId, id)).orderBy(desc(inventoryMovements.id));
+  }
+
+  async getVaccinationSchedules(): Promise<VaccinationSchedule[]> {
+    return db.select().from(vaccinationSchedules).orderBy(vaccinationSchedules.vaccineName, vaccinationSchedules.id);
+  }
+
+  async createVaccinationSchedule(schedule: InsertVaccinationSchedule): Promise<VaccinationSchedule> {
+    const [created] = await db.insert(vaccinationSchedules).values(schedule).returning();
+    return created;
+  }
+
+  async updateVaccinationSchedule(id: number, data: Partial<InsertVaccinationSchedule>): Promise<VaccinationSchedule | undefined> {
+    const [updated] = await db.update(vaccinationSchedules).set(data).where(eq(vaccinationSchedules.id, id)).returning();
+    return updated;
+  }
+
+  async deleteVaccinationSchedule(id: number): Promise<boolean> {
+    const [deleted] = await db.delete(vaccinationSchedules).where(eq(vaccinationSchedules.id, id)).returning();
+    return !!deleted;
+  }
+
+  async getVaccinationRecords(): Promise<VaccinationRecord[]> {
+    return db.select().from(vaccinationRecords);
+  }
+
+  async createVaccinationRecord(record: InsertVaccinationRecord): Promise<VaccinationRecord> {
+    const [created] = await db.insert(vaccinationRecords).values(record).returning();
+    return created;
   }
 
   async getReferralPartners(): Promise<ReferralPartner[]> {

@@ -86,6 +86,45 @@ export async function ensureSchema(): Promise<void> {
         updated_at text
       );
 
+      CREATE TABLE IF NOT EXISTS vaccination_schedules (
+        id serial PRIMARY KEY,
+        vaccine_name text NOT NULL,
+        eligibility text NOT NULL,
+        min_age real,
+        max_age real,
+        dose_offsets_months jsonb NOT NULL DEFAULT '[]'::jsonb,
+        dose_gestational_weeks jsonb NOT NULL DEFAULT '[]'::jsonb,
+        reminder_lead_days integer NOT NULL DEFAULT 7,
+        is_active boolean NOT NULL DEFAULT true
+      );
+
+      CREATE TABLE IF NOT EXISTS vaccination_records (
+        id serial PRIMARY KEY,
+        patient_id integer NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+        schedule_id integer NOT NULL REFERENCES vaccination_schedules(id) ON DELETE CASCADE,
+        dose_number integer NOT NULL,
+        administered_date date NOT NULL,
+        created_at text NOT NULL,
+        CONSTRAINT vaccination_records_patient_schedule_dose_idx UNIQUE (patient_id, schedule_id, dose_number)
+      );
+
+      INSERT INTO vaccination_schedules
+        (vaccine_name, eligibility, min_age, max_age, dose_offsets_months, dose_gestational_weeks, reminder_lead_days, is_active)
+      SELECT seed.vaccine_name, seed.eligibility, seed.min_age, seed.max_age,
+             seed.dose_offsets_months::jsonb, seed.dose_gestational_weeks::jsonb, 7, true
+      FROM (VALUES
+        ('HPV9', 'age', 0::real, 11::real, '[0,6]', '[]'),
+        ('HPV9', 'age', 12::real, NULL::real, '[0,2,6]', '[]'),
+        ('Td/Tdap (pregnancy)', 'pregnancy', NULL::real, NULL::real, '[]', '[12,16,27]')
+      ) AS seed(vaccine_name, eligibility, min_age, max_age, dose_offsets_months, dose_gestational_weeks)
+      WHERE NOT EXISTS (
+        SELECT 1 FROM vaccination_schedules existing
+        WHERE existing.vaccine_name = seed.vaccine_name
+          AND existing.eligibility = seed.eligibility
+          AND existing.min_age IS NOT DISTINCT FROM seed.min_age
+          AND existing.max_age IS NOT DISTINCT FROM seed.max_age
+      );
+
       CREATE TABLE IF NOT EXISTS referral_partners (
         id serial PRIMARY KEY,
         name text NOT NULL,

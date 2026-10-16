@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   Baby,
@@ -15,6 +16,7 @@ import {
   MoreVertical,
   Phone,
   RefreshCw,
+  Syringe,
   UserCheck,
   UserPlus,
   Upload,
@@ -189,6 +191,31 @@ export function ReceptionDashboard({
   const inventoryAlerts = useMemo(() => getInventoryAlerts(inventoryItems), [inventoryItems]);
   const inventoryAlertCount = new Set([...inventoryAlerts.stock, ...inventoryAlerts.expiry].map((i) => i.id)).size;
   const pregnancyReminders = useMemo(() => getPregnancyReminders(patients), [patients]);
+  const queryClient = useQueryClient();
+  const vaccinationRemindersQuery = useQuery<any[]>({
+    queryKey: ["/api/vaccination-reminders"],
+    queryFn: async () => {
+      const res = await fetch("/api/vaccination-reminders");
+      if (!res.ok) throw new Error("Could not load vaccination reminders");
+      return res.json();
+    },
+  });
+  const recordVaccinationMutation = useMutation({
+    mutationFn: async (reminder: any) => {
+      const res = await fetch("/api/vaccination-records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: reminder.patientId,
+          scheduleId: reminder.scheduleId,
+          doseNumber: reminder.doseNumber,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not record vaccine dose");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/vaccination-reminders"] }),
+  });
   const isPending = (id: number) => pendingAppointmentId === id;
   const stamp = () => new Date().toISOString();
 
@@ -599,6 +626,56 @@ export function ReceptionDashboard({
               </div>
             ))}
             {pregnancyReminders.length === 0 && <p className="px-5 py-6 text-center text-sm text-slate-400">No milestones due</p>}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200 shadow-sm" data-testid="card-vaccination-reminders">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+              <Syringe className="h-5 w-5 text-teal-600" /> Vaccination reminders
+            </CardTitle>
+            <Badge className="border-0 bg-teal-100 text-teal-700">{vaccinationRemindersQuery.data?.length || 0} due</Badge>
+          </CardHeader>
+          <CardContent className="divide-y divide-slate-100 p-0">
+            {vaccinationRemindersQuery.isLoading ? (
+              <p className="px-5 py-6 text-center text-sm text-slate-400">Loading vaccine reminders...</p>
+            ) : vaccinationRemindersQuery.isError ? (
+              <p role="alert" className="px-5 py-6 text-center text-sm text-rose-600">{vaccinationRemindersQuery.error.message}</p>
+            ) : vaccinationRemindersQuery.data?.length ? (
+              vaccinationRemindersQuery.data.slice(0, 8).map((item) => (
+                <div key={`${item.patientId}-${item.scheduleId}-${item.doseNumber}`} className="flex items-center justify-between gap-3 px-5 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-800">{item.patientName}</p>
+                    <p className="truncate text-xs text-slate-600">{item.vaccineName} · Dose {item.doseNumber}/{item.doseCount}</p>
+                    <p className={`text-[11px] ${item.status === "overdue" ? "text-rose-600" : "text-amber-700"}`}>
+                      {item.status === "overdue" ? "Overdue" : item.status === "due" ? "Due today" : `Due ${item.dueDate}`}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col gap-1">
+                    {item.phone && (
+                      <Button asChild size="sm" variant="outline" className="h-7 border-teal-200 bg-teal-50 text-xs text-teal-700 hover:bg-teal-100">
+                        <a href={`tel:${item.phone}`}><Phone className="mr-1 h-3 w-3" />Call</a>
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs text-slate-600"
+                      onClick={() => recordVaccinationMutation.mutate(item)}
+                      disabled={recordVaccinationMutation.isPending}
+                    >
+                      Record given
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="px-5 py-6 text-center text-sm text-slate-400">No vaccination doses due</p>
+            )}
+            {(vaccinationRemindersQuery.data?.length || 0) > 8 && (
+              <p className="px-5 py-2 text-center text-xs text-slate-500">Showing 8 of {vaccinationRemindersQuery.data?.length} reminders</p>
+            )}
+            {recordVaccinationMutation.isError && <p role="alert" className="px-5 py-2 text-xs text-rose-600">{recordVaccinationMutation.error.message}</p>}
           </CardContent>
         </Card>
 

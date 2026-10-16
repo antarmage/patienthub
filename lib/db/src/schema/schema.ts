@@ -519,6 +519,33 @@ export const inventoryMovements = pgTable("inventory_movements", {
 
 export type InventoryMovement = typeof inventoryMovements.$inferSelect;
 
+export const vaccinationSchedules = pgTable("vaccination_schedules", {
+  id: serial("id").primaryKey(),
+  vaccineName: text("vaccine_name").notNull(),
+  eligibility: text("eligibility").notNull(),
+  minAge: real("min_age"),
+  maxAge: real("max_age"),
+  doseOffsetsMonths: jsonb("dose_offsets_months").notNull().default([]),
+  doseGestationalWeeks: jsonb("dose_gestational_weeks").notNull().default([]),
+  reminderLeadDays: integer("reminder_lead_days").notNull().default(7),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export type VaccinationSchedule = typeof vaccinationSchedules.$inferSelect;
+export type InsertVaccinationSchedule = typeof vaccinationSchedules.$inferInsert;
+
+export const vaccinationRecords = pgTable("vaccination_records", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  scheduleId: integer("schedule_id").notNull().references(() => vaccinationSchedules.id, { onDelete: "cascade" }),
+  doseNumber: integer("dose_number").notNull(),
+  administeredDate: date("administered_date").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (t) => [uniqueIndex("vaccination_records_patient_schedule_dose_idx").on(t.patientId, t.scheduleId, t.doseNumber)]);
+
+export type VaccinationRecord = typeof vaccinationRecords.$inferSelect;
+export type InsertVaccinationRecord = typeof vaccinationRecords.$inferInsert;
+
 export const referralPartners = pgTable("referral_partners", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),

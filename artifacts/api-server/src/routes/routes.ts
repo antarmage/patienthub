@@ -3202,6 +3202,176 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   // ── Diagnostic referrals (scans sent to partner centres, commission earned) ──
 
   const todayLocal = () => new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+  const addMonthsToDate = (value: string, months: number) => {
+    const [year, month, day] = value.split("-").map(Number);
+    const result = new Date(year, month - 1 + months, 1);
+    const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+    result.setDate(Math.min(day, lastDay));
+    return `${result.getFullYear()}-${String(result.getMonth() + 1).padStart(2, "0")}-${String(result.getDate()).padStart(2, "0")}`;
+  };
+  const addDaysToDate = (value: string, days: number) => {
+    const [year, month, day] = value.split("-").map(Number);
+    const result = new Date(year, month - 1, day + days);
+    return `${result.getFullYear()}-${String(result.getMonth() + 1).padStart(2, "0")}-${String(result.getDate()).padStart(2, "0")}`;
+  };
+  const dayDifference = (from: string, to: string) => {
+    const [fy, fm, fd] = from.split("-").map(Number);
+    const [ty, tm, td] = to.split("-").map(Number);
+    return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86400000);
+  };
+
+  app.get("/api/vaccination-schedules", async (_req, res) => {
+    res.json(await storage.getVaccinationSchedules());
+  });
+
+  const parseVaccinationSchedule = (body: any) => {
+    const vaccineName = String(body?.vaccineName || "").trim();
+    const eligibility = body?.eligibility === "pregnancy" ? "pregnancy" : body?.eligibility === "age" ? "age" : "";
+    const lead = Number(body?.reminderLeadDays ?? 7);
+    const offsets: number[] = Array.isArray(body?.doseOffsetsMonths)
+      ? body.doseOffsetsMonths.map((value: unknown) => typeof value === "number" ? value : Number.NaN)
+      : [];
+    const weeks: number[] = Array.isArray(body?.doseGestationalWeeks)
+      ? body.doseGestationalWeeks.map((value: unknown) => typeof value === "number" ? value : Number.NaN)
+      : [];
+    const minAge = body?.minAge === "" || body?.minAge == null ? null : Number(body.minAge);
+    const maxAge = body?.maxAge === "" || body?.maxAge == null ? null : Number(body.maxAge);
+    if (!vaccineName || vaccineName.length > 120) throw new Error("Enter a vaccine name up to 120 characters");
+    if (!eligibility) throw new Error("Choose age-based or pregnancy-based eligibility");
+    if (!Number.isInteger(lead) || lead < 0 || lead > 60) throw new Error("Reminder lead time must be 0 to 60 days");
+    if (eligibility === "age") {
+      if (minAge !== null && (!Number.isFinite(minAge) || minAge < 0 || minAge > 120)) throw new Error("Minimum age must be 0 to 120");
+      if (maxAge !== null && (!Number.isFinite(maxAge) || maxAge < 0 || maxAge > 120)) throw new Error("Maximum age must be 0 to 120");
+      if (minAge !== null && maxAge !== null && minAge > maxAge) throw new Error("Minimum age must not exceed maximum age");
+      if (!offsets.length || offsets.length > 10 || offsets.some((n) => !Number.isInteger(n) || n < 0 || n > 120) || offsets[0] !== 0 || offsets.some((n, i) => i > 0 && n <= offsets[i - 1])) {
+        throw new Error("Enter 1 to 10 increasing dose month offsets, starting with 0 (for example 0, 2, 6)");
+      }
+      return { vaccineName, eligibility, minAge, maxAge, doseOffsetsMonths: offsets, doseGestationalWeeks: [], reminderLeadDays: lead };
+    }
+    if (!weeks.length || weeks.length > 10 || weeks.some((n) => !Number.isInteger(n) || n < 1 || n > 42) || weeks.some((n, i) => i > 0 && n <= weeks[i - 1])) {
+      throw new Error("Enter 1 to 10 increasing gestational weeks from 1 to 42");
+    }
+    return { vaccineName, eligibility, minAge: null, maxAge: null, doseOffsetsMonths: [], doseGestationalWeeks: weeks, reminderLeadDays: lead };
+  };
+
+  app.post("/api/vaccination-schedules", async (req, res) => {
+    try {
+      res.status(201).json(await storage.createVaccinationSchedule({ ...parseVaccinationSchedule(req.body), isActive: true }));
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : "Invalid vaccination schedule" });
+    }
+  });
+
+  app.patch("/api/vaccination-schedules/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    try {
+      const data = parseVaccinationSchedule(req.body);
+      if (req.body?.isActive !== undefined) Object.assign(data, { isActive: !!req.body.isActive });
+      const updated = await storage.updateVaccinationSchedule(id, data);
+      if (!updated) return res.status(404).json({ error: "Vaccination schedule not found" });
+      res.json(updated);
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : "Invalid vaccination schedule" });
+    }
+  });
+
+  app.delete("/api/vaccination-schedules/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const deleted = await storage.deleteVaccinationSchedule(id);
+    if (!deleted) return res.status(404).json({ error: "Vaccination schedule not found" });
+    res.status(204).send();
+  });
+
+  app.get("/api/vaccination-reminders", async (_req, res) => {
+    const [patients, schedules, records] = await Promise.all([
+      storage.getPatients(), storage.getVaccinationSchedules(), storage.getVaccinationRecords(),
+    ]);
+    const today = todayLocal();
+    const recordsBySeries = new Map<string, typeof records>();
+    for (const record of records) {
+      const key = `${record.patientId}:${record.scheduleId}`;
+      recordsBySeries.set(key, [...(recordsBySeries.get(key) || []), record]);
+    }
+    const reminders: Array<Record<string, unknown>> = [];
+    for (const schedule of schedules.filter((item) => item.isActive)) {
+      const scheduleDoses = schedule.eligibility === "pregnancy"
+        ? (Array.isArray(schedule.doseGestationalWeeks) ? schedule.doseGestationalWeeks.map(Number) : [])
+        : (Array.isArray(schedule.doseOffsetsMonths) ? schedule.doseOffsetsMonths.map(Number) : []);
+      if (!scheduleDoses.length) continue;
+      for (const patient of patients) {
+        const patientRecords = (recordsBySeries.get(`${patient.id}:${schedule.id}`) || []).sort((a, b) => a.doseNumber - b.doseNumber);
+        const nextDose = (patientRecords.at(-1)?.doseNumber || 0) + 1;
+        if (nextDose > scheduleDoses.length) continue;
+        let dueDate: string | null = null;
+        if (schedule.eligibility === "pregnancy") {
+          if (!patient.lmp) continue;
+          const lmpDate = String(patient.lmp).slice(0, 10);
+          const weeksPregnant = Math.floor(dayDifference(lmpDate, today) / 7);
+          if (weeksPregnant < 0 || weeksPregnant > 42) continue;
+          const pregnancyWords = `${patient.type || ""} ${patient.status || ""} ${patient.focus || ""}`.toLowerCase();
+          const pregnancyStatus = String(patient.status || "").toLowerCase();
+          if (pregnancyStatus && !/pregnan|antenatal|obstetric|anc/.test(pregnancyWords)) continue;
+          dueDate = addDaysToDate(lmpDate, scheduleDoses[nextDose - 1] * 7);
+        } else {
+          const age = Number(patient.age);
+          if (!Number.isFinite(age) || (schedule.minAge != null && age < schedule.minAge) || (schedule.maxAge != null && age > schedule.maxAge)) continue;
+          dueDate = patientRecords.length
+            ? addMonthsToDate(String(patientRecords[0].administeredDate).slice(0, 10), scheduleDoses[nextDose - 1])
+            : today;
+        }
+        if (!dueDate) continue;
+        const daysUntilDue = dayDifference(today, dueDate);
+        if (daysUntilDue > schedule.reminderLeadDays) continue;
+        reminders.push({
+          patientId: patient.id,
+          patientName: patient.name,
+          phone: patient.phone,
+          scheduleId: schedule.id,
+          vaccineName: schedule.vaccineName,
+          doseNumber: nextDose,
+          doseCount: scheduleDoses.length,
+          dueDate,
+          daysUntilDue,
+          status: daysUntilDue < 0 ? "overdue" : daysUntilDue === 0 ? "due" : "upcoming",
+        });
+      }
+    }
+    reminders.sort((a, b) => Number(a.daysUntilDue) - Number(b.daysUntilDue) || String(a.patientName).localeCompare(String(b.patientName)));
+    res.json(reminders);
+  });
+
+  app.get("/api/vaccination-records", async (req, res) => {
+    const patientId = parseId(typeof req.query.patientId === "string" ? req.query.patientId : "");
+    if (!patientId) return res.status(400).json({ error: "Valid patientId is required" });
+    res.json((await storage.getVaccinationRecords()).filter((record) => record.patientId === patientId));
+  });
+
+  app.post("/api/vaccination-records", async (req, res) => {
+    const patientId = parseId(req.body?.patientId);
+    const scheduleId = parseId(req.body?.scheduleId);
+    const doseNumber = Number(req.body?.doseNumber);
+    const administeredDate = String(req.body?.administeredDate || todayLocal());
+    if (!patientId || !scheduleId || !Number.isInteger(doseNumber) || doseNumber < 1 || !/^\d{4}-\d{2}-\d{2}$/.test(administeredDate)) {
+      return res.status(400).json({ error: "Invalid vaccination dose details" });
+    }
+    const [patient, schedule] = await Promise.all([storage.getPatient(patientId), storage.getVaccinationSchedules()]);
+    const matchingSchedule = schedule.find((item) => item.id === scheduleId && item.isActive);
+    if (!patient) return res.status(404).json({ error: "Patient not found" });
+    if (!matchingSchedule) return res.status(404).json({ error: "Active vaccination schedule not found" });
+    const doseCount = matchingSchedule.eligibility === "pregnancy"
+      ? (Array.isArray(matchingSchedule.doseGestationalWeeks) ? matchingSchedule.doseGestationalWeeks.length : 0)
+      : (Array.isArray(matchingSchedule.doseOffsetsMonths) ? matchingSchedule.doseOffsetsMonths.length : 0);
+    if (doseNumber > doseCount) return res.status(400).json({ error: "Dose number is outside this schedule" });
+    try {
+      res.status(201).json(await storage.createVaccinationRecord({ patientId, scheduleId, doseNumber, administeredDate, createdAt: new Date().toISOString() }));
+    } catch (err: any) {
+      if (err?.code === "23505") return res.status(409).json({ error: "This dose is already recorded" });
+      throw err;
+    }
+  });
+
   const publicReferral = (r: any, partnerNames: Map<number, string>, patientNames: Map<number, string>) => {
     const { commissionPercent: _p, commissionAmount: _a, ...rest } = r;
     return { ...rest, partnerName: partnerNames.get(r.partnerId) || "Unknown", patientName: patientNames.get(r.patientId) || "Unknown" };
