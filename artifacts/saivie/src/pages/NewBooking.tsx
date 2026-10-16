@@ -40,7 +40,7 @@ export default function NewBooking() {
 
     // Form State
     const [patientType, setPatientType] = useState("existing");
-    const [selectedSlot, setSelectedSlot] = useState("");
+    const [selectedTime, setSelectedTime] = useState("");
     const [selectedService, setSelectedService] = useState("");
     const [selectedProvider, setSelectedProvider] = useState("");
     const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
@@ -50,9 +50,11 @@ export default function NewBooking() {
     const [createdTelemedicineLink, setCreatedTelemedicineLink] = useState<string | null>(null);
     const { toast } = useToast();
 
-    const timeSlots = [
-        "09:00 AM", "09:30 AM", "10:00 AM", "11:15 AM", "02:00 PM", "03:30 PM", "04:15 PM"
-    ];
+    const formatAppointmentTime = (time: string) => {
+        const [hours, minutes] = time.split(":").map(Number);
+        const period = hours >= 12 ? "PM" : "AM";
+        return `${String(hours % 12 || 12).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${period}`;
+    };
 
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -141,7 +143,7 @@ export default function NewBooking() {
     });
 
     const handleConfirm = () => {
-        if (!selectedPatientId || !selectedSlot || !date) {
+        if (!selectedPatientId || !selectedTime || !date) {
             toast({
                 title: "Missing Information",
                 description: "Please ensure patient, date, and time are selected.",
@@ -156,7 +158,7 @@ export default function NewBooking() {
             type: services.find((s: any) => s.id === selectedService)?.name,
             visitType: services.find((s: any) => s.id === selectedService)?.name,
             date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
-            time: selectedSlot,
+            time: formatAppointmentTime(selectedTime),
             status: "scheduled",
             visitMode,
         });
@@ -470,19 +472,20 @@ export default function NewBooking() {
                                 </div>
 
                                 <div className="flex-1 w-full">
-                                    <Label className="mb-3 block">Available Slots</Label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {timeSlots.map(time => (
-                                            <Button
-                                                key={time}
-                                                variant={selectedSlot === time ? "default" : "outline"}
-                                                className={`w-full justify-start ${selectedSlot === time ? 'bg-indigo-600 hover:bg-indigo-700' : 'text-slate-600'}`}
-                                                onClick={() => setSelectedSlot(time)}
-                                            >
-                                                <Clock className="w-4 h-4 mr-2 opacity-70" />
-                                                {time}
-                                            </Button>
-                                        ))}
+                                    <Label htmlFor="appointment-time" className="mb-3 block">Appointment Time</Label>
+                                    <div className="max-w-xs">
+                                        <div className="relative">
+                                            <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                            <Input
+                                                id="appointment-time"
+                                                type="time"
+                                                value={selectedTime}
+                                                onChange={(event) => setSelectedTime(event.target.value)}
+                                                className="pl-10"
+                                                required
+                                            />
+                                        </div>
+                                        <p className="mt-2 text-xs text-slate-500">Choose any appointment time; it does not have to match a preset slot.</p>
                                     </div>
                                 </div>
                             </div>
@@ -526,7 +529,7 @@ export default function NewBooking() {
                                         </div>
                                         <div>
                                             <p className="text-xs text-indigo-500 uppercase font-bold tracking-wide mb-1">Time</p>
-                                            <p className="font-medium text-slate-900">{selectedSlot || "09:00 AM"}</p>
+                                            <p className="font-medium text-slate-900">{selectedTime ? formatAppointmentTime(selectedTime) : "Not selected"}</p>
                                         </div>
                                         <div className="col-span-2">
                                             <p className="text-xs text-indigo-500 uppercase font-bold tracking-wide mb-1">Visit Mode</p>
