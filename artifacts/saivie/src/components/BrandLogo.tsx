@@ -14,20 +14,15 @@ export function useBrandLogo(): string | null {
   return data?.logoUrl || null;
 }
 
-// Keeps the browser tab icon in sync with the uploaded clinic logo.
+// The tab icon is the fixed Saivie mark in /favicon.svg; the uploaded clinic logo no longer overrides it.
 export function useBrandFavicon() {
-  const logoUrl = useBrandLogo();
   useEffect(() => {
-    if (!logoUrl) return;
-    let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
-    if (!link) {
-      link = document.createElement("link");
-      link.rel = "icon";
-      document.head.appendChild(link);
+    const link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+    if (link && link.getAttribute("href") !== "/favicon.svg") {
+      link.type = "image/svg+xml";
+      link.href = "/favicon.svg";
     }
-    link.removeAttribute("type");
-    link.href = logoUrl;
-  }, [logoUrl]);
+  }, []);
 }
 
 interface BrandLogoProps {
