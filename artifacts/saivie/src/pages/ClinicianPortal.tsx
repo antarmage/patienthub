@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { openPrescription } from "@/lib/prescriptionTemplate";
 import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSettings";
+import { IntakeSummaryActions } from "@/components/IntakeSummary";
 import { 
   LayoutDashboard, 
   Users, 
@@ -4860,9 +4861,12 @@ export default function ClinicianPortal() {
                               <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wide">Patient History</CardTitle>
                             </div>
                             {!editingHistory ? (
+                              <div className="flex gap-1.5">
+                              <IntakeSummaryActions patient={selectedPatient} weightLogs={weightLogs} bpLogs={bpLogsData} />
                               <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => { setEditingHistory(true); setEditHistoryData({ medical: [...(selectedPatient.history?.medical || [])], surgical: [...(selectedPatient.history?.surgical || [])], drug: [...(selectedPatient.history?.drug || [])], allergies: [...(selectedPatient.history?.allergies || [])] }); setNewHistoryItem({ medical: '', surgical: '', drug: '', allergies: '' }); }} data-testid="button-edit-history">
                                 <Pencil className="w-3 h-3" /> Edit
                               </Button>
+                              </div>
                             ) : (
                               <div className="flex gap-1.5">
                                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => updateHistoryMutation.mutate(editHistoryData)} disabled={updateHistoryMutation.isPending} data-testid="button-save-history">
