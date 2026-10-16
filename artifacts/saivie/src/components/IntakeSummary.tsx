@@ -129,6 +129,12 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[]): S
     if ((num(preg.miscarriages) || 0) >= 2) insights.push({ level: "watch", text: `History of ${preg.miscarriages} miscarriages.` });
     if (num(preg.cesarean)) insights.push({ level: "info", text: `Previous C-section × ${preg.cesarean}.` });
     if (life.smoking === "Current") insights.push({ level: "watch", text: "Current smoker." });
+    const drinks = Number.parseInt(text(life.alcohol), 10);
+    if (drinks >= 7) insights.push({ level: "watch", text: `Alcohol intake ${text(life.alcohol)} (above low-risk limit for women).` });
+    if (["5+ years ago", "Never had one"].includes(text(life.mammogram)) && Number(age) >= 40) insights.push({ level: "watch", text: `Mammogram ${text(life.mammogram).toLowerCase()} — screening may be due.` });
+    if (["5+ years ago", "Never had one"].includes(text(gyn.lastPap)) && Number(age) >= 25) insights.push({ level: "watch", text: `Pap smear ${text(gyn.lastPap).toLowerCase()} — cervical screening may be due.` });
+    if (text(life.exercise) === "0 days per week") insights.push({ level: "info", text: "Not currently exercising." });
+    if (["No", "Not sure", "Yes, some doses"].includes(text(gyn.hpvVaccine))) insights.push({ level: "info", text: `HPV vaccination: ${text(gyn.hpvVaccine).toLowerCase()} — discuss vaccination and cervical screening.` });
     const allergies = list(history.allergies);
     if (allergies.length) insights.push({ level: "watch", text: `Allergies: ${allergies.join(", ")}.` });
     const conds = list(health.conditions);
@@ -156,7 +162,7 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[]): S
         ]),
         section("Gynecological history", [
             row("Sexually active", gyn.sexuallyActive), row("Age at first encounter", gyn.firstEncounterAge), row("Partners", gyn.partnerCount),
-            row("Last Pap smear", gyn.lastPap), row("HPV vaccine", gyn.hpvVaccine), row("Contraception", gyn.birthControl), row("Concerns", gyn.concerns), row("Notes", gyn.details),
+            row("Last Pap smear", gyn.lastPap && (Number.isNaN(new Date(gyn.lastPap).getTime()) ? gyn.lastPap : fmtDate(gyn.lastPap))), row("HPV vaccine", gyn.hpvVaccine), row("Contraception", gyn.birthControl), row("Concerns", gyn.concerns), row("Notes", gyn.details),
         ]),
         section("Medical history", [
             row("Conditions", history.medical), row("Surgeries", history.surgical), row("Medications", history.drug),
