@@ -24,6 +24,14 @@ export async function ensureSchema(): Promise<void> {
     await client.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email text;
 
+      ALTER TABLE follow_up_calls ADD COLUMN IF NOT EXISTS source_key text;
+      ALTER TABLE follow_up_calls ADD COLUMN IF NOT EXISTS trigger_type text;
+      ALTER TABLE follow_up_calls ADD COLUMN IF NOT EXISTS trigger_reason text;
+      ALTER TABLE follow_up_calls ADD COLUMN IF NOT EXISTS due_date text;
+      CREATE UNIQUE INDEX IF NOT EXISTS follow_up_calls_source_key_idx ON follow_up_calls(source_key);
+      ALTER TABLE lab_tasks ADD COLUMN IF NOT EXISTS ordered_at text;
+      ALTER TABLE lab_tasks ALTER COLUMN ordered_at SET DEFAULT CURRENT_TIMESTAMP::text;
+
       CREATE TABLE IF NOT EXISTS invoice_template_settings (
         id integer PRIMARY KEY DEFAULT 1,
         clinic_name text NOT NULL DEFAULT '',

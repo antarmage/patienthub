@@ -145,6 +145,7 @@ export const labTasks = pgTable("lab_tasks", {
   patientId: integer("patient_id").references(() => patients.id),
   test: text("test").notNull(),
   due: text("due").notNull(),
+  orderedAt: text("ordered_at").default(sql`CURRENT_TIMESTAMP::text`),
   status: text("status"),
 });
 
@@ -464,7 +465,13 @@ export const followUpCalls = pgTable("follow_up_calls", {
   followUpDate: text("follow_up_date"),
   status: text("status").default("pending"),
   createdBy: text("created_by"),
-});
+  sourceKey: text("source_key"),
+  triggerType: text("trigger_type"),
+  triggerReason: text("trigger_reason"),
+  dueDate: text("due_date"),
+}, (table) => [
+  uniqueIndex("follow_up_calls_source_key_idx").on(table.sourceKey),
+]);
 
 export const insertFollowUpCallSchema = createInsertSchema(followUpCalls).omit({ id: true });
 export type InsertFollowUpCall = z.infer<typeof insertFollowUpCallSchema>;

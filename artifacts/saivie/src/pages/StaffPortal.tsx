@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { CALL_TRIGGER_LABELS, callOutcome, clinicDate, type CallTrigger } from "../../../../lib/db/src/follow-up";
+import type { FollowUpCall } from "../../../../lib/db/src/schema/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Users, 
@@ -1478,6 +1480,7 @@ export default function StaffPortal() {
   const [followUpImportResult, setFollowUpImportResult] = useState<any>(null);
   const [followUpSheetStatus, setFollowUpSheetStatus] = useState<any>(null);
   const [followUpCallFilter, setFollowUpCallFilter] = useState<'pending' | 'completed' | 'all'>('pending');
+  const [followUpTriggerFilter, setFollowUpTriggerFilter] = useState("all");
 
   const [billingPatientId, setBillingPatientId] = useState<number | null>(null);
   const [isBillingPatientPickerOpen, setIsBillingPatientPickerOpen] = useState(false);
@@ -1750,8 +1753,10 @@ export default function StaffPortal() {
     setEditNotes(invoice.notes || "");
   };
 
-  const followUpCallsQuery = useQuery({
+  const followUpCallsQuery = useQuery<FollowUpCall[]>({
     queryKey: ['/api/follow-up-calls'],
+    enabled: activeRole === 'receptionist',
+    refetchInterval: 60_000,
     queryFn: async () => {
       const res = await fetch('/api/follow-up-calls');
       if (!res.ok) throw new Error('Failed to fetch');
@@ -1759,6 +1764,14 @@ export default function StaffPortal() {
     }
   });
   const followUpCalls = followUpCallsQuery.data || [];
+  const visibleFollowUpCalls = useMemo(() => followUpCalls
+    .filter((call) => (followUpCallFilter === 'all' || call.status === followUpCallFilter) &&
+      (followUpTriggerFilter === 'all' || (call.triggerType || 'manual') === followUpTriggerFilter))
+    .sort((a, b) => {
+      const dateA = a.status === 'pending' ? a.plannedDate : a.actualDate || a.plannedDate;
+      const dateB = b.status === 'pending' ? b.plannedDate : b.actualDate || b.plannedDate;
+      return (dateA || '9999').localeCompare(dateB || '9999') || a.id - b.id;
+    }), [followUpCalls, followUpCallFilter, followUpTriggerFilter]);
 
   const handleImportFollowUpSheet = async () => {
     setIsImportingFollowUp(true);
@@ -1793,6 +1806,9 @@ export default function StaffPortal() {
       setIsFollowUpCallOpen(false);
       setSelectedCallPatient(null);
       setFollowUpCallForm({ feeling: '', gotMedicines: '', concerns: '', crossSell: '', nextVisit: '', notes: '', nextMilestone: '', didntPickCallTime: '' });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Could not save follow-up call", description: err.message, variant: "destructive" });
     },
   });
 
@@ -1856,7 +1872,7 @@ export default function StaffPortal() {
         return {
           id: c.id,
           name: c.patientName,
-          detail: c.plannedDate ? `${overdue ? 'Overdue' : 'Planned'} · ${c.plannedDate}` : 'No call date planned',
+          detail: [c.triggerReason, c.plannedDate ? `${overdue ? 'Overdue' : 'Planned'} · ${c.plannedDate}` : 'No call date planned'].filter(Boolean).join(' · '),
           lastVisit: c.consultationDate,
           phone: c.phone || patient?.phone || null,
           overdue,
@@ -3607,15 +3623,25 @@ export default function StaffPortal() {
                             <Phone className="w-6 h-6 text-orange-600" />
                             <div>
                                 <h2 className="text-xl font-bold text-slate-900">Follow-Up Cold Calls</h2>
-                                <p className="text-sm text-slate-500">Track and manage patient follow-up calls</p>
+                                <p className="text-sm text-slate-500">Automatic 7-day check-ins, milestone and prescription reminders, pending tests and results</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
+                            <Button size="sm" variant="outline" disabled={followUpCallsQuery.isFetching} onClick={() => followUpCallsQuery.refetch()}>
+                                <RefreshCw className={`w-3 h-3 mr-1 ${followUpCallsQuery.isFetching ? 'animate-spin' : ''}`} /> Refresh queue
+                            </Button>
                             <div className="flex items-center gap-2 text-sm">
                                 <Badge className="bg-orange-100 text-orange-700 border-orange-200">{followUpCalls.filter((c: any) => c.status === 'pending').length} Pending</Badge>
                                 <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">{followUpCalls.filter((c: any) => c.status === 'completed').length} Completed</Badge>
                                 <Badge variant="outline" className="text-slate-500">{followUpCalls.length} Total</Badge>
                             </div>
+                            <p className="text-xs text-slate-500">Reminders start 1 day before a milestone or prescription due date. Pending-test calls start 3 days after ordering. Missed calls remain pending; oldest calls appear first.</p>
+                            {followUpCallsQuery.isError && (
+                                <div role="alert" className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                                    Could not refresh the automatic call queue. {followUpCallsQuery.error.message} Use Refresh queue to retry.
+                                </div>
+                            )}
+                            {followUpCallsQuery.isLoading && <p role="status" className="text-sm text-slate-500">Preparing follow-up calls...</p>}
                             <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white text-xs h-8" onClick={() => { setSelectedCallPatient(null); setFollowUpCallForm({ feeling: '', gotMedicines: '', concerns: '', crossSell: '', nextVisit: '', notes: '', nextMilestone: '', didntPickCallTime: '' }); setIsFollowUpCallOpen(true); }}>
                                 <Plus className="w-3 h-3 mr-1" /> Log Call
                             </Button>
@@ -3631,8 +3657,13 @@ export default function StaffPortal() {
                                             <button key={f} onClick={() => setFollowUpCallFilter(f)} className={`px-4 py-2 capitalize ${followUpCallFilter === f ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{f}</button>
                                         ))}
                                     </div>
+                                    <select aria-label="Filter calls by reason" className="rounded-md border border-slate-200 bg-white p-2 text-xs" value={followUpTriggerFilter} onChange={(event) => setFollowUpTriggerFilter(event.target.value)}>
+                                        <option value="all">All reasons</option>
+                                        {Object.entries(CALL_TRIGGER_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                        <option value="manual">Manual / imported</option>
+                                    </select>
                                     <div className="text-xs text-slate-400">
-                                        Showing {followUpCalls.filter((c: any) => followUpCallFilter === 'all' ? true : c.status === followUpCallFilter).length} records
+                                        Showing {visibleFollowUpCalls.length} records
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-0">
@@ -3643,6 +3674,7 @@ export default function StaffPortal() {
                                                     <th className="px-3 py-2.5 font-medium">Date</th>
                                                     <th className="px-3 py-2.5 font-medium">Patient</th>
                                                     <th className="px-3 py-2.5 font-medium">Type</th>
+                                                    <th className="px-3 py-2.5 font-medium">Reason / Due</th>
                                                     <th className="px-3 py-2.5 font-medium">Feeling</th>
                                                     <th className="px-3 py-2.5 font-medium">Medicines</th>
                                                     <th className="px-3 py-2.5 font-medium">Concerns</th>
@@ -3653,14 +3685,7 @@ export default function StaffPortal() {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
-                                                {followUpCalls
-                                                    .filter((c: any) => followUpCallFilter === 'all' ? true : c.status === followUpCallFilter)
-                                                    .sort((a: any, b: any) => {
-                                                        const dateA = a.actualDate || a.plannedDate || '';
-                                                        const dateB = b.actualDate || b.plannedDate || '';
-                                                        return dateB.localeCompare(dateA);
-                                                    })
-                                                    .map((call: any) => (
+                                                {visibleFollowUpCalls.map((call) => (
                                                     <tr key={call.id} className="hover:bg-slate-50/50">
                                                         <td className="px-3 py-2.5 text-xs text-slate-500 whitespace-nowrap">{call.actualDate || call.plannedDate || '—'}</td>
                                                         <td className="px-3 py-2.5">
@@ -3671,6 +3696,14 @@ export default function StaffPortal() {
                                                         </td>
                                                         <td className="px-3 py-2.5">
                                                             <Badge variant="outline" className="text-[10px]">{call.patientType || '—'}</Badge>
+                                                        </td>
+                                                        <td className="px-3 py-2.5 text-xs min-w-[220px]">
+                                                            <Badge variant="outline" className="text-[10px]">{CALL_TRIGGER_LABELS[call.triggerType as CallTrigger] || 'Manual / imported'}</Badge>
+                                                            <p className="mt-1 text-slate-600">{call.triggerReason || call.nextMilestone || 'Patient follow-up'}</p>
+                                                            {call.dueDate && <p className="mt-1 text-slate-500">Due: {call.dueDate}</p>}
+                                                            {call.status === 'pending' && call.plannedDate && call.plannedDate < clinicDate() && <span className="font-medium text-rose-600">Overdue call</span>}
+                                                            {call.didntPickCallTime && <p className="text-amber-700">Missed: {call.didntPickCallTime}</p>}
+                                                            {call.status === 'cancelled' && <p className="text-slate-500">No longer required</p>}
                                                         </td>
                                                         <td className="px-3 py-2.5 text-xs">
                                                             {call.feeling ? (
@@ -3706,8 +3739,8 @@ export default function StaffPortal() {
                                                         </td>
                                                     </tr>
                                                 ))}
-                                                {followUpCalls.filter((c: any) => followUpCallFilter === 'all' ? true : c.status === followUpCallFilter).length === 0 && (
-                                                    <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-slate-400">
+                                                {!followUpCallsQuery.isLoading && !followUpCallsQuery.isError && visibleFollowUpCalls.length === 0 && (
+                                                    <tr><td colSpan={11} className="px-4 py-12 text-center text-sm text-slate-400">
                                                         {followUpCallFilter === 'pending' ? 'No pending follow-up calls' : followUpCallFilter === 'completed' ? 'No completed calls yet' : 'No follow-up calls recorded'}
                                                     </td></tr>
                                                 )}
@@ -4883,8 +4916,9 @@ export default function StaffPortal() {
                                 <Input className="h-9 text-xs" placeholder="e.g., Postpartum yoga done" value={followUpCallForm.nextMilestone} onChange={(e) => setFollowUpCallForm(f => ({ ...f, nextMilestone: e.target.value }))} />
                             </div>
                             <div>
-                                <Label className="text-xs font-medium">Didn't pick - follow up in</Label>
-                                <Input className="h-9 text-xs" placeholder="e.g., 14 days" value={followUpCallForm.didntPickCallTime} onChange={(e) => setFollowUpCallForm(f => ({ ...f, didntPickCallTime: e.target.value }))} />
+                                <Label className="text-xs font-medium">Missed call / retry details</Label>
+                                <Input className="h-9 text-xs" placeholder="No answer at 10:30; retry tomorrow" value={followUpCallForm.didntPickCallTime} onChange={(e) => setFollowUpCallForm(f => ({ ...f, didntPickCallTime: e.target.value }))} />
+                                <p className="mt-1 text-[10px] text-slate-500">Keeps the call pending. Clear after a successful call.</p>
                             </div>
                         </div>
                     </div>
@@ -4895,11 +4929,11 @@ export default function StaffPortal() {
                             className="bg-orange-600 hover:bg-orange-700 text-white"
                             disabled={saveFollowUpCallMutation.isPending}
                             onClick={() => {
-                                const today = new Date().toISOString().split('T')[0];
+                                const today = clinicDate();
                                 const payload: any = {
                                     ...followUpCallForm,
                                     actualDate: today,
-                                    status: followUpCallForm.notes || followUpCallForm.feeling ? 'completed' : 'pending',
+                                    status: callOutcome(followUpCallForm),
                                 };
                                 if (selectedCallPatient?.id) {
                                     saveFollowUpCallMutation.mutate({ id: selectedCallPatient.id, data: payload });

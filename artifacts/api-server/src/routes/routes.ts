@@ -5,6 +5,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { storage } from "../storage";
+import { synchronizeFollowUpCalls } from "../follow-up-calls";
 import { insertPatientSchema } from "@workspace/db";
 import { calculateInvoiceQuote } from "../prime-pricing";
 import { registerOcrRoutes } from "../replit_integrations/ocr";
@@ -2747,19 +2748,24 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.get("/api/follow-up-calls", async (_req, res) => {
+    await synchronizeFollowUpCalls();
     const calls = await storage.getFollowUpCalls();
     res.json(calls);
   });
 
   app.post("/api/follow-up-calls", async (req, res) => {
-    const call = await storage.createFollowUpCall(req.body);
+    const data = { ...req.body };
+    if (typeof data.didntPickCallTime === "string" && data.didntPickCallTime.trim()) data.status = "pending";
+    const call = await storage.createFollowUpCall(data);
     res.status(201).json(call);
   });
 
   app.patch("/api/follow-up-calls/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
-    const updated = await storage.updateFollowUpCall(id, req.body);
+    const data = { ...req.body };
+    if (typeof data.didntPickCallTime === "string" && data.didntPickCallTime.trim()) data.status = "pending";
+    const updated = await storage.updateFollowUpCall(id, data);
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.json(updated);
   });

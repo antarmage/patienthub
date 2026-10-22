@@ -53,6 +53,17 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Migration: `pnpm --filter @workspace/db run push`
 - `genome_analyses` table: added via `ensureSchema()` in `db.ts` — stores SNP count, health risks, predispositions, pharmacogenomics, traits as JSONB
 
+## Receptionist follow-up queue
+
+- Staff Portal -> Follow-Up Cold Calls automatically creates persisted pending tasks at API startup, hourly, and when the queue is refreshed. The UI refreshes every minute.
+- Completed appointments become due for a check-in 7 days after the visit, including overdue visits. Missed calls remain pending even when notes are entered.
+- Pregnancy milestones use the same schedule as the reception dashboard. Patient review dates and recorded immunisation/investigation dates also trigger reminders, starting 1 day before the due date.
+- Prescription follow-up instructions support ISO/Indian dates and explicit relative intervals (for example, "after 2 weeks"). Unclear timing generates a task asking staff to confirm with the clinician; no clinical date is guessed.
+- Pending lab orders trigger calls 3 days after ordering; recorded results trigger a separate clinician-review call. Matching results or completed/cancelled orders withdraw pending-test tasks. Result-review calls are reminders, not an automatic clinical interpretation.
+- Lab tasks now record `ordered_at`. Legacy tasks without an order timestamp are not assigned a guessed order date; prescription visit orders still use their recorded visit date.
+- Generated tasks have unique source keys to prevent repeat creation across refreshes/restarts/server instances. Completed calls and manual/imported records are preserved; no-longer-applicable automatic tasks are shown as cancelled in All.
+- `ensureSchema()` adds the follow-up source/reason/due-date columns and unique index on restart. No external messaging or automatic phone calls are sent.
+
 ## Frontend Structure
 
 - `artifacts/saivie/src/App.tsx` — root component with wouter Router (base=BASE_URL)
