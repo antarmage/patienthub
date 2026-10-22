@@ -114,20 +114,18 @@ function printOnboardingSummary(form: IntakeForm) {
     <style>
         * { box-sizing: border-box; }
         body { max-width: 850px; margin: 0 auto; padding: 36px 28px; color: #342c52; font: 13px/1.5 Arial, sans-serif; }
-        h1 { margin: 0; color: #4a3d6e; font-size: 25px; }
-        .meta { margin: 4px 0 20px; color: #625976; }
+        .meta { margin: 0 0 20px; font-weight: 600; color: #625976; }
         h2 { margin: 22px 0 7px; color: #66519c; font-size: 16px; break-after: avoid; }
         table { width: 100%; border-collapse: collapse; }
         tr { break-inside: avoid; }
         th, td { padding: 7px 9px; border-bottom: 1px solid #e9e3f1; text-align: left; vertical-align: top; }
         th { width: 34%; color: #625976; font-weight: 600; }
         .note { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e9e3f1; color: #797187; font-size: 11px; }
-        @page { margin: 18mm; }
+        @page { margin: 42mm 18mm 18mm; }
         @media print { body { padding: 0; } }
     </style>
 </head>
 <body>
-    <h1>Patient onboarding &amp; history</h1>
     <p class="meta">${escapeHtml(form.name || "Patient")} · Printed ${escapeHtml(new Date().toLocaleString())}</p>
     ${sections.map(([title, content]) => `<section><h2>${escapeHtml(title)}</h2><table><tbody>${content}</tbody></table></section>`).join("")}
     <p class="note">Patient-reported information from the onboarding form. Please review and verify with the care team.</p>

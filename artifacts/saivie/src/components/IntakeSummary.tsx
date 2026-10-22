@@ -13,6 +13,10 @@ type Section = { title: string; rows: [string, string][] };
 type Summary = {
     name: string;
     meta: string[];
+    age: string;
+    phone: string;
+    patientId: string;
+    visitDate: string;
     concerns: string[];
     complaint: string;
     insights: Insight[];
@@ -216,6 +220,11 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], ch
     return {
         name: text(patient?.name) || "Patient",
         meta,
+        age: age ? `${age} yrs` : "",
+        phone: text(patient?.phone),
+        patientId: patient?.id ? `SV-${String(patient.id).padStart(5, "0")}` : "",
+        visitDate: (text(cv.recordedAt) && !Number.isNaN(new Date(text(cv.recordedAt)).getTime()) ? new Date(text(cv.recordedAt)) : new Date())
+            .toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }),
         concerns: list(form.concerns),
         complaint: text(form.chiefComplaint),
         insights,
@@ -229,37 +238,166 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], ch
 
 const esc = (value: string) => value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
+const icon = (paths: string) =>
+    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+const ICONS = {
+    user: icon('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>'),
+    calendar: icon('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+    cycle: icon('<path d="M20 12a8 8 0 0 1-14 5.3M4 12a8 8 0 0 1 14-5.3"/><path d="M18 3v4h-4M6 21v-4h4"/>'),
+    heart: icon('<path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z"/><path d="M6 12h3l1.5-2.5 2 5 1.5-2.5h4"/>'),
+    pulse: icon('<path d="M3 12h4l2-5 4 10 2-5h6"/>'),
+    thermo: icon('<path d="M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z"/>'),
+    drop: icon('<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>'),
+    scale: icon('<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 9a3 3 0 0 1 6 0M12 9l1.5-1.5"/>'),
+    chat: icon('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>'),
+    medical: icon('<rect x="4" y="6" width="16" height="14" rx="2"/><path d="M9 6V4h6v2M12 10v6M9 13h6"/>'),
+    baby: icon('<circle cx="12" cy="7" r="3"/><path d="M7 21v-5a5 5 0 0 1 10 0v5M9 14l-3-2M15 14l3-2"/>'),
+    flower: icon('<circle cx="12" cy="12" r="2.5"/><path d="M12 9.5C12 6 14 4 12 3c-2 1 0 3 0 6.5zM14.5 12c3.5 0 5.5 2 6.5 0-1-2-3 0-6.5 0zM12 14.5c0 3.5-2 5.5 0 6.5 2-1 0-3 0-6.5zM9.5 12C6 12 4 10 3 12c1 2 3 0 6.5 0z"/>'),
+    leaf: icon('<path d="M5 19c0-8 5-14 15-15-1 10-7 15-15 15z"/><path d="M5 19l7-7"/>'),
+    notes: icon('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/>'),
+    alert: icon('<path d="M12 3l9.5 17H2.5L12 3z"/><path d="M12 10v4M12 17.5v.01"/>'),
+    info: icon('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/>'),
+};
+
+const metricIcon = (label: string) => {
+    const l = label.toLowerCase();
+    if (l.includes("lmp")) return ICONS.calendar;
+    if (l.includes("cycle")) return ICONS.cycle;
+    if (l.includes("blood pressure")) return ICONS.heart;
+    if (l.includes("pulse")) return ICONS.pulse;
+    if (l.includes("temp")) return ICONS.thermo;
+    if (l.includes("spo")) return ICONS.drop;
+    if (l.includes("weight") || l.includes("bmi")) return ICONS.scale;
+    if (l.includes("gestation") || l.includes("obstetric")) return ICONS.baby;
+    return ICONS.info;
+};
+
+const sectionIcon = (title: string) => {
+    const t = title.toLowerCase();
+    if (t.includes("vitals")) return ICONS.heart;
+    if (t.includes("complaint")) return ICONS.chat;
+    if (t.includes("menstrual")) return ICONS.drop;
+    if (t.includes("obstetric")) return ICONS.baby;
+    if (t.includes("gyn")) return ICONS.flower;
+    if (t.includes("medical")) return ICONS.medical;
+    if (t.includes("lifestyle")) return ICONS.leaf;
+    return ICONS.notes;
+};
+
 function printSummary(s: Summary) {
-    const toneColor = (t?: string) => (t === "alert" ? "#c2410c" : t === "watch" ? "#a16207" : "#342c52");
+    const toneColor = (t?: string) => (t === "alert" ? "#b4234a" : t === "watch" ? "#a16207" : "#2f3b37");
     const levelStyle: Record<Insight["level"], string> = {
-        alert: "background:#fff1f2;border-color:#fecdd3;color:#9f1239",
-        watch: "background:#fffbeb;border-color:#fde68a;color:#92400e",
-        info: "background:#f5f0ff;border-color:#e2d6f7;color:#4a3d6e",
+        alert: "background:#fdecef;border-color:#f3c0cc;color:#8f1d3d",
+        watch: "background:#fff8e6;border-color:#f3dca0;color:#7a5410",
+        info: "background:#eef5f2;border-color:#cfe2da;color:#355a4f",
     };
     const table = (head: string[], rows: string[][]) =>
-        `<table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+        `<table class="log"><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    const kvTable = (rows: [string, string][]) =>
+        `<table class="kv"><tbody>${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</tbody></table>`;
+    const card = (title: string, body: string, tone: "rose" | "sage", wide = false) =>
+        `<section class="card ${tone}${wide ? " wide" : ""}"><header><span class="ico">${sectionIcon(title)}</span><h3>${esc(title)}</h3></header><div class="body">${body}</div></section>`;
+    const field = (iconSvg: string, label: string, value: string) =>
+        `<div class="field"><span class="fico">${iconSvg}</span><div><div class="fl">${esc(label)}</div><div class="fv">${esc(value || "—")}</div></div></div>`;
 
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Intake summary – ${esc(s.name)}</title><style>
-*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#342c52;margin:0;padding:28px;font-size:12px}
-.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #66519c;padding-bottom:10px;margin-bottom:14px}
-h1{margin:0;font-size:20px}.brand{color:#66519c;font-weight:700;font-size:13px;text-align:right}.muted{color:#7b7290}
-h2{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#66519c;margin:16px 0 6px}
-.chips span{display:inline-block;background:#f1ebfb;color:#4a3d6e;border-radius:999px;padding:3px 10px;margin:0 4px 4px 0;font-weight:600}
-.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.metric{border:1px solid #e9e3f1;border-radius:10px;padding:8px 10px}
-.metric .l{font-size:10px;text-transform:uppercase;color:#7b7290}.metric .v{font-size:17px;font-weight:700}.metric .h{font-size:10px;color:#7b7290}
+    const details = s.meta.filter((m) => m !== s.age && m !== s.phone);
+    const reason = s.concerns.length || s.complaint
+        ? `${s.concerns.length ? `<div class="chips">${s.concerns.map((c) => `<span>${esc(c)}</span>`).join("")}</div>` : ""}${s.complaint ? `<p class="complaint">${esc(s.complaint)}</p>` : ""}`
+        : "";
+    const presenting = s.sections.find((sec) => sec.title === "Presenting complaint");
+    const others = s.sections.filter((sec) => sec !== presenting && sec.title !== "Check-in vitals");
+    const wideTitles = new Set(["Lifestyle & screening", "Gynecological history"]);
+    let toneIndex = 0;
+    const sectionCards = others.map((sec) => {
+        const tone = toneIndex++ % 2 === 0 ? "rose" : "sage";
+        const wide = wideTitles.has(sec.title) && sec.rows.length > 4;
+        const body = wide
+            ? `<div class="split">${kvTable(sec.rows.slice(0, Math.ceil(sec.rows.length / 2)))}${kvTable(sec.rows.slice(Math.ceil(sec.rows.length / 2)))}</div>`
+            : kvTable(sec.rows);
+        return card(sec.title, body, tone, wide);
+    }).join("");
+
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Patient Clinical Summary – ${esc(s.name)}</title><style>
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#2f3b37;margin:0;padding:24px;font-size:11.5px;background:#fbf8f6}
+.page{max-width:820px;margin:0 auto;position:relative}
+.serif{font-family:Georgia,"Times New Roman",serif}
+.band{border-radius:14px;padding:14px 16px;margin-bottom:12px;break-inside:avoid}
+.band.rose{background:#f6e6ec}.band.sage{background:#e5eeea}
+.patient{display:grid;grid-template-columns:1.6fr 1fr 1.2fr 1fr;align-items:center}
+.patient>div{padding:0 14px;border-left:1px solid #e4c9d4}.patient>div:first-child{border-left:0;padding-left:0}
+.field{display:flex;gap:10px;align-items:flex-start}
+.fico{width:18px;height:18px;color:#6b7f79;flex:none;margin-top:1px}.fico svg{width:18px;height:18px}
+.fl{font-size:10px;color:#5f6f6a}.fv{font-size:12.5px;color:#2f3b37;font-weight:600;margin-top:2px}
+.who{display:flex;gap:12px;align-items:center}
+.avatar{width:46px;height:46px;border-radius:50%;background:#e8c3d2;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}.avatar svg{width:26px;height:26px}
+.who .name{font-family:Georgia,"Times New Roman",serif;font-size:16px;color:#2f3b37}
+.who .det{font-size:10px;color:#5f6f6a;margin-top:2px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 0}
+.metric{display:flex;gap:10px;align-items:center;padding:6px 14px;border-left:1px solid #c9d8d2}
+.metric:nth-child(4n+1){border-left:0;padding-left:0}
+.mico{width:38px;height:38px;border-radius:50%;background:#5f8478;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}.mico svg{width:20px;height:20px}
+.ml{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#3c5b52;font-weight:600}
+.mv{font-size:15px;font-weight:600;margin-top:2px}.mh{font-size:9.5px;color:#5f6f6a;margin-top:1px}
+.alerts{background:#fff;border:1px solid #f0d9e1}
+.alerts h3,.reason h3{margin:0 0 8px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#9b4f73;font-weight:700;display:flex;align-items:center;gap:8px}
+.alerts h3 svg,.reason h3 svg{width:15px;height:15px}
 .insight{border:1px solid;border-radius:8px;padding:6px 10px;margin-bottom:5px;font-weight:600}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}.sec{break-inside:avoid}
-table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:4px 6px;border-bottom:1px solid #eee8f4;vertical-align:top}th{color:#7b7290;font-weight:600;font-size:10px;text-transform:uppercase}
-.kv td:first-child{width:42%;color:#7b7290}.foot{margin-top:22px;border-top:1px solid #e9e3f1;padding-top:6px;color:#9a91ad;font-size:10px}
-@page{margin:12mm}@media print{body{padding:0}}
-</style></head><body>
-<div class="head"><div><h1>${esc(s.name)}</h1><div class="muted">${esc(s.meta.join(" · "))}</div></div><div class="brand">Saivie · Pre-visit intake summary<div class="muted" style="font-weight:400">Printed ${esc(new Date().toLocaleString("en-IN"))}</div></div></div>
-${s.concerns.length || s.complaint ? `<h2>Reason for visit</h2><div class="chips">${s.concerns.map((c) => `<span>${esc(c)}</span>`).join("")}</div>${s.complaint ? `<p>${esc(s.complaint)}</p>` : ""}` : ""}
-${s.insights.length ? `<h2>Clinical insights</h2>${s.insights.map((i) => `<div class="insight" style="${levelStyle[i.level]}">${i.level === "alert" ? "⚠ " : ""}${esc(i.text)}</div>`).join("")}` : ""}
-${s.metrics.length ? `<h2>Vitals &amp; key metrics</h2><div class="metrics">${s.metrics.map((m) => `<div class="metric"><div class="l">${esc(m.label)}</div><div class="v" style="color:${toneColor(m.tone)}">${esc(m.value)}</div>${m.hint ? `<div class="h">${esc(m.hint)}</div>` : ""}</div>`).join("")}</div>` : ""}
-${s.bpRows.length || s.weightRows.length ? `<h2>Patient-recorded readings</h2><div class="grid">${s.bpRows.length ? `<div>${table(["Date", "BP (mmHg)", "Pulse"], s.bpRows)}</div>` : "<div></div>"}${s.weightRows.length ? `<div>${table(["Date", "Weight"], s.weightRows)}</div>` : ""}</div>` : ""}
-<div class="grid">${s.sections.map((sec) => `<div class="sec"><h2>${esc(sec.title)}</h2><table class="kv"><tbody>${sec.rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</tbody></table></div>`).join("")}</div>
-<div class="foot">Patient-reported information collected before the visit. Verify clinically before acting.</div>
+.reason .grid2{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px}
+.chips span{display:inline-block;background:#fff;color:#7c3f5e;border:1px solid #ecc7d7;border-radius:999px;padding:3px 10px;margin:0 4px 4px 0;font-weight:600}
+.complaint{margin:6px 0 0;color:#2f3b37}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.card{background:#fff;border-radius:14px;overflow:hidden;break-inside:avoid;border:1px solid}
+.card.rose{border-color:#f0d9e1}.card.sage{border-color:#d4e3dc}
+.card.wide{grid-column:1/-1}
+.card header{display:flex;align-items:center;gap:10px;padding:9px 14px}
+.card.rose header{background:#f6e6ec}.card.sage header{background:#e5eeea}
+.card .ico{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;flex:none}
+.card.rose .ico{background:#b5799a}.card.sage .ico{background:#5f8478}
+.card .ico svg{width:17px;height:17px}
+.card h3{margin:0;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:700}
+.card.rose h3{color:#9b4f73}.card.sage h3{color:#3c5b52}
+.card .body{padding:8px 14px 10px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
+table{width:100%;border-collapse:collapse}
+.kv td{padding:5px 0;vertical-align:top;border-bottom:1px solid #f1ecee}
+.kv tr:last-child td{border-bottom:0}
+.kv td:first-child{width:46%;color:#5f6f6a;padding-right:10px;border-right:1px solid #ece4e8}
+.kv td:last-child{padding-left:12px;color:#2f3b37}
+.log th,.log td{text-align:left;padding:4px 6px;border-bottom:1px solid #eee}.log th{color:#5f6f6a;font-weight:600;font-size:9.5px;text-transform:uppercase}
+.notes{background:#fff;border:1px solid #cfe0d8;border-radius:14px;padding:12px 16px 16px;break-inside:avoid;margin-bottom:12px}
+.notes header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.notes .ico{width:32px;height:32px;border-radius:50%;background:#5f8478;color:#fff;display:flex;align-items:center;justify-content:center}.notes .ico svg{width:17px;height:17px}
+.notes h3{margin:0;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#3c5b52;font-weight:700}
+.line{border-bottom:1px solid #d9e4df;height:26px}
+.disclaimer{background:#f6e6ec;border-radius:10px;padding:8px 14px;display:flex;align-items:center;justify-content:center;gap:8px;color:#5f6f6a;font-size:10px;margin-bottom:14px}
+.disclaimer svg{width:16px;height:16px;color:#b5799a}
+.printed{text-align:right;color:#8a9692;font-size:9px;margin-top:6px}
+@page{size:A4;margin:42mm 10mm 12mm}
+@media print{body{padding:0;background:#fff}.page{max-width:none}}
+</style></head><body><div class="page">
+<div class="band rose patient">
+  <div class="who"><span class="avatar">${ICONS.user}</span><div><div class="fl">Patient</div><div class="name">${esc(s.name)}</div>${details.length || s.phone ? `<div class="det">${esc([s.phone, ...details].filter(Boolean).join(" · "))}</div>` : ""}</div></div>
+  <div>${field(ICONS.calendar, "Age", s.age)}</div>
+  <div>${field(ICONS.user, "Visit date", s.visitDate)}</div>
+  <div>${field(ICONS.notes, "Patient ID", s.patientId)}</div>
+</div>
+
+${s.metrics.length ? `<div class="band sage metrics">${s.metrics.map((m) => `<div class="metric"><span class="mico">${metricIcon(m.label)}</span><div><div class="ml">${esc(m.label)}</div><div class="mv" style="color:${toneColor(m.tone)}">${esc(m.value)}</div>${m.hint ? `<div class="mh">${esc(m.hint)}</div>` : ""}</div></div>`).join("")}</div>` : ""}
+
+${s.insights.length ? `<div class="band alerts"><h3>${ICONS.alert}Clinical alerts</h3>${s.insights.map((i) => `<div class="insight" style="${levelStyle[i.level]}">${i.level === "alert" ? "⚠ " : ""}${esc(i.text)}</div>`).join("")}</div>` : ""}
+
+${reason || presenting ? `<div class="band rose reason"><h3>${ICONS.chat}Presenting complaint</h3>${reason}${presenting ? `<div class="grid2" style="margin-top:${reason ? "8px" : "0"}">${presenting.rows.map(([k, v]) => field(ICONS.info, k, v)).join("")}</div>` : ""}</div>` : ""}
+
+${sectionCards ? `<div class="cards">${sectionCards}</div>` : ""}
+
+${s.bpRows.length || s.weightRows.length ? `<div class="cards">${s.bpRows.length ? card("Patient-recorded BP", table(["Date", "BP (mmHg)", "Pulse"], s.bpRows), "sage") : ""}${s.weightRows.length ? card("Patient-recorded weight", table(["Date", "Weight"], s.weightRows), "rose") : ""}</div>` : ""}
+
+<div class="notes"><header><span class="ico">${ICONS.notes}</span><h3>Additional notes</h3></header><div class="line"></div><div class="line"></div><div class="line"></div></div>
+
+<div class="disclaimer">${ICONS.info}<span>Patient-reported information collected before the visit. Verify clinically before acting.</span></div>
+<div class="printed">Printed ${esc(new Date().toLocaleString("en-IN"))}</div>
+</div>
 <script>window.onload=function(){window.focus();window.print();}</script>
 </body></html>`;
 

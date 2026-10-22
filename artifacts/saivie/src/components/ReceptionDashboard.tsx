@@ -265,11 +265,6 @@ export function ReceptionDashboard({
     if (state === "waiting") {
       return (
         <div className="flex items-center gap-1">
-          <Button size="sm" variant="outline" className={base} data-testid={`btn-print-summary-${apt.id}`}
-            title="Print history & check-in vitals for the doctor"
-            onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals)}>
-            <Printer className="mr-1 h-3 w-3" /> Print
-          </Button>
           <Button size="sm" variant="outline" className={base} disabled={busy} data-testid={`btn-start-visit-${apt.id}`}
             onClick={() => onUpdateAppointment(apt.id, { status: "in-consultation", seenAt: stamp() })}>
             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Start visit"}
@@ -410,7 +405,16 @@ export function ReceptionDashboard({
                       <td className="px-3 py-3">
                         <Badge variant="outline" className={`text-[11px] font-medium ${badge.className}`}>{badge.label}</Badge>
                       </td>
-                      <td className="px-3 py-3">{renderAction(apt, state)}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-1">
+                          {renderAction(apt, state)}
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-500 hover:text-teal-700" data-testid={`btn-print-summary-${apt.id}`}
+                            title="Print patient summary" aria-label={`Print summary for ${apt.patient}`}
+                            onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals)}>
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
                       <td className="pr-4">
                         {patient && (
                           <button type="button" aria-label={`Open ${apt.patient}`} className="text-slate-300 hover:text-slate-600" onClick={() => onOpenPatient(patient)}>

@@ -85,6 +85,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatInvoiceNumber, InvoiceDocument, type InvoiceDocumentItem, type InvoiceTemplateData } from "@/components/InvoiceDocument";
+import { printPatientSummary } from "@/components/IntakeSummary";
 import { ReceptionDashboard, getArrivalState, type ReceptionFollowUp } from "@/components/ReceptionDashboard";
 import { useToast } from "@/hooks/use-toast";
 import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialogs";
@@ -5411,6 +5412,16 @@ export default function StaffPortal() {
                                     ID: {selectedPatientForLog?.id}
                                 </p>
                             </div>
+                            <Button size="sm" variant="outline" className="ml-auto mr-6 h-8 text-xs" data-testid="btn-log-print-summary"
+                                disabled={!selectedPatientForLog}
+                                onClick={() => {
+                                    const latestVitals = [...logData.appointments]
+                                        .filter((a: any) => a?.vitals)
+                                        .sort((a: any, b: any) => String(b.vitals?.recordedAt || b.date || "").localeCompare(String(a.vitals?.recordedAt || a.date || "")))[0]?.vitals;
+                                    printPatientSummary(selectedPatientForLog, latestVitals);
+                                }}>
+                                <Printer className="mr-1 h-3 w-3" /> Print summary
+                            </Button>
                         </DialogTitle>
                     </DialogHeader>
 
