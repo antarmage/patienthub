@@ -15,6 +15,7 @@ import {
   Loader2,
   MoreVertical,
   Phone,
+  Printer,
   RefreshCw,
   Syringe,
   UserCheck,
@@ -29,6 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getPregnancyReminders } from "@/lib/pregnancyMilestones";
 import { getInventoryAlerts, getStockStatus, getExpiryStatus, useInventory } from "@/components/InventoryManager";
 import { ReferralsCard, type ReferralRequest } from "@/components/ReferralsCard";
+import { printPatientSummary } from "@/components/IntakeSummary";
 
 export type ArrivalState = "upcoming" | "late" | "waiting" | "in-consultation" | "completed" | "cancelled" | "no-show";
 type FlowFilter = "all" | "upcoming" | "arrived" | "waiting" | "completed" | "closed";
@@ -263,6 +265,11 @@ export function ReceptionDashboard({
     if (state === "waiting") {
       return (
         <div className="flex items-center gap-1">
+          <Button size="sm" variant="outline" className={base} data-testid={`btn-print-summary-${apt.id}`}
+            title="Print history & check-in vitals for the doctor"
+            onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals)}>
+            <Printer className="mr-1 h-3 w-3" /> Print
+          </Button>
           <Button size="sm" variant="outline" className={base} disabled={busy} data-testid={`btn-start-visit-${apt.id}`}
             onClick={() => onUpdateAppointment(apt.id, { status: "in-consultation", seenAt: stamp() })}>
             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Start visit"}
@@ -462,6 +469,12 @@ export function ReceptionDashboard({
                       <td className="hidden px-3 py-3 text-slate-600 md:table-cell">{apt.type || "Appointment"}</td>
                       <td className="px-3 py-3"><Badge variant="outline" className={`text-[11px] ${tone}`}>{minutes} min</Badge></td>
                       <td className="px-3 py-3">
+                        <div className="flex items-center gap-1.5">
+                        <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" data-testid={`queue-print-summary-${apt.id}`}
+                          title="Print history & check-in vitals for the doctor"
+                          onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals)}>
+                          <Printer className="mr-1 h-3 w-3" /> Print
+                        </Button>
                         <Select value="" onValueChange={(value) => handleWaitingStatus(apt, value)} disabled={isPending(apt.id)}>
                           <SelectTrigger className="h-8 w-36 border-teal-200 bg-teal-50 text-xs text-teal-700" data-testid={`select-status-${apt.id}`}>
                             <SelectValue placeholder="Update status" />
@@ -472,6 +485,7 @@ export function ReceptionDashboard({
                             <SelectItem value="undo">Undo check-in</SelectItem>
                           </SelectContent>
                         </Select>
+                        </div>
                       </td>
                     </tr>
                   );

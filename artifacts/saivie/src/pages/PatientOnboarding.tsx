@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
-import { ArrowLeft, ArrowRight, Baby, Check, CheckCircle2, Flower2, Heart, Hospital, Leaf, LockKeyhole, Minus, PenLine, Plus, ShieldCheck, Timer, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Baby, Check, CheckCircle2, Flower2, Heart, Hospital, Leaf, LockKeyhole, Minus, PenLine, Plus, Printer, ShieldCheck, Timer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,6 +18,125 @@ const sections = [
 
 // "Cervical cancer: a preventable disease" — PAHO/WHO. Override with VITE_CERVICAL_CANCER_VIDEO_ID.
 const cervicalCancerVideoId = import.meta.env.VITE_CERVICAL_CANCER_VIDEO_ID || "pkUmJlvHwQA";
+
+function printOnboardingSummary(form: IntakeForm) {
+    const printWindow = window.open("", "_blank", "width=800,height=900");
+    if (!printWindow) return false;
+
+    const escapeHtml = (value: string) =>
+        value.replace(/[&<>"']/g, (character) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+        })[character] ?? character);
+    const rows = (entries: Array<[string, string | string[]]>) =>
+        entries
+            .map(([label, value]) => [label, Array.isArray(value) ? value.join(", ") : value.trim()] as const)
+            .filter(([, value]) => value.length > 0)
+            .map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)
+            .join("");
+    const sections = [
+        ["Patient details", rows([
+            ["Full name", form.name],
+            ["Date of birth", form.dob],
+            ["Referred by", form.referredBy],
+            ["Occupation", form.occupation],
+        ])],
+        ["Visit concerns", rows([
+            ["Concerns selected", form.concerns],
+            ["Main concern / additional details", form.chiefComplaint],
+            ["Pain location", form.pain.location],
+            ["Pain duration", form.pain.duration],
+            ["Pain severity", form.pain.severity],
+            ["Other symptoms with pain", form.pain.relatedSymptoms],
+        ])],
+        ["Menstrual history", rows([
+            ["Last period began", form.cycle.lastPeriod],
+            ["Period delay", form.cycle.lateBy],
+            ["Usual regularity", form.cycle.regularity],
+            ["Pregnancy test", form.cycle.pregnancyTest],
+            ["Age periods started", form.cycle.menarcheAge],
+            ["Typical cycle length (days)", form.cycle.cycleLength],
+            ["Flow", form.cycle.flow],
+            ["Cycle symptoms", form.cycle.symptoms],
+            ["Additional details", form.cycle.details],
+        ])],
+        ["Gynecological history", rows([
+            ["Age at first sexual encounter", form.gyn.firstEncounterAge],
+            ["Number of partners", form.gyn.partnerCount],
+            ["Last Pap smear", form.gyn.lastPap],
+            ["Currently sexually active", form.gyn.sexuallyActive],
+            ["HPV vaccination", form.gyn.hpvVaccine],
+            ["Birth control methods", form.gyn.birthControl],
+            ["GYN history / concerns", form.gyn.concerns],
+            ["Additional details", form.gyn.details],
+        ])],
+        ["Pregnancy history", rows([
+            ["Currently pregnant", form.pregnancies.currentStatus],
+            ["Weeks pregnant", form.pregnancies.weeksPregnant],
+            ["Estimated due date", form.pregnancies.dueDate],
+            ["Total pregnancies", form.pregnancies.total],
+            ["Vaginal deliveries", form.pregnancies.vaginal],
+            ["C-sections", form.pregnancies.cesarean],
+            ["Miscarriages", form.pregnancies.miscarriages],
+            ["Terminations", form.pregnancies.terminations],
+            ["Premature births", form.pregnancies.premature],
+            ["Additional details", form.pregnancies.details],
+        ])],
+        ["Social & lifestyle", rows([
+            ["Smoking history", form.lifestyle.smoking],
+            ["Relationship status", form.lifestyle.relationship],
+            ["Alcohol use", form.lifestyle.alcohol],
+            ["Exercise", form.lifestyle.exercise],
+            ["Last mammogram", form.lifestyle.mammogram],
+            ["Last colonoscopy", form.lifestyle.colonoscopy],
+            ["Additional context", form.lifestyle.other],
+        ])],
+        ["Medical history", rows([
+            ["Conditions", form.health.conditions],
+            ["Condition details", form.health.medicalDetails],
+            ["Past surgeries", splitLines(form.health.surgeries)],
+            ["Regular medicines", splitLines(form.health.medications)],
+            ["Medicine allergies", splitLines(form.health.allergies)],
+            ["Family history", splitLines(form.health.familyHistory)],
+        ])],
+    ].filter(([, content]) => content);
+
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Patient onboarding and history</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { max-width: 850px; margin: 0 auto; padding: 36px 28px; color: #342c52; font: 13px/1.5 Arial, sans-serif; }
+        h1 { margin: 0; color: #4a3d6e; font-size: 25px; }
+        .meta { margin: 4px 0 20px; color: #625976; }
+        h2 { margin: 22px 0 7px; color: #66519c; font-size: 16px; break-after: avoid; }
+        table { width: 100%; border-collapse: collapse; }
+        tr { break-inside: avoid; }
+        th, td { padding: 7px 9px; border-bottom: 1px solid #e9e3f1; text-align: left; vertical-align: top; }
+        th { width: 34%; color: #625976; font-weight: 600; }
+        .note { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e9e3f1; color: #797187; font-size: 11px; }
+        @page { margin: 18mm; }
+        @media print { body { padding: 0; } }
+    </style>
+</head>
+<body>
+    <h1>Patient onboarding &amp; history</h1>
+    <p class="meta">${escapeHtml(form.name || "Patient")} · Printed ${escapeHtml(new Date().toLocaleString())}</p>
+    ${sections.map(([title, content]) => `<section><h2>${escapeHtml(title)}</h2><table><tbody>${content}</tbody></table></section>`).join("")}
+    <p class="note">Patient-reported information from the onboarding form. Please review and verify with the care team.</p>
+    <script>window.onload = function () { window.focus(); window.print(); };</script>
+</body>
+</html>`);
+    printWindow.document.close();
+    return true;
+}
 
 const concernOptions = [
     "Missed or late period",
@@ -538,6 +657,18 @@ export default function PatientOnboarding() {
                                 allowFullScreen
                             />
                         </div>
+                        <Button
+                            variant="outline"
+                            className="mt-3 border-[#e2d6f7] text-[#66519c] hover:bg-[#f5f0ff]"
+                            onClick={() => {
+                                if (!printOnboardingSummary(form)) {
+                                    toast({ title: "Unable to print history", description: "Please allow pop-ups to print your onboarding history.", variant: "destructive" });
+                                }
+                            }}
+                            data-testid="button-print-onboarding-summary"
+                        >
+                            <Printer className="mr-2 h-4 w-4" /> Print onboarding history
+                        </Button>
                     </div>
                     <Button className="mt-7 bg-[#66519c] hover:bg-[#544181]" onClick={() => setLocation("/")}>Done</Button>
                 </section>

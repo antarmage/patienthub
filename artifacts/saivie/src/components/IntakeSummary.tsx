@@ -42,7 +42,9 @@ const ageFrom = (dob: string) => {
     return age;
 };
 
-function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[]): Summary {
+type CheckInVitals = { bp?: unknown; pulse?: unknown; temp?: unknown; spo2?: unknown; weight?: unknown; height?: unknown; bmi?: unknown; recordedAt?: unknown };
+
+function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], checkInVitals?: CheckInVitals | null): Summary {
     const history = patient?.history || {};
     const form = history.onboarding || {};
     const cycle = form.cycle || {};
@@ -64,8 +66,40 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[]): S
         text(form.referredBy || patient?.referredBy) && `Referred by: ${text(form.referredBy || patient?.referredBy)}`,
     ].filter(Boolean);
 
+    // Vitals recorded by reception at check-in today take precedence over older readings.
+    const cv = checkInVitals || {};
+    const cvTime = text(cv.recordedAt) ? `Check-in · ${new Date(text(cv.recordedAt)).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}` : "Check-in";
+    const cvBp = /^(\d+)\s*\/\s*(\d+)$/.exec(text(cv.bp));
+    if (cvBp) {
+        const s = Number(cvBp[1]);
+        const d = Number(cvBp[2]);
+        const tone = s >= 140 || d >= 90 ? "alert" : s >= 130 || d >= 85 ? "watch" : "ok";
+        metrics.push({ label: "Blood pressure", value: `${s}/${d}`, hint: `mmHg · ${cvTime}`, tone });
+        if (s >= 160 || d >= 110) insights.push({ level: "alert", text: `Severe-range BP ${s}/${d} mmHg at check-in.` });
+        else if (tone === "alert") insights.push({ level: "alert", text: `Elevated BP ${s}/${d} mmHg at check-in.` });
+    }
+    const cvPulse = num(cv.pulse);
+    if (cvPulse !== null) {
+        metrics.push({ label: "Pulse", value: String(cvPulse), hint: `bpm · ${cvTime}`, tone: cvPulse > 100 || cvPulse < 50 ? "watch" : "ok" });
+        if (cvPulse > 100) insights.push({ level: "watch", text: `Pulse ${cvPulse} bpm at check-in (tachycardia).` });
+    }
+    const cvTemp = num(cv.temp);
+    if (cvTemp !== null) {
+        metrics.push({ label: "Temperature", value: `${cvTemp} °F`, hint: cvTime, tone: cvTemp >= 100.4 ? "alert" : "ok" });
+        if (cvTemp >= 100.4) insights.push({ level: "alert", text: `Fever ${cvTemp} °F at check-in.` });
+    }
+    const cvSpo2 = num(cv.spo2);
+    if (cvSpo2 !== null) {
+        metrics.push({ label: "SpO₂", value: `${cvSpo2}%`, hint: cvTime, tone: cvSpo2 < 92 ? "alert" : cvSpo2 < 95 ? "watch" : "ok" });
+        if (cvSpo2 < 92) insights.push({ level: "alert", text: `Low SpO₂ ${cvSpo2}% at check-in.` });
+    }
+    const cvWeight = num(cv.weight);
+    if (cvWeight !== null) metrics.push({ label: "Weight", value: `${cvWeight} kg`, hint: cvTime });
+    const cvBmi = num(cv.bmi);
+    if (cvBmi !== null) metrics.push({ label: "BMI", value: cvBmi.toFixed(1), hint: cvBmi >= 30 ? "Obese range" : cvBmi >= 25 ? "Overweight" : cvBmi < 18.5 ? "Underweight" : "Normal", tone: cvBmi >= 30 || cvBmi < 18.5 ? "watch" : "ok" });
+
     // Patient self-recorded vitals (mobile app logs, newest first)
-    const latestBp = bpLogs[0];
+    const latestBp = cvBp ? undefined : bpLogs[0];
     if (latestBp) {
         const { systolic: s, diastolic: d } = latestBp;
         const tone = s >= 140 || d >= 90 ? "alert" : s >= 130 || d >= 85 ? "watch" : "ok";
@@ -74,13 +108,13 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[]): S
         else if (tone === "alert") insights.push({ level: "alert", text: `Elevated BP ${s}/${d} mmHg on latest self-reading.` });
         const highCount = bpLogs.slice(0, 10).filter((b) => b.systolic >= 140 || b.diastolic >= 90).length;
         if (highCount >= 2) insights.push({ level: "watch", text: `${highCount} of the last ${Math.min(bpLogs.length, 10)} BP readings were ≥140/90.` });
-        if (latestBp.pulse) {
+        if (latestBp.pulse && cvPulse === null) {
             const p = latestBp.pulse;
             metrics.push({ label: "Pulse", value: `${p}`, hint: "bpm", tone: p > 100 || p < 50 ? "watch" : "ok" });
             if (p > 100) insights.push({ level: "watch", text: `Resting pulse ${p} bpm (tachycardia).` });
         }
     }
-    const latestWeight = weightLogs[0];
+    const latestWeight = cvWeight !== null ? undefined : weightLogs[0];
     if (latestWeight) {
         const oldest = weightLogs[weightLogs.length - 1];
         const delta = weightLogs.length > 1 ? latestWeight.weight - oldest.weight : null;
@@ -95,10 +129,10 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[]): S
             const tone = bmi >= 30 || bmi < 18.5 ? "watch" : "ok";
             metrics.push({ label: "BMI", value: bmi.toFixed(1), hint: bmi >= 30 ? "Obese range" : bmi >= 25 ? "Overweight" : bmi < 18.5 ? "Underweight" : "Normal", tone });
         }
-    } else if (text(patient?.weight)) {
+    } else if (cvWeight === null && text(patient?.weight)) {
         metrics.push({ label: "Weight", value: text(patient.weight), hint: "Clinic record" });
     }
-    if (!latestBp && text(patient?.bp)) metrics.push({ label: "Blood pressure", value: text(patient.bp), hint: "Clinic record" });
+    if (!latestBp && !cvBp && text(patient?.bp)) metrics.push({ label: "Blood pressure", value: text(patient.bp), hint: "Clinic record" });
 
     // Intake-derived metrics
     const lmp = text(cycle.lastPeriod) || text(patient?.lmp);
@@ -147,6 +181,11 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[]): S
     };
     const section = (title: string, rows: ([string, string] | null)[]): Section => ({ title, rows: rows.filter(Boolean) as [string, string][] });
     const sections = [
+        section("Check-in vitals", [
+            row("Blood pressure (mmHg)", cv.bp), row("Pulse (bpm)", cv.pulse), row("Temperature (°F)", cv.temp), row("SpO₂ (%)", cv.spo2),
+            row("Weight (kg)", cv.weight), row("Height (cm)", cv.height), row("BMI", cv.bmi),
+            row("Recorded", text(cv.recordedAt) && new Date(text(cv.recordedAt)).toLocaleString("en-IN")),
+        ]),
         section("Presenting complaint", [
             row("Pain location", pain.location), row("Duration", pain.duration), row("Associated", related.filter((s) => !["None of these", "Prefer not to say"].includes(s))),
             row("How late", cycle.lateBy), row("Pregnancy test", cycle.pregnancyTest), row("Regularity", cycle.regularity),
@@ -238,6 +277,10 @@ const insightClass: Record<Insight["level"], string> = {
     watch: "border-amber-200 bg-amber-50 text-amber-800",
     info: "border-[#e2d6f7] bg-[#f5f0ff] text-[#4a3d6e]",
 };
+
+export function printPatientSummary(patient: any, checkInVitals?: CheckInVitals | null) {
+    if (!printSummary(buildSummary(patient, [], [], checkInVitals))) alert("Please allow pop-ups to print the patient summary.");
+}
 
 export function IntakeSummaryActions({ patient, weightLogs, bpLogs }: { patient: any; weightLogs: WeightLog[]; bpLogs: BpLog[] }) {
     const [open, setOpen] = useState(false);
