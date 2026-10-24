@@ -5524,7 +5524,7 @@ export default function StaffPortal() {
                                     </div>
                                 )}
 
-                                {(logTab === "all" || logTab === "medications") && (
+                                {((logTab === "all" && logData.medications.length > 0) || logTab === "medications") && (
                                     <div>
                                         <h4 className="text-xs font-bold text-saivie-plum uppercase tracking-wide mb-2 flex items-center gap-2">
                                             <Pill className="w-3.5 h-3.5" /> Medications
@@ -5649,7 +5649,7 @@ export default function StaffPortal() {
                                             (logTab === "notes" && logData.notes.length > 0) ||
                                             (logTab === "appointments" && logData.appointments.length > 0) ||
                                             (logTab === "protocols" && logData.protocols.length > 0);
-                                        if (!hasData) {
+                                        if (!hasData && logTab !== "medications") {
                                             return (
                                                 <div className="text-center py-12">
                                                     <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
