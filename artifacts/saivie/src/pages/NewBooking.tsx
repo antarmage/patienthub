@@ -26,11 +26,26 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+
+function providerInitials(name: string) {
+    return name
+        .replace(/^dr\.?\s+/i, "")
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? "")
+        .join("") || "DR";
+}
+
+function providerPhoto(provider: { photoUrl?: string; photo?: string; image?: string; avatar?: string }) {
+    return [provider.photoUrl, provider.photo, provider.image, provider.avatar].find(
+        (value) => typeof value === "string" && /^(https?:\/\/|\/|data:image\/)/.test(value)
+    );
+}
 
 export default function NewBooking() {
     const [_, setLocation] = useLocation();
@@ -109,8 +124,9 @@ export default function NewBooking() {
         return providersData.map((p: any) => ({
             id: p.name.toLowerCase().replace(/\s+/g, '-').replace(/\./g, ''),
             name: p.name,
-            role: p.role,
-            avail: p.availability,
+            role: p.role || p.specialty,
+            photo: providerPhoto(p),
+            initials: providerInitials(p.name || ""),
         }));
     }, [providersData]);
 
@@ -404,19 +420,31 @@ export default function NewBooking() {
 
                             <div className="space-y-4">
                                 <Label>Select Provider</Label>
-                                <Select onValueChange={setSelectedProvider} value={selectedProvider}>
-                                    <SelectTrigger className="h-12">
-                                        <SelectValue placeholder="Any Available Provider" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {providers.map((p: any) => (
-                                            <SelectItem key={p.id} value={p.id}>
-                                                <span className="font-medium text-saivie-plum">{p.name}</span>
-                                                <span className="text-saivie-plum ml-2 text-xs">({p.role})</span>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                    {providers.map((p: any) => (
+                                        <button
+                                            type="button"
+                                            key={p.id}
+                                            onClick={() => setSelectedProvider(p.id)}
+                                            aria-pressed={selectedProvider === p.id}
+                                            className={`overflow-hidden rounded-xl border-2 cursor-pointer transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saivie-teal focus-visible:ring-offset-2 ${selectedProvider === p.id ? 'border-saivie-teal bg-saivie-surface-muted/30' : 'border-saivie-border bg-saivie-ivory hover:border-saivie-border'}`}
+                                        >
+                                            <div className="aspect-[4/3] w-full bg-saivie-sage">
+                                                {p.photo ? (
+                                                    <img src={p.photo} alt="" className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="flex h-full w-full items-center justify-center font-serif text-3xl font-bold text-saivie-teal">
+                                                        {p.initials}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="p-3">
+                                                <p className="font-bold text-saivie-plum text-sm leading-snug">{p.name}</p>
+                                                {p.role && <p className="text-xs text-saivie-plum mt-1">{p.role}</p>}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             <div className="space-y-3">
@@ -523,7 +551,17 @@ export default function NewBooking() {
                                         </div>
                                         <div>
                                             <p className="text-xs text-saivie-teal uppercase font-bold tracking-wide mb-1">Provider</p>
-                                            <p className="font-medium text-saivie-plum">{providers.find((p: any) => p.id?.toString() === selectedProvider)?.name || "Not selected"}</p>
+                                            {(() => {
+                                                const provider = providers.find((p: any) => p.id?.toString() === selectedProvider);
+                                                return (
+                                                    <div className="flex items-center gap-2">
+                                                        {provider?.photo && (
+                                                            <img src={provider.photo} alt="" className="h-8 w-8 rounded-full object-cover" />
+                                                        )}
+                                                        <p className="font-medium text-saivie-plum">{provider?.name || "Not selected"}</p>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                         <div>
                                             <p className="text-xs text-saivie-teal uppercase font-bold tracking-wide mb-1">Date</p>

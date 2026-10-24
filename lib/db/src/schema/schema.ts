@@ -83,6 +83,7 @@ export const providers = pgTable("providers", {
   clinicAddress: text("clinic_address"),
   clinicPhone: text("clinic_phone"),
   clinicTiming: text("clinic_timing"),
+  photoUrl: text("photo_url"),
 });
 
 export const insertProviderSchema = createInsertSchema(providers).omit({ id: true });

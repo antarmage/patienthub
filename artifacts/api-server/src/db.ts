@@ -244,6 +244,8 @@ export async function ensureSchema(): Promise<void> {
       );
 
       ALTER TABLE genome_analyses ADD COLUMN IF NOT EXISTS s3_key text;
+
+      ALTER TABLE providers ADD COLUMN IF NOT EXISTS photo_url text;
     `);
   } finally {
     client.release();

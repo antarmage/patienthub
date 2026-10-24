@@ -3490,6 +3490,10 @@ export default function ClinicianPortal() {
                                         <Input id="clinicTiming" placeholder="e.g. Mon-Sat 10AM-2PM, 5PM-8PM" defaultValue={clinicianProvider?.clinicTiming || ''} data-testid="input-clinic-timing" />
                                       </div>
                                     </div>
+                                    <div className="space-y-2">
+                                      <Label htmlFor="photoUrl">Photograph</Label>
+                                      <Input id="photoUrl" placeholder="https://…/doctor-photo.jpg" defaultValue={clinicianProvider?.photoUrl || ''} data-testid="input-photo-url" />
+                                    </div>
                                     <div className="pt-4 flex justify-end">
                                       <Button className="bg-saivie-teal hover:bg-saivie-teal" data-testid="button-save-qualifications" onClick={() => {
                                         const getData = (id: string) => (document.getElementById(id) as HTMLInputElement)?.value || '';
@@ -3503,6 +3507,7 @@ export default function ClinicianPortal() {
                                           clinicAddress: getData('clinicAddress'),
                                           clinicPhone: getData('clinicPhone'),
                                           clinicTiming: getData('clinicTiming'),
+                                          photoUrl: getData('photoUrl'),
                                         };
                                         if (clinicianProvider?.id) {
                                           fetch(`/api/providers/${clinicianProvider.id}`, {
