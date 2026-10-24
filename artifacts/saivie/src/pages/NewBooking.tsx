@@ -380,12 +380,14 @@ export default function NewBooking() {
 
                             <div className="space-y-4">
                                 <Label>Select Service</Label>
-                                <div className="grid grid-cols-1 gap-3">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                                     {services.map((s: any) => (
-                                        <div
+                                        <button
+                                            type="button"
                                             key={s.id}
                                             onClick={() => setSelectedService(s.id)}
-                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${selectedService === s.id ? 'border-saivie-teal bg-saivie-surface-muted/30' : 'border-saivie-border bg-saivie-ivory hover:border-saivie-border'}`}
+                                            aria-pressed={selectedService === s.id}
+                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saivie-teal focus-visible:ring-offset-2 ${selectedService === s.id ? 'border-saivie-teal bg-saivie-surface-muted/30' : 'border-saivie-border bg-saivie-ivory hover:border-saivie-border'}`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div className={`p-2 rounded-lg ${selectedService === s.id ? 'bg-saivie-sage text-saivie-teal' : 'bg-saivie-sage text-saivie-plum'}`}>
@@ -395,7 +397,7 @@ export default function NewBooking() {
                                                     <p className="font-bold text-saivie-plum text-sm">{s.name}</p>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </button>
                                     ))}
                                 </div>
                             </div>
