@@ -30,6 +30,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { getArrivalState, type ArrivalState } from "@/components/ReceptionDashboard";
 
 function providerInitials(name: string) {
     return name
@@ -45,6 +46,58 @@ function providerPhoto(provider: { photoUrl?: string; photo?: string; image?: st
     return [provider.photoUrl, provider.photo, provider.image, provider.avatar].find(
         (value) => typeof value === "string" && /^(https?:\/\/|\/|data:image\/)/.test(value)
     );
+}
+
+const APPOINTMENT_STAGES = ["Scheduled", "Checked in", "With doctor", "Completed", "Prescription"] as const;
+
+function recordList(value: unknown): any[] {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string" && value.trim()) {
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+    return [];
+}
+
+function visitHasUpload(visit: any) {
+    return recordList(visit?.prescriptions).length > 0
+        || recordList(visit?.labsOrdered).length > 0
+        || Boolean(visit?.followUpPlan)
+        || /uploaded/i.test(visit?.outcome || "");
+}
+
+function appointmentStage(appointment: any, visits: any[]): number | null {
+    const state = getArrivalState(appointment);
+    if (state === "cancelled" || state === "no-show") return null;
+    const uploaded = visits.some((visit) =>
+        visitHasUpload(visit) && (visit.appointmentId === appointment.id || (visit.date && visit.date === appointment.date))
+    );
+    if (uploaded) return 4;
+    if (state === "completed") return 3;
+    if (state === "in-consultation") return 2;
+    if (state === "waiting") return 1;
+    return 0;
+}
+
+const STATUS_BADGE: Record<ArrivalState, string> = {
+    upcoming: "bg-saivie-surface-muted text-saivie-teal",
+    late: "bg-rose-50 text-rose-700",
+    waiting: "bg-amber-50 text-amber-700",
+    "in-consultation": "bg-sky-50 text-sky-700",
+    completed: "bg-emerald-50 text-emerald-700",
+    cancelled: "bg-saivie-sage text-saivie-plum",
+    "no-show": "bg-orange-50 text-orange-700",
+};
+
+function formatHistoryDate(value: string | null | undefined) {
+    if (!value) return "Date not recorded";
+    const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default function NewBooking() {
@@ -118,6 +171,40 @@ export default function NewBooking() {
                 duration: '',
             }));
     }, [servicesData]);
+
+    const selectedPatient = useMemo(
+        () => patientsData?.find((patient: any) => patient.id === selectedPatientId) ?? null,
+        [patientsData, selectedPatientId]
+    );
+
+    const { data: patientHistory, isLoading: historyLoading, isError: historyError } = useQuery({
+        queryKey: ["/api/patient-history", selectedPatientId],
+        enabled: !!selectedPatientId,
+        queryFn: async () => {
+            const id = selectedPatientId;
+            const [visitsRes, scopedRes, medsRes] = await Promise.all([
+                fetch(`/api/patients/${id}/visit-history`),
+                fetch("/api/appointments", { headers: { "X-Patient-Id": String(id) } }),
+                fetch(`/api/patients/${id}/medications`),
+            ]);
+            if (!visitsRes.ok) throw new Error("Failed to load visits");
+            const visits = await visitsRes.json();
+            let appointments: any[] = [];
+            if (scopedRes.ok) {
+                appointments = await scopedRes.json();
+            } else {
+                const allRes = await fetch("/api/appointments");
+                if (!allRes.ok) throw new Error("Failed to load appointments");
+                appointments = await allRes.json();
+            }
+            const medications = medsRes.ok ? await medsRes.json() : [];
+            return {
+                visits: Array.isArray(visits) ? visits : [],
+                appointments: (Array.isArray(appointments) ? appointments : []).filter((appointment) => appointment.patientId === id),
+                medications: Array.isArray(medications) ? medications : [],
+            };
+        },
+    });
 
     const providers = useMemo(() => {
         if (!providersData) return [];
@@ -651,18 +738,131 @@ export default function NewBooking() {
                 </div>
 
                 {/* Right Col - Summary/Help */}
-                <div className="w-80 hidden lg:block space-y-6">
+                <div className="w-80 hidden lg:block space-y-6 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
                     <Card className="bg-saivie-surface-muted border-saivie-border">
                         <CardHeader>
                             <CardTitle className="text-sm font-medium uppercase tracking-wide text-saivie-plum">Quick Actions</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                            <Button variant="outline" className="w-full justify-start text-xs h-9 bg-saivie-ivory">
+                            <Button
+                                variant="outline"
+                                className="w-full justify-start text-xs h-9 bg-saivie-ivory"
+                                onClick={() => {
+                                    if (!selectedPatientId) {
+                                        toast({ title: "Select a patient", description: "Choose a patient on the first step to see visits and appointment status.", variant: "destructive" });
+                                        return;
+                                    }
+                                    document.getElementById("patient-history")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                                }}
+                            >
                                 <FileText className="w-3 h-3 mr-2" /> View Patient History
                             </Button>
                             <Button variant="outline" className="w-full justify-start text-xs h-9 bg-saivie-ivory">
                                 <CreditCard className="w-3 h-3 mr-2" /> Check Insurance Status
                             </Button>
+                        </CardContent>
+                    </Card>
+
+                    <Card id="patient-history" className="border-saivie-border bg-saivie-ivory">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium uppercase tracking-wide text-saivie-plum">
+                                {selectedPatient?.name || "Patient history"}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-5">
+                            {!selectedPatientId && (
+                                <p className="text-xs text-saivie-plum">Select a patient to see visits and the appointment status tracker.</p>
+                            )}
+                            {selectedPatientId && historyLoading && <p className="text-xs text-saivie-plum">Loading history...</p>}
+                            {selectedPatientId && historyError && <p className="text-xs text-rose-700">Could not load this patient's history.</p>}
+                            {selectedPatientId && !historyLoading && !historyError && (
+                                <>
+                                    <section className="space-y-2">
+                                        <h3 className="text-[11px] font-bold uppercase tracking-wide text-saivie-teal">Visits</h3>
+                                        {(patientHistory?.visits.length ?? 0) === 0 ? (
+                                            <p className="text-xs text-saivie-plum">No visits recorded yet.</p>
+                                        ) : (
+                                            [...patientHistory!.visits]
+                                                .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+                                                .map((visit) => (
+                                                    <div key={visit.id} className="rounded-lg border border-saivie-border p-2.5">
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <p className="font-semibold text-xs text-saivie-plum">{visit.visitType || "Visit"}</p>
+                                                            <span className="text-[10px] text-saivie-plum shrink-0">{formatHistoryDate(visit.date)}</span>
+                                                        </div>
+                                                        {visit.chiefComplaint && <p className="mt-1 text-[11px] text-saivie-plum">{visit.chiefComplaint}</p>}
+                                                        {visit.diagnosis && <p className="mt-1 text-[11px] text-saivie-plum">Diagnosis: {visit.diagnosis}</p>}
+                                                        {visit.outcome && <p className="mt-1 text-[11px] font-medium text-saivie-teal">{visit.outcome}</p>}
+                                                        {recordList(visit.prescriptions).length > 0 && (
+                                                            <div className="mt-2 space-y-1">
+                                                                <p className="text-[10px] font-bold uppercase text-saivie-teal">After prescription upload</p>
+                                                                {recordList(visit.prescriptions).map((med, index) => (
+                                                                    <p key={index} className="text-[11px] text-saivie-plum">
+                                                                        {[med.name, med.dosage || med.dose, med.frequency, med.duration].filter(Boolean).join(" · ")}
+                                                                    </p>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        {recordList(visit.labsOrdered).length > 0 && (
+                                                            <p className="mt-1 text-[11px] text-saivie-plum">
+                                                                Labs: {recordList(visit.labsOrdered).map((lab) => lab.name || lab.result).filter(Boolean).join(", ")}
+                                                            </p>
+                                                        )}
+                                                        {visit.followUpPlan && <p className="mt-1 text-[11px] text-saivie-plum">Follow-up: {visit.followUpPlan}</p>}
+                                                        {visit.planNotes && <p className="mt-1 text-[11px] text-saivie-plum">Advice: {visit.planNotes}</p>}
+                                                    </div>
+                                                ))
+                                        )}
+                                    </section>
+                                    {(patientHistory?.medications.length ?? 0) > 0 && (
+                                        <section className="space-y-2">
+                                            <h3 className="text-[11px] font-bold uppercase tracking-wide text-saivie-teal">Saved medications</h3>
+                                            {patientHistory!.medications.map((med: any) => (
+                                                <div key={med.id} className="rounded-lg border border-saivie-border p-2.5">
+                                                    <p className="font-semibold text-xs text-saivie-plum">{med.name}</p>
+                                                    <p className="mt-1 text-[11px] text-saivie-plum">{[med.dose, med.frequency, med.status].filter(Boolean).join(" · ")}</p>
+                                                </div>
+                                            ))}
+                                        </section>
+                                    )}
+                                    <section className="space-y-2">
+                                        <h3 className="text-[11px] font-bold uppercase tracking-wide text-saivie-teal">Appointment status</h3>
+                                        {(patientHistory?.appointments.length ?? 0) === 0 ? (
+                                            <p className="text-xs text-saivie-plum">No appointments recorded yet.</p>
+                                        ) : (
+                                            [...patientHistory!.appointments]
+                                                .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")) || String(b.time || "").localeCompare(String(a.time || "")))
+                                                .map((appointment) => {
+                                                    const state = getArrivalState(appointment);
+                                                    const stage = appointmentStage(appointment, patientHistory?.visits ?? []);
+                                                    return (
+                                                        <div key={appointment.id} className="rounded-lg border border-saivie-border p-2.5 space-y-2">
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <div>
+                                                                    <p className="font-semibold text-xs text-saivie-plum">{appointment.type || appointment.visitType || "Appointment"}</p>
+                                                                    <p className="text-[10px] text-saivie-plum mt-0.5">{formatHistoryDate(appointment.date)}{appointment.time ? ` · ${appointment.time}` : ""}</p>
+                                                                </div>
+                                                                <Badge className={`border-none capitalize text-[10px] ${STATUS_BADGE[state]}`}>{state.replace("-", " ")}</Badge>
+                                                            </div>
+                                                            {stage === null ? (
+                                                                <p className="text-[10px] text-saivie-plum">Closed. Not on the visit tracker.</p>
+                                                            ) : (
+                                                                <ol className="space-y-1">
+                                                                    {APPOINTMENT_STAGES.map((label, index) => (
+                                                                        <li key={label} className="flex items-center gap-2 text-[10px]">
+                                                                            <span className={`h-2 w-2 rounded-full ${index <= stage ? "bg-saivie-teal" : "bg-saivie-sage"}`} />
+                                                                            <span className={index === stage ? "font-bold text-saivie-teal" : "text-saivie-plum"}>{label}</span>
+                                                                        </li>
+                                                                    ))}
+                                                                </ol>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })
+                                        )}
+                                    </section>
+                                </>
+                            )}
                         </CardContent>
                     </Card>
 

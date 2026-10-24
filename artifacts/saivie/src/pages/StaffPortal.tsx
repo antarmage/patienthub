@@ -112,6 +112,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [savedMedCount, setSavedMedCount] = useState(0);
+  const [savedSummary, setSavedSummary] = useState<string[]>([]);
   const [uploadNotes, setUploadNotes] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -454,14 +455,20 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
     queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/clinical-notes`] });
     queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/documents`] });
     queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/visit-history`] });
+    queryClient.invalidateQueries({ queryKey: ["/api/patient-history", patient.id] });
 
     if (savedDoc || savedNote || savedMeds.length > 0 || savedVisit) {
       setSavedMedCount(savedMeds.length);
+      setSavedSummary([
+        savedDoc ? "Document saved to the patient record" : "",
+        savedNote ? "Clinical note saved" : "",
+        savedVisit ? "Visit history updated" : "",
+        savedMeds.length > 0 ? `Medications added: ${savedMeds.join(", ")}` : "",
+        ocrResult?.investigations?.length ? `Investigations: ${ocrResult.investigations.map((inv: any) => inv.name).filter(Boolean).join(", ")}` : "",
+        ocrResult?.followUp ? `Follow-up: ${ocrResult.followUp}` : "",
+        ocrResult?.advice ? `Advice: ${ocrResult.advice}` : "",
+      ].filter(Boolean));
       setSaveSuccess(true);
-      setTimeout(() => {
-        resetDialog();
-        if (onSaveComplete) onSaveComplete();
-      }, 1500);
     } else {
       alert('Could not save data to patient record. Please try again.');
     }
@@ -513,6 +520,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
     setIsSaving(false);
     setSaveSuccess(false);
     setSavedMedCount(0);
+    setSavedSummary([]);
     setUploadNotes("");
     onClose();
   };
@@ -875,17 +883,40 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
         </Tabs>
 
         {saveSuccess && (
-          <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            <p className="text-sm font-medium text-emerald-700">
-              Saved to {patient?.name}'s records!
-              {savedMedCount > 0 && ` ${savedMedCount} medication(s) added.`}
-              {savedMedCount === 0 && ` ${activeDocTab === 'prescription' ? 'Document & clinical note saved.' : activeDocTab === 'blood' ? 'Lab report & clinical note saved.' : 'USG/Scan report & clinical note saved.'}`}
-            </p>
+          <div className="space-y-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <p className="text-sm font-medium text-emerald-700">Saved to {patient?.name}'s records</p>
+            </div>
+            <ul className="space-y-1 pl-7">
+              {savedSummary.map((line) => (
+                <li key={line} className="text-xs text-emerald-800">{line}</li>
+              ))}
+              {savedSummary.length === 0 && (
+                <li className="text-xs text-emerald-800">
+                  {savedMedCount > 0 ? `${savedMedCount} medication(s) added.` : "Document and clinical note saved."}
+                </li>
+              )}
+            </ul>
           </div>
         )}
 
         <DialogFooter>
+          {saveSuccess ? (
+            <>
+              <Button variant="outline" onClick={resetDialog}>Close</Button>
+              <Button
+                className="bg-saivie-teal hover:bg-saivie-teal text-white"
+                onClick={() => {
+                  resetDialog();
+                  onSaveComplete?.();
+                }}
+              >
+                View patient record
+              </Button>
+            </>
+          ) : (
+            <>
           <Button variant="outline" onClick={resetDialog} data-testid="btn-cancel-upload">Cancel</Button>
           <Button
             className="bg-saivie-teal hover:bg-saivie-teal text-white"
@@ -895,6 +926,8 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
           >
             {isSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving to Patient Record...</> : ocrMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</> : 'Save & Upload to Patient'}
           </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -5465,12 +5498,25 @@ export default function StaffPortal() {
                                                 <div key={i} className="bg-saivie-surface-muted rounded-lg p-3 border border-saivie-border" data-testid={`log-visit-${i}`}>
                                                     <div className="flex items-center justify-between mb-1">
                                                         <span className="font-semibold text-sm text-saivie-plum">{v.visitType || 'Visit'}</span>
-                                                        <span className="text-[10px] text-saivie-plum">{v.visitDate || v.createdAt || ''}</span>
+                                                        <span className="text-[10px] text-saivie-plum">{v.date || v.visitDate || v.createdAt || ''}</span>
                                                     </div>
+                                                    {v.outcome && <p className="text-xs text-saivie-teal font-medium">{v.outcome}</p>}
                                                     {v.subjective && <p className="text-xs text-saivie-plum"><span className="font-medium">S:</span> {v.subjective}</p>}
-                                                    {v.objective && <p className="text-xs text-saivie-plum"><span className="font-medium">O:</span> {v.objective}</p>}
+                                                    {v.objective && <p className="text-xs text-saivie-plum"><span className="font-medium">O:</span> {typeof v.objective === "string" ? v.objective : ""}</p>}
                                                     {v.assessment && <p className="text-xs text-saivie-plum"><span className="font-medium">A:</span> {v.assessment}</p>}
-                                                    {v.plan && <p className="text-xs text-saivie-plum"><span className="font-medium">P:</span> {v.plan}</p>}
+                                                    {(v.planNotes || v.plan) && <p className="text-xs text-saivie-plum"><span className="font-medium">P:</span> {v.planNotes || v.plan}</p>}
+                                                    {Array.isArray(v.prescriptions) && v.prescriptions.length > 0 && (
+                                                        <div className="mt-2 space-y-1">
+                                                            <p className="text-[10px] font-bold uppercase text-saivie-teal">Prescription</p>
+                                                            {v.prescriptions.map((med: any, medIndex: number) => (
+                                                                <p key={medIndex} className="text-xs text-saivie-plum">{[med.name, med.dosage, med.frequency, med.duration].filter(Boolean).join(" · ")}</p>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {Array.isArray(v.labsOrdered) && v.labsOrdered.length > 0 && (
+                                                        <p className="text-xs text-saivie-plum mt-1"><span className="font-medium">Labs:</span> {v.labsOrdered.map((lab: any) => lab.name || lab.result).filter(Boolean).join(", ")}</p>
+                                                    )}
+                                                    {v.followUpPlan && <p className="text-xs text-saivie-plum mt-1"><span className="font-medium">Follow-up:</span> {v.followUpPlan}</p>}
                                                     {v.provider && <p className="text-[10px] text-saivie-plum mt-1">Provider: {v.provider}</p>}
                                                 </div>
                                             ))}
