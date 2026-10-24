@@ -495,10 +495,18 @@ function ChoiceGroup({ label, options, value, onChange }: {
     );
 }
 
-function CheckGrid({ label, options, value, onChange }: {
-    label: string; options: string[]; value: string[]; onChange: (value: string[]) => void;
+function CheckGrid({ label, options, value, onChange, exclusiveOption }: {
+    label: string; options: string[]; value: string[]; onChange: (value: string[]) => void; exclusiveOption?: string;
 }) {
-    const toggle = (option: string) => onChange(value.includes(option) ? value.filter((item) => item !== option) : [...value, option]);
+    const toggle = (option: string) => {
+        if (value.includes(option)) {
+            onChange(value.filter((item) => item !== option));
+        } else if (option === exclusiveOption) {
+            onChange([option]);
+        } else {
+            onChange([...value.filter((item) => item !== exclusiveOption), option]);
+        }
+    };
     return (
         <fieldset>
             <legend className={labelClass}>{label}</legend>
@@ -800,7 +808,7 @@ export default function PatientOnboarding() {
                                 <RulerSlider label="Age when periods started" value={form.cycle.menarcheAge} onChange={(value) => updateGroup("cycle", "menarcheAge", value)} min={5} max={20} unit="years" optional />
                                 <RulerSlider label="Typical cycle length" value={form.cycle.cycleLength} onChange={(value) => updateGroup("cycle", "cycleLength", value)} min={15} max={90} unit="days" optional />
                                 {form.concerns.includes("Irregular or heavy bleeding") && <div className="sm:col-span-2"><ChoiceGroup label="How would you describe your flow?" options={["Light", "Average", "Heavy", "Not sure"]} value={form.cycle.flow} onChange={(value) => updateGroup("cycle", "flow", value)} /></div>}
-                                <div className="sm:col-span-2"><CheckGrid label="Do you experience any of these?" options={["PMS", "Menstrual cramps", "Bleeding between periods", "Pain with intercourse"]} value={form.cycle.symptoms} onChange={(value) => updateGroup("cycle", "symptoms", value)} /></div>
+                                <div className="sm:col-span-2"><CheckGrid label="Do you experience any of these?" options={["PMS", "Menstrual cramps", "Bleeding between periods", "Pain with intercourse", "No issues"]} exclusiveOption="No issues" value={form.cycle.symptoms} onChange={(value) => updateGroup("cycle", "symptoms", value)} /></div>
                                 <div className="sm:col-span-2"><NoteToggle label="Add anything else" value={form.cycle.details} onChange={(value) => updateGroup("cycle", "details", value)} placeholder="Optional details" /></div>
                             </div>
                         </section>
