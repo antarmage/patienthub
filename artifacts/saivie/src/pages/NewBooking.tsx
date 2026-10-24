@@ -287,15 +287,21 @@ export default function NewBooking() {
                 </div>
 
                 {/* Progress Stepper */}
-                <div className="hidden md:flex items-center gap-2">
-                    {[1, 2, 3, 4].map((s) => (
-                        <div key={s} className="flex items-center">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= s ? 'bg-saivie-teal text-white' : 'bg-saivie-sage text-saivie-plum'}`}>
-                                {s}
+                <div className="hidden md:flex items-center gap-1">
+                    {["Patient", "Service", "Doctor", "Visit", "Schedule", "Review"].map((label, index) => {
+                        const s = index + 1;
+                        return (
+                            <div key={label} className="flex items-center">
+                                <div className="flex items-center gap-1.5">
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= s ? 'bg-saivie-teal text-white' : 'bg-saivie-sage text-saivie-plum'}`}>
+                                        {s}
+                                    </div>
+                                    <span className={`text-xs font-medium ${step >= s ? 'text-saivie-teal' : 'text-saivie-plum'}`}>{label}</span>
+                                </div>
+                                {s < 6 && <div className={`w-4 h-0.5 mx-1.5 transition-colors ${step > s ? 'bg-saivie-teal' : 'bg-saivie-sage'}`} />}
                             </div>
-                            {s < 4 && <div className={`w-12 h-0.5 mx-2 transition-colors ${step > s ? 'bg-saivie-teal' : 'bg-saivie-sage'}`} />}
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </header>
 
@@ -390,7 +396,7 @@ export default function NewBooking() {
                     {step === 2 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
                             <div className="space-y-1">
-                                <h2 className="text-2xl font-serif font-bold text-saivie-plum">Service & Provider</h2>
+                                <h2 className="text-2xl font-serif font-bold text-saivie-plum">Service</h2>
                                 <p className="text-saivie-plum">What type of appointment is this?</p>
                             </div>
 
@@ -416,6 +422,16 @@ export default function NewBooking() {
                                         </button>
                                     ))}
                                 </div>
+                            </div>
+
+                        </div>
+                    )}
+
+                    {step === 3 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
+                            <div className="space-y-1">
+                                <h2 className="text-2xl font-serif font-bold text-saivie-plum">Doctor</h2>
+                                <p className="text-saivie-plum">Who should see this patient?</p>
                             </div>
 
                             <div className="space-y-4">
@@ -445,6 +461,16 @@ export default function NewBooking() {
                                         </button>
                                     ))}
                                 </div>
+                            </div>
+
+                        </div>
+                    )}
+
+                    {step === 4 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
+                            <div className="space-y-1">
+                                <h2 className="text-2xl font-serif font-bold text-saivie-plum">Visit Mode</h2>
+                                <p className="text-saivie-plum">How will this appointment happen?</p>
                             </div>
 
                             <div className="space-y-3">
@@ -484,7 +510,7 @@ export default function NewBooking() {
                         </div>
                     )}
 
-                    {step === 3 && (
+                    {step === 5 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
                             <div className="space-y-1">
                                 <h2 className="text-2xl font-serif font-bold text-saivie-plum">Date & Time</h2>
@@ -527,7 +553,7 @@ export default function NewBooking() {
                         </div>
                     )}
 
-                    {step === 4 && (
+                    {step === 6 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
                             <div className="space-y-1">
                                 <h2 className="text-2xl font-serif font-bold text-saivie-plum">Review & Confirm</h2>
@@ -602,12 +628,12 @@ export default function NewBooking() {
                         {step > 1 && (
                             <Button variant="outline" onClick={handleBack} size="lg">Back</Button>
                         )}
-                        {step < 4 ? (
+                        {step < 6 ? (
                             <Button
                                 onClick={handleNext}
                                 className="ml-auto bg-saivie-teal hover:bg-saivie-teal text-white min-w-[140px]"
                                 size="lg"
-                                disabled={step === 2 && !selectedService}
+                                disabled={(step === 2 && !selectedService) || (step === 3 && !selectedProvider)}
                             >
                                 Next Step
                             </Button>
