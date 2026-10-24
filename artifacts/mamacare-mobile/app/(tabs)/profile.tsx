@@ -272,7 +272,7 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <View style={styles.avatarContainer}>
           <View style={styles.avatar}>
-            <Feather name="user" size={32} color="#6C63FF" />
+            <Feather name="user" size={32} color={COLORS.primary} />
           </View>
           <Pressable
             style={styles.editAvatarButton}
@@ -334,7 +334,7 @@ export default function ProfileScreen() {
 
             {eddDisplay ? (
               <View style={styles.eddBanner}>
-                <Feather name="calendar" size={18} color="#6C63FF" />
+                <Feather name="calendar" size={18} color={COLORS.primary} />
                 <View style={styles.eddTextWrap}>
                   <ThemedText style={styles.eddLabel}>Expected Due Date</ThemedText>
                   <ThemedText style={styles.eddValue}>{eddDisplay}</ThemedText>
@@ -374,8 +374,8 @@ export default function ProfileScreen() {
             <View style={styles.notifPanel}>
               <View style={styles.notifRow}>
                 <View style={styles.notifRowLeft}>
-                  <View style={[styles.notifIcon, { backgroundColor: "#EDE9FF" }]}>
-                    <Feather name="heart" size={16} color="#6C63FF" />
+                  <View style={[styles.notifIcon, { backgroundColor: COLORS.primaryLight }]}>
+                    <Feather name="heart" size={16} color={COLORS.primary} />
                   </View>
                   <View style={styles.notifTextBlock}>
                     <ThemedText style={styles.notifTitle}>Medicine Reminders</ThemedText>
@@ -386,8 +386,8 @@ export default function ProfileScreen() {
                   value={medicineNotifs}
                   onValueChange={handleToggleMedicineNotifs}
                   disabled={togglingMedicine}
-                  trackColor={{ false: "#E5E7EB", true: "#C4B5FD" }}
-                  thumbColor={medicineNotifs ? "#6C63FF" : "#9CA3AF"}
+                  trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
+                  thumbColor={medicineNotifs ? COLORS.primary : "#9CA3AF"}
                 />
               </View>
 
@@ -399,7 +399,7 @@ export default function ProfileScreen() {
                       style={styles.timeChip}
                       onPress={() => setShowMedicineTimePicker(true)}
                     >
-                      <Feather name="clock" size={14} color="#6C63FF" />
+                      <Feather name="clock" size={14} color={COLORS.primary} />
                       <ThemedText style={styles.timeChipText}>{formatPickerTime(medicineDefaultTime)}</ThemedText>
                     </Pressable>
                   ) : (
@@ -407,7 +407,7 @@ export default function ProfileScreen() {
                       style={styles.timeChip}
                       onPress={() => setShowMedicineTimePicker(!showMedicineTimePicker)}
                     >
-                      <Feather name="clock" size={14} color="#6C63FF" />
+                      <Feather name="clock" size={14} color={COLORS.primary} />
                       <ThemedText style={styles.timeChipText}>{formatPickerTime(medicineDefaultTime)}</ThemedText>
                     </Pressable>
                   )}
@@ -437,7 +437,7 @@ export default function ProfileScreen() {
                   value={appointmentNotifs}
                   onValueChange={handleToggleAppointmentNotifs}
                   disabled={togglingAppointment}
-                  trackColor={{ false: "#E5E7EB", true: "#BFDBFE" }}
+                  trackColor={{ false: COLORS.border, true: "#BFDBFE" }}
                   thumbColor={appointmentNotifs ? "#3B82F6" : "#9CA3AF"}
                 />
               </View>
@@ -456,7 +456,7 @@ export default function ProfileScreen() {
                   value={waterNotifs}
                   onValueChange={handleToggleWaterNotifs}
                   disabled={togglingWater}
-                  trackColor={{ false: "#E5E7EB", true: "#A5F3FC" }}
+                  trackColor={{ false: COLORS.border, true: "#A5F3FC" }}
                   thumbColor={waterNotifs ? "#06B6D4" : "#9CA3AF"}
                 />
               </View>
@@ -475,8 +475,8 @@ export default function ProfileScreen() {
           )}
 
           <Pressable style={styles.settingsItem}>
-            <View style={[styles.settingsIcon, { backgroundColor: "#F5F3FF" }]}>
-              <Feather name="settings" size={18} color="#6C63FF" />
+            <View style={[styles.settingsIcon, { backgroundColor: COLORS.surfaceMuted }]}>
+              <Feather name="settings" size={18} color={COLORS.primary} />
             </View>
             <View style={styles.settingsText}>
               <ThemedText style={styles.settingsTitle}>Preferences</ThemedText>
@@ -533,7 +533,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFC",
+    backgroundColor: COLORS.background,
   },
   header: {
     alignItems: "center",
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#F5F3FF",
+    backgroundColor: COLORS.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#6C63FF",
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
@@ -596,8 +596,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#F3F4F6",
-    shadowColor: "#1F2937",
+    borderColor: COLORS.surfaceMuted,
+    shadowColor: COLORS.plum,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.04,
     shadowRadius: 12,
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.border,
     borderRadius: 12,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 2,
@@ -638,7 +638,7 @@ const styles = StyleSheet.create({
   dateInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.border,
     borderRadius: 12,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 2,
@@ -649,7 +649,7 @@ const styles = StyleSheet.create({
   eddBanner: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F3FF",
+    backgroundColor: COLORS.surfaceMuted,
     padding: Spacing.md,
     marginHorizontal: Spacing.lg,
     borderRadius: 12,
@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
   },
   settingsItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: COLORS.surfaceMuted,
   },
   settingsIcon: {
     width: 40,
@@ -703,10 +703,10 @@ const styles = StyleSheet.create({
   },
   notifPanel: {
     borderTopWidth: 1,
-    borderTopColor: "#F3F4F6",
+    borderTopColor: COLORS.surfaceMuted,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-    backgroundColor: "#FAFAFC",
+    borderBottomColor: COLORS.surfaceMuted,
+    backgroundColor: COLORS.background,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
   },
@@ -718,9 +718,9 @@ const styles = StyleSheet.create({
   },
   notifRowBorder: {
     borderTopWidth: 1,
-    borderTopColor: "#F3F4F6",
+    borderTopColor: COLORS.surfaceMuted,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: COLORS.surfaceMuted,
   },
   notifRowLeft: {
     flexDirection: "row",
@@ -763,7 +763,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#EDE9FF",
+    backgroundColor: COLORS.primaryLight,
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
     borderRadius: BorderRadius.full,
@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
   timeChipText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#6C63FF",
+    color: COLORS.primary,
   },
   webNotifNote: {
     flexDirection: "row",

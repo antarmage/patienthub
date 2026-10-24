@@ -134,11 +134,11 @@ export default function PostpartumFitnessScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAFAFC" },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md,
-    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: COLORS.surfaceMuted,
   },
   backBtn: { padding: Spacing.sm, marginRight: Spacing.sm, marginLeft: -Spacing.sm },
   headerName: { flex: 1, fontSize: 17, fontWeight: "600", color: COLORS.textPrimary },
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   warningText: { fontSize: 13, color: "#92400E", flex: 1, lineHeight: 18 },
   phaseCard: {
     borderRadius: 16, overflow: "hidden", marginBottom: Spacing.md,
-    borderWidth: 1, borderColor: "#F3F4F6",
+    borderWidth: 1, borderColor: COLORS.surfaceMuted,
   },
   phaseHeader: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -170,15 +170,15 @@ const styles = StyleSheet.create({
   exerciseRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: Spacing.md },
   exerciseDot: {
     width: 8, height: 8, borderRadius: 4,
-    backgroundColor: "#6C63FF", marginTop: 6, marginRight: Spacing.md, flexShrink: 0,
+    backgroundColor: COLORS.primary, marginTop: 6, marginRight: Spacing.md, flexShrink: 0,
   },
   exerciseText: { flex: 1 },
   exerciseTop: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, marginBottom: 3, flexWrap: "wrap" },
   exerciseName: { fontSize: 14, fontWeight: "600", color: COLORS.textPrimary },
   durationBadge: {
-    backgroundColor: "#F5F3FF", borderRadius: BorderRadius.full,
+    backgroundColor: COLORS.surfaceMuted, borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.sm, paddingVertical: 2,
   },
-  durationText: { fontSize: 11, color: "#6C63FF", fontWeight: "600" },
+  durationText: { fontSize: 11, color: COLORS.primary, fontWeight: "600" },
   exerciseDesc: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 18 },
 });

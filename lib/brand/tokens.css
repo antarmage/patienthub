@@ -1,0 +1,16 @@
+:root {
+  --saivie-ivory: #FFFFFC;
+  --saivie-sage: #CFE2DC;
+  --saivie-blush: #E5C4DB;
+  --saivie-plum: #3E3440;
+  --saivie-teal: #2F6B60;
+  --saivie-rose: #8D5B7B;
+  --saivie-gold: #B38B56;
+  --saivie-page: var(--saivie-ivory);
+  --saivie-surface-muted: #F4F8F5;
+  --saivie-surface-blush: #F8EEF5;
+  --saivie-text: var(--saivie-plum);
+  --saivie-primary-action: var(--saivie-teal);
+  --saivie-primary-action-text: #FFFFFF;
+  --saivie-border: #D8E2DD;
+}

@@ -108,7 +108,7 @@ function InvoiceArticle({
 
   return (
     <article
-      className="relative mx-auto flex min-h-[297mm] w-[210mm] max-w-none flex-col border-l-[5px] border-l-emerald-700 bg-white p-[14mm] text-slate-900 shadow-xl print:shadow-none"
+      className="relative mx-auto flex min-h-[297mm] w-[210mm] max-w-none flex-col border-l-[5px] border-l-emerald-700 bg-saivie-ivory p-[14mm] text-saivie-plum shadow-xl print:shadow-none"
       style={{ boxSizing: "border-box" }}
     >
         {draft && (
@@ -122,43 +122,43 @@ function InvoiceArticle({
             {template.logoUrl ? (
               <img src={template.logoUrl} alt="Clinic logo" className="h-20 w-24 shrink-0 object-contain" />
             ) : (
-              <div className="flex h-20 w-24 shrink-0 items-center justify-center border border-dashed border-slate-300 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Clinic logo</div>
+              <div className="flex h-20 w-24 shrink-0 items-center justify-center border border-dashed border-saivie-border text-[10px] font-semibold uppercase tracking-wider text-saivie-plum">Clinic logo</div>
             )}
             <div className="min-w-0">
               <h1 className="break-words text-xl font-extrabold uppercase">{template.clinicName || "Clinic Name"}</h1>
-              {template.clinicAddress && <p className="mt-1 whitespace-pre-line text-[11px] leading-4 text-slate-600">{template.clinicAddress}</p>}
-              <div className="mt-1 flex flex-wrap gap-x-3 text-[10px] text-slate-600">
+              {template.clinicAddress && <p className="mt-1 whitespace-pre-line text-[11px] leading-4 text-saivie-plum">{template.clinicAddress}</p>}
+              <div className="mt-1 flex flex-wrap gap-x-3 text-[10px] text-saivie-plum">
                 {template.clinicPhone && <span>Tel: {template.clinicPhone}</span>}
                 {template.clinicEmail && <span>{template.clinicEmail}</span>}
               </div>
-              {template.taxRegistration && <p className="mt-1 text-[10px] font-medium text-slate-700">GST Number: {template.taxRegistration}</p>}
+              {template.taxRegistration && <p className="mt-1 text-[10px] font-medium text-saivie-plum">GST Number: {template.taxRegistration}</p>}
             </div>
           </div>
           <div className="shrink-0 text-right">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-800">Medical Invoice</p>
             <p className="mt-1 text-3xl font-extrabold tracking-normal">{invoiceStatus}</p>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{draft ? "Review copy" : duplicate ? "Duplicate copy" : "Patient billing"}</p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-saivie-plum">{draft ? "Review copy" : duplicate ? "Duplicate copy" : "Patient billing"}</p>
           </div>
         </header>
 
         <section className="mt-5 grid grid-cols-2 gap-4">
-          <div className="border border-slate-300 p-3">
+          <div className="border border-saivie-border p-3">
             <h2 className="text-[10px] font-bold uppercase tracking-widest text-emerald-800">Patient Information</h2>
             <p className="mt-2 text-sm font-bold">{patient.name || "Patient name"}</p>
             {sections.patientContact && (
-              <div className="mt-1 space-y-0.5 text-[10px] leading-4 text-slate-600">
+              <div className="mt-1 space-y-0.5 text-[10px] leading-4 text-saivie-plum">
                 {patient.phone && <p>{patient.phone}</p>}
                 {patient.email && <p>{patient.email}</p>}
                 {patient.address && <p className="whitespace-pre-line">{patient.address}</p>}
               </div>
             )}
           </div>
-          <div className="border border-slate-300 p-3">
+          <div className="border border-saivie-border p-3">
             <h2 className="text-[10px] font-bold uppercase tracking-widest text-emerald-800">Billing Information</h2>
             <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
-              {patient.type && <><span className="text-slate-500">Care type</span><span className="text-right font-medium">{patient.type}</span></>}
-              {patient.isPrimeMember && <><span className="text-slate-500">Membership</span><span className="text-right font-semibold text-emerald-800">Prime</span></>}
-              {sections.paymentMethod && paymentMethod && <><span className="text-slate-500">Payment method</span><span className="text-right font-medium capitalize">{paymentMethod}</span></>}
+              {patient.type && <><span className="text-saivie-plum">Care type</span><span className="text-right font-medium">{patient.type}</span></>}
+              {patient.isPrimeMember && <><span className="text-saivie-plum">Membership</span><span className="text-right font-semibold text-emerald-800">Prime</span></>}
+              {sections.paymentMethod && paymentMethod && <><span className="text-saivie-plum">Payment method</span><span className="text-right font-medium capitalize">{paymentMethod}</span></>}
             </div>
           </div>
         </section>
@@ -170,7 +170,7 @@ function InvoiceArticle({
             { label: "Status", value: invoiceStatus },
             { label: "Invoice total", value: formatAmount(total) },
           ].map((field, index) => (
-            <div key={field.label} className={`min-w-0 px-3 py-2.5 ${index > 0 ? "border-l border-slate-300" : ""}`}>
+            <div key={field.label} className={`min-w-0 px-3 py-2.5 ${index > 0 ? "border-l border-saivie-border" : ""}`}>
               <p className="text-[8px] font-bold uppercase tracking-wider text-emerald-800">{field.label}</p>
               <p className="mt-1 truncate text-[11px] font-bold">{field.value}</p>
             </div>
@@ -190,52 +190,52 @@ function InvoiceArticle({
           </thead>
           <tbody>
             {items.length ? items.map((item, index) => (
-              <tr key={`${item.name}-${index}`} className={`border-b border-x border-slate-300 ${index % 2 === 0 ? "bg-slate-50" : "bg-white"}`}>
+              <tr key={`${item.name}-${index}`} className={`border-b border-x border-saivie-border ${index % 2 === 0 ? "bg-saivie-surface-muted" : "bg-saivie-ivory"}`}>
                 <td className="px-2.5 py-2.5">
                   <p className="font-semibold">{item.name}</p>
-                  <p className="mt-0.5 text-[9px] text-slate-500">{item.category || "Clinical service"}{item.catalogPriceIncludesTax ? " · GST included in MRP" : ""}</p>
+                  <p className="mt-0.5 text-[9px] text-saivie-plum">{item.category || "Clinical service"}{item.catalogPriceIncludesTax ? " · GST included in MRP" : ""}</p>
                 </td>
                 <td className="px-2 py-2.5 text-right">{item.quantity}</td>
                 <td className="px-2 py-2.5 text-right">{formatAmount(item.price * item.quantity)}</td>
                 {sections.taxBreakdown && <td className="px-2 py-2.5 text-right">{item.taxRate || 0}%<br />{formatAmount(getLineTax(item, index), true)}</td>}
                 <td className="px-2 py-2.5 text-right text-emerald-800">
-                  {item.discountAmount ? <><span>−{formatAmount(item.discountAmount)}</span>{item.discountLabel && <span className="mt-0.5 block text-[8px] text-slate-500">{item.discountLabel}</span>}</> : "—"}
+                  {item.discountAmount ? <><span>−{formatAmount(item.discountAmount)}</span>{item.discountLabel && <span className="mt-0.5 block text-[8px] text-saivie-plum">{item.discountLabel}</span>}</> : "—"}
                 </td>
                 <td className="px-2.5 py-2.5 text-right font-bold">{formatAmount(item.lineTotal ?? (item.price * item.quantity + (item.taxAmount || 0) - (item.discountAmount || 0)))}</td>
               </tr>
             )) : (
-              <tr className="border border-slate-300">
-                <td colSpan={sections.taxBreakdown ? 6 : 5} className="px-2 py-8 text-center text-slate-400">No services added</td>
+              <tr className="border border-saivie-border">
+                <td colSpan={sections.taxBreakdown ? 6 : 5} className="px-2 py-8 text-center text-saivie-plum">No services added</td>
               </tr>
             )}
           </tbody>
         </table>
 
         <section className="mt-6 grid grid-cols-[minmax(0,1fr)_minmax(220px,0.72fr)] gap-6">
-          <div className="min-h-24 border border-slate-300 p-3">
+          <div className="min-h-24 border border-saivie-border p-3">
             {sections.notes && notes ? (
               <>
                 <h2 className="text-[9px] font-bold uppercase tracking-widest text-emerald-800">Notes</h2>
-                <p className="mt-2 whitespace-pre-line text-[10px] leading-4 text-slate-700">{notes}</p>
+                <p className="mt-2 whitespace-pre-line text-[10px] leading-4 text-saivie-plum">{notes}</p>
               </>
             ) : (
-              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Thank you for choosing {template.clinicName || "our clinic"}.</p>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-saivie-plum">Thank you for choosing {template.clinicName || "our clinic"}.</p>
             )}
           </div>
-          <div className="border border-slate-300 p-3">
+          <div className="border border-saivie-border p-3">
             <div className="space-y-1.5 text-[10px]">
-              <div className="flex justify-between gap-3"><span className="text-slate-600">Taxable subtotal</span><span className="font-medium">{formatAmount(subtotal)}</span></div>
-              {sections.taxBreakdown && tax > 0 && <div className="flex justify-between gap-3"><span className="text-slate-600">GST after discount</span><span className="font-medium">{formatAmount(tax)}</span></div>}
+              <div className="flex justify-between gap-3"><span className="text-saivie-plum">Taxable subtotal</span><span className="font-medium">{formatAmount(subtotal)}</span></div>
+              {sections.taxBreakdown && tax > 0 && <div className="flex justify-between gap-3"><span className="text-saivie-plum">GST after discount</span><span className="font-medium">{formatAmount(tax)}</span></div>}
               {discountTotal > 0 && <div className="flex justify-between gap-3 text-emerald-800"><span>Discounts</span><span className="font-semibold">−{formatAmount(discountTotal)}</span></div>}
               <div className="flex justify-between gap-3 border-t-2 border-emerald-800 pt-2 text-sm font-extrabold"><span>Total</span><span>{formatAmount(total)}</span></div>
             </div>
-            {items.some((item) => item.catalogPriceIncludesTax) && <p className="mt-2 text-[8px] leading-3 text-slate-500">MRP for items marked GST included includes GST in the listed price.</p>}
+            {items.some((item) => item.catalogPriceIncludesTax) && <p className="mt-2 text-[8px] leading-3 text-saivie-plum">MRP for items marked GST included includes GST in the listed price.</p>}
           </div>
         </section>
 
-        <footer className="mt-auto flex items-end justify-between gap-4 border-t border-slate-300 pt-4 text-[9px] text-slate-500">
+        <footer className="mt-auto flex items-end justify-between gap-4 border-t border-saivie-border pt-4 text-[9px] text-saivie-plum">
           <div className="max-w-[65%]">
-            {template.footerText && <p className="mb-1 font-medium text-slate-700">{template.footerText}</p>}
+            {template.footerText && <p className="mb-1 font-medium text-saivie-plum">{template.footerText}</p>}
             <p>{template.clinicEmail || template.clinicPhone ? "For billing enquiries:" : ""} {[template.clinicPhone, template.clinicEmail].filter(Boolean).join(" · ")}</p>
           </div>
           <div className="text-right font-semibold uppercase tracking-wider text-emerald-900">{template.clinicName || "Saivie"}</div>
@@ -246,7 +246,7 @@ function InvoiceArticle({
 
 export function InvoiceDocument(props: InvoiceDocumentProps) {
   return (
-    <div className="invoice-document-preview overflow-auto bg-slate-100 p-3 sm:p-6">
+    <div className="invoice-document-preview overflow-auto bg-saivie-sage p-3 sm:p-6">
       <style>{`
         @page { size: A4 portrait; margin: 0; }
         .invoice-print-only { display: none; }

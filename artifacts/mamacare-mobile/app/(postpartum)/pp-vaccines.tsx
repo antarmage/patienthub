@@ -88,11 +88,11 @@ export default function PostpartumVaccinesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAFAFC" },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md,
-    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: COLORS.surfaceMuted,
   },
   backBtn: { padding: Spacing.sm, marginRight: Spacing.sm, marginLeft: -Spacing.sm },
   headerName: { flex: 1, fontSize: 17, fontWeight: "600", color: COLORS.textPrimary },
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   vaccineCard: {
     backgroundColor: "#FFFFFF", borderRadius: 16, padding: Spacing.md,
     flexDirection: "row", alignItems: "flex-start", gap: Spacing.md,
-    marginBottom: Spacing.sm, borderWidth: 1, borderColor: "#F3F4F6",
+    marginBottom: Spacing.sm, borderWidth: 1, borderColor: COLORS.surfaceMuted,
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03, shadowRadius: 6, elevation: 1,
   },

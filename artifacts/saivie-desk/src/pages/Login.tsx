@@ -123,22 +123,22 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center bg-slate-50 p-4">
+    <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center mb-4 shadow-sm">
             <Stethoscope className="h-6 w-6 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-800 tracking-tight">SaivieDesk</h1>
-          <p className="text-slate-500 mt-1">Reception & Patient Intake</p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">SaivieDesk</h1>
+          <p className="text-muted-foreground mt-1">Reception & Patient Intake</p>
         </div>
 
-        <Card className="shadow-lg border-0 shadow-slate-200/50">
+        <Card className="shadow-lg border-0 shadow-saivie-plum/10">
           <CardHeader>
             {step === "otp" && (
               <button
                 onClick={() => { setStep("credentials"); setOtp(""); }}
-                className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-2 -mt-1"
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-2 -mt-1"
               >
                 <ArrowLeft className="w-4 h-4" /> Back
               </button>
@@ -209,12 +209,12 @@ export default function Login() {
                     type="button"
                     onClick={handleResendOtp}
                     disabled={isLoading || resendCooldown > 0}
-                    className="text-sm text-primary hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed"
+                    className="text-sm text-primary hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
                     data-testid="button-resend-otp"
                   >
                     {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
                   </button>
-                  <p className="text-xs text-slate-400 text-center">
+                  <p className="text-xs text-muted-foreground text-center">
                     Code expires in 5 minutes. Check your ${deliveryMethod === "email" ? "email inbox" : deliveryMethod === "development" ? "development console" : "WhatsApp"}.
                   </p>
                 </div>

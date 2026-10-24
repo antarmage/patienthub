@@ -56,7 +56,7 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-const AVATAR_COLORS = ["#6C63FF", "#EC4899", "#10B981", "#F59E0B", "#3B82F6", "#8B5CF6"];
+const AVATAR_COLORS = [COLORS.primary, COLORS.rose, "#10B981", "#F59E0B", "#3B82F6", COLORS.plum];
 
 function avatarColor(id: number): string {
   return AVATAR_COLORS[id % AVATAR_COLORS.length];
@@ -291,7 +291,7 @@ export default function AppointmentsScreen() {
         style={[styles.fab, { backgroundColor: theme.primary }]}
         onPress={handleOpenModal}
       >
-        <Feather name="plus" size={24} color={COLORS.white} />
+        <Feather name="plus" size={24} color={theme.buttonText} />
       </Pressable>
 
       <Modal

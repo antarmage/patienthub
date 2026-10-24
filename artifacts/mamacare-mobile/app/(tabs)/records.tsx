@@ -34,9 +34,9 @@ interface RecentDocument {
 
 const CATEGORY_DEFS: Omit<CategoryItem, "id">[] = [
   { title: "Lab Results",  icon: "edit-3",  iconBg: "#EFF6FF", iconColor: "#3B82F6", docType: "blood" },
-  { title: "Ultrasounds",  icon: "image",   iconBg: "#F5F3FF", iconColor: "#8B5CF6", docType: "usg" },
+  { title: "Ultrasounds",  icon: "image",   iconBg: COLORS.surfaceMuted, iconColor: COLORS.rose, docType: "usg" },
   { title: "Vaccines",     icon: "edit-2",  iconBg: "#ECFDF5", iconColor: "#10B981", docType: "vaccine" },
-  { title: "Insurance",    icon: "shield",  iconBg: "#F3F4F6", iconColor: "#6B7280", docType: "insurance" },
+  { title: "Insurance",    icon: "shield",  iconBg: COLORS.surfaceMuted, iconColor: "#6B7280", docType: "insurance" },
 ];
 
 export default function RecordsScreen() {
@@ -88,8 +88,8 @@ export default function RecordsScreen() {
           year: "numeric",
         }),
         icon: d.type === "usg" ? "image" : "file-text",
-        iconBg: i % 2 === 0 ? "#FEF3C7" : "#F5F3FF",
-        iconColor: i % 2 === 0 ? "#F59E0B" : "#8B5CF6",
+        iconBg: i % 2 === 0 ? "#FEF3C7" : COLORS.surfaceMuted,
+        iconColor: i % 2 === 0 ? "#F59E0B" : COLORS.rose,
       }));
       setRecentDocs(docs);
     } catch (error) {
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: COLORS.surfaceMuted,
     gap: Spacing.sm,
   },
   searchInput: {
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     marginBottom: Spacing.sm,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: COLORS.surfaceMuted,
   },
   categoryCardLeft: {
     marginRight: "4%",
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing.sm,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: COLORS.surfaceMuted,
   },
   documentIcon: {
     width: 44,

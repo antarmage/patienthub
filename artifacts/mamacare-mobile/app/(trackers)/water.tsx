@@ -205,7 +205,7 @@ export default function WaterTrackerScreen() {
             style={[styles.enableButton, { backgroundColor: theme.primary }]}
             onPress={handleEnableReminders}
           >
-            <ThemedText type="small" style={{ color: COLORS.white, fontWeight: "600" }}>
+            <ThemedText type="small" style={{ color: theme.buttonText, fontWeight: "600" }}>
               Enable
             </ThemedText>
           </Pressable>

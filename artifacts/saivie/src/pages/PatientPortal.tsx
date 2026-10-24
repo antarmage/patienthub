@@ -261,12 +261,12 @@ export default function PatientPortal() {
              <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setModeDropdownOpen(o => !o)}
-                className="flex items-center gap-2 bg-white/40 hover:bg-white/60 active:bg-white/70 transition-colors backdrop-blur-xl px-4 py-2 rounded-full border border-white/40 text-xs font-medium text-foreground shadow-sm"
+                className="flex items-center gap-2 bg-saivie-ivory/40 hover:bg-saivie-ivory/60 active:bg-saivie-ivory/70 transition-colors backdrop-blur-xl px-4 py-2 rounded-full border border-white/40 text-xs font-medium text-foreground shadow-sm"
              >
                 {mode === "general" && <Leaf className="w-3.5 h-3.5 text-emerald-600" />}
                 {mode === "ttc" && <Baby className="w-3.5 h-3.5 text-rose-500" />}
-                {mode === "ivf" && <TestTube className="w-3.5 h-3.5 text-purple-500" />}
-                {mode === "pregnancy" && <Heart className="w-3.5 h-3.5 text-pink-500" />}
+                {mode === "ivf" && <TestTube className="w-3.5 h-3.5 text-saivie-teal" />}
+                {mode === "pregnancy" && <Heart className="w-3.5 h-3.5 text-saivie-rose" />}
                 <span>
                   {mode === "general" && "Cycle Health"}
                   {mode === "ttc" && "Trying to Conceive"}
@@ -283,13 +283,13 @@ export default function PatientPortal() {
                    animate={{ opacity: 1, scale: 1, y: 0 }}
                    exit={{ opacity: 0, scale: 0.95, y: -4 }}
                    transition={{ duration: 0.15 }}
-                   className="absolute right-0 top-full mt-2 w-52 bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-white/60 p-1.5 origin-top-right"
+                   className="absolute right-0 top-full mt-2 w-52 bg-saivie-ivory/95 backdrop-blur-xl rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-white/60 p-1.5 origin-top-right"
                  >
                    {([
                      { key: "general", icon: <Leaf className="w-3.5 h-3.5 text-emerald-600" />, bg: "bg-emerald-100", label: "Cycle Health" },
-                     { key: "pregnancy", icon: <Heart className="w-3.5 h-3.5 text-pink-600" />, bg: "bg-pink-100", label: "Pregnancy" },
+                     { key: "pregnancy", icon: <Heart className="w-3.5 h-3.5 text-saivie-rose" />, bg: "bg-saivie-blush", label: "Pregnancy" },
                      { key: "ttc", icon: <Baby className="w-3.5 h-3.5 text-rose-600" />, bg: "bg-rose-100", label: "Trying to Conceive" },
-                     { key: "ivf", icon: <TestTube className="w-3.5 h-3.5 text-purple-600" />, bg: "bg-purple-100", label: "IVF Support" },
+                     { key: "ivf", icon: <TestTube className="w-3.5 h-3.5 text-saivie-teal" />, bg: "bg-saivie-sage", label: "IVF Support" },
                    ] as const).map(({ key, icon, bg, label }) => (
                      <button
                        key={key}
@@ -315,11 +315,11 @@ export default function PatientPortal() {
               <>
                 {/* Pregnancy Week Tracker */}
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
-                  <Card className="glass-panel border-pink-200/40 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-pink-50/80 via-rose-50/40 to-white/60" />
+                  <Card className="glass-panel border-saivie-blush/40 overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-saivie-surface-blush/80 via-rose-50/40 to-saivie-ivory/60" />
                     <CardContent className="relative p-6 z-10">
                       <div className="flex items-center gap-2 mb-4">
-                        <Heart className="w-5 h-5 text-pink-500" />
+                        <Heart className="w-5 h-5 text-saivie-rose" />
                         <h3 className="text-lg font-serif text-foreground">Your Pregnancy Journey</h3>
                       </div>
                       {(() => {
@@ -340,17 +340,17 @@ export default function PatientPortal() {
                             <div className="space-y-4">
                               <div className="flex items-end gap-3">
                                 <div>
-                                  <p className="text-4xl font-serif text-pink-700 font-medium">{weeks}<span className="text-lg text-pink-400 ml-1">w</span> {days}<span className="text-lg text-pink-400 ml-1">d</span></p>
+                                  <p className="text-4xl font-serif text-saivie-rose font-medium">{weeks}<span className="text-lg text-saivie-rose ml-1">w</span> {days}<span className="text-lg text-saivie-rose ml-1">d</span></p>
                                   <p className="text-xs text-muted-foreground mt-1">{trimester} Trimester</p>
                                 </div>
                                 <div className="ml-auto text-right">
                                   <p className="text-sm text-muted-foreground">Due Date</p>
                                   <p className="text-sm font-medium text-foreground">{edd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                                  <p className="text-xs text-pink-500 font-medium">{daysLeft} days to go</p>
+                                  <p className="text-xs text-saivie-rose font-medium">{daysLeft} days to go</p>
                                 </div>
                               </div>
-                              <div className="w-full bg-pink-100 rounded-full h-2">
-                                <div className="bg-gradient-to-r from-pink-400 to-rose-500 h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                              <div className="w-full bg-saivie-blush rounded-full h-2">
+                                <div className="bg-gradient-to-r from-saivie-rose to-rose-500 h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
                               </div>
                               <p className="text-xs text-center text-muted-foreground">{progress}% of your journey completed</p>
                             </div>
@@ -367,12 +367,12 @@ export default function PatientPortal() {
                 {/* Pregnancy Insight Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}>
-                    <Card className="glass-panel border-white/60 hover:border-pink-200 transition-colors h-full overflow-hidden group">
+                    <Card className="glass-panel border-white/60 hover:border-saivie-blush transition-colors h-full overflow-hidden group">
                       <div className="absolute inset-0 opacity-40 group-hover:scale-105 transition-transform duration-700" style={{ backgroundImage: `url(${softCardBg})`, backgroundSize: 'cover' }} />
                       <CardContent className="relative p-6 flex flex-col h-full justify-between z-10">
                         <div>
                           <div className="flex items-center gap-2 mb-3">
-                            <span className="p-1.5 bg-pink-100/50 rounded-full text-pink-700"><Heart className="w-3.5 h-3.5" /></span>
+                            <span className="p-1.5 bg-saivie-blush/50 rounded-full text-saivie-plum"><Heart className="w-3.5 h-3.5" /></span>
                             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Baby's Growth</h4>
                           </div>
                           <p className="text-lg font-serif text-foreground leading-relaxed">
@@ -390,15 +390,15 @@ export default function PatientPortal() {
                           </p>
                         </div>
                         <div className="mt-4 pt-4 border-t border-black/5 flex justify-between items-center">
-                          <span className="text-xs font-medium text-pink-600">View Details</span>
-                          <ChevronRight className="w-4 h-4 text-pink-400 group-hover:translate-x-1 transition-transform" />
+                          <span className="text-xs font-medium text-saivie-rose">View Details</span>
+                          <ChevronRight className="w-4 h-4 text-saivie-rose group-hover:translate-x-1 transition-transform" />
                         </div>
                       </CardContent>
                     </Card>
                   </motion.div>
 
                   <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
-                    <Card className="glass-panel border-white/60 hover:border-pink-200 transition-colors h-full overflow-hidden group">
+                    <Card className="glass-panel border-white/60 hover:border-saivie-blush transition-colors h-full overflow-hidden group">
                       <div className="absolute inset-0 opacity-40 group-hover:scale-105 transition-transform duration-700" style={{ backgroundImage: `url(${softCardBg})`, backgroundSize: 'cover' }} />
                       <CardContent className="relative p-6 flex flex-col h-full justify-between z-10">
                         <div>
@@ -446,13 +446,13 @@ export default function PatientPortal() {
                     />
                     <GuidanceItem 
                       icon={<Moon className="w-4 h-4" />} 
-                      color="bg-indigo-100 text-indigo-700"
+                      color="bg-saivie-sage text-saivie-teal"
                       title="Rest & Sleep"
                       desc="Sleep on your left side for better blood flow. Use a pillow between your knees for comfort."
                     />
                     <GuidanceItem 
                       icon={<Brain className="w-4 h-4" />} 
-                      color="bg-purple-100 text-purple-700"
+                      color="bg-saivie-sage text-saivie-teal"
                       title="Mental Wellbeing"
                       desc="Hormonal changes may affect your mood. Deep breathing, journaling, or talking to a loved one can help."
                     />
@@ -534,11 +534,11 @@ export default function PatientPortal() {
                   return (
                     <motion.div initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
                       <Card className="glass-panel border-white/60 overflow-hidden" data-testid="last-visit-card">
-                        <div className="absolute inset-0 bg-gradient-to-br from-violet-50/60 via-purple-50/30 to-white/40" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-saivie-surface-muted/60 via-saivie-surface-muted/30 to-saivie-ivory/40" />
                         <CardContent className="relative p-5 z-10">
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
-                              <span className="p-1.5 bg-violet-100 rounded-full"><Stethoscope className="w-3.5 h-3.5 text-violet-600" /></span>
+                              <span className="p-1.5 bg-saivie-sage rounded-full"><Stethoscope className="w-3.5 h-3.5 text-saivie-teal" /></span>
                               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Visit</h4>
                             </div>
                             <span className="text-xs text-muted-foreground">
@@ -554,13 +554,13 @@ export default function PatientPortal() {
                             </p>
                           )}
                           {lastVisit?.planNotes && (
-                            <div className="bg-white/50 rounded-xl px-3 py-2 mt-2">
+                            <div className="bg-saivie-ivory/50 rounded-xl px-3 py-2 mt-2">
                               <p className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">Doctor's plan: </span>{lastVisit.planNotes}</p>
                             </div>
                           )}
                           <button
                             onClick={() => setActiveTab('care')}
-                            className="mt-3 flex items-center gap-1 text-xs text-violet-600 font-medium hover:text-violet-800 transition-colors"
+                            className="mt-3 flex items-center gap-1 text-xs text-saivie-teal font-medium hover:text-saivie-plum transition-colors"
                           >
                             Full visit history <ChevronRight className="w-3.5 h-3.5" />
                           </button>
@@ -581,7 +581,7 @@ export default function PatientPortal() {
                   return (
                     <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
                       <Card className="glass-panel border-emerald-200/50 overflow-hidden" data-testid="upcoming-appt-card">
-                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-white/40" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-saivie-ivory/40" />
                         <CardContent className="relative p-4 z-10 flex items-center gap-4">
                           <div className="p-2.5 bg-emerald-100 rounded-2xl shrink-0">
                             <CalendarDays className="w-5 h-5 text-emerald-600" />
@@ -607,7 +607,7 @@ export default function PatientPortal() {
                 <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
                   <button
                     onClick={openBooking}
-                    className="w-full glass-panel border-white/60 rounded-2xl p-4 flex items-center gap-4 hover:border-primary/30 hover:bg-white/60 transition-all text-left group"
+                    className="w-full glass-panel border-white/60 rounded-2xl p-4 flex items-center gap-4 hover:border-primary/30 hover:bg-saivie-ivory/60 transition-all text-left group"
                     data-testid="book-appointment-cta"
                   >
                     <div className="p-3 bg-primary/10 rounded-xl shrink-0 group-hover:bg-primary/15 transition-colors">
@@ -636,7 +636,7 @@ export default function PatientPortal() {
                       />
                       <GuidanceItem 
                          icon={<Moon className="w-4 h-4" />} 
-                         color="bg-indigo-100 text-indigo-700"
+                         color="bg-saivie-sage text-saivie-teal"
                          title="Sleep Temperature"
                          desc="Basal temperature is rising slightly. Keep your bedroom cool and dark tonight."
                       />
@@ -661,22 +661,22 @@ export default function PatientPortal() {
                 {/* Next Appointment */}
                 {patient?.nextReview && (
                   <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
-                    <Card className="border-none bg-gradient-to-br from-pink-50 to-rose-50 shadow-sm overflow-hidden">
+                    <Card className="border-none bg-gradient-to-br from-saivie-surface-blush to-rose-50 shadow-sm overflow-hidden">
                       <CardContent className="p-5 flex items-center gap-4">
-                        <div className="p-3 bg-pink-100 rounded-2xl shrink-0">
-                          <CalendarDays className="w-6 h-6 text-pink-600" />
+                        <div className="p-3 bg-saivie-blush rounded-2xl shrink-0">
+                          <CalendarDays className="w-6 h-6 text-saivie-rose" />
                         </div>
                         <div className="flex-1">
                           <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Next Appointment</p>
-                          <p className="text-lg font-serif text-pink-800 font-medium mt-0.5">
+                          <p className="text-lg font-serif text-saivie-plum font-medium mt-0.5">
                             {new Date(patient.nextReview).toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })}
                           </p>
                           {(() => {
                             const daysUntil = Math.ceil((new Date(patient.nextReview).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
                             return daysUntil > 0 
-                              ? <p className="text-xs text-pink-600 font-medium mt-0.5">{daysUntil} days from now</p>
+                              ? <p className="text-xs text-saivie-rose font-medium mt-0.5">{daysUntil} days from now</p>
                               : daysUntil === 0 
-                              ? <Badge className="bg-pink-200 text-pink-800 border-none text-[10px] mt-1">Today</Badge>
+                              ? <Badge className="bg-saivie-blush text-saivie-plum border-none text-[10px] mt-1">Today</Badge>
                               : null;
                           })()}
                         </div>
@@ -689,7 +689,7 @@ export default function PatientPortal() {
                 {visitHistory && visitHistory.length > 0 && (
                   <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
                     <div className="flex items-center gap-2 mb-3 px-1">
-                      <Activity className="w-4 h-4 text-pink-600" />
+                      <Activity className="w-4 h-4 text-saivie-rose" />
                       <h3 className="text-lg font-serif text-foreground">Pregnancy Vitals Trend</h3>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
@@ -738,7 +738,7 @@ export default function PatientPortal() {
             {mode === 'pregnancy' && (
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
                 <div className="flex items-center gap-2 mb-3 px-1">
-                  <CheckCircle2 className="w-4 h-4 text-pink-500" />
+                  <CheckCircle2 className="w-4 h-4 text-saivie-rose" />
                   <h3 className="text-lg font-serif text-foreground">Your ANC Checklist</h3>
                   {patient?.trimesterChecklist && (
                     <span className="text-xs text-muted-foreground">Week {(patient.trimesterChecklist as any).currentWeek}</span>
@@ -750,7 +750,7 @@ export default function PatientPortal() {
                     return (
                       <Card className="glass-panel border-white/60">
                         <CardContent className="p-5 text-center">
-                          <Baby className="w-8 h-8 text-pink-200 mx-auto mb-2" />
+                          <Baby className="w-8 h-8 text-saivie-rose mx-auto mb-2" />
                           <p className="text-sm text-muted-foreground">Your personalised antenatal checklist will appear here once your care team generates it.</p>
                         </CardContent>
                       </Card>
@@ -761,9 +761,9 @@ export default function PatientPortal() {
                   const doneItems = cl.items.filter((it: any) => it.done);
                   const catIcon: Record<string, React.ReactNode> = {
                     'Scan': <Stethoscope className="w-3.5 h-3.5 text-blue-500" />,
-                    'Lab Test': <FlaskConical className="w-3.5 h-3.5 text-purple-500" />,
+                    'Lab Test': <FlaskConical className="w-3.5 h-3.5 text-saivie-teal" />,
                     'Vaccine': <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />,
-                    'Vitals': <Activity className="w-3.5 h-3.5 text-slate-500" />,
+                    'Vitals': <Activity className="w-3.5 h-3.5 text-saivie-plum" />,
                     'Consultation': <Brain className="w-3.5 h-3.5 text-amber-500" />,
                     'Lifestyle': <Heart className="w-3.5 h-3.5 text-rose-500" />,
                   };
@@ -787,7 +787,7 @@ export default function PatientPortal() {
                       {otherItems.slice(0, 5).map((item: any, i: number) => (
                         <Card key={`o-${i}`} className="glass-panel border-white/60">
                           <CardContent className="p-3.5 flex items-center gap-3">
-                            <div className="p-1.5 bg-white/60 rounded-lg shrink-0">{catIcon[item.category] || <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />}</div>
+                            <div className="p-1.5 bg-saivie-ivory/60 rounded-lg shrink-0">{catIcon[item.category] || <CheckCircle2 className="w-3.5 h-3.5 text-saivie-plum" />}</div>
                             <div className="flex-1">
                               <p className="text-sm text-foreground">{item.task}</p>
                               {item.dueWeek && <p className="text-[10px] text-muted-foreground mt-0.5">Week {item.dueWeek}</p>}
@@ -890,7 +890,7 @@ export default function PatientPortal() {
             {/* Investigations / Tests */}
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
               <div className="flex items-center gap-2 mb-3 px-1">
-                <FlaskConical className="w-4 h-4 text-purple-600" />
+                <FlaskConical className="w-4 h-4 text-saivie-teal" />
                 <h3 className="text-lg font-serif text-foreground">
                   {mode === 'pregnancy' ? 'Prenatal Tests' : 'Investigations & Tests'}
                 </h3>
@@ -919,8 +919,8 @@ export default function PatientPortal() {
                     {allTests.map((test, i) => (
                       <Card key={i} className="glass-panel border-white/60" data-testid={`patient-investigation-${i}`}>
                         <CardContent className="p-4 flex items-center gap-3">
-                          <div className={`p-2 rounded-xl shrink-0 ${mode === 'pregnancy' ? 'bg-pink-100/50' : 'bg-purple-100/50'}`}>
-                            <FileText className={`w-4 h-4 ${mode === 'pregnancy' ? 'text-pink-600' : 'text-purple-600'}`} />
+                          <div className={`p-2 rounded-xl shrink-0 ${mode === 'pregnancy' ? 'bg-saivie-blush/50' : 'bg-saivie-sage/50'}`}>
+                            <FileText className={`w-4 h-4 ${mode === 'pregnancy' ? 'text-saivie-rose' : 'text-saivie-teal'}`} />
                           </div>
                           <div className="flex-1">
                             <p className="font-medium text-sm text-foreground">{test}</p>
@@ -989,7 +989,7 @@ export default function PatientPortal() {
                               </AccordionTrigger>
                               <AccordionContent className="space-y-1.5">
                                 {normal.map((r: any, i: number) => (
-                                  <div key={i} className="flex items-center justify-between bg-white/40 rounded-lg px-3 py-2">
+                                  <div key={i} className="flex items-center justify-between bg-saivie-ivory/40 rounded-lg px-3 py-2">
                                     <span className="text-xs text-foreground">{r.testName}</span>
                                     <span className="text-xs text-muted-foreground">{r.value != null ? `${r.value} ${r.unit || ''}` : '—'}</span>
                                   </div>
@@ -1015,7 +1015,7 @@ export default function PatientPortal() {
                 {[
                   { type: 'doctor', icon: <User className="w-5 h-5" />, label: 'Doctor', sub: 'Consultation', color: 'bg-blue-100 text-blue-700', border: 'hover:border-blue-200' },
                   { type: 'nutritionist', icon: <Apple className="w-5 h-5" />, label: 'Nutritionist', sub: 'Diet & Wellness', color: 'bg-green-100 text-green-700', border: 'hover:border-green-200' },
-                  { type: 'blood_test', icon: <Microscope className="w-5 h-5" />, label: 'Lab Test', sub: 'Blood & Reports', color: 'bg-purple-100 text-purple-700', border: 'hover:border-purple-200' },
+                  { type: 'blood_test', icon: <Microscope className="w-5 h-5" />, label: 'Lab Test', sub: 'Blood & Reports', color: 'bg-saivie-sage text-saivie-teal', border: 'hover:border-saivie-border' },
                 ].map(({ type, icon, label, sub, color, border }) => (
                   <button
                     key={type}
@@ -1043,7 +1043,7 @@ export default function PatientPortal() {
                     .slice(0, 4)
                     .map((appt: any) => {
                       const s = (appt.status || 'Pending').toLowerCase();
-                      const statusColor = s === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : s === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700';
+                      const statusColor = s === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : s === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-saivie-sage text-saivie-plum';
                       return (
                         <Card key={appt.id} className="glass-panel border-white/60" data-testid={`patient-appt-${appt.id}`}>
                           <CardContent className="p-3.5 flex items-center gap-3">
@@ -1074,7 +1074,7 @@ export default function PatientPortal() {
               </div>
               {visitHistory && visitHistory.length > 0 ? (
                 <div className="relative">
-                  <div className="absolute left-[19px] top-4 bottom-4 w-[2px] bg-gradient-to-b from-rose-200 via-pink-100 to-transparent rounded-full" />
+                  <div className="absolute left-[19px] top-4 bottom-4 w-[2px] bg-gradient-to-b from-rose-200 via-saivie-blush to-transparent rounded-full" />
                   <div className="space-y-3">
                     {[...visitHistory].sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 10).map((visit: any, idx: number) => {
                       const visitVitals = (visit.vitals as any) || {};
@@ -1085,7 +1085,7 @@ export default function PatientPortal() {
                       return (
                         <div key={visit.id || idx} className="flex gap-3" data-testid={`patient-visit-${idx}`}>
                           <div className="relative z-10 mt-4">
-                            <div className={`w-[10px] h-[10px] rounded-full border-2 ${idx === 0 ? 'bg-rose-500 border-rose-500' : 'bg-white border-rose-300'}`} />
+                            <div className={`w-[10px] h-[10px] rounded-full border-2 ${idx === 0 ? 'bg-rose-500 border-rose-500' : 'bg-saivie-ivory border-rose-300'}`} />
                           </div>
                           <Card className="glass-panel border-white/60 flex-1">
                             <CardContent className="p-4">
@@ -1094,7 +1094,7 @@ export default function PatientPortal() {
                                   <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" />
                                   <span className="text-xs font-medium text-muted-foreground">{visitDate}</span>
                                   {weeksAtVisit != null && weeksAtVisit > 0 && (
-                                    <Badge variant="outline" className="text-[10px] bg-pink-50 text-pink-600 border-pink-200">Wk {weeksAtVisit}</Badge>
+                                    <Badge variant="outline" className="text-[10px] bg-saivie-surface-blush text-saivie-rose border-saivie-blush">Wk {weeksAtVisit}</Badge>
                                   )}
                                 </div>
                                 {idx === 0 && <Badge className="bg-rose-100 text-rose-700 border-rose-200 text-[10px]">Latest</Badge>}
@@ -1150,7 +1150,7 @@ export default function PatientPortal() {
               />
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
-                <p className="text-sm text-slate-500">Switch to Pregnancy or TTC mode to access trackers.</p>
+                <p className="text-sm text-saivie-plum">Switch to Pregnancy or TTC mode to access trackers.</p>
               </div>
             )}
           </TabsContent>
@@ -1159,8 +1159,8 @@ export default function PatientPortal() {
 
         {/* Book Appointment Dialog */}
         <Dialog open={bookingOpen} onOpenChange={(o) => { if (!o) setBookingOpen(false); }}>
-          <DialogContent className="max-w-sm mx-auto rounded-3xl border-white/60 bg-white/95 backdrop-blur-2xl shadow-2xl p-0 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-white/80 to-purple-50/30 pointer-events-none" />
+          <DialogContent className="max-w-sm mx-auto rounded-3xl border-white/60 bg-saivie-ivory/95 backdrop-blur-2xl shadow-2xl p-0 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-white/80 to-saivie-surface-muted/30 pointer-events-none" />
             <div className="relative z-10">
               {/* Header */}
               <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-black/5">
@@ -1187,12 +1187,12 @@ export default function PatientPortal() {
                       {[
                         { type: 'doctor', icon: <User className="w-5 h-5" />, label: 'Doctor Consultation', sub: 'General check-up, follow-up, or specialist', color: 'bg-blue-100 text-blue-700' },
                         { type: 'nutritionist', icon: <Apple className="w-5 h-5" />, label: 'Nutritionist', sub: 'Diet plan, wellness & supplements', color: 'bg-green-100 text-green-700' },
-                        { type: 'blood_test', icon: <Microscope className="w-5 h-5" />, label: 'Blood Test / Lab Work', sub: 'Lab tests, reports & investigations', color: 'bg-purple-100 text-purple-700' },
+                        { type: 'blood_test', icon: <Microscope className="w-5 h-5" />, label: 'Blood Test / Lab Work', sub: 'Lab tests, reports & investigations', color: 'bg-saivie-sage text-saivie-teal' },
                       ].map(({ type, icon, label, sub, color }) => (
                         <button
                           key={type}
                           onClick={() => { setBookingType(type as any); setBookingStep('date'); }}
-                          className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/60 border border-white/60 hover:border-primary/20 hover:bg-white/80 transition-all text-left group"
+                          className="w-full flex items-center gap-4 p-4 rounded-2xl bg-saivie-ivory/60 border border-white/60 hover:border-primary/20 hover:bg-saivie-ivory/80 transition-all text-left group"
                           data-testid={`dialog-book-${type}`}
                         >
                           <div className={`p-2.5 rounded-xl ${color} shrink-0`}>{icon}</div>
@@ -1214,7 +1214,7 @@ export default function PatientPortal() {
                       <div className="flex items-center gap-2">
                         {bookingType === 'doctor' && <><User className="w-4 h-4 text-blue-600" /><p className="text-sm font-medium">Doctor Consultation</p></>}
                         {bookingType === 'nutritionist' && <><Apple className="w-4 h-4 text-green-600" /><p className="text-sm font-medium">Nutritionist Session</p></>}
-                        {bookingType === 'blood_test' && <><Microscope className="w-4 h-4 text-purple-600" /><p className="text-sm font-medium">Blood Test / Lab Work</p></>}
+                        {bookingType === 'blood_test' && <><Microscope className="w-4 h-4 text-saivie-teal" /><p className="text-sm font-medium">Blood Test / Lab Work</p></>}
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Preferred Date</label>
@@ -1223,7 +1223,7 @@ export default function PatientPortal() {
                           value={bookingDate}
                           min={new Date().toISOString().split('T')[0]}
                           onChange={(e) => setBookingDate(e.target.value)}
-                          className="w-full rounded-xl border border-black/10 bg-white/70 px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+                          className="w-full rounded-xl border border-black/10 bg-saivie-ivory/70 px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
                           data-testid="booking-date-input"
                         />
                       </div>
@@ -1234,7 +1234,7 @@ export default function PatientPortal() {
                           onChange={(e) => setBookingNote(e.target.value)}
                           placeholder="E.g. I've been having back pain..."
                           rows={2}
-                          className="w-full rounded-xl border border-black/10 bg-white/70 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 resize-none"
+                          className="w-full rounded-xl border border-black/10 bg-saivie-ivory/70 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 resize-none"
                           data-testid="booking-note-input"
                         />
                       </div>
@@ -1255,7 +1255,7 @@ export default function PatientPortal() {
                   <AnimatePresence mode="wait">
                     <motion.div key="confirm" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
                       <p className="text-sm text-muted-foreground">Please confirm your appointment details:</p>
-                      <div className="bg-white/70 rounded-2xl p-4 space-y-3 border border-black/5">
+                      <div className="bg-saivie-ivory/70 rounded-2xl p-4 space-y-3 border border-black/5">
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-muted-foreground uppercase tracking-wider">Type</span>
                           <span className="text-sm font-medium text-foreground">
@@ -1321,7 +1321,7 @@ export default function PatientPortal() {
 
         {/* Premium Floating Navigation */}
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
-           <div className="bg-white/80 backdrop-blur-2xl border border-white/50 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] rounded-full px-6 py-4 flex items-center gap-8 transition-all hover:bg-white/90">
+           <div className="bg-saivie-ivory/80 backdrop-blur-2xl border border-white/50 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] rounded-full px-6 py-4 flex items-center gap-8 transition-all hover:bg-saivie-ivory/90">
              <NavButton 
                active={activeTab === 'home'} 
                onClick={() => setActiveTab('home')} 

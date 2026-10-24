@@ -405,9 +405,9 @@ export default function StaffPatientProtocol() {
 
   if (!patient) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-saivie-surface-muted flex items-center justify-center">
         <div className="text-center space-y-3">
-          <p className="text-slate-500">Loading patient data...</p>
+          <p className="text-saivie-plum">Loading patient data...</p>
           <Link href="/staff">
             <Button variant="outline" size="sm">Back to Staff Portal</Button>
           </Link>
@@ -417,37 +417,37 @@ export default function StaffPatientProtocol() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+    <div className="min-h-screen bg-saivie-surface-muted flex flex-col font-sans text-saivie-plum">
       
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+      <header className="bg-saivie-ivory border-b border-saivie-border px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-4">
             <Link href="/staff">
-                <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2 text-slate-500 hover:text-slate-900">
+                <Button variant="ghost" size="icon" className="h-9 w-9 -ml-2 text-saivie-plum hover:text-saivie-plum">
                     <ArrowLeft className="w-5 h-5" />
                 </Button>
             </Link>
             <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10 border border-slate-200">
-                    <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">{patient.avatar}</AvatarFallback>
+                <Avatar className="h-10 w-10 border border-saivie-border">
+                    <AvatarFallback className="bg-saivie-sage text-saivie-teal font-bold">{patient.avatar}</AvatarFallback>
                 </Avatar>
                 <div>
                     <div className="flex items-center gap-2">
-                        <h1 className="text-lg font-bold text-slate-900">{patient.name}</h1>
-                        <Badge variant="outline" className="text-xs font-normal bg-indigo-50 text-indigo-700 border-indigo-100">{patient.condition}</Badge>
+                        <h1 className="text-lg font-bold text-saivie-plum">{patient.name}</h1>
+                        <Badge variant="outline" className="text-xs font-normal bg-saivie-surface-muted text-saivie-teal border-saivie-border">{patient.condition}</Badge>
                     </div>
-                    <p className="text-xs text-slate-500">ID: #{patient.id} • Age: {patient.age} • Female</p>
+                    <p className="text-xs text-saivie-plum">ID: #{patient.id} • Age: {patient.age} • Female</p>
                 </div>
             </div>
         </div>
         <div className="flex gap-2">
-             <Button variant="outline" size="sm" className="bg-white border-slate-200">
+             <Button variant="outline" size="sm" className="bg-saivie-ivory border-saivie-border">
                 <Share2 className="w-4 h-4 mr-2" /> Share
              </Button>
-             <Button variant="outline" size="sm" className="bg-white border-slate-200">
+             <Button variant="outline" size="sm" className="bg-saivie-ivory border-saivie-border">
                 <Printer className="w-4 h-4 mr-2" /> Print
              </Button>
-             <Button className="bg-slate-900 text-white hover:bg-slate-800" size="sm" onClick={handleSaveProtocol} disabled={isSaving} data-testid="button-save-protocol">
+             <Button className="bg-saivie-plum text-white hover:bg-saivie-plum" size="sm" onClick={handleSaveProtocol} disabled={isSaving} data-testid="button-save-protocol">
                 <Save className="w-4 h-4 mr-2" /> {isSaving ? "Saving..." : "Save Protocol"}
              </Button>
         </div>
@@ -456,11 +456,11 @@ export default function StaffPatientProtocol() {
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
         <Tabs defaultValue="protocol" className="w-full">
             <div className="flex items-center justify-between mb-6">
-                 <TabsList className="bg-white border border-slate-200">
+                 <TabsList className="bg-saivie-ivory border border-saivie-border">
                     <TabsTrigger value="protocol">Protocol Design</TabsTrigger>
                     <TabsTrigger value="progress">History & Progress</TabsTrigger>
                  </TabsList>
-                 <div className="flex items-center gap-2 text-sm text-slate-500">
+                 <div className="flex items-center gap-2 text-sm text-saivie-plum">
                     <Calendar className="w-4 h-4" /> Last 30 Days
                  </div>
             </div>
@@ -468,39 +468,39 @@ export default function StaffPatientProtocol() {
             <TabsContent value="protocol" className="space-y-6">
 
             {/* Patient History Section */}
-            <Card className="shadow-sm border-slate-200">
-                <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
+            <Card className="shadow-sm border-saivie-border">
+                <CardHeader className="py-3 px-4 border-b border-saivie-border bg-saivie-surface-muted/50">
                     <div className="flex items-center gap-2">
-                        <ClipboardList className="w-4 h-4 text-slate-600" />
-                        <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-wide">Patient History</CardTitle>
+                        <ClipboardList className="w-4 h-4 text-saivie-plum" />
+                        <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wide">Patient History</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent className="p-4">
                     <div className="grid grid-cols-4 gap-6">
                         <div>
-                            <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Past Medical History</h4>
-                            <ul className="list-disc list-inside text-sm text-slate-700 space-y-1">
-                                {patient.history?.medical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic text-xs">None recorded</li>}
+                            <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2 border-b border-saivie-border pb-1">Past Medical History</h4>
+                            <ul className="list-disc list-inside text-sm text-saivie-plum space-y-1">
+                                {patient.history?.medical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-saivie-plum italic text-xs">None recorded</li>}
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Past Surgical History</h4>
-                            <ul className="list-disc list-inside text-sm text-slate-700 space-y-1">
-                                {patient.history?.surgical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic text-xs">None recorded</li>}
+                            <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2 border-b border-saivie-border pb-1">Past Surgical History</h4>
+                            <ul className="list-disc list-inside text-sm text-saivie-plum space-y-1">
+                                {patient.history?.surgical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-saivie-plum italic text-xs">None recorded</li>}
                             </ul>
                         </div>
                         <div>
-                             <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Drug History</h4>
-                             <ul className="list-disc list-inside text-sm text-slate-700 space-y-1">
-                                {patient.history?.drug?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic text-xs">None recorded</li>}
+                             <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2 border-b border-saivie-border pb-1">Drug History</h4>
+                             <ul className="list-disc list-inside text-sm text-saivie-plum space-y-1">
+                                {patient.history?.drug?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-saivie-plum italic text-xs">None recorded</li>}
                             </ul>
                         </div>
                          <div>
-                             <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 text-rose-600 border-b border-rose-100 pb-1">Allergies</h4>
+                             <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2 text-rose-600 border-b border-rose-100 pb-1">Allergies</h4>
                              <div className="flex flex-wrap gap-2 pt-1">
                                 {patient.history?.allergies?.map((item: string, i: number) => (
                                     <Badge key={i} variant="outline" className="bg-rose-50 text-rose-700 border-rose-200">{item}</Badge>
-                                )) || <span className="text-sm text-slate-400 italic">No known allergies</span>}
+                                )) || <span className="text-sm text-saivie-plum italic">No known allergies</span>}
                             </div>
                         </div>
                     </div>
@@ -526,52 +526,52 @@ export default function StaffPatientProtocol() {
 
             {/* Metabolic Stats */}
             <div className="col-span-8 grid grid-cols-4 gap-4">
-                 <Card className="shadow-sm border-slate-200">
+                 <Card className="shadow-sm border-saivie-border">
                     <CardContent className="p-4 flex flex-col justify-center h-full">
-                        <p className="text-xs text-slate-500 font-medium uppercase mb-1">Current Phase</p>
-                        <div className="flex items-center gap-2 text-purple-600 mb-1">
+                        <p className="text-xs text-saivie-plum font-medium uppercase mb-1">Current Phase</p>
+                        <div className="flex items-center gap-2 text-saivie-teal mb-1">
                             <Activity className="w-4 h-4" />
                             <span className="font-bold text-sm truncate">{(patient?.meta?.phase || 'Follicular').split(' ')[0]}</span>
                         </div>
-                        <p className="text-[10px] text-slate-400">Day {(patient?.meta?.phase || '').split('Day ')[1]?.replace(')', '') || '-'}</p>
+                        <p className="text-[10px] text-saivie-plum">Day {(patient?.meta?.phase || '').split('Day ')[1]?.replace(')', '') || '-'}</p>
                     </CardContent>
                  </Card>
 
-                 <Card className="shadow-sm border-slate-200">
+                 <Card className="shadow-sm border-saivie-border">
                     <CardContent className="p-4 flex flex-col justify-center h-full">
-                        <p className="text-xs text-slate-500 font-medium uppercase mb-1">Energy Exp (TDEE)</p>
+                        <p className="text-xs text-saivie-plum font-medium uppercase mb-1">Energy Exp (TDEE)</p>
                         <div className="flex items-center gap-2 text-amber-600 mb-1">
                             <Flame className="w-4 h-4" />
                             <span className="font-bold text-lg">{patient?.meta?.tdee || 1800}</span>
-                            <span className="text-xs font-normal text-slate-500">kcal</span>
+                            <span className="text-xs font-normal text-saivie-plum">kcal</span>
                         </div>
-                        <p className="text-[10px] text-slate-400">Activity: {(patient?.meta?.activity || 'Moderate').split(' ')[0]}</p>
+                        <p className="text-[10px] text-saivie-plum">Activity: {(patient?.meta?.activity || 'Moderate').split(' ')[0]}</p>
                     </CardContent>
                  </Card>
 
-                 <Card className="shadow-sm border-slate-200">
+                 <Card className="shadow-sm border-saivie-border">
                     <CardContent className="p-4 flex flex-col justify-center h-full">
-                        <p className="text-xs text-slate-500 font-medium uppercase mb-1">Target Intake</p>
+                        <p className="text-xs text-saivie-plum font-medium uppercase mb-1">Target Intake</p>
                         <div className="flex items-center gap-2 text-emerald-600 mb-1">
                             <Apple className="w-4 h-4" />
                             <span className="font-bold text-lg">{targetCalories}</span>
-                            <span className="text-xs font-normal text-slate-500">kcal</span>
+                            <span className="text-xs font-normal text-saivie-plum">kcal</span>
                         </div>
                         <Badge variant="secondary" className="w-fit text-[9px] h-4 px-1 bg-emerald-50 text-emerald-700">-300 deficit</Badge>
                     </CardContent>
                  </Card>
 
-                 <Card className="shadow-sm border-slate-200">
+                 <Card className="shadow-sm border-saivie-border">
                     <CardContent className="p-4 flex flex-col justify-center h-full">
-                        <p className="text-xs text-slate-500 font-medium uppercase mb-1">Biometrics</p>
+                        <p className="text-xs text-saivie-plum font-medium uppercase mb-1">Biometrics</p>
                         <div className="flex justify-between items-end">
                              <div>
-                                <p className="text-sm font-bold text-slate-800">{patient?.meta?.weight || patient?.weight || '-'}</p>
-                                <p className="text-[10px] text-slate-400">Weight</p>
+                                <p className="text-sm font-bold text-saivie-plum">{patient?.meta?.weight || patient?.weight || '-'}</p>
+                                <p className="text-[10px] text-saivie-plum">Weight</p>
                              </div>
                              <div className="text-right">
-                                <p className="text-sm font-bold text-slate-800">{patient?.meta?.bmi || '-'}</p>
-                                <p className="text-[10px] text-slate-400">BMI</p>
+                                <p className="text-sm font-bold text-saivie-plum">{patient?.meta?.bmi || '-'}</p>
+                                <p className="text-[10px] text-saivie-plum">BMI</p>
                              </div>
                         </div>
                     </CardContent>
@@ -582,32 +582,32 @@ export default function StaffPatientProtocol() {
         {/* MIDDLE ROW: Lab Reports & Protocol Goals */}
         <div className="grid grid-cols-12 gap-6">
             {/* Labs Panel */}
-            <Card className="col-span-8 shadow-sm border-slate-200">
-                <CardHeader className="py-3 border-b border-slate-100 flex flex-row items-center justify-between">
-                    <CardTitle className="text-base font-bold text-slate-900">Recent Lab Biomarkers</CardTitle>
+            <Card className="col-span-8 shadow-sm border-saivie-border">
+                <CardHeader className="py-3 border-b border-saivie-border flex flex-row items-center justify-between">
+                    <CardTitle className="text-base font-bold text-saivie-plum">Recent Lab Biomarkers</CardTitle>
                     <div className="flex gap-2">
                         <Button 
                             variant="outline" 
                             size="sm" 
-                            className="text-xs h-7 border-slate-200"
+                            className="text-xs h-7 border-saivie-border"
                             onClick={() => setIsRequestLabOpen(true)}
                         >
                             <Plus className="w-3 h-3 mr-1" /> Request Labs
                         </Button>
-                        <Button variant="ghost" size="sm" className="text-xs text-indigo-600 h-7">View Full Report</Button>
+                        <Button variant="ghost" size="sm" className="text-xs text-saivie-teal h-7">View Full Report</Button>
                     </div>
                 </CardHeader>
                 <CardContent className="p-4">
                     <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                         {Object.entries(patient.labs || {}).map(([key, data]: [string, any]) => (
-                            <div key={key} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded group border border-transparent hover:border-slate-100 transition-all">
+                            <div key={key} className="flex items-center justify-between p-2 hover:bg-saivie-surface-muted rounded group border border-transparent hover:border-saivie-border transition-all">
                                 <div>
-                                    <p className="text-xs font-medium text-slate-500 uppercase">{data.name}</p>
+                                    <p className="text-xs font-medium text-saivie-plum uppercase">{data.name}</p>
                                     <div className="flex items-baseline gap-2 mt-0.5">
-                                        <span className={`text-lg font-bold ${data.status === 'High' || data.status === 'Critical' || data.status === 'Low' ? 'text-red-600' : 'text-slate-800'}`}>
+                                        <span className={`text-lg font-bold ${data.status === 'High' || data.status === 'Critical' || data.status === 'Low' ? 'text-red-600' : 'text-saivie-plum'}`}>
                                             {data.value}
                                         </span>
-                                        <span className="text-xs text-slate-400">Ref: {data.range}</span>
+                                        <span className="text-xs text-saivie-plum">Ref: {data.range}</span>
                                     </div>
                                 </div>
                                 <div className="text-right">
@@ -626,13 +626,13 @@ export default function StaffPatientProtocol() {
             </Card>
 
             {/* Protocol Goals */}
-            <Card className="col-span-4 shadow-sm border-slate-200">
-                <CardHeader className="py-3 border-b border-slate-100">
-                    <CardTitle className="text-base font-bold text-slate-900">Protocol Focus</CardTitle>
+            <Card className="col-span-4 shadow-sm border-saivie-border">
+                <CardHeader className="py-3 border-b border-saivie-border">
+                    <CardTitle className="text-base font-bold text-saivie-plum">Protocol Focus</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-4">
                      <div className="space-y-2">
-                        <Label className="text-xs text-slate-500">Primary Goal</Label>
+                        <Label className="text-xs text-saivie-plum">Primary Goal</Label>
                         <Select value={primaryGoal} onValueChange={setPrimaryGoal}>
                             <SelectTrigger>
                                 <SelectValue />
@@ -645,7 +645,7 @@ export default function StaffPatientProtocol() {
                         </Select>
                      </div>
                      <div className="space-y-2">
-                        <Label className="text-xs text-slate-500">Dietary Strategy</Label>
+                        <Label className="text-xs text-saivie-plum">Dietary Strategy</Label>
                         <Select value={dietaryStrategy} onValueChange={setDietaryStrategy}>
                             <SelectTrigger>
                                 <SelectValue />
@@ -662,35 +662,35 @@ export default function StaffPatientProtocol() {
         </div>
 
         {/* BOTTOM SECTION: Diet Planner */}
-        <Card className="shadow-sm border-slate-200 overflow-hidden">
-             <CardHeader className="py-0 px-0 border-b border-slate-100 bg-white">
-                <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50">
+        <Card className="shadow-sm border-saivie-border overflow-hidden">
+             <CardHeader className="py-0 px-0 border-b border-saivie-border bg-saivie-ivory">
+                <div className="flex items-center justify-between p-4 border-b border-saivie-border bg-saivie-surface-muted/50">
                     <div>
-                        <CardTitle className="text-lg font-bold text-slate-900 font-serif">Weekly Meal Plan</CardTitle>
-                        <p className="text-xs text-slate-500 mt-0.5">Plan meals for the entire week.</p>
+                        <CardTitle className="text-lg font-bold text-saivie-plum font-serif">Weekly Meal Plan</CardTitle>
+                        <p className="text-xs text-saivie-plum mt-0.5">Plan meals for the entire week.</p>
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="text-right">
-                            <p className="text-[10px] uppercase font-bold text-slate-400">Planned</p>
-                            <p className={`text-sm font-bold ${totalCalories > targetCalories ? 'text-amber-600' : 'text-slate-700'}`}>
+                            <p className="text-[10px] uppercase font-bold text-saivie-plum">Planned</p>
+                            <p className={`text-sm font-bold ${totalCalories > targetCalories ? 'text-amber-600' : 'text-saivie-plum'}`}>
                                 {totalCalories} / {targetCalories} kcal
                             </p>
                         </div>
-                        <Button size="sm" variant="outline" className="bg-white text-slate-600 border-slate-200" onClick={copyToAllDays}>
+                        <Button size="sm" variant="outline" className="bg-saivie-ivory text-saivie-plum border-saivie-border" onClick={copyToAllDays}>
                             <Calendar className="w-4 h-4 mr-2" /> Copy {selectedDay} to All
                         </Button>
                     </div>
                 </div>
                 
                 {/* Day Tabs */}
-                <div className="px-4 pt-2 bg-white">
+                <div className="px-4 pt-2 bg-saivie-ivory">
                     <Tabs value={selectedDay} onValueChange={setSelectedDay} className="w-full">
                         <TabsList className="w-full justify-start h-auto p-0 bg-transparent gap-6 border-b border-transparent">
                             {days.map(day => (
                                 <TabsTrigger 
                                     key={day} 
                                     value={day}
-                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-700 px-2 py-3 text-slate-500 hover:text-slate-800 transition-all"
+                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-saivie-teal data-[state=active]:text-saivie-teal px-2 py-3 text-saivie-plum hover:text-saivie-plum transition-all"
                                 >
                                     {day}
                                 </TabsTrigger>
@@ -702,21 +702,21 @@ export default function StaffPatientProtocol() {
              <CardContent className="p-0">
                  <div className="grid grid-cols-1 divide-y divide-slate-100">
                     {currentDayPlan.length === 0 && (
-                        <div className="p-8 text-center text-slate-400 text-sm">
+                        <div className="p-8 text-center text-saivie-plum text-sm">
                             No meals planned for {selectedDay}.
                         </div>
                     )}
                     {currentDayPlan.map((meal) => (
-                        <div key={meal.id} className="p-4 hover:bg-slate-50/50 group transition-colors">
+                        <div key={meal.id} className="p-4 hover:bg-saivie-surface-muted/50 group transition-colors">
                             {/* Card Header-like Row */}
                             <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm font-bold text-slate-800">{meal.name}</span>
+                                <span className="text-sm font-bold text-saivie-plum">{meal.name}</span>
                                 <div className="inline-flex items-center">
-                                    <Clock className="w-3 h-3 mr-1.5 text-slate-400" />
+                                    <Clock className="w-3 h-3 mr-1.5 text-saivie-plum" />
                                     <Input 
                                         value={meal.time}
                                         onChange={(e) => updateMealItem(selectedDay, meal.id, "time", e.target.value)}
-                                        className="h-6 w-16 text-[10px] font-mono bg-white border-slate-200 text-slate-600 px-1 text-center focus:border-indigo-500"
+                                        className="h-6 w-16 text-[10px] font-mono bg-saivie-ivory border-saivie-border text-saivie-plum px-1 text-center focus:border-saivie-teal"
                                         placeholder="00:00"
                                     />
                                 </div>
@@ -728,31 +728,31 @@ export default function StaffPatientProtocol() {
                                     <Input 
                                         value={meal.item}
                                         onChange={(e) => updateMealItem(selectedDay, meal.id, "item", e.target.value)} 
-                                        className="h-9 bg-white border-slate-200 focus:border-indigo-500 text-sm font-medium" 
+                                        className="h-9 bg-saivie-ivory border-saivie-border focus:border-saivie-teal text-sm font-medium"
                                         placeholder="Enter meal description..."
                                     />
                                     
                                     {/* Components List (If Active) */}
                                     {meal.components && meal.components.length > 0 && (
-                                        <div className="mt-2 space-y-2 pl-2 border-l-2 border-slate-100">
+                                        <div className="mt-2 space-y-2 pl-2 border-l-2 border-saivie-border">
                                             {meal.components.map((comp: any) => (
                                                 <div key={comp.id} className="flex gap-2 items-center">
                                                     <Input 
                                                         value={comp.name}
                                                         onChange={(e) => updateComponent(selectedDay, meal.id, comp.id, "name", e.target.value)}
-                                                        className="h-7 text-xs bg-slate-50 border-slate-200 w-2/3"
+                                                        className="h-7 text-xs bg-saivie-surface-muted border-saivie-border w-2/3"
                                                         placeholder="Item (e.g. Rice)"
                                                     />
                                                     <Input 
                                                         value={comp.qty}
                                                         onChange={(e) => updateComponent(selectedDay, meal.id, comp.id, "qty", e.target.value)}
-                                                        className="h-7 text-xs bg-slate-50 border-slate-200 w-1/3"
+                                                        className="h-7 text-xs bg-saivie-surface-muted border-saivie-border w-1/3"
                                                         placeholder="Qty"
                                                     />
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
-                                                        className="h-6 w-6 text-slate-400 hover:text-rose-500"
+                                                        className="h-6 w-6 text-saivie-plum hover:text-rose-500"
                                                         onClick={() => removeComponent(selectedDay, meal.id, comp.id)}
                                                     >
                                                         <X className="w-3 h-3" />
@@ -766,7 +766,7 @@ export default function StaffPatientProtocol() {
                                     <Input 
                                         value={meal.qty}
                                         onChange={(e) => updateMealItem(selectedDay, meal.id, "qty", e.target.value)} 
-                                        className="h-9 bg-white border-slate-200 text-xs text-slate-600" 
+                                        className="h-9 bg-saivie-ivory border-saivie-border text-xs text-saivie-plum"
                                         placeholder="Qty (e.g., 1 bowl)"
                                     />
                                 </div>
@@ -774,7 +774,7 @@ export default function StaffPatientProtocol() {
                                     <Input 
                                         value={meal.macros}
                                         onChange={(e) => updateMealItem(selectedDay, meal.id, "macros", e.target.value)} 
-                                        className="h-9 bg-white border-slate-200 text-xs text-slate-500 font-mono" 
+                                        className="h-9 bg-saivie-ivory border-saivie-border text-xs text-saivie-plum font-mono"
                                         placeholder="Macros"
                                     />
                                 </div>
@@ -782,7 +782,7 @@ export default function StaffPatientProtocol() {
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
-                                        className="h-9 w-9 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50"
+                                        className="h-9 w-9 text-saivie-teal hover:text-saivie-teal hover:bg-saivie-surface-muted"
                                         title="Compose Meal"
                                         onClick={() => addComponentToMeal(selectedDay, meal.id)}
                                     >
@@ -801,11 +801,11 @@ export default function StaffPatientProtocol() {
                         </div>
                     ))}
                     
-                    <div className="p-3 bg-slate-50/50 text-center flex items-center justify-center gap-2">
+                    <div className="p-3 bg-saivie-surface-muted/50 text-center flex items-center justify-center gap-2">
                         <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="text-xs text-indigo-600 hover:bg-indigo-50"
+                            className="text-xs text-saivie-teal hover:bg-saivie-surface-muted"
                             onClick={() => addMealItem(selectedDay)}
                         >
                             + Add Meal Slot
@@ -827,9 +827,9 @@ export default function StaffPatientProtocol() {
 
         <TabsContent value="progress" className="space-y-6">
             <div className="grid grid-cols-2 gap-6">
-                <Card className="shadow-sm border-slate-200">
+                <Card className="shadow-sm border-saivie-border">
                     <CardHeader>
-                        <CardTitle className="text-base font-bold text-slate-900">Weight Trend</CardTitle>
+                        <CardTitle className="text-base font-bold text-saivie-plum">Weight Trend</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="h-[250px] w-full">
@@ -852,9 +852,9 @@ export default function StaffPatientProtocol() {
                     </CardContent>
                 </Card>
 
-                <Card className="shadow-sm border-slate-200">
+                <Card className="shadow-sm border-saivie-border">
                     <CardHeader>
-                         <CardTitle className="text-base font-bold text-slate-900">Inflammation Markers (hs-CRP)</CardTitle>
+                         <CardTitle className="text-base font-bold text-saivie-plum">Inflammation Markers (hs-CRP)</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="h-[250px] w-full">
@@ -872,29 +872,29 @@ export default function StaffPatientProtocol() {
                 </Card>
             </div>
 
-            <Card className="shadow-sm border-slate-200">
+            <Card className="shadow-sm border-saivie-border">
                 <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-base font-bold text-slate-900">Recent Intake History</CardTitle>
+                    <CardTitle className="text-base font-bold text-saivie-plum">Recent Intake History</CardTitle>
                     <Button variant="outline" size="sm" className="h-8">Export Log</Button>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
                         {intakeLog.length === 0 && (
-                            <div className="text-center py-8 text-slate-400">
+                            <div className="text-center py-8 text-saivie-plum">
                                 <p className="text-sm">No intake log available. Save a meal protocol to see intake tracking here.</p>
                             </div>
                         )}
                         {intakeLog.map((log: any) => (
-                            <div key={log.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <div key={log.id} className="flex items-center justify-between p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border">
                                 <div className="flex items-center gap-3">
                                     <div className={`w-2 h-2 rounded-full ${log.status === 'Consumed' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                                     <div>
-                                        <p className="text-sm font-bold text-slate-800">{log.meal}</p>
-                                        <p className="text-xs text-slate-500">{log.item} • {log.date}</p>
+                                        <p className="text-sm font-bold text-saivie-plum">{log.meal}</p>
+                                        <p className="text-xs text-saivie-plum">{log.item} • {log.date}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
-                                    {log.notes && <span className="text-xs text-slate-400 italic">"{log.notes}"</span>}
+                                    {log.notes && <span className="text-xs text-saivie-plum italic">"{log.notes}"</span>}
                                     <Badge variant="outline" className={`${log.status === 'Consumed' ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : 'text-rose-700 bg-rose-50 border-rose-100'}`}>
                                         {log.status}
                                     </Badge>
@@ -917,20 +917,20 @@ export default function StaffPatientProtocol() {
                     <div className="grid grid-cols-2 gap-6 py-4">
                         {Object.entries(labCategories).map(([category, labs]) => (
                             <div key={category} className="space-y-3">
-                                <h4 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-1">{category}</h4>
+                                <h4 className="font-bold text-sm text-saivie-plum border-b border-saivie-border pb-1">{category}</h4>
                                 <div className="space-y-2">
                                     {labs.map(lab => (
                                         <div key={lab} className="flex items-center space-x-2">
                                             <input 
                                                 type="checkbox" 
                                                 id={`lab-${lab}`} 
-                                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                className="rounded border-saivie-border text-saivie-teal focus:ring-saivie-teal"
                                                 checked={selectedLabs.includes(lab)}
                                                 onChange={() => toggleLabSelection(lab)}
                                             />
                                             <label 
                                                 htmlFor={`lab-${lab}`} 
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-600"
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-saivie-plum"
                                             >
                                                 {lab}
                                             </label>

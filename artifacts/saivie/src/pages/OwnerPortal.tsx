@@ -378,30 +378,30 @@ export default function OwnerPortal() {
   };
 
   const categoryColors: Record<string, string> = {
-    "Rent": "bg-violet-100 text-violet-700",
+    "Rent": "bg-saivie-sage text-saivie-teal",
     "Salaries": "bg-blue-100 text-blue-700",
     "Utilities": "bg-amber-100 text-amber-700",
     "Supplies": "bg-emerald-100 text-emerald-700",
     "Equipment": "bg-cyan-100 text-cyan-700",
-    "Marketing": "bg-pink-100 text-pink-700",
+    "Marketing": "bg-saivie-blush text-saivie-plum",
     "Maintenance": "bg-orange-100 text-orange-700",
-    "Insurance": "bg-indigo-100 text-indigo-700",
-    "Other": "bg-slate-100 text-slate-700",
+    "Insurance": "bg-saivie-sage text-saivie-teal",
+    "Other": "bg-saivie-sage text-saivie-plum",
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 overflow-hidden">
-      <aside className={`bg-white border-r border-slate-200 flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? "w-64" : "w-20"}`}>
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="min-h-screen bg-saivie-surface-muted flex font-sans text-saivie-plum overflow-hidden">
+      <aside className={`bg-saivie-ivory border-r border-saivie-border flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? "w-64" : "w-20"}`}>
+        <div className="p-4 border-b border-saivie-border flex items-center justify-between">
           {sidebarOpen ? (
             <div className="flex items-center gap-2">
               <BrandLogo fallback="S" />
-              <span className="font-serif font-bold text-lg text-slate-800">Saivie</span>
+              <span className="font-serif font-bold text-lg text-saivie-plum">Saivie</span>
             </div>
           ) : (
             <BrandLogo fallback="S" className="w-8 h-8 mx-auto" />
           )}
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={() => setSidebarOpen(!sidebarOpen)} data-testid="btn-toggle-sidebar">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-saivie-plum" onClick={() => setSidebarOpen(!sidebarOpen)} data-testid="btn-toggle-sidebar">
             <Menu className="w-4 h-4" />
           </Button>
         </div>
@@ -411,7 +411,7 @@ export default function OwnerPortal() {
             <Button
               key={item.id}
               variant={activeView === item.id ? "secondary" : "ghost"}
-              className={`w-full justify-start ${!sidebarOpen ? "px-2" : ""} ${activeView === item.id ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-900"}`}
+              className={`w-full justify-start ${!sidebarOpen ? "px-2" : ""} ${activeView === item.id ? "bg-saivie-sage text-saivie-plum" : "text-saivie-plum hover:text-saivie-plum"}`}
               onClick={() => setActiveView(item.id)}
               data-testid={`nav-${item.id}`}
             >
@@ -424,41 +424,41 @@ export default function OwnerPortal() {
           ))}
         </div>
 
-        <div className="mt-auto p-4 border-t border-slate-100 space-y-2">
+        <div className="mt-auto p-4 border-t border-saivie-border space-y-2">
           <Link href="/">
-            <Button variant="ghost" className={`w-full justify-start text-slate-500 hover:text-slate-900 ${!sidebarOpen ? "px-2" : ""}`} data-testid="btn-back-home">
+            <Button variant="ghost" className={`w-full justify-start text-saivie-plum hover:text-saivie-plum ${!sidebarOpen ? "px-2" : ""}`} data-testid="btn-back-home">
               <ArrowLeft className={`w-4 h-4 ${sidebarOpen ? "mr-3" : ""}`} />
               {sidebarOpen && "Back to Home"}
             </Button>
           </Link>
           <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9 border border-slate-200">
-              <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-700 font-bold">OW</AvatarFallback>
+            <Avatar className="h-9 w-9 border border-saivie-border">
+              <AvatarFallback className="bg-gradient-to-br from-saivie-sage to-saivie-sage text-saivie-teal font-bold">OW</AvatarFallback>
             </Avatar>
             {sidebarOpen && (
               <div className="overflow-hidden">
-                <p className="text-sm font-medium text-slate-900 truncate">Clinic Owner</p>
-                <p className="text-xs text-slate-400 truncate">Administrator</p>
+                <p className="text-sm font-medium text-saivie-plum truncate">Clinic Owner</p>
+                <p className="text-xs text-saivie-plum truncate">Administrator</p>
               </div>
             )}
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50/50">
-        <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 z-10">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-saivie-surface-muted/50">
+        <header className="h-16 bg-saivie-ivory border-b border-saivie-border px-6 flex items-center justify-between shrink-0 z-10">
           <div className="flex items-center gap-4">
-            <div className="p-2 rounded-lg bg-indigo-50">
-              <Briefcase className="w-5 h-5 text-indigo-600" />
+            <div className="p-2 rounded-lg bg-saivie-surface-muted">
+              <Briefcase className="w-5 h-5 text-saivie-teal" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-900" data-testid="text-portal-title">Owner Portal</h1>
-              <p className="text-xs text-slate-500" data-testid="text-welcome">Welcome, Owner</p>
+              <h1 className="text-lg font-bold text-saivie-plum" data-testid="text-portal-title">Owner Portal</h1>
+              <p className="text-xs text-saivie-plum" data-testid="text-welcome">Welcome, Owner</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="icon" className="h-9 w-9 rounded-full border-slate-200 relative" data-testid="btn-notifications">
-              <Bell className="w-4 h-4 text-slate-500" />
+            <Button variant="outline" size="icon" className="h-9 w-9 rounded-full border-saivie-border relative" data-testid="btn-notifications">
+              <Bell className="w-4 h-4 text-saivie-plum" />
               {highRiskPatients.length > 0 && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white" />}
             </Button>
           </div>
@@ -469,34 +469,34 @@ export default function OwnerPortal() {
 
             {activeView === "overview" && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-overview-title">Business Overview</h2>
+                <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-overview-title">Business Overview</h2>
                 {inventoryAlertCount > 0 && (
                   <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3" data-testid="banner-inventory-alerts">
                     <p className="flex items-center gap-2 text-sm font-medium text-amber-800">
                       <AlertTriangle className="h-4 w-4" /> {inventoryAlertCount} inventory item{inventoryAlertCount > 1 ? "s" : ""} low, out of stock or expiring
                     </p>
-                    <Button size="sm" variant="outline" className="border-amber-300 bg-white text-amber-800" onClick={() => setActiveView("inventory")}>View inventory</Button>
+                    <Button size="sm" variant="outline" className="border-amber-300 bg-saivie-ivory text-amber-800" onClick={() => setActiveView("inventory")}>View inventory</Button>
                   </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {[
-                    { title: "Total Patients", value: dashboard.totalPatients || patients.length || 0, icon: Users, color: "from-blue-500 to-indigo-600", bg: "bg-blue-50", textColor: "text-blue-600" },
+                    { title: "Total Patients", value: dashboard.totalPatients || patients.length || 0, icon: Users, color: "from-blue-500 to-saivie-teal", bg: "bg-blue-50", textColor: "text-blue-600" },
                     { title: "Staff Present Today", value: dashboard.presentToday ?? presentCount, icon: UserCheck, color: "from-emerald-500 to-green-600", bg: "bg-emerald-50", textColor: "text-emerald-600", subtitle: `${dashboard.absentToday ?? absentCount} absent` },
-                    { title: "Monthly Revenue", value: formatINR(dashboard.monthlyRevenue || 0), icon: TrendingUp, color: "from-violet-500 to-purple-600", bg: "bg-violet-50", textColor: "text-violet-600", isString: true, subtitle: dashboard.monthlyReferralCommission ? `incl. ${formatINR(dashboard.monthlyReferralCommission)} referral commission` : undefined },
-                    { title: "Monthly Expenses", value: formatINR(dashboard.monthlyExpenses || totalExpenseAmount), icon: TrendingDown, color: "from-rose-500 to-pink-600", bg: "bg-rose-50", textColor: "text-rose-600", isString: true },
+                    { title: "Monthly Revenue", value: formatINR(dashboard.monthlyRevenue || 0), icon: TrendingUp, color: "from-saivie-teal to-saivie-teal", bg: "bg-saivie-surface-muted", textColor: "text-saivie-teal", isString: true, subtitle: dashboard.monthlyReferralCommission ? `incl. ${formatINR(dashboard.monthlyReferralCommission)} referral commission` : undefined },
+                    { title: "Monthly Expenses", value: formatINR(dashboard.monthlyExpenses || totalExpenseAmount), icon: TrendingDown, color: "from-rose-500 to-saivie-rose", bg: "bg-rose-50", textColor: "text-rose-600", isString: true },
                     { title: "Net Profit", value: formatINR(dashboard.netProfit ?? ((dashboard.monthlyRevenue || 0) - (dashboard.monthlyExpenses || totalExpenseAmount))), icon: IndianRupee, color: "from-amber-500 to-orange-600", bg: "bg-amber-50", textColor: "text-amber-600", isString: true, subtitle: dashboard.monthlyCostOfGoods ? `after ${formatINR(dashboard.monthlyCostOfGoods)} lab/product cost${dashboard.uncostedLines ? ` · ${dashboard.uncostedLines} billed item(s) have no B2B price` : ""}` : (dashboard.uncostedLines ? `${dashboard.uncostedLines} billed item(s) have no B2B price` : undefined) },
                     { title: "Today's Appointments", value: dashboard.todayAppointments || 0, icon: CalendarCheck, color: "from-cyan-500 to-teal-600", bg: "bg-cyan-50", textColor: "text-cyan-600" },
                   ].map((kpi, i) => (
                     <motion.div key={kpi.title} custom={i} variants={cardVariants} initial="hidden" animate="visible">
-                      <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow bg-white/80 backdrop-blur-sm" data-testid={`card-kpi-${i}`}>
+                      <Card className="border-saivie-border shadow-sm hover:shadow-md transition-shadow bg-saivie-ivory/80 backdrop-blur-sm" data-testid={`card-kpi-${i}`}>
                         <CardContent className="p-5">
                           <div className="flex items-start justify-between">
                             <div className="space-y-2">
-                              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{kpi.title}</p>
+                              <p className="text-xs font-medium text-saivie-plum uppercase tracking-wider">{kpi.title}</p>
                               <p className={`text-2xl font-bold ${kpi.textColor}`} data-testid={`value-kpi-${i}`}>
                                 {kpi.isString ? kpi.value : kpi.value.toLocaleString()}
                               </p>
-                              {kpi.subtitle && <p className="text-xs text-slate-400">{kpi.subtitle}</p>}
+                              {kpi.subtitle && <p className="text-xs text-saivie-plum">{kpi.subtitle}</p>}
                             </div>
                             <div className={`p-2.5 rounded-xl bg-gradient-to-br ${kpi.color} shadow-sm`}>
                               <kpi.icon className="w-5 h-5 text-white" />
@@ -510,10 +510,10 @@ export default function OwnerPortal() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <motion.div custom={6} variants={cardVariants} initial="hidden" animate="visible">
-                    <Card className="border-slate-200 shadow-sm" data-testid="card-revenue-comparison">
+                    <Card className="border-saivie-border shadow-sm" data-testid="card-revenue-comparison">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                          <Activity className="w-4 h-4 text-indigo-500" />
+                        <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-saivie-teal" />
                           Revenue vs Expenses
                         </CardTitle>
                       </CardHeader>
@@ -521,10 +521,10 @@ export default function OwnerPortal() {
                         <div className="space-y-3">
                           <div>
                             <div className="flex justify-between text-sm mb-1">
-                              <span className="text-slate-600">Revenue</span>
+                              <span className="text-saivie-plum">Revenue</span>
                               <span className="font-bold text-emerald-600">{formatINR(dashboard.monthlyRevenue || 0)}</span>
                             </div>
-                            <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-3 bg-saivie-sage rounded-full overflow-hidden">
                               <div
                                 className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-700"
                                 style={{ width: `${Math.min(100, ((dashboard.monthlyRevenue || 0) / Math.max(1, (dashboard.monthlyRevenue || 0) + (dashboard.monthlyExpenses || totalExpenseAmount))) * 100)}%` }}
@@ -533,10 +533,10 @@ export default function OwnerPortal() {
                           </div>
                           <div>
                             <div className="flex justify-between text-sm mb-1">
-                              <span className="text-slate-600">Expenses</span>
+                              <span className="text-saivie-plum">Expenses</span>
                               <span className="font-bold text-rose-600">{formatINR(dashboard.monthlyExpenses || totalExpenseAmount)}</span>
                             </div>
-                            <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-3 bg-saivie-sage rounded-full overflow-hidden">
                               <div
                                 className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all duration-700"
                                 style={{ width: `${Math.min(100, ((dashboard.monthlyExpenses || totalExpenseAmount) / Math.max(1, (dashboard.monthlyRevenue || 0) + (dashboard.monthlyExpenses || totalExpenseAmount))) * 100)}%` }}
@@ -545,13 +545,13 @@ export default function OwnerPortal() {
                           </div>
                           <div>
                             <div className="flex justify-between text-sm mb-1">
-                              <span className="text-slate-600">Lab & product cost (B2B)</span>
+                              <span className="text-saivie-plum">Lab & product cost (B2B)</span>
                               <span className="font-bold text-amber-600">{formatINR(dashboard.monthlyCostOfGoods || 0)}</span>
                             </div>
                           </div>
                         </div>
-                        <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
-                          <span className="text-sm text-slate-500">Net Profit</span>
+                        <div className="pt-3 border-t border-saivie-border flex justify-between items-center">
+                          <span className="text-sm text-saivie-plum">Net Profit</span>
                           <span className={`text-lg font-bold ${(dashboard.netProfit || 0) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
                             {formatINR(dashboard.netProfit ?? ((dashboard.monthlyRevenue || 0) - (dashboard.monthlyExpenses || totalExpenseAmount)))}
                           </span>
@@ -561,30 +561,30 @@ export default function OwnerPortal() {
                   </motion.div>
 
                   <motion.div custom={7} variants={cardVariants} initial="hidden" animate="visible">
-                    <Card className="border-slate-200 shadow-sm" data-testid="card-quick-stats">
+                    <Card className="border-saivie-border shadow-sm" data-testid="card-quick-stats">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                          <BarChart3 className="w-4 h-4 text-indigo-500" />
+                        <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
+                          <BarChart3 className="w-4 h-4 text-saivie-teal" />
                           Quick Stats
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                            <p className="text-xs text-slate-500">Total Staff</p>
-                            <p className="text-xl font-bold text-slate-900" data-testid="value-total-staff">{dashboard.totalStaff || 0}</p>
+                          <div className="p-3 rounded-lg bg-saivie-surface-muted border border-saivie-border">
+                            <p className="text-xs text-saivie-plum">Total Staff</p>
+                            <p className="text-xl font-bold text-saivie-plum" data-testid="value-total-staff">{dashboard.totalStaff || 0}</p>
                           </div>
-                          <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                            <p className="text-xs text-slate-500">Total Appointments</p>
-                            <p className="text-xl font-bold text-slate-900" data-testid="value-total-appointments">{dashboard.totalAppointments || appointments.length}</p>
+                          <div className="p-3 rounded-lg bg-saivie-surface-muted border border-saivie-border">
+                            <p className="text-xs text-saivie-plum">Total Appointments</p>
+                            <p className="text-xl font-bold text-saivie-plum" data-testid="value-total-appointments">{dashboard.totalAppointments || appointments.length}</p>
                           </div>
-                          <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                            <p className="text-xs text-slate-500">High Risk Patients</p>
+                          <div className="p-3 rounded-lg bg-saivie-surface-muted border border-saivie-border">
+                            <p className="text-xs text-saivie-plum">High Risk Patients</p>
                             <p className="text-xl font-bold text-rose-600" data-testid="value-high-risk">{highRiskPatients.length}</p>
                           </div>
-                          <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                            <p className="text-xs text-slate-500">Expense Categories</p>
-                            <p className="text-xl font-bold text-slate-900">{expenseCategories.length}</p>
+                          <div className="p-3 rounded-lg bg-saivie-surface-muted border border-saivie-border">
+                            <p className="text-xs text-saivie-plum">Expense Categories</p>
+                            <p className="text-xl font-bold text-saivie-plum">{expenseCategories.length}</p>
                           </div>
                         </div>
                       </CardContent>
@@ -596,7 +596,7 @@ export default function OwnerPortal() {
 
             {activeView === "attendance" && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-attendance-title">Staff Attendance</h2>
+                <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-attendance-title">Staff Attendance</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
@@ -605,13 +605,13 @@ export default function OwnerPortal() {
                     { label: "On Leave Today", value: leaveCount, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
                   ].map((stat, i) => (
                     <motion.div key={stat.label} custom={i} variants={cardVariants} initial="hidden" animate="visible">
-                      <Card className="border-slate-200 shadow-sm" data-testid={`card-attendance-stat-${i}`}>
+                      <Card className="border-saivie-border shadow-sm" data-testid={`card-attendance-stat-${i}`}>
                         <CardContent className="p-4 flex items-center gap-4">
                           <div className={`p-2.5 rounded-xl ${stat.bg}`}>
                             <stat.icon className={`w-5 h-5 ${stat.color}`} />
                           </div>
                           <div>
-                            <p className="text-xs text-slate-500">{stat.label}</p>
+                            <p className="text-xs text-saivie-plum">{stat.label}</p>
                             <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
                           </div>
                         </CardContent>
@@ -620,38 +620,38 @@ export default function OwnerPortal() {
                   ))}
                 </div>
 
-                <Card className="border-slate-200 shadow-sm" data-testid="card-attendance-table">
+                <Card className="border-saivie-border shadow-sm" data-testid="card-attendance-table">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">Attendance Records</CardTitle>
+                    <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider">Attendance Records</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="rounded-lg border border-slate-200 overflow-hidden">
+                    <div className="rounded-lg border border-saivie-border overflow-hidden">
                       <Table>
                         <TableHeader>
-                          <TableRow className="bg-slate-50">
-                            <TableHead className="text-xs font-bold text-slate-500">Employee</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500">Role</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500">Date</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500">Clock In</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500">Clock Out</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500">Hours</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500">Status</TableHead>
+                          <TableRow className="bg-saivie-surface-muted">
+                            <TableHead className="text-xs font-bold text-saivie-plum">Employee</TableHead>
+                            <TableHead className="text-xs font-bold text-saivie-plum">Role</TableHead>
+                            <TableHead className="text-xs font-bold text-saivie-plum">Date</TableHead>
+                            <TableHead className="text-xs font-bold text-saivie-plum">Clock In</TableHead>
+                            <TableHead className="text-xs font-bold text-saivie-plum">Clock Out</TableHead>
+                            <TableHead className="text-xs font-bold text-saivie-plum">Hours</TableHead>
+                            <TableHead className="text-xs font-bold text-saivie-plum">Status</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {attendance.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={7} className="text-center py-8 text-slate-400">No attendance records found for this period.</TableCell>
+                              <TableCell colSpan={7} className="text-center py-8 text-saivie-plum">No attendance records found for this period.</TableCell>
                             </TableRow>
                           ) : (
                             attendance.map((record: any, idx: number) => (
-                              <TableRow key={record.id || idx} className="hover:bg-slate-50/50" data-testid={`row-attendance-${idx}`}>
-                                <TableCell className="font-medium text-slate-900 text-sm">{record.employeeName}</TableCell>
-                                <TableCell className="text-sm text-slate-600">{record.role}</TableCell>
-                                <TableCell className="text-sm text-slate-600">{record.date}</TableCell>
-                                <TableCell className="text-sm text-slate-600">{record.clockIn || "—"}</TableCell>
-                                <TableCell className="text-sm text-slate-600">{record.clockOut || "—"}</TableCell>
-                                <TableCell className="text-sm text-slate-600">{record.hoursWorked ? `${record.hoursWorked}h` : "—"}</TableCell>
+                              <TableRow key={record.id || idx} className="hover:bg-saivie-surface-muted/50" data-testid={`row-attendance-${idx}`}>
+                                <TableCell className="font-medium text-saivie-plum text-sm">{record.employeeName}</TableCell>
+                                <TableCell className="text-sm text-saivie-plum">{record.role}</TableCell>
+                                <TableCell className="text-sm text-saivie-plum">{record.date}</TableCell>
+                                <TableCell className="text-sm text-saivie-plum">{record.clockIn || "—"}</TableCell>
+                                <TableCell className="text-sm text-saivie-plum">{record.clockOut || "—"}</TableCell>
+                                <TableCell className="text-sm text-saivie-plum">{record.hoursWorked ? `${record.hoursWorked}h` : "—"}</TableCell>
                                 <TableCell>{statusBadge(record.status)}</TableCell>
                               </TableRow>
                             ))
@@ -666,22 +666,22 @@ export default function OwnerPortal() {
 
             {activeView === "finance" && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-finance-title">Financial Overview</h2>
+                <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-finance-title">Financial Overview</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
                     { label: "Total Spent This Month", value: formatINR(totalExpenseAmount), color: "text-rose-600", bg: "bg-rose-50", icon: IndianRupee },
-                    { label: "Biggest Category", value: biggestCategory ? `${biggestCategory.name} (${formatINR(biggestCategory.total)})` : "N/A", color: "text-violet-600", bg: "bg-violet-50", icon: BarChart3, isString: true },
+                    { label: "Biggest Category", value: biggestCategory ? `${biggestCategory.name} (${formatINR(biggestCategory.total)})` : "N/A", color: "text-saivie-teal", bg: "bg-saivie-surface-muted", icon: BarChart3, isString: true },
                     { label: "Avg. Daily Expense", value: formatINR(avgDailyExpense), color: "text-amber-600", bg: "bg-amber-50", icon: TrendingDown },
                   ].map((stat, i) => (
                     <motion.div key={stat.label} custom={i} variants={cardVariants} initial="hidden" animate="visible">
-                      <Card className="border-slate-200 shadow-sm" data-testid={`card-finance-stat-${i}`}>
+                      <Card className="border-saivie-border shadow-sm" data-testid={`card-finance-stat-${i}`}>
                         <CardContent className="p-4 flex items-center gap-4">
                           <div className={`p-2.5 rounded-xl ${stat.bg}`}>
                             <stat.icon className={`w-5 h-5 ${stat.color}`} />
                           </div>
                           <div>
-                            <p className="text-xs text-slate-500">{stat.label}</p>
+                            <p className="text-xs text-saivie-plum">{stat.label}</p>
                             <p className={`text-lg font-bold ${stat.color}`}>{stat.value}</p>
                           </div>
                         </CardContent>
@@ -691,71 +691,71 @@ export default function OwnerPortal() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                  <Card className="border-slate-200 shadow-sm" data-testid="card-category-breakdown">
+                  <Card className="border-saivie-border shadow-sm" data-testid="card-category-breakdown">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">Category Breakdown</CardTitle>
+                      <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider">Category Breakdown</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
                       {expenseCategories.length === 0 ? (
-                        <p className="text-sm text-slate-400 py-4 text-center">No expenses recorded.</p>
+                        <p className="text-sm text-saivie-plum py-4 text-center">No expenses recorded.</p>
                       ) : (
                         expenseCategories.map((cat) => (
                           <button
                             key={cat.name}
-                            className={`w-full flex items-center justify-between p-2.5 rounded-lg border transition-colors ${categoryFilter === cat.name ? "border-indigo-300 bg-indigo-50" : "border-slate-100 hover:bg-slate-50"}`}
+                            className={`w-full flex items-center justify-between p-2.5 rounded-lg border transition-colors ${categoryFilter === cat.name ? "border-saivie-border bg-saivie-surface-muted" : "border-saivie-border hover:bg-saivie-surface-muted"}`}
                             onClick={() => setCategoryFilter(categoryFilter === cat.name ? "all" : cat.name)}
                             data-testid={`btn-category-${cat.name}`}
                           >
                             <Badge className={categoryColors[cat.name] || categoryColors["Other"]}>{cat.name}</Badge>
-                            <span className="text-sm font-bold text-slate-700">{formatINR(cat.total)}</span>
+                            <span className="text-sm font-bold text-saivie-plum">{formatINR(cat.total)}</span>
                           </button>
                         ))
                       )}
                       {categoryFilter !== "all" && (
-                        <Button variant="ghost" size="sm" className="w-full text-xs text-slate-500" onClick={() => setCategoryFilter("all")} data-testid="btn-clear-filter">
+                        <Button variant="ghost" size="sm" className="w-full text-xs text-saivie-plum" onClick={() => setCategoryFilter("all")} data-testid="btn-clear-filter">
                           <Filter className="w-3 h-3 mr-1" /> Clear Filter
                         </Button>
                       )}
                     </CardContent>
                   </Card>
 
-                  <Card className="border-slate-200 shadow-sm lg:col-span-3" data-testid="card-expenses-table">
+                  <Card className="border-saivie-border shadow-sm lg:col-span-3" data-testid="card-expenses-table">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                        <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider">
                           Expenses {categoryFilter !== "all" && <Badge variant="outline" className="ml-2 text-xs">{categoryFilter}</Badge>}
                         </CardTitle>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="rounded-lg border border-slate-200 overflow-hidden">
+                      <div className="rounded-lg border border-saivie-border overflow-hidden">
                         <Table>
                           <TableHeader>
-                            <TableRow className="bg-slate-50">
-                              <TableHead className="text-xs font-bold text-slate-500">Date</TableHead>
-                              <TableHead className="text-xs font-bold text-slate-500">Category</TableHead>
-                              <TableHead className="text-xs font-bold text-slate-500">Description</TableHead>
-                              <TableHead className="text-xs font-bold text-slate-500">Amount</TableHead>
-                              <TableHead className="text-xs font-bold text-slate-500">Vendor</TableHead>
-                              <TableHead className="text-xs font-bold text-slate-500">Payment</TableHead>
-                              <TableHead className="text-xs font-bold text-slate-500">Approved By</TableHead>
+                            <TableRow className="bg-saivie-surface-muted">
+                              <TableHead className="text-xs font-bold text-saivie-plum">Date</TableHead>
+                              <TableHead className="text-xs font-bold text-saivie-plum">Category</TableHead>
+                              <TableHead className="text-xs font-bold text-saivie-plum">Description</TableHead>
+                              <TableHead className="text-xs font-bold text-saivie-plum">Amount</TableHead>
+                              <TableHead className="text-xs font-bold text-saivie-plum">Vendor</TableHead>
+                              <TableHead className="text-xs font-bold text-saivie-plum">Payment</TableHead>
+                              <TableHead className="text-xs font-bold text-saivie-plum">Approved By</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {filteredExpenses.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={7} className="text-center py-8 text-slate-400">No expenses found.</TableCell>
+                                <TableCell colSpan={7} className="text-center py-8 text-saivie-plum">No expenses found.</TableCell>
                               </TableRow>
                             ) : (
                               filteredExpenses.map((exp: any, idx: number) => (
-                                <TableRow key={exp.id || idx} className="hover:bg-slate-50/50" data-testid={`row-expense-${idx}`}>
-                                  <TableCell className="text-sm text-slate-600">{exp.date}</TableCell>
+                                <TableRow key={exp.id || idx} className="hover:bg-saivie-surface-muted/50" data-testid={`row-expense-${idx}`}>
+                                  <TableCell className="text-sm text-saivie-plum">{exp.date}</TableCell>
                                   <TableCell><Badge className={categoryColors[exp.category] || categoryColors["Other"]}>{exp.category}</Badge></TableCell>
-                                  <TableCell className="text-sm text-slate-900 max-w-[200px] truncate">{exp.description}</TableCell>
-                                  <TableCell className="text-sm font-bold text-slate-900">{formatINR(exp.amount)}</TableCell>
-                                  <TableCell className="text-sm text-slate-600">{exp.vendor || "—"}</TableCell>
-                                  <TableCell className="text-sm text-slate-600">{exp.paymentMethod || "—"}</TableCell>
-                                  <TableCell className="text-sm text-slate-600">{exp.approvedBy || "—"}</TableCell>
+                                  <TableCell className="text-sm text-saivie-plum max-w-[200px] truncate">{exp.description}</TableCell>
+                                  <TableCell className="text-sm font-bold text-saivie-plum">{formatINR(exp.amount)}</TableCell>
+                                  <TableCell className="text-sm text-saivie-plum">{exp.vendor || "—"}</TableCell>
+                                  <TableCell className="text-sm text-saivie-plum">{exp.paymentMethod || "—"}</TableCell>
+                                  <TableCell className="text-sm text-saivie-plum">{exp.approvedBy || "—"}</TableCell>
                                 </TableRow>
                               ))
                             )}
@@ -770,13 +770,13 @@ export default function OwnerPortal() {
 
             {activeView === "alerts" && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-alerts-title">Alerts & Flags</h2>
+                <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-alerts-title">Alerts & Flags</h2>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <motion.div custom={0} variants={cardVariants} initial="hidden" animate="visible">
-                    <Card className="border-slate-200 shadow-sm border-l-4 border-l-amber-400" data-testid="card-lab-alerts">
+                    <Card className="border-saivie-border shadow-sm border-l-4 border-l-amber-400" data-testid="card-lab-alerts">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                        <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
                           <AlertTriangle className="w-4 h-4 text-amber-500" />
                           Lab Report Alerts
                         </CardTitle>
@@ -792,9 +792,9 @@ export default function OwnerPortal() {
                   </motion.div>
 
                   <motion.div custom={1} variants={cardVariants} initial="hidden" animate="visible">
-                    <Card className="border-slate-200 shadow-sm border-l-4 border-l-rose-400" data-testid="card-risk-flags">
+                    <Card className="border-saivie-border shadow-sm border-l-4 border-l-rose-400" data-testid="card-risk-flags">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                        <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
                           <Shield className="w-4 h-4 text-rose-500" />
                           Patient Risk Flags ({highRiskPatients.length})
                         </CardTitle>
@@ -815,8 +815,8 @@ export default function OwnerPortal() {
                                     </AvatarFallback>
                                   </Avatar>
                                   <div>
-                                    <p className="text-sm font-medium text-slate-900">{p.name}</p>
-                                    <p className="text-xs text-slate-500">{p.type || "Patient"} · {p.phone || "No phone"}</p>
+                                    <p className="text-sm font-medium text-saivie-plum">{p.name}</p>
+                                    <p className="text-xs text-saivie-plum">{p.type || "Patient"} · {p.phone || "No phone"}</p>
                                   </div>
                                 </div>
                                 <Badge className="bg-rose-100 text-rose-700 border-rose-200">High Risk</Badge>
@@ -833,20 +833,20 @@ export default function OwnerPortal() {
 
             {activeView === "performance" && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-performance-title">Performance Metrics</h2>
+                <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-performance-title">Performance Metrics</h2>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <motion.div custom={0} variants={cardVariants} initial="hidden" animate="visible">
-                    <Card className="border-slate-200 shadow-sm" data-testid="card-appointments-per-clinician">
+                    <Card className="border-saivie-border shadow-sm" data-testid="card-appointments-per-clinician">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                          <Stethoscope className="w-4 h-4 text-indigo-500" />
+                        <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
+                          <Stethoscope className="w-4 h-4 text-saivie-teal" />
                           Appointments per Clinician
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         {appointmentsByProvider.length === 0 ? (
-                          <p className="text-sm text-slate-400 py-4 text-center">No appointment data available.</p>
+                          <p className="text-sm text-saivie-plum py-4 text-center">No appointment data available.</p>
                         ) : (
                           <div className="space-y-3">
                             {appointmentsByProvider.map((prov, idx) => {
@@ -854,12 +854,12 @@ export default function OwnerPortal() {
                               return (
                                 <div key={prov.name} className="space-y-1" data-testid={`row-provider-${idx}`}>
                                   <div className="flex justify-between text-sm">
-                                    <span className="text-slate-700 font-medium truncate max-w-[200px]">{prov.name}</span>
-                                    <span className="font-bold text-indigo-600">{prov.count}</span>
+                                    <span className="text-saivie-plum font-medium truncate max-w-[200px]">{prov.name}</span>
+                                    <span className="font-bold text-saivie-teal">{prov.count}</span>
                                   </div>
-                                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                  <div className="h-2 bg-saivie-sage rounded-full overflow-hidden">
                                     <motion.div
-                                      className="h-full bg-gradient-to-r from-indigo-400 to-indigo-600 rounded-full"
+                                      className="h-full bg-gradient-to-r from-saivie-teal to-saivie-teal rounded-full"
                                       initial={{ width: 0 }}
                                       animate={{ width: `${(prov.count / maxCount) * 100}%` }}
                                       transition={{ duration: 0.6, delay: idx * 0.1 }}
@@ -875,10 +875,10 @@ export default function OwnerPortal() {
                   </motion.div>
 
                   <motion.div custom={1} variants={cardVariants} initial="hidden" animate="visible">
-                    <Card className="border-slate-200 shadow-sm" data-testid="card-patient-load">
+                    <Card className="border-saivie-border shadow-sm" data-testid="card-patient-load">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                          <Users className="w-4 h-4 text-indigo-500" />
+                        <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
+                          <Users className="w-4 h-4 text-saivie-teal" />
                           Patient Load Distribution
                         </CardTitle>
                       </CardHeader>
@@ -890,14 +890,14 @@ export default function OwnerPortal() {
                             typeCounts[type] = (typeCounts[type] || 0) + 1;
                           });
                           const entries = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
-                          const colors = ["bg-indigo-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500", "bg-cyan-500", "bg-violet-500", "bg-pink-500", "bg-teal-500"];
+                          const colors = ["bg-saivie-teal", "bg-emerald-500", "bg-amber-500", "bg-rose-500", "bg-cyan-500", "bg-saivie-teal", "bg-saivie-rose", "bg-saivie-teal"];
                           const total = patients.length || 1;
 
-                          if (entries.length === 0) return <p className="text-sm text-slate-400 py-4 text-center">No patient data available.</p>;
+                          if (entries.length === 0) return <p className="text-sm text-saivie-plum py-4 text-center">No patient data available.</p>;
 
                           return (
                             <div className="space-y-4">
-                              <div className="h-4 rounded-full overflow-hidden flex bg-slate-100">
+                              <div className="h-4 rounded-full overflow-hidden flex bg-saivie-sage">
                                 {entries.map(([type, count], i) => (
                                   <motion.div
                                     key={type}
@@ -913,8 +913,8 @@ export default function OwnerPortal() {
                                 {entries.map(([type, count], i) => (
                                   <div key={type} className="flex items-center gap-2 text-sm" data-testid={`legend-type-${i}`}>
                                     <div className={`w-3 h-3 rounded-full ${colors[i % colors.length]}`} />
-                                    <span className="text-slate-600 truncate">{type}</span>
-                                    <span className="font-bold text-slate-900 ml-auto">{count}</span>
+                                    <span className="text-saivie-plum truncate">{type}</span>
+                                    <span className="font-bold text-saivie-plum ml-auto">{count}</span>
                                   </div>
                                 ))}
                               </div>
@@ -927,10 +927,10 @@ export default function OwnerPortal() {
                 </div>
 
                 <motion.div custom={2} variants={cardVariants} initial="hidden" animate="visible">
-                  <Card className="border-slate-200 shadow-sm" data-testid="card-attendance-performance">
+                  <Card className="border-saivie-border shadow-sm" data-testid="card-attendance-performance">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-indigo-500" />
+                      <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-saivie-teal" />
                         Attendance Summary
                       </CardTitle>
                     </CardHeader>
@@ -963,19 +963,19 @@ export default function OwnerPortal() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-900 font-serif">Service Packages</h2>
-                    <p className="text-sm text-slate-500 mt-1">Create bundled packages composed of multiple services.</p>
+                    <h2 className="text-2xl font-bold text-saivie-plum font-serif">Service Packages</h2>
+                    <p className="text-sm text-saivie-plum mt-1">Create bundled packages composed of multiple services.</p>
                   </div>
-                  <Button onClick={() => { resetPackageForm(); setShowPackageForm(true); }} className="bg-indigo-600 hover:bg-indigo-700">
+                  <Button onClick={() => { resetPackageForm(); setShowPackageForm(true); }} className="bg-saivie-teal hover:bg-saivie-teal">
                     <Plus className="w-4 h-4 mr-2" /> New Package
                   </Button>
                 </div>
 
                 {/* Package Builder Form */}
                 {showPackageForm && (
-                  <Card className="border-indigo-200 shadow-sm border-l-4 border-l-indigo-500">
+                  <Card className="border-saivie-border shadow-sm border-l-4 border-l-indigo-500">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                      <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider">
                         {editingPackage ? "Edit Package" : "Build New Package"}
                       </CardTitle>
                     </CardHeader>
@@ -983,28 +983,28 @@ export default function OwnerPortal() {
                       {/* Package meta */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="text-xs font-medium text-slate-500 mb-1 block">Package Name *</label>
-                          <input className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder='e.g. Moms Bliss Package' value={pkgName} onChange={e => setPkgName(e.target.value)} />
+                          <label className="text-xs font-medium text-saivie-plum mb-1 block">Package Name *</label>
+                          <input className="w-full border border-saivie-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-saivie-teal" placeholder='e.g. Moms Bliss Package' value={pkgName} onChange={e => setPkgName(e.target.value)} />
                         </div>
                         <div>
-                          <label className="text-xs font-medium text-slate-500 mb-1 block">Category *</label>
-                          <input className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder='e.g. Maternity, Fertility, Wellness' value={pkgCategory} onChange={e => setPkgCategory(e.target.value)} list="pkg-categories" />
+                          <label className="text-xs font-medium text-saivie-plum mb-1 block">Category *</label>
+                          <input className="w-full border border-saivie-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-saivie-teal" placeholder='e.g. Maternity, Fertility, Wellness' value={pkgCategory} onChange={e => setPkgCategory(e.target.value)} list="pkg-categories" />
                           <datalist id="pkg-categories">
                             {["Maternity", "Fertility", "Wellness", "Postpartum", "IVF", "Full Body"].map(c => <option key={c} value={c} />)}
                           </datalist>
                         </div>
                         <div>
-                          <label className="text-xs font-medium text-slate-500 mb-1 block">Description</label>
-                          <input className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder='Brief description of what this package covers' value={pkgDescription} onChange={e => setPkgDescription(e.target.value)} />
+                          <label className="text-xs font-medium text-saivie-plum mb-1 block">Description</label>
+                          <input className="w-full border border-saivie-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-saivie-teal" placeholder='Brief description of what this package covers' value={pkgDescription} onChange={e => setPkgDescription(e.target.value)} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="text-xs font-medium text-slate-500 mb-1 block">Package Price (₹) *</label>
-                            <input type="number" className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder='0' value={pkgPrice} onChange={e => setPkgPrice(e.target.value)} />
+                            <label className="text-xs font-medium text-saivie-plum mb-1 block">Package Price (₹) *</label>
+                            <input type="number" className="w-full border border-saivie-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-saivie-teal" placeholder='0' value={pkgPrice} onChange={e => setPkgPrice(e.target.value)} />
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-slate-500 mb-1 block">Validity (days)</label>
-                            <input type="number" className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" value={pkgValidity} onChange={e => setPkgValidity(e.target.value)} />
+                            <label className="text-xs font-medium text-saivie-plum mb-1 block">Validity (days)</label>
+                            <input type="number" className="w-full border border-saivie-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-saivie-teal" value={pkgValidity} onChange={e => setPkgValidity(e.target.value)} />
                           </div>
                         </div>
                       </div>
@@ -1012,10 +1012,10 @@ export default function OwnerPortal() {
                       {/* Composed services */}
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <label className="text-xs font-medium text-slate-700">Included Services</label>
+                          <label className="text-xs font-medium text-saivie-plum">Included Services</label>
                           {pkgTotalValue > 0 && (
-                            <span className="text-xs text-slate-500">
-                              À la carte value: <span className="font-semibold text-slate-700">₹{pkgTotalValue.toLocaleString("en-IN")}</span>
+                            <span className="text-xs text-saivie-plum">
+                              À la carte value: <span className="font-semibold text-saivie-plum">₹{pkgTotalValue.toLocaleString("en-IN")}</span>
                               {pkgSavings > 0 && <span className="ml-2 text-emerald-600 font-semibold">Save ₹{pkgSavings.toLocaleString("en-IN")}</span>}
                             </span>
                           )}
@@ -1023,15 +1023,15 @@ export default function OwnerPortal() {
                         {pkgItems.length > 0 && (
                           <div className="space-y-2 mb-3">
                             {pkgItems.map((item, idx) => (
-                              <div key={item.catalogItemId} className="flex items-center gap-3 bg-indigo-50/60 border border-indigo-100 rounded-lg px-3 py-2">
+                              <div key={item.catalogItemId} className="flex items-center gap-3 bg-saivie-surface-muted/60 border border-saivie-border rounded-lg px-3 py-2">
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-slate-800 truncate">{item.name}</p>
-                                  <p className="text-xs text-slate-500">₹{item.unitPrice.toLocaleString("en-IN")} each</p>
+                                  <p className="text-sm font-medium text-saivie-plum truncate">{item.name}</p>
+                                  <p className="text-xs text-saivie-plum">₹{item.unitPrice.toLocaleString("en-IN")} each</p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <button className="w-6 h-6 rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 text-xs flex items-center justify-center" onClick={() => setPkgItems(items => items.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))}>−</button>
+                                  <button className="w-6 h-6 rounded border border-saivie-border bg-saivie-ivory text-saivie-plum hover:bg-saivie-sage text-xs flex items-center justify-center" onClick={() => setPkgItems(items => items.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))}>−</button>
                                   <span className="text-sm font-semibold w-5 text-center">{item.quantity}</span>
-                                  <button className="w-6 h-6 rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 text-xs flex items-center justify-center" onClick={() => setPkgItems(items => items.map((it, i) => i === idx ? { ...it, quantity: it.quantity + 1 } : it))}>+</button>
+                                  <button className="w-6 h-6 rounded border border-saivie-border bg-saivie-ivory text-saivie-plum hover:bg-saivie-sage text-xs flex items-center justify-center" onClick={() => setPkgItems(items => items.map((it, i) => i === idx ? { ...it, quantity: it.quantity + 1 } : it))}>+</button>
                                 </div>
                                 <button className="text-rose-400 hover:text-rose-600 ml-1" onClick={() => setPkgItems(items => items.filter((_, i) => i !== idx))}><X className="w-4 h-4" /></button>
                               </div>
@@ -1039,19 +1039,19 @@ export default function OwnerPortal() {
                           </div>
                         )}
                         {/* Catalog picker */}
-                        <div className="border border-dashed border-slate-200 rounded-lg p-3 bg-slate-50">
+                        <div className="border border-dashed border-saivie-border rounded-lg p-3 bg-saivie-surface-muted">
                           <div className="relative mb-2">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                            <input className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400" placeholder="Search catalog services to add..." value={pkgCatalogSearch} onChange={e => setPkgCatalogSearch(e.target.value)} />
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-saivie-plum" />
+                            <input className="w-full pl-8 pr-3 py-1.5 text-xs border border-saivie-border rounded-md bg-saivie-ivory focus:outline-none focus:ring-1 focus:ring-saivie-teal" placeholder="Search catalog services to add..." value={pkgCatalogSearch} onChange={e => setPkgCatalogSearch(e.target.value)} />
                           </div>
                           <div className="max-h-40 overflow-y-auto space-y-1">
                             {filteredCatalogForPkg.slice(0, 20).map((c: any) => (
-                              <button key={c.id} onClick={() => { setPkgItems(items => [...items, { catalogItemId: c.id, quantity: 1, name: c.name, unitPrice: c.price }]); setPkgCatalogSearch(""); }} className="w-full text-left flex items-center justify-between px-2 py-1.5 rounded hover:bg-indigo-50 group">
-                                <span className="text-xs text-slate-700 group-hover:text-indigo-700">{c.name} <span className="text-slate-400">— {c.category}</span></span>
-                                <span className="text-xs font-semibold text-slate-600">₹{(c.price || 0).toLocaleString("en-IN")} <Plus className="w-3 h-3 inline text-indigo-500" /></span>
+                              <button key={c.id} onClick={() => { setPkgItems(items => [...items, { catalogItemId: c.id, quantity: 1, name: c.name, unitPrice: c.price }]); setPkgCatalogSearch(""); }} className="w-full text-left flex items-center justify-between px-2 py-1.5 rounded hover:bg-saivie-surface-muted group">
+                                <span className="text-xs text-saivie-plum group-hover:text-saivie-teal">{c.name} <span className="text-saivie-plum">— {c.category}</span></span>
+                                <span className="text-xs font-semibold text-saivie-plum">₹{(c.price || 0).toLocaleString("en-IN")} <Plus className="w-3 h-3 inline text-saivie-teal" /></span>
                               </button>
                             ))}
-                            {filteredCatalogForPkg.length === 0 && <p className="text-xs text-slate-400 text-center py-2">No matching catalog items</p>}
+                            {filteredCatalogForPkg.length === 0 && <p className="text-xs text-saivie-plum text-center py-2">No matching catalog items</p>}
                           </div>
                         </div>
                       </div>
@@ -1059,7 +1059,7 @@ export default function OwnerPortal() {
                       <div className="flex justify-end gap-2 pt-2">
                         <Button variant="outline" onClick={() => { setShowPackageForm(false); resetPackageForm(); }}>Cancel</Button>
                         <Button
-                          className="bg-indigo-600 hover:bg-indigo-700"
+                          className="bg-saivie-teal hover:bg-saivie-teal"
                           disabled={!pkgName || !pkgCategory || !pkgPrice}
                           onClick={() => {
                             const payload = {
@@ -1082,11 +1082,11 @@ export default function OwnerPortal() {
 
                 {/* Package list */}
                 {servicePackagesList.length === 0 && !showPackageForm && (
-                  <Card className="border-dashed border-slate-200">
+                  <Card className="border-dashed border-saivie-border">
                     <CardContent className="py-16 text-center">
                       <Layers className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                      <p className="text-slate-500 font-medium">No packages yet</p>
-                      <p className="text-xs text-slate-400 mt-1">Create your first bundled service package above.</p>
+                      <p className="text-saivie-plum font-medium">No packages yet</p>
+                      <p className="text-xs text-saivie-plum mt-1">Create your first bundled service package above.</p>
                     </CardContent>
                   </Card>
                 )}
@@ -1096,21 +1096,21 @@ export default function OwnerPortal() {
                     const isExpanded = expandedPackage === pkg.id;
                     const cachedItems = pkgItemsCache[pkg.id];
                     return (
-                      <Card key={pkg.id} className={`border-slate-200 shadow-sm transition-all ${pkg.isActive === false ? "opacity-60" : ""}`}>
+                      <Card key={pkg.id} className={`border-saivie-border shadow-sm transition-all ${pkg.isActive === false ? "opacity-60" : ""}`}>
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-slate-900">{pkg.name}</span>
-                                <Badge className={pkg.isActive !== false ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200"}>
+                                <span className="font-bold text-saivie-plum">{pkg.name}</span>
+                                <Badge className={pkg.isActive !== false ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-saivie-sage text-saivie-plum border-saivie-border"}>
                                   {pkg.isActive !== false ? "Active" : "Inactive"}
                                 </Badge>
-                                <span className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full px-2 py-0.5">{pkg.category}</span>
+                                <span className="text-xs bg-saivie-surface-muted text-saivie-teal border border-saivie-border rounded-full px-2 py-0.5">{pkg.category}</span>
                               </div>
-                              {pkg.description && <p className="text-xs text-slate-500 mt-1">{pkg.description}</p>}
+                              {pkg.description && <p className="text-xs text-saivie-plum mt-1">{pkg.description}</p>}
                               <div className="flex items-center gap-4 mt-2">
-                                <span className="text-lg font-bold text-indigo-700">₹{(pkg.packagePrice || 0).toLocaleString("en-IN")}</span>
-                                {pkg.validityDays && <span className="text-xs text-slate-400 flex items-center gap-1"><Tag className="w-3 h-3" />Valid {pkg.validityDays} days</span>}
+                                <span className="text-lg font-bold text-saivie-teal">₹{(pkg.packagePrice || 0).toLocaleString("en-IN")}</span>
+                                {pkg.validityDays && <span className="text-xs text-saivie-plum flex items-center gap-1"><Tag className="w-3 h-3" />Valid {pkg.validityDays} days</span>}
                               </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
@@ -1126,21 +1126,21 @@ export default function OwnerPortal() {
                           </div>
 
                           {isExpanded && (
-                            <div className="mt-4 pt-4 border-t border-slate-100">
-                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Included Services</p>
+                            <div className="mt-4 pt-4 border-t border-saivie-border">
+                              <p className="text-xs font-semibold text-saivie-plum uppercase tracking-wider mb-2">Included Services</p>
                               {!cachedItems ? (
-                                <p className="text-xs text-slate-400">Loading…</p>
+                                <p className="text-xs text-saivie-plum">Loading…</p>
                               ) : cachedItems.length === 0 ? (
-                                <p className="text-xs text-slate-400 italic">No services composed yet. Edit to add services.</p>
+                                <p className="text-xs text-saivie-plum italic">No services composed yet. Edit to add services.</p>
                               ) : (
                                 <div className="space-y-1.5">
                                   {cachedItems.map((item: any) => (
-                                    <div key={item.id} className="flex items-center justify-between text-sm bg-slate-50 rounded px-3 py-1.5">
-                                      <span className="text-slate-700">{item.name} {item.quantity > 1 && <span className="text-xs text-slate-400">× {item.quantity}</span>}</span>
-                                      <span className="text-xs text-slate-500 font-medium">₹{((item.unitPrice || 0) * item.quantity).toLocaleString("en-IN")}</span>
+                                    <div key={item.id} className="flex items-center justify-between text-sm bg-saivie-surface-muted rounded px-3 py-1.5">
+                                      <span className="text-saivie-plum">{item.name} {item.quantity > 1 && <span className="text-xs text-saivie-plum">× {item.quantity}</span>}</span>
+                                      <span className="text-xs text-saivie-plum font-medium">₹{((item.unitPrice || 0) * item.quantity).toLocaleString("en-IN")}</span>
                                     </div>
                                   ))}
-                                  <div className="flex justify-between text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200 mt-1 px-3">
+                                  <div className="flex justify-between text-xs font-semibold text-saivie-plum pt-1 border-t border-saivie-border mt-1 px-3">
                                     <span>À la carte total</span>
                                     <span>₹{cachedItems.reduce((s: number, i: any) => s + (i.unitPrice || 0) * i.quantity, 0).toLocaleString("en-IN")}</span>
                                   </div>
@@ -1169,13 +1169,13 @@ export default function OwnerPortal() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-catalog-title">Service Catalog</h2>
-                    <p className="text-sm text-slate-500 mt-1">{catalogItems.length} total items in catalog</p>
+                    <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-catalog-title">Service Catalog</h2>
+                    <p className="text-sm text-saivie-plum mt-1">{catalogItems.length} total items in catalog</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <CatalogImportButton />
                     {!ownerCosts.unlocked && <UnlockCostsButton onUnlocked={ownerCosts.unlock} />}
-                    <Button onClick={() => { setShowAddForm(true); }} className="bg-indigo-600 hover:bg-indigo-700" data-testid="btn-add-catalog-item">
+                    <Button onClick={() => { setShowAddForm(true); }} className="bg-saivie-teal hover:bg-saivie-teal" data-testid="btn-add-catalog-item">
                       <Plus className="w-4 h-4 mr-2" /> Add Item
                     </Button>
                   </div>
@@ -1183,19 +1183,19 @@ export default function OwnerPortal() {
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {[
-                    { label: "Total Items", value: catalogItems.length, icon: Package, color: "text-indigo-600", bg: "bg-indigo-50" },
-                    { label: "Categories", value: catalogCategories.length, icon: BarChart3, color: "text-violet-600", bg: "bg-violet-50" },
+                    { label: "Total Items", value: catalogItems.length, icon: Package, color: "text-saivie-teal", bg: "bg-saivie-surface-muted" },
+                    { label: "Categories", value: catalogCategories.length, icon: BarChart3, color: "text-saivie-teal", bg: "bg-saivie-surface-muted" },
                     { label: "Average Price", value: formatINR(catalogItems.length > 0 ? catalogItems.reduce((s: number, c: any) => s + (c.price || 0), 0) / catalogItems.length : 0), icon: IndianRupee, color: "text-emerald-600", bg: "bg-emerald-50", isString: true },
                     { label: "Active Items", value: catalogItems.filter((c: any) => c.isActive !== false).length, icon: Check, color: "text-cyan-600", bg: "bg-cyan-50" },
                   ].map((stat, i) => (
                     <motion.div key={stat.label} custom={i} variants={cardVariants} initial="hidden" animate="visible">
-                      <Card className="border-slate-200 shadow-sm" data-testid={`card-catalog-stat-${i}`}>
+                      <Card className="border-saivie-border shadow-sm" data-testid={`card-catalog-stat-${i}`}>
                         <CardContent className="p-4 flex items-center gap-4">
                           <div className={`p-2.5 rounded-xl ${stat.bg}`}>
                             <stat.icon className={`w-5 h-5 ${stat.color}`} />
                           </div>
                           <div>
-                            <p className="text-xs text-slate-500">{stat.label}</p>
+                            <p className="text-xs text-saivie-plum">{stat.label}</p>
                             <p className={`text-lg font-bold ${stat.color}`}>{stat.isString ? stat.value : stat.value}</p>
                           </div>
                         </CardContent>
@@ -1206,7 +1206,7 @@ export default function OwnerPortal() {
 
                 <div className="flex items-center gap-4">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-saivie-plum" />
                     <Input
                       placeholder="Search catalog items..."
                       value={catalogSearch}
@@ -1230,9 +1230,9 @@ export default function OwnerPortal() {
 
                 {showAddForm && (
                   <motion.div custom={0} variants={cardVariants} initial="hidden" animate="visible">
-                    <Card className="border-slate-200 shadow-sm border-l-4 border-l-indigo-400" data-testid="card-add-catalog-item">
+                    <Card className="border-saivie-border shadow-sm border-l-4 border-l-indigo-400" data-testid="card-add-catalog-item">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">Add New Item</CardTitle>
+                        <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider">Add New Item</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <form
@@ -1257,11 +1257,11 @@ export default function OwnerPortal() {
                         >
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                              <label className="text-xs font-medium text-slate-500 mb-1 block">Name *</label>
+                              <label className="text-xs font-medium text-saivie-plum mb-1 block">Name *</label>
                               <Input name="name" required placeholder="Service name" data-testid="input-catalog-name" />
                             </div>
                             <div>
-                              <label className="text-xs font-medium text-slate-500 mb-1 block">Category *</label>
+                              <label className="text-xs font-medium text-saivie-plum mb-1 block">Category *</label>
                               <Input name="category" required placeholder="e.g. Consultation, Lab Test" list="catalog-categories" data-testid="input-catalog-category" />
                               <datalist id="catalog-categories">
                                 {catalogCategories.map((cat: any) => (
@@ -1270,12 +1270,12 @@ export default function OwnerPortal() {
                               </datalist>
                             </div>
                             <div>
-                              <label className="text-xs font-medium text-slate-500 mb-1 block">MRP (₹) *</label>
+                              <label className="text-xs font-medium text-saivie-plum mb-1 block">MRP (₹) *</label>
                               <Input name="price" type="number" step="0.01" required placeholder="0.00" data-testid="input-catalog-price" />
                             </div>
                             {ownerCosts.unlocked ? (
                               <div>
-                                <label className="text-xs font-medium text-slate-500 mb-1 block">B2B price (₹, owner only)</label>
+                                <label className="text-xs font-medium text-saivie-plum mb-1 block">B2B price (₹, owner only)</label>
                                 <Input name="b2bPrice" type="number" step="0.01" min={0} placeholder="Our cost" data-testid="input-catalog-b2b" />
                               </div>
                             ) : (
@@ -1286,7 +1286,7 @@ export default function OwnerPortal() {
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                              <label className="text-xs font-medium text-slate-500 mb-1 block">Tax Rate</label>
+                              <label className="text-xs font-medium text-saivie-plum mb-1 block">Tax Rate</label>
                               <Select value={newItemTaxRate} onValueChange={setNewItemTaxRate}>
                                 <SelectTrigger data-testid="select-catalog-tax-rate">
                                   <SelectValue />
@@ -1299,11 +1299,11 @@ export default function OwnerPortal() {
                               </Select>
                             </div>
                             <div>
-                              <label className="text-xs font-medium text-slate-500 mb-1 block">HSN Code</label>
+                              <label className="text-xs font-medium text-saivie-plum mb-1 block">HSN Code</label>
                               <Input name="hsnCode" placeholder="HSN/SAC Code" data-testid="input-catalog-hsn" />
                             </div>
                             <div>
-                              <label className="text-xs font-medium text-slate-500 mb-1 block">Description</label>
+                              <label className="text-xs font-medium text-saivie-plum mb-1 block">Description</label>
                               <Input name="description" placeholder="Brief description" data-testid="input-catalog-description" />
                             </div>
                           </div>
@@ -1311,7 +1311,7 @@ export default function OwnerPortal() {
                             <Button type="button" variant="ghost" onClick={() => setShowAddForm(false)} data-testid="btn-cancel-add-catalog">
                               <X className="w-4 h-4 mr-1" /> Cancel
                             </Button>
-                            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={createCatalogItem.isPending} data-testid="btn-save-catalog-item">
+                            <Button type="submit" className="bg-saivie-teal hover:bg-saivie-teal" disabled={createCatalogItem.isPending} data-testid="btn-save-catalog-item">
                               <Save className="w-4 h-4 mr-1" /> Save
                             </Button>
                           </div>
@@ -1321,47 +1321,47 @@ export default function OwnerPortal() {
                   </motion.div>
                 )}
 
-                <Card className="border-slate-200 shadow-sm" data-testid="card-catalog-table">
+                <Card className="border-saivie-border shadow-sm" data-testid="card-catalog-table">
                   <CardContent className="p-0">
-                    <div className="rounded-lg border border-slate-200 overflow-hidden">
+                    <div className="rounded-lg border border-saivie-border overflow-hidden">
                       <Table>
                         <TableHeader>
-                          <TableRow className="bg-slate-50">
-                            <TableHead className="text-xs font-bold text-slate-500">Name</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500">Category</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500">MRP (patient pays)</TableHead>
-                            {ownerCosts.unlocked && <TableHead className="text-xs font-bold text-slate-500">B2B price (our cost)</TableHead>}
-                            <TableHead className="text-xs font-bold text-slate-500">Tax Rate</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500">HSN Code</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500">Active</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500">Actions</TableHead>
+                          <TableRow className="bg-saivie-surface-muted">
+                            <TableHead className="text-xs font-bold text-saivie-plum">Name</TableHead>
+                            <TableHead className="text-xs font-bold text-saivie-plum">Category</TableHead>
+                            <TableHead className="text-xs font-bold text-saivie-plum">MRP (patient pays)</TableHead>
+                            {ownerCosts.unlocked && <TableHead className="text-xs font-bold text-saivie-plum">B2B price (our cost)</TableHead>}
+                            <TableHead className="text-xs font-bold text-saivie-plum">Tax Rate</TableHead>
+                            <TableHead className="text-xs font-bold text-saivie-plum">HSN Code</TableHead>
+                            <TableHead className="text-xs font-bold text-saivie-plum">Active</TableHead>
+                            <TableHead className="text-xs font-bold text-saivie-plum">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {filteredCatalog.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={8} className="text-center py-8 text-slate-400">No catalog items found.</TableCell>
+                              <TableCell colSpan={8} className="text-center py-8 text-saivie-plum">No catalog items found.</TableCell>
                             </TableRow>
                           ) : (
                             filteredCatalog.map((item: any, idx: number) => {
                               const isEditing = editingItem?.id === item.id;
                               const catalogCategoryColors: Record<string, string> = {
-                                "Consultation": "bg-indigo-100 text-indigo-700",
+                                "Consultation": "bg-saivie-sage text-saivie-teal",
                                 "Imaging": "bg-cyan-100 text-cyan-700",
                                 "Lab Test": "bg-emerald-100 text-emerald-700",
-                                "Wellness": "bg-pink-100 text-pink-700",
-                                "Procedure": "bg-violet-100 text-violet-700",
+                                "Wellness": "bg-saivie-blush text-saivie-plum",
+                                "Procedure": "bg-saivie-sage text-saivie-teal",
                               };
                               const taxBadgeColor = (rate: number) => {
                                 if (rate === 0) return "bg-green-100 text-green-700";
                                 if (rate === 5) return "bg-amber-100 text-amber-700";
                                 if (rate === 18) return "bg-rose-100 text-rose-700";
-                                return "bg-slate-100 text-slate-700";
+                                return "bg-saivie-sage text-saivie-plum";
                               };
 
                               if (isEditing) {
                                 return (
-                                  <TableRow key={item.id} className="bg-indigo-50/30" data-testid={`row-catalog-edit-${idx}`}>
+                                  <TableRow key={item.id} className="bg-saivie-surface-muted/30" data-testid={`row-catalog-edit-${idx}`}>
                                     <TableCell>
                                       <Input
                                         value={editingItem.name}
@@ -1429,7 +1429,7 @@ export default function OwnerPortal() {
                                       />
                                     </TableCell>
                                     <TableCell>
-                                      <Badge className={editingItem.isActive !== false ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}>
+                                      <Badge className={editingItem.isActive !== false ? "bg-emerald-100 text-emerald-700" : "bg-saivie-sage text-saivie-plum"}>
                                         {editingItem.isActive !== false ? "Active" : "Inactive"}
                                       </Badge>
                                     </TableCell>
@@ -1448,7 +1448,7 @@ export default function OwnerPortal() {
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          className="h-7 w-7 text-slate-400 hover:text-slate-600"
+                                          className="h-7 w-7 text-saivie-plum hover:text-saivie-plum"
                                           onClick={() => setEditingItem(null)}
                                           data-testid="btn-cancel-edit"
                                         >
@@ -1461,24 +1461,24 @@ export default function OwnerPortal() {
                               }
 
                               return (
-                                <TableRow key={item.id} className="hover:bg-slate-50/50" data-testid={`row-catalog-${idx}`}>
+                                <TableRow key={item.id} className="hover:bg-saivie-surface-muted/50" data-testid={`row-catalog-${idx}`}>
                                   <TableCell>
                                     <div>
-                                      <p className="text-sm font-medium text-slate-900">{item.name}</p>
-                                      {item.description && <p className="text-xs text-slate-400 mt-0.5">{item.description}</p>}
+                                      <p className="text-sm font-medium text-saivie-plum">{item.name}</p>
+                                      {item.description && <p className="text-xs text-saivie-plum mt-0.5">{item.description}</p>}
                                     </div>
                                   </TableCell>
                                   <TableCell>
-                                    <Badge className={catalogCategoryColors[item.category] || "bg-slate-100 text-slate-700"}>{item.category}</Badge>
+                                    <Badge className={catalogCategoryColors[item.category] || "bg-saivie-sage text-saivie-plum"}>{item.category}</Badge>
                                   </TableCell>
-                                  <TableCell className="text-sm font-bold text-slate-900">{formatINR(item.price)}</TableCell>
-                                  {ownerCosts.unlocked && <TableCell className="text-sm text-slate-600">{formatCost(ownerCosts.costs?.catalog[item.id])}</TableCell>}
+                                  <TableCell className="text-sm font-bold text-saivie-plum">{formatINR(item.price)}</TableCell>
+                                  {ownerCosts.unlocked && <TableCell className="text-sm text-saivie-plum">{formatCost(ownerCosts.costs?.catalog[item.id])}</TableCell>}
                                   <TableCell>
                                     <Badge className={taxBadgeColor(item.taxRate || 0)}>{item.taxRate || 0}%</Badge>
                                   </TableCell>
-                                  <TableCell className="text-sm text-slate-600">{item.hsnCode || "—"}</TableCell>
+                                  <TableCell className="text-sm text-saivie-plum">{item.hsnCode || "—"}</TableCell>
                                   <TableCell>
-                                    <Badge className={item.isActive !== false ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}>
+                                    <Badge className={item.isActive !== false ? "bg-emerald-100 text-emerald-700" : "bg-saivie-sage text-saivie-plum"}>
                                       {item.isActive !== false ? "Active" : "Inactive"}
                                     </Badge>
                                   </TableCell>
@@ -1487,7 +1487,7 @@ export default function OwnerPortal() {
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-7 w-7 text-slate-400 hover:text-indigo-600"
+                                        className="h-7 w-7 text-saivie-plum hover:text-saivie-teal"
                                         onClick={() => setEditingItem({ ...item, _cost: ownerCosts.costs?.catalog[item.id] ?? "" })}
                                         data-testid={`btn-edit-catalog-${idx}`}
                                       >
@@ -1496,7 +1496,7 @@ export default function OwnerPortal() {
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-7 w-7 text-slate-400 hover:text-rose-600"
+                                        className="h-7 w-7 text-saivie-plum hover:text-rose-600"
                                         onClick={() => { if (confirm("Delete this item?")) deleteCatalogItem.mutate(item.id); }}
                                         data-testid={`btn-delete-catalog-${idx}`}
                                       >
@@ -1521,8 +1521,8 @@ export default function OwnerPortal() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-900 font-serif">AI Insights</h2>
-                    <p className="text-sm text-slate-500 mt-0.5">Gemini-powered business intelligence for your clinic</p>
+                    <h2 className="text-2xl font-bold text-saivie-plum font-serif">AI Insights</h2>
+                    <p className="text-sm text-saivie-plum mt-0.5">Gemini-powered business intelligence for your clinic</p>
                   </div>
                   {aiInsightsTab === "weekly" && (
                     <Button
@@ -1537,7 +1537,7 @@ export default function OwnerPortal() {
                         }
                       }}
                       disabled={aiInsightsLoading}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                      className="bg-saivie-teal hover:bg-saivie-teal text-white"
                       data-testid="btn-generate-ai-insights"
                     >
                       {aiInsightsLoading ? (
@@ -1550,13 +1550,13 @@ export default function OwnerPortal() {
                 </div>
 
                 {/* Sub-tabs */}
-                <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit">
+                <div className="flex gap-1 bg-saivie-sage rounded-lg p-1 w-fit">
                   {(["weekly", "optimisation-history"] as const).map(tab => (
                     <button
                       key={tab}
                       onClick={() => setAiInsightsTab(tab)}
                       data-testid={`tab-ai-${tab}`}
-                      className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${aiInsightsTab === tab ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                      className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${aiInsightsTab === tab ? "bg-saivie-ivory text-saivie-plum shadow-sm" : "text-saivie-plum hover:text-saivie-plum"}`}
                     >
                       {tab === "weekly" ? "Weekly Report" : "Optimisation History"}
                     </button>
@@ -1567,53 +1567,53 @@ export default function OwnerPortal() {
                 {aiInsightsTab === "weekly" && (
                   <>
                     {!aiInsights && !aiInsightsLoading && (
-                      <Card className="border-dashed border-2 border-slate-200 bg-slate-50">
+                      <Card className="border-dashed border-2 border-saivie-border bg-saivie-surface-muted">
                         <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
-                          <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center">
-                            <Sparkles className="w-8 h-8 text-indigo-400" />
+                          <div className="w-16 h-16 rounded-full bg-saivie-surface-muted flex items-center justify-center">
+                            <Sparkles className="w-8 h-8 text-saivie-teal" />
                           </div>
-                          <p className="font-semibold text-slate-700">No insights generated yet</p>
-                          <p className="text-sm text-slate-400 text-center max-w-sm">Click "Generate Insights" to get Gemini AI analysis of your clinic's weekly performance, trends, and action items.</p>
+                          <p className="font-semibold text-saivie-plum">No insights generated yet</p>
+                          <p className="text-sm text-saivie-plum text-center max-w-sm">Click "Generate Insights" to get Gemini AI analysis of your clinic's weekly performance, trends, and action items.</p>
                         </CardContent>
                       </Card>
                     )}
 
                     {aiInsightsLoading && (
-                      <Card className="border-indigo-100 bg-indigo-50/50">
+                      <Card className="border-saivie-border bg-saivie-surface-muted/50">
                         <CardContent className="flex items-center justify-center py-16 gap-3">
-                          <RefreshCw className="w-6 h-6 text-indigo-500 animate-spin" />
-                          <p className="text-indigo-700 font-medium">Analysing clinic data with Gemini AI…</p>
+                          <RefreshCw className="w-6 h-6 text-saivie-teal animate-spin" />
+                          <p className="text-saivie-teal font-medium">Analysing clinic data with Gemini AI…</p>
                         </CardContent>
                       </Card>
                     )}
 
                     {aiInsights && !aiInsightsLoading && (
                       <div className="space-y-4">
-                        <Card className="bg-gradient-to-br from-indigo-600 to-violet-600 text-white border-none shadow-lg">
+                        <Card className="bg-gradient-to-br from-saivie-teal to-saivie-teal text-white border-none shadow-lg">
                           <CardContent className="py-6 px-6">
                             <div className="flex items-start gap-3">
-                              <Sparkles className="w-5 h-5 text-indigo-200 mt-0.5 shrink-0" />
+                              <Sparkles className="w-5 h-5 text-saivie-sage mt-0.5 shrink-0" />
                               <p className="text-lg font-semibold leading-relaxed">{aiInsights.headline}</p>
                             </div>
-                            <p className="text-indigo-200 text-xs mt-3">Generated {aiInsights.generatedAt ? new Date(aiInsights.generatedAt).toLocaleString('en-IN') : 'just now'}</p>
+                            <p className="text-saivie-sage text-xs mt-3">Generated {aiInsights.generatedAt ? new Date(aiInsights.generatedAt).toLocaleString('en-IN') : 'just now'}</p>
                           </CardContent>
                         </Card>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {(aiInsights.sections || []).map((section: any, i: number) => (
-                            <Card key={i} className="border-slate-200 shadow-sm">
+                            <Card key={i} className="border-saivie-border shadow-sm">
                               <CardContent className="p-5">
                                 <div className="flex items-center justify-between mb-3">
-                                  <h3 className="font-bold text-slate-800 text-sm">{section.title}</h3>
+                                  <h3 className="font-bold text-saivie-plum text-sm">{section.title}</h3>
                                   <div className="flex items-center gap-1.5">
                                     {section.trend === 'up' && <ArrowUpRight className="w-4 h-4 text-emerald-500" />}
                                     {section.trend === 'down' && <ArrowDownRight className="w-4 h-4 text-rose-500" />}
-                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${section.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : section.trend === 'down' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${section.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : section.trend === 'down' ? 'bg-rose-100 text-rose-700' : 'bg-saivie-sage text-saivie-plum'}`}>
                                       {section.metric}
                                     </span>
                                   </div>
                                 </div>
-                                <p className="text-sm text-slate-600 leading-relaxed">{section.insight}</p>
+                                <p className="text-sm text-saivie-plum leading-relaxed">{section.insight}</p>
                               </CardContent>
                             </Card>
                           ))}
@@ -1622,13 +1622,13 @@ export default function OwnerPortal() {
                         {aiInsights.actionItems?.length > 0 && (
                           <Card className="border-amber-200 bg-amber-50/50">
                             <CardContent className="p-5">
-                              <h3 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
+                              <h3 className="font-bold text-saivie-plum text-sm mb-3 flex items-center gap-2">
                                 <AlertTriangle className="w-4 h-4 text-amber-500" />
                                 Recommended Actions
                               </h3>
                               <ul className="space-y-2">
                                 {aiInsights.actionItems.map((item: string, i: number) => (
-                                  <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                                  <li key={i} className="flex items-start gap-2 text-sm text-saivie-plum">
                                     <span className="w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
                                     {item}
                                   </li>
@@ -1681,27 +1681,27 @@ function OptimisationHistoryTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">All past schedule optimisation runs stored in database</p>
+        <p className="text-sm text-saivie-plum">All past schedule optimisation runs stored in database</p>
         <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="btn-refresh-opt-history">
           <RefreshCw className="w-4 h-4 mr-1.5" /> Refresh
         </Button>
       </div>
 
       {isLoading && (
-        <Card className="border-slate-200">
+        <Card className="border-saivie-border">
           <CardContent className="flex items-center justify-center py-12 gap-3">
-            <RefreshCw className="w-5 h-5 text-slate-400 animate-spin" />
-            <p className="text-slate-500">Loading history…</p>
+            <RefreshCw className="w-5 h-5 text-saivie-plum animate-spin" />
+            <p className="text-saivie-plum">Loading history…</p>
           </CardContent>
         </Card>
       )}
 
       {!isLoading && records.length === 0 && (
-        <Card className="border-dashed border-2 border-slate-200 bg-slate-50">
+        <Card className="border-dashed border-2 border-saivie-border bg-saivie-surface-muted">
           <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
             <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-2xl">🗓️</div>
-            <p className="font-semibold text-slate-700">No optimisation runs yet</p>
-            <p className="text-sm text-slate-400 text-center max-w-sm">Schedule optimisation history is recorded here each time the "Optimise Schedule" feature is used from the Staff Portal.</p>
+            <p className="font-semibold text-saivie-plum">No optimisation runs yet</p>
+            <p className="text-sm text-saivie-plum text-center max-w-sm">Schedule optimisation history is recorded here each time the "Optimise Schedule" feature is used from the Staff Portal.</p>
           </CardContent>
         </Card>
       )}
@@ -1709,7 +1709,7 @@ function OptimisationHistoryTab() {
       {!isLoading && records.length > 0 && (
         <div className="space-y-4">
           {records.map((rec: any, i: number) => (
-            <Card key={rec.id || i} className="border-slate-200 shadow-sm" data-testid={`card-opt-history-${rec.id || i}`}>
+            <Card key={rec.id || i} className="border-saivie-border shadow-sm" data-testid={`card-opt-history-${rec.id || i}`}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div className="flex items-center gap-3">
@@ -1717,34 +1717,34 @@ function OptimisationHistoryTab() {
                       {rec.suggestionsCount || 0}
                     </span>
                     <div>
-                      <p className="text-sm font-semibold text-slate-800">
+                      <p className="text-sm font-semibold text-saivie-plum">
                         {rec.suggestionsCount === 0 ? "Schedule already optimal" : `${rec.suggestionsCount} change${rec.suggestionsCount !== 1 ? "s" : ""} suggested`}
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-saivie-plum">
                         {rec.date} · {rec.totalAppointments} appointment{rec.totalAppointments !== 1 ? "s" : ""} analysed
                         {rec.estimatedTimeSaved ? ` · ${rec.estimatedTimeSaved}` : ""}
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs text-slate-400 whitespace-nowrap shrink-0">
+                  <span className="text-xs text-saivie-plum whitespace-nowrap shrink-0">
                     {rec.createdAt ? new Date(rec.createdAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true }) : "—"}
                   </span>
                 </div>
 
                 {rec.summary && (
-                  <p className="text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3">{rec.summary}</p>
+                  <p className="text-sm text-saivie-plum leading-relaxed border-t border-saivie-border pt-3">{rec.summary}</p>
                 )}
 
                 {rec.suggestions && rec.suggestions.length > 0 && (
-                  <div className="mt-3 border-t border-slate-100 pt-3">
-                    <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Suggested changes</p>
+                  <div className="mt-3 border-t border-saivie-border pt-3">
+                    <p className="text-xs font-semibold text-saivie-plum mb-2 uppercase tracking-wide">Suggested changes</p>
                     <div className="space-y-1.5">
                       {rec.suggestions.map((s: any, j: number) => (
-                        <div key={j} className="flex items-center gap-2 text-xs text-slate-600">
-                          <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{s.currentTime}</span>
-                          <ChevronRight className="w-3 h-3 text-slate-400" />
+                        <div key={j} className="flex items-center gap-2 text-xs text-saivie-plum">
+                          <span className="font-mono bg-saivie-sage px-1.5 py-0.5 rounded text-saivie-plum">{s.currentTime}</span>
+                          <ChevronRight className="w-3 h-3 text-saivie-plum" />
                           <span className="font-mono bg-blue-50 px-1.5 py-0.5 rounded text-blue-700">{s.suggestedTime}</span>
-                          <span className="text-slate-400">— {s.reason}</span>
+                          <span className="text-saivie-plum">— {s.reason}</span>
                         </div>
                       ))}
                     </div>
@@ -1753,7 +1753,7 @@ function OptimisationHistoryTab() {
               </CardContent>
             </Card>
           ))}
-          <p className="text-xs text-slate-400 text-center">{records.length} run{records.length !== 1 ? "s" : ""} recorded</p>
+          <p className="text-xs text-saivie-plum text-center">{records.length} run{records.length !== 1 ? "s" : ""} recorded</p>
         </div>
       )}
     </div>
@@ -1773,7 +1773,7 @@ function AiAuditLogView() {
   const entries: any[] = data?.entries || [];
 
   const eventLabel: Record<string, { label: string; color: string; icon: string }> = {
-    triage_run:         { label: "Triage Sort", color: "bg-violet-100 text-violet-700", icon: "⚡" },
+    triage_run:         { label: "Triage Sort", color: "bg-saivie-sage text-saivie-teal", icon: "⚡" },
     schedule_optimised: { label: "Schedule Optimise", color: "bg-blue-100 text-blue-700", icon: "🗓️" },
   };
 
@@ -1781,8 +1781,8 @@ function AiAuditLogView() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 font-serif">AI Audit Log</h2>
-          <p className="text-sm text-slate-500 mt-0.5">History of all AI-driven triage sorts and schedule optimisations</p>
+          <h2 className="text-2xl font-bold text-saivie-plum font-serif">AI Audit Log</h2>
+          <p className="text-sm text-saivie-plum mt-0.5">History of all AI-driven triage sorts and schedule optimisations</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="btn-refresh-audit-log">
           <RefreshCw className="w-4 h-4 mr-1.5" /> Refresh
@@ -1790,41 +1790,41 @@ function AiAuditLogView() {
       </div>
 
       {isLoading && (
-        <Card className="border-slate-200">
+        <Card className="border-saivie-border">
           <CardContent className="flex items-center justify-center py-12 gap-3">
-            <RefreshCw className="w-5 h-5 text-slate-400 animate-spin" />
-            <p className="text-slate-500">Loading audit log…</p>
+            <RefreshCw className="w-5 h-5 text-saivie-plum animate-spin" />
+            <p className="text-saivie-plum">Loading audit log…</p>
           </CardContent>
         </Card>
       )}
 
       {!isLoading && entries.length === 0 && (
-        <Card className="border-dashed border-2 border-slate-200 bg-slate-50">
+        <Card className="border-dashed border-2 border-saivie-border bg-saivie-surface-muted">
           <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
-            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-2xl">📋</div>
-            <p className="font-semibold text-slate-700">No AI events recorded yet</p>
-            <p className="text-sm text-slate-400 text-center max-w-sm">Events are logged whenever the Triage Sort or Schedule Optimise features are used from the Staff or Clinician portals.</p>
+            <div className="w-16 h-16 rounded-full bg-saivie-sage flex items-center justify-center text-2xl">📋</div>
+            <p className="font-semibold text-saivie-plum">No AI events recorded yet</p>
+            <p className="text-sm text-saivie-plum text-center max-w-sm">Events are logged whenever the Triage Sort or Schedule Optimise features are used from the Staff or Clinician portals.</p>
           </CardContent>
         </Card>
       )}
 
       {!isLoading && entries.length > 0 && (
-        <Card className="border-slate-200 shadow-sm">
+        <Card className="border-saivie-border shadow-sm">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50">
-                <TableHead className="text-xs font-semibold text-slate-600 w-44">Timestamp</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600 w-40">Event</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600 w-28">Date</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600">Details</TableHead>
+              <TableRow className="bg-saivie-surface-muted">
+                <TableHead className="text-xs font-semibold text-saivie-plum w-44">Timestamp</TableHead>
+                <TableHead className="text-xs font-semibold text-saivie-plum w-40">Event</TableHead>
+                <TableHead className="text-xs font-semibold text-saivie-plum w-28">Date</TableHead>
+                <TableHead className="text-xs font-semibold text-saivie-plum">Details</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {entries.map((entry: any, i: number) => {
-                const meta = eventLabel[entry.event] || { label: entry.event, color: "bg-slate-100 text-slate-600", icon: "🤖" };
+                const meta = eventLabel[entry.event] || { label: entry.event, color: "bg-saivie-sage text-saivie-plum", icon: "🤖" };
                 return (
-                  <TableRow key={i} data-testid={`row-audit-${i}`} className="hover:bg-slate-50/60">
-                    <TableCell className="text-xs text-slate-500 tabular-nums whitespace-nowrap">
+                  <TableRow key={i} data-testid={`row-audit-${i}`} className="hover:bg-saivie-surface-muted/60">
+                    <TableCell className="text-xs text-saivie-plum tabular-nums whitespace-nowrap">
                       {entry.timestamp ? new Date(entry.timestamp).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true }) : "—"}
                     </TableCell>
                     <TableCell>
@@ -1832,8 +1832,8 @@ function AiAuditLogView() {
                         <span>{meta.icon}</span> {meta.label}
                       </span>
                     </TableCell>
-                    <TableCell className="text-xs text-slate-600">{entry.date || "—"}</TableCell>
-                    <TableCell className="text-xs text-slate-600 max-w-sm">
+                    <TableCell className="text-xs text-saivie-plum">{entry.date || "—"}</TableCell>
+                    <TableCell className="text-xs text-saivie-plum max-w-sm">
                       {entry.event === "triage_run" && (
                         <span>
                           {entry.appointmentCount} appointment{entry.appointmentCount !== 1 ? "s" : ""} sorted
@@ -1844,7 +1844,7 @@ function AiAuditLogView() {
                         <span>
                           {entry.totalAppointments} appointments · {entry.suggestionsCount} change{entry.suggestionsCount !== 1 ? "s" : ""} suggested
                           {entry.estimatedTimeSaved ? ` · ${entry.estimatedTimeSaved}` : ""}
-                          {entry.summary ? <span className="block text-slate-400 mt-0.5 truncate max-w-xs">{entry.summary}</span> : null}
+                          {entry.summary ? <span className="block text-saivie-plum mt-0.5 truncate max-w-xs">{entry.summary}</span> : null}
                         </span>
                       )}
                     </TableCell>
@@ -1857,7 +1857,7 @@ function AiAuditLogView() {
       )}
 
       {!isLoading && entries.length > 0 && (
-        <p className="text-xs text-slate-400 text-center">{entries.length} event{entries.length !== 1 ? "s" : ""} recorded</p>
+        <p className="text-xs text-saivie-plum text-center">{entries.length} event{entries.length !== 1 ? "s" : ""} recorded</p>
       )}
     </div>
   );
@@ -2007,9 +2007,9 @@ function StaffAccountsView() {
   const missing = accounts.filter((u) => !u.phone);
 
   const roleBadge = (role: string) => {
-    if (role === "clinician") return <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 text-[11px]">Clinician</Badge>;
-    if (role === "owner") return <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-[11px]">Owner</Badge>;
-    if (role === "staff") return <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-[11px]">Staff</Badge>;
+    if (role === "clinician") return <Badge className="bg-saivie-sage text-saivie-teal border-saivie-border text-[11px]">Clinician</Badge>;
+    if (role === "owner") return <Badge className="bg-saivie-sage text-saivie-teal border-saivie-border text-[11px]">Owner</Badge>;
+    if (role === "staff") return <Badge className="bg-saivie-sage text-saivie-plum border-saivie-border text-[11px]">Staff</Badge>;
     return <Badge variant="outline" className="text-[11px]">{role}</Badge>;
   };
 
@@ -2027,8 +2027,8 @@ function StaffAccountsView() {
     <div className="space-y-6" data-testid="view-staff-accounts">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Staff Accounts</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Manage staff phone numbers and SMTP fallback email addresses for login codes</p>
+          <h2 className="text-lg font-semibold text-saivie-plum">Staff Accounts</h2>
+          <p className="text-sm text-saivie-plum mt-0.5">Manage staff phone numbers and SMTP fallback email addresses for login codes</p>
         </div>
         {authStep === "authenticated" && !isLoading && missing.length > 0 && (
           <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
@@ -2046,24 +2046,24 @@ function StaffAccountsView() {
 
       {/* STEP 1 — credentials */}
       {authStep === "credentials" && (
-        <Card className="border-slate-200 shadow-sm max-w-sm mx-auto">
+        <Card className="border-saivie-border shadow-sm max-w-sm mx-auto">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Shield className="w-4 h-4 text-indigo-500" /> Owner Sign-in
+              <Shield className="w-4 h-4 text-saivie-teal" /> Owner Sign-in
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">Username</label>
+              <label className="text-xs font-medium text-saivie-plum block mb-1">Username</label>
               <Input value={loginUser} onChange={(e) => setLoginUser(e.target.value)} placeholder="owner" className="h-9" data-testid="input-owner-username" />
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">Passcode</label>
+              <label className="text-xs font-medium text-saivie-plum block mb-1">Passcode</label>
               <Input type="password" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} placeholder="••••" className="h-9" data-testid="input-owner-passcode"
                 onKeyDown={(e) => e.key === "Enter" && sendOtp()} />
             </div>
             {loginError && <p className="text-xs text-rose-500">{loginError}</p>}
-            <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-9" onClick={sendOtp}
+            <Button className="w-full bg-saivie-teal hover:bg-saivie-teal text-white h-9" onClick={sendOtp}
               disabled={loginLoading || !loginUser || !loginPass} data-testid="btn-send-otp">
               {loginLoading ? "Sending…" : "Send Verification Code"}
             </Button>
@@ -2073,21 +2073,21 @@ function StaffAccountsView() {
 
       {/* STEP 2 — OTP */}
       {authStep === "otp" && (
-        <Card className="border-slate-200 shadow-sm max-w-sm mx-auto">
+        <Card className="border-saivie-border shadow-sm max-w-sm mx-auto">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Phone className="w-4 h-4 text-indigo-500" /> Verify Identity
+              <Phone className="w-4 h-4 text-saivie-teal" /> Verify Identity
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-sm text-slate-500">A 6-digit code was sent to <span className="font-mono font-medium text-slate-700">{otpPhone}</span></p>
+            <p className="text-sm text-saivie-plum">A 6-digit code was sent to <span className="font-mono font-medium text-saivie-plum">{otpPhone}</span></p>
             <Input value={loginOtp} onChange={(e) => setLoginOtp(e.target.value)} placeholder="000000" maxLength={6}
               className="h-9 tracking-widest text-center text-lg font-mono" data-testid="input-owner-otp"
               onKeyDown={(e) => e.key === "Enter" && verifyOtp()} />
             {loginError && <p className="text-xs text-rose-500">{loginError}</p>}
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1 h-9" onClick={() => { setAuthStep("credentials"); setLoginError(""); }} data-testid="btn-back-credentials">Back</Button>
-              <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white h-9" onClick={verifyOtp}
+              <Button className="flex-1 bg-saivie-teal hover:bg-saivie-teal text-white h-9" onClick={verifyOtp}
                 disabled={loginLoading || loginOtp.length < 6} data-testid="btn-verify-otp">
                 {loginLoading ? "Verifying…" : "Verify & Sign In"}
               </Button>
@@ -2098,8 +2098,8 @@ function StaffAccountsView() {
 
       {/* STEP 3 — accounts table */}
       {authStep === "authenticated" && isLoading && (
-        <Card className="border-slate-200 shadow-sm">
-          <CardContent className="py-12 text-center text-slate-400">Loading staff accounts...</CardContent>
+        <Card className="border-saivie-border shadow-sm">
+          <CardContent className="py-12 text-center text-saivie-plum">Loading staff accounts...</CardContent>
         </Card>
       )}
 
@@ -2110,22 +2110,22 @@ function StaffAccountsView() {
       )}
 
       {authStep === "authenticated" && !isLoading && !isError && (
-        <Card className="border-slate-200 shadow-sm">
+        <Card className="border-saivie-border shadow-sm">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50">
-                <TableHead className="text-xs font-semibold text-slate-600 w-40">Username</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600 w-28">Role</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600">Phone Number</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600">Fallback Email</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600 w-28">OTP Status</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600 w-24"></TableHead>
+              <TableRow className="bg-saivie-surface-muted">
+                <TableHead className="text-xs font-semibold text-saivie-plum w-40">Username</TableHead>
+                <TableHead className="text-xs font-semibold text-saivie-plum w-28">Role</TableHead>
+                <TableHead className="text-xs font-semibold text-saivie-plum">Phone Number</TableHead>
+                <TableHead className="text-xs font-semibold text-saivie-plum">Fallback Email</TableHead>
+                <TableHead className="text-xs font-semibold text-saivie-plum w-28">OTP Status</TableHead>
+                <TableHead className="text-xs font-semibold text-saivie-plum w-24"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {accounts.map((user: any) => (
-                <TableRow key={user.id} className="hover:bg-slate-50/60" data-testid={`row-staff-${user.username}`}>
-                  <TableCell className="font-medium text-slate-800">{user.username}</TableCell>
+                <TableRow key={user.id} className="hover:bg-saivie-surface-muted/60" data-testid={`row-staff-${user.username}`}>
+                  <TableCell className="font-medium text-saivie-plum">{user.username}</TableCell>
                   <TableCell>{roleBadge(user.role)}</TableCell>
                   <TableCell>
                     {editingId === user.id ? (
@@ -2139,8 +2139,8 @@ function StaffAccountsView() {
                         />
                       </div>
                     ) : (
-                      <span className="text-sm text-slate-700 font-mono">
-                        {user.phone || <span className="text-slate-400 font-sans italic">No phone set</span>}
+                      <span className="text-sm text-saivie-plum font-mono">
+                        {user.phone || <span className="text-saivie-plum font-sans italic">No phone set</span>}
                       </span>
                     )}
                   </TableCell>
@@ -2155,8 +2155,8 @@ function StaffAccountsView() {
                         data-testid={`input-email-${user.username}`}
                       />
                     ) : (
-                      <span className="text-sm text-slate-700">
-                        {user.email || <span className="text-slate-400 italic">No fallback email</span>}
+                      <span className="text-sm text-saivie-plum">
+                        {user.email || <span className="text-saivie-plum italic">No fallback email</span>}
                       </span>
                     )}
                   </TableCell>
@@ -2176,7 +2176,7 @@ function StaffAccountsView() {
                       <div className="flex items-center gap-1">
                         <Button
                           size="sm"
-                          className="h-7 px-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                          className="h-7 px-2 bg-saivie-teal hover:bg-saivie-teal text-white"
                           onClick={() => saveEdit(user.id)}
                           disabled={updateContact.isPending}
                           data-testid={`btn-save-phone-${user.username}`}
@@ -2186,7 +2186,7 @@ function StaffAccountsView() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-7 px-2 text-slate-500"
+                          className="h-7 px-2 text-saivie-plum"
                           onClick={() => { setEditingId(null); setEditPhone(""); setEditEmail(""); }}
                           data-testid={`btn-cancel-phone-${user.username}`}
                         >
@@ -2197,7 +2197,7 @@ function StaffAccountsView() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 px-2 text-slate-500 hover:text-slate-800"
+                        className="h-7 px-2 text-saivie-plum hover:text-saivie-plum"
                         onClick={() => startEdit(user)}
                         data-testid={`btn-edit-phone-${user.username}`}
                       >
@@ -2212,8 +2212,8 @@ function StaffAccountsView() {
         </Card>
       )}
 
-      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-500">
-        <p className="font-medium text-slate-700 mb-1">About OTP login</p>
+      <div className="bg-saivie-surface-muted border border-saivie-border rounded-lg p-4 text-sm text-saivie-plum">
+        <p className="font-medium text-saivie-plum mb-1">About OTP login</p>
         <p>Staff OTPs are sent through WhatsApp first and fall back to the registered email when SMTP is configured. Add both contact details here so email delivery is available if WhatsApp fails.</p>
       </div>
     </div>

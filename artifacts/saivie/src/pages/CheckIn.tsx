@@ -87,17 +87,17 @@ export default function CheckIn() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+    <div className="min-h-screen bg-saivie-surface-muted flex flex-col font-sans text-saivie-plum">
       
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+      <header className="bg-saivie-ivory border-b border-saivie-border px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => setLocation("/staff")}>
-            <ArrowLeft className="w-5 h-5 text-slate-500" />
+            <ArrowLeft className="w-5 h-5 text-saivie-plum" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold font-serif text-slate-900">Patient Check-In</h1>
-            <p className="text-xs text-slate-500">Front Desk Kiosk Mode</p>
+            <h1 className="text-xl font-bold font-serif text-saivie-plum">Patient Check-In</h1>
+            <p className="text-xs text-saivie-plum">Front Desk Kiosk Mode</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -105,7 +105,7 @@ export default function CheckIn() {
                 <Activity className="w-3.5 h-3.5" />
                 System Online
             </div>
-            <div className="text-sm font-medium text-slate-600">
+            <div className="text-sm font-medium text-saivie-plum">
                 {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
         </div>
@@ -116,14 +116,14 @@ export default function CheckIn() {
         {step === 1 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="text-center space-y-2 mb-8">
-                    <h2 className="text-3xl font-serif text-slate-800">Who is arriving?</h2>
-                    <p className="text-slate-500">Search for scheduled patients or scan QR code</p>
+                    <h2 className="text-3xl font-serif text-saivie-plum">Who is arriving?</h2>
+                    <p className="text-saivie-plum">Search for scheduled patients or scan QR code</p>
                 </div>
 
                 <div className="relative max-w-xl mx-auto">
-                    <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
+                    <Search className="absolute left-4 top-3.5 w-5 h-5 text-saivie-plum" />
                     <Input 
-                        className="pl-12 h-12 text-lg shadow-sm border-slate-300 rounded-full" 
+                        className="pl-12 h-12 text-lg shadow-sm border-saivie-border rounded-full"
                         placeholder="Search by name or phone..." 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -138,31 +138,31 @@ export default function CheckIn() {
                     {filteredAppointments.map((app: any) => (
                         <Card 
                             key={app.id} 
-                            className="cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all group"
+                            className="cursor-pointer hover:border-saivie-border hover:shadow-md transition-all group"
                             onClick={() => {
                                 setSelectedAppointment(app);
                                 setStep(2);
                             }}
                         >
                             <CardContent className="p-5 flex items-center gap-4">
-                                <Avatar className="h-14 w-14 border-2 border-slate-100 group-hover:border-indigo-100 transition-colors">
-                                    <AvatarFallback className="bg-slate-100 text-slate-600 font-bold">{app.image}</AvatarFallback>
+                                <Avatar className="h-14 w-14 border-2 border-saivie-border group-hover:border-saivie-border transition-colors">
+                                    <AvatarFallback className="bg-saivie-sage text-saivie-plum font-bold">{app.image}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1">
                                     <div className="flex justify-between items-start">
-                                        <h3 className="font-bold text-lg text-slate-900 group-hover:text-indigo-700 transition-colors">{app.name}</h3>
-                                        <Badge variant="outline" className={`${app.status === 'Late' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-600'}`}>
+                                        <h3 className="font-bold text-lg text-saivie-plum group-hover:text-saivie-teal transition-colors">{app.name}</h3>
+                                        <Badge variant="outline" className={`${app.status === 'Late' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-saivie-surface-muted text-saivie-plum'}`}>
                                             {app.time}
                                         </Badge>
                                     </div>
-                                    <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-1">
+                                    <p className="text-sm text-saivie-plum flex items-center gap-1.5 mt-1">
                                         <User className="w-3.5 h-3.5" /> {app.doctor}
                                     </p>
-                                    <p className="text-xs font-medium text-slate-400 mt-1 uppercase tracking-wide">
+                                    <p className="text-xs font-medium text-saivie-plum mt-1 uppercase tracking-wide">
                                         {app.type}
                                     </p>
                                 </div>
-                                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-indigo-400" />
+                                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-saivie-teal" />
                             </CardContent>
                         </Card>
                     ))}
@@ -172,51 +172,51 @@ export default function CheckIn() {
 
         {step === 2 && selectedAppointment && (
             <div className="max-w-2xl mx-auto animate-in zoom-in-95 duration-300">
-                <Card className="border-slate-200 shadow-lg overflow-hidden">
-                    <div className="h-2 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
+                <Card className="border-saivie-border shadow-lg overflow-hidden">
+                    <div className="h-2 bg-gradient-to-r from-saivie-teal to-saivie-teal"></div>
                     <CardHeader className="text-center pb-2">
                         <Avatar className="h-24 w-24 mx-auto border-4 border-white shadow-sm mb-4">
-                            <AvatarFallback className="bg-slate-100 text-slate-700 text-2xl font-bold">{selectedAppointment.image}</AvatarFallback>
+                            <AvatarFallback className="bg-saivie-sage text-saivie-plum text-2xl font-bold">{selectedAppointment.image}</AvatarFallback>
                         </Avatar>
-                        <CardTitle className="text-2xl font-serif text-slate-900">{selectedAppointment.name}</CardTitle>
+                        <CardTitle className="text-2xl font-serif text-saivie-plum">{selectedAppointment.name}</CardTitle>
                         <CardDescription>Confirming arrival for {selectedAppointment.time} appointment</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6 pt-6">
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
-                                <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1">Provider</p>
-                                <p className="font-bold text-slate-800">{selectedAppointment.doctor}</p>
+                            <div className="bg-saivie-surface-muted p-4 rounded-xl border border-saivie-border text-center">
+                                <p className="text-xs text-saivie-plum uppercase tracking-wide font-medium mb-1">Provider</p>
+                                <p className="font-bold text-saivie-plum">{selectedAppointment.doctor}</p>
                             </div>
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
-                                <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1">Service</p>
-                                <p className="font-bold text-slate-800">{selectedAppointment.type}</p>
+                            <div className="bg-saivie-surface-muted p-4 rounded-xl border border-saivie-border text-center">
+                                <p className="text-xs text-saivie-plum uppercase tracking-wide font-medium mb-1">Service</p>
+                                <p className="font-bold text-saivie-plum">{selectedAppointment.type}</p>
                             </div>
                         </div>
 
                         <div className="space-y-3">
-                            <h4 className="font-medium text-sm text-slate-900 flex items-center gap-2">
+                            <h4 className="font-medium text-sm text-saivie-plum flex items-center gap-2">
                                 <AlertCircle className="w-4 h-4 text-amber-500" />
                                 Outstanding Actions
                             </h4>
                             <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 flex items-start gap-3">
-                                <div className="mt-0.5 min-w-4 h-4 rounded border border-amber-400 bg-white" />
+                                <div className="mt-0.5 min-w-4 h-4 rounded border border-amber-400 bg-saivie-ivory" />
                                 <div>
                                     <p className="text-sm font-medium text-amber-900">Update Insurance Information</p>
                                     <p className="text-xs text-amber-700">Card on file expired last month.</p>
                                 </div>
                             </div>
-                            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-start gap-3 opacity-60">
+                            <div className="bg-saivie-surface-muted border border-saivie-border rounded-lg p-3 flex items-start gap-3 opacity-60">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5" />
                                 <div>
-                                    <p className="text-sm font-medium text-slate-700 line-through">Sign Consent Form</p>
-                                    <p className="text-xs text-slate-500">Completed via Portal</p>
+                                    <p className="text-sm font-medium text-saivie-plum line-through">Sign Consent Form</p>
+                                    <p className="text-xs text-saivie-plum">Completed via Portal</p>
                                 </div>
                             </div>
                         </div>
                     </CardContent>
-                    <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
+                    <div className="p-6 bg-saivie-surface-muted border-t border-saivie-border flex gap-3">
                         <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>Cancel</Button>
-                        <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 shadow-md" onClick={handleCheckIn}>
+                        <Button className="flex-1 bg-saivie-teal hover:bg-saivie-teal text-white shadow-saivie-teal shadow-md" onClick={handleCheckIn}>
                             Confirm Check-In
                         </Button>
                     </div>
@@ -230,11 +230,11 @@ export default function CheckIn() {
                     <CheckCircle2 className="w-12 h-12" />
                 </div>
                 <div>
-                    <h2 className="text-3xl font-serif font-bold text-slate-900 mb-2">You're all set!</h2>
-                    <p className="text-slate-600">
-                        <span className="font-bold text-slate-900">{selectedAppointment?.name}</span> has been checked in.
+                    <h2 className="text-3xl font-serif font-bold text-saivie-plum mb-2">You're all set!</h2>
+                    <p className="text-saivie-plum">
+                        <span className="font-bold text-saivie-plum">{selectedAppointment?.name}</span> has been checked in.
                     </p>
-                    <p className="text-slate-500 text-sm mt-2">
+                    <p className="text-saivie-plum text-sm mt-2">
                         Notified {selectedAppointment?.doctor}
                     </p>
                 </div>

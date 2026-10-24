@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "../../../lib/brand/saivie.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -32,26 +33,26 @@
 }
 
 :root {
-  --background: 225 35% 8%;
-  --foreground: 210 40% 96%;
-  --border: 225 25% 16%;
-  --input: 225 25% 14%;
-  --ring: 44 87% 55%;
-  --card: 225 35% 11%;
-  --card-foreground: 210 40% 96%;
-  --card-border: 225 25% 18%;
-  --primary: 44 87% 55%;
-  --primary-foreground: 225 35% 8%;
-  --secondary: 225 35% 15%;
-  --secondary-foreground: 210 40% 85%;
-  --muted: 225 25% 14%;
-  --muted-foreground: 225 20% 55%;
-  --accent: 225 35% 18%;
-  --accent-foreground: 210 40% 96%;
+  --background: from color-mix(in srgb, var(--saivie-plum) 45%, #111) h s l;
+  --foreground: from var(--saivie-ivory) h s l;
+  --border: from color-mix(in srgb, var(--saivie-plum) 80%, var(--saivie-sage)) h s l;
+  --input: var(--border);
+  --ring: from var(--saivie-blush) h s l;
+  --card: from color-mix(in srgb, var(--saivie-plum) 65%, #111) h s l;
+  --card-foreground: var(--foreground);
+  --card-border: var(--border);
+  --primary: from var(--saivie-blush) h s l;
+  --primary-foreground: from var(--saivie-plum) h s l;
+  --secondary: from var(--saivie-plum) h s l;
+  --secondary-foreground: from var(--saivie-sage) h s l;
+  --muted: var(--card);
+  --muted-foreground: from color-mix(in srgb, var(--saivie-ivory) 70%, var(--saivie-plum)) h s l;
+  --accent: from var(--saivie-plum) h s l;
+  --accent-foreground: from var(--saivie-blush) h s l;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --gold: 44 87% 55%;
-  --gold-light: 44 90% 68%;
+  --gold: from var(--saivie-gold) h s l;
+  --gold-light: from color-mix(in srgb, var(--saivie-gold) 65%, var(--saivie-ivory)) h s l;
   --app-font-sans: 'DM Sans', 'Inter', sans-serif;
   --radius: 0.75rem;
 }
@@ -73,8 +74,8 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px hsl(44 87% 55% / 0.3); }
-  50% { box-shadow: 0 0 40px hsl(44 87% 55% / 0.6), 0 0 60px hsl(44 87% 55% / 0.3); }
+  0%, 100% { box-shadow: 0 0 20px color-mix(in srgb, var(--saivie-blush) 30%, transparent); }
+  50% { box-shadow: 0 0 40px color-mix(in srgb, var(--saivie-blush) 60%, transparent), 0 0 60px color-mix(in srgb, var(--saivie-blush) 30%, transparent); }
 }
 
 @keyframes shimmer {
@@ -98,31 +99,28 @@
 .shimmer {
   background: linear-gradient(
     90deg,
-    hsl(225 35% 11%) 0%,
-    hsl(225 35% 16%) 50%,
-    hsl(225 35% 11%) 100%
+    hsl(var(--card)) 0%,
+    hsl(var(--secondary)) 50%,
+    hsl(var(--card)) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
 .gold-gradient {
-  background: linear-gradient(135deg, hsl(44 87% 55%), hsl(38 90% 45%));
+  background: linear-gradient(135deg, var(--saivie-blush), var(--saivie-sage));
 }
 
-.gold-text {
-  background: linear-gradient(135deg, hsl(44 87% 68%), hsl(38 87% 55%));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+.brand-text {
+  color: var(--saivie-blush);
 }
 
 .card-glow {
-  box-shadow: 0 0 0 1px hsl(44 87% 55% / 0.15), 0 8px 32px hsl(225 35% 4% / 0.8);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--saivie-blush) 15%, transparent), 0 8px 32px hsl(var(--background) / 0.8);
 }
 
 .progress-bar {
-  background: linear-gradient(90deg, hsl(44 87% 55%), hsl(44 90% 68%));
+  background: linear-gradient(90deg, var(--saivie-rose), var(--saivie-blush));
 }
 
 input[type="search"]::-webkit-search-cancel-button {

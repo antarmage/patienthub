@@ -90,7 +90,7 @@ export default function Auth() {
   return (
     <div className="min-h-dvh bg-background flex flex-col relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-80 opacity-30" style={{ background: "radial-gradient(ellipse at 50% 0%, hsl(44 87% 55% / 0.15), transparent 70%)" }} />
+        <div className="absolute top-0 left-0 right-0 h-80 opacity-30" style={{ background: "radial-gradient(ellipse at 50% 0%, hsl(from var(--saivie-blush) h s l / 0.15), transparent 70%)" }} />
       </div>
 
       <div className="px-6 pt-14 pb-4 flex items-center gap-3 relative z-10">
@@ -112,7 +112,7 @@ export default function Auth() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
         >
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6" style={{ background: "hsl(44 87% 55% / 0.12)", border: "1px solid hsl(44 87% 55% / 0.2)" }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6" style={{ background: "hsl(from var(--saivie-blush) h s l / 0.12)", border: "1px solid hsl(from var(--saivie-blush) h s l / 0.2)" }}>
             <Phone className="w-8 h-8 text-primary" strokeWidth={1.5} />
           </div>
 
@@ -174,7 +174,7 @@ export default function Auth() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               className="mt-3 text-sm text-center"
-              style={{ color: "hsl(44 87% 45%)" }}
+              style={{ color: "var(--saivie-blush)" }}
             >
               New code sent
             </motion.p>
@@ -187,7 +187,7 @@ export default function Auth() {
           onClick={step === "phone" ? handleSendOtp : handleVerifyOtp}
           disabled={loading}
           className="w-full py-4 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, hsl(44 87% 55%), hsl(38 90% 45%))", color: "hsl(225 35% 8%)" }}
+          style={{ background: "linear-gradient(135deg, var(--saivie-blush), var(--saivie-sage))", color: "var(--saivie-plum)" }}
         >
           {loading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -201,7 +201,7 @@ export default function Auth() {
             onClick={handleResend}
             disabled={loading || resendCooldown > 0}
             className="w-full mt-3 text-sm text-center disabled:cursor-not-allowed"
-            style={{ color: resendCooldown > 0 ? "hsl(var(--muted-foreground))" : "hsl(44 87% 45%)" }}
+            style={{ color: resendCooldown > 0 ? "hsl(var(--muted-foreground))" : "var(--saivie-blush)" }}
           >
             {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
           </button>

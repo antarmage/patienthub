@@ -236,17 +236,17 @@ function PostOpObservationsCard({ patientId: _patientId }: { patientId: number }
   return (
     <Card className="shadow-sm border-sky-200 bg-sky-50/30">
       <CardHeader className="py-3 border-b border-sky-100">
-        <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+        <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
           <Stethoscope className="w-4 h-4 text-sky-500" /> Post-Op Observations
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 flex items-center justify-between gap-4">
-        <p className="text-xs text-slate-500">Post-op vitals are recorded by nursing staff on the SaivieRecover ward tablet. Open the full Post-Op tab to review or go to SaivieRecover directly.</p>
+        <p className="text-xs text-saivie-plum">Post-op vitals are recorded by nursing staff on the SaivieRecover ward tablet. Open the full Post-Op tab to review or go to SaivieRecover directly.</p>
         <a
           href="/recover/"
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-sky-700 bg-white border border-sky-200 px-3 py-1.5 rounded-lg hover:bg-sky-50 transition-colors whitespace-nowrap"
+          className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-sky-700 bg-saivie-ivory border border-sky-200 px-3 py-1.5 rounded-lg hover:bg-sky-50 transition-colors whitespace-nowrap"
         >
           <ExternalLink className="w-3 h-3" /> SaivieRecover
         </a>
@@ -260,8 +260,8 @@ function PostOpDetailedView({ patientId: _patientId, patientName }: { patientId:
     <div className="max-w-4xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-800">Post-Op Observations</h2>
-          <p className="text-sm text-slate-500 mt-0.5">{patientName} — nursing ward record</p>
+          <h2 className="text-lg font-bold text-saivie-plum">Post-Op Observations</h2>
+          <p className="text-sm text-saivie-plum mt-0.5">{patientName} — nursing ward record</p>
         </div>
         <a
           href="/recover/"
@@ -273,13 +273,13 @@ function PostOpDetailedView({ patientId: _patientId, patientName }: { patientId:
         </a>
       </div>
 
-      <Card className="shadow-sm border-slate-200">
+      <Card className="shadow-sm border-saivie-border">
         <CardContent className="p-10 text-center">
           <div className="w-16 h-16 bg-sky-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Stethoscope className="w-8 h-8 text-sky-400" />
           </div>
-          <p className="text-slate-700 font-semibold text-base mb-2">Post-op data lives in SaivieRecover</p>
-          <p className="text-slate-400 text-sm mb-6 max-w-sm mx-auto">
+          <p className="text-saivie-plum font-semibold text-base mb-2">Post-op data lives in SaivieRecover</p>
+          <p className="text-saivie-plum text-sm mb-6 max-w-sm mx-auto">
             Post-operative observations are recorded by nursing staff on the dedicated ward tablet. Open SaivieRecover to view vitals, pain scores, and wound assessments for {patientName}.
           </p>
           <a
@@ -336,7 +336,7 @@ function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; pa
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16 text-slate-400">
+      <div className="flex items-center justify-center py-16 text-saivie-plum">
         <div className="text-center space-y-2">
           <Dna className="w-8 h-8 mx-auto animate-pulse text-yellow-500" />
           <p className="text-sm">Loading genome data…</p>
@@ -347,13 +347,13 @@ function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; pa
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center py-16 text-slate-400">
+      <div className="flex items-center justify-center py-16 text-saivie-plum">
         <div className="text-center space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto">
-            <Dna className="w-7 h-7 text-slate-400" />
+          <div className="w-14 h-14 rounded-2xl bg-saivie-sage flex items-center justify-center mx-auto">
+            <Dna className="w-7 h-7 text-saivie-plum" />
           </div>
-          <p className="text-sm font-medium text-slate-600">No genome data on file</p>
-          <p className="text-xs text-slate-400 max-w-xs">{patientName} has not yet uploaded a genome file through the SaivieGene app.</p>
+          <p className="text-sm font-medium text-saivie-plum">No genome data on file</p>
+          <p className="text-xs text-saivie-plum max-w-xs">{patientName} has not yet uploaded a genome file through the SaivieGene app.</p>
         </div>
       </div>
     );
@@ -367,13 +367,13 @@ function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; pa
   const likeliBadge = (l: string) => {
     if (l === "elevated") return "bg-rose-100 text-rose-700";
     if (l === "reduced") return "bg-emerald-100 text-emerald-700";
-    return "bg-slate-100 text-slate-600";
+    return "bg-saivie-sage text-saivie-plum";
   };
   const pgxBadge = (r: string) => {
     if (r === "poor") return "bg-red-100 text-red-700";
     if (r === "sensitive") return "bg-orange-100 text-orange-700";
     if (r === "rapid") return "bg-blue-100 text-blue-700";
-    return "bg-slate-100 text-slate-600";
+    return "bg-saivie-sage text-saivie-plum";
   };
 
   const highRisks = (data.healthRisks ?? []).filter((r: any) => r.risk === "high");
@@ -389,14 +389,14 @@ function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; pa
                 <Dna className="w-5 h-5 text-yellow-700" />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-800">Genome Analysis on File</p>
-                <p className="text-xs text-slate-500">{(data.snpCount ?? 0).toLocaleString()} SNPs analysed · {data.fileName}</p>
+                <p className="text-sm font-bold text-saivie-plum">Genome Analysis on File</p>
+                <p className="text-xs text-saivie-plum">{(data.snpCount ?? 0).toLocaleString()} SNPs analysed · {data.fileName}</p>
               </div>
             </div>
             <div className="flex items-center gap-4 text-center">
-              <div><p className="text-lg font-bold text-red-600">{highRisks.length}</p><p className="text-[10px] text-slate-500 uppercase tracking-wide">High Risks</p></div>
-              <div><p className="text-lg font-bold text-violet-600">{(data.pharmacogenomics ?? []).filter((p: any) => p.response !== "normal").length}</p><p className="text-[10px] text-slate-500 uppercase tracking-wide">Drug Flags</p></div>
-              <div><p className="text-lg font-bold text-slate-700">{(data.predispositions ?? []).length}</p><p className="text-[10px] text-slate-500 uppercase tracking-wide">Predispositions</p></div>
+              <div><p className="text-lg font-bold text-red-600">{highRisks.length}</p><p className="text-[10px] text-saivie-plum uppercase tracking-wide">High Risks</p></div>
+              <div><p className="text-lg font-bold text-saivie-teal">{(data.pharmacogenomics ?? []).filter((p: any) => p.response !== "normal").length}</p><p className="text-[10px] text-saivie-plum uppercase tracking-wide">Drug Flags</p></div>
+              <div><p className="text-lg font-bold text-saivie-plum">{(data.predispositions ?? []).length}</p><p className="text-[10px] text-saivie-plum uppercase tracking-wide">Predispositions</p></div>
             </div>
           </div>
         </CardContent>
@@ -404,16 +404,16 @@ function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; pa
 
       {/* Health Risks */}
       {(data.healthRisks ?? []).length > 0 && (
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
-            <CardTitle className="text-xs font-bold text-slate-700 uppercase tracking-wide">🛡 Health Risks</CardTitle>
+        <Card className="shadow-sm border-saivie-border">
+          <CardHeader className="py-3 px-4 border-b border-saivie-border bg-saivie-surface-muted/50">
+            <CardTitle className="text-xs font-bold text-saivie-plum uppercase tracking-wide">🛡 Health Risks</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {(data.healthRisks ?? []).map((r: any, i: number) => (
-              <div key={i} className="flex items-start justify-between px-4 py-3 border-b border-slate-100 last:border-0 gap-3">
+              <div key={i} className="flex items-start justify-between px-4 py-3 border-b border-saivie-border last:border-0 gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800">{r.name}</p>
-                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{r.description}</p>
+                  <p className="text-sm font-semibold text-saivie-plum">{r.name}</p>
+                  <p className="text-xs text-saivie-plum mt-0.5 line-clamp-2">{r.description}</p>
                 </div>
                 <Badge className={`shrink-0 text-[10px] border-none font-semibold ${riskBadge(r.risk)}`}>{r.risk?.toUpperCase()}</Badge>
               </div>
@@ -424,19 +424,19 @@ function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; pa
 
       {/* Pharmacogenomics flags */}
       {(data.pharmacogenomics ?? []).length > 0 && (
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
-            <CardTitle className="text-xs font-bold text-slate-700 uppercase tracking-wide">💊 Pharmacogenomic Flags</CardTitle>
+        <Card className="shadow-sm border-saivie-border">
+          <CardHeader className="py-3 px-4 border-b border-saivie-border bg-saivie-surface-muted/50">
+            <CardTitle className="text-xs font-bold text-saivie-plum uppercase tracking-wide">💊 Pharmacogenomic Flags</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {(data.pharmacogenomics ?? []).map((pgx: any, i: number) => (
-              <div key={i} className="px-4 py-3 border-b border-slate-100 last:border-0">
+              <div key={i} className="px-4 py-3 border-b border-saivie-border last:border-0">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <p className="text-sm font-semibold text-slate-800">{pgx.drug}</p>
+                  <p className="text-sm font-semibold text-saivie-plum">{pgx.drug}</p>
                   <Badge className={`shrink-0 text-[10px] border-none font-semibold ${pgxBadge(pgx.response)}`}>{pgx.response?.toUpperCase()}</Badge>
                 </div>
                 <p className="text-[11px] font-mono text-blue-600 mb-1">Gene: {pgx.gene}</p>
-                <p className="text-xs text-slate-500 italic">{pgx.recommendation}</p>
+                <p className="text-xs text-saivie-plum italic">{pgx.recommendation}</p>
               </div>
             ))}
           </CardContent>
@@ -445,17 +445,17 @@ function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; pa
 
       {/* Predispositions */}
       {(data.predispositions ?? []).length > 0 && (
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
-            <CardTitle className="text-xs font-bold text-slate-700 uppercase tracking-wide">🧬 Predispositions</CardTitle>
+        <Card className="shadow-sm border-saivie-border">
+          <CardHeader className="py-3 px-4 border-b border-saivie-border bg-saivie-surface-muted/50">
+            <CardTitle className="text-xs font-bold text-saivie-plum uppercase tracking-wide">🧬 Predispositions</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {(data.predispositions ?? []).map((p: any, i: number) => (
-              <div key={i} className="flex items-start justify-between px-4 py-3 border-b border-slate-100 last:border-0 gap-3">
+              <div key={i} className="flex items-start justify-between px-4 py-3 border-b border-saivie-border last:border-0 gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800">{p.name}</p>
+                  <p className="text-sm font-semibold text-saivie-plum">{p.name}</p>
                   <p className="text-[11px] font-mono text-blue-600">{p.gene}</p>
-                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{p.description}</p>
+                  <p className="text-xs text-saivie-plum mt-0.5 line-clamp-2">{p.description}</p>
                 </div>
                 <Badge className={`shrink-0 text-[10px] border-none font-semibold ${likeliBadge(p.likelihood)}`}>{p.likelihood?.toUpperCase()}</Badge>
               </div>
@@ -464,7 +464,7 @@ function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; pa
         </Card>
       )}
 
-      <p className="text-[10px] text-slate-400 text-center pb-2">For informational purposes only. Not a substitute for clinical judgement.</p>
+      <p className="text-[10px] text-saivie-plum text-center pb-2">For informational purposes only. Not a substitute for clinical judgement.</p>
     </div>
   );
 }
@@ -1613,31 +1613,31 @@ export default function ClinicianPortal() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 overflow-hidden">
+    <div className="min-h-screen bg-saivie-surface-muted flex font-sans text-saivie-plum overflow-hidden">
       
       {/* Sidebar */}
-      <aside className={`bg-white text-slate-600 flex flex-col shrink-0 border-r border-slate-200 z-20 transition-all duration-300 ${sidebarOpen ? "w-64 max-sm:w-16" : "w-20"}`}>
-        <div className="p-3 max-sm:p-2 border-b border-slate-100 flex items-center justify-between gap-2 max-sm:justify-center">
+      <aside className={`bg-saivie-ivory text-saivie-plum flex flex-col shrink-0 border-r border-saivie-border z-20 transition-all duration-300 ${sidebarOpen ? "w-64 max-sm:w-16" : "w-20"}`}>
+        <div className="p-3 max-sm:p-2 border-b border-saivie-border flex items-center justify-between gap-2 max-sm:justify-center">
           {sidebarOpen ? (
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-[#e9e2ff] flex items-center justify-center shrink-0">
-                <Stethoscope className="w-4 h-4 text-[#6047a5]" />
+              <div className="w-8 h-8 rounded-full bg-saivie-surface-muted flex items-center justify-center shrink-0">
+                <Stethoscope className="w-4 h-4 text-saivie-teal" />
               </div>
               <div className="min-w-0 max-sm:hidden">
-                <h1 className="text-slate-900 font-serif text-xl tracking-tight truncate">Helix<span className="text-[#8068c6]">Care</span></h1>
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium">Clinician OS v2.1</p>
+                <h1 className="text-saivie-plum font-serif text-xl tracking-tight truncate">Helix<span className="text-saivie-teal">Care</span></h1>
+                <p className="text-[10px] uppercase tracking-widest text-saivie-plum font-medium">Clinician OS v2.1</p>
               </div>
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-full bg-[#e9e2ff] flex items-center justify-center mx-auto shrink-0">
-              <Stethoscope className="w-4 h-4 text-[#6047a5]" />
+            <div className="w-8 h-8 rounded-full bg-saivie-surface-muted flex items-center justify-center mx-auto shrink-0">
+              <Stethoscope className="w-4 h-4 text-saivie-teal" />
             </div>
           )}
 
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-400 hover:text-slate-900 hover:bg-slate-100 shrink-0 max-sm:hidden"
+            className="h-8 w-8 text-saivie-plum hover:text-saivie-plum hover:bg-saivie-sage shrink-0 max-sm:hidden"
             onClick={() => setSidebarOpen(!sidebarOpen)}
             aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
           >
@@ -1659,7 +1659,7 @@ export default function ClinicianPortal() {
               variant={activeView === id ? 'secondary' : 'ghost'}
               aria-label={label}
               title={label}
-              className={`w-full max-sm:justify-center ${sidebarOpen ? 'justify-start' : 'justify-center'} ${activeView === id || (id === 'patient_list' && activeView === 'patient_detail') ? 'bg-[#eee9fb] text-[#55408f] hover:bg-[#e7e0f8]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+              className={`w-full max-sm:justify-center ${sidebarOpen ? 'justify-start' : 'justify-center'} ${activeView === id || (id === 'patient_list' && activeView === 'patient_detail') ? 'bg-saivie-surface-muted text-saivie-teal hover:bg-saivie-surface-muted' : 'text-saivie-plum hover:text-saivie-plum hover:bg-saivie-surface-muted'}`}
               onClick={() => setActiveView(id)}
             >
               <Icon className={`${sidebarOpen ? 'mr-3 max-sm:mr-0' : 'mr-0'} h-4 w-4`} />
@@ -1668,20 +1668,20 @@ export default function ClinicianPortal() {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-slate-100 bg-white">
+        <div className="p-3 border-t border-saivie-border bg-saivie-ivory">
           <div className={`flex max-sm:flex-col max-sm:items-center max-sm:gap-2 ${sidebarOpen ? 'items-center gap-3' : 'flex-col items-center gap-2'}`}>
-            <Avatar className="h-9 w-9 border border-slate-200 shrink-0">
-              <AvatarFallback className="bg-[#eee9fb] text-[#55408f]">{providerInitials}</AvatarFallback>
+            <Avatar className="h-9 w-9 border border-saivie-border shrink-0">
+              <AvatarFallback className="bg-saivie-surface-muted text-saivie-teal">{providerInitials}</AvatarFallback>
             </Avatar>
             {sidebarOpen && (
               <div className="text-sm flex-1 min-w-0 max-sm:hidden">
-                <p className="text-slate-900 font-medium truncate">{providerName}</p>
-                <p className="text-xs text-slate-500 truncate">{providerSpecialty}</p>
+                <p className="text-saivie-plum font-medium truncate">{providerName}</p>
+                <p className="text-xs text-saivie-plum truncate">{providerSpecialty}</p>
               </div>
             )}
             <button
               onClick={() => { localStorage.removeItem("clinicianProvider"); navigate("/"); }}
-              className="p-1.5 rounded-md hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
+              className="p-1.5 rounded-md hover:bg-rose-50 text-saivie-plum hover:text-rose-600 transition-colors"
               title="Sign Out"
               data-testid="button-signout"
             >
@@ -1692,7 +1692,7 @@ export default function ClinicianPortal() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-[#f5f4f8]">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-saivie-surface-muted">
         
         {/* NEW DASHBOARD VIEW */}
         {activeView === 'dashboard' && (
@@ -1700,27 +1700,27 @@ export default function ClinicianPortal() {
              <div className="max-w-[1440px] mx-auto space-y-5">
                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Clinician workspace</p>
-                    <h2 className="mt-1 text-2xl font-semibold text-slate-900">Good morning, {providerFirstName}</h2>
-                  <p className="mt-1 text-sm text-slate-500">Here is your clinic at a glance.</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-saivie-plum">Clinician workspace</p>
+                    <h2 className="mt-1 text-2xl font-semibold text-saivie-plum">Good morning, {providerFirstName}</h2>
+                  <p className="mt-1 text-sm text-saivie-plum">Here is your clinic at a glance.</p>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600 bg-white border border-slate-200 rounded-lg px-3 py-2">
-                  <CalendarIcon className="w-4 h-4 text-[#725bb1]" />
+                <div className="flex items-center gap-2 text-sm text-saivie-plum bg-saivie-ivory border border-saivie-border rounded-lg px-3 py-2">
+                  <CalendarIcon className="w-4 h-4 text-saivie-teal" />
                   {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </div>
                </div>
 
-               <section className="rounded-xl bg-[#ded5fb] px-5 py-5 md:px-7 md:py-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 overflow-hidden" aria-label="Clinic at a glance">
+               <section className="rounded-xl bg-saivie-surface-muted px-5 py-5 md:px-7 md:py-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 overflow-hidden" aria-label="Clinic at a glance">
                 <div className="max-w-xl">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-[#5b4b8b]">Today's clinic</p>
-                  <h3 className="mt-2 text-2xl md:text-3xl font-semibold text-slate-900">{queuePatients.length} visits in flow</h3>
-                  <p className="mt-1 text-sm text-slate-700">Your selected date range, with triage priorities ready to review.</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-saivie-teal">Today's clinic</p>
+                  <h3 className="mt-2 text-2xl md:text-3xl font-semibold text-saivie-plum">{queuePatients.length} visits in flow</h3>
+                  <p className="mt-1 text-sm text-saivie-plum">Your selected date range, with triage priorities ready to review.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {[
-                   { label: 'Fertility', count: queuePatients.filter((p: any) => ['fertility', 'ttc', 'iui', 'ivf', 'iui cycle', 'pcos'].some(t => (p.type || '').toLowerCase().includes(t))), className: 'bg-white/80 text-[#6047a5]' },
-                   { label: 'Pregnancy', count: queuePatients.filter((p: any) => ['pregnancy', 'pregnant', 'antenatal'].some(t => (p.type || '').toLowerCase().includes(t))), className: 'bg-[#f6eaf0] text-[#9b5877]' },
-                   { label: 'Postpartum', count: queuePatients.filter((p: any) => (p.type || '').toLowerCase().includes('postpartum')), className: 'bg-[#e6f1dc] text-[#4d733c]' },
+                   { label: 'Fertility', count: queuePatients.filter((p: any) => ['fertility', 'ttc', 'iui', 'ivf', 'iui cycle', 'pcos'].some(t => (p.type || '').toLowerCase().includes(t))), className: 'bg-saivie-ivory/80 text-saivie-teal' },
+                   { label: 'Pregnancy', count: queuePatients.filter((p: any) => ['pregnancy', 'pregnant', 'antenatal'].some(t => (p.type || '').toLowerCase().includes(t))), className: 'bg-saivie-surface-blush text-saivie-rose' },
+                   { label: 'Postpartum', count: queuePatients.filter((p: any) => (p.type || '').toLowerCase().includes('postpartum')), className: 'bg-saivie-sage text-saivie-plum' },
                   ].map((item) => (
                    <div key={item.label} className={`min-w-[112px] rounded-lg px-3 py-2 ${item.className}`}>
                     <p className="text-xs font-medium">{item.label}</p>
@@ -1732,44 +1732,44 @@ export default function ClinicianPortal() {
                 
                 {/* TOP BAR - TODAY AT A GLANCE */}
                <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-6 gap-3">
-                 <div className="flex items-center gap-3 cursor-pointer bg-white border border-slate-200 hover:border-[#c9baf1] rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/today-appointments')} data-testid="link-today-appointments">
-                     <div className="p-2 bg-[#f0ebfc] rounded-lg text-[#6a52a9]"><Users className="w-5 h-5" /></div>
+                 <div className="flex items-center gap-3 cursor-pointer bg-saivie-ivory border border-saivie-border hover:border-saivie-border rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/today-appointments')} data-testid="link-today-appointments">
+                     <div className="p-2 bg-saivie-surface-muted rounded-lg text-saivie-teal"><Users className="w-5 h-5" /></div>
                          <div>
-                       <p className="text-xs text-slate-500 font-medium">Today's appointments</p>
-                            <p className="text-xl font-bold text-slate-900" data-testid="stat-today-appointments">{dashStats?.todayAppointments ?? '—'}</p>
+                       <p className="text-xs text-saivie-plum font-medium">Today's appointments</p>
+                            <p className="text-xl font-bold text-saivie-plum" data-testid="stat-today-appointments">{dashStats?.todayAppointments ?? '—'}</p>
                          </div>
                  </div>
-                 <div className="flex items-center gap-3 cursor-pointer bg-white border border-slate-200 hover:border-[#c9baf1] rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/fertility')} data-testid="link-fertility-active">
-                     <div className="p-2 bg-[#f0ebfc] rounded-lg text-[#6a52a9]"><Dna className="w-5 h-5" /></div>
+                 <div className="flex items-center gap-3 cursor-pointer bg-saivie-ivory border border-saivie-border hover:border-saivie-border rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/fertility')} data-testid="link-fertility-active">
+                     <div className="p-2 bg-saivie-surface-muted rounded-lg text-saivie-teal"><Dna className="w-5 h-5" /></div>
                          <div>
-                       <p className="text-xs text-slate-500 font-medium">Fertility active</p>
-                            <p className="text-xl font-bold text-slate-900" data-testid="stat-fertility-active">{dashStats?.fertilityActive ?? '—'}</p>
+                       <p className="text-xs text-saivie-plum font-medium">Fertility active</p>
+                            <p className="text-xl font-bold text-saivie-plum" data-testid="stat-fertility-active">{dashStats?.fertilityActive ?? '—'}</p>
                          </div>
                  </div>
-                 <div className="flex items-center gap-3 cursor-pointer bg-white border border-slate-200 hover:border-[#c9baf1] rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/pregnancy')} data-testid="link-pregnancy-followups">
-                     <div className="p-2 bg-[#f8edf2] rounded-lg text-[#a65e7d]"><Baby className="w-5 h-5" /></div>
+                 <div className="flex items-center gap-3 cursor-pointer bg-saivie-ivory border border-saivie-border hover:border-saivie-border rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/pregnancy')} data-testid="link-pregnancy-followups">
+                     <div className="p-2 bg-saivie-surface-blush rounded-lg text-saivie-rose"><Baby className="w-5 h-5" /></div>
                          <div>
-                       <p className="text-xs text-slate-500 font-medium">Pregnancy follow-ups</p>
-                            <p className="text-xl font-bold text-slate-900" data-testid="stat-pregnancy-followups">{dashStats?.pregnancyFollowups ?? '—'}</p>
+                       <p className="text-xs text-saivie-plum font-medium">Pregnancy follow-ups</p>
+                            <p className="text-xl font-bold text-saivie-plum" data-testid="stat-pregnancy-followups">{dashStats?.pregnancyFollowups ?? '—'}</p>
                          </div>
                  </div>
-                 <div className="flex items-center gap-3 cursor-pointer bg-white border border-slate-200 hover:border-[#c9baf1] rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/referrals')} data-testid="link-referrals">
-                     <div className="p-2 bg-[#eef2fa] rounded-lg text-[#5875ac]"><FileText className="w-5 h-5" /></div>
+                 <div className="flex items-center gap-3 cursor-pointer bg-saivie-ivory border border-saivie-border hover:border-saivie-border rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/referrals')} data-testid="link-referrals">
+                     <div className="p-2 bg-saivie-surface-muted rounded-lg text-saivie-teal"><FileText className="w-5 h-5" /></div>
                          <div>
-                       <p className="text-xs text-slate-500 font-medium">Referrals</p>
-                            <p className="text-xl font-bold text-slate-900" data-testid="stat-referrals">{dashStats?.totalReferrals ?? '—'}</p>
+                       <p className="text-xs text-saivie-plum font-medium">Referrals</p>
+                            <p className="text-xl font-bold text-saivie-plum" data-testid="stat-referrals">{dashStats?.totalReferrals ?? '—'}</p>
                          </div>
                  </div>
-                 <div className="flex items-center gap-3 cursor-pointer bg-white border border-slate-200 hover:border-[#e8c5c8] rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/high-risk')} data-testid="link-high-risk">
+                 <div className="flex items-center gap-3 cursor-pointer bg-saivie-ivory border border-saivie-border hover:border-[#e8c5c8] rounded-lg p-3 transition-colors" onClick={() => navigate('/clinician/patients/high-risk')} data-testid="link-high-risk">
                      <div className="p-2 bg-[#fff0ef] rounded-lg text-[#b4555b]"><AlertTriangle className="w-5 h-5" /></div>
                          <div>
-                       <p className="text-xs text-slate-500 font-medium">High-risk alerts</p>
-                            <p className="text-xl font-bold text-slate-900" data-testid="stat-high-risk">{dashStats?.highRiskAlerts ?? '—'}</p>
+                       <p className="text-xs text-saivie-plum font-medium">High-risk alerts</p>
+                            <p className="text-xl font-bold text-saivie-plum" data-testid="stat-high-risk">{dashStats?.highRiskAlerts ?? '—'}</p>
                          </div>
                  </div>
-                 <div className="bg-white border border-slate-200 rounded-lg p-3">
-                   <p className="text-xs text-slate-500 font-medium">Total patients</p>
-                   <p className="text-xl font-bold text-slate-900" data-testid="stat-total-patients">{dashStats?.totalPatients ?? patients.length ?? '—'}</p>
+                 <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-3">
+                   <p className="text-xs text-saivie-plum font-medium">Total patients</p>
+                   <p className="text-xl font-bold text-saivie-plum" data-testid="stat-total-patients">{dashStats?.totalPatients ?? patients.length ?? '—'}</p>
                  </div>
                 </div>
 
@@ -1781,16 +1781,16 @@ export default function ClinicianPortal() {
                      {/* SECTION 1 - PRIORITY ATTENTION PANEL */}
                     <div className="space-y-3">
                         <div className="flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-[#a15b78]" />
-                        <h3 className="text-sm font-semibold text-slate-800">Needs your attention</h3>
+                        <AlertCircle className="w-4 h-4 text-saivie-rose" />
+                        <h3 className="text-sm font-semibold text-saivie-plum">Needs your attention</h3>
                         </div>
                         
                       <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3">
                            {(dashStats?.priorityPatients || []).length > 0 ? (dashStats.priorityPatients as any[]).map((pp: any, idx: number) => {
                               const borderColors: Record<string, string> = { action: 'border-l-rose-500', review: 'border-l-amber-500', alert: 'border-l-amber-500' };
                               const badgeColors: Record<string, string> = { action: 'bg-rose-100 text-rose-700', review: 'bg-amber-100 text-amber-700', alert: 'bg-amber-100 text-amber-700' };
-                              const avatarColors: Record<string, string> = { fertility: 'border-rose-100 bg-rose-50 text-rose-700', pregnancy: 'border-amber-100 bg-amber-50 text-amber-700', postpartum: 'border-slate-100 bg-slate-50 text-slate-600' };
-                              const typeIcons: Record<string, any> = { fertility: <Microscope className="w-3 h-3 text-purple-500" />, pregnancy: <Baby className="w-3 h-3 text-pink-500" />, postpartum: <Brain className="w-3 h-3 text-slate-500" /> };
+                              const avatarColors: Record<string, string> = { fertility: 'border-rose-100 bg-rose-50 text-rose-700', pregnancy: 'border-amber-100 bg-amber-50 text-amber-700', postpartum: 'border-saivie-border bg-saivie-surface-muted text-saivie-plum' };
+                              const typeIcons: Record<string, any> = { fertility: <Microscope className="w-3 h-3 text-saivie-teal" />, pregnancy: <Baby className="w-3 h-3 text-saivie-rose" />, postpartum: <Brain className="w-3 h-3 text-saivie-plum" /> };
                               const typeLabels: Record<string, string> = { fertility: 'Fertility Follow-up', pregnancy: 'Pregnancy Follow-up', postpartum: 'Postpartum Check' };
                               const patient = patients.find((p: any) => p.id === pp.id) || pp;
                               return (
@@ -1798,18 +1798,18 @@ export default function ClinicianPortal() {
                                     <CardContent className="p-4">
                                        <div className="flex justify-between items-start mb-2">
                                           <div className="flex items-center gap-2">
-                                             <Avatar className={`h-8 w-8 text-xs border ${avatarColors[pp.priorityType] || 'border-slate-100 bg-slate-50 text-slate-600'}`}>
+                                             <Avatar className={`h-8 w-8 text-xs border ${avatarColors[pp.priorityType] || 'border-saivie-border bg-saivie-surface-muted text-saivie-plum'}`}>
                                                 <AvatarFallback>{getInitials(pp.name)}</AvatarFallback>
                                              </Avatar>
                                              <div>
-                                                <p data-testid={`text-priority-name-${idx}`} className="font-bold text-sm text-slate-900">{pp.name}</p>
-                                                <p className="text-[10px] text-slate-500">{pp.type || pp.priorityType}</p>
+                                                <p data-testid={`text-priority-name-${idx}`} className="font-bold text-sm text-saivie-plum">{pp.name}</p>
+                                                <p className="text-[10px] text-saivie-plum">{pp.type || pp.priorityType}</p>
                                              </div>
                                           </div>
-                                          <Badge className={`${badgeColors[pp.priorityLevel] || 'bg-slate-100 text-slate-700'} hover:opacity-80 border-none text-[10px]`}>{pp.priorityLevel === 'action' ? 'Action' : pp.priorityLevel === 'review' ? 'Review' : 'Alert'}</Badge>
+                                          <Badge className={`${badgeColors[pp.priorityLevel] || 'bg-saivie-sage text-saivie-plum'} hover:opacity-80 border-none text-[10px]`}>{pp.priorityLevel === 'action' ? 'Action' : pp.priorityLevel === 'review' ? 'Review' : 'Alert'}</Badge>
                                        </div>
                                        <div className="space-y-1">
-                                          <div className="flex items-center gap-2 text-xs text-slate-700 font-medium">
+                                          <div className="flex items-center gap-2 text-xs text-saivie-plum font-medium">
                                              {typeIcons[pp.priorityType] || <Users className="w-3 h-3" />} {typeLabels[pp.priorityType] || 'Follow-up'}
                                           </div>
                                        </div>
@@ -1817,15 +1817,15 @@ export default function ClinicianPortal() {
                                  </Card>
                               );
                            }) : (
-                              <div className="col-span-3 py-8 text-center text-slate-400 text-sm">No priority patients at this time</div>
+                              <div className="col-span-3 py-8 text-center text-saivie-plum text-sm">No priority patients at this time</div>
                            )}
                         </div>
                      </div>
 
                      {/* SECTION 2 - TODAY'S PATIENT FLOW */}
-                     <Card className="shadow-none border-slate-200 rounded-lg overflow-hidden">
-                        <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
-                           <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                     <Card className="shadow-none border-saivie-border rounded-lg overflow-hidden">
+                        <CardHeader className="py-4 border-b border-saivie-border flex flex-row items-center justify-between">
+                           <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
                               <CalendarCheck className="w-4 h-4 text-blue-600" /> Patient Flow
                            </CardTitle>
                            <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -1833,38 +1833,38 @@ export default function ClinicianPortal() {
                                 type="date"
                                 value={queueDateFrom}
                                 onChange={(e) => { setQueueDateFrom(e.target.value); if (e.target.value > queueDateTo) setQueueDateTo(e.target.value); }}
-                                className="h-7 text-xs w-[120px] border-slate-200"
+                                className="h-7 text-xs w-[120px] border-saivie-border"
                                 data-testid="input-queue-date-from"
                               />
-                              <span className="text-[10px] text-slate-400">to</span>
+                              <span className="text-[10px] text-saivie-plum">to</span>
                               <Input
                                 type="date"
                                 value={queueDateTo}
                                 onChange={(e) => { setQueueDateTo(e.target.value); if (e.target.value < queueDateFrom) setQueueDateFrom(e.target.value); }}
-                                className="h-7 text-xs w-[120px] border-slate-200"
+                                className="h-7 text-xs w-[120px] border-saivie-border"
                                 data-testid="input-queue-date-to"
                               />
                               <button
                                 onClick={() => setQueueTriageSort(v => !v)}
                                 data-testid="btn-triage-sort"
-                                className={`flex items-center gap-1 h-7 px-2 rounded text-[10px] font-bold border transition-colors ${queueTriageSort ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-slate-200 text-slate-500 hover:border-orange-200 hover:text-orange-600'}`}
+                                className={`flex items-center gap-1 h-7 px-2 rounded text-[10px] font-bold border transition-colors ${queueTriageSort ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-saivie-ivory border-saivie-border text-saivie-plum hover:border-orange-200 hover:text-orange-600'}`}
                                 title="Sort by AI triage priority"
                               >
                                 <Sparkles className="w-3 h-3" />
                                 {queueTriageSort ? 'Triage ON' : 'Triage'}
                               </button>
-                              <span className="text-xs text-slate-500 font-medium">{queuePatients.length}</span>
+                              <span className="text-xs text-saivie-plum font-medium">{queuePatients.length}</span>
                            </div>
                         </CardHeader>
                         <CardContent className="p-0">
                            {queuePatients.length === 0 ? (
-                              <div className="py-12 text-center text-slate-400 text-sm">
+                              <div className="py-12 text-center text-saivie-plum text-sm">
                                  No patients scheduled {queueDateFrom !== queueDateTo ? 'for this date range' : 'for this date'}
                               </div>
                            ) : (
                            <div className="overflow-x-auto">
                            <table className="min-w-[720px] w-full text-sm text-left">
-                              <thead className="text-xs text-slate-500 bg-slate-50 uppercase border-b border-slate-100">
+                              <thead className="text-xs text-saivie-plum bg-saivie-surface-muted uppercase border-b border-saivie-border">
                                  <tr>
                                     {queueDateFrom !== queueDateTo && <th className="px-3 py-3 font-medium w-20">Date</th>}
                                     <th className="px-3 py-3 font-medium w-16">Time</th>
@@ -1879,20 +1879,20 @@ export default function ClinicianPortal() {
                               <tbody className="divide-y divide-slate-100">
                                  {queuePatients.map((p: any) => {
                                     const typeColors: Record<string, string> = {
-                                       'Fertility': 'border-purple-200 text-purple-700 bg-purple-50',
-                                       'Pregnant': 'border-pink-200 text-pink-700 bg-pink-50',
-                                       'Pregnancy': 'border-pink-200 text-pink-700 bg-pink-50',
-                                       'Postpartum': 'border-slate-200 text-slate-700 bg-slate-50',
-                                       'IUI Cycle': 'border-purple-200 text-purple-700 bg-purple-50',
+                                       'Fertility': 'border-saivie-border text-saivie-teal bg-saivie-surface-muted',
+                                       'Pregnant': 'border-saivie-blush text-saivie-rose bg-saivie-surface-blush',
+                                       'Pregnancy': 'border-saivie-blush text-saivie-rose bg-saivie-surface-blush',
+                                       'Postpartum': 'border-saivie-border text-saivie-plum bg-saivie-surface-muted',
+                                       'IUI Cycle': 'border-saivie-border text-saivie-teal bg-saivie-surface-muted',
                                        'PCOS': 'border-emerald-200 text-emerald-700 bg-emerald-50',
-                                       'Others': 'border-slate-200 text-slate-700 bg-slate-50',
+                                       'Others': 'border-saivie-border text-saivie-plum bg-saivie-surface-muted',
                                     };
                                     return (
-                                       <tr key={`${p.appointmentId}-${p.id}`} data-testid={`row-patient-${p.id}`} className="hover:bg-slate-50 cursor-pointer" onClick={() => navigateToPatient(p)}>
-                                          {queueDateFrom !== queueDateTo && <td className="px-3 py-3 text-slate-500 text-xs font-medium">{p.appointmentDate ? new Date(p.appointmentDate + 'T00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}</td>}
-                                          <td className="px-3 py-3 text-slate-500 font-medium">{p.appointmentTime || '--:--'}</td>
+                                       <tr key={`${p.appointmentId}-${p.id}`} data-testid={`row-patient-${p.id}`} className="hover:bg-saivie-surface-muted cursor-pointer" onClick={() => navigateToPatient(p)}>
+                                          {queueDateFrom !== queueDateTo && <td className="px-3 py-3 text-saivie-plum text-xs font-medium">{p.appointmentDate ? new Date(p.appointmentDate + 'T00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}</td>}
+                                          <td className="px-3 py-3 text-saivie-plum font-medium">{p.appointmentTime || '--:--'}</td>
                                           <td className="px-3 py-3" data-testid={`text-patient-name-${p.id}`}>
-                                             <div className="font-semibold text-slate-900">{p.name}</div>
+                                             <div className="font-semibold text-saivie-plum">{p.name}</div>
                                              {p.appointmentVisitMode === 'home-visit' && p.address && (
                                                <div className="text-xs text-amber-600 flex items-center gap-1 mt-0.5">
                                                  <span>🏠</span>
@@ -1909,7 +1909,7 @@ export default function ClinicianPortal() {
                                                </div>
                                              )}
                                           </td>
-                                          <td className="px-3 py-3"><Badge variant="outline" className={typeColors[p.type] || 'border-slate-200 text-slate-700 bg-slate-50'}>{p.type || 'General'}</Badge></td>
+                                          <td className="px-3 py-3"><Badge variant="outline" className={typeColors[p.type] || 'border-saivie-border text-saivie-plum bg-saivie-surface-muted'}>{p.type || 'General'}</Badge></td>
                                           <td className="px-3 py-3">
                                             {p.riskScore ? (
                                               <Badge
@@ -1926,7 +1926,7 @@ export default function ClinicianPortal() {
                                               </Badge>
                                             ) : (
                                               <span
-                                                className="text-[10px] text-slate-400 cursor-pointer hover:text-slate-600 underline underline-offset-2"
+                                                className="text-[10px] text-saivie-plum cursor-pointer hover:text-saivie-plum underline underline-offset-2"
                                                 onClick={async (e) => {
                                                   e.stopPropagation();
                                                   setScoringPatientId(p.id);
@@ -1940,14 +1940,14 @@ export default function ClinicianPortal() {
                                             )}
                                           </td>
                                           {queueTriageSort && (
-                                            <td className="px-3 py-3 text-xs text-slate-500 max-w-[180px]">
+                                            <td className="px-3 py-3 text-xs text-saivie-plum max-w-[180px]">
                                               <span className="flex items-center gap-1">
                                                 <Sparkles className="w-3 h-3 text-orange-400 shrink-0" />
                                                 <span className="truncate" title={p.triageReason}>{p.triageReason}</span>
                                               </span>
                                             </td>
                                           )}
-                                          <td className="px-3 py-3 text-slate-600 text-xs capitalize">{p.appointmentStatus || 'Scheduled'}</td>
+                                          <td className="px-3 py-3 text-saivie-plum text-xs capitalize">{p.appointmentStatus || 'Scheduled'}</td>
                                           <td className="px-3 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
                                        </tr>
                                     );
@@ -1961,38 +1961,38 @@ export default function ClinicianPortal() {
 
                      {/* SECTION 7 - CLINIC INSIGHTS (Bottom Panel) */}
                      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-                        <Card className="bg-[#e6f1dc] text-slate-800 border border-[#d8e7cc] shadow-none cursor-pointer hover:bg-[#deebd2] transition-colors" onClick={() => navigate('/clinician/patients/pregnancy')} data-testid="link-pregnancy-insights">
+                        <Card className="bg-saivie-sage text-saivie-plum border border-saivie-border shadow-none cursor-pointer hover:bg-saivie-sage transition-colors" onClick={() => navigate('/clinician/patients/pregnancy')} data-testid="link-pregnancy-insights">
                            <CardContent className="p-4">
-                            <p className="text-[10px] text-[#587146] uppercase tracking-wider font-bold mb-1">Pregnancy Patients</p>
+                            <p className="text-[10px] text-saivie-plum uppercase tracking-wider font-bold mb-1">Pregnancy Patients</p>
                               <div className="flex items-end justify-between">
                                  <p className="text-3xl font-bold" data-testid="stat-pregnancies-month">{dashStats?.pregnancyFollowups ?? '—'}</p>
-                              <TrendingUp className="w-4 h-4 text-[#668452] mb-1" />
+                              <TrendingUp className="w-4 h-4 text-saivie-teal mb-1" />
                               </div>
                            </CardContent>
                         </Card>
-                        <Card className="shadow-sm border-slate-200 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/clinician/patients/fertility')} data-testid="link-fertility-insights">
+                        <Card className="shadow-sm border-saivie-border cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/clinician/patients/fertility')} data-testid="link-fertility-insights">
                            <CardContent className="p-4">
-                              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">Fertility Patients</p>
+                              <p className="text-[10px] text-saivie-plum uppercase tracking-wider font-bold mb-1">Fertility Patients</p>
                               <div className="flex items-end justify-between">
-                                 <p className="text-2xl font-bold text-slate-800" data-testid="stat-fertility-insights">{dashStats?.fertilityActive ?? '—'}</p>
-                                 <Dna className="w-4 h-4 text-purple-400 mb-1" />
+                                 <p className="text-2xl font-bold text-saivie-plum" data-testid="stat-fertility-insights">{dashStats?.fertilityActive ?? '—'}</p>
+                                 <Dna className="w-4 h-4 text-saivie-teal mb-1" />
                               </div>
                            </CardContent>
                         </Card>
-                        <Card className="shadow-sm border-slate-200 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/clinician/patients/postpartum')} data-testid="link-postpartum-insights">
+                        <Card className="shadow-sm border-saivie-border cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/clinician/patients/postpartum')} data-testid="link-postpartum-insights">
                            <CardContent className="p-4">
-                              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">Postpartum Active</p>
+                              <p className="text-[10px] text-saivie-plum uppercase tracking-wider font-bold mb-1">Postpartum Active</p>
                               <div className="flex items-end justify-between">
-                                 <p className="text-2xl font-bold text-slate-800" data-testid="stat-postpartum-insights">{dashStats?.postpartumActive ?? '—'}</p>
-                                 <Activity className="w-4 h-4 text-slate-400 mb-1" />
+                                 <p className="text-2xl font-bold text-saivie-plum" data-testid="stat-postpartum-insights">{dashStats?.postpartumActive ?? '—'}</p>
+                                 <Activity className="w-4 h-4 text-saivie-plum mb-1" />
                               </div>
                            </CardContent>
                         </Card>
-                        <Card className="shadow-sm border-slate-200">
+                        <Card className="shadow-sm border-saivie-border">
                            <CardContent className="p-4">
-                              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">Lab Reports</p>
+                              <p className="text-[10px] text-saivie-plum uppercase tracking-wider font-bold mb-1">Lab Reports</p>
                               <div className="flex items-end justify-between">
-                                 <p className="text-2xl font-bold text-slate-800" data-testid="stat-lab-reports">{dashStats?.teamActivity?.labReportsTotal ?? '—'}</p>
+                                 <p className="text-2xl font-bold text-saivie-plum" data-testid="stat-lab-reports">{dashStats?.teamActivity?.labReportsTotal ?? '—'}</p>
                                  <FileText className="w-4 h-4 text-blue-400 mb-1" />
                               </div>
                            </CardContent>
@@ -2003,19 +2003,19 @@ export default function ClinicianPortal() {
                   {/* RIGHT COLUMN - INTELLIGENCE SNAPSHOTS */}
                   <div className="space-y-6">
 
-                     <Card className="shadow-none border-slate-200 rounded-lg overflow-hidden" data-testid="panel-up-next">
-                       <CardHeader className="py-4 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
+                     <Card className="shadow-none border-saivie-border rounded-lg overflow-hidden" data-testid="panel-up-next">
+                       <CardHeader className="py-4 px-4 border-b border-saivie-border flex flex-row items-center justify-between">
                          <div>
-                           <CardTitle className="text-sm font-semibold text-slate-900">Up next</CardTitle>
-                           <p className="text-xs text-slate-500 mt-1">Appointments in time order</p>
+                           <CardTitle className="text-sm font-semibold text-saivie-plum">Up next</CardTitle>
+                           <p className="text-xs text-saivie-plum mt-1">Appointments in time order</p>
                          </div>
-                         <Button variant="ghost" size="sm" className="h-8 text-xs text-[#6047a5]" onClick={() => setActiveView('schedule')}>
+                         <Button variant="ghost" size="sm" className="h-8 text-xs text-saivie-teal" onClick={() => setActiveView('schedule')}>
                            Full schedule <ChevronRight className="ml-1 h-3.5 w-3.5" />
                          </Button>
                        </CardHeader>
                        <CardContent className="p-0">
                          {chronologicalQueue.length === 0 ? (
-                           <div className="px-4 py-8 text-center text-sm text-slate-500">No appointments in this date range.</div>
+                           <div className="px-4 py-8 text-center text-sm text-saivie-plum">No appointments in this date range.</div>
                          ) : (
                            <div className="divide-y divide-slate-100">
                              {chronologicalQueue.slice(0, 5).map((patient: any) => (
@@ -2023,18 +2023,18 @@ export default function ClinicianPortal() {
                                  key={`${patient.appointmentId}-${patient.id}`}
                                  type="button"
                                  data-testid={`up-next-patient-${patient.id}`}
-                                 className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#faf9fd] transition-colors"
+                                 className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-saivie-ivory transition-colors"
                                  onClick={() => navigateToPatient(patient)}
                                >
-                                 <span className="w-12 shrink-0 text-xs font-semibold text-slate-700">{patient.appointmentTime || '--:--'}</span>
+                                 <span className="w-12 shrink-0 text-xs font-semibold text-saivie-plum">{patient.appointmentTime || '--:--'}</span>
                                  <Avatar className="h-8 w-8 shrink-0">
-                                   <AvatarFallback className="bg-[#eee9fb] text-[#55408f] text-[10px] font-semibold">{getInitials(patient.name)}</AvatarFallback>
+                                   <AvatarFallback className="bg-saivie-surface-muted text-saivie-teal text-[10px] font-semibold">{getInitials(patient.name)}</AvatarFallback>
                                  </Avatar>
                                  <span className="min-w-0 flex-1">
-                                   <span className="block text-sm font-medium text-slate-900 truncate">{patient.name}</span>
-                                   <span className="block text-xs text-slate-500 truncate">{patient.type || 'General appointment'}</span>
+                                   <span className="block text-sm font-medium text-saivie-plum truncate">{patient.name}</span>
+                                   <span className="block text-xs text-saivie-plum truncate">{patient.type || 'General appointment'}</span>
                                  </span>
-                                 <span className="shrink-0 text-[10px] font-medium text-slate-600 bg-slate-100 rounded px-2 py-1 capitalize">{patient.appointmentStatus || 'Scheduled'}</span>
+                                 <span className="shrink-0 text-[10px] font-medium text-saivie-plum bg-saivie-sage rounded px-2 py-1 capitalize">{patient.appointmentStatus || 'Scheduled'}</span>
                                </button>
                              ))}
                            </div>
@@ -2062,8 +2062,8 @@ export default function ClinicianPortal() {
                                  onClick={() => setRiskDialogPatient(p)}
                                >
                                  <div className="min-w-0 flex-1">
-                                   <p className="text-xs font-semibold text-slate-800 truncate">{p.name}</p>
-                                   <p className="text-[10px] text-slate-500 truncate">{p.riskScore?.factors?.[0]?.factor || 'Click to view details'}</p>
+                                   <p className="text-xs font-semibold text-saivie-plum truncate">{p.name}</p>
+                                   <p className="text-[10px] text-saivie-plum truncate">{p.riskScore?.factors?.[0]?.factor || 'Click to view details'}</p>
                                  </div>
                                  <Badge className={`ml-2 shrink-0 text-[10px] border-none ${p.riskScore?.level === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
                                    {p.riskScore?.level} · {p.riskScore?.score}
@@ -2076,51 +2076,51 @@ export default function ClinicianPortal() {
                      )}
 
                      {/* SECTION 3 - FERTILITY INTELLIGENCE SNAPSHOT */}
-                     <Card className="shadow-sm border-slate-200 overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
-                        <CardHeader className="py-3 px-4 border-b border-slate-100 bg-purple-50/30">
-                           <CardTitle className="text-sm font-bold text-purple-900 flex items-center gap-2">
-                              <Sparkles className="w-4 h-4 text-purple-600" /> Fertility Intelligence
+                     <Card className="shadow-sm border-saivie-border overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-saivie-teal"></div>
+                        <CardHeader className="py-3 px-4 border-b border-saivie-border bg-saivie-surface-muted/30">
+                           <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
+                              <Sparkles className="w-4 h-4 text-saivie-teal" /> Fertility Intelligence
                            </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                            <div className="divide-y divide-slate-100">
-                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer" onClick={() => navigate('/clinician/patients/fertility')} data-testid="link-fertility-row">
-                                 <span className="text-xs font-medium text-slate-600">Active Fertility Patients</span>
+                              <div className="p-3 flex justify-between items-center hover:bg-saivie-surface-muted cursor-pointer" onClick={() => navigate('/clinician/patients/fertility')} data-testid="link-fertility-row">
+                                 <span className="text-xs font-medium text-saivie-plum">Active Fertility Patients</span>
                                  <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none" data-testid="stat-fertility-active-badge">{dashStats?.fertilityActive ?? 0} Active</Badge>
                               </div>
-                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <span className="text-xs font-medium text-slate-600">Today's Fertility Appointments</span>
-                                 <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-none">{queuePatients.filter((p: any) => ['fertility', 'ttc', 'iui', 'ivf', 'iui cycle', 'pcos'].some(t => (p.type || '').toLowerCase().includes(t))).length} Today</Badge>
+                              <div className="p-3 flex justify-between items-center hover:bg-saivie-surface-muted cursor-pointer">
+                                 <span className="text-xs font-medium text-saivie-plum">Today's Fertility Appointments</span>
+                                 <Badge className="bg-saivie-sage text-saivie-teal hover:bg-saivie-sage border-none">{queuePatients.filter((p: any) => ['fertility', 'ttc', 'iui', 'ivf', 'iui cycle', 'pcos'].some(t => (p.type || '').toLowerCase().includes(t))).length} Today</Badge>
                               </div>
-                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <span className="text-xs font-medium text-slate-600">Pending Lab Tasks</span>
-                                 <Badge variant="outline" className="text-slate-500">{dashStats?.pendingLabTasks ?? 0} Pending</Badge>
+                              <div className="p-3 flex justify-between items-center hover:bg-saivie-surface-muted cursor-pointer">
+                                 <span className="text-xs font-medium text-saivie-plum">Pending Lab Tasks</span>
+                                 <Badge variant="outline" className="text-saivie-plum">{dashStats?.pendingLabTasks ?? 0} Pending</Badge>
                               </div>
                            </div>
                         </CardContent>
                      </Card>
 
                      {/* SECTION 4 - PREGNANCY SNAPSHOT */}
-                     <Card className="shadow-sm border-slate-200 overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-pink-500"></div>
-                        <CardHeader className="py-3 px-4 border-b border-slate-100 bg-pink-50/30">
-                           <CardTitle className="text-sm font-bold text-pink-900 flex items-center gap-2">
-                              <Baby className="w-4 h-4 text-pink-600" /> Pregnancy Watch
+                     <Card className="shadow-sm border-saivie-border overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-saivie-rose"></div>
+                        <CardHeader className="py-3 px-4 border-b border-saivie-border bg-saivie-surface-blush/30">
+                           <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
+                              <Baby className="w-4 h-4 text-saivie-rose" /> Pregnancy Watch
                            </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                            <div className="divide-y divide-slate-100">
-                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer" onClick={() => navigate('/clinician/patients/pregnancy')} data-testid="link-pregnancy-row">
-                                 <span className="text-xs font-medium text-slate-600">Active Pregnancies</span>
-                                 <Badge className="bg-pink-100 text-pink-700 hover:bg-pink-200 border-none" data-testid="stat-pregnancy-watch">{dashStats?.pregnancyFollowups ?? 0} Patients</Badge>
+                              <div className="p-3 flex justify-between items-center hover:bg-saivie-surface-muted cursor-pointer" onClick={() => navigate('/clinician/patients/pregnancy')} data-testid="link-pregnancy-row">
+                                 <span className="text-xs font-medium text-saivie-plum">Active Pregnancies</span>
+                                 <Badge className="bg-saivie-blush text-saivie-plum hover:bg-saivie-blush border-none" data-testid="stat-pregnancy-watch">{dashStats?.pregnancyFollowups ?? 0} Patients</Badge>
                               </div>
-                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer" onClick={() => navigate('/clinician/patients/high-bp')} data-testid="link-high-bp-row">
-                                 <span className="text-xs font-medium text-slate-600">High BP Alerts</span>
+                              <div className="p-3 flex justify-between items-center hover:bg-saivie-surface-muted cursor-pointer" onClick={() => navigate('/clinician/patients/high-bp')} data-testid="link-high-bp-row">
+                                 <span className="text-xs font-medium text-saivie-plum">High BP Alerts</span>
                                  <div className="flex items-center gap-1 text-xs font-bold text-rose-600"><AlertCircle className="w-3 h-3" /> {dashStats?.clinicInsights?.highBpAlerts ?? 0}</div>
                               </div>
-                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <span className="text-xs font-medium text-slate-600">Today's Pregnancy Visits</span>
+                              <div className="p-3 flex justify-between items-center hover:bg-saivie-surface-muted cursor-pointer">
+                                 <span className="text-xs font-medium text-saivie-plum">Today's Pregnancy Visits</span>
                                  <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">{queuePatients.filter((p: any) => ['pregnancy', 'pregnant', 'antenatal'].some(t => (p.type || '').toLowerCase().includes(t))).length} Today</Badge>
                               </div>
                            </div>
@@ -2128,83 +2128,83 @@ export default function ClinicianPortal() {
                      </Card>
 
                      {/* SECTION 5 - POSTPARTUM WATCH */}
-                     <Card className="shadow-sm border-slate-200 overflow-hidden">
+                     <Card className="shadow-sm border-saivie-border overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 h-full bg-slate-500"></div>
-                        <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
-                           <CardTitle className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                              <Users className="w-4 h-4 text-slate-500" /> Postpartum Watch
+                        <CardHeader className="py-3 px-4 border-b border-saivie-border bg-saivie-surface-muted/50">
+                           <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
+                              <Users className="w-4 h-4 text-saivie-plum" /> Postpartum Watch
                            </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                            <div className="divide-y divide-slate-100">
-                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer" onClick={() => navigate('/clinician/patients/postpartum')} data-testid="link-postpartum-row">
-                                 <span className="text-xs font-medium text-slate-600">Active Postpartum</span>
-                                 <Badge className="bg-slate-100 text-slate-700 border-none" data-testid="stat-postpartum-watch">{dashStats?.postpartumActive ?? 0} Patients</Badge>
+                              <div className="p-3 flex justify-between items-center hover:bg-saivie-surface-muted cursor-pointer" onClick={() => navigate('/clinician/patients/postpartum')} data-testid="link-postpartum-row">
+                                 <span className="text-xs font-medium text-saivie-plum">Active Postpartum</span>
+                                 <Badge className="bg-saivie-sage text-saivie-plum border-none" data-testid="stat-postpartum-watch">{dashStats?.postpartumActive ?? 0} Patients</Badge>
                               </div>
-                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer" onClick={() => navigate('/clinician/patients/high-risk')} data-testid="link-high-risk-row">
-                                 <span className="text-xs font-medium text-slate-600">High Risk Flags</span>
+                              <div className="p-3 flex justify-between items-center hover:bg-saivie-surface-muted cursor-pointer" onClick={() => navigate('/clinician/patients/high-risk')} data-testid="link-high-risk-row">
+                                 <span className="text-xs font-medium text-saivie-plum">High Risk Flags</span>
                                  <div className="flex items-center gap-1 text-xs font-bold text-rose-600"><Brain className="w-3 h-3" /> {dashStats?.highRiskAlerts ?? 0}</div>
                               </div>
-                              <div className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer">
-                                 <span className="text-xs font-medium text-slate-600">Today's Visits</span>
-                                 <Badge variant="outline" className="text-slate-500">{dashStats?.teamActivity?.visitsToday ?? 0} Today</Badge>
+                              <div className="p-3 flex justify-between items-center hover:bg-saivie-surface-muted cursor-pointer">
+                                 <span className="text-xs font-medium text-saivie-plum">Today's Visits</span>
+                                 <Badge variant="outline" className="text-saivie-plum">{dashStats?.teamActivity?.visitsToday ?? 0} Today</Badge>
                               </div>
                            </div>
                         </CardContent>
                      </Card>
 
                      {/* SECTION - USG REFERRALS */}
-                     <Card className="shadow-sm border-slate-200 overflow-hidden">
-                        <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
-                           <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                     <Card className="shadow-sm border-saivie-border overflow-hidden">
+                        <CardHeader className="py-3 px-4 border-b border-saivie-border bg-saivie-surface-muted/50">
+                           <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
                               <Activity className="w-4 h-4 text-blue-600" /> USG Referrals
                            </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                            <div className="divide-y divide-slate-100">
                               {(dashStats?.usgReferralPatients || queuePatients.slice(0, 3)).map((p: any, idx: number) => (
-                                 <div key={p.id || idx} data-testid={`usg-referral-${p.id || idx}`} className="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer" onClick={() => { const pat = patients.find((pt: any) => pt.id === p.id); if (pat) navigateToPatient(pat); }}>
+                                 <div key={p.id || idx} data-testid={`usg-referral-${p.id || idx}`} className="p-3 flex justify-between items-center hover:bg-saivie-surface-muted cursor-pointer" onClick={() => { const pat = patients.find((pt: any) => pt.id === p.id); if (pat) navigateToPatient(pat); }}>
                                     <div>
-                                       <p className="text-xs font-medium text-slate-800" data-testid={`text-usg-name-${p.id || idx}`}>{p.name}</p>
-                                       <p className="text-[10px] text-slate-500">{p.usgType || p.type || 'USG Referral'}</p>
+                                       <p className="text-xs font-medium text-saivie-plum" data-testid={`text-usg-name-${p.id || idx}`}>{p.name}</p>
+                                       <p className="text-[10px] text-saivie-plum">{p.usgType || p.type || 'USG Referral'}</p>
                                     </div>
-                                    <Badge variant="outline" className="text-slate-500 border-slate-200">Scheduled</Badge>
+                                    <Badge variant="outline" className="text-saivie-plum border-saivie-border">Scheduled</Badge>
                                  </div>
                               ))}
                               {(!dashStats?.usgReferralPatients || dashStats.usgReferralPatients.length === 0) && queuePatients.length === 0 && (
-                                 <div className="p-4 text-center text-slate-400 text-xs">No USG referrals today</div>
+                                 <div className="p-4 text-center text-saivie-plum text-xs">No USG referrals today</div>
                               )}
                            </div>
                         </CardContent>
                      </Card>
 
                      {/* SECTION 6 - CARE TEAM ACTIVITY */}
-                     <Card className="shadow-sm border-slate-200">
-                        <CardHeader className="py-3 px-4 border-b border-slate-100">
-                           <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                     <Card className="shadow-sm border-saivie-border">
+                        <CardHeader className="py-3 px-4 border-b border-saivie-border">
+                           <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
                               <Briefcase className="w-4 h-4 text-blue-600" /> Team Activity
                            </CardTitle>
                         </CardHeader>
                         <CardContent className="p-4 space-y-4">
                            <div className="flex items-start gap-3">
-                              <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center shrink-0 text-[10px] font-bold text-purple-700">C</div>
+                              <div className="w-6 h-6 rounded-full bg-saivie-sage flex items-center justify-center shrink-0 text-[10px] font-bold text-saivie-teal">C</div>
                               <div>
-                                 <p className="text-xs font-medium text-slate-800">Clinical Notes</p>
-                                 <p className="text-[10px] text-slate-500" data-testid="stat-clinical-notes">{dashStats?.teamActivity?.clinicalNotes ?? 0} entries today</p>
+                                 <p className="text-xs font-medium text-saivie-plum">Clinical Notes</p>
+                                 <p className="text-[10px] text-saivie-plum" data-testid="stat-clinical-notes">{dashStats?.teamActivity?.clinicalNotes ?? 0} entries today</p>
                               </div>
                            </div>
                            <div className="flex items-start gap-3">
                               <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 text-[10px] font-bold text-emerald-700">N</div>
                               <div>
-                                 <p className="text-xs font-medium text-slate-800">Nutrition Plans</p>
-                                 <p className="text-[10px] text-slate-500" data-testid="stat-nutrition-plans">{dashStats?.teamActivity?.nutritionPlans ?? 0} total plans</p>
+                                 <p className="text-xs font-medium text-saivie-plum">Nutrition Plans</p>
+                                 <p className="text-[10px] text-saivie-plum" data-testid="stat-nutrition-plans">{dashStats?.teamActivity?.nutritionPlans ?? 0} total plans</p>
                               </div>
                            </div>
                            <div className="flex items-start gap-3">
                               <div className="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center shrink-0 text-[10px] font-bold text-rose-700">L</div>
                               <div>
-                                 <p className="text-xs font-medium text-slate-800">Lab Reports</p>
-                                 <p className="text-[10px] text-slate-500" data-testid="stat-lab-reports-team">{dashStats?.teamActivity?.labReportsTotal ?? 0} reports ({dashStats?.teamActivity?.labReportsToday ?? 0} today)</p>
+                                 <p className="text-xs font-medium text-saivie-plum">Lab Reports</p>
+                                 <p className="text-[10px] text-saivie-plum" data-testid="stat-lab-reports-team">{dashStats?.teamActivity?.labReportsTotal ?? 0} reports ({dashStats?.teamActivity?.labReportsToday ?? 0} today)</p>
                               </div>
                            </div>
                         </CardContent>
@@ -2223,26 +2223,26 @@ export default function ClinicianPortal() {
               <div className="max-w-7xl mx-auto w-full h-full flex flex-col space-y-6">
                  
                  {/* Header & Sync Control */}
-                 <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-4 shadow-sm shrink-0">
+                 <div className="flex items-center justify-between bg-saivie-ivory border border-saivie-border rounded-xl p-4 shadow-sm shrink-0">
                     <div>
-                       <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                       <h2 className="text-xl font-bold text-saivie-plum flex items-center gap-2">
                           <CalendarIcon className="w-5 h-5 text-blue-600" /> Clinical Schedule
                        </h2>
-                       <p className="text-xs text-slate-500 mt-1">Manage appointments, procedures, and on-call shifts.</p>
+                       <p className="text-xs text-saivie-plum mt-1">Manage appointments, procedures, and on-call shifts.</p>
                     </div>
                     
                     <div className="flex items-center gap-4">
-                       <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-200">
+                       <div className="flex items-center gap-2 px-3 py-1.5 bg-saivie-surface-muted rounded-lg border border-saivie-border">
                           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                          <span className="text-xs font-medium text-slate-600">Google Calendar Synced</span>
+                          <span className="text-xs font-medium text-saivie-plum">Google Calendar Synced</span>
                        </div>
-                       <div className="h-6 w-px bg-slate-200"></div>
+                       <div className="h-6 w-px bg-saivie-sage"></div>
                        
-                       <div className="flex items-center bg-slate-100 p-1 rounded-lg">
+                       <div className="flex items-center bg-saivie-sage p-1 rounded-lg">
                           <Button 
                              variant="ghost" 
                              size="sm" 
-                             className={`h-7 text-xs ${scheduleViewMode === 'appointments' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                             className={`h-7 text-xs ${scheduleViewMode === 'appointments' ? 'bg-saivie-ivory text-saivie-plum shadow-sm' : 'text-saivie-plum hover:text-saivie-plum'}`}
                              onClick={() => setScheduleViewMode('appointments')}
                           >
                              Appointments
@@ -2250,19 +2250,19 @@ export default function ClinicianPortal() {
                           <Button 
                              variant="ghost" 
                              size="sm" 
-                             className={`h-7 text-xs ${scheduleViewMode === 'occupancy' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                             className={`h-7 text-xs ${scheduleViewMode === 'occupancy' ? 'bg-saivie-ivory text-saivie-plum shadow-sm' : 'text-saivie-plum hover:text-saivie-plum'}`}
                              onClick={() => setScheduleViewMode('occupancy')}
                           >
                              Occupancy
                           </Button>
                        </div>
 
-                       <div className="h-6 w-px bg-slate-200"></div>
-                       <div className="flex bg-slate-100 p-1 rounded-lg">
+                       <div className="h-6 w-px bg-saivie-sage"></div>
+                       <div className="flex bg-saivie-sage p-1 rounded-lg">
                           <Button 
                              variant="ghost" 
                              size="sm" 
-                             className={`h-7 text-xs ${calendarViewMode === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                             className={`h-7 text-xs ${calendarViewMode === 'month' ? 'bg-saivie-ivory text-saivie-plum shadow-sm' : 'text-saivie-plum hover:text-saivie-plum'}`}
                              onClick={() => setCalendarViewMode('month')}
                           >
                              Month
@@ -2270,7 +2270,7 @@ export default function ClinicianPortal() {
                           <Button 
                              variant="ghost" 
                              size="sm" 
-                             className={`h-7 text-xs ${calendarViewMode === 'week' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                             className={`h-7 text-xs ${calendarViewMode === 'week' ? 'bg-saivie-ivory text-saivie-plum shadow-sm' : 'text-saivie-plum hover:text-saivie-plum'}`}
                              onClick={() => setCalendarViewMode('week')}
                           >
                              Week
@@ -2278,69 +2278,69 @@ export default function ClinicianPortal() {
                           <Button 
                              variant="ghost" 
                              size="sm" 
-                             className={`h-7 text-xs ${calendarViewMode === 'day' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                             className={`h-7 text-xs ${calendarViewMode === 'day' ? 'bg-saivie-ivory text-saivie-plum shadow-sm' : 'text-saivie-plum hover:text-saivie-plum'}`}
                              onClick={() => setCalendarViewMode('day')}
                           >
                              Day
                           </Button>
                        </div>
-                       <Button className="bg-blue-600 hover:bg-blue-700 h-9 text-xs">
+                       <Button className="bg-saivie-teal hover:bg-saivie-teal h-9 text-xs">
                           <Plus className="w-4 h-4 mr-2" /> New Event
                        </Button>
                     </div>
                  </div>
 
                  {/* Capacity / Slot View Overlay */}
-                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm mb-2">
+                 <div className="bg-saivie-ivory border border-saivie-border rounded-xl p-4 shadow-sm mb-2">
                     <div className="flex items-center justify-between mb-4">
-                       <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                       <h3 className="text-sm font-bold text-saivie-plum flex items-center gap-2">
                           <Users className="w-4 h-4 text-blue-600" /> Slot Capacity & Planning
                        </h3>
                        <div className="flex gap-2">
-                          <Badge variant="outline" className="bg-slate-50 text-slate-600">Total Planned: 24</Badge>
+                          <Badge variant="outline" className="bg-saivie-surface-muted text-saivie-plum">Total Planned: 24</Badge>
                           <Badge variant="outline" className="bg-blue-50 text-blue-600">Utilization: 85%</Badge>
                        </div>
                     </div>
                     
                     <div className="grid grid-cols-6 gap-2 text-center text-xs">
-                       <div className="col-span-1 bg-slate-50 p-2 rounded font-medium text-slate-500 flex items-center justify-center">Time Slot</div>
-                       <div className="col-span-1 bg-blue-50/50 p-2 rounded font-bold text-slate-700">Main Clinic</div>
-                       <div className="col-span-1 bg-purple-50/50 p-2 rounded font-bold text-slate-700">North Wing</div>
-                       <div className="col-span-1 bg-emerald-50/50 p-2 rounded font-bold text-slate-700">South Center</div>
-                       <div className="col-span-1 bg-amber-50/50 p-2 rounded font-bold text-slate-700">East Side</div>
-                       <div className="col-span-1 bg-slate-100 p-2 rounded font-bold text-slate-900">Total</div>
+                       <div className="col-span-1 bg-saivie-surface-muted p-2 rounded font-medium text-saivie-plum flex items-center justify-center">Time Slot</div>
+                       <div className="col-span-1 bg-blue-50/50 p-2 rounded font-bold text-saivie-plum">Main Clinic</div>
+                       <div className="col-span-1 bg-saivie-surface-muted/50 p-2 rounded font-bold text-saivie-plum">North Wing</div>
+                       <div className="col-span-1 bg-emerald-50/50 p-2 rounded font-bold text-saivie-plum">South Center</div>
+                       <div className="col-span-1 bg-amber-50/50 p-2 rounded font-bold text-saivie-plum">East Side</div>
+                       <div className="col-span-1 bg-saivie-sage p-2 rounded font-bold text-saivie-plum">Total</div>
 
                        {/* Slot Rows */}
-                       <div className="col-span-1 p-2 text-slate-500 font-medium">09:00 - 10:00</div>
+                       <div className="col-span-1 p-2 text-saivie-plum font-medium">09:00 - 10:00</div>
                        <div className="col-span-1 p-2 bg-blue-50/20 text-blue-700 font-bold">5</div>
-                       <div className="col-span-1 p-2 bg-purple-50/20 text-purple-700 font-bold">2</div>
+                       <div className="col-span-1 p-2 bg-saivie-surface-muted/20 text-saivie-teal font-bold">2</div>
                        <div className="col-span-1 p-2 bg-emerald-50/20 text-emerald-700 font-bold">3</div>
                        <div className="col-span-1 p-2 bg-amber-50/20 text-amber-700 font-bold">1</div>
-                       <div className="col-span-1 p-2 font-bold bg-slate-50">11</div>
+                       <div className="col-span-1 p-2 font-bold bg-saivie-surface-muted">11</div>
 
-                       <div className="col-span-1 p-2 text-slate-500 font-medium">10:00 - 11:00</div>
+                       <div className="col-span-1 p-2 text-saivie-plum font-medium">10:00 - 11:00</div>
                        <div className="col-span-1 p-2 bg-blue-50/20 text-blue-700 font-bold">4</div>
-                       <div className="col-span-1 p-2 bg-purple-50/20 text-purple-700 font-bold">3</div>
+                       <div className="col-span-1 p-2 bg-saivie-surface-muted/20 text-saivie-teal font-bold">3</div>
                        <div className="col-span-1 p-2 bg-emerald-50/20 text-emerald-700 font-bold">2</div>
                        <div className="col-span-1 p-2 bg-amber-50/20 text-amber-700 font-bold">0</div>
-                       <div className="col-span-1 p-2 font-bold bg-slate-50">9</div>
+                       <div className="col-span-1 p-2 font-bold bg-saivie-surface-muted">9</div>
 
-                       <div className="col-span-1 p-2 text-slate-500 font-medium">11:00 - 12:00</div>
+                       <div className="col-span-1 p-2 text-saivie-plum font-medium">11:00 - 12:00</div>
                        <div className="col-span-1 p-2 bg-blue-50/20 text-blue-700 font-bold">3</div>
-                       <div className="col-span-1 p-2 bg-purple-50/20 text-purple-700 font-bold">0</div>
+                       <div className="col-span-1 p-2 bg-saivie-surface-muted/20 text-saivie-teal font-bold">0</div>
                        <div className="col-span-1 p-2 bg-emerald-50/20 text-emerald-700 font-bold">1</div>
                        <div className="col-span-1 p-2 bg-amber-50/20 text-amber-700 font-bold">0</div>
-                       <div className="col-span-1 p-2 font-bold bg-slate-50">4</div>
+                       <div className="col-span-1 p-2 font-bold bg-saivie-surface-muted">4</div>
                     </div>
                  </div>
 
                  {/* Resource & Staff Booking (NEW) */}
-                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm mb-2">
+                 <div className="bg-saivie-surface-muted border border-saivie-border rounded-xl p-4 shadow-sm mb-2">
                     <div className="flex items-center justify-between mb-3">
-                       <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                          <Briefcase className="w-4 h-4 text-purple-600" /> Resource & Staff Booking
+                       <h3 className="text-sm font-bold text-saivie-plum flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-saivie-teal" /> Resource & Staff Booking
                        </h3>
-                       <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-slate-600 hover:text-purple-600 border-slate-200">
+                       <Button size="sm" variant="outline" className="h-7 text-xs bg-saivie-ivory text-saivie-plum hover:text-saivie-teal border-saivie-border">
                           View All Availability
                        </Button>
                     </div>
@@ -2349,16 +2349,16 @@ export default function ClinicianPortal() {
                        {/* Operation Theater Booking (NEW) */}
                        <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
                           <DialogTrigger asChild>
-                             <Card className="border-slate-200 shadow-sm bg-white hover:border-red-200 transition-colors cursor-pointer group col-span-1" onClick={() => setBookingType('surgery')}>
+                             <Card className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-red-200 transition-colors cursor-pointer group col-span-1" onClick={() => setBookingType('surgery')}>
                                 <CardContent className="p-3 text-center">
                                    <div className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-red-100 transition-colors">
                                       <Activity className="w-4 h-4" />
                                    </div>
-                                   <p className="text-xs font-bold text-slate-700 mb-0.5">Schedule OT</p>
+                                   <p className="text-xs font-bold text-saivie-plum mb-0.5">Schedule OT</p>
                                    <p className="text-[10px] text-emerald-600 font-medium flex items-center justify-center gap-1">
                                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> OT-1 Free
                                    </p>
-                                   <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-red-600 hover:text-white border-none shadow-none">Book Slot</Button>
+                                   <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-saivie-sage text-saivie-plum hover:bg-red-600 hover:text-white border-none shadow-none">Book Slot</Button>
                                 </CardContent>
                              </Card>
                           </DialogTrigger>
@@ -2461,111 +2461,111 @@ export default function ClinicianPortal() {
                        </Dialog>
 
                        {/* Pediatrician */}
-                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group col-span-1">
+                       <Card className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-saivie-border transition-colors cursor-pointer group col-span-1">
                           <CardContent className="p-3 text-center">
                              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-blue-100 transition-colors">
                                 <Baby className="w-4 h-4" />
                              </div>
-                             <p className="text-xs font-bold text-slate-700 mb-0.5">Pediatrician</p>
+                             <p className="text-xs font-bold text-saivie-plum mb-0.5">Pediatrician</p>
                              <p className="text-[10px] text-emerald-600 font-medium flex items-center justify-center gap-1">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Available
                              </p>
-                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white border-none shadow-none">Book</Button>
+                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-saivie-sage text-saivie-plum hover:bg-saivie-teal hover:text-white border-none shadow-none">Book</Button>
                           </CardContent>
                        </Card>
 
                        {/* Anesthetist */}
-                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group col-span-1">
+                       <Card className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-saivie-border transition-colors cursor-pointer group col-span-1">
                           <CardContent className="p-3 text-center">
-                             <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-purple-100 transition-colors">
+                             <div className="w-8 h-8 rounded-full bg-saivie-surface-muted text-saivie-teal flex items-center justify-center mx-auto mb-2 group-hover:bg-saivie-sage transition-colors">
                                 <Syringe className="w-4 h-4" />
                              </div>
-                             <p className="text-xs font-bold text-slate-700 mb-0.5">Anesthetist</p>
+                             <p className="text-xs font-bold text-saivie-plum mb-0.5">Anesthetist</p>
                              <p className="text-[10px] text-amber-600 font-medium flex items-center justify-center gap-1">
                                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> Limited
                              </p>
-                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-purple-600 hover:text-white border-none shadow-none">Request</Button>
+                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-saivie-sage text-saivie-plum hover:bg-saivie-teal hover:text-white border-none shadow-none">Request</Button>
                           </CardContent>
                        </Card>
 
                        {/* Lactation */}
-                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group col-span-1">
+                       <Card className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-saivie-border transition-colors cursor-pointer group col-span-1">
                           <CardContent className="p-3 text-center">
-                             <div className="w-8 h-8 rounded-full bg-pink-50 text-pink-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-pink-100 transition-colors">
+                             <div className="w-8 h-8 rounded-full bg-saivie-surface-blush text-saivie-plum flex items-center justify-center mx-auto mb-2 group-hover:bg-saivie-blush transition-colors">
                                 <Heart className="w-4 h-4" />
                              </div>
-                             <p className="text-xs font-bold text-slate-700 mb-0.5">Lactation</p>
+                             <p className="text-xs font-bold text-saivie-plum mb-0.5">Lactation</p>
                              <p className="text-[10px] text-emerald-600 font-medium flex items-center justify-center gap-1">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Available
                              </p>
-                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-pink-600 hover:text-white border-none shadow-none">Book</Button>
+                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-saivie-sage text-saivie-plum hover:bg-saivie-rose hover:text-white border-none shadow-none">Book</Button>
                           </CardContent>
                        </Card>
 
                        {/* Assistant */}
-                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group col-span-1">
+                       <Card className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-saivie-border transition-colors cursor-pointer group col-span-1">
                           <CardContent className="p-3 text-center">
-                             <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-indigo-100 transition-colors">
+                             <div className="w-8 h-8 rounded-full bg-saivie-surface-muted text-saivie-teal flex items-center justify-center mx-auto mb-2 group-hover:bg-saivie-sage transition-colors">
                                 <Users className="w-4 h-4" />
                              </div>
-                             <p className="text-xs font-bold text-slate-700 mb-0.5">Assistant</p>
+                             <p className="text-xs font-bold text-saivie-plum mb-0.5">Assistant</p>
                              <p className="text-[10px] text-emerald-600 font-medium flex items-center justify-center gap-1">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> 3 on Duty
                              </p>
-                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-indigo-600 hover:text-white border-none shadow-none">Assign</Button>
+                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-saivie-sage text-saivie-plum hover:bg-saivie-teal hover:text-white border-none shadow-none">Assign</Button>
                           </CardContent>
                        </Card>
 
                        {/* Nursing Home / Bed */}
-                       <Card className="border-slate-200 shadow-sm bg-white hover:border-purple-200 transition-colors cursor-pointer group col-span-1">
+                       <Card className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-saivie-border transition-colors cursor-pointer group col-span-1">
                           <CardContent className="p-3 text-center">
-                             <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-slate-200 transition-colors">
+                             <div className="w-8 h-8 rounded-full bg-saivie-sage text-saivie-plum flex items-center justify-center mx-auto mb-2 group-hover:bg-saivie-sage transition-colors">
                                 <Briefcase className="w-4 h-4" />
                              </div>
-                             <p className="text-xs font-bold text-slate-700 mb-0.5">Nursing Home</p>
+                             <p className="text-xs font-bold text-saivie-plum mb-0.5">Nursing Home</p>
                              <p className="text-[10px] text-rose-600 font-medium flex items-center justify-center gap-1">
                                 <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div> Full (Waitlist)
                              </p>
-                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white border-none shadow-none">Waitlist</Button>
+                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-saivie-sage text-saivie-plum hover:bg-saivie-plum hover:text-white border-none shadow-none">Waitlist</Button>
                           </CardContent>
                        </Card>
                     </div>
                  </div>
 
                  {/* Calendar Grid */}
-                 <Card className="flex-1 shadow-sm border-slate-200 flex flex-col overflow-hidden">
+                 <Card className="flex-1 shadow-sm border-saivie-border flex flex-col overflow-hidden">
                     {/* Days Header - Different for Month/Week vs Day */}
                     {calendarViewMode !== 'day' ? (
-                       <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 shrink-0">
+                       <div className="grid grid-cols-7 border-b border-saivie-border bg-saivie-surface-muted shrink-0">
                           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                             <div key={day} className="py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+                             <div key={day} className="py-2 text-center text-xs font-bold text-saivie-plum uppercase tracking-wider">
                                 {day}
                              </div>
                           ))}
                        </div>
                     ) : (
-                       <div className="border-b border-slate-200 bg-slate-50 py-2 px-4 shrink-0 flex justify-between items-center">
-                          <span className="text-sm font-bold text-slate-700">Wednesday, Oct 24</span>
-                          <span className="text-xs text-slate-500">8:00 AM - 6:00 PM</span>
+                       <div className="border-b border-saivie-border bg-saivie-surface-muted py-2 px-4 shrink-0 flex justify-between items-center">
+                          <span className="text-sm font-bold text-saivie-plum">Wednesday, Oct 24</span>
+                          <span className="text-xs text-saivie-plum">8:00 AM - 6:00 PM</span>
                        </div>
                     )}
                     
-                    <div className="flex-1 overflow-y-auto relative bg-white">
+                    <div className="flex-1 overflow-y-auto relative bg-saivie-ivory">
                     {/* 1. MONTH VIEW */}
                     {calendarViewMode === 'month' && (
-                       <div className="grid grid-cols-7 min-h-full auto-rows-fr divide-x divide-slate-100 divide-y border-b border-slate-100">
+                       <div className="grid grid-cols-7 min-h-full auto-rows-fr divide-x divide-slate-100 divide-y border-b border-saivie-border">
                           {/* Previous Month Days */}
                           {[29, 30].map(day => (
-                             <div key={`prev-${day}`} className="min-h-[100px] bg-slate-50/50 p-2 opacity-50">
-                                <span className="text-xs font-medium text-slate-400">{day}</span>
+                             <div key={`prev-${day}`} className="min-h-[100px] bg-saivie-surface-muted/50 p-2 opacity-50">
+                                <span className="text-xs font-medium text-saivie-plum">{day}</span>
                              </div>
                           ))}
 
                           {/* Current Month Days (October) */}
                           {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                             <div key={day} className={`min-h-[100px] p-2 hover:bg-slate-50 transition-colors relative group ${day === 24 ? 'bg-blue-50/30' : ''}`}>
+                             <div key={day} className={`min-h-[100px] p-2 hover:bg-saivie-surface-muted transition-colors relative group ${day === 24 ? 'bg-blue-50/30' : ''}`}>
                                 <div className="flex justify-between items-start mb-1">
-                                   <span className={`text-xs font-medium h-6 w-6 flex items-center justify-center rounded-full ${day === 24 ? 'bg-blue-600 text-white' : 'text-slate-700'}`}>
+                                   <span className={`text-xs font-medium h-6 w-6 flex items-center justify-center rounded-full ${day === 24 ? 'bg-saivie-teal text-white' : 'text-saivie-plum'}`}>
                                       {day}
                                    </span>
                                    {day === 24 && <span className="text-[10px] font-bold text-blue-600">Today</span>}
@@ -2577,8 +2577,8 @@ export default function ClinicianPortal() {
                                       // OCCUPANCY VIEW - MONTH
                                       <div className="space-y-1.5 mt-2">
                                          <div className="space-y-0.5">
-                                            <div className="flex justify-between text-[10px] text-slate-500 font-medium"><span>OT Util</span> <span className={day > 20 ? "text-emerald-600" : "text-amber-600"}>{day > 20 ? "40%" : "90%"}</span></div>
-                                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="flex justify-between text-[10px] text-saivie-plum font-medium"><span>OT Util</span> <span className={day > 20 ? "text-emerald-600" : "text-amber-600"}>{day > 20 ? "40%" : "90%"}</span></div>
+                                            <div className="h-1.5 w-full bg-saivie-sage rounded-full overflow-hidden">
                                                <div className={`h-full w-[${day > 20 ? 40 : 90}%] rounded-full ${day > 20 ? "bg-emerald-500" : "bg-amber-500"}`}></div>
                                             </div>
                                          </div>
@@ -2591,7 +2591,7 @@ export default function ClinicianPortal() {
                                                {appointmentsByDay[day].slice(0, 2).map((apt: any, aidx: number) => {
                                                   const eventColors = [
                                                      { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500' },
-                                                     { bg: 'bg-pink-100', text: 'text-pink-700', border: 'border-pink-200', dot: 'bg-pink-500' },
+                                                     { bg: 'bg-saivie-blush', text: 'text-saivie-rose', border: 'border-saivie-blush', dot: 'bg-saivie-rose' },
                                                   ];
                                                   const c = eventColors[aidx % eventColors.length];
                                                   return (
@@ -2601,7 +2601,7 @@ export default function ClinicianPortal() {
                                                   );
                                                })}
                                                {appointmentsByDay[day].length > 2 && (
-                                                  <div className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 truncate font-medium opacity-70">
+                                                  <div className="text-[10px] px-1.5 py-0.5 rounded bg-saivie-sage text-saivie-plum border border-saivie-border truncate font-medium opacity-70">
                                                      +{appointmentsByDay[day].length - 2} more...
                                                   </div>
                                                )}
@@ -2615,8 +2615,8 @@ export default function ClinicianPortal() {
 
                           {/* Next Month Days */}
                           {[1, 2].map(day => (
-                             <div key={`next-${day}`} className="min-h-[100px] bg-slate-50/50 p-2 opacity-50">
-                                <span className="text-xs font-medium text-slate-400">{day}</span>
+                             <div key={`next-${day}`} className="min-h-[100px] bg-saivie-surface-muted/50 p-2 opacity-50">
+                                <span className="text-xs font-medium text-saivie-plum">{day}</span>
                              </div>
                           ))}
                        </div>
@@ -2626,9 +2626,9 @@ export default function ClinicianPortal() {
                     {calendarViewMode === 'week' && (
                        <div className="flex min-h-full">
                           {/* Time Axis */}
-                          <div className="w-12 shrink-0 border-r border-slate-200 bg-slate-50/50 flex flex-col pt-10">
+                          <div className="w-12 shrink-0 border-r border-saivie-border bg-saivie-surface-muted/50 flex flex-col pt-10">
                              {Array.from({ length: 11 }, (_, i) => i + 8).map(hour => (
-                                <div key={hour} className="h-20 text-right pr-2 text-[10px] text-slate-400 font-medium relative">
+                                <div key={hour} className="h-20 text-right pr-2 text-[10px] text-saivie-plum font-medium relative">
                                    <span className="-top-2 absolute right-2">{hour}:00</span>
                                 </div>
                              ))}
@@ -2639,9 +2639,9 @@ export default function ClinicianPortal() {
                                 <div key={dayIndex} className="relative pt-2">
                                    {/* Day Grid Lines */}
                                    {Array.from({ length: 11 }, (_, i) => i + 8).map(hour => (
-                                      <div key={hour} className="h-20 border-b border-slate-50 w-full relative group">
+                                      <div key={hour} className="h-20 border-b border-saivie-border w-full relative group">
                                          {/* Hover add button */}
-                                         <div className="absolute inset-0 hover:bg-slate-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                                         <div className="absolute inset-0 hover:bg-saivie-surface-muted flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
                                             <Plus className="w-3 h-3 text-blue-400" />
                                          </div>
                                       </div>
@@ -2654,8 +2654,8 @@ export default function ClinicianPortal() {
                                             const patient = patients.find((p: any) => p.id === apt.patientId);
                                             const weekColors = [
                                                { bg: 'bg-blue-100', border: 'border-blue-500', name: 'text-blue-800', desc: 'text-blue-600', hover: 'hover:bg-blue-200' },
-                                               { bg: 'bg-pink-100', border: 'border-pink-500', name: 'text-pink-800', desc: 'text-pink-600', hover: 'hover:bg-pink-200' },
-                                               { bg: 'bg-purple-100', border: 'border-purple-500', name: 'text-purple-800', desc: 'text-purple-600', hover: 'hover:bg-purple-200' },
+                                               { bg: 'bg-saivie-blush', border: 'border-saivie-blush', name: 'text-saivie-plum', desc: 'text-saivie-rose', hover: 'hover:bg-saivie-blush' },
+                                               { bg: 'bg-saivie-sage', border: 'border-saivie-teal', name: 'text-saivie-plum', desc: 'text-saivie-teal', hover: 'hover:bg-saivie-sage' },
                                             ];
                                             const c = weekColors[aidx % weekColors.length];
                                             const tops = [80, 150, 320];
@@ -2681,8 +2681,8 @@ export default function ClinicianPortal() {
                                    {scheduleViewMode === 'occupancy' && dayIndex >= 1 && dayIndex <= 5 && (
                                       <>
                                          {/* Random occupancy blocks */}
-                                         <div className={`absolute top-[${100 + dayIndex * 20}px] left-0 right-0 h-[${60 + dayIndex * 10}px] bg-slate-100/50 border-y border-dashed border-slate-300 flex items-center justify-center`}>
-                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest rotate-90 md:rotate-0">High Volume</span>
+                                         <div className={`absolute top-[${100 + dayIndex * 20}px] left-0 right-0 h-[${60 + dayIndex * 10}px] bg-saivie-sage/50 border-y border-dashed border-saivie-border flex items-center justify-center`}>
+                                            <span className="text-[9px] font-bold text-saivie-plum uppercase tracking-widest rotate-90 md:rotate-0">High Volume</span>
                                          </div>
                                       </>
                                    )}
@@ -2696,9 +2696,9 @@ export default function ClinicianPortal() {
                     {calendarViewMode === 'day' && (
                        <div className="flex min-h-full">
                           {/* Time Axis - Detailed */}
-                          <div className="w-16 shrink-0 border-r border-slate-200 bg-slate-50/50 flex flex-col pt-4">
+                          <div className="w-16 shrink-0 border-r border-saivie-border bg-saivie-surface-muted/50 flex flex-col pt-4">
                              {Array.from({ length: 11 }, (_, i) => i + 8).map(hour => (
-                                <div key={hour} className="h-32 text-right pr-2 text-xs text-slate-500 font-bold relative">
+                                <div key={hour} className="h-32 text-right pr-2 text-xs text-saivie-plum font-bold relative">
                                    <span className="-top-2 absolute right-2">{hour}:00</span>
                                    <span className="top-14 absolute right-2 text-[10px] text-slate-300 font-normal">:30</span>
                                 </div>
@@ -2706,10 +2706,10 @@ export default function ClinicianPortal() {
                           </div>
                           
                           {/* Day Column */}
-                          <div className="flex-1 relative pt-4 px-4 bg-slate-50/10">
+                          <div className="flex-1 relative pt-4 px-4 bg-saivie-surface-muted/10">
                              {Array.from({ length: 11 }, (_, i) => i + 8).map(hour => (
-                                <div key={hour} className="h-32 border-b border-slate-100 w-full relative">
-                                   <div className="absolute top-1/2 left-0 right-0 border-b border-dashed border-slate-100"></div>
+                                <div key={hour} className="h-32 border-b border-saivie-border w-full relative">
+                                   <div className="absolute top-1/2 left-0 right-0 border-b border-dashed border-saivie-border"></div>
                                 </div>
                              ))}
                              
@@ -2720,19 +2720,19 @@ export default function ClinicianPortal() {
                                       const patient = patients.find((p: any) => p.id === apt.patientId);
                                       const dayStyles = [
                                          { top: 20, height: 90, borderColor: 'border-blue-200', borderLeft: 'border-l-blue-500', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', avatarBg: 'bg-blue-50', avatarText: 'text-blue-700', avatarBorder: 'border-blue-100' },
-                                         { top: 130, height: 60, borderColor: 'border-pink-200', borderLeft: 'border-l-pink-500', badgeBg: 'bg-pink-100', badgeText: 'text-pink-700', avatarBg: 'bg-pink-50', avatarText: 'text-pink-700', avatarBorder: 'border-pink-100' },
-                                         { top: 270, height: 120, borderColor: 'border-purple-200', borderLeft: 'border-l-purple-500', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', avatarBg: 'bg-purple-50', avatarText: 'text-purple-700', avatarBorder: 'border-purple-100' },
+                                         { top: 130, height: 60, borderColor: 'border-saivie-blush', borderLeft: 'border-l-pink-500', badgeBg: 'bg-saivie-blush', badgeText: 'text-saivie-rose', avatarBg: 'bg-saivie-surface-blush', avatarText: 'text-saivie-rose', avatarBorder: 'border-saivie-blush' },
+                                         { top: 270, height: 120, borderColor: 'border-saivie-border', borderLeft: 'border-l-purple-500', badgeBg: 'bg-saivie-sage', badgeText: 'text-saivie-teal', avatarBg: 'bg-saivie-surface-muted', avatarText: 'text-saivie-teal', avatarBorder: 'border-saivie-border' },
                                       ];
                                       const s = dayStyles[aidx];
                                       return (
-                                         <div key={apt.id || aidx} data-testid={`day-event-${apt.id || aidx}`} className={`absolute top-[${s.top}px] left-4 right-4 h-[${s.height}px] bg-white border ${s.borderColor} border-l-4 ${s.borderLeft} rounded shadow-sm hover:shadow-md transition-all p-3 flex justify-between items-start`}>
+                                         <div key={apt.id || aidx} data-testid={`day-event-${apt.id || aidx}`} className={`absolute top-[${s.top}px] left-4 right-4 h-[${s.height}px] bg-saivie-ivory border ${s.borderColor} border-l-4 ${s.borderLeft} rounded shadow-sm hover:shadow-md transition-all p-3 flex justify-between items-start`}>
                                             <div>
                                                <div className="flex items-center gap-2 mb-1">
                                                   <Badge className={`${s.badgeBg} ${s.badgeText} hover:${s.badgeBg} border-none h-5 text-[10px]`}>{apt.type || apt.visitType || 'Consultation'}</Badge>
-                                                  <span className="text-xs text-slate-500">{apt.time}{apt.endTime ? ` - ${apt.endTime}` : ''}</span>
+                                                  <span className="text-xs text-saivie-plum">{apt.time}{apt.endTime ? ` - ${apt.endTime}` : ''}</span>
                                                </div>
-                                               <h3 className="font-bold text-slate-800 text-sm">{patient?.name || 'Patient'} - {apt.reason || apt.type || 'Appointment'}</h3>
-                                               <p className="text-xs text-slate-500 mt-1 flex items-center gap-2"><MapPin className="w-3 h-3" /> {apt.room || 'Room TBD'} • {providerName}</p>
+                                               <h3 className="font-bold text-saivie-plum text-sm">{patient?.name || 'Patient'} - {apt.reason || apt.type || 'Appointment'}</h3>
+                                               <p className="text-xs text-saivie-plum mt-1 flex items-center gap-2"><MapPin className="w-3 h-3" /> {apt.room || 'Room TBD'} • {providerName}</p>
                                             </div>
                                             <Avatar className={`h-8 w-8 ${s.avatarBg} ${s.avatarText} border ${s.avatarBorder}`}>
                                                <AvatarFallback>{getInitials(patient?.name)}</AvatarFallback>
@@ -2741,7 +2741,7 @@ export default function ClinicianPortal() {
                                       );
                                    })}
                                    {appointments.length >= 2 && (
-                                      <div className="absolute top-[210px] left-4 right-4 h-[40px] bg-slate-100 rounded border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 font-medium">
+                                      <div className="absolute top-[210px] left-4 right-4 h-[40px] bg-saivie-sage rounded border border-dashed border-saivie-border flex items-center justify-center text-xs text-saivie-plum font-medium">
                                          Free Slot (11:15 - 11:45)
                                       </div>
                                    )}
@@ -2749,19 +2749,19 @@ export default function ClinicianPortal() {
                              ) : (
                                 // OCCUPANCY DAY VIEW
                                 <div className="absolute inset-0 p-4">
-                                   <div className="h-full w-full bg-slate-50 rounded-xl border border-slate-200 p-6">
-                                      <h3 className="font-bold text-slate-800 mb-4">Resource Utilization - Today</h3>
+                                   <div className="h-full w-full bg-saivie-surface-muted rounded-xl border border-saivie-border p-6">
+                                      <h3 className="font-bold text-saivie-plum mb-4">Resource Utilization - Today</h3>
                                       <div className="space-y-6">
                                          <div>
                                             <div className="flex justify-between text-sm font-medium mb-2"><span>Operation Theater 1</span> <span className="text-emerald-600">Available from 3 PM</span></div>
-                                            <div className="h-8 w-full bg-slate-200 rounded-md overflow-hidden flex">
+                                            <div className="h-8 w-full bg-saivie-sage rounded-md overflow-hidden flex">
                                                <div className="h-full w-[60%] bg-rose-500 flex items-center justify-center text-[10px] font-bold text-white uppercase tracking-wider">Booked</div>
                                                <div className="h-full w-[40%] bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white uppercase tracking-wider">Free</div>
                                             </div>
                                          </div>
                                          <div>
                                             <div className="flex justify-between text-sm font-medium mb-2"><span>USG Room</span> <span className="text-amber-600">Heavy Load</span></div>
-                                            <div className="h-8 w-full bg-slate-200 rounded-md overflow-hidden flex">
+                                            <div className="h-8 w-full bg-saivie-sage rounded-md overflow-hidden flex">
                                                <div className="h-full w-[30%] bg-rose-500"></div>
                                                <div className="h-full w-[20%] bg-rose-400"></div>
                                                <div className="h-full w-[40%] bg-rose-500"></div>
@@ -2804,18 +2804,18 @@ export default function ClinicianPortal() {
 
         {/* ANALYTICS VIEW (NEW) */}
         {activeView === 'analytics' && (
-          <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+          <div className="flex-1 overflow-y-auto p-6 bg-saivie-surface-muted">
              <div className="max-w-7xl mx-auto space-y-6">
                 
                 {/* Header */}
                 <div className="flex items-center justify-between">
                    <div>
-                      <h2 className="text-2xl font-bold text-slate-900 font-serif">Analytics Intelligence</h2>
-                      <p className="text-slate-500 mt-1">Improving women's health outcomes at scale through data.</p>
+                      <h2 className="text-2xl font-bold text-saivie-plum font-serif">Analytics Intelligence</h2>
+                      <p className="text-saivie-plum mt-1">Improving women's health outcomes at scale through data.</p>
                    </div>
                    <div className="flex items-center gap-3">
                       <Select defaultValue="3m">
-                         <SelectTrigger className="w-[140px] bg-white border-slate-200">
+                         <SelectTrigger className="w-[140px] bg-saivie-ivory border-saivie-border">
                             <SelectValue placeholder="Time Range" />
                          </SelectTrigger>
                          <SelectContent>
@@ -2824,7 +2824,7 @@ export default function ClinicianPortal() {
                             <SelectItem value="1y">Last Year</SelectItem>
                          </SelectContent>
                       </Select>
-                      <Button variant="outline" className="bg-white border-slate-200 text-slate-700">
+                      <Button variant="outline" className="bg-saivie-ivory border-saivie-border text-saivie-plum">
                          <Download className="w-4 h-4 mr-2" /> Export Report
                       </Button>
                    </div>
@@ -2832,20 +2832,20 @@ export default function ClinicianPortal() {
 
                 {/* Tabs */}
                 <Tabs defaultValue="fertility" className="w-full space-y-6">
-                   <TabsList className="bg-white border border-slate-200 p-1 h-12 rounded-xl w-full justify-start gap-2 shadow-sm">
-                      <TabsTrigger value="fertility" className="data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 rounded-lg h-9 px-4 text-slate-600">
+                   <TabsList className="bg-saivie-ivory border border-saivie-border p-1 h-12 rounded-xl w-full justify-start gap-2 shadow-sm">
+                      <TabsTrigger value="fertility" className="data-[state=active]:bg-saivie-surface-muted data-[state=active]:text-saivie-teal rounded-lg h-9 px-4 text-saivie-plum">
                          🧬 Fertility
                       </TabsTrigger>
-                      <TabsTrigger value="pregnancy" className="data-[state=active]:bg-pink-50 data-[state=active]:text-pink-700 rounded-lg h-9 px-4 text-slate-600">
+                      <TabsTrigger value="pregnancy" className="data-[state=active]:bg-saivie-surface-blush data-[state=active]:text-saivie-rose rounded-lg h-9 px-4 text-saivie-plum">
                          🤰 Pregnancy Care
                       </TabsTrigger>
-                      <TabsTrigger value="postpartum" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 rounded-lg h-9 px-4 text-slate-600">
+                      <TabsTrigger value="postpartum" className="data-[state=active]:bg-saivie-surface-muted data-[state=active]:text-saivie-teal rounded-lg h-9 px-4 text-saivie-plum">
                          🧑‍🍼 Postpartum
                       </TabsTrigger>
-                      <TabsTrigger value="pcos" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 rounded-lg h-9 px-4 text-slate-600">
+                      <TabsTrigger value="pcos" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 rounded-lg h-9 px-4 text-saivie-plum">
                          🌿 PCOS & Hormone
                       </TabsTrigger>
-                      <TabsTrigger value="clinic" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-lg h-9 px-4 text-slate-600">
+                      <TabsTrigger value="clinic" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-lg h-9 px-4 text-saivie-plum">
                          👩‍⚕️ Clinic Performance
                       </TabsTrigger>
                    </TabsList>
@@ -2854,37 +2854,37 @@ export default function ClinicianPortal() {
                    <TabsContent value="fertility" className="space-y-6">
                       {/* Key Metrics Row */}
                       <div className="grid grid-cols-4 gap-4">
-                         <Card className="shadow-sm border-slate-200">
+                         <Card className="shadow-sm border-saivie-border">
                             <CardContent className="p-4">
-                               <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Active Patients</p>
-                               <p className="text-2xl font-bold text-slate-900">58</p>
+                               <p className="text-xs text-saivie-plum uppercase font-bold tracking-wider mb-1">Active Patients</p>
+                               <p className="text-2xl font-bold text-saivie-plum">58</p>
                                <div className="flex items-center gap-1 mt-2 text-xs font-medium text-emerald-600">
                                   <TrendingUp className="w-3 h-3" /> +12% this month
                                </div>
                             </CardContent>
                          </Card>
-                         <Card className="shadow-sm border-slate-200">
+                         <Card className="shadow-sm border-saivie-border">
                             <CardContent className="p-4">
-                               <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Ovulation Success</p>
-                               <p className="text-2xl font-bold text-slate-900">87%</p>
+                               <p className="text-xs text-saivie-plum uppercase font-bold tracking-wider mb-1">Ovulation Success</p>
+                               <p className="text-2xl font-bold text-saivie-plum">87%</p>
                                <div className="flex items-center gap-1 mt-2 text-xs font-medium text-emerald-600">
                                   <CheckCircle2 className="w-3 h-3" /> Target Met (&gt;85%)
                                </div>
                             </CardContent>
                          </Card>
-                         <Card className="shadow-sm border-slate-200">
+                         <Card className="shadow-sm border-saivie-border">
                             <CardContent className="p-4">
-                               <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Avg Follicle Size</p>
-                               <p className="text-2xl font-bold text-slate-900">19.2 mm</p>
-                               <div className="flex items-center gap-1 mt-2 text-xs font-medium text-slate-500">
+                               <p className="text-xs text-saivie-plum uppercase font-bold tracking-wider mb-1">Avg Follicle Size</p>
+                               <p className="text-2xl font-bold text-saivie-plum">19.2 mm</p>
+                               <div className="flex items-center gap-1 mt-2 text-xs font-medium text-saivie-plum">
                                   At trigger time
                                </div>
                             </CardContent>
                          </Card>
-                         <Card className="shadow-sm border-slate-200">
+                         <Card className="shadow-sm border-saivie-border">
                             <CardContent className="p-4">
-                               <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Pregnancy Rate / Cycle</p>
-                               <p className="text-2xl font-bold text-slate-900">24%</p>
+                               <p className="text-xs text-saivie-plum uppercase font-bold tracking-wider mb-1">Pregnancy Rate / Cycle</p>
+                               <p className="text-2xl font-bold text-saivie-plum">24%</p>
                                <div className="flex items-center gap-1 mt-2 text-xs font-medium text-emerald-600">
                                   <TrendingUp className="w-3 h-3" /> Top 10% benchmark
                                </div>
@@ -2893,9 +2893,9 @@ export default function ClinicianPortal() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-6">
-                         <Card className="shadow-sm border-slate-200">
+                         <Card className="shadow-sm border-saivie-border">
                             <CardHeader>
-                               <CardTitle className="text-base font-bold text-slate-800">Conception Trends</CardTitle>
+                               <CardTitle className="text-base font-bold text-saivie-plum">Conception Trends</CardTitle>
                             </CardHeader>
                             <CardContent>
                                <div className="h-[300px] w-full">
@@ -2922,9 +2922,9 @@ export default function ClinicianPortal() {
                             </CardContent>
                          </Card>
 
-                         <Card className="shadow-sm border-slate-200">
+                         <Card className="shadow-sm border-saivie-border">
                             <CardHeader>
-                               <CardTitle className="text-base font-bold text-slate-800">Follicle Size at Trigger</CardTitle>
+                               <CardTitle className="text-base font-bold text-saivie-plum">Follicle Size at Trigger</CardTitle>
                             </CardHeader>
                             <CardContent>
                                <div className="h-[300px] w-full">
@@ -2942,8 +2942,8 @@ export default function ClinicianPortal() {
                       </div>
 
                       {/* Probability Intelligence */}
-                      <Card className="bg-slate-900 text-white border-none shadow-md overflow-hidden relative">
-                         <div className="absolute top-0 right-0 p-32 bg-purple-600/20 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                      <Card className="bg-saivie-plum text-white border-none shadow-md overflow-hidden relative">
+                         <div className="absolute top-0 right-0 p-32 bg-saivie-teal/20 rounded-full blur-3xl -mr-16 -mt-16"></div>
                          <CardHeader>
                             <CardTitle className="text-base font-bold flex items-center gap-2">
                                <Sparkles className="w-4 h-4 text-yellow-400" /> Probability Intelligence
@@ -2952,23 +2952,23 @@ export default function ClinicianPortal() {
                          <CardContent>
                             <div className="grid grid-cols-3 gap-8">
                                <div>
-                                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Cycle Timing Misses</p>
+                                  <p className="text-saivie-ivory text-xs uppercase tracking-wider mb-2">Cycle Timing Misses</p>
                                   <p className="text-3xl font-bold text-white">12%</p>
-                                  <p className="text-slate-400 text-xs mt-1">Patients missed ovulation window</p>
-                                  <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                                  <p className="text-saivie-ivory text-xs mt-1">Patients missed ovulation window</p>
+                                  <div className="w-full bg-saivie-plum h-1.5 rounded-full mt-3 overflow-hidden">
                                      <div className="bg-rose-500 h-full w-[12%] rounded-full"></div>
                                   </div>
                                </div>
                                <div>
-                                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Low Probability Cohort</p>
+                                  <p className="text-saivie-ivory text-xs uppercase tracking-wider mb-2">Low Probability Cohort</p>
                                   <p className="text-3xl font-bold text-white">8</p>
-                                  <p className="text-slate-400 text-xs mt-1">Patients &lt;15% prob for 3+ cycles</p>
+                                  <p className="text-saivie-ivory text-xs mt-1">Patients &lt;15% prob for 3+ cycles</p>
                                   <Button size="sm" variant="secondary" className="mt-3 h-7 text-xs w-full">Review Protocols</Button>
                                </div>
                                <div>
-                                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Success Prediction</p>
+                                  <p className="text-saivie-ivory text-xs uppercase tracking-wider mb-2">Success Prediction</p>
                                   <p className="text-3xl font-bold text-emerald-400">92%</p>
-                                  <p className="text-slate-400 text-xs mt-1">Accuracy of outcome models</p>
+                                  <p className="text-saivie-ivory text-xs mt-1">Accuracy of outcome models</p>
                                </div>
                             </div>
                          </CardContent>
@@ -2978,9 +2978,9 @@ export default function ClinicianPortal() {
                    {/* 2. PREGNANCY ANALYTICS */}
                    <TabsContent value="pregnancy" className="space-y-6">
                       <div className="grid grid-cols-3 gap-6">
-                         <Card className="shadow-sm border-slate-200 col-span-2">
+                         <Card className="shadow-sm border-saivie-border col-span-2">
                             <CardHeader>
-                               <CardTitle className="text-base font-bold text-slate-800">Risk Monitoring Trends</CardTitle>
+                               <CardTitle className="text-base font-bold text-saivie-plum">Risk Monitoring Trends</CardTitle>
                             </CardHeader>
                             <CardContent>
                                <div className="h-[300px] w-full">
@@ -2998,49 +2998,49 @@ export default function ClinicianPortal() {
                             </CardContent>
                          </Card>
                          
-                         <Card className="shadow-sm border-slate-200 col-span-1">
+                         <Card className="shadow-sm border-saivie-border col-span-1">
                             <CardHeader>
-                               <CardTitle className="text-base font-bold text-slate-800">Compliance & Outcomes</CardTitle>
+                               <CardTitle className="text-base font-bold text-saivie-plum">Compliance & Outcomes</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-6">
                                <div>
                                   <div className="flex justify-between text-sm mb-1">
-                                     <span className="text-slate-600">Scan Completion Rate</span>
-                                     <span className="font-bold text-slate-900">94%</span>
+                                     <span className="text-saivie-plum">Scan Completion Rate</span>
+                                     <span className="font-bold text-saivie-plum">94%</span>
                                   </div>
-                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                  <div className="w-full bg-saivie-sage h-2 rounded-full overflow-hidden">
                                      <div className="bg-emerald-500 h-full w-[94%] rounded-full"></div>
                                   </div>
                                </div>
                                <div>
                                   <div className="flex justify-between text-sm mb-1">
-                                     <span className="text-slate-600">Lab Completion Rate</span>
-                                     <span className="font-bold text-slate-900">88%</span>
+                                     <span className="text-saivie-plum">Lab Completion Rate</span>
+                                     <span className="font-bold text-saivie-plum">88%</span>
                                   </div>
-                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                  <div className="w-full bg-saivie-sage h-2 rounded-full overflow-hidden">
                                      <div className="bg-blue-500 h-full w-[88%] rounded-full"></div>
                                   </div>
                                </div>
                                <div>
                                   <div className="flex justify-between text-sm mb-1">
-                                     <span className="text-slate-600">Follow-up Adherence</span>
-                                     <span className="font-bold text-slate-900">91%</span>
+                                     <span className="text-saivie-plum">Follow-up Adherence</span>
+                                     <span className="font-bold text-saivie-plum">91%</span>
                                   </div>
-                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                     <div className="bg-purple-500 h-full w-[91%] rounded-full"></div>
+                                  <div className="w-full bg-saivie-sage h-2 rounded-full overflow-hidden">
+                                     <div className="bg-saivie-teal h-full w-[91%] rounded-full"></div>
                                   </div>
                                </div>
                                
-                               <div className="pt-4 border-t border-slate-100">
-                                  <p className="text-xs font-bold text-slate-800 mb-2">Outcome Metrics (YTD)</p>
+                               <div className="pt-4 border-t border-saivie-border">
+                                  <p className="text-xs font-bold text-saivie-plum mb-2">Outcome Metrics (YTD)</p>
                                   <div className="grid grid-cols-2 gap-4">
-                                     <div className="bg-slate-50 p-2 rounded border border-slate-100">
-                                        <p className="text-[10px] text-slate-500">C-Section Rate</p>
-                                        <p className="text-lg font-bold text-slate-800">28%</p>
+                                     <div className="bg-saivie-surface-muted p-2 rounded border border-saivie-border">
+                                        <p className="text-[10px] text-saivie-plum">C-Section Rate</p>
+                                        <p className="text-lg font-bold text-saivie-plum">28%</p>
                                      </div>
-                                     <div className="bg-slate-50 p-2 rounded border border-slate-100">
-                                        <p className="text-[10px] text-slate-500">Avg Birth Weight</p>
-                                        <p className="text-lg font-bold text-slate-800">3.1kg</p>
+                                     <div className="bg-saivie-surface-muted p-2 rounded border border-saivie-border">
+                                        <p className="text-[10px] text-saivie-plum">Avg Birth Weight</p>
+                                        <p className="text-lg font-bold text-saivie-plum">3.1kg</p>
                                      </div>
                                   </div>
                                </div>
@@ -3052,10 +3052,10 @@ export default function ClinicianPortal() {
                    {/* 3. POSTPARTUM ANALYTICS */}
                    <TabsContent value="postpartum" className="space-y-6">
                       <div className="grid grid-cols-3 gap-6">
-                          <Card className="shadow-sm border-slate-200 col-span-2">
+                          <Card className="shadow-sm border-saivie-border col-span-2">
                             <CardHeader>
-                               <CardTitle className="text-base font-bold text-slate-800">Mental & Physical Recovery</CardTitle>
-                               <p className="text-xs text-slate-500">Tracking EPDS scores and physical recovery index over 12 weeks</p>
+                               <CardTitle className="text-base font-bold text-saivie-plum">Mental & Physical Recovery</CardTitle>
+                               <p className="text-xs text-saivie-plum">Tracking EPDS scores and physical recovery index over 12 weeks</p>
                             </CardHeader>
                             <CardContent>
                                <div className="h-[300px] w-full">
@@ -3074,32 +3074,32 @@ export default function ClinicianPortal() {
                             </CardContent>
                          </Card>
 
-                         <Card className="shadow-sm border-slate-200 bg-indigo-50 border-indigo-100">
+                         <Card className="shadow-sm border-saivie-border bg-saivie-surface-muted border-saivie-border">
                             <CardContent className="p-6 space-y-6">
                                <div className="flex items-center gap-3 mb-4">
-                                  <div className="p-3 bg-white rounded-full shadow-sm">
-                                     <Heart className="w-6 h-6 text-pink-500" />
+                                  <div className="p-3 bg-saivie-ivory rounded-full shadow-sm">
+                                     <Heart className="w-6 h-6 text-saivie-rose" />
                                   </div>
                                   <div>
-                                     <h3 className="font-bold text-indigo-900">Lactation Success</h3>
-                                     <p className="text-xs text-indigo-700">Feeding difficulty resolution</p>
+                                     <h3 className="font-bold text-saivie-plum">Lactation Success</h3>
+                                     <p className="text-xs text-saivie-teal">Feeding difficulty resolution</p>
                                   </div>
                                </div>
 
                                <div className="space-y-4">
                                   <div>
-                                     <p className="text-xs font-medium text-indigo-800 mb-1">Difficulty at Week 2</p>
-                                     <p className="text-3xl font-bold text-indigo-900">32%</p>
-                                     <p className="text-xs text-indigo-600">Of mothers reported issues</p>
+                                     <p className="text-xs font-medium text-saivie-plum mb-1">Difficulty at Week 2</p>
+                                     <p className="text-3xl font-bold text-saivie-plum">32%</p>
+                                     <p className="text-xs text-saivie-teal">Of mothers reported issues</p>
                                   </div>
                                   <div>
-                                     <p className="text-xs font-medium text-indigo-800 mb-1">Resolved after Consult</p>
+                                     <p className="text-xs font-medium text-saivie-plum mb-1">Resolved after Consult</p>
                                      <p className="text-3xl font-bold text-emerald-600">85%</p>
-                                     <p className="text-xs text-indigo-600">Improvement rate</p>
+                                     <p className="text-xs text-saivie-teal">Improvement rate</p>
                                   </div>
                                </div>
                                
-                               <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm mt-4">
+                               <Button className="w-full bg-saivie-teal hover:bg-saivie-teal text-white shadow-sm mt-4">
                                   View Lactation Logs
                                </Button>
                             </CardContent>
@@ -3110,9 +3110,9 @@ export default function ClinicianPortal() {
                    {/* 4. PCOS & HORMONE HEALTH */}
                    <TabsContent value="pcos" className="space-y-6">
                       <div className="grid grid-cols-2 gap-6">
-                         <Card className="shadow-sm border-slate-200">
+                         <Card className="shadow-sm border-saivie-border">
                             <CardHeader>
-                               <CardTitle className="text-base font-bold text-slate-800">Symptom Reduction Trends</CardTitle>
+                               <CardTitle className="text-base font-bold text-saivie-plum">Symptom Reduction Trends</CardTitle>
                             </CardHeader>
                             <CardContent>
                                <div className="h-[300px] w-full">
@@ -3129,9 +3129,9 @@ export default function ClinicianPortal() {
                             </CardContent>
                          </Card>
 
-                         <Card className="shadow-sm border-slate-200">
+                         <Card className="shadow-sm border-saivie-border">
                             <CardHeader>
-                               <CardTitle className="text-base font-bold text-slate-800">Metabolic Health Impact</CardTitle>
+                               <CardTitle className="text-base font-bold text-saivie-plum">Metabolic Health Impact</CardTitle>
                             </CardHeader>
                             <CardContent>
                                <div className="h-[300px] w-full">
@@ -3151,35 +3151,35 @@ export default function ClinicianPortal() {
                    
                    {/* 5. CLINIC PERFORMANCE */}
                    <TabsContent value="clinic" className="space-y-6">
-                       <Card className="shadow-sm border-slate-200">
+                       <Card className="shadow-sm border-saivie-border">
                           <CardHeader>
-                             <CardTitle className="text-base font-bold text-slate-800">Multidisciplinary Care Impact</CardTitle>
+                             <CardTitle className="text-base font-bold text-saivie-plum">Multidisciplinary Care Impact</CardTitle>
                           </CardHeader>
                           <CardContent>
                              <div className="grid grid-cols-3 gap-6 text-center">
-                                <div className="p-4 bg-slate-50 rounded-xl">
+                                <div className="p-4 bg-saivie-surface-muted rounded-xl">
                                    <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3 text-emerald-600">
                                       <Users className="w-6 h-6" />
                                    </div>
-                                   <p className="text-sm font-bold text-slate-700">Nutrition Consults</p>
+                                   <p className="text-sm font-bold text-saivie-plum">Nutrition Consults</p>
                                    <p className="text-2xl font-bold text-emerald-600 mt-1">+22%</p>
-                                   <p className="text-xs text-slate-500 mt-1">Pregnancy rate improvement</p>
+                                   <p className="text-xs text-saivie-plum mt-1">Pregnancy rate improvement</p>
                                 </div>
-                                <div className="p-4 bg-slate-50 rounded-xl">
-                                   <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-3 text-purple-600">
+                                <div className="p-4 bg-saivie-surface-muted rounded-xl">
+                                   <div className="w-12 h-12 rounded-full bg-saivie-sage flex items-center justify-center mx-auto mb-3 text-saivie-teal">
                                       <Brain className="w-6 h-6" />
                                    </div>
-                                   <p className="text-sm font-bold text-slate-700">Psych Support</p>
-                                   <p className="text-2xl font-bold text-purple-600 mt-1">4.5/5</p>
-                                   <p className="text-xs text-slate-500 mt-1">Mood improvement score</p>
+                                   <p className="text-sm font-bold text-saivie-plum">Psych Support</p>
+                                   <p className="text-2xl font-bold text-saivie-teal mt-1">4.5/5</p>
+                                   <p className="text-xs text-saivie-plum mt-1">Mood improvement score</p>
                                 </div>
-                                <div className="p-4 bg-slate-50 rounded-xl">
+                                <div className="p-4 bg-saivie-surface-muted rounded-xl">
                                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-3 text-blue-600">
                                       <Activity className="w-6 h-6" />
                                    </div>
-                                   <p className="text-sm font-bold text-slate-700">Trainer Involvement</p>
+                                   <p className="text-sm font-bold text-saivie-plum">Trainer Involvement</p>
                                    <p className="text-2xl font-bold text-blue-600 mt-1">-3.5kg</p>
-                                   <p className="text-xs text-slate-500 mt-1">Better weight outcomes</p>
+                                   <p className="text-xs text-saivie-plum mt-1">Better weight outcomes</p>
                                 </div>
                              </div>
                           </CardContent>
@@ -3192,18 +3192,18 @@ export default function ClinicianPortal() {
 
         {/* REVENUE VIEW (NEW) */}
         {activeView === 'revenue' && (
-          <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+          <div className="flex-1 overflow-y-auto p-6 bg-saivie-surface-muted">
              <div className="max-w-7xl mx-auto space-y-6">
                 
                 {/* Header */}
                 <div className="flex items-center justify-between">
                    <div>
-                      <h2 className="text-2xl font-bold text-slate-900 font-serif">Financial Overview</h2>
-                      <p className="text-slate-500 mt-1">Track clinic revenue, consultation fees, and procedure billing.</p>
+                      <h2 className="text-2xl font-bold text-saivie-plum font-serif">Financial Overview</h2>
+                      <p className="text-saivie-plum mt-1">Track clinic revenue, consultation fees, and procedure billing.</p>
                    </div>
                    <div className="flex items-center gap-3">
                       <Select defaultValue="this_month">
-                         <SelectTrigger className="w-[180px] bg-white border-slate-200">
+                         <SelectTrigger className="w-[180px] bg-saivie-ivory border-saivie-border">
                             <SelectValue placeholder="Period" />
                          </SelectTrigger>
                          <SelectContent>
@@ -3212,7 +3212,7 @@ export default function ClinicianPortal() {
                             <SelectItem value="ytd">Year to Date</SelectItem>
                          </SelectContent>
                       </Select>
-                      <Button variant="outline" className="bg-white border-slate-200 text-slate-700">
+                      <Button variant="outline" className="bg-saivie-ivory border-saivie-border text-saivie-plum">
                          <Download className="w-4 h-4 mr-2" /> Download Report
                       </Button>
                    </div>
@@ -3220,64 +3220,64 @@ export default function ClinicianPortal() {
 
                 {/* Key Metrics */}
                 <div className="grid grid-cols-4 gap-4">
-                   <Card className="shadow-sm border-slate-200">
+                   <Card className="shadow-sm border-saivie-border">
                       <CardContent className="p-4">
                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Total Revenue</p>
+                            <p className="text-xs text-saivie-plum uppercase font-bold tracking-wider">Total Revenue</p>
                             <div className="p-1.5 bg-green-50 rounded-md text-green-600">
                                <CreditCard className="w-4 h-4" />
                             </div>
                          </div>
-                         <p className="text-2xl font-bold text-slate-900">{inr(billingStats.total)}</p>
-                         <p className="text-xs text-slate-500 mt-2">{invoices.length} invoices</p>
+                         <p className="text-2xl font-bold text-saivie-plum">{inr(billingStats.total)}</p>
+                         <p className="text-xs text-saivie-plum mt-2">{invoices.length} invoices</p>
                       </CardContent>
                    </Card>
                    
-                   <Card className="shadow-sm border-slate-200">
+                   <Card className="shadow-sm border-saivie-border">
                       <CardContent className="p-4">
                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Collected</p>
+                            <p className="text-xs text-saivie-plum uppercase font-bold tracking-wider">Collected</p>
                             <div className="p-1.5 bg-blue-50 rounded-md text-blue-600">
                                <Users className="w-4 h-4" />
                             </div>
                          </div>
-                         <p className="text-2xl font-bold text-slate-900">{inr(billingStats.paid)}</p>
-                         <p className="text-xs text-slate-500 mt-2">{billingStats.paidCount} paid invoices</p>
+                         <p className="text-2xl font-bold text-saivie-plum">{inr(billingStats.paid)}</p>
+                         <p className="text-xs text-saivie-plum mt-2">{billingStats.paidCount} paid invoices</p>
                       </CardContent>
                    </Card>
 
-                   <Card className="shadow-sm border-slate-200">
+                   <Card className="shadow-sm border-saivie-border">
                       <CardContent className="p-4">
                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Discounts given</p>
-                            <div className="p-1.5 bg-purple-50 rounded-md text-purple-600">
+                            <p className="text-xs text-saivie-plum uppercase font-bold tracking-wider">Discounts given</p>
+                            <div className="p-1.5 bg-saivie-surface-muted rounded-md text-saivie-teal">
                                <Dna className="w-4 h-4" />
                             </div>
                          </div>
-                         <p className="text-2xl font-bold text-slate-900">{inr(billingStats.discount)}</p>
-                         <p className="text-xs text-slate-500 mt-2">Across all invoices</p>
+                         <p className="text-2xl font-bold text-saivie-plum">{inr(billingStats.discount)}</p>
+                         <p className="text-xs text-saivie-plum mt-2">Across all invoices</p>
                       </CardContent>
                    </Card>
 
-                   <Card className="shadow-sm border-slate-200">
+                   <Card className="shadow-sm border-saivie-border">
                       <CardContent className="p-4">
                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Pending payments</p>
+                            <p className="text-xs text-saivie-plum uppercase font-bold tracking-wider">Pending payments</p>
                             <div className="p-1.5 bg-amber-50 rounded-md text-amber-600">
                                <AlertCircle className="w-4 h-4" />
                             </div>
                          </div>
-                         <p className="text-2xl font-bold text-slate-900">{inr(billingStats.pending)}</p>
-                         <p className="text-xs text-slate-500 mt-2">{billingStats.pendingCount} invoices awaiting payment</p>
+                         <p className="text-2xl font-bold text-saivie-plum">{inr(billingStats.pending)}</p>
+                         <p className="text-xs text-saivie-plum mt-2">{billingStats.pendingCount} invoices awaiting payment</p>
                       </CardContent>
                    </Card>
                 </div>
 
                 <div className="grid grid-cols-3 gap-6">
                    {/* Revenue Breakdown Chart */}
-                   <Card className="col-span-2 shadow-sm border-slate-200">
+                   <Card className="col-span-2 shadow-sm border-saivie-border">
                       <CardHeader>
-                         <CardTitle className="text-base font-bold text-slate-800">Revenue Trend (6 Months)</CardTitle>
+                         <CardTitle className="text-base font-bold text-saivie-plum">Revenue Trend (6 Months)</CardTitle>
                       </CardHeader>
                       <CardContent>
                          <div className="h-[300px] w-full">
@@ -3294,9 +3294,9 @@ export default function ClinicianPortal() {
                    </Card>
 
                    {/* Recent Transactions */}
-                   <Card className="col-span-1 shadow-sm border-slate-200">
+                   <Card className="col-span-1 shadow-sm border-saivie-border">
                       <CardHeader className="flex flex-row items-center justify-between">
-                         <CardTitle className="text-base font-bold text-slate-800">Recent Transactions</CardTitle>
+                         <CardTitle className="text-base font-bold text-saivie-plum">Recent Transactions</CardTitle>
                          <Button variant="ghost" size="sm" className="h-8 text-xs text-blue-600">View All</Button>
                       </CardHeader>
                       <CardContent className="p-0">
@@ -3308,13 +3308,13 @@ export default function ClinicianPortal() {
                                status: inv.paymentStatus === 'paid' ? 'Paid' : 'Pending',
                                date: inv.date || 'Recent',
                             })) : []).map((tx: any, i: number) => (
-                               <div key={i} data-testid={`billing-transaction-${i}`} className="p-4 hover:bg-slate-50 transition-colors">
+                               <div key={i} data-testid={`billing-transaction-${i}`} className="p-4 hover:bg-saivie-surface-muted transition-colors">
                                   <div className="flex justify-between items-start mb-1">
-                                     <p className="text-sm font-bold text-slate-900" data-testid={`text-billing-patient-${i}`}>{tx.patient}</p>
-                                     <p className="text-sm font-bold text-slate-900">{tx.amount}</p>
+                                     <p className="text-sm font-bold text-saivie-plum" data-testid={`text-billing-patient-${i}`}>{tx.patient}</p>
+                                     <p className="text-sm font-bold text-saivie-plum">{tx.amount}</p>
                                   </div>
                                   <div className="flex justify-between items-center">
-                                     <p className="text-xs text-slate-500">{tx.service}</p>
+                                     <p className="text-xs text-saivie-plum">{tx.service}</p>
                                      <Badge variant="outline" className={`text-[10px] ${tx.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                                         {tx.status}
                                      </Badge>
@@ -3331,63 +3331,63 @@ export default function ClinicianPortal() {
 
         {/* SETTINGS VIEW (NEW) */}
         {activeView === 'settings' && (
-          <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+          <div className="flex-1 overflow-y-auto p-6 bg-saivie-surface-muted">
              <div className="max-w-4xl mx-auto space-y-6">
                 
                 {/* Header */}
                 <div>
-                   <h2 className="text-2xl font-bold text-slate-900 font-serif">Profile & Settings</h2>
-                   <p className="text-slate-500 mt-1">Manage your account preferences and clinic configuration.</p>
+                   <h2 className="text-2xl font-bold text-saivie-plum font-serif">Profile & Settings</h2>
+                   <p className="text-saivie-plum mt-1">Manage your account preferences and clinic configuration.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                    {/* Sidebar Settings Nav */}
-                   <Card className="h-fit shadow-sm border-slate-200">
+                   <Card className="h-fit shadow-sm border-saivie-border">
                       <CardContent className="p-2">
                          <nav className="space-y-1">
                             <Button 
                                variant="ghost" 
-                               className={`w-full justify-start font-medium ${activeSettingsTab === 'profile' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                               className={`w-full justify-start font-medium ${activeSettingsTab === 'profile' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                                onClick={() => setActiveSettingsTab('profile')}
                             >
                                <Users className="w-4 h-4 mr-3" /> Profile Details
                             </Button>
                             <Button
                                variant="ghost"
-                               className={`w-full justify-start font-medium ${activeSettingsTab === 'notifications' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                               className={`w-full justify-start font-medium ${activeSettingsTab === 'notifications' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                                onClick={() => setActiveSettingsTab('notifications')}
                             >
                                <Bell className="w-4 h-4 mr-3" /> Notifications
                             </Button>
                             <Button 
                                variant="ghost" 
-                               className={`w-full justify-start font-medium ${activeSettingsTab === 'availability' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                               className={`w-full justify-start font-medium ${activeSettingsTab === 'availability' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                                onClick={() => setActiveSettingsTab('availability')}
                             >
                                <Briefcase className="w-4 h-4 mr-3" /> Clinic Availability
                             </Button>
                             <Button 
                                variant="ghost" 
-                               className={`w-full justify-start font-medium ${activeSettingsTab === 'network' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                               className={`w-full justify-start font-medium ${activeSettingsTab === 'network' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                                onClick={() => setActiveSettingsTab('network')}
                             >
                                <Users className="w-4 h-4 mr-3" /> My Care Network
                             </Button>
                             <Button 
                                variant="ghost" 
-                               className={`w-full justify-start font-medium ${activeSettingsTab === 'medicine-catalog' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                               className={`w-full justify-start font-medium ${activeSettingsTab === 'medicine-catalog' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                                onClick={() => setActiveSettingsTab('medicine-catalog')}
                             >
                                <Pill className="w-4 h-4 mr-3" /> Medicine Catalog
                             </Button>
                             <Button
                                variant="ghost"
-                               className={`w-full justify-start font-medium ${activeSettingsTab === 'vaccination-schedules' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                               className={`w-full justify-start font-medium ${activeSettingsTab === 'vaccination-schedules' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                                onClick={() => setActiveSettingsTab('vaccination-schedules')}
                             >
                                <Syringe className="w-4 h-4 mr-3" /> Vaccination Rules
                             </Button>
-                            <Button variant="ghost" className="w-full justify-start text-slate-500 hover:text-slate-900">
+                            <Button variant="ghost" className="w-full justify-start text-saivie-plum hover:text-saivie-plum">
                                <Settings className="w-4 h-4 mr-3" /> System Preferences
                             </Button>
                          </nav>
@@ -3400,14 +3400,14 @@ export default function ClinicianPortal() {
                       {activeSettingsTab === 'profile' && (
                           <>
                             {/* Personal Info Card */}
-                            <Card className="shadow-sm border-slate-200">
+                            <Card className="shadow-sm border-saivie-border">
                                 <CardHeader>
-                                    <CardTitle className="text-base font-bold text-slate-800">Personal Information</CardTitle>
+                                    <CardTitle className="text-base font-bold text-saivie-plum">Personal Information</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="flex items-center gap-4 mb-4">
                                     <Avatar className="h-16 w-16 border-2 border-white shadow-md">
-                                        <AvatarFallback className="bg-slate-800 text-white text-xl">DR</AvatarFallback>
+                                        <AvatarFallback className="bg-saivie-plum text-white text-xl">DR</AvatarFallback>
                                     </Avatar>
                                     <div>
                                         <Button variant="outline" size="sm" className="text-xs">Change Photo</Button>
@@ -3436,16 +3436,16 @@ export default function ClinicianPortal() {
                                     </div>
 
                                     <div className="pt-4 flex justify-end">
-                                    <Button className="bg-blue-600 hover:bg-blue-700">Save Changes</Button>
+                                    <Button className="bg-saivie-teal hover:bg-saivie-teal">Save Changes</Button>
                                     </div>
                                 </CardContent>
                             </Card>
 
                             {/* Qualification & Registration Card */}
-                            <Card className="shadow-sm border-slate-200">
+                            <Card className="shadow-sm border-saivie-border">
                                 <CardHeader>
-                                    <CardTitle className="text-base font-bold text-slate-800">Qualification & Registration</CardTitle>
-                                    <p className="text-xs text-slate-500 mt-1">These details appear on your prescriptions and official documents.</p>
+                                    <CardTitle className="text-base font-bold text-saivie-plum">Qualification & Registration</CardTitle>
+                                    <p className="text-xs text-saivie-plum mt-1">These details appear on your prescriptions and official documents.</p>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
@@ -3491,7 +3491,7 @@ export default function ClinicianPortal() {
                                       </div>
                                     </div>
                                     <div className="pt-4 flex justify-end">
-                                      <Button className="bg-blue-600 hover:bg-blue-700" data-testid="button-save-qualifications" onClick={() => {
+                                      <Button className="bg-saivie-teal hover:bg-saivie-teal" data-testid="button-save-qualifications" onClick={() => {
                                         const getData = (id: string) => (document.getElementById(id) as HTMLInputElement)?.value || '';
                                         const profileData = {
                                           qualification: getData('qualification'),
@@ -3521,15 +3521,15 @@ export default function ClinicianPortal() {
                             </Card>
 
                             {/* Security Card */}
-                            <Card className="shadow-sm border-slate-200">
+                            <Card className="shadow-sm border-saivie-border">
                                 <CardHeader>
-                                    <CardTitle className="text-base font-bold text-slate-800">Security & Access</CardTitle>
+                                    <CardTitle className="text-base font-bold text-saivie-plum">Security & Access</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                    <div className="flex items-center justify-between p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border">
                                     <div>
-                                        <p className="text-sm font-medium text-slate-900">Two-Factor Authentication</p>
-                                        <p className="text-xs text-slate-500">Secure your account with 2FA.</p>
+                                        <p className="text-sm font-medium text-saivie-plum">Two-Factor Authentication</p>
+                                        <p className="text-xs text-saivie-plum">Secure your account with 2FA.</p>
                                     </div>
                                     <Button variant="outline" size="sm" className="text-xs">Enable</Button>
                                     </div>
@@ -3550,7 +3550,7 @@ export default function ClinicianPortal() {
                                     </div>
                                     
                                     <div className="pt-4 flex justify-end">
-                                    <Button variant="outline" className="text-slate-600 border-slate-300">Update Password</Button>
+                                    <Button variant="outline" className="text-saivie-plum border-saivie-border">Update Password</Button>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -3559,10 +3559,10 @@ export default function ClinicianPortal() {
 
                       {activeSettingsTab === 'notifications' && (
                         <div className="space-y-6">
-                          <Card className="shadow-sm border-slate-200">
+                          <Card className="shadow-sm border-saivie-border">
                             <CardHeader>
-                              <CardTitle className="text-base font-bold text-slate-800">Appointment Notifications</CardTitle>
-                              <p className="text-xs text-slate-500 mt-1">Choose how you want to be alerted about appointments.</p>
+                              <CardTitle className="text-base font-bold text-saivie-plum">Appointment Notifications</CardTitle>
+                              <p className="text-xs text-saivie-plum mt-1">Choose how you want to be alerted about appointments.</p>
                             </CardHeader>
                             <CardContent className="space-y-4">
                               {[
@@ -3571,10 +3571,10 @@ export default function ClinicianPortal() {
                                 { label: "Same-day appointment reminder", desc: "Morning summary of today's schedule", defaultOn: true },
                                 { label: "Appointment no-show", desc: "When a patient misses their slot", defaultOn: false },
                               ].map((item) => (
-                                <div key={item.label} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                <div key={item.label} className="flex items-center justify-between p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border">
                                   <div>
-                                    <p className="text-sm font-medium text-slate-900">{item.label}</p>
-                                    <p className="text-xs text-slate-500">{item.desc}</p>
+                                    <p className="text-sm font-medium text-saivie-plum">{item.label}</p>
+                                    <p className="text-xs text-saivie-plum">{item.desc}</p>
                                   </div>
                                   <input type="checkbox" defaultChecked={item.defaultOn} className="w-4 h-4 accent-blue-600" />
                                 </div>
@@ -3582,10 +3582,10 @@ export default function ClinicianPortal() {
                             </CardContent>
                           </Card>
 
-                          <Card className="shadow-sm border-slate-200">
+                          <Card className="shadow-sm border-saivie-border">
                             <CardHeader>
-                              <CardTitle className="text-base font-bold text-slate-800">Patient & Clinical Alerts</CardTitle>
-                              <p className="text-xs text-slate-500 mt-1">Alerts related to patient risk and clinical updates.</p>
+                              <CardTitle className="text-base font-bold text-saivie-plum">Patient & Clinical Alerts</CardTitle>
+                              <p className="text-xs text-saivie-plum mt-1">Alerts related to patient risk and clinical updates.</p>
                             </CardHeader>
                             <CardContent className="space-y-4">
                               {[
@@ -3594,10 +3594,10 @@ export default function ClinicianPortal() {
                                 { label: "New WhatsApp message", desc: "Inbound messages from patients via WhatsApp", defaultOn: false },
                                 { label: "Post-visit summary sent", desc: "Confirmation when a WhatsApp summary is delivered", defaultOn: false },
                               ].map((item) => (
-                                <div key={item.label} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                <div key={item.label} className="flex items-center justify-between p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border">
                                   <div>
-                                    <p className="text-sm font-medium text-slate-900">{item.label}</p>
-                                    <p className="text-xs text-slate-500">{item.desc}</p>
+                                    <p className="text-sm font-medium text-saivie-plum">{item.label}</p>
+                                    <p className="text-xs text-saivie-plum">{item.desc}</p>
                                   </div>
                                   <input type="checkbox" defaultChecked={item.defaultOn} className="w-4 h-4 accent-blue-600" />
                                 </div>
@@ -3605,10 +3605,10 @@ export default function ClinicianPortal() {
                             </CardContent>
                           </Card>
 
-                          <Card className="shadow-sm border-slate-200">
+                          <Card className="shadow-sm border-saivie-border">
                             <CardHeader>
-                              <CardTitle className="text-base font-bold text-slate-800">Notification Channels</CardTitle>
-                              <p className="text-xs text-slate-500 mt-1">Where to receive your notifications.</p>
+                              <CardTitle className="text-base font-bold text-saivie-plum">Notification Channels</CardTitle>
+                              <p className="text-xs text-saivie-plum mt-1">Where to receive your notifications.</p>
                             </CardHeader>
                             <CardContent className="space-y-4">
                               {[
@@ -3616,10 +3616,10 @@ export default function ClinicianPortal() {
                                 { label: "WhatsApp alerts", desc: "Send notifications to your registered WhatsApp number", defaultOn: false },
                                 { label: "Email digest", desc: "Daily summary email of key updates", defaultOn: false },
                               ].map((item) => (
-                                <div key={item.label} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                <div key={item.label} className="flex items-center justify-between p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border">
                                   <div>
-                                    <p className="text-sm font-medium text-slate-900">{item.label}</p>
-                                    <p className="text-xs text-slate-500">{item.desc}</p>
+                                    <p className="text-sm font-medium text-saivie-plum">{item.label}</p>
+                                    <p className="text-xs text-saivie-plum">{item.desc}</p>
                                   </div>
                                   <input type="checkbox" defaultChecked={item.defaultOn} className="w-4 h-4 accent-blue-600" />
                                 </div>
@@ -3628,34 +3628,34 @@ export default function ClinicianPortal() {
                           </Card>
 
                           <div className="flex justify-end">
-                            <Button className="bg-blue-600 hover:bg-blue-700">Save Notification Preferences</Button>
+                            <Button className="bg-saivie-teal hover:bg-saivie-teal">Save Notification Preferences</Button>
                           </div>
                         </div>
                       )}
 
                       {activeSettingsTab === 'availability' && (
                           <div className="space-y-6">
-                              <Card className="shadow-sm border-slate-200">
+                              <Card className="shadow-sm border-saivie-border">
                                   <CardHeader className="flex flex-row items-center justify-between">
                                       <div>
-                                          <CardTitle className="text-base font-bold text-slate-800">Clinics & Locations</CardTitle>
-                                          <p className="text-xs text-slate-500 mt-1">Manage practicing locations and operating hours.</p>
+                                          <CardTitle className="text-base font-bold text-saivie-plum">Clinics & Locations</CardTitle>
+                                          <p className="text-xs text-saivie-plum mt-1">Manage practicing locations and operating hours.</p>
                                       </div>
-                                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 h-8 text-xs gap-1.5">
+                                      <Button size="sm" className="bg-saivie-teal hover:bg-saivie-teal h-8 text-xs gap-1.5">
                                           <Plus className="w-3.5 h-3.5" /> Add Clinic
                                       </Button>
                                   </CardHeader>
                                   <CardContent className="space-y-4">
                                       {/* Clinic 1 */}
-                                      <div className="bg-white border border-slate-200 rounded-lg p-4">
+                                      <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-4">
                                           <div className="flex justify-between items-start mb-4">
                                               <div className="flex items-center gap-3">
                                                   <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
                                                       <Briefcase className="w-5 h-5" />
                                                   </div>
                                                   <div>
-                                                      <h3 className="font-bold text-slate-900 text-sm">Saivie Main Center</h3>
-                                                      <p className="text-xs text-slate-500">Koramangala, Bangalore</p>
+                                                      <h3 className="font-bold text-saivie-plum text-sm">Saivie Main Center</h3>
+                                                      <p className="text-xs text-saivie-plum">Koramangala, Bangalore</p>
                                                   </div>
                                               </div>
                                               <div className="flex gap-2">
@@ -3667,12 +3667,12 @@ export default function ClinicianPortal() {
                                           <div className="space-y-3">
                                               <div className="grid grid-cols-7 gap-2">
                                                   {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
-                                                      <div key={day} className={`text-center p-2 rounded border ${i < 5 ? 'bg-blue-50/50 border-blue-100' : 'bg-slate-50 border-slate-100 opacity-50'}`}>
-                                                          <p className="text-[10px] font-bold text-slate-600 mb-1">{day}</p>
+                                                      <div key={day} className={`text-center p-2 rounded border ${i < 5 ? 'bg-blue-50/50 border-blue-100' : 'bg-saivie-surface-muted border-saivie-border opacity-50'}`}>
+                                                          <p className="text-[10px] font-bold text-saivie-plum mb-1">{day}</p>
                                                           {i < 5 ? (
                                                               <p className="text-[10px] text-blue-700 font-medium">09:00 - 17:00</p>
                                                           ) : (
-                                                              <p className="text-[10px] text-slate-400">Closed</p>
+                                                              <p className="text-[10px] text-saivie-plum">Closed</p>
                                                           )}
                                                       </div>
                                                   ))}
@@ -3681,15 +3681,15 @@ export default function ClinicianPortal() {
                                       </div>
 
                                       {/* Clinic 2 */}
-                                      <div className="bg-white border border-slate-200 rounded-lg p-4">
+                                      <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-4">
                                           <div className="flex justify-between items-start mb-4">
                                               <div className="flex items-center gap-3">
-                                                  <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600">
+                                                  <div className="w-10 h-10 rounded-lg bg-saivie-surface-muted flex items-center justify-center text-saivie-teal">
                                                       <Briefcase className="w-5 h-5" />
                                                   </div>
                                                   <div>
-                                                      <h3 className="font-bold text-slate-900 text-sm">City Hospital (OPD)</h3>
-                                                      <p className="text-xs text-slate-500">Indiranagar, Bangalore</p>
+                                                      <h3 className="font-bold text-saivie-plum text-sm">City Hospital (OPD)</h3>
+                                                      <p className="text-xs text-saivie-plum">Indiranagar, Bangalore</p>
                                                   </div>
                                               </div>
                                               <div className="flex gap-2">
@@ -3701,12 +3701,12 @@ export default function ClinicianPortal() {
                                           <div className="space-y-3">
                                               <div className="grid grid-cols-7 gap-2">
                                                   {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
-                                                      <div key={day} className={`text-center p-2 rounded border ${day === 'Sat' ? 'bg-purple-50/50 border-purple-100' : 'bg-slate-50 border-slate-100 opacity-50'}`}>
-                                                          <p className="text-[10px] font-bold text-slate-600 mb-1">{day}</p>
+                                                      <div key={day} className={`text-center p-2 rounded border ${day === 'Sat' ? 'bg-saivie-surface-muted/50 border-saivie-border' : 'bg-saivie-surface-muted border-saivie-border opacity-50'}`}>
+                                                          <p className="text-[10px] font-bold text-saivie-plum mb-1">{day}</p>
                                                           {day === 'Sat' ? (
-                                                              <p className="text-[10px] text-purple-700 font-medium">10:00 - 14:00</p>
+                                                              <p className="text-[10px] text-saivie-teal font-medium">10:00 - 14:00</p>
                                                           ) : (
-                                                              <p className="text-[10px] text-slate-400">Closed</p>
+                                                              <p className="text-[10px] text-saivie-plum">Closed</p>
                                                           )}
                                                       </div>
                                                   ))}
@@ -3716,19 +3716,19 @@ export default function ClinicianPortal() {
                                   </CardContent>
                               </Card>
 
-                              <Card className="shadow-sm border-slate-200">
+                              <Card className="shadow-sm border-saivie-border">
                                   <CardHeader>
-                                      <CardTitle className="text-base font-bold text-slate-800">Time Off & Exceptions</CardTitle>
+                                      <CardTitle className="text-base font-bold text-saivie-plum">Time Off & Exceptions</CardTitle>
                                   </CardHeader>
                                   <CardContent>
-                                      <div className="border border-slate-200 rounded-lg p-4 flex items-center justify-between">
+                                      <div className="border border-saivie-border rounded-lg p-4 flex items-center justify-between">
                                           <div className="flex items-center gap-3">
                                               <div className="p-2 bg-amber-50 rounded text-amber-600">
                                                   <CalendarIcon className="w-4 h-4" />
                                               </div>
                                               <div>
-                                                  <p className="text-sm font-bold text-slate-800">Upcoming Leave</p>
-                                                  <p className="text-xs text-slate-500">Nov 12 - Nov 15 • Personal Leave</p>
+                                                  <p className="text-sm font-bold text-saivie-plum">Upcoming Leave</p>
+                                                  <p className="text-xs text-saivie-plum">Nov 12 - Nov 15 • Personal Leave</p>
                                               </div>
                                           </div>
                                           <Button variant="outline" size="sm" className="text-xs h-7">Manage</Button>
@@ -3740,15 +3740,15 @@ export default function ClinicianPortal() {
 
                       {activeSettingsTab === 'network' && (
                           <div className="space-y-6">
-                              <Card className="shadow-sm border-slate-200">
+                              <Card className="shadow-sm border-saivie-border">
                                   <CardHeader className="flex flex-row items-center justify-between">
                                       <div>
-                                          <CardTitle className="text-base font-bold text-slate-800">My Care Network</CardTitle>
-                                          <p className="text-xs text-slate-500 mt-1">Manage your team of specialists and referral network.</p>
+                                          <CardTitle className="text-base font-bold text-saivie-plum">My Care Network</CardTitle>
+                                          <p className="text-xs text-saivie-plum mt-1">Manage your team of specialists and referral network.</p>
                                       </div>
                                       <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
                                         <DialogTrigger asChild>
-                                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 h-8 text-xs gap-1.5">
+                                            <Button size="sm" className="bg-saivie-teal hover:bg-saivie-teal h-8 text-xs gap-1.5">
                                                 <Plus className="w-3.5 h-3.5" /> Add Team Member
                                             </Button>
                                         </DialogTrigger>
@@ -3804,7 +3804,7 @@ export default function ClinicianPortal() {
                                             </div>
                                             <DialogFooter>
                                                 <Button variant="outline" size="sm" onClick={() => setIsAddMemberOpen(false)}>Cancel</Button>
-                                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => setIsAddMemberOpen(false)}>Add Member</Button>
+                                                <Button size="sm" className="bg-saivie-teal hover:bg-saivie-teal" onClick={() => setIsAddMemberOpen(false)}>Add Member</Button>
                                             </DialogFooter>
                                         </DialogContent>
                                       </Dialog>
@@ -3812,15 +3812,15 @@ export default function ClinicianPortal() {
                                   <CardContent className="space-y-4">
                                       
                                       {/* Pediatrician */}
-                                      <div className="bg-white border border-slate-200 rounded-lg p-4 flex items-center justify-between group hover:border-blue-200 transition-colors">
+                                      <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-4 flex items-center justify-between group hover:border-blue-200 transition-colors">
                                           <div className="flex items-center gap-4">
                                               <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
                                                   <Baby className="w-6 h-6" />
                                               </div>
                                               <div>
-                                                  <h3 className="font-bold text-slate-900 text-sm">Dr. Sarah Miller</h3>
-                                                  <p className="text-xs text-slate-500 font-medium">Pediatrician</p>
-                                                  <p className="text-[10px] text-slate-400 mt-0.5">Children's Health Clinic</p>
+                                                  <h3 className="font-bold text-saivie-plum text-sm">Dr. Sarah Miller</h3>
+                                                  <p className="text-xs text-saivie-plum font-medium">Pediatrician</p>
+                                                  <p className="text-[10px] text-saivie-plum mt-0.5">Children's Health Clinic</p>
                                               </div>
                                           </div>
                                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -3830,15 +3830,15 @@ export default function ClinicianPortal() {
                                       </div>
 
                                       {/* Anesthetist */}
-                                      <div className="bg-white border border-slate-200 rounded-lg p-4 flex items-center justify-between group hover:border-purple-200 transition-colors">
+                                      <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-4 flex items-center justify-between group hover:border-saivie-border transition-colors">
                                           <div className="flex items-center gap-4">
-                                              <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
+                                              <div className="w-12 h-12 rounded-full bg-saivie-surface-muted flex items-center justify-center text-saivie-teal">
                                                   <Syringe className="w-6 h-6" />
                                               </div>
                                               <div>
-                                                  <h3 className="font-bold text-slate-900 text-sm">Dr. James Wilson</h3>
-                                                  <p className="text-xs text-slate-500 font-medium">Anesthetist</p>
-                                                  <p className="text-[10px] text-slate-400 mt-0.5">On-Call Associate</p>
+                                                  <h3 className="font-bold text-saivie-plum text-sm">Dr. James Wilson</h3>
+                                                  <p className="text-xs text-saivie-plum font-medium">Anesthetist</p>
+                                                  <p className="text-[10px] text-saivie-plum mt-0.5">On-Call Associate</p>
                                               </div>
                                           </div>
                                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -3848,15 +3848,15 @@ export default function ClinicianPortal() {
                                       </div>
 
                                       {/* Nursing Home */}
-                                      <div className="bg-white border border-slate-200 rounded-lg p-4 flex items-center justify-between group hover:border-emerald-200 transition-colors">
+                                      <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-4 flex items-center justify-between group hover:border-emerald-200 transition-colors">
                                           <div className="flex items-center gap-4">
                                               <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
                                                   <Briefcase className="w-6 h-6" />
                                               </div>
                                               <div>
-                                                  <h3 className="font-bold text-slate-900 text-sm">Sunrise Nursing Home</h3>
-                                                  <p className="text-xs text-slate-500 font-medium">Inpatient Care Facility</p>
-                                                  <p className="text-[10px] text-slate-400 mt-0.5">24/7 Service</p>
+                                                  <h3 className="font-bold text-saivie-plum text-sm">Sunrise Nursing Home</h3>
+                                                  <p className="text-xs text-saivie-plum font-medium">Inpatient Care Facility</p>
+                                                  <p className="text-[10px] text-saivie-plum mt-0.5">24/7 Service</p>
                                               </div>
                                           </div>
                                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -3866,15 +3866,15 @@ export default function ClinicianPortal() {
                                       </div>
 
                                       {/* Nutritionist */}
-                                      <div className="bg-white border border-slate-200 rounded-lg p-4 flex items-center justify-between group hover:border-amber-200 transition-colors">
+                                      <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-4 flex items-center justify-between group hover:border-amber-200 transition-colors">
                                           <div className="flex items-center gap-4">
                                               <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
                                                   <Heart className="w-6 h-6" />
                                               </div>
                                               <div>
-                                                  <h3 className="font-bold text-slate-900 text-sm">Lisa Chen, RD</h3>
-                                                  <p className="text-xs text-slate-500 font-medium">Clinical Nutritionist</p>
-                                                  <p className="text-[10px] text-slate-400 mt-0.5">Wellness Partner</p>
+                                                  <h3 className="font-bold text-saivie-plum text-sm">Lisa Chen, RD</h3>
+                                                  <p className="text-xs text-saivie-plum font-medium">Clinical Nutritionist</p>
+                                                  <p className="text-[10px] text-saivie-plum mt-0.5">Wellness Partner</p>
                                               </div>
                                           </div>
                                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -3890,10 +3890,10 @@ export default function ClinicianPortal() {
 
                       {activeSettingsTab === 'medicine-catalog' && (
                           <div className="space-y-4">
-                              <Card className="shadow-sm border-slate-200">
+                              <Card className="shadow-sm border-saivie-border">
                                   <CardHeader>
-                                      <CardTitle className="text-base font-bold text-slate-800">Clinic Medicine Catalog</CardTitle>
-                                      <p className="text-xs text-slate-500 mt-1">Medicines commonly prescribed at this clinic. This list helps AI read handwritten prescriptions more accurately.</p>
+                                      <CardTitle className="text-base font-bold text-saivie-plum">Clinic Medicine Catalog</CardTitle>
+                                      <p className="text-xs text-saivie-plum mt-1">Medicines commonly prescribed at this clinic. This list helps AI read handwritten prescriptions more accurately.</p>
                                   </CardHeader>
                                   <CardContent className="space-y-4">
                                       <div className="grid grid-cols-6 gap-2">
@@ -3903,7 +3903,7 @@ export default function ClinicianPortal() {
                                           <Input placeholder="Frequency" value={newMedFrequency} onChange={e => setNewMedFrequency(e.target.value)} className="h-8 text-xs" data-testid="input-catalog-frequency" />
                                           <Button
                                             size="sm"
-                                            className="h-8 text-xs bg-blue-600 hover:bg-blue-700 gap-1"
+                                            className="h-8 text-xs bg-saivie-teal hover:bg-saivie-teal gap-1"
                                             disabled={!newMedName.trim() || addCatalogMutation.isPending}
                                             onClick={() => addCatalogMutation.mutate({
                                               name: newMedName.trim(),
@@ -3933,14 +3933,14 @@ export default function ClinicianPortal() {
                                           <Input placeholder="Category (e.g. Hormone, Supplement)" value={newMedCategory} onChange={e => setNewMedCategory(e.target.value)} className="h-8 text-xs w-56" data-testid="input-catalog-category" />
                                       </div>
 
-                                      <div className="border-t border-slate-200 pt-3">
+                                      <div className="border-t border-saivie-border pt-3">
                                         <div className="flex items-center justify-between mb-3">
-                                          <span className="text-xs text-slate-500 font-semibold">{medicineCatalog.length} medicine(s) in catalog</span>
+                                          <span className="text-xs text-saivie-plum font-semibold">{medicineCatalog.length} medicine(s) in catalog</span>
                                           <Input placeholder="Search catalog..." value={catalogFilter} onChange={e => setCatalogFilter(e.target.value)} className="h-7 text-xs w-48" data-testid="input-catalog-search" />
                                         </div>
-                                        <div className="border border-slate-200 rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+                                        <div className="border border-saivie-border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
                                           <table className="w-full text-xs text-left">
-                                            <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0">
+                                            <thead className="bg-saivie-surface-muted text-saivie-plum border-b border-saivie-border sticky top-0">
                                               <tr>
                                                 <th className="px-3 py-2 font-medium">Medicine</th>
                                                 <th className="px-3 py-2 font-medium">Generic Name</th>
@@ -3959,7 +3959,7 @@ export default function ClinicianPortal() {
                                                   return (m.name || '').toLowerCase().includes(q) || (m.genericName || '').toLowerCase().includes(q) || (m.category || '').toLowerCase().includes(q);
                                                 })
                                                 .map((med: any) => (
-                                                <tr key={med.id} className="hover:bg-slate-50" data-testid={`row-catalog-${med.id}`}>
+                                                <tr key={med.id} className="hover:bg-saivie-surface-muted" data-testid={`row-catalog-${med.id}`}>
                                                   {editingCatalogId === med.id ? (
                                                     <>
                                                       <td className="px-1 py-1"><Input value={editCatalogData.name || ''} onChange={e => setEditCatalogData({...editCatalogData, name: e.target.value})} className="h-7 text-xs" /></td>
@@ -3973,7 +3973,7 @@ export default function ClinicianPortal() {
                                                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" onClick={() => updateCatalogMutation.mutate({ id: med.id, data: editCatalogData })}>
                                                             <Check className="w-3 h-3" />
                                                           </Button>
-                                                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-slate-600" onClick={() => setEditingCatalogId(null)}>
+                                                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-saivie-plum" onClick={() => setEditingCatalogId(null)}>
                                                             <X className="w-3 h-3" />
                                                           </Button>
                                                         </div>
@@ -3981,11 +3981,11 @@ export default function ClinicianPortal() {
                                                     </>
                                                   ) : (
                                                     <>
-                                                      <td className="px-3 py-2 font-medium text-slate-800">{med.name}</td>
-                                                      <td className="px-3 py-2 text-slate-500">{med.genericName || '—'}</td>
-                                                      <td className="px-3 py-2 text-slate-600">{med.defaultDose || '—'}</td>
-                                                      <td className="px-3 py-2 text-slate-500">{med.defaultFrequency || '—'}</td>
-                                                      <td className="px-3 py-2 text-slate-500">{med.route || '—'}</td>
+                                                      <td className="px-3 py-2 font-medium text-saivie-plum">{med.name}</td>
+                                                      <td className="px-3 py-2 text-saivie-plum">{med.genericName || '—'}</td>
+                                                      <td className="px-3 py-2 text-saivie-plum">{med.defaultDose || '—'}</td>
+                                                      <td className="px-3 py-2 text-saivie-plum">{med.defaultFrequency || '—'}</td>
+                                                      <td className="px-3 py-2 text-saivie-plum">{med.route || '—'}</td>
                                                       <td className="px-3 py-2">
                                                         {med.category && <Badge variant="outline" className="text-[10px]">{med.category}</Badge>}
                                                       </td>
@@ -4004,7 +4004,7 @@ export default function ClinicianPortal() {
                                                 </tr>
                                               ))}
                                               {medicineCatalog.length === 0 && (
-                                                <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-400">No medicines in catalog yet. Add your first medicine above.</td></tr>
+                                                <tr><td colSpan={7} className="px-3 py-8 text-center text-saivie-plum">No medicines in catalog yet. Add your first medicine above.</td></tr>
                                               )}
                                             </tbody>
                                           </table>
@@ -4026,35 +4026,35 @@ export default function ClinicianPortal() {
             <div className="max-w-[1440px] mx-auto space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Clinical workspace</p>
-                  <h2 className="mt-1 text-2xl font-semibold text-slate-900">Patients</h2>
-                  <p className="mt-1 text-sm text-slate-500">Search your patient directory and open a record to continue care.</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-saivie-plum">Clinical workspace</p>
+                  <h2 className="mt-1 text-2xl font-semibold text-saivie-plum">Patients</h2>
+                  <p className="mt-1 text-sm text-saivie-plum">Search your patient directory and open a record to continue care.</p>
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-md bg-white border border-slate-200 px-3 py-2 text-slate-600"><strong className="text-slate-900">{patients.length}</strong> patients</span>
+                  <span className="rounded-md bg-saivie-ivory border border-saivie-border px-3 py-2 text-saivie-plum"><strong className="text-saivie-plum">{patients.length}</strong> patients</span>
                   <span className="rounded-md bg-[#fff0ef] border border-[#f2d9d8] px-3 py-2 text-[#9c4e53]"><strong>{riskAlerts.length}</strong> high-risk</span>
-                  <span className="rounded-md bg-[#e6f1dc] border border-[#d8e7cc] px-3 py-2 text-[#587146]"><strong>{queuePatients.length}</strong> in selected schedule</span>
+                  <span className="rounded-md bg-saivie-sage border border-saivie-border px-3 py-2 text-saivie-plum"><strong>{queuePatients.length}</strong> in selected schedule</span>
                 </div>
               </div>
 
-              <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-                <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <section className="bg-saivie-ivory border border-saivie-border rounded-lg overflow-hidden">
+                <div className="p-4 border-b border-saivie-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900">Patient directory</h3>
-                    <p className="mt-0.5 text-xs text-slate-500">{filteredDirectoryPatients.length} of {patients.length} records</p>
+                    <h3 className="text-sm font-semibold text-saivie-plum">Patient directory</h3>
+                    <p className="mt-0.5 text-xs text-saivie-plum">{filteredDirectoryPatients.length} of {patients.length} records</p>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <div className="relative w-full sm:w-64">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-saivie-plum" />
                       <Input
                         value={patientDirectorySearch}
                         onChange={(event) => setPatientDirectorySearch(event.target.value)}
                         placeholder="Search patients"
-                        className="h-9 pl-9 text-sm border-slate-200"
+                        className="h-9 pl-9 text-sm border-saivie-border"
                         data-testid="input-patient-directory-search"
                       />
                     </div>
-                    <label className="flex items-center gap-2 text-xs text-slate-500">
+                    <label className="flex items-center gap-2 text-xs text-saivie-plum">
                       <span className="whitespace-nowrap">Appointment date</span>
                       <Input
                         type="date"
@@ -4062,7 +4062,7 @@ export default function ClinicianPortal() {
                         max={patientDirectoryDateTo || undefined}
                         onChange={(event) => setPatientDirectoryDateFrom(event.target.value)}
                         aria-label="Appointment date from"
-                        className="h-9 w-[142px] text-xs border-slate-200"
+                        className="h-9 w-[142px] text-xs border-saivie-border"
                         data-testid="input-patient-directory-date-from"
                       />
                       <span>to</span>
@@ -4072,7 +4072,7 @@ export default function ClinicianPortal() {
                         min={patientDirectoryDateFrom || undefined}
                         onChange={(event) => setPatientDirectoryDateTo(event.target.value)}
                         aria-label="Appointment date to"
-                        className="h-9 w-[142px] text-xs border-slate-200"
+                        className="h-9 w-[142px] text-xs border-saivie-border"
                         data-testid="input-patient-directory-date-to"
                       />
                     </label>
@@ -4080,7 +4080,7 @@ export default function ClinicianPortal() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-9 w-9 shrink-0 text-slate-500"
+                        className="h-9 w-9 shrink-0 text-saivie-plum"
                         onClick={() => {
                           setPatientDirectorySearch('');
                           setPatientDirectoryDateFrom('');
@@ -4098,7 +4098,7 @@ export default function ClinicianPortal() {
 
                 <div className="overflow-x-auto">
                   <table className="min-w-[760px] w-full text-left text-sm">
-                    <thead className="bg-[#f7f6fa] text-[10px] uppercase tracking-wide text-slate-500">
+                    <thead className="bg-saivie-surface-muted text-[10px] uppercase tracking-wide text-saivie-plum">
                       <tr>
                         <th className="px-4 py-3 font-semibold">Patient</th>
                         <th className="px-4 py-3 font-semibold">Care pathway</th>
@@ -4116,7 +4116,7 @@ export default function ClinicianPortal() {
                           ? 'bg-[#fff0ef] text-[#a34d52]'
                           : riskLevel === 'Medium'
                             ? 'bg-amber-50 text-amber-700'
-                            : 'bg-[#eaf3e4] text-[#587146]';
+                            : 'bg-saivie-surface-muted text-saivie-plum';
                         return (
                           <tr
                             key={patient.id}
@@ -4130,27 +4130,27 @@ export default function ClinicianPortal() {
                                 navigateToPatient(patient);
                               }
                             }}
-                            className="cursor-pointer hover:bg-[#faf9fd] focus-visible:outline-none focus-visible:bg-[#f5f1ff]"
+                            className="cursor-pointer hover:bg-saivie-ivory focus-visible:outline-none focus-visible:bg-saivie-surface-muted"
                           >
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3 min-w-0">
                                 <Avatar className="h-9 w-9 shrink-0">
-                                  <AvatarFallback className="bg-[#eee9fb] text-[#55408f] text-xs font-semibold">{getInitials(patient.name)}</AvatarFallback>
+                                  <AvatarFallback className="bg-saivie-surface-muted text-saivie-teal text-xs font-semibold">{getInitials(patient.name)}</AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0">
-                                  <p className="font-medium text-slate-900 truncate">{patient.name || 'Unnamed patient'}</p>
-                                  <p className="text-xs text-slate-500 truncate">{patient.phone || patient.email || 'Contact not provided'}</p>
+                                  <p className="font-medium text-saivie-plum truncate">{patient.name || 'Unnamed patient'}</p>
+                                  <p className="text-xs text-saivie-plum truncate">{patient.phone || patient.email || 'Contact not provided'}</p>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-slate-600">{patient.type || patient.condition || patient.mode || 'General care'}</td>
-                            <td className="px-4 py-3 text-slate-600">{patient.status || 'Active'}</td>
-                            <td className="px-4 py-3 text-slate-600">{patient.lastVisit || '—'}</td>
-                            <td className="px-4 py-3 text-slate-600">{patient.nextReview || '—'}</td>
+                            <td className="px-4 py-3 text-saivie-plum">{patient.type || patient.condition || patient.mode || 'General care'}</td>
+                            <td className="px-4 py-3 text-saivie-plum">{patient.status || 'Active'}</td>
+                            <td className="px-4 py-3 text-saivie-plum">{patient.lastVisit || '—'}</td>
+                            <td className="px-4 py-3 text-saivie-plum">{patient.nextReview || '—'}</td>
                             <td className="px-4 py-3">
                               <span className={`inline-flex rounded px-2 py-1 text-[10px] font-medium ${riskClass}`}>{riskLevel || 'Low'}</span>
                             </td>
-                            <td className="px-3 py-3"><ChevronRight className="h-4 w-4 text-slate-400" /></td>
+                            <td className="px-3 py-3"><ChevronRight className="h-4 w-4 text-saivie-plum" /></td>
                           </tr>
                         );
                       })}
@@ -4158,8 +4158,8 @@ export default function ClinicianPortal() {
                         <tr>
                           <td colSpan={7} className="px-4 py-14 text-center">
                             <Users className="mx-auto h-6 w-6 text-slate-300" />
-                            <p className="mt-2 text-sm font-medium text-slate-700">No matching patients</p>
-                            <p className="mt-1 text-xs text-slate-500">Try a different name, phone number, email, or care type.</p>
+                            <p className="mt-2 text-sm font-medium text-saivie-plum">No matching patients</p>
+                            <p className="mt-1 text-xs text-saivie-plum">Try a different name, phone number, email, or care type.</p>
                           </td>
                         </tr>
                       )}
@@ -4181,24 +4181,24 @@ export default function ClinicianPortal() {
             />
           
             {/* 1. STICKY PATIENT CONTEXT HEADER */}
-            <header className="bg-white border-b border-slate-200 shrink-0 z-10 shadow-sm relative w-full">
+            <header className="bg-saivie-ivory border-b border-saivie-border shrink-0 z-10 shadow-sm relative w-full">
               <div className="flex items-center justify-between px-5 py-2">
                  <div className="flex items-center gap-4">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setActiveView('patient_list')} aria-label="Back to patients">
-                        <ChevronRight className="w-4 h-4 text-slate-500 rotate-180" />
+                        <ChevronRight className="w-4 h-4 text-saivie-plum rotate-180" />
                     </Button>
                     <div className="flex items-center gap-3">
-                       <Avatar className="h-9 w-9 border border-slate-200 bg-slate-100 text-slate-600 text-sm">
+                       <Avatar className="h-9 w-9 border border-saivie-border bg-saivie-sage text-saivie-plum text-sm">
                           <AvatarFallback>{selectedPatient.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback>
                        </Avatar>
                        <div>
                           <div className="flex items-center gap-2">
-                             <h2 className="text-sm font-bold text-slate-900">{selectedPatient.name}</h2>
-                             <span className="text-[11px] text-slate-400 font-medium">{selectedPatient.age}y{selectedPatient.phone ? ` · ${selectedPatient.phone}` : ''}</span>
+                             <h2 className="text-sm font-bold text-saivie-plum">{selectedPatient.name}</h2>
+                             <span className="text-[11px] text-saivie-plum font-medium">{selectedPatient.age}y{selectedPatient.phone ? ` · ${selectedPatient.phone}` : ''}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                              {selectedPatient.condition && (
-                               <Badge variant="outline" className="text-[10px] h-[18px] border-pink-200 text-pink-700 bg-pink-50/80 font-medium px-1.5">
+                               <Badge variant="outline" className="text-[10px] h-[18px] border-saivie-blush text-saivie-rose bg-saivie-surface-blush/80 font-medium px-1.5">
                                  {selectedPatient.condition}
                                </Badge>
                              )}
@@ -4233,7 +4233,7 @@ export default function ClinicianPortal() {
                       </SelectContent>
                     </Select>
 
-                    <div className="text-[11px] font-semibold text-slate-700 bg-slate-100 rounded px-2 py-1">
+                    <div className="text-[11px] font-semibold text-saivie-plum bg-saivie-sage rounded px-2 py-1">
                        {careMode === 'pregnancy' && (() => {
                          if (selectedPatient.lmp) {
                            const lmpDate = new Date(selectedPatient.lmp);
@@ -4261,70 +4261,70 @@ export default function ClinicianPortal() {
                        {careMode !== 'pregnancy' && careMode !== 'postpartum' && `CD ${selectedPatient.cycleDay || '—'}`}
                     </div>
 
-                    <div className="h-5 w-px bg-slate-200" />
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400" onClick={() => { setIsSearching(true); }} data-testid="button-search-header">
+                    <div className="h-5 w-px bg-saivie-sage" />
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-saivie-plum" onClick={() => { setIsSearching(true); }} data-testid="button-search-header">
                        <Search className="w-3.5 h-3.5" />
                     </Button>
                  </div>
               </div>
 
               {/* Dynamic context strip */}
-              <div className="flex items-center gap-3 px-5 py-1.5 bg-slate-50/80 border-t border-slate-100 text-[11px] text-slate-600 overflow-x-auto">
+              <div className="flex items-center gap-3 px-5 py-1.5 bg-saivie-surface-muted/80 border-t border-saivie-border text-[11px] text-saivie-plum overflow-x-auto">
                  {selectedPatient.lmp && (
-                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">LMP</span> {new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                   <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">LMP</span> {new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                  )}
                  {selectedPatient.lmp && careMode === 'pregnancy' && (() => {
                    const lmpDate = new Date(selectedPatient.lmp);
                    const edd = new Date(lmpDate.getTime() + 280 * 24 * 60 * 60 * 1000);
-                   return <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">EDD</span> {edd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>;
+                   return <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">EDD</span> {edd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>;
                  })()}
                  {selectedPatient.bp && (
-                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">BP</span> {selectedPatient.bp}</span>
+                   <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">BP</span> {selectedPatient.bp}</span>
                  )}
                  {selectedPatient.weight && (
-                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Wt</span> {selectedPatient.weight} kg</span>
+                   <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">Wt</span> {selectedPatient.weight} kg</span>
                  )}
                  {selectedPatient.height && selectedPatient.weight && (() => {
                    const hm = parseFloat(selectedPatient.height) / 100;
                    if (hm > 0) {
                      const bmi = (selectedPatient.weight / (hm * hm)).toFixed(1);
-                     return <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">BMI</span> {bmi}</span>;
+                     return <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">BMI</span> {bmi}</span>;
                    }
                    return null;
                  })()}
                  {selectedPatient.hb && (
-                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Hb</span> {selectedPatient.hb} g/dL</span>
+                   <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">Hb</span> {selectedPatient.hb} g/dL</span>
                  )}
                  {selectedPatient.referredBy && (
-                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Ref</span> {selectedPatient.referredBy}</span>
+                   <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">Ref</span> {selectedPatient.referredBy}</span>
                  )}
                  {selectedPatient.vaccination && (
-                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Vacc</span> {selectedPatient.vaccination}</span>
+                   <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">Vacc</span> {selectedPatient.vaccination}</span>
                  )}
                  {selectedPatient.insurance && (
-                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Ins</span> {selectedPatient.insurance}</span>
+                   <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">Ins</span> {selectedPatient.insurance}</span>
                  )}
                  {selectedPatient.contraception && (
-                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Contra</span> {selectedPatient.contraception}</span>
+                   <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">Contra</span> {selectedPatient.contraception}</span>
                  )}
                  {selectedPatient.lastVisit && (
-                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Last Visit</span> {selectedPatient.lastVisit}</span>
+                   <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">Last Visit</span> {selectedPatient.lastVisit}</span>
                  )}
                  {selectedPatient.nextReview && (
-                   <span className="whitespace-nowrap"><span className="font-semibold text-slate-500">Next</span> {selectedPatient.nextReview}</span>
+                   <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">Next</span> {selectedPatient.nextReview}</span>
                  )}
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 border-t border-amber-100 bg-[#fffaf2] text-[10px]">
-                <span className="flex items-center gap-2 font-semibold text-slate-700"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700"><AlertCircle className="h-3 w-3" /></span>Clinical attention</span>
-                <span className={`${selectedPatient.riskScore?.level === 'Critical' || selectedPatient.riskScore?.level === 'High' || selectedPatient.status === 'High Risk' ? 'text-rose-700' : 'text-slate-600'}`}>
+                <span className="flex items-center gap-2 font-semibold text-saivie-plum"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700"><AlertCircle className="h-3 w-3" /></span>Clinical attention</span>
+                <span className={`${selectedPatient.riskScore?.level === 'Critical' || selectedPatient.riskScore?.level === 'High' || selectedPatient.status === 'High Risk' ? 'text-rose-700' : 'text-saivie-plum'}`}>
                   {selectedPatient.riskScore?.level ? `${selectedPatient.riskScore.level} risk score recorded` : selectedPatient.status === 'High Risk' ? 'High-risk status recorded' : selectedPatient.status === 'Monitor' ? 'Monitoring status recorded' : 'No risk flag recorded'}
                 </span>
                 <span className="hidden sm:block h-4 w-px bg-amber-200" />
-                <span className="font-semibold uppercase tracking-wide text-slate-400">Allergies</span>
-                <span className="text-slate-700">{selectedPatient.history?.allergies?.length ? selectedPatient.history.allergies.join(', ') : 'No known drug allergies recorded'}</span>
-                <button type="button" onClick={() => setPatientDetailTab('record')} className="ml-auto text-[#7255d9] font-semibold hover:text-[#4b3795]">View history</button>
+                <span className="font-semibold uppercase tracking-wide text-saivie-plum">Allergies</span>
+                <span className="text-saivie-plum">{selectedPatient.history?.allergies?.length ? selectedPatient.history.allergies.join(', ') : 'No known drug allergies recorded'}</span>
+                <button type="button" onClick={() => setPatientDetailTab('record')} className="ml-auto text-saivie-teal font-semibold hover:text-saivie-teal">View history</button>
               </div>
-              <nav className="flex gap-1 px-5 py-2 border-t border-slate-100 overflow-x-auto" aria-label="Patient workspace sections">
+              <nav className="flex gap-1 px-5 py-2 border-t border-saivie-border overflow-x-auto" aria-label="Patient workspace sections">
                 {[
                   { id: 'consultation' as const, label: 'Consultation' },
                   { id: 'record' as const, label: 'Record' },
@@ -4336,7 +4336,7 @@ export default function ClinicianPortal() {
                     type="button"
                     onClick={() => setPatientDetailTab(tab.id)}
                     aria-current={patientDetailTab === tab.id ? 'page' : undefined}
-                    className={`shrink-0 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${patientDetailTab === tab.id ? 'bg-[#eee9fb] text-[#55408f]' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                    className={`shrink-0 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${patientDetailTab === tab.id ? 'bg-saivie-surface-muted text-saivie-teal' : 'text-saivie-plum hover:bg-saivie-surface-muted hover:text-saivie-plum'}`}
                   >
                     {tab.label}
                   </button>
@@ -4345,7 +4345,7 @@ export default function ClinicianPortal() {
             </header>
 
             {patientDetailTab === 'consultation' && (
-              <div className="flex-1 overflow-y-auto bg-[#f5f4f8] p-3 sm:p-5">
+              <div className="flex-1 overflow-y-auto bg-saivie-surface-muted p-3 sm:p-5">
                 <div className="max-w-[1440px] mx-auto grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_240px] gap-3 lg:gap-5">
                   <section className="min-w-0">
                     <nav className="grid grid-cols-5 gap-1 mb-4" aria-label="Consultation journey">
@@ -4355,20 +4355,20 @@ export default function ClinicianPortal() {
                           type="button"
                           onClick={() => setConsultationStep(step.id)}
                           aria-current={consultationStep === step.id ? 'step' : undefined}
-                          className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 border-b-2 px-1 sm:px-3 py-2 text-[10px] sm:text-xs font-semibold transition-colors ${consultationStep === step.id ? 'border-[#7255d9] text-[#6047a5]' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
+                          className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 border-b-2 px-1 sm:px-3 py-2 text-[10px] sm:text-xs font-semibold transition-colors ${consultationStep === step.id ? 'border-saivie-teal text-saivie-teal' : 'border-transparent text-saivie-plum hover:text-saivie-plum'}`}
                           data-testid={`consultation-step-${step.id}`}
                         >
-                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] ${consultationStep === step.id ? 'bg-[#7255d9] text-white' : 'bg-slate-200 text-slate-500'}`}>{index + 1}</span>
+                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] ${consultationStep === step.id ? 'bg-saivie-teal text-white' : 'bg-saivie-sage text-saivie-plum'}`}>{index + 1}</span>
                           {step.label}
                         </button>
                       ))}
                     </nav>
 
-                    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-                      <div className="px-4 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+                    <div className="bg-saivie-ivory border border-saivie-border rounded-lg overflow-hidden shadow-sm">
+                      <div className="px-4 sm:px-6 py-4 border-b border-saivie-border flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#7255d9]">Step {consultationSteps.findIndex((step) => step.id === consultationStep) + 1} of 5 · Current visit</p>
-                          <h3 className="mt-1 text-base sm:text-lg font-semibold text-slate-900">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-saivie-teal">Step {consultationSteps.findIndex((step) => step.id === consultationStep) + 1} of 5 · Current visit</p>
+                          <h3 className="mt-1 text-base sm:text-lg font-semibold text-saivie-plum">
                             {consultationStep === 'reason' ? (isFollowUpVisit ? 'Review progress since the last visit' : 'Start with your first impression') :
                              consultationStep === 'explore' ? 'Choose what to explore' :
                              consultationStep === 'examine' ? 'Record examination findings' :
@@ -4386,35 +4386,35 @@ export default function ClinicianPortal() {
                         {consultationStep === 'reason' && (
                           <div className="space-y-5">
                             {isFollowUpVisit && previousVisit && (
-                              <div className="rounded-md border border-[#ddd3f7] bg-[#faf8ff] p-3" data-testid="follow-up-context">
+                              <div className="rounded-md border border-saivie-border bg-saivie-ivory p-3" data-testid="follow-up-context">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <p className="text-xs font-semibold text-[#6047a5]">Follow-up visit</p>
-                                  <span className="text-[10px] text-slate-500">Previous visit {new Date(previousVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                  <p className="text-xs font-semibold text-saivie-teal">Follow-up visit</p>
+                                  <span className="text-[10px] text-saivie-plum">Previous visit {new Date(previousVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                                 </div>
-                                {(previousVisit.chiefComplaint || previousVisit.subjective) && <p className="mt-2 text-xs text-slate-700"><span className="font-semibold">Previous concern:</span> {previousVisit.chiefComplaint || previousVisit.subjective}</p>}
-                                {(previousVisit.assessment || previousVisit.diagnosis) && <p className="mt-1 text-xs text-slate-700"><span className="font-semibold">Previous assessment:</span> {previousVisit.assessment || previousVisit.diagnosis}</p>}
-                                {previousVisit.planNotes && <p className="mt-1 text-xs text-slate-700"><span className="font-semibold">Previous plan:</span> {previousVisit.planNotes}</p>}
-                                <label className="mt-3 block text-xs font-semibold text-slate-800">Since the last visit, how has the patient responded?
-                                  <Textarea value={treatmentResponseDraft} onChange={(event) => setTreatmentResponseDraft(event.target.value)} placeholder="Ask whether the plan was started, what changed, and any benefit or side effects." className="mt-1.5 min-h-[72px] border-slate-200 bg-white text-xs font-normal" data-testid="input-treatment-response" />
+                                {(previousVisit.chiefComplaint || previousVisit.subjective) && <p className="mt-2 text-xs text-saivie-plum"><span className="font-semibold">Previous concern:</span> {previousVisit.chiefComplaint || previousVisit.subjective}</p>}
+                                {(previousVisit.assessment || previousVisit.diagnosis) && <p className="mt-1 text-xs text-saivie-plum"><span className="font-semibold">Previous assessment:</span> {previousVisit.assessment || previousVisit.diagnosis}</p>}
+                                {previousVisit.planNotes && <p className="mt-1 text-xs text-saivie-plum"><span className="font-semibold">Previous plan:</span> {previousVisit.planNotes}</p>}
+                                <label className="mt-3 block text-xs font-semibold text-saivie-plum">Since the last visit, how has the patient responded?
+                                  <Textarea value={treatmentResponseDraft} onChange={(event) => setTreatmentResponseDraft(event.target.value)} placeholder="Ask whether the plan was started, what changed, and any benefit or side effects." className="mt-1.5 min-h-[72px] border-saivie-border bg-saivie-ivory text-xs font-normal" data-testid="input-treatment-response" />
                                 </label>
                                 <Button type="button" variant="outline" size="sm" className="mt-2 h-8 text-[10px]" disabled={!treatmentResponseDraft.trim()} onClick={addFollowUpResponseToNote} data-testid="button-add-treatment-response">Add reviewed response to today’s note</Button>
                               </div>
                             )}
                             <div>
-                              <label htmlFor="consultation-first-impression" className="text-sm font-semibold text-slate-800">What brings the patient in today?</label>
-                              <p className="text-xs text-slate-500 mt-1">Describe what you’re noticing, or choose a common consultation path.</p>
+                              <label htmlFor="consultation-first-impression" className="text-sm font-semibold text-saivie-plum">What brings the patient in today?</label>
+                              <p className="text-xs text-saivie-plum mt-1">Describe what you’re noticing, or choose a common consultation path.</p>
                               <Textarea
                                 id="consultation-first-impression"
                                 value={soapSubjectiveDraft}
                                 onChange={(event) => setSoapSubjectiveDraft(event.target.value)}
                                 placeholder="e.g. Trying to conceive for six months; cycles are regular, but she is unsure if ovulation is occurring."
-                                className="mt-3 min-h-[112px] border-slate-200 text-sm"
+                                className="mt-3 min-h-[112px] border-saivie-border text-sm"
                                 data-testid="input-consultation-first-impression"
                               />
                               {soapTranscript && <p className="mt-2 text-xs text-emerald-700">Dictation is a draft. Review and edit it before adding it to the record.</p>}
                             </div>
                             <div>
-                              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Or choose a common starting point</p>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-saivie-plum mb-2">Or choose a common starting point</p>
                               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                                 {consultationPaths.map((path, index) => {
                                   const PathIcon = consultationPathIcons[index];
@@ -4424,12 +4424,12 @@ export default function ClinicianPortal() {
                                     type="button"
                                     onClick={() => { setConsultationPath(path); setSelectedDirections([]); setGuidedQuestionPage(0); setGuidedAnswers({}); setShowGuidedReview(false); setCustomDirectionDraft(''); setShowCustomDirectionInput(false); }}
                                     aria-pressed={consultationPath === path}
-                                    className={`flex min-h-[52px] items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-medium transition-colors ${consultationPath === path ? 'border-[#b9a6f2] bg-[#faf8ff] text-[#6047a5]' : 'border-slate-200 text-slate-600 hover:border-[#cfc3ef] hover:bg-[#faf9fd]'}`}
+                                    className={`flex min-h-[52px] items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-medium transition-colors ${consultationPath === path ? 'border-saivie-border bg-saivie-ivory text-saivie-teal' : 'border-saivie-border text-saivie-plum hover:border-saivie-border hover:bg-saivie-ivory'}`}
                                     data-testid={`consultation-path-${path.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                                   >
-                                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${consultationPath === path ? 'bg-white text-[#7255d9]' : 'bg-[#f7f5fc] text-[#8068c6]'}`}><PathIcon className="h-4 w-4" /></span>
+                                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${consultationPath === path ? 'bg-saivie-ivory text-saivie-teal' : 'bg-saivie-surface-muted text-saivie-teal'}`}><PathIcon className="h-4 w-4" /></span>
                                     {path}
-                                    {consultationPath === path && <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-[#7255d9]" />}
+                                    {consultationPath === path && <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-saivie-teal" />}
                                   </button>
                                   );
                                 })}
@@ -4443,8 +4443,8 @@ export default function ClinicianPortal() {
                             <div>
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div>
-                                  <p className="text-sm font-semibold text-slate-800">What would you like to explore first?</p>
-                                  <p className="mt-1 text-xs text-slate-500">These are lines of inquiry based on the first impression, not diagnoses.</p>
+                                  <p className="text-sm font-semibold text-saivie-plum">What would you like to explore first?</p>
+                                  <p className="mt-1 text-xs text-saivie-plum">These are lines of inquiry based on the first impression, not diagnoses.</p>
                                 </div>
                                 {selectedDirections.length > 0 && <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-medium text-emerald-700">Clinician controlled</span>}
                               </div>
@@ -4466,27 +4466,27 @@ export default function ClinicianPortal() {
                                         setGuidedQuestionPage(0);
                                         setShowGuidedReview(false);
                                       }}
-                                      className={`min-h-[116px] rounded-lg border p-3 text-left transition-colors ${selected ? 'border-[#a991ed] bg-[#faf8ff] shadow-[0_0_0_1px_rgba(114,85,217,0.16)]' : 'border-slate-200 bg-white hover:border-[#cfc3ef]'}`}
+                                      className={`min-h-[116px] rounded-lg border p-3 text-left transition-colors ${selected ? 'border-saivie-border bg-saivie-ivory shadow-[0_0_0_1px_rgba(114,85,217,0.16)]' : 'border-saivie-border bg-saivie-ivory hover:border-saivie-border'}`}
                                       data-testid={`direction-${direction.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                                     >
                                       <span className="flex items-start justify-between">
-                                        <span className={`flex h-8 w-8 items-center justify-center rounded-md ${selected ? 'bg-white text-[#7255d9]' : 'bg-[#f7f5fc] text-[#8068c6]'}`}><DirectionIcon className="h-4 w-4" /></span>
+                                        <span className={`flex h-8 w-8 items-center justify-center rounded-md ${selected ? 'bg-saivie-ivory text-saivie-teal' : 'bg-saivie-surface-muted text-saivie-teal'}`}><DirectionIcon className="h-4 w-4" /></span>
                                         <span className="text-lg font-semibold text-slate-100">0{index + 1}</span>
                                       </span>
-                                      <span className="mt-3 block text-xs font-semibold text-slate-900">{direction}</span>
-                                      <span className="mt-1 block text-[10px] leading-relaxed text-slate-500 line-clamp-2">{directionRationales[direction] || 'A clinician-added direction for this consultation.'}</span>
-                                      <span className={`mt-2 block text-[10px] font-semibold ${selected ? 'text-[#6047a5]' : 'text-slate-400'}`}>{selected ? '✓ Exploring' : 'Explore'}</span>
+                                      <span className="mt-3 block text-xs font-semibold text-saivie-plum">{direction}</span>
+                                      <span className="mt-1 block text-[10px] leading-relaxed text-saivie-plum line-clamp-2">{directionRationales[direction] || 'A clinician-added direction for this consultation.'}</span>
+                                      <span className={`mt-2 block text-[10px] font-semibold ${selected ? 'text-saivie-teal' : 'text-saivie-plum'}`}>{selected ? '✓ Exploring' : 'Explore'}</span>
                                     </button>
                                   );
                                 })}
                               </div>
                               <div className="mt-3 flex flex-wrap items-center gap-3">
                                 {selectedDirections.length < 3 && (
-                                  <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-[#6047a5] hover:text-[#48347f]" onClick={() => setShowCustomDirectionInput((shown) => !shown)}>
+                                  <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-saivie-teal hover:text-saivie-teal" onClick={() => setShowCustomDirectionInput((shown) => !shown)}>
                                     <Plus className="h-3.5 w-3.5" /> Add another clinical direction
                                   </button>
                                 )}
-                                {selectedDirections.length > 0 && <button type="button" className="text-xs text-slate-500 hover:text-slate-800" onClick={() => { setSelectedDirections([]); setGuidedQuestionPage(0); setShowGuidedReview(false); }}>Dismiss all</button>}
+                                {selectedDirections.length > 0 && <button type="button" className="text-xs text-saivie-plum hover:text-saivie-plum" onClick={() => { setSelectedDirections([]); setGuidedQuestionPage(0); setShowGuidedReview(false); }}>Dismiss all</button>}
                               </div>
                               {showCustomDirectionInput && (
                                 <div className="mt-2 flex gap-2">
@@ -4497,21 +4497,21 @@ export default function ClinicianPortal() {
                             </div>
 
                             {selectedDirections.length > 0 && (
-                              <div className="border-t border-slate-100 pt-4">
-                                <div className="mb-3 rounded-md bg-[#f7f5fc] p-3">
-                                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[#6047a5]">Why these questions?</p>
-                                  <div className="mt-2 space-y-1.5 text-xs text-slate-600">
-                                    {selectedDirections.map((direction) => <p key={direction}><span className="font-medium text-slate-800">{direction}:</span> {directionRationales[direction]}</p>)}
+                              <div className="border-t border-saivie-border pt-4">
+                                <div className="mb-3 rounded-md bg-saivie-surface-muted p-3">
+                                  <p className="text-[10px] font-semibold uppercase tracking-wide text-saivie-teal">Why these questions?</p>
+                                  <div className="mt-2 space-y-1.5 text-xs text-saivie-plum">
+                                    {selectedDirections.map((direction) => <p key={direction}><span className="font-medium text-saivie-plum">{direction}:</span> {directionRationales[direction]}</p>)}
                                   </div>
                                 </div>
                                 <div className="flex items-center justify-between gap-3 mb-3">
                                   <div>
-                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[#8068c6]">Guided questions · {selectedDirections[0]}</p>
-                                    <h4 className="mt-1 text-sm font-semibold text-slate-800">Questions that may clarify this direction</h4>
+                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-saivie-teal">Guided questions · {selectedDirections[0]}</p>
+                                    <h4 className="mt-1 text-sm font-semibold text-saivie-plum">Questions that may clarify this direction</h4>
                                   </div>
-                                  <span className="text-[10px] text-slate-500">{answeredGuidedQuestionCount} of {guidedQuestions.length} answered</span>
+                                  <span className="text-[10px] text-saivie-plum">{answeredGuidedQuestionCount} of {guidedQuestions.length} answered</span>
                                 </div>
-                                <div className="divide-y divide-slate-100 border-y border-slate-100">
+                                <div className="divide-y divide-slate-100 border-y border-saivie-border">
                                   {currentGuidedQuestions.map((question, questionOffset) => {
                                     const questionId = `guided-${question.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
                                     const answerOptions = guidedQuestionOptions[question];
@@ -4519,16 +4519,16 @@ export default function ClinicianPortal() {
                                     return (
                                       <div key={question} className="py-3">
                                         <div className="flex items-start gap-2">
-                                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] text-slate-500">{guidedQuestionPage * questionsPerPage + questionOffset + 1}</span>
+                                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-saivie-sage text-[10px] text-saivie-plum">{guidedQuestionPage * questionsPerPage + questionOffset + 1}</span>
                                           <div className="min-w-0 flex-1">
-                                            <label className="block text-xs font-semibold text-slate-800" htmlFor={questionId}>{question}</label>
-                                            {guidedQuestionHints[question] && <p className="mt-0.5 text-[10px] text-slate-400">{guidedQuestionHints[question]}</p>}
+                                            <label className="block text-xs font-semibold text-saivie-plum" htmlFor={questionId}>{question}</label>
+                                            {guidedQuestionHints[question] && <p className="mt-0.5 text-[10px] text-saivie-plum">{guidedQuestionHints[question]}</p>}
                                           </div>
                                           {answer && answer !== '__SKIPPED__' && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
                                         </div>
                                         <div className="mt-2 ml-7 flex flex-wrap gap-1.5">
                                           {answerOptions ? answerOptions.map((option) => (
-                                            <button key={option} type="button" aria-pressed={answer === option} onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: option }))} className={`rounded-md border px-2.5 py-1.5 text-[10px] font-medium transition-colors ${answer === option ? 'border-[#b9a6f2] bg-[#f5f1ff] text-[#6047a5]' : 'border-slate-200 text-slate-600 hover:border-[#cfc3ef]'}`}>
+                                            <button key={option} type="button" aria-pressed={answer === option} onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: option }))} className={`rounded-md border px-2.5 py-1.5 text-[10px] font-medium transition-colors ${answer === option ? 'border-saivie-border bg-saivie-surface-muted text-saivie-teal' : 'border-saivie-border text-saivie-plum hover:border-saivie-border'}`}>
                                               {option}
                                             </button>
                                           )) : (
@@ -4537,7 +4537,7 @@ export default function ClinicianPortal() {
                                               <Button type="button" variant="outline" size="sm" className="h-8 text-[10px]" onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: 'Patient unsure' }))}>Unsure</Button>
                                             </>
                                           )}
-                                          <button type="button" className={`px-2 py-1 text-[10px] ${answer === '__SKIPPED__' ? 'font-semibold text-slate-700' : 'text-slate-400 hover:text-slate-700'}`} onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: '__SKIPPED__' }))}>{answer === '__SKIPPED__' ? 'Skipped' : 'Skip'}</button>
+                                          <button type="button" className={`px-2 py-1 text-[10px] ${answer === '__SKIPPED__' ? 'font-semibold text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`} onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: '__SKIPPED__' }))}>{answer === '__SKIPPED__' ? 'Skipped' : 'Skip'}</button>
                                         </div>
                                       </div>
                                     );
@@ -4546,7 +4546,7 @@ export default function ClinicianPortal() {
                                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                                   <div className="flex gap-2">
                                     {guidedQuestionPage > 0 && <Button type="button" variant="ghost" size="sm" onClick={() => setGuidedQuestionPage((page) => page - 1)}>Previous questions</Button>}
-                                    {(guidedQuestionPage + 1) * questionsPerPage < guidedQuestions.length && <Button type="button" variant="ghost" size="sm" className="text-[#6047a5]" onClick={() => setGuidedQuestionPage((page) => page + 1)}>Ask next question <ChevronRight className="ml-1 h-3 w-3" /></Button>}
+                                    {(guidedQuestionPage + 1) * questionsPerPage < guidedQuestions.length && <Button type="button" variant="ghost" size="sm" className="text-saivie-teal" onClick={() => setGuidedQuestionPage((page) => page + 1)}>Ask next question <ChevronRight className="ml-1 h-3 w-3" /></Button>}
                                   </div>
                                   <Button type="button" variant="outline" size="sm" onClick={() => setShowGuidedReview((current) => !current)} disabled={!Object.values(guidedAnswers).some((answer) => answer && answer !== '__SKIPPED__')}>
                                     {showGuidedReview ? 'Hide review' : 'Review answers'}
@@ -4555,7 +4555,7 @@ export default function ClinicianPortal() {
                                 {showGuidedReview && (
                                   <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50/50 p-4">
                                     <p className="text-xs font-semibold text-emerald-900">Review before adding to the note</p>
-                                    <ul className="mt-2 space-y-2 text-xs text-slate-700">
+                                    <ul className="mt-2 space-y-2 text-xs text-saivie-plum">
                                       {guidedQuestions.filter((question) => guidedAnswers[question] && guidedAnswers[question] !== '__SKIPPED__').map((question) => <li key={question}><strong>{question}</strong> {guidedAnswers[question]}</li>)}
                                     </ul>
                                     <div className="mt-3 flex flex-wrap gap-2">
@@ -4572,15 +4572,15 @@ export default function ClinicianPortal() {
                         {consultationStep === 'examine' && (
                           <div className="space-y-4">
                             <div>
-                              <p className="text-sm font-semibold text-slate-800">What did you observe?</p>
-                              <p className="text-xs text-slate-500 mt-1">Existing values below are from the latest chart entry{latestVisit?.date ? ` (${new Date(latestVisit.date).toLocaleDateString('en-IN')})` : ''}. Enter today’s findings in the note.</p>
+                              <p className="text-sm font-semibold text-saivie-plum">What did you observe?</p>
+                              <p className="text-xs text-saivie-plum mt-1">Existing values below are from the latest chart entry{latestVisit?.date ? ` (${new Date(latestVisit.date).toLocaleDateString('en-IN')})` : ''}. Enter today’s findings in the note.</p>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                               {[
                                 { label: 'Last recorded blood pressure', value: latestVisit?.vitals?.bp || selectedPatient.bp || 'Not recorded' },
                                 { label: 'Last recorded weight', value: latestVisit?.vitals?.weight || selectedPatient.weight ? `${latestVisit?.vitals?.weight || selectedPatient.weight} kg` : 'Not recorded' },
                                 { label: 'Last recorded hemoglobin', value: latestVisit?.vitals?.hb || selectedPatient.hb ? `${latestVisit?.vitals?.hb || selectedPatient.hb} g/dL` : 'Not recorded' },
-                              ].map((vital) => <div key={vital.label} className="rounded-md border border-slate-200 bg-slate-50/70 p-3"><p className="text-[10px] uppercase tracking-wide text-slate-500">{vital.label}</p><p className="mt-1 text-xs font-semibold text-slate-800">{vital.value}</p></div>)}
+                              ].map((vital) => <div key={vital.label} className="rounded-md border border-saivie-border bg-saivie-surface-muted/70 p-3"><p className="text-[10px] uppercase tracking-wide text-saivie-plum">{vital.label}</p><p className="mt-1 text-xs font-semibold text-saivie-plum">{vital.value}</p></div>)}
                             </div>
                             <Textarea value={soapObjectiveDraft} onChange={(event) => setSoapObjectiveDraft(event.target.value)} placeholder="Examination findings, vitals, and observations from today..." className="min-h-[160px] text-sm" data-testid="input-consultation-examination" />
                           </div>
@@ -4589,11 +4589,11 @@ export default function ClinicianPortal() {
                         {consultationStep === 'evidence' && (
                           <div className="space-y-5">
                             <div>
-                              <p className="text-sm font-semibold text-slate-800">What would you like to review?</p>
-                              <p className="mt-1 text-xs text-slate-500">Select available evidence. The summary below is clinician-entered; no evidence is inferred from missing data.</p>
+                              <p className="text-sm font-semibold text-saivie-plum">What would you like to review?</p>
+                              <p className="mt-1 text-xs text-saivie-plum">Select available evidence. The summary below is clinician-entered; no evidence is inferred from missing data.</p>
                               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 {evidenceOptions.map((item) => (
-                                  <label key={item} className="flex items-center gap-2 rounded-md border border-slate-200 p-3 text-xs text-slate-700 hover:bg-slate-50 cursor-pointer">
+                                  <label key={item} className="flex items-center gap-2 rounded-md border border-saivie-border p-3 text-xs text-saivie-plum hover:bg-saivie-surface-muted cursor-pointer">
                                     <Checkbox checked={consultationEvidence.includes(item)} onCheckedChange={(checked) => setConsultationEvidence((current) => checked ? [...current, item] : current.filter((value) => value !== item))} />
                                     {item}
                                   </label>
@@ -4601,8 +4601,8 @@ export default function ClinicianPortal() {
                               </div>
                             </div>
                             {selectedDirections.length > 0 ? selectedDirections.map((direction) => (
-                              <div key={direction} className="rounded-md border border-slate-200 p-3">
-                                <h4 className="text-xs font-semibold text-slate-800">{direction}</h4>
+                              <div key={direction} className="rounded-md border border-saivie-border p-3">
+                                <h4 className="text-xs font-semibold text-saivie-plum">{direction}</h4>
                                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                                   <label className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Supporting evidence
                                     <Textarea value={directionEvidence[direction]?.supporting || ''} onChange={(event) => setDirectionEvidence((current) => ({ ...current, [direction]: { supporting: event.target.value, missing: current[direction]?.missing || '' } }))} placeholder="What supports this direction?" className="mt-1 min-h-[76px] text-xs font-normal normal-case tracking-normal" />
@@ -4612,30 +4612,30 @@ export default function ClinicianPortal() {
                                   </label>
                                 </div>
                               </div>
-                            )) : <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-500">No working directions selected. You can still record evidence to review.</p>}
+                            )) : <p className="rounded-md bg-saivie-surface-muted p-3 text-xs text-saivie-plum">No working directions selected. You can still record evidence to review.</p>}
                           </div>
                         )}
 
                         {consultationStep === 'plan' && (
                           <div className="space-y-4">
-                            <div className="rounded-md border border-[#e3dcf5] bg-[#faf9fd] p-3">
-                              <p className="text-xs font-semibold text-slate-800">Clinical summary</p>
-                              <p className="mt-1 text-xs text-slate-600">{soapSubjectiveDraft || 'No first impression entered yet.'}</p>
-                              {selectedDirections.length > 0 && <p className="mt-2 text-xs text-[#6047a5]">Directions explored: {selectedDirections.join(' · ')}</p>}
-                              {consultationEvidence.length > 0 && <p className="mt-1 text-xs text-slate-500">Evidence reviewed: {consultationEvidence.join(', ')}</p>}
+                            <div className="rounded-md border border-saivie-border bg-saivie-ivory p-3">
+                              <p className="text-xs font-semibold text-saivie-plum">Clinical summary</p>
+                              <p className="mt-1 text-xs text-saivie-plum">{soapSubjectiveDraft || 'No first impression entered yet.'}</p>
+                              {selectedDirections.length > 0 && <p className="mt-2 text-xs text-saivie-teal">Directions explored: {selectedDirections.join(' · ')}</p>}
+                              {consultationEvidence.length > 0 && <p className="mt-1 text-xs text-saivie-plum">Evidence reviewed: {consultationEvidence.join(', ')}</p>}
                             </div>
                             {(selectedDirections.length > 0 || consultationEvidence.length > 0) && (
                               <Button type="button" variant="outline" size="sm" onClick={addReviewedContextToPlan} data-testid="button-add-consultation-context">
                                 <FileText className="mr-1.5 h-3.5 w-3.5" />{consultationContextAdded ? 'Refresh reviewed context in plan' : 'Add reviewed context to plan'}
                               </Button>
                             )}
-                            <label className="block text-xs font-semibold text-slate-700">Working assessment
+                            <label className="block text-xs font-semibold text-saivie-plum">Working assessment
                               <Textarea value={soapAssessmentDraft} onChange={(event) => setSoapAssessmentDraft(event.target.value)} placeholder="Your working assessment, uncertainty, and clinical reasoning..." className="mt-1.5 min-h-[92px] text-sm font-normal" data-testid="input-consultation-assessment" />
                             </label>
-                            <label className="block text-xs font-semibold text-slate-700">Plan, advice, follow-up, and safety-net
+                            <label className="block text-xs font-semibold text-saivie-plum">Plan, advice, follow-up, and safety-net
                               <Textarea value={soapPlanDraft} onChange={(event) => setSoapPlanDraft(event.target.value)} placeholder="Medication, investigations, advice, follow-up, and when to seek urgent care..." className="mt-1.5 min-h-[120px] text-sm font-normal" data-testid="input-consultation-plan" />
                             </label>
-                            <p className="text-[10px] text-slate-500">Nothing is saved until you choose “Save clinician-reviewed note.” Review every draft before saving.</p>
+                            <p className="text-[10px] text-saivie-plum">Nothing is saved until you choose “Save clinician-reviewed note.” Review every draft before saving.</p>
                             <div className="flex flex-wrap items-center gap-2">
                               <Button type="button" onClick={saveConsultationNote} disabled={soapSaving || ![soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft].some((value) => value.trim())} data-testid="button-save-consultation-note">
                                 <Save className="mr-1.5 h-3.5 w-3.5" />{soapSaving ? 'Saving…' : 'Save clinician-reviewed note'}
@@ -4646,7 +4646,7 @@ export default function ClinicianPortal() {
                         )}
                       </div>
 
-                      <div className="px-4 sm:px-6 py-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <div className="px-4 sm:px-6 py-3 border-t border-saivie-border flex items-center justify-between gap-2">
                         <Button type="button" variant="ghost" size="sm" onClick={() => setConsultationStep(consultationSteps[Math.max(0, consultationSteps.findIndex((step) => step.id === consultationStep) - 1)].id)} disabled={consultationStep === 'reason'}>Back</Button>
                         <Button type="button" size="sm" onClick={() => setConsultationStep(consultationSteps[Math.min(consultationSteps.length - 1, consultationSteps.findIndex((step) => step.id === consultationStep) + 1)].id)} disabled={consultationStep === 'plan'}>
                           {consultationStep === 'reason' ? 'Explore possible directions' :
@@ -4658,81 +4658,81 @@ export default function ClinicianPortal() {
                   </section>
 
                   <aside className="space-y-3">
-                    <Card className="shadow-none border-[#ddd3f7] rounded-lg overflow-hidden">
-                      <CardHeader className="py-3 px-4 border-b border-[#eee9fb] flex flex-row items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#eee9fb] text-[#7255d9]"><Sparkles className="h-3.5 w-3.5" /></span>
-                        <div className="min-w-0"><p className="text-[9px] font-semibold uppercase tracking-wider text-[#8068c6]">Clinical copilot</p><CardTitle className="text-xs font-semibold text-slate-800">Visit support</CardTitle></div>
+                    <Card className="shadow-none border-saivie-border rounded-lg overflow-hidden">
+                      <CardHeader className="py-3 px-4 border-b border-saivie-border flex flex-row items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-saivie-surface-muted text-saivie-teal"><Sparkles className="h-3.5 w-3.5" /></span>
+                        <div className="min-w-0"><p className="text-[9px] font-semibold uppercase tracking-wider text-saivie-teal">Clinical copilot</p><CardTitle className="text-xs font-semibold text-saivie-plum">Visit support</CardTitle></div>
                       </CardHeader>
                       <CardContent className="p-3 space-y-3">
-                        <div className="rounded-md bg-[#f5f1ff] p-3">
-                          <p className="text-[10px] leading-relaxed text-slate-700">Curated prompts for clinician review. These are not AI-generated diagnoses or recommendations.</p>
+                        <div className="rounded-md bg-saivie-surface-muted p-3">
+                          <p className="text-[10px] leading-relaxed text-saivie-plum">Curated prompts for clinician review. These are not AI-generated diagnoses or recommendations.</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">First impression</p>
-                          <p className="mt-1 text-[10px] leading-relaxed text-slate-700 line-clamp-3">{soapSubjectiveDraft || 'Add the patient’s concern to begin.'}</p>
+                          <p className="text-[9px] font-semibold uppercase tracking-wide text-saivie-plum">First impression</p>
+                          <p className="mt-1 text-[10px] leading-relaxed text-saivie-plum line-clamp-3">{soapSubjectiveDraft || 'Add the patient’s concern to begin.'}</p>
                         </div>
-                        <div className="border-t border-slate-100 pt-2">
-                          <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Possible directions</p>
+                        <div className="border-t border-saivie-border pt-2">
+                          <p className="text-[9px] font-semibold uppercase tracking-wide text-saivie-plum">Possible directions</p>
                           <div className="mt-1.5 flex flex-wrap gap-1">
-                            {selectedDirections.length ? selectedDirections.map((direction) => <span key={direction} className="rounded bg-white px-2 py-1 text-[9px] text-[#6047a5] border border-[#e6ddfa]">{direction}</span>) : <span className="text-[10px] text-slate-500">Choose a direction in Explore.</span>}
+                            {selectedDirections.length ? selectedDirections.map((direction) => <span key={direction} className="rounded bg-saivie-ivory px-2 py-1 text-[9px] text-saivie-teal border border-saivie-border">{direction}</span>) : <span className="text-[10px] text-saivie-plum">Choose a direction in Explore.</span>}
                           </div>
                         </div>
                         {isFollowUpVisit && previousVisit && (
-                          <div className="border-t border-slate-100 pt-2" data-testid="copilot-follow-up-context">
-                            <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Follow-up from {new Date(previousVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
-                            <p className="mt-1 text-[10px] text-slate-700">{lastPrescriptionLabel}{lastPrescriptionDate ? ` · ${lastPrescriptionDate}` : ''}</p>
-                            {lastPrescriptionItems.length > 0 ? <ul className="mt-1 space-y-1">{lastPrescriptionItems.map((item: string, index: number) => <li key={`${item}-${index}`} className="text-[10px] leading-relaxed text-slate-600">{item}</li>)}</ul> : <p className="mt-1 text-[10px] text-slate-500">No prescription recorded for the previous visit.</p>}
-                            <p className="mt-2 text-[10px] leading-relaxed text-slate-500">Ask whether it was started, what changed, and whether there were benefits or side effects. These are prompts, not recorded responses.</p>
+                          <div className="border-t border-saivie-border pt-2" data-testid="copilot-follow-up-context">
+                            <p className="text-[9px] font-semibold uppercase tracking-wide text-saivie-plum">Follow-up from {new Date(previousVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
+                            <p className="mt-1 text-[10px] text-saivie-plum">{lastPrescriptionLabel}{lastPrescriptionDate ? ` · ${lastPrescriptionDate}` : ''}</p>
+                            {lastPrescriptionItems.length > 0 ? <ul className="mt-1 space-y-1">{lastPrescriptionItems.map((item: string, index: number) => <li key={`${item}-${index}`} className="text-[10px] leading-relaxed text-saivie-plum">{item}</li>)}</ul> : <p className="mt-1 text-[10px] text-saivie-plum">No prescription recorded for the previous visit.</p>}
+                            <p className="mt-2 text-[10px] leading-relaxed text-saivie-plum">Ask whether it was started, what changed, and whether there were benefits or side effects. These are prompts, not recorded responses.</p>
                           </div>
                         )}
-                        <Button type="button" variant="ghost" size="sm" className="h-7 w-full justify-between px-1 text-[10px] text-[#6047a5]" onClick={() => setConsultationStep('evidence')}>Review evidence <ChevronRight className="h-3 w-3" /></Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-7 w-full justify-between px-1 text-[10px] text-saivie-teal" onClick={() => setConsultationStep('evidence')}>Review evidence <ChevronRight className="h-3 w-3" /></Button>
                       </CardContent>
                     </Card>
 
-                    <Card className="shadow-none border-slate-200 rounded-lg">
-                      <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
-                        <CardTitle className="text-xs font-semibold text-slate-800">Active medications</CardTitle>
+                    <Card className="shadow-none border-saivie-border rounded-lg">
+                      <CardHeader className="py-3 px-4 border-b border-saivie-border flex flex-row items-center justify-between">
+                        <CardTitle className="text-xs font-semibold text-saivie-plum">Active medications</CardTitle>
                         <Badge variant="outline" className="text-[10px]">{medications.filter((med: any) => String(med.status || '').toLowerCase() === 'active').length}</Badge>
                       </CardHeader>
                       <CardContent className="p-0">
-                        {medications.filter((med: any) => String(med.status || '').toLowerCase() === 'active').slice(0, 5).map((med: any) => <div key={med.id} className="px-4 py-2.5 border-b border-slate-50 last:border-0"><p className="text-xs font-medium text-slate-800">{med.name} {med.dose}</p><p className="text-[10px] text-slate-500">{med.frequency || med.notes || 'Active'}</p></div>)}
-                        {medications.filter((med: any) => String(med.status || '').toLowerCase() === 'active').length === 0 && <p className="px-4 py-3 text-xs text-slate-500">No active medications recorded.</p>}
+                        {medications.filter((med: any) => String(med.status || '').toLowerCase() === 'active').slice(0, 5).map((med: any) => <div key={med.id} className="px-4 py-2.5 border-b border-saivie-border last:border-0"><p className="text-xs font-medium text-saivie-plum">{med.name} {med.dose}</p><p className="text-[10px] text-saivie-plum">{med.frequency || med.notes || 'Active'}</p></div>)}
+                        {medications.filter((med: any) => String(med.status || '').toLowerCase() === 'active').length === 0 && <p className="px-4 py-3 text-xs text-saivie-plum">No active medications recorded.</p>}
                       </CardContent>
                     </Card>
 
-                    <Card className="shadow-none border-slate-200 rounded-lg">
-                      <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
-                        <CardTitle className="flex items-center gap-1.5 text-xs font-semibold text-slate-800"><CalendarIcon className="h-3.5 w-3.5 text-[#8068c6]" />Cycle overview</CardTitle>
-                        <span className="text-[10px] text-slate-500">{selectedPatient.cycleDay ? `CD ${selectedPatient.cycleDay}` : 'Cycle day —'}</span>
+                    <Card className="shadow-none border-saivie-border rounded-lg">
+                      <CardHeader className="py-3 px-4 border-b border-saivie-border flex flex-row items-center justify-between">
+                        <CardTitle className="flex items-center gap-1.5 text-xs font-semibold text-saivie-plum"><CalendarIcon className="h-3.5 w-3.5 text-saivie-teal" />Cycle overview</CardTitle>
+                        <span className="text-[10px] text-saivie-plum">{selectedPatient.cycleDay ? `CD ${selectedPatient.cycleDay}` : 'Cycle day —'}</span>
                       </CardHeader>
                       <CardContent className="p-3">
                         {showPregnancyContext ? (
                           pregnancyContext ? (
                             <>
-                              <div className="flex items-end justify-between gap-2"><div><p className="text-xl font-semibold text-slate-900">{pregnancyContext.weeks}w {pregnancyContext.days}d</p><p className="text-[10px] text-[#6047a5]">{pregnancyContext.trimester}</p></div><span className="text-[9px] text-slate-500">LMP-derived estimate</span></div>
-                              <p className="mt-2 text-[10px] text-slate-600">Estimated due date: {pregnancyContext.dueDate}</p>
+                              <div className="flex items-end justify-between gap-2"><div><p className="text-xl font-semibold text-saivie-plum">{pregnancyContext.weeks}w {pregnancyContext.days}d</p><p className="text-[10px] text-saivie-teal">{pregnancyContext.trimester}</p></div><span className="text-[9px] text-saivie-plum">LMP-derived estimate</span></div>
+                              <p className="mt-2 text-[10px] text-saivie-plum">Estimated due date: {pregnancyContext.dueDate}</p>
                             </>
                           ) : <p className="text-[10px] text-amber-700">A valid LMP is needed to estimate gestational age and trimester.</p>
                         ) : (
                           <>
-                            <p className="text-[10px] text-slate-600">{selectedPatient.lmp ? `LMP ${new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : 'Last menstrual period not recorded'}</p>
-                            {selectedPatient.cycleLength && <p className="mt-1 text-[10px] text-slate-500">Recorded cycle length: {selectedPatient.cycleLength} days</p>}
-                            {selectedPatient.cycleDay && selectedPatient.cycleLength && <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#8e77dc]" style={{ width: `${Math.min(100, selectedPatient.cycleDay / selectedPatient.cycleLength * 100)}%` }} /></div>}
-                            <p className="mt-2 text-[9px] text-slate-400">No cycle length is assumed when it is not on file.</p>
+                            <p className="text-[10px] text-saivie-plum">{selectedPatient.lmp ? `LMP ${new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : 'Last menstrual period not recorded'}</p>
+                            {selectedPatient.cycleLength && <p className="mt-1 text-[10px] text-saivie-plum">Recorded cycle length: {selectedPatient.cycleLength} days</p>}
+                            {selectedPatient.cycleDay && selectedPatient.cycleLength && <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-saivie-sage"><div className="h-full rounded-full bg-saivie-sage" style={{ width: `${Math.min(100, selectedPatient.cycleDay / selectedPatient.cycleLength * 100)}%` }} /></div>}
+                            <p className="mt-2 text-[9px] text-saivie-plum">No cycle length is assumed when it is not on file.</p>
                           </>
                         )}
                       </CardContent>
                     </Card>
 
-                    <Card className="shadow-none border-slate-200 rounded-lg">
-                      <CardHeader className="py-3 px-4 border-b border-slate-100"><CardTitle className="text-xs font-semibold text-slate-800">Recent reports</CardTitle></CardHeader>
+                    <Card className="shadow-none border-saivie-border rounded-lg">
+                      <CardHeader className="py-3 px-4 border-b border-saivie-border"><CardTitle className="text-xs font-semibold text-saivie-plum">Recent reports</CardTitle></CardHeader>
                       <CardContent className="p-0">
-                        {labResults.slice(-4).reverse().map((result: any, index: number) => <div key={result.id || `${result.testName}-${index}`} className="px-4 py-2.5 border-b border-slate-50 last:border-0"><p className="text-xs font-medium text-slate-800">{result.testName}</p><p className="text-[10px] text-slate-500">{result.value}{result.unit ? ` ${result.unit}` : ''}{result.status ? ` · ${result.status}` : ''}</p></div>)}
-                        {labResults.length === 0 && <p className="px-4 py-3 text-xs text-slate-500">No laboratory reports recorded.</p>}
+                        {labResults.slice(-4).reverse().map((result: any, index: number) => <div key={result.id || `${result.testName}-${index}`} className="px-4 py-2.5 border-b border-saivie-border last:border-0"><p className="text-xs font-medium text-saivie-plum">{result.testName}</p><p className="text-[10px] text-saivie-plum">{result.value}{result.unit ? ` ${result.unit}` : ''}{result.status ? ` · ${result.status}` : ''}</p></div>)}
+                        {labResults.length === 0 && <p className="px-4 py-3 text-xs text-saivie-plum">No laboratory reports recorded.</p>}
                       </CardContent>
                     </Card>
 
-                    <Button type="button" className="w-full bg-[#7255d9] hover:bg-[#6047c5]" onClick={() => setConsultationStep('plan')} data-testid="button-review-visit-plan"><FileText className="mr-1.5 h-3.5 w-3.5" />Review &amp; complete visit</Button>
+                    <Button type="button" className="w-full bg-saivie-teal hover:bg-saivie-teal" onClick={() => setConsultationStep('plan')} data-testid="button-review-visit-plan"><FileText className="mr-1.5 h-3.5 w-3.5" />Review &amp; complete visit</Button>
                   </aside>
                 </div>
               </div>
@@ -4741,19 +4741,19 @@ export default function ClinicianPortal() {
             <div className={patientDetailTab === 'consultation' ? 'hidden' : 'flex-1 flex overflow-hidden z-0'}>
               
               {/* Patient List Column (Left) */}
-              <div className="w-72 border-r border-slate-200 bg-white flex flex-col shrink-0">
-                 <div className="p-3 border-b border-slate-100 bg-slate-50/50 space-y-2 overflow-hidden">
+              <div className="w-72 border-r border-saivie-border bg-saivie-ivory flex flex-col shrink-0">
+                 <div className="p-3 border-b border-saivie-border bg-saivie-surface-muted/50 space-y-2 overflow-hidden">
                     <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-saivie-plum" />
                       <Input
                         placeholder="Search patient by name..."
                         value={patientSearch}
                         onChange={(e) => { setPatientSearch(e.target.value); setIsSearching(!!e.target.value); }}
-                        className="h-8 text-xs border-slate-200 pl-8 pr-8"
+                        className="h-8 text-xs border-saivie-border pl-8 pr-8"
                         data-testid="input-patient-search"
                       />
                       {patientSearch && (
-                        <button onClick={() => { setPatientSearch(""); setIsSearching(false); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                        <button onClick={() => { setPatientSearch(""); setIsSearching(false); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-saivie-plum hover:text-saivie-plum">
                           <X className="w-3.5 h-3.5" />
                         </button>
                       )}
@@ -4764,47 +4764,47 @@ export default function ClinicianPortal() {
                           type="date"
                           value={queueDateFrom}
                           onChange={(e) => { setQueueDateFrom(e.target.value); if (e.target.value > queueDateTo) setQueueDateTo(e.target.value); }}
-                          className="h-8 text-xs border border-slate-200 rounded-md flex-1 min-w-[120px] px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          className="h-8 text-xs border border-saivie-border rounded-md flex-1 min-w-[120px] px-2 bg-saivie-ivory focus:outline-none focus:ring-1 focus:ring-blue-400"
                           data-testid="input-queue-date-from-sidebar"
                         />
-                        <span className="text-[10px] text-slate-400 shrink-0">to</span>
+                        <span className="text-[10px] text-saivie-plum shrink-0">to</span>
                         <input
                           type="date"
                           value={queueDateTo}
                           onChange={(e) => { setQueueDateTo(e.target.value); if (e.target.value < queueDateFrom) setQueueDateFrom(e.target.value); }}
-                          className="h-8 text-xs border border-slate-200 rounded-md flex-1 min-w-[120px] px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          className="h-8 text-xs border border-saivie-border rounded-md flex-1 min-w-[120px] px-2 bg-saivie-ivory focus:outline-none focus:ring-1 focus:ring-blue-400"
                           data-testid="input-queue-date-to-sidebar"
                         />
-                        <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-medium shrink-0">{queuePatients.length}</span>
+                        <span className="text-[10px] bg-saivie-sage px-1.5 py-0.5 rounded text-saivie-plum font-medium shrink-0">{queuePatients.length}</span>
                       </div>
                     </div>
                     {isSearching && searchResults.length > 0 && (
-                      <div className="text-[10px] text-slate-400">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</div>
+                      <div className="text-[10px] text-saivie-plum">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</div>
                     )}
                  </div>
                  <ScrollArea className="flex-1">
                     {isSearching ? (
                       <>
                         {searchResults.length === 0 && patientSearch.trim() && (
-                          <div className="py-8 text-center text-slate-400 text-xs">No patients found</div>
+                          <div className="py-8 text-center text-saivie-plum text-xs">No patients found</div>
                         )}
                         {searchResults.map((patient: any) => (
                           <div 
                             key={patient.id}
                             onClick={() => { setSelectedPatient(patient); setSelectedTrailVisitId(null); setPatientSearch(""); setIsSearching(false); }}
-                            className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-blue-50/40 group relative`}
+                            className={`p-4 border-b border-saivie-border cursor-pointer transition-all hover:bg-blue-50/40 group relative`}
                             data-testid={`search-result-${patient.id}`}
                           >
                              <div className="flex justify-between items-start mb-1">
-                                <span className="font-semibold text-sm text-slate-700">{patient.name}</span>
-                                <span className="text-[10px] text-slate-400">{patient.phone || ''}</span>
+                                <span className="font-semibold text-sm text-saivie-plum">{patient.name}</span>
+                                <span className="text-[10px] text-saivie-plum">{patient.phone || ''}</span>
                              </div>
-                             <p className="text-xs text-slate-500 mb-1 truncate">{patient.type || 'General'}</p>
+                             <p className="text-xs text-saivie-plum mb-1 truncate">{patient.type || 'General'}</p>
                              <div className="flex items-center gap-2">
                                 {patient.status === 'High Risk' && <div className="w-2 h-2 rounded-full bg-rose-500"></div>}
                                 {patient.status === 'Monitor' && <div className="w-2 h-2 rounded-full bg-amber-500"></div>}
                                 {patient.status === 'Active Cycle' && <div className="w-2 h-2 rounded-full bg-emerald-500"></div>}
-                                <span className="text-[10px] font-medium text-slate-400">{patient.status || 'active'}</span>
+                                <span className="text-[10px] font-medium text-saivie-plum">{patient.status || 'active'}</span>
                              </div>
                           </div>
                         ))}
@@ -4812,27 +4812,27 @@ export default function ClinicianPortal() {
                     ) : (
                       <>
                         {queuePatients.length === 0 && (
-                          <div className="py-8 text-center text-slate-400 text-xs">No patients for this date</div>
+                          <div className="py-8 text-center text-saivie-plum text-xs">No patients for this date</div>
                         )}
                         {queuePatients.map((patient: any) => (
                           <div 
                             key={patient.id}
                             onClick={() => { setSelectedPatient(patient); setSelectedTrailVisitId(null); }}
-                            className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 group relative ${selectedPatient?.id === patient.id ? 'bg-blue-50/60' : ''}`}
+                            className={`p-4 border-b border-saivie-border cursor-pointer transition-all hover:bg-saivie-surface-muted group relative ${selectedPatient?.id === patient.id ? 'bg-blue-50/60' : ''}`}
                           >
                              {selectedPatient?.id === patient.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>}
                              
                              <div className="flex justify-between items-start mb-1">
-                                <span className={`font-semibold text-sm ${selectedPatient?.id === patient.id ? 'text-blue-900' : 'text-slate-700'}`}>{patient.name}</span>
-                                <span className="text-[10px] text-slate-400">{patient.appointmentTime || patient.lastVisit}</span>
+                                <span className={`font-semibold text-sm ${selectedPatient?.id === patient.id ? 'text-blue-900' : 'text-saivie-plum'}`}>{patient.name}</span>
+                                <span className="text-[10px] text-saivie-plum">{patient.appointmentTime || patient.lastVisit}</span>
                              </div>
-                             <p className="text-xs text-slate-500 mb-2 truncate">{patient.type || 'General'}</p>
+                             <p className="text-xs text-saivie-plum mb-2 truncate">{patient.type || 'General'}</p>
                              
                              <div className="flex items-center gap-2">
                                 {patient.status === 'High Risk' && <div className="w-2 h-2 rounded-full bg-rose-500"></div>}
                                 {patient.status === 'Monitor' && <div className="w-2 h-2 rounded-full bg-amber-500"></div>}
                                 {patient.status === 'Active Cycle' && <div className="w-2 h-2 rounded-full bg-emerald-500"></div>}
-                                <span className="text-[10px] font-medium text-slate-400">{patient.status}</span>
+                                <span className="text-[10px] font-medium text-saivie-plum">{patient.status}</span>
                              </div>
                           </div>
                         ))}
@@ -4842,7 +4842,7 @@ export default function ClinicianPortal() {
               </div>
 
               {/* Detailed View (Right) - Intelligent Dashboard */}
-              <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
+              <div className="flex-1 overflow-y-auto bg-saivie-surface-muted/50 p-6">
                 {patientDetailTab === 'postop' && (
                   <PostOpDetailedView patientId={selectedPatient.id} patientName={selectedPatient.name} />
                 )}
@@ -4853,12 +4853,12 @@ export default function ClinicianPortal() {
                 <div className="max-w-7xl mx-auto space-y-6">
                    
                    {/* PATIENT HISTORY SUMMARY */}
-                   <Card className="shadow-sm border-slate-200">
-                      <CardHeader className="py-3 px-4 border-b border-slate-100 bg-slate-50/50">
+                   <Card className="shadow-sm border-saivie-border">
+                      <CardHeader className="py-3 px-4 border-b border-saivie-border bg-saivie-surface-muted/50">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <History className="w-4 h-4 text-slate-500" />
-                              <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wide">Patient History</CardTitle>
+                              <History className="w-4 h-4 text-saivie-plum" />
+                              <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wide">Patient History</CardTitle>
                             </div>
                             {!editingHistory ? (
                               <div className="flex gap-1.5">
@@ -4872,7 +4872,7 @@ export default function ClinicianPortal() {
                                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => updateHistoryMutation.mutate(editHistoryData)} disabled={updateHistoryMutation.isPending} data-testid="button-save-history">
                                   <Check className="w-3 h-3" /> Save
                                 </Button>
-                                <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-slate-500 border-slate-200" onClick={() => setEditingHistory(false)}>
+                                <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-saivie-plum border-saivie-border" onClick={() => setEditingHistory(false)}>
                                   <X className="w-3 h-3" /> Cancel
                                 </Button>
                               </div>
@@ -4882,12 +4882,12 @@ export default function ClinicianPortal() {
                       <CardContent className="p-4">
                           <div className="grid grid-cols-4 gap-6">
                               <div>
-                                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Past Medical History</h4>
+                                  <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2 border-b border-saivie-border pb-1">Past Medical History</h4>
                                   {editingHistory ? (
                                     <div className="space-y-1">
                                       {editHistoryData.medical.map((item, i) => (
                                         <div key={i} className="flex items-center gap-1 group">
-                                          <span className="text-xs text-slate-700 flex-1">{item}</span>
+                                          <span className="text-xs text-saivie-plum flex-1">{item}</span>
                                           <button className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity" onClick={() => setEditHistoryData({...editHistoryData, medical: editHistoryData.medical.filter((_, idx) => idx !== i)})} data-testid={`button-remove-medical-${i}`}><X className="w-3 h-3" /></button>
                                         </div>
                                       ))}
@@ -4897,18 +4897,18 @@ export default function ClinicianPortal() {
                                       </div>
                                     </div>
                                   ) : (
-                                    <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
-                                      {selectedPatient.history?.medical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic">None recorded</li>}
+                                    <ul className="list-disc list-inside text-xs text-saivie-plum space-y-1">
+                                      {selectedPatient.history?.medical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-saivie-plum italic">None recorded</li>}
                                     </ul>
                                   )}
                               </div>
                               <div>
-                                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Past Surgical History</h4>
+                                  <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2 border-b border-saivie-border pb-1">Past Surgical History</h4>
                                   {editingHistory ? (
                                     <div className="space-y-1">
                                       {editHistoryData.surgical.map((item, i) => (
                                         <div key={i} className="flex items-center gap-1 group">
-                                          <span className="text-xs text-slate-700 flex-1">{item}</span>
+                                          <span className="text-xs text-saivie-plum flex-1">{item}</span>
                                           <button className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity" onClick={() => setEditHistoryData({...editHistoryData, surgical: editHistoryData.surgical.filter((_, idx) => idx !== i)})} data-testid={`button-remove-surgical-${i}`}><X className="w-3 h-3" /></button>
                                         </div>
                                       ))}
@@ -4918,18 +4918,18 @@ export default function ClinicianPortal() {
                                       </div>
                                     </div>
                                   ) : (
-                                    <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
-                                      {selectedPatient.history?.surgical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic">None recorded</li>}
+                                    <ul className="list-disc list-inside text-xs text-saivie-plum space-y-1">
+                                      {selectedPatient.history?.surgical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-saivie-plum italic">None recorded</li>}
                                     </ul>
                                   )}
                               </div>
                               <div>
-                                   <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Drug History</h4>
+                                   <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2 border-b border-saivie-border pb-1">Drug History</h4>
                                    {editingHistory ? (
                                     <div className="space-y-1">
                                       {editHistoryData.drug.map((item, i) => (
                                         <div key={i} className="flex items-center gap-1 group">
-                                          <span className="text-xs text-slate-700 flex-1">{item}</span>
+                                          <span className="text-xs text-saivie-plum flex-1">{item}</span>
                                           <button className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity" onClick={() => setEditHistoryData({...editHistoryData, drug: editHistoryData.drug.filter((_, idx) => idx !== i)})} data-testid={`button-remove-drug-${i}`}><X className="w-3 h-3" /></button>
                                         </div>
                                       ))}
@@ -4939,13 +4939,13 @@ export default function ClinicianPortal() {
                                       </div>
                                     </div>
                                    ) : (
-                                    <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
-                                      {selectedPatient.history?.drug?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-slate-400 italic">None recorded</li>}
+                                    <ul className="list-disc list-inside text-xs text-saivie-plum space-y-1">
+                                      {selectedPatient.history?.drug?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-saivie-plum italic">None recorded</li>}
                                     </ul>
                                    )}
                               </div>
                                <div>
-                                   <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 text-rose-600 border-b border-rose-100 pb-1">Allergies</h4>
+                                   <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2 text-rose-600 border-b border-rose-100 pb-1">Allergies</h4>
                                    {editingHistory ? (
                                     <div className="space-y-1">
                                       {editHistoryData.allergies.map((item, i) => (
@@ -4963,7 +4963,7 @@ export default function ClinicianPortal() {
                                     <div className="flex flex-wrap gap-2 pt-1">
                                       {selectedPatient.history?.allergies?.map((item: string, i: number) => (
                                           <Badge key={i} variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-[10px]">{item}</Badge>
-                                      )) || <span className="text-xs text-slate-400 italic">No known allergies</span>}
+                                      )) || <span className="text-xs text-saivie-plum italic">No known allergies</span>}
                                     </div>
                                    )}
                               </div>
@@ -4995,7 +4995,7 @@ export default function ClinicianPortal() {
                            {hasVisit && latestVisit.chiefComplaint && (
                              <div className="flex gap-2">
                                <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">CC</span>
-                               <p className="text-xs text-slate-700">{latestVisit.chiefComplaint}</p>
+                               <p className="text-xs text-saivie-plum">{latestVisit.chiefComplaint}</p>
                              </div>
                            )}
                            {hasVisit && (() => {
@@ -5014,7 +5014,7 @@ export default function ClinicianPortal() {
                                  <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">O/E</span>
                                  <div className="flex flex-wrap gap-1">
                                    {items.map((item, i) => (
-                                     <span key={i} className="text-[10px] bg-white/80 border border-amber-200 text-slate-700 px-1.5 py-0.5 rounded font-medium">{item}</span>
+                                     <span key={i} className="text-[10px] bg-saivie-ivory/80 border border-amber-200 text-saivie-plum px-1.5 py-0.5 rounded font-medium">{item}</span>
                                    ))}
                                  </div>
                                </div>
@@ -5023,7 +5023,7 @@ export default function ClinicianPortal() {
                            {hasVisit && (latestVisit.objective || ((latestVisit.vitals as any)?.pvExam) || ((latestVisit.vitals as any)?.psExam)) && (
                              <div className="flex gap-2">
                                <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Obs</span>
-                               <div className="text-xs text-slate-600 space-y-0.5">
+                               <div className="text-xs text-saivie-plum space-y-0.5">
                                  {latestVisit.objective && <p>{latestVisit.objective}</p>}
                                  {(latestVisit.vitals as any)?.pvExam && <p><span className="font-semibold">P/V:</span> {(latestVisit.vitals as any).pvExam}</p>}
                                  {(latestVisit.vitals as any)?.psExam && <p><span className="font-semibold">P/S:</span> {(latestVisit.vitals as any).psExam}</p>}
@@ -5033,7 +5033,7 @@ export default function ClinicianPortal() {
                            {hasVisit && (latestVisit.diagnosis || latestVisit.assessment) && (
                              <div className="flex gap-2">
                                <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Dx</span>
-                               <p className="text-xs font-medium text-slate-800">{latestVisit.diagnosis || latestVisit.assessment}</p>
+                               <p className="text-xs font-medium text-saivie-plum">{latestVisit.diagnosis || latestVisit.assessment}</p>
                              </div>
                            )}
 
@@ -5058,7 +5058,7 @@ export default function ClinicianPortal() {
                                  <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Inv</span>
                                  <div className="flex flex-wrap gap-1">
                                    {allInv.map((inv, i) => (
-                                     <span key={i} className="text-[10px] bg-purple-50 border border-purple-200 text-purple-700 px-1.5 py-0.5 rounded">{inv}</span>
+                                     <span key={i} className="text-[10px] bg-saivie-surface-muted border border-saivie-border text-saivie-teal px-1.5 py-0.5 rounded">{inv}</span>
                                    ))}
                                  </div>
                                </div>
@@ -5084,7 +5084,7 @@ export default function ClinicianPortal() {
                            {hasVisit && latestVisit.planNotes && (
                              <div className="flex gap-2">
                                <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Plan</span>
-                               <p className="text-xs text-slate-600">{latestVisit.planNotes}</p>
+                               <p className="text-xs text-saivie-plum">{latestVisit.planNotes}</p>
                              </div>
                            )}
                          </div>
@@ -5095,27 +5095,27 @@ export default function ClinicianPortal() {
 
                    {/* SELF-TRACKED VITALS FROM SAIVIEMOM */}
                    {(latestWeight || latestBP) && (
-                     <Card className="shadow-sm border-violet-200 bg-gradient-to-br from-violet-50/60 to-purple-50/40 overflow-hidden">
-                       <div className="px-4 py-2.5 border-b border-violet-100 flex items-center gap-2">
-                         <Activity className="w-4 h-4 text-violet-600" />
-                         <h3 className="font-bold text-sm text-violet-800">Self-Tracked Vitals</h3>
-                         <span className="text-[10px] text-violet-500 font-medium ml-1">from SaivieMom app</span>
+                     <Card className="shadow-sm border-saivie-border bg-gradient-to-br from-saivie-surface-muted/60 to-saivie-surface-muted/40 overflow-hidden">
+                       <div className="px-4 py-2.5 border-b border-saivie-border flex items-center gap-2">
+                         <Activity className="w-4 h-4 text-saivie-teal" />
+                         <h3 className="font-bold text-sm text-saivie-plum">Self-Tracked Vitals</h3>
+                         <span className="text-[10px] text-saivie-teal font-medium ml-1">from SaivieMom app</span>
                        </div>
                        <CardContent className="p-3">
                          <div className="grid grid-cols-2 gap-3">
                            {latestWeight && (
-                             <div className="bg-white/80 rounded-lg border border-violet-100 px-3 py-2.5">
+                             <div className="bg-saivie-ivory/80 rounded-lg border border-saivie-border px-3 py-2.5">
                                <div className="flex items-center gap-1.5 mb-1">
-                                 <Scale className="w-3.5 h-3.5 text-violet-500" />
-                                 <span className="text-[10px] font-bold text-violet-600 uppercase tracking-wide">Weight</span>
+                                 <Scale className="w-3.5 h-3.5 text-saivie-teal" />
+                                 <span className="text-[10px] font-bold text-saivie-teal uppercase tracking-wide">Weight</span>
                                </div>
                                <div className="flex items-baseline gap-1">
-                                 <span className="text-xl font-bold text-slate-800">{latestWeight.weight}</span>
-                                 <span className="text-xs text-slate-500 font-medium">{latestWeight.unit}</span>
+                                 <span className="text-xl font-bold text-saivie-plum">{latestWeight.weight}</span>
+                                 <span className="text-xs text-saivie-plum font-medium">{latestWeight.unit}</span>
                                </div>
                                <div className="mt-0.5 flex items-center gap-2">
-                                 {latestWeight.week && <span className="text-[10px] text-violet-500">Wk {latestWeight.week}</span>}
-                                 <span className="text-[10px] text-slate-400">{latestWeight.date}</span>
+                                 {latestWeight.week && <span className="text-[10px] text-saivie-teal">Wk {latestWeight.week}</span>}
+                                 <span className="text-[10px] text-saivie-plum">{latestWeight.date}</span>
                                </div>
                                {weightLogs.length > 1 && (() => {
                                  const prev = weightLogs[1];
@@ -5130,18 +5130,18 @@ export default function ClinicianPortal() {
                              </div>
                            )}
                            {latestBP && (
-                             <div className="bg-white/80 rounded-lg border border-violet-100 px-3 py-2.5">
+                             <div className="bg-saivie-ivory/80 rounded-lg border border-saivie-border px-3 py-2.5">
                                <div className="flex items-center gap-1.5 mb-1">
                                  <Heart className="w-3.5 h-3.5 text-rose-500" />
                                  <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wide">Blood Pressure</span>
                                </div>
                                <div className="flex items-baseline gap-1">
-                                 <span className="text-xl font-bold text-slate-800">{latestBP.systolic}/{latestBP.diastolic}</span>
-                                 <span className="text-xs text-slate-500 font-medium">mmHg</span>
+                                 <span className="text-xl font-bold text-saivie-plum">{latestBP.systolic}/{latestBP.diastolic}</span>
+                                 <span className="text-xs text-saivie-plum font-medium">mmHg</span>
                                </div>
                                <div className="mt-0.5 flex items-center gap-2">
                                  {latestBP.pulse && <span className="text-[10px] text-rose-500">♥ {latestBP.pulse} bpm</span>}
-                                 <span className="text-[10px] text-slate-400">{latestBP.date}</span>
+                                 <span className="text-[10px] text-saivie-plum">{latestBP.date}</span>
                                </div>
                                <div className={`mt-1 text-[10px] font-semibold ${
                                  latestBP.systolic >= 140 || latestBP.diastolic >= 90 ? 'text-rose-600' :
@@ -5156,7 +5156,7 @@ export default function ClinicianPortal() {
                            )}
                          </div>
                          {(weightLogs.length > 0 || bpLogsData.length > 0) && (
-                           <div className="mt-2 text-[10px] text-slate-400 text-right">
+                           <div className="mt-2 text-[10px] text-saivie-plum text-right">
                              {weightLogs.length} weight {weightLogs.length === 1 ? 'entry' : 'entries'} · {bpLogsData.length} BP {bpLogsData.length === 1 ? 'entry' : 'entries'} recorded
                            </div>
                          )}
@@ -5166,20 +5166,20 @@ export default function ClinicianPortal() {
 
                    {/* TRIMESTER CHECKLIST — shown when pregnancy care mode and checklist data exists */}
                    {careMode === 'pregnancy' && selectedPatient.lmp && (
-                     <Card className="shadow-sm border-pink-200 overflow-hidden" data-testid="card-trimester-checklist">
+                     <Card className="shadow-sm border-saivie-blush overflow-hidden" data-testid="card-trimester-checklist">
                        <div
-                         className="px-4 py-2.5 border-b border-pink-100 bg-pink-50/40 flex items-center justify-between cursor-pointer"
+                         className="px-4 py-2.5 border-b border-saivie-blush bg-saivie-surface-blush/40 flex items-center justify-between cursor-pointer"
                          onClick={() => {
                            const el = document.getElementById(`trimester-checklist-body-${selectedPatient.id}`);
                            if (el) el.classList.toggle('hidden');
                          }}
                        >
-                         <h3 className="font-bold text-sm text-pink-900 flex items-center gap-2">
-                           <Baby className="w-4 h-4 text-pink-500" />
+                         <h3 className="font-bold text-sm text-saivie-plum flex items-center gap-2">
+                           <Baby className="w-4 h-4 text-saivie-rose" />
                            ANC Trimester Checklist
                            {(() => {
                              const cl = selectedPatient.trimesterChecklist as any;
-                             if (cl?.currentWeek) return <Badge className="text-[10px] bg-pink-100 text-pink-700 border-pink-200 font-normal">Week {cl.currentWeek}</Badge>;
+                             if (cl?.currentWeek) return <Badge className="text-[10px] bg-saivie-blush text-saivie-plum border-saivie-blush font-normal">Week {cl.currentWeek}</Badge>;
                              return null;
                            })()}
                          </h3>
@@ -5187,7 +5187,7 @@ export default function ClinicianPortal() {
                            <Button
                              size="sm"
                              variant="ghost"
-                             className="h-6 text-[10px] text-violet-600 hover:text-violet-800 hover:bg-violet-50 px-2"
+                             className="h-6 text-[10px] text-saivie-teal hover:text-saivie-plum hover:bg-saivie-surface-muted px-2"
                              data-testid="btn-generate-checklist"
                              onClick={async (e) => {
                                e.stopPropagation();
@@ -5195,10 +5195,10 @@ export default function ClinicianPortal() {
                                queryClient.invalidateQueries({ queryKey: ['/api/patients', clinicianProvider?.id] });
                              }}
                            >
-                             <Sparkles className="w-3 h-3 mr-1 text-violet-500" />
+                             <Sparkles className="w-3 h-3 mr-1 text-saivie-teal" />
                              {(selectedPatient.trimesterChecklist as any) ? 'Refresh' : 'Generate'}
                            </Button>
-                           <ChevronDown className="w-4 h-4 text-pink-400" />
+                           <ChevronDown className="w-4 h-4 text-saivie-rose" />
                          </div>
                        </div>
                        <div id={`trimester-checklist-body-${selectedPatient.id}`}>
@@ -5206,9 +5206,9 @@ export default function ClinicianPortal() {
                            const cl = selectedPatient.trimesterChecklist as any;
                            if (!cl?.items?.length) {
                              return (
-                               <div className="px-4 py-6 text-center text-sm text-slate-400">
+                               <div className="px-4 py-6 text-center text-sm text-saivie-plum">
                                  <Baby className="w-6 h-6 text-slate-200 mx-auto mb-2" />
-                                 <p>Click <span className="font-medium text-violet-600">Generate</span> to create an AI-powered ANC checklist for this patient</p>
+                                 <p>Click <span className="font-medium text-saivie-teal">Generate</span> to create an AI-powered ANC checklist for this patient</p>
                                </div>
                              );
                            }
@@ -5221,9 +5221,9 @@ export default function ClinicianPortal() {
                                    if (!items.length) return null;
                                    const catColors: Record<string, string> = {
                                      'Scan': 'text-blue-700 bg-blue-50',
-                                     'Lab Test': 'text-purple-700 bg-purple-50',
+                                     'Lab Test': 'text-saivie-teal bg-saivie-surface-muted',
                                      'Vaccine': 'text-emerald-700 bg-emerald-50',
-                                     'Vitals': 'text-slate-700 bg-slate-50',
+                                     'Vitals': 'text-saivie-plum bg-saivie-surface-muted',
                                      'Consultation': 'text-amber-700 bg-amber-50',
                                      'Lifestyle': 'text-rose-700 bg-rose-50',
                                    };
@@ -5232,10 +5232,10 @@ export default function ClinicianPortal() {
                                        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${catColors[cat]}`}>{cat}</span>
                                        <div className="mt-1.5 space-y-1">
                                          {items.map((item: any, i: number) => (
-                                           <div key={i} className={`flex items-start gap-2 p-2 rounded text-xs ${item.urgent ? 'bg-red-50 border border-red-100' : 'bg-white border border-slate-100'}`}>
+                                           <div key={i} className={`flex items-start gap-2 p-2 rounded text-xs ${item.urgent ? 'bg-red-50 border border-red-100' : 'bg-saivie-ivory border border-saivie-border'}`}>
                                              <span className={`mt-0.5 shrink-0 w-1.5 h-1.5 rounded-full ${item.urgent ? 'bg-red-500' : item.done ? 'bg-emerald-400' : 'bg-slate-300'}`} />
-                                             <span className={`flex-1 ${item.done ? 'line-through text-slate-400' : 'text-slate-700'}`}>{item.task}</span>
-                                             {item.dueWeek && <span className={`shrink-0 text-[10px] ${item.urgent ? 'text-red-600 font-semibold' : 'text-slate-400'}`}>Wk {item.dueWeek}</span>}
+                                             <span className={`flex-1 ${item.done ? 'line-through text-saivie-plum' : 'text-saivie-plum'}`}>{item.task}</span>
+                                             {item.dueWeek && <span className={`shrink-0 text-[10px] ${item.urgent ? 'text-red-600 font-semibold' : 'text-saivie-plum'}`}>Wk {item.dueWeek}</span>}
                                              {item.urgent && <Badge className="shrink-0 text-[10px] bg-red-100 text-red-700 border-none h-4">Urgent</Badge>}
                                            </div>
                                          ))}
@@ -5253,20 +5253,20 @@ export default function ClinicianPortal() {
                    )}
 
                    {/* 1. CURRENT VISIT CLINICAL WORKSPACE (SOAP) - DYNAMIC */}
-                   <Card className="shadow-md border-blue-100 bg-white overflow-hidden">
-                      <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center cursor-pointer" onClick={() => setShowDocumentation(!showDocumentation)}>
-                         <h3 className="font-bold text-sm text-slate-700 flex items-center gap-2">
+                   <Card className="shadow-md border-blue-100 bg-saivie-ivory overflow-hidden">
+                      <div className="bg-saivie-surface-muted px-4 py-2 border-b border-saivie-border flex justify-between items-center cursor-pointer" onClick={() => setShowDocumentation(!showDocumentation)}>
+                         <h3 className="font-bold text-sm text-saivie-plum flex items-center gap-2">
                             <ClipboardList className="w-4 h-4 text-blue-600" /> 
                             Current Visit Workspace
-                            {latestVisit && <Badge variant="outline" className="text-[10px] font-normal text-slate-400 ml-2">{new Date(latestVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</Badge>}
-                            {!latestVisit && !showDocumentation && <span className="text-xs font-normal text-slate-400 ml-2">(No visit records yet)</span>}
+                            {latestVisit && <Badge variant="outline" className="text-[10px] font-normal text-saivie-plum ml-2">{new Date(latestVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</Badge>}
+                            {!latestVisit && !showDocumentation && <span className="text-xs font-normal text-saivie-plum ml-2">(No visit records yet)</span>}
                          </h3>
                          <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                             {/* Voice-to-SOAP button */}
                             <button
                               data-testid="btn-voice-soap"
                               onClick={(event) => { event.stopPropagation(); void toggleVoiceCapture(); }}
-                              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border transition-colors ${isRecording ? 'bg-red-100 border-red-300 text-red-700 animate-pulse' : 'bg-white border-slate-200 text-slate-500 hover:border-blue-200 hover:text-blue-600'}`}
+                              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border transition-colors ${isRecording ? 'bg-red-100 border-red-300 text-red-700 animate-pulse' : 'bg-saivie-ivory border-saivie-border text-saivie-plum hover:border-blue-200 hover:text-blue-600'}`}
                               title="Voice-to-SOAP documentation"
                             >
                               <Mic className="w-3 h-3" />
@@ -5288,15 +5288,15 @@ export default function ClinicianPortal() {
                                   } catch { setPostVisitSummaryResult('Failed to generate summary'); }
                                   finally { setPostVisitSummarySending(false); }
                                 }}
-                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border bg-white border-slate-200 text-slate-500 hover:border-green-300 hover:text-green-600 transition-colors"
+                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border bg-saivie-ivory border-saivie-border text-saivie-plum hover:border-green-300 hover:text-green-600 transition-colors"
                                 title="Send post-visit WhatsApp summary"
                               >
                                 <MessageCircle className="w-3 h-3" />
                                 {postVisitSummarySending ? 'Sending…' : 'Post-Visit'}
                               </button>
                             )}
-                            {visitHistory.length > 1 && <Badge variant="outline" className="text-[10px] font-normal text-slate-500">{visitHistory.length} visits</Badge>}
-                            <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${showDocumentation ? 'rotate-90' : ''}`} />
+                            {visitHistory.length > 1 && <Badge variant="outline" className="text-[10px] font-normal text-saivie-plum">{visitHistory.length} visits</Badge>}
+                            <ChevronRight className={`w-4 h-4 text-saivie-plum transition-transform ${showDocumentation ? 'rotate-90' : ''}`} />
                          </div>
                       </div>
                       {/* Voice transcript result banner */}
@@ -5323,16 +5323,16 @@ export default function ClinicianPortal() {
                                <div className="p-4 bg-amber-50/30">
                                   <div className="flex items-center gap-2 mb-2">
                                      <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">S</Badge>
-                                     <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Subjective (Symptoms)</span>
+                                     <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Subjective (Symptoms)</span>
                                   </div>
                                   {latestVisit?.chiefComplaint && (
                                     <div className="mb-2">
-                                       <span className="text-[10px] text-slate-400 uppercase font-bold">Chief Complaint</span>
-                                       <p className="text-sm text-slate-800 mt-0.5">{latestVisit.chiefComplaint}</p>
+                                       <span className="text-[10px] text-saivie-plum uppercase font-bold">Chief Complaint</span>
+                                       <p className="text-sm text-saivie-plum mt-0.5">{latestVisit.chiefComplaint}</p>
                                     </div>
                                   )}
                                   {latestVisit?.subjective && !soapSubjectiveDraft ? (
-                                    <p className="text-sm text-slate-700 leading-relaxed">{latestVisit.subjective}</p>
+                                    <p className="text-sm text-saivie-plum leading-relaxed">{latestVisit.subjective}</p>
                                   ) : (
                                     <Textarea
                                       value={soapSubjectiveDraft || (latestVisit?.subjective || "")}
@@ -5347,7 +5347,7 @@ export default function ClinicianPortal() {
                                <div className="p-4 bg-blue-50/30">
                                   <div className="flex items-center gap-2 mb-2">
                                      <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">O</Badge>
-                                     <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Objective (Observations)</span>
+                                     <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Objective (Observations)</span>
                                   </div>
                                   
                                   {/* Dynamic vitals from visit or patient */}
@@ -5363,9 +5363,9 @@ export default function ClinicianPortal() {
                                          { label: 'SpO2', value: vitals.spo2, unit: '%' },
                                        ];
                                        return vitalItems.map((v, i) => (
-                                         <div key={i} className="bg-white p-2 rounded border border-slate-100 text-center">
-                                           <div className="text-[10px] text-slate-400 uppercase font-bold">{v.label}</div>
-                                           <div className="text-sm font-bold text-slate-800">{v.value || '—'}{v.value && v.unit ? <span className="text-[10px] font-normal text-slate-400 ml-0.5">{v.unit}</span> : ''}</div>
+                                         <div key={i} className="bg-saivie-ivory p-2 rounded border border-saivie-border text-center">
+                                           <div className="text-[10px] text-saivie-plum uppercase font-bold">{v.label}</div>
+                                           <div className="text-sm font-bold text-saivie-plum">{v.value || '—'}{v.value && v.unit ? <span className="text-[10px] font-normal text-saivie-plum ml-0.5">{v.unit}</span> : ''}</div>
                                          </div>
                                        ));
                                      })()}
@@ -5373,9 +5373,9 @@ export default function ClinicianPortal() {
 
                                   {/* Dynamic cycle info */}
                                   <div className={`grid ${careMode === 'pregnancy' ? 'grid-cols-3' : 'grid-cols-3'} gap-3 mb-3`}>
-                                     <div className="bg-white p-2 rounded border border-slate-100">
-                                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Cycle Phase</span>
-                                        <span className="text-xs font-semibold text-slate-700">
+                                     <div className="bg-saivie-ivory p-2 rounded border border-saivie-border">
+                                        <span className="text-[10px] text-saivie-plum uppercase font-bold block">Cycle Phase</span>
+                                        <span className="text-xs font-semibold text-saivie-plum">
                                           {careMode === 'pregnancy' ? (() => {
                                             if (selectedPatient.lmp) {
                                               const weeks = Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7)));
@@ -5391,11 +5391,11 @@ export default function ClinicianPortal() {
                                           })()}
                                         </span>
                                      </div>
-                                     <div className="bg-white p-2 rounded border border-slate-100">
-                                        <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                                     <div className="bg-saivie-ivory p-2 rounded border border-saivie-border">
+                                        <span className="text-[10px] text-saivie-plum uppercase font-bold block">
                                           {careMode === 'pregnancy' ? 'Gestational Age' : 'Cycle Day'}
                                         </span>
-                                        <span className="text-xs font-semibold text-slate-700">
+                                        <span className="text-xs font-semibold text-saivie-plum">
                                           {careMode === 'pregnancy' ? (() => {
                                             if (selectedPatient.lmp) {
                                               const diffDays = Math.max(0, Math.floor((new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24)));
@@ -5405,23 +5405,23 @@ export default function ClinicianPortal() {
                                           })() : `Day ${selectedPatient.cycleDay || '—'}`}
                                         </span>
                                      </div>
-                                     <div className="bg-white p-2 rounded border border-slate-100">
-                                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Genomic Risk</span>
-                                        <span className="text-xs font-semibold text-slate-700">{selectedPatient.condition || '—'}</span>
+                                     <div className="bg-saivie-ivory p-2 rounded border border-saivie-border">
+                                        <span className="text-[10px] text-saivie-plum uppercase font-bold block">Genomic Risk</span>
+                                        <span className="text-xs font-semibold text-saivie-plum">{selectedPatient.condition || '—'}</span>
                                      </div>
                                   </div>
 
                                   {careMode === 'pregnancy' && (
                                     <div className="grid grid-cols-2 gap-3 mb-3">
-                                      <div className="bg-gradient-to-br from-pink-50 to-white p-2.5 rounded border border-pink-100">
-                                        <span className="text-[10px] text-pink-500 uppercase font-bold block mb-1">Fundal Height</span>
+                                      <div className="bg-gradient-to-br from-saivie-surface-blush to-saivie-ivory p-2.5 rounded border border-saivie-blush">
+                                        <span className="text-[10px] text-saivie-rose uppercase font-bold block mb-1">Fundal Height</span>
                                         <div className="flex items-center gap-1.5">
                                           <Input
                                             type="text"
                                             placeholder="e.g. 24 cm / corresponds to dates"
                                             value={fundalHeightVal}
                                             onChange={(e) => setFundalHeightVal(e.target.value)}
-                                            className="h-7 text-sm font-bold text-slate-800 border-pink-200 focus-visible:ring-pink-300 flex-1 px-2"
+                                            className="h-7 text-sm font-bold text-saivie-plum border-saivie-blush focus-visible:ring-saivie-blush flex-1 px-2"
                                             data-testid="input-fundal-height"
                                             onBlur={(e) => {
                                               const val = e.target.value;
@@ -5439,7 +5439,7 @@ export default function ClinicianPortal() {
                                           />
                                         </div>
                                       </div>
-                                      <div className="bg-gradient-to-br from-rose-50 to-white p-2.5 rounded border border-rose-100">
+                                      <div className="bg-gradient-to-br from-rose-50 to-saivie-ivory p-2.5 rounded border border-rose-100">
                                         <span className="text-[10px] text-rose-500 uppercase font-bold block mb-1">Fetal Heart Rate</span>
                                         <div className="flex items-center gap-1.5">
                                           <Input
@@ -5447,7 +5447,7 @@ export default function ClinicianPortal() {
                                             placeholder="e.g. 140 bpm / regular"
                                             value={fetalHeartRateVal}
                                             onChange={(e) => setFetalHeartRateVal(e.target.value)}
-                                            className="h-7 text-sm font-bold text-slate-800 border-rose-200 focus-visible:ring-rose-300 flex-1 px-2"
+                                            className="h-7 text-sm font-bold text-saivie-plum border-rose-200 focus-visible:ring-rose-300 flex-1 px-2"
                                             data-testid="input-fetal-heart-rate"
                                             onBlur={(e) => {
                                               const val = e.target.value;
@@ -5469,7 +5469,7 @@ export default function ClinicianPortal() {
                                   )}
 
                                   {latestVisit?.objective && !soapObjectiveDraft ? (
-                                    <p className="text-sm text-slate-700 leading-relaxed">{latestVisit.objective}</p>
+                                    <p className="text-sm text-saivie-plum leading-relaxed">{latestVisit.objective}</p>
                                   ) : (
                                     <Textarea
                                       value={soapObjectiveDraft || ""}
@@ -5484,12 +5484,12 @@ export default function ClinicianPortal() {
                                <div className="p-4 bg-emerald-50/30">
                                   <div className="flex items-center gap-2 mb-2">
                                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">A</Badge>
-                                     <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Assessment</span>
+                                     <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Assessment</span>
                                   </div>
 
                                   {careMode === 'pregnancy' && (
                                     <div className="grid grid-cols-2 gap-3 mb-3">
-                                      <div className="bg-white p-2.5 rounded border border-emerald-100">
+                                      <div className="bg-saivie-ivory p-2.5 rounded border border-emerald-100">
                                         <span className="text-[10px] text-emerald-600 uppercase font-bold block mb-1.5">P/V (Per Vaginum)</span>
                                         <Textarea
                                           placeholder="Cervix: position, consistency, dilation, effacement. Membranes, presenting part, station..."
@@ -5509,7 +5509,7 @@ export default function ClinicianPortal() {
                                           }}
                                         />
                                       </div>
-                                      <div className="bg-white p-2.5 rounded border border-emerald-100">
+                                      <div className="bg-saivie-ivory p-2.5 rounded border border-emerald-100">
                                         <span className="text-[10px] text-emerald-600 uppercase font-bold block mb-1.5">P/S (Per Speculum)</span>
                                         <Textarea
                                           placeholder="Cervix appearance, os, discharge, bleeding, lesions..."
@@ -5533,10 +5533,10 @@ export default function ClinicianPortal() {
                                   )}
 
                                   {(latestVisit?.assessment || latestVisit?.diagnosis) && !soapAssessmentDraft ? (
-                                    <div className="bg-white border border-emerald-100 rounded p-3">
+                                    <div className="bg-saivie-ivory border border-emerald-100 rounded p-3">
                                        {latestVisit.assessment
-                                         ? <p className="text-sm text-slate-700 leading-relaxed italic">"{latestVisit.assessment}"</p>
-                                         : <><span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Diagnosis</span><p className="text-sm text-slate-700">{latestVisit.diagnosis}</p></>
+                                         ? <p className="text-sm text-saivie-plum leading-relaxed italic">"{latestVisit.assessment}"</p>
+                                         : <><span className="text-[10px] text-saivie-plum uppercase font-bold block mb-1">Diagnosis</span><p className="text-sm text-saivie-plum">{latestVisit.diagnosis}</p></>
                                        }
                                     </div>
                                   ) : (
@@ -5550,23 +5550,23 @@ export default function ClinicianPortal() {
                                </div>
 
                                {/* P — Plan */}
-                               <div className="p-4 bg-purple-50/30">
+                               <div className="p-4 bg-saivie-surface-muted/30">
                                   <div className="flex items-center gap-2 mb-2">
-                                     <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">P</Badge>
-                                     <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Plan</span>
+                                     <Badge className="bg-saivie-sage text-saivie-plum border-saivie-border text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">P</Badge>
+                                     <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Plan</span>
                                   </div>
                                   
                                   {/* Plan notes */}
                                   {latestVisit?.planNotes && !soapPlanDraft ? (
-                                    <div className="bg-white border border-purple-100 rounded p-3 mb-3">
-                                       <p className="text-sm text-slate-700 leading-relaxed">{latestVisit.planNotes}</p>
+                                    <div className="bg-saivie-ivory border border-saivie-border rounded p-3 mb-3">
+                                       <p className="text-sm text-saivie-plum leading-relaxed">{latestVisit.planNotes}</p>
                                     </div>
                                   ) : (
                                     <Textarea
                                       value={soapPlanDraft || ""}
                                       onChange={e => setSoapPlanDraft(e.target.value)}
                                       placeholder="Treatment plan, prescriptions, follow-up..."
-                                      className={`min-h-[50px] text-sm border-purple-200 focus-visible:ring-purple-300 mb-3 ${soapPlanDraft ? 'bg-purple-50/50 border-purple-300' : ''}`}
+                                      className={`min-h-[50px] text-sm border-saivie-border focus-visible:ring-saivie-border mb-3 ${soapPlanDraft ? 'bg-saivie-surface-muted/50 border-saivie-border' : ''}`}
                                     />
                                   )}
 
@@ -5625,14 +5625,14 @@ export default function ClinicianPortal() {
                                             setSoapSaving(false);
                                           }
                                         }}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60 transition-colors"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold bg-saivie-teal text-white hover:bg-saivie-teal disabled:opacity-60 transition-colors"
                                       >
                                         {soapSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                                         {soapSaving ? 'Saving…' : 'Save SOAP to Visit Record'}
                                       </button>
                                       <button
                                         onClick={() => { setSoapSubjectiveDraft(''); setSoapObjectiveDraft(''); setSoapAssessmentDraft(''); setSoapPlanDraft(''); setSoapTranscript(null); }}
-                                        className="text-xs text-slate-400 hover:text-slate-600"
+                                        className="text-xs text-saivie-plum hover:text-saivie-plum"
                                         data-testid="btn-discard-soap-draft"
                                       >
                                         Discard draft
@@ -5650,12 +5650,12 @@ export default function ClinicianPortal() {
                                   {(medications.length > 0 || showAddMedRow) && (
                                     <div className="mb-3">
                                        <div className="flex items-center justify-between mb-2">
-                                         <span className="text-[10px] text-slate-500 uppercase font-bold">Active Medications</span>
-                                         <Badge className="text-[9px] bg-purple-100 text-purple-700 border-purple-200">{medications.filter((m: any) => m.status === 'Active' || m.status === 'active').length} active</Badge>
+                                         <span className="text-[10px] text-saivie-plum uppercase font-bold">Active Medications</span>
+                                         <Badge className="text-[9px] bg-saivie-sage text-saivie-teal border-saivie-border">{medications.filter((m: any) => m.status === 'Active' || m.status === 'active').length} active</Badge>
                                        </div>
-                                       <div className="border border-slate-200 rounded-md overflow-visible">
+                                       <div className="border border-saivie-border rounded-md overflow-visible">
                                           <table className="w-full text-xs text-left">
-                                             <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                                             <thead className="bg-saivie-surface-muted text-saivie-plum border-b border-saivie-border">
                                                 <tr>
                                                    <th className="px-3 py-1.5 font-medium">Drug</th>
                                                    <th className="px-3 py-1.5 font-medium">Dose</th>
@@ -5674,11 +5674,11 @@ export default function ClinicianPortal() {
                                                         <td className="px-1 py-1 relative">
                                                           <Input value={editMedData.name || ''} onChange={e => { setEditMedData({...editMedData, name: e.target.value}); const s = filterCatalogSuggestions(e.target.value); setEditMedSuggestions(s); setShowEditMedSuggestions(s.length > 0); }} onFocus={() => { const s = filterCatalogSuggestions(editMedData.name || ''); setEditMedSuggestions(s); setShowEditMedSuggestions(s.length > 0); }} onBlur={() => setTimeout(() => setShowEditMedSuggestions(false), 200)} className="h-7 text-xs" autoComplete="off" />
                                                           {showEditMedSuggestions && editMedSuggestions.length > 0 && (
-                                                            <div className="absolute z-50 top-full left-1 right-1 mt-0.5 bg-white border border-slate-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                                                            <div className="absolute z-50 top-full left-1 right-1 mt-0.5 bg-saivie-ivory border border-saivie-border rounded-md shadow-lg max-h-40 overflow-y-auto">
                                                               {editMedSuggestions.map((s: any) => (
                                                                 <div key={s.id} className="px-3 py-1.5 text-xs hover:bg-blue-50 cursor-pointer flex justify-between items-center" onMouseDown={() => { setEditMedData({...editMedData, name: s.name, dose: s.defaultDose || editMedData.dose, frequency: s.defaultFrequency || editMedData.frequency}); setShowEditMedSuggestions(false); }}>
-                                                                  <span className="font-medium text-slate-800">{s.name}</span>
-                                                                  <span className="text-slate-400 text-[10px]">{s.genericName || s.category || ''}</span>
+                                                                  <span className="font-medium text-saivie-plum">{s.name}</span>
+                                                                  <span className="text-saivie-plum text-[10px]">{s.genericName || s.category || ''}</span>
                                                                 </div>
                                                               ))}
                                                             </div>
@@ -5703,7 +5703,7 @@ export default function ClinicianPortal() {
                                                             <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" onClick={() => updateMedMutation.mutate({ id: med.id, data: editMedData })}>
                                                               <Check className="w-3 h-3" />
                                                             </Button>
-                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-slate-600" onClick={() => setEditingMedId(null)}>
+                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-saivie-plum" onClick={() => setEditingMedId(null)}>
                                                               <X className="w-3 h-3" />
                                                             </Button>
                                                           </div>
@@ -5711,22 +5711,22 @@ export default function ClinicianPortal() {
                                                       </>
                                                     ) : (
                                                       <>
-                                                        <td className="px-3 py-2 font-medium text-slate-800">{med.name}</td>
-                                                        <td className="px-3 py-2 text-slate-600">{med.dose || '—'}</td>
-                                                        <td className="px-3 py-2 text-slate-600">{med.frequency || '—'}</td>
-                                                        <td className="px-3 py-2 text-slate-500">{med.startDate ? new Date(med.startDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                                                        <td className="px-3 py-2 font-medium text-saivie-plum">{med.name}</td>
+                                                        <td className="px-3 py-2 text-saivie-plum">{med.dose || '—'}</td>
+                                                        <td className="px-3 py-2 text-saivie-plum">{med.frequency || '—'}</td>
+                                                        <td className="px-3 py-2 text-saivie-plum">{med.startDate ? new Date(med.startDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
                                                         <td className="px-3 py-2">
-                                                          <Badge variant="outline" className={`text-[10px] ${med.status === 'active' || med.status === 'Active' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>
+                                                          <Badge variant="outline" className={`text-[10px] ${med.status === 'active' || med.status === 'Active' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-saivie-plum bg-saivie-surface-muted border-saivie-border'}`}>
                                                             {med.status || 'Active'}
                                                           </Badge>
                                                         </td>
-                                                        <td className="px-3 py-2 text-slate-500">{med.notes || '—'}</td>
+                                                        <td className="px-3 py-2 text-saivie-plum">{med.notes || '—'}</td>
                                                         <td className="px-1 py-2">
                                                           <div className="flex gap-1">
-                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-blue-600" onClick={() => { setEditingMedId(med.id); setEditMedData({ name: med.name, dose: med.dose || '', frequency: med.frequency || '', startDate: med.startDate || '', status: med.status || 'Active', notes: med.notes || '' }); }} data-testid={`button-edit-med-${med.id}`}>
+                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-blue-600" onClick={() => { setEditingMedId(med.id); setEditMedData({ name: med.name, dose: med.dose || '', frequency: med.frequency || '', startDate: med.startDate || '', status: med.status || 'Active', notes: med.notes || '' }); }} data-testid={`button-edit-med-${med.id}`}>
                                                               <Pencil className="w-3 h-3" />
                                                             </Button>
-                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600" onClick={() => deleteMedMutation.mutate(med.id)} data-testid={`button-delete-med-${med.id}`}>
+                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-rose-600" onClick={() => deleteMedMutation.mutate(med.id)} data-testid={`button-delete-med-${med.id}`}>
                                                               <Trash2 className="w-3 h-3" />
                                                             </Button>
                                                           </div>
@@ -5740,11 +5740,11 @@ export default function ClinicianPortal() {
                                                     <td className="px-1 py-1 relative">
                                                       <Input placeholder="Drug name" value={newMed.name} onChange={e => { setNewMed({...newMed, name: e.target.value}); const s = filterCatalogSuggestions(e.target.value); setMedSuggestions(s); setShowMedSuggestions(s.length > 0); }} onFocus={() => { const s = filterCatalogSuggestions(newMed.name); setMedSuggestions(s); setShowMedSuggestions(s.length > 0); }} onBlur={() => setTimeout(() => setShowMedSuggestions(false), 200)} className="h-7 text-xs" autoComplete="off" data-testid="input-new-med-name" />
                                                       {showMedSuggestions && medSuggestions.length > 0 && (
-                                                        <div className="absolute z-50 top-full left-1 right-1 mt-0.5 bg-white border border-slate-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                                                        <div className="absolute z-50 top-full left-1 right-1 mt-0.5 bg-saivie-ivory border border-saivie-border rounded-md shadow-lg max-h-40 overflow-y-auto">
                                                           {medSuggestions.map((s: any) => (
                                                             <div key={s.id} className="px-3 py-1.5 text-xs hover:bg-blue-50 cursor-pointer flex justify-between items-center" onMouseDown={() => { setNewMed({...newMed, name: s.name, dose: s.defaultDose || newMed.dose, frequency: s.defaultFrequency || newMed.frequency}); setShowMedSuggestions(false); }}>
-                                                              <span className="font-medium text-slate-800">{s.name}</span>
-                                                              <span className="text-slate-400 text-[10px]">{s.genericName || s.category || ''}</span>
+                                                              <span className="font-medium text-saivie-plum">{s.name}</span>
+                                                              <span className="text-saivie-plum text-[10px]">{s.genericName || s.category || ''}</span>
                                                             </div>
                                                           ))}
                                                         </div>
@@ -5769,7 +5769,7 @@ export default function ClinicianPortal() {
                                                         <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" disabled={!newMed.name.trim() || addMedMutation.isPending} onClick={() => addMedMutation.mutate(newMed)} data-testid="button-save-new-med">
                                                           <Check className="w-3 h-3" />
                                                         </Button>
-                                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-slate-600" onClick={() => { setShowAddMedRow(false); setNewMed({ name: '', dose: '', frequency: '', startDate: '', status: 'Active', notes: '' }); }}>
+                                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-saivie-plum" onClick={() => { setShowAddMedRow(false); setNewMed({ name: '', dose: '', frequency: '', startDate: '', status: 'Active', notes: '' }); }}>
                                                           <X className="w-3 h-3" />
                                                         </Button>
                                                       </div>
@@ -5789,7 +5789,7 @@ export default function ClinicianPortal() {
 
                                   {!medications.length && !showAddMedRow && (
                                     <div className="mb-3">
-                                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-dashed border-purple-300 text-purple-600 hover:bg-purple-50 w-full" onClick={() => setShowAddMedRow(true)} data-testid="button-add-first-med">
+                                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-dashed border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted w-full" onClick={() => setShowAddMedRow(true)} data-testid="button-add-first-med">
                                         <Plus className="w-3.5 h-3.5" /> Add Medication
                                       </Button>
                                     </div>
@@ -5798,10 +5798,10 @@ export default function ClinicianPortal() {
                                   {/* Dynamic prescriptions from visit */}
                                   {latestVisit?.prescriptions && Array.isArray(latestVisit.prescriptions) && (latestVisit.prescriptions as any[]).length > 0 && (
                                     <div className="mb-3">
-                                       <span className="text-[10px] text-slate-500 uppercase font-bold block mb-2">Visit Prescriptions</span>
+                                       <span className="text-[10px] text-saivie-plum uppercase font-bold block mb-2">Visit Prescriptions</span>
                                        <div className="flex flex-wrap gap-2">
                                           {(latestVisit.prescriptions as any[]).map((rx: any, i: number) => (
-                                            <Badge key={i} variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">
+                                            <Badge key={i} variant="outline" className="text-[10px] bg-saivie-surface-muted text-saivie-teal border-saivie-border">
                                               {typeof rx === 'string' ? rx : `${rx.name || rx.drug} ${rx.dose || ''}`}
                                             </Badge>
                                           ))}
@@ -5812,7 +5812,7 @@ export default function ClinicianPortal() {
                                   {/* Dynamic labs ordered */}
                                   {latestVisit?.labsOrdered && Array.isArray(latestVisit.labsOrdered) && (latestVisit.labsOrdered as any[]).length > 0 && (
                                     <div className="mb-3">
-                                       <span className="text-[10px] text-slate-500 uppercase font-bold block mb-2">Labs Ordered</span>
+                                       <span className="text-[10px] text-saivie-plum uppercase font-bold block mb-2">Labs Ordered</span>
                                        <div className="flex flex-wrap gap-2">
                                           {(latestVisit.labsOrdered as any[]).map((lab: any, i: number) => (
                                             <Badge key={i} variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
@@ -5825,9 +5825,9 @@ export default function ClinicianPortal() {
 
                                   {/* Follow-up */}
                                   {latestVisit?.followUpPlan && (
-                                    <div className="bg-white border border-slate-100 rounded p-2 mt-2">
-                                       <span className="text-[10px] text-slate-400 uppercase font-bold block">Follow-up Notes</span>
-                                       <p className="text-xs text-slate-700 mt-0.5">{latestVisit.followUpPlan}</p>
+                                    <div className="bg-saivie-ivory border border-saivie-border rounded p-2 mt-2">
+                                       <span className="text-[10px] text-saivie-plum uppercase font-bold block">Follow-up Notes</span>
+                                       <p className="text-xs text-saivie-plum mt-0.5">{latestVisit.followUpPlan}</p>
                                     </div>
                                   )}
 
@@ -5849,7 +5849,7 @@ export default function ClinicianPortal() {
                                       if (diff === 1) return { text: 'Tomorrow', color: 'bg-blue-100 text-blue-700' };
                                       if (diff < 0) return { text: `${Math.abs(diff)}d overdue`, color: 'bg-rose-100 text-rose-700' };
                                       if (diff <= 7) return { text: `In ${diff} days`, color: 'bg-emerald-100 text-emerald-700' };
-                                      return { text: `In ${Math.ceil(diff/7)} weeks`, color: 'bg-slate-100 text-slate-600' };
+                                      return { text: `In ${Math.ceil(diff/7)} weeks`, color: 'bg-saivie-sage text-saivie-plum' };
                                     };
 
                                     const saveScheduleVitals = (field: string, val: string) => {
@@ -5870,7 +5870,7 @@ export default function ClinicianPortal() {
                                     const invCountdown = nextInvDate ? formatCountdown(nextInvDate) : null;
 
                                     return (
-                                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 mt-3" data-testid="card-scheduling">
+                                      <div className="bg-gradient-to-r from-blue-50 to-saivie-surface-muted border border-blue-200 rounded-lg p-3 mt-3" data-testid="card-scheduling">
                                         <div className="flex items-center gap-2 mb-3">
                                           <CalendarCheck className="w-4 h-4 text-blue-600" />
                                           <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">Upcoming Schedule</span>
@@ -5878,7 +5878,7 @@ export default function ClinicianPortal() {
 
                                         <div className="space-y-2.5">
                                           {/* Next Visit */}
-                                          <div className="bg-white rounded-lg border border-blue-100 p-2.5">
+                                          <div className="bg-saivie-ivory rounded-lg border border-blue-100 p-2.5">
                                             <div className="flex items-center justify-between mb-1.5">
                                               <span className="text-[11px] font-bold text-blue-700 flex items-center gap-1.5"><Stethoscope className="w-3 h-3" /> Next Visit / Follow-up</span>
                                               {visitCountdown && <Badge className={`text-[9px] ${visitCountdown.color} border-0`}>{visitCountdown.text}</Badge>}
@@ -5916,9 +5916,9 @@ export default function ClinicianPortal() {
 
                                           {/* Next Immunisation */}
                                           {careMode === 'pregnancy' && (
-                                            <div className="bg-white rounded-lg border border-teal-100 p-2.5">
+                                            <div className="bg-saivie-ivory rounded-lg border border-saivie-border p-2.5">
                                               <div className="flex items-center justify-between mb-1.5">
-                                                <span className="text-[11px] font-bold text-teal-700 flex items-center gap-1.5"><Shield className="w-3 h-3" /> Next Immunisation</span>
+                                                <span className="text-[11px] font-bold text-saivie-teal flex items-center gap-1.5"><Shield className="w-3 h-3" /> Next Immunisation</span>
                                                 {immCountdown && <Badge className={`text-[9px] ${immCountdown.color} border-0`}>{immCountdown.text}</Badge>}
                                               </div>
                                               <div className="flex items-center gap-2">
@@ -5927,7 +5927,7 @@ export default function ClinicianPortal() {
                                                   key={`imm-${selectedPatient.id}-${nextImmDate}`}
                                                   defaultValue={nextImmDate}
                                                   min={new Date().toISOString().split('T')[0]}
-                                                  className="h-7 text-xs border-teal-200 focus-visible:ring-teal-300 flex-1"
+                                                  className="h-7 text-xs border-saivie-border focus-visible:ring-saivie-border flex-1"
                                                   data-testid="input-next-immunisation-date"
                                                   onBlur={(e) => { if (e.target.value) saveScheduleVitals('nextImmunisationDate', e.target.value); }}
                                                 />
@@ -5936,7 +5936,7 @@ export default function ClinicianPortal() {
                                                 )}
                                               </div>
                                               {nextImmDate && (
-                                                <p className="text-[10px] text-teal-500 mt-1">{new Date(nextImmDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                                <p className="text-[10px] text-saivie-teal mt-1">{new Date(nextImmDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })}</p>
                                               )}
                                             </div>
                                           )}
@@ -5997,11 +5997,11 @@ export default function ClinicianPortal() {
                                             };
 
                                             return (
-                                              <div className="bg-white rounded-lg border border-indigo-100 p-2.5">
+                                              <div className="bg-saivie-ivory rounded-lg border border-saivie-border p-2.5">
                                                 <div className="flex items-center justify-between mb-1.5">
-                                                  <span className="text-[11px] font-bold text-indigo-700 flex items-center gap-1.5"><FlaskConical className="w-3 h-3" /> Next Investigations</span>
+                                                  <span className="text-[11px] font-bold text-saivie-teal flex items-center gap-1.5"><FlaskConical className="w-3 h-3" /> Next Investigations</span>
                                                   <div className="flex items-center gap-1.5">
-                                                    {milestoneLabel && <Badge className="text-[9px] bg-indigo-100 text-indigo-600 border-indigo-200">{milestoneLabel}</Badge>}
+                                                    {milestoneLabel && <Badge className="text-[9px] bg-saivie-sage text-saivie-teal border-saivie-border">{milestoneLabel}</Badge>}
                                                     {invCountdown && <Badge className={`text-[9px] ${invCountdown.color} border-0`}>{invCountdown.text}</Badge>}
                                                   </div>
                                                 </div>
@@ -6011,7 +6011,7 @@ export default function ClinicianPortal() {
                                                     key={`inv-${selectedPatient.id}-${nextInvDate}`}
                                                     defaultValue={nextInvDate}
                                                     min={new Date().toISOString().split('T')[0]}
-                                                    className="h-7 text-xs border-indigo-200 focus-visible:ring-indigo-300 flex-1"
+                                                    className="h-7 text-xs border-saivie-border focus-visible:ring-saivie-border flex-1"
                                                     data-testid="input-next-investigation-date"
                                                     onBlur={(e) => { if (e.target.value) saveScheduleVitals('nextInvestigationDate', e.target.value); }}
                                                   />
@@ -6021,12 +6021,12 @@ export default function ClinicianPortal() {
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-1" data-testid="investigation-checkboxes">
                                                   {suggestedTests.map((test) => (
-                                                    <label key={test} className={`flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer text-[11px] transition-colors ${savedTests.includes(test) ? 'bg-indigo-100 text-indigo-800 font-medium' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`} data-testid={`checkbox-inv-${test.replace(/[^a-zA-Z0-9]/g, '-')}`}>
+                                                    <label key={test} className={`flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer text-[11px] transition-colors ${savedTests.includes(test) ? 'bg-saivie-sage text-saivie-plum font-medium' : 'bg-saivie-surface-muted text-saivie-plum hover:bg-saivie-sage'}`} data-testid={`checkbox-inv-${test.replace(/[^a-zA-Z0-9]/g, '-')}`}>
                                                       <input
                                                         type="checkbox"
                                                         checked={savedTests.includes(test)}
                                                         onChange={() => toggleTest(test)}
-                                                        className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                        className="w-3 h-3 rounded border-saivie-border text-saivie-teal focus:ring-saivie-teal"
                                                       />
                                                       <span className="truncate">{test}</span>
                                                     </label>
@@ -6037,14 +6037,14 @@ export default function ClinicianPortal() {
                                                   placeholder="+ Custom / Repeat test..."
                                                   key={`inv-custom-${selectedPatient.id}-${customInvText}`}
                                                   defaultValue={customInvText}
-                                                  className="h-7 text-xs border-indigo-200 focus-visible:ring-indigo-300 mt-2"
+                                                  className="h-7 text-xs border-saivie-border focus-visible:ring-saivie-border mt-2"
                                                   data-testid="input-next-investigation-custom"
                                                   onBlur={(e) => saveScheduleVitals('nextInvestigationCustom', e.target.value)}
                                                 />
                                                 {(nextInvDate || savedTests.length > 0) && (
                                                   <div className="mt-1.5">
-                                                    {nextInvDate && <p className="text-[10px] text-indigo-500">{new Date(nextInvDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })}</p>}
-                                                    {savedTests.length > 0 && <p className="text-[10px] text-indigo-600 font-medium mt-0.5">{savedTests.join(', ')}{customInvText ? `, ${customInvText}` : ''}</p>}
+                                                    {nextInvDate && <p className="text-[10px] text-saivie-teal">{new Date(nextInvDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })}</p>}
+                                                    {savedTests.length > 0 && <p className="text-[10px] text-saivie-teal font-medium mt-0.5">{savedTests.join(', ')}{customInvText ? `, ${customInvText}` : ''}</p>}
                                                   </div>
                                                 )}
                                               </div>
@@ -6205,13 +6205,13 @@ export default function ClinicianPortal() {
                                    : [];
 
                                  return (
-                                   <div className="p-4 bg-indigo-50/30" data-testid="card-investigations">
+                                   <div className="p-4 bg-saivie-surface-muted/30" data-testid="card-investigations">
                                      <div className="flex items-center justify-between mb-3">
                                        <div className="flex items-center gap-2">
-                                         <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">I</Badge>
-                                         <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Investigations</span>
+                                         <Badge className="bg-saivie-sage text-saivie-plum border-saivie-border text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">I</Badge>
+                                         <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Investigations</span>
                                          {careMode === 'pregnancy' && pregnancyWeek > 0 && (
-                                           <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-200">Week {pregnancyWeek}</Badge>
+                                           <Badge className="text-[10px] bg-saivie-sage text-saivie-teal border-saivie-border">Week {pregnancyWeek}</Badge>
                                          )}
                                          {labDocuments.length > 0 && (
                                            <Badge className="text-[10px] bg-blue-100 text-blue-700 border-blue-200">{labDocuments.length} Report{labDocuments.length !== 1 ? 's' : ''}</Badge>
@@ -6222,7 +6222,7 @@ export default function ClinicianPortal() {
                                            <Button
                                              variant="outline"
                                              size="sm"
-                                             className="h-7 text-[11px] gap-1 border-purple-200 text-purple-700 hover:bg-purple-50"
+                                             className="h-7 text-[11px] gap-1 border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted"
                                              disabled={extractLabMutation.isPending}
                                              onClick={() => selectedPatient && extractLabMutation.mutate(selectedPatient.id)}
                                              data-testid="button-read-reports-investigation"
@@ -6234,7 +6234,7 @@ export default function ClinicianPortal() {
                                              )}
                                            </Button>
                                          )}
-                                         <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => setShowAddInvestigation(!showAddInvestigation)} data-testid="button-add-investigation">
+                                         <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setShowAddInvestigation(!showAddInvestigation)} data-testid="button-add-investigation">
                                            <Plus className="w-3 h-3" /> Add
                                          </Button>
                                        </div>
@@ -6255,15 +6255,15 @@ export default function ClinicianPortal() {
                                      )}
 
                                      {showAddInvestigation && (
-                                       <div className="flex gap-2 mb-3 bg-white border border-indigo-200 rounded-md p-2">
+                                       <div className="flex gap-2 mb-3 bg-saivie-ivory border border-saivie-border rounded-md p-2">
                                          <Input placeholder="Investigation name..." value={newInvestigationName} onChange={e => setNewInvestigationName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && newInvestigationName.trim()) { setCustomInvestigations([...customInvestigations, { name: newInvestigationName.trim(), description: 'Custom investigation' }]); setNewInvestigationName(''); }}} className="h-7 text-xs flex-1" data-testid="input-new-investigation" />
-                                         <Button size="sm" className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700" disabled={!newInvestigationName.trim()} onClick={() => { setCustomInvestigations([...customInvestigations, { name: newInvestigationName.trim(), description: 'Custom investigation' }]); setNewInvestigationName(''); }} data-testid="button-save-investigation">Add</Button>
+                                         <Button size="sm" className="h-7 text-xs bg-saivie-teal hover:bg-saivie-teal" disabled={!newInvestigationName.trim()} onClick={() => { setCustomInvestigations([...customInvestigations, { name: newInvestigationName.trim(), description: 'Custom investigation' }]); setNewInvestigationName(''); }} data-testid="button-save-investigation">Add</Button>
                                        </div>
                                      )}
 
-                                     <div className="mb-3 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                                     <div className="mb-3 p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border">
                                        <div className="flex items-center gap-2 mb-2">
-                                         <span className="text-[10px] text-indigo-700 uppercase font-bold tracking-wider">Current: {sectionTitle}</span>
+                                         <span className="text-[10px] text-saivie-teal uppercase font-bold tracking-wider">Current: {sectionTitle}</span>
                                          <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">{pendingTests.length} Pending</Badge>
                                          <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border-emerald-200">{completedTests.length} Done</Badge>
                                        </div>
@@ -6272,14 +6272,14 @@ export default function ClinicianPortal() {
                                            const isCustom = customInvestigations.some(c => c.name === test.name);
                                            const isUsg = test.name.startsWith('USG');
                                            return (
-                                             <label key={`pending-${i}`} className={`flex items-start gap-2 py-1 px-2 rounded cursor-pointer group transition-colors ${selectedInvestigations.has(test.name) ? 'bg-white border border-indigo-300' : 'hover:bg-white/60 border border-transparent'}`} data-testid={`checkbox-investigation-${i}`}>
-                                               <Checkbox checked={selectedInvestigations.has(test.name)} onCheckedChange={() => toggleInvestigation(test.name)} className="mt-0.5 border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600" />
+                                             <label key={`pending-${i}`} className={`flex items-start gap-2 py-1 px-2 rounded cursor-pointer group transition-colors ${selectedInvestigations.has(test.name) ? 'bg-saivie-ivory border border-saivie-border' : 'hover:bg-saivie-ivory/60 border border-transparent'}`} data-testid={`checkbox-investigation-${i}`}>
+                                               <Checkbox checked={selectedInvestigations.has(test.name)} onCheckedChange={() => toggleInvestigation(test.name)} className="mt-0.5 border-saivie-border data-[state=checked]:bg-saivie-teal data-[state=checked]:border-saivie-teal" />
                                                <div className="flex-1 min-w-0">
-                                                 <span className={`text-xs font-medium block ${selectedInvestigations.has(test.name) ? 'text-indigo-800' : 'text-slate-800'}`}>
-                                                   {isUsg && <span className="inline-block bg-violet-100 text-violet-700 text-[9px] font-bold px-1 rounded mr-1">USG</span>}
+                                                 <span className={`text-xs font-medium block ${selectedInvestigations.has(test.name) ? 'text-saivie-plum' : 'text-saivie-plum'}`}>
+                                                   {isUsg && <span className="inline-block bg-saivie-sage text-saivie-teal text-[9px] font-bold px-1 rounded mr-1">USG</span>}
                                                    {test.name.replace(/^USG - /, '')}
                                                  </span>
-                                                 <span className="text-[10px] text-slate-400 block">{test.description}</span>
+                                                 <span className="text-[10px] text-saivie-plum block">{test.description}</span>
                                                </div>
                                                {isCustom && (
                                                  <button onClick={(e) => { e.preventDefault(); setCustomInvestigations(customInvestigations.filter(c => c.name !== test.name)); }} className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600" data-testid={`button-remove-custom-investigation-${i}`}><X className="w-3 h-3" /></button>
@@ -6305,22 +6305,22 @@ export default function ClinicianPortal() {
                                      </div>
 
                                      {selectedInvestigations.size > 0 && (
-                                       <div className="mb-3 p-2 border border-indigo-100 rounded-md bg-white flex items-center justify-between">
+                                       <div className="mb-3 p-2 border border-saivie-border rounded-md bg-saivie-ivory flex items-center justify-between">
                                          <div className="flex flex-wrap gap-1.5">
                                            {Array.from(selectedInvestigations).map(name => (
-                                             <Badge key={name} className="text-[10px] bg-indigo-100 text-indigo-700 border-indigo-200 gap-1">
+                                             <Badge key={name} className="text-[10px] bg-saivie-sage text-saivie-teal border-saivie-border gap-1">
                                                {name}
-                                               <button onClick={() => toggleInvestigation(name)} className="ml-0.5 hover:text-indigo-900" data-testid={`button-remove-investigation-${name}`}><X className="w-2.5 h-2.5" /></button>
+                                               <button onClick={() => toggleInvestigation(name)} className="ml-0.5 hover:text-saivie-plum" data-testid={`button-remove-investigation-${name}`}><X className="w-2.5 h-2.5" /></button>
                                              </Badge>
                                            ))}
                                          </div>
-                                         <span className="text-[10px] text-indigo-600 font-medium whitespace-nowrap ml-2">{selectedInvestigations.size} selected</span>
+                                         <span className="text-[10px] text-saivie-teal font-medium whitespace-nowrap ml-2">{selectedInvestigations.size} selected</span>
                                        </div>
                                      )}
 
                                      {careMode === 'pregnancy' && pregnancyWeek > 0 && pastWeekKeys.length > 0 && (
-                                       <div className="border-t border-slate-200 pt-3">
-                                         <span className="text-[10px] text-slate-500 uppercase font-bold block mb-2 tracking-wider">Previous Weeks Investigation History</span>
+                                       <div className="border-t border-saivie-border pt-3">
+                                         <span className="text-[10px] text-saivie-plum uppercase font-bold block mb-2 tracking-wider">Previous Weeks Investigation History</span>
                                          <div className="space-y-2">
                                            {pastWeekKeys.map(weekKey => {
                                              const group = investigationsByWeek[weekKey];
@@ -6332,10 +6332,10 @@ export default function ClinicianPortal() {
                                                  <div className="flex items-center justify-between mb-1.5">
                                                    <div className="flex items-center gap-2">
                                                      {allDone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-500" />}
-                                                     <span className="text-[11px] font-semibold text-slate-700">{group.weekRange}</span>
+                                                     <span className="text-[11px] font-semibold text-saivie-plum">{group.weekRange}</span>
                                                    </div>
                                                    <div className="flex items-center gap-1.5">
-                                                     <Badge className={`text-[9px] ${allDone ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                                     <Badge className={`text-[9px] ${allDone ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-saivie-sage text-saivie-plum border-saivie-border'}`}>
                                                        {groupCompleted.length}/{group.tests.length} Done
                                                      </Badge>
                                                      {groupPending.length > 0 && (
@@ -6354,7 +6354,7 @@ export default function ClinicianPortal() {
                                                        <div key={ti} className={`flex items-center gap-1.5 py-0.5 px-1.5 rounded text-[11px] ${done ? 'text-emerald-700' : 'text-amber-700'}`} data-testid={`past-investigation-${weekKey}-${ti}`}>
                                                          {done ? <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" /> : <Clock className="w-3 h-3 text-amber-400 flex-shrink-0" />}
                                                          <span className={`truncate ${done ? 'line-through opacity-70' : 'font-medium'}`}>
-                                                           {isUsg && <span className="inline-block bg-violet-100 text-violet-700 text-[8px] font-bold px-0.5 rounded mr-0.5">USG</span>}
+                                                           {isUsg && <span className="inline-block bg-saivie-sage text-saivie-teal text-[8px] font-bold px-0.5 rounded mr-0.5">USG</span>}
                                                            {test.name.replace(/^USG - /, '')}
                                                          </span>
                                                          {done && match?.date && (
@@ -6375,11 +6375,11 @@ export default function ClinicianPortal() {
                                        const futureKeys = weekOrder.filter(k => weekOrder.indexOf(k) > weekOrder.indexOf(currentWeekKey));
                                        if (futureKeys.length === 0) return null;
                                        return (
-                                         <div className="border-t border-slate-100 pt-3 mt-3">
-                                           <span className="text-[10px] text-slate-400 uppercase font-bold block mb-2 tracking-wider">Upcoming Weeks</span>
+                                         <div className="border-t border-saivie-border pt-3 mt-3">
+                                           <span className="text-[10px] text-saivie-plum uppercase font-bold block mb-2 tracking-wider">Upcoming Weeks</span>
                                            <div className="flex flex-wrap gap-1.5">
                                              {futureKeys.map(key => (
-                                               <Badge key={key} variant="outline" className="text-[10px] text-slate-400 border-slate-200 cursor-default">
+                                               <Badge key={key} variant="outline" className="text-[10px] text-saivie-plum border-saivie-border cursor-default">
                                                  {investigationsByWeek[key].weekRange.split('(')[0].trim()} ({investigationsByWeek[key].tests.length} tests)
                                                </Badge>
                                              ))}
@@ -6401,20 +6401,20 @@ export default function ClinicianPortal() {
                                  todayDate.setHours(0, 0, 0, 0);
 
                                  return (
-                                   <div className="p-4 bg-teal-50/30" data-testid="card-immunisation">
+                                   <div className="p-4 bg-saivie-surface-muted/30" data-testid="card-immunisation">
                                      <div className="flex items-center justify-between mb-3">
                                        <div className="flex items-center gap-2">
-                                         <Badge className="bg-teal-100 text-teal-800 border-teal-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded"><Shield className="w-3 h-3" /></Badge>
-                                         <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Immunisation</span>
-                                         <Badge className="text-[10px] bg-teal-100 text-teal-700 border-teal-200">{givenCount}/{doseCount}</Badge>
+                                         <Badge className="bg-saivie-sage text-saivie-teal border-saivie-border text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded"><Shield className="w-3 h-3" /></Badge>
+                                         <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Immunisation</span>
+                                         <Badge className="text-[10px] bg-saivie-sage text-saivie-teal border-saivie-border">{givenCount}/{doseCount}</Badge>
                                        </div>
                                      </div>
                                      {vaccinationSchedulesQuery.isLoading || patientVaccinationRecordsQuery.isLoading ? (
-                                       <p className="py-3 text-xs text-slate-500">Loading configured vaccine doses...</p>
+                                       <p className="py-3 text-xs text-saivie-plum">Loading configured vaccine doses...</p>
                                      ) : vaccinationSchedulesQuery.isError || patientVaccinationRecordsQuery.isError ? (
                                        <p role="alert" className="py-3 text-xs text-rose-600">Could not load vaccination schedule or records.</p>
                                      ) : schedules.length === 0 ? (
-                                       <p className="py-3 text-xs text-slate-500">No pregnancy vaccine rules are configured. Add them in Settings → Vaccination Rules.</p>
+                                       <p className="py-3 text-xs text-saivie-plum">No pregnancy vaccine rules are configured. Add them in Settings → Vaccination Rules.</p>
                                      ) : <div className="space-y-1.5">
                                        {schedules.flatMap((schedule) => schedule.doseGestationalWeeks.map((week: number, index: number) => {
                                          const doseNumber = index + 1;
@@ -6425,12 +6425,12 @@ export default function ClinicianPortal() {
                                          const isSoon = !record && daysUntilDue !== null && daysUntilDue > 0 && daysUntilDue <= schedule.reminderLeadDays;
                                          const isPast = !record && daysUntilDue !== null && daysUntilDue < 0;
                                          return (
-                                           <div key={`${schedule.id}-${doseNumber}`} className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all ${record ? 'bg-emerald-50 border-emerald-200' : isDue ? 'bg-amber-50 border-amber-300 shadow-sm' : isPast ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-100'}`} data-testid={`immunisation-${schedule.id}-${doseNumber}`}>
+                                           <div key={`${schedule.id}-${doseNumber}`} className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all ${record ? 'bg-emerald-50 border-emerald-200' : isDue ? 'bg-amber-50 border-amber-300 shadow-sm' : isPast ? 'bg-rose-50 border-rose-200' : 'bg-saivie-ivory border-saivie-border'}`} data-testid={`immunisation-${schedule.id}-${doseNumber}`}>
                                              <div className="flex items-center gap-2.5 flex-1 min-w-0">
                                                <span className="text-sm">💉</span>
                                                <div className="min-w-0">
-                                                 <div className={`text-xs font-semibold truncate ${record ? 'text-emerald-700 line-through opacity-70' : isDue ? 'text-amber-800' : isPast ? 'text-rose-700' : 'text-slate-700'}`}>{schedule.vaccineName} · Dose {doseNumber}</div>
-                                                 <div className="text-[10px] text-slate-400">Week {week}{dueDate ? ` · ${dueDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : ''}</div>
+                                                 <div className={`text-xs font-semibold truncate ${record ? 'text-emerald-700 line-through opacity-70' : isDue ? 'text-amber-800' : isPast ? 'text-rose-700' : 'text-saivie-plum'}`}>{schedule.vaccineName} · Dose {doseNumber}</div>
+                                                 <div className="text-[10px] text-saivie-plum">Week {week}{dueDate ? ` · ${dueDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : ''}</div>
                                                </div>
                                              </div>
                                              <div className="flex items-center gap-2 shrink-0">
@@ -6443,13 +6443,13 @@ export default function ClinicianPortal() {
                                                ) : isSoon ? (
                                                  <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">DUE SOON</Badge>
                                                ) : (
-                                                 <Badge variant="outline" className="text-[9px] text-slate-400 border-slate-200">Upcoming</Badge>
+                                                 <Badge variant="outline" className="text-[9px] text-saivie-plum border-saivie-border">Upcoming</Badge>
                                                )}
                                                {!record && (
                                                  <Button
                                                    variant="ghost"
                                                    size="sm"
-                                                   className={`h-6 px-2 text-[10px] ${isDue || isPast ? 'text-emerald-600 hover:bg-emerald-100' : 'text-slate-400 hover:bg-slate-100'}`}
+                                                   className={`h-6 px-2 text-[10px] ${isDue || isPast ? 'text-emerald-600 hover:bg-emerald-100' : 'text-saivie-plum hover:bg-saivie-sage'}`}
                                                    data-testid={`button-mark-vaccine-${schedule.id}-${doseNumber}`}
                                                    onClick={() => recordPatientVaccinationMutation.mutate({ scheduleId: schedule.id, doseNumber })}
                                                    disabled={recordPatientVaccinationMutation.isPending}
@@ -6491,11 +6491,11 @@ export default function ClinicianPortal() {
                                  };
 
                                  const milestones = [
-                                   { week: 0, label: 'LMP', color: 'bg-pink-500', detail: lmpDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) },
+                                   { week: 0, label: 'LMP', color: 'bg-saivie-rose', detail: lmpDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) },
                                    { week: 8, label: 'Booking Visit', color: 'bg-blue-500', detail: 'First prenatal visit' },
-                                   { week: 12, label: 'End T1', color: 'bg-indigo-500', detail: 'NT scan, screening' },
-                                   { week: 20, label: 'Anomaly Scan', color: 'bg-violet-500', detail: 'TIFFA scan' },
-                                   { week: 28, label: 'T3 Begins', color: 'bg-purple-500', detail: 'OGTT, Anti-D' },
+                                   { week: 12, label: 'End T1', color: 'bg-saivie-teal', detail: 'NT scan, screening' },
+                                   { week: 20, label: 'Anomaly Scan', color: 'bg-saivie-teal', detail: 'TIFFA scan' },
+                                   { week: 28, label: 'T3 Begins', color: 'bg-saivie-teal', detail: 'OGTT, Anti-D' },
                                    { week: 32, label: 'Growth Scan', color: 'bg-fuchsia-500', detail: 'Fetal growth' },
                                    { week: 36, label: 'Pre-delivery', color: 'bg-rose-500', detail: 'GBS, workup' },
                                    { week: 40, label: 'EDD', color: 'bg-red-500', detail: eddDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) },
@@ -6511,8 +6511,8 @@ export default function ClinicianPortal() {
                                  const hasPVPS = !!(vitals.pvExam || vitals.psExam);
 
                                  const overallItems = [
-                                   { label: 'Investigations', done: completedTests.length, total: allTests.length, color: 'text-indigo-600 bg-indigo-100' },
-                                   { label: 'Immunisations', done: givenVaccineCount, total: totalVaccines, color: 'text-teal-600 bg-teal-100' },
+                                   { label: 'Investigations', done: completedTests.length, total: allTests.length, color: 'text-saivie-teal bg-saivie-sage' },
+                                   { label: 'Immunisations', done: givenVaccineCount, total: totalVaccines, color: 'text-saivie-teal bg-saivie-sage' },
                                    { label: 'Vitals Recorded', done: hasVitals ? 1 : 0, total: 1, color: 'text-blue-600 bg-blue-100' },
                                    { label: 'Clinical Exam (PV/PS)', done: hasPVPS ? 1 : 0, total: 1, color: 'text-emerald-600 bg-emerald-100' },
                                  ];
@@ -6522,16 +6522,16 @@ export default function ClinicianPortal() {
                                  const overallPct = overallTotal > 0 ? Math.round((overallDone / overallTotal) * 100) : 0;
 
                                  return (
-                                   <div className="p-4 bg-gradient-to-br from-slate-50 to-violet-50/30" data-testid="card-pregnancy-progress">
+                                   <div className="p-4 bg-gradient-to-br from-slate-50 to-saivie-surface-muted/30" data-testid="card-pregnancy-progress">
                                      <div className="flex items-center gap-2 mb-3">
-                                       <Badge className="bg-violet-100 text-violet-800 border-violet-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded"><Milestone className="w-3 h-3" /></Badge>
-                                       <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Pregnancy Progress Trail</span>
-                                       <Badge className="text-[10px] bg-violet-100 text-violet-700 border-violet-200">Week {currentWeekPT} / 40</Badge>
+                                       <Badge className="bg-saivie-sage text-saivie-plum border-saivie-border text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded"><Milestone className="w-3 h-3" /></Badge>
+                                       <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Pregnancy Progress Trail</span>
+                                       <Badge className="text-[10px] bg-saivie-sage text-saivie-teal border-saivie-border">Week {currentWeekPT} / 40</Badge>
                                      </div>
 
                                      <div className="relative mb-4">
-                                       <div className="h-3 bg-slate-200 rounded-full overflow-hidden">
-                                         <div className="h-full rounded-full bg-gradient-to-r from-pink-400 via-violet-400 to-indigo-500 transition-all duration-700" style={{ width: `${progressPct}%` }} />
+                                       <div className="h-3 bg-saivie-sage rounded-full overflow-hidden">
+                                         <div className="h-full rounded-full bg-gradient-to-r from-saivie-rose via-saivie-teal to-saivie-teal transition-all duration-700" style={{ width: `${progressPct}%` }} />
                                        </div>
                                        <div className="absolute top-0 left-0 w-full h-3 flex items-center">
                                          {milestones.map((m, i) => {
@@ -6540,7 +6540,7 @@ export default function ClinicianPortal() {
                                            return (
                                              <div key={i} className="absolute group" style={{ left: `${pos}%`, transform: 'translateX(-50%)' }}>
                                                <div className={`w-3 h-3 rounded-full border-2 border-white ${passed ? m.color : 'bg-slate-300'} shadow-sm`} />
-                                               <div className="absolute top-4 left-1/2 -translate-x-1/2 hidden group-hover:block bg-slate-800 text-white px-2 py-1 rounded text-[9px] whitespace-nowrap z-10 shadow-lg">
+                                               <div className="absolute top-4 left-1/2 -translate-x-1/2 hidden group-hover:block bg-saivie-plum text-white px-2 py-1 rounded text-[9px] whitespace-nowrap z-10 shadow-lg">
                                                  <div className="font-bold">{m.label}</div>
                                                  <div className="text-slate-300">{m.detail}</div>
                                                </div>
@@ -6548,7 +6548,7 @@ export default function ClinicianPortal() {
                                            );
                                          })}
                                        </div>
-                                       <div className="flex justify-between mt-1.5 text-[9px] text-slate-400">
+                                       <div className="flex justify-between mt-1.5 text-[9px] text-saivie-plum">
                                          <span>LMP</span>
                                          <span>T1</span>
                                          <span>T2</span>
@@ -6558,13 +6558,13 @@ export default function ClinicianPortal() {
                                      </div>
 
                                      <div className="grid grid-cols-2 gap-2 mb-3">
-                                       <div className="bg-white rounded-lg border border-violet-100 p-2.5 text-center">
-                                         <div className="text-lg font-bold text-violet-700">{daysRemaining}</div>
-                                         <div className="text-[10px] text-slate-400 uppercase font-bold">Days to EDD</div>
+                                       <div className="bg-saivie-ivory rounded-lg border border-saivie-border p-2.5 text-center">
+                                         <div className="text-lg font-bold text-saivie-teal">{daysRemaining}</div>
+                                         <div className="text-[10px] text-saivie-plum uppercase font-bold">Days to EDD</div>
                                        </div>
-                                       <div className="bg-white rounded-lg border border-violet-100 p-2.5 text-center">
-                                         <div className="text-lg font-bold text-violet-700">{overallPct}%</div>
-                                         <div className="text-[10px] text-slate-400 uppercase font-bold">Care Completion</div>
+                                       <div className="bg-saivie-ivory rounded-lg border border-saivie-border p-2.5 text-center">
+                                         <div className="text-lg font-bold text-saivie-teal">{overallPct}%</div>
+                                         <div className="text-[10px] text-saivie-plum uppercase font-bold">Care Completion</div>
                                        </div>
                                      </div>
 
@@ -6573,11 +6573,11 @@ export default function ClinicianPortal() {
                                          const pct = item.total > 0 ? Math.round((item.done / item.total) * 100) : 0;
                                          return (
                                            <div key={i} className="flex items-center gap-3">
-                                             <span className="text-[11px] text-slate-600 w-32 shrink-0 font-medium">{item.label}</span>
-                                             <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                               <div className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? 'bg-emerald-400' : pct > 50 ? 'bg-violet-400' : pct > 0 ? 'bg-amber-400' : 'bg-slate-200'}`} style={{ width: `${pct}%` }} />
+                                             <span className="text-[11px] text-saivie-plum w-32 shrink-0 font-medium">{item.label}</span>
+                                             <div className="flex-1 h-2 bg-saivie-sage rounded-full overflow-hidden">
+                                               <div className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? 'bg-emerald-400' : pct > 50 ? 'bg-saivie-teal' : pct > 0 ? 'bg-amber-400' : 'bg-saivie-sage'}`} style={{ width: `${pct}%` }} />
                                              </div>
-                                             <span className={`text-[10px] font-bold w-12 text-right ${pct === 100 ? 'text-emerald-600' : 'text-slate-500'}`}>{item.done}/{item.total}</span>
+                                             <span className={`text-[10px] font-bold w-12 text-right ${pct === 100 ? 'text-emerald-600' : 'text-saivie-plum'}`}>{item.done}/{item.total}</span>
                                            </div>
                                          );
                                        })}
@@ -6600,19 +6600,19 @@ export default function ClinicianPortal() {
                                })()}
 
                                {/* Footer actions */}
-                               <div className="p-4 bg-slate-100 flex items-center justify-between">
-                                  <div className="text-xs text-slate-500">
-                                     <span className="font-semibold text-slate-700">{providerName}</span> • {providerSpecialty}
+                               <div className="p-4 bg-saivie-sage flex items-center justify-between">
+                                  <div className="text-xs text-saivie-plum">
+                                     <span className="font-semibold text-saivie-plum">{providerName}</span> • {providerSpecialty}
                                   </div>
                                   <div className="flex gap-2">
                                      <input type="file" ref={prescriptionInputRef} onChange={handlePrescriptionUpload} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" />
-                                     <Button variant="outline" size="sm" className="h-8 gap-2 bg-white text-xs border-slate-300" onClick={() => prescriptionInputRef.current?.click()} disabled={uploadPrescriptionMutation.isPending}>
+                                     <Button variant="outline" size="sm" className="h-8 gap-2 bg-saivie-ivory text-xs border-saivie-border" onClick={() => prescriptionInputRef.current?.click()} disabled={uploadPrescriptionMutation.isPending}>
                                         {uploadPrescriptionMutation.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Reading Prescription...</> : <><Upload className="w-3.5 h-3.5" /> Upload Prescription</>}
                                      </Button>
-                                     <Button variant="outline" size="sm" className="h-8 gap-2 bg-white text-xs border-slate-300">
+                                     <Button variant="outline" size="sm" className="h-8 gap-2 bg-saivie-ivory text-xs border-saivie-border">
                                         <Printer className="w-3.5 h-3.5" /> Print
                                      </Button>
-                                     <Button size="sm" className="h-8 gap-2 bg-indigo-600 hover:bg-indigo-700 text-xs shadow-sm" onClick={generatePrescription} data-testid="button-generate-prescription">
+                                     <Button size="sm" className="h-8 gap-2 bg-saivie-teal hover:bg-saivie-teal text-xs shadow-sm" onClick={generatePrescription} data-testid="button-generate-prescription">
                                         <FileText className="w-3.5 h-3.5" /> Generate Prescription
                                      </Button>
                                   </div>
@@ -6628,23 +6628,23 @@ export default function ClinicianPortal() {
                             <div className="grid grid-cols-4 divide-x divide-slate-100">
                                {/* Subjective */}
                                <div className="p-4 space-y-3">
-                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">S (Symptoms)</span> <Button variant="ghost" size="icon" className="h-5 w-5"><Sparkles className="w-3 h-3 text-blue-400" /></Button></div>
+                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-saivie-plum">S (Symptoms)</span> <Button variant="ghost" size="icon" className="h-5 w-5"><Sparkles className="w-3 h-3 text-blue-400" /></Button></div>
                                   <div className="space-y-2">
                                      {latestVisit?.chiefComplaint ? (
-                                       <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100">{latestVisit.chiefComplaint}</div>
+                                       <div className="bg-saivie-surface-muted p-2 rounded text-xs border border-saivie-border">{latestVisit.chiefComplaint}</div>
                                      ) : latestVisit?.subjective ? (
-                                       <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100 line-clamp-3">{latestVisit.subjective}</div>
+                                       <div className="bg-saivie-surface-muted p-2 rounded text-xs border border-saivie-border line-clamp-3">{latestVisit.subjective}</div>
                                      ) : (
                                        <>
-                                         <div className="bg-slate-50 p-2 rounded text-xs border border-slate-100 text-slate-400 italic">No symptoms recorded</div>
+                                         <div className="bg-saivie-surface-muted p-2 rounded text-xs border border-saivie-border text-saivie-plum italic">No symptoms recorded</div>
                                        </>
                                      )}
                                   </div>
                                </div>
                                {/* Objective */}
                                <div className="p-4 space-y-3">
-                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">O (Observations)</span></div>
-                                  <div className="space-y-2 text-xs text-slate-600">
+                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-saivie-plum">O (Observations)</span></div>
+                                  <div className="space-y-2 text-xs text-saivie-plum">
                                      <div className="flex justify-between"><span>Cycle Phase:</span> <span className="font-medium">{(() => {
                                        if (careMode === 'pregnancy') {
                                          if (selectedPatient.lmp) {
@@ -6679,34 +6679,34 @@ export default function ClinicianPortal() {
                                <div className="p-4 space-y-3 bg-blue-50/30">
                                   <div className="flex justify-between items-center"><span className="text-xs font-bold text-blue-600">A (Assessment)</span> <Sparkles className="w-3 h-3 text-blue-500" /></div>
                                   {careMode === 'pregnancy' && (
-                                    <div className="space-y-1 text-xs text-slate-600 mb-2">
-                                      <div className="flex justify-between"><span>P/V:</span> <span className="font-medium text-right max-w-[120px] truncate">{(latestVisit?.vitals as any)?.pvExam || <span className="text-slate-400 italic">—</span>}</span></div>
-                                      <div className="flex justify-between"><span>P/S:</span> <span className="font-medium text-right max-w-[120px] truncate">{(latestVisit?.vitals as any)?.psExam || <span className="text-slate-400 italic">—</span>}</span></div>
+                                    <div className="space-y-1 text-xs text-saivie-plum mb-2">
+                                      <div className="flex justify-between"><span>P/V:</span> <span className="font-medium text-right max-w-[120px] truncate">{(latestVisit?.vitals as any)?.pvExam || <span className="text-saivie-plum italic">—</span>}</span></div>
+                                      <div className="flex justify-between"><span>P/S:</span> <span className="font-medium text-right max-w-[120px] truncate">{(latestVisit?.vitals as any)?.psExam || <span className="text-saivie-plum italic">—</span>}</span></div>
                                     </div>
                                   )}
                                   {latestVisit?.assessment ? (
-                                    <p className="text-xs leading-relaxed text-slate-700">"{latestVisit.assessment}"</p>
+                                    <p className="text-xs leading-relaxed text-saivie-plum">"{latestVisit.assessment}"</p>
                                   ) : latestVisit?.diagnosis ? (
-                                    <p className="text-xs leading-relaxed text-slate-700">{latestVisit.diagnosis}</p>
+                                    <p className="text-xs leading-relaxed text-saivie-plum">{latestVisit.diagnosis}</p>
                                   ) : (
-                                    <p className="text-xs text-slate-400 italic">No assessment recorded</p>
+                                    <p className="text-xs text-saivie-plum italic">No assessment recorded</p>
                                   )}
                                </div>
                                {/* Plan */}
                                <div className="p-4 space-y-3">
-                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-slate-400">P (Plan)</span></div>
+                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-saivie-plum">P (Plan)</span></div>
                                   <div className="space-y-2">
                                      {medications.length > 0 ? (
                                        medications.slice(0, 3).map((med: any) => (
-                                         <div key={med.id} className="flex items-center gap-2"><Checkbox id={`p-${med.id}`} defaultChecked={med.status === 'active'} /> <label htmlFor={`p-${med.id}`} className="text-xs text-slate-700">{med.name} {med.dose || ''}</label></div>
+                                         <div key={med.id} className="flex items-center gap-2"><Checkbox id={`p-${med.id}`} defaultChecked={med.status === 'active'} /> <label htmlFor={`p-${med.id}`} className="text-xs text-saivie-plum">{med.name} {med.dose || ''}</label></div>
                                        ))
                                      ) : latestVisit?.planNotes ? (
-                                       <p className="text-xs text-slate-700 line-clamp-3">{latestVisit.planNotes}</p>
+                                       <p className="text-xs text-saivie-plum line-clamp-3">{latestVisit.planNotes}</p>
                                      ) : (
-                                       <p className="text-xs text-slate-400 italic">No plan recorded</p>
+                                       <p className="text-xs text-saivie-plum italic">No plan recorded</p>
                                      )}
                                   </div>
-                                  <Button size="sm" className="w-full h-7 text-xs bg-blue-600 hover:bg-blue-700 mt-2" onClick={() => setShowDocumentation(true)}>Full Note & Rx</Button>
+                                  <Button size="sm" className="w-full h-7 text-xs bg-saivie-teal hover:bg-saivie-teal mt-2" onClick={() => setShowDocumentation(true)}>Full Note & Rx</Button>
                                </div>
                             </div>
                          </CardContent>
@@ -6753,19 +6753,19 @@ export default function ClinicianPortal() {
                      const selectedVisitMeds = selectedVisit ? medications.filter((m: any) => m.startDate && new Date(m.startDate).toDateString() === new Date((selectedVisit as any).date).toDateString()) : [];
 
                      return (
-                     <Card className="shadow-sm border-slate-200 bg-white overflow-hidden" data-testid="treatment-trail-card">
-                       <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 px-4 py-3 border-b border-indigo-100">
-                         <h3 className="font-bold text-sm text-indigo-800 flex items-center gap-2">
-                           <History className="w-4 h-4 text-indigo-600" />
+                     <Card className="shadow-sm border-saivie-border bg-saivie-ivory overflow-hidden" data-testid="treatment-trail-card">
+                       <div className="bg-gradient-to-r from-saivie-surface-muted via-saivie-surface-muted to-saivie-surface-blush px-4 py-3 border-b border-saivie-border">
+                         <h3 className="font-bold text-sm text-saivie-plum flex items-center gap-2">
+                           <History className="w-4 h-4 text-saivie-teal" />
                            Treatment Trail
-                           <Badge className="text-[10px] bg-indigo-100 text-indigo-700 border-indigo-200">{visitHistory.length} visit{visitHistory.length !== 1 ? 's' : ''}</Badge>
-                           <span className="text-[10px] text-slate-400 font-normal ml-auto">Click a date to view details</span>
+                           <Badge className="text-[10px] bg-saivie-sage text-saivie-teal border-saivie-border">{visitHistory.length} visit{visitHistory.length !== 1 ? 's' : ''}</Badge>
+                           <span className="text-[10px] text-saivie-plum font-normal ml-auto">Click a date to view details</span>
                          </h3>
                        </div>
 
                        <div className="px-4 py-4">
                          <div className="relative">
-                           <div className="absolute top-[14px] left-0 right-0 h-[2px] bg-indigo-100" />
+                           <div className="absolute top-[14px] left-0 right-0 h-[2px] bg-saivie-sage" />
                            <div className="flex justify-between items-start relative overflow-x-auto" style={{ minWidth: sortedVisits.length > 8 ? `${sortedVisits.length * 80}px` : 'auto' }}>
                              {sortedVisits.map((visit: any, idx: number) => {
                                const isSelected = selectedTrailVisitId === visit.id;
@@ -6776,14 +6776,14 @@ export default function ClinicianPortal() {
                                    onClick={() => setSelectedTrailVisitId(isSelected ? null : visit.id)}
                                    data-testid={`trail-dot-${visit.id}`}>
                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center z-10 transition-all duration-200 border-2 ${
-                                     isSelected ? 'bg-indigo-600 border-indigo-600 text-white scale-110 shadow-lg shadow-indigo-200' :
+                                     isSelected ? 'bg-saivie-teal border-saivie-teal text-white scale-110 shadow-lg shadow-saivie-teal' :
                                      isToday ? 'bg-blue-500 border-blue-500 text-white' :
-                                     isLatest ? 'bg-indigo-500 border-indigo-500 text-white' :
-                                     'bg-white border-indigo-300 text-indigo-500 group-hover:border-indigo-500 group-hover:bg-indigo-50'
+                                     isLatest ? 'bg-saivie-teal border-saivie-teal text-white' :
+                                     'bg-saivie-ivory border-saivie-border text-saivie-teal group-hover:border-saivie-teal group-hover:bg-saivie-surface-muted'
                                    }`}>
                                      <span className="text-[8px] font-bold">{idx + 1}</span>
                                    </div>
-                                   <span className={`text-[9px] mt-1.5 font-medium text-center leading-tight ${isSelected ? 'text-indigo-700 font-bold' : 'text-slate-500'}`}>
+                                   <span className={`text-[9px] mt-1.5 font-medium text-center leading-tight ${isSelected ? 'text-saivie-teal font-bold' : 'text-saivie-plum'}`}>
                                      {new Date(visit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                                    </span>
                                    {isToday && <span className="text-[7px] text-blue-500 font-bold">TODAY</span>}
@@ -6795,40 +6795,40 @@ export default function ClinicianPortal() {
                        </div>
 
                        {selectedVisit && (
-                         <div className="border-t border-indigo-100 bg-gradient-to-b from-indigo-50/30 to-white">
+                         <div className="border-t border-saivie-border bg-gradient-to-b from-saivie-surface-muted/30 to-saivie-ivory">
                            <div className="px-4 py-3">
                              <div className="flex items-center justify-between mb-3">
                                <div className="flex items-center gap-2">
-                                 <span className="text-sm font-bold text-slate-800">
+                                 <span className="text-sm font-bold text-saivie-plum">
                                    {new Date((selectedVisit as any).date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                  </span>
-                                 {(selectedVisit as any).visitType && <Badge variant="outline" className="text-[9px] text-slate-500">{(selectedVisit as any).visitType}</Badge>}
+                                 {(selectedVisit as any).visitType && <Badge variant="outline" className="text-[9px] text-saivie-plum">{(selectedVisit as any).visitType}</Badge>}
                                </div>
                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setSelectedTrailVisitId(null)}>
-                                 <X className="w-3.5 h-3.5 text-slate-400" />
+                                 <X className="w-3.5 h-3.5 text-saivie-plum" />
                                </Button>
                              </div>
 
                              <div className="space-y-2">
                                {(selectedVisit as any).chiefComplaint && (
                                  <div className="flex gap-2">
-                                   <span className="text-[10px] font-bold text-indigo-600 uppercase min-w-[32px]">CC</span>
-                                   <p className="text-xs text-slate-700">{(selectedVisit as any).chiefComplaint}</p>
+                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px]">CC</span>
+                                   <p className="text-xs text-saivie-plum">{(selectedVisit as any).chiefComplaint}</p>
                                  </div>
                                )}
                                {(selectedVisit as any).subjective && !(selectedVisit as any).chiefComplaint && (
                                  <div className="flex gap-2">
-                                   <span className="text-[10px] font-bold text-indigo-600 uppercase min-w-[32px]">Subj</span>
-                                   <p className="text-xs text-slate-600">{(selectedVisit as any).subjective}</p>
+                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px]">Subj</span>
+                                   <p className="text-xs text-saivie-plum">{(selectedVisit as any).subjective}</p>
                                  </div>
                                )}
 
                                {selectedVitalsList.length > 0 && (
                                  <div className="flex gap-2 items-start">
-                                   <span className="text-[10px] font-bold text-indigo-600 uppercase min-w-[32px]">O/E</span>
+                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px]">O/E</span>
                                    <div className="flex flex-wrap gap-1">
                                      {selectedVitalsList.map((v, i) => (
-                                       <span key={i} className="text-[10px] bg-white border border-indigo-200 text-slate-700 px-1.5 py-0.5 rounded font-medium">{v}</span>
+                                       <span key={i} className="text-[10px] bg-saivie-ivory border border-saivie-border text-saivie-plum px-1.5 py-0.5 rounded font-medium">{v}</span>
                                      ))}
                                    </div>
                                  </div>
@@ -6836,8 +6836,8 @@ export default function ClinicianPortal() {
 
                                {((selectedVisit as any).objective || selectedVitals.pvExam || selectedVitals.psExam) && (
                                  <div className="flex gap-2">
-                                   <span className="text-[10px] font-bold text-indigo-600 uppercase min-w-[32px]">Obs</span>
-                                   <div className="text-xs text-slate-600 space-y-0.5">
+                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px]">Obs</span>
+                                   <div className="text-xs text-saivie-plum space-y-0.5">
                                      {(selectedVisit as any).objective && <p>{(selectedVisit as any).objective}</p>}
                                      {selectedVitals.pvExam && <p><span className="font-semibold">P/V:</span> {selectedVitals.pvExam}</p>}
                                      {selectedVitals.psExam && <p><span className="font-semibold">P/S:</span> {selectedVitals.psExam}</p>}
@@ -6847,8 +6847,8 @@ export default function ClinicianPortal() {
 
                                {((selectedVisit as any).diagnosis || (selectedVisit as any).assessment) && (
                                  <div className="flex gap-2">
-                                   <span className="text-[10px] font-bold text-indigo-600 uppercase min-w-[32px]">Dx</span>
-                                   <p className="text-xs font-medium text-slate-800">{(selectedVisit as any).diagnosis || (selectedVisit as any).assessment}</p>
+                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px]">Dx</span>
+                                   <p className="text-xs font-medium text-saivie-plum">{(selectedVisit as any).diagnosis || (selectedVisit as any).assessment}</p>
                                  </div>
                                )}
 
@@ -6867,10 +6867,10 @@ export default function ClinicianPortal() {
 
                                {allSelectedInv.length > 0 && (
                                  <div className="flex gap-2 items-start">
-                                   <span className="text-[10px] font-bold text-purple-600 uppercase min-w-[32px] flex items-center gap-1"><FlaskConical className="w-3 h-3" />Inv</span>
+                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px] flex items-center gap-1"><FlaskConical className="w-3 h-3" />Inv</span>
                                    <div className="flex flex-wrap gap-1">
                                      {allSelectedInv.map((inv, i) => (
-                                       <span key={i} className="text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full border border-purple-100">
+                                       <span key={i} className="text-[10px] bg-saivie-surface-muted text-saivie-teal px-2 py-0.5 rounded-full border border-saivie-border">
                                          {inv}
                                        </span>
                                      ))}
@@ -6880,8 +6880,8 @@ export default function ClinicianPortal() {
 
                                {(selectedVisit as any).planNotes && (
                                  <div className="flex gap-2">
-                                   <span className="text-[10px] font-bold text-indigo-600 uppercase min-w-[32px]">Plan</span>
-                                   <p className="text-xs text-slate-600">{(selectedVisit as any).planNotes}</p>
+                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px]">Plan</span>
+                                   <p className="text-xs text-saivie-plum">{(selectedVisit as any).planNotes}</p>
                                  </div>
                                )}
 
@@ -6908,7 +6908,7 @@ export default function ClinicianPortal() {
                                                {wasSent ? "Post-Visit Summary Sent" : "Post-Visit Summary Generated"}
                                              </span>
                                            </div>
-                                           <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                                           <p className="text-xs text-saivie-plum whitespace-pre-wrap leading-relaxed">{note.content}</p>
                                          </div>
                                        );
                                      })}
@@ -6917,7 +6917,7 @@ export default function ClinicianPortal() {
                                })()}
 
                                {!((selectedVisit as any).chiefComplaint || (selectedVisit as any).subjective || selectedVitalsList.length > 0 || (selectedVisit as any).diagnosis || selectedVisitMeds.length > 0 || allSelectedInv.length > 0 || (selectedVisit as any).planNotes) && (
-                                 <p className="text-xs text-slate-400 italic">No clinical details recorded for this visit.</p>
+                                 <p className="text-xs text-saivie-plum italic">No clinical details recorded for this visit.</p>
                                )}
                              </div>
                            </div>
@@ -6929,22 +6929,22 @@ export default function ClinicianPortal() {
 
                    {/* 1. DYNAMIC SUMMARY BAR BASED ON PATHWAY */}
                    {careMode === 'natural_conception' && (
-                      <div className="grid grid-cols-4 gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                         <div className="border-r border-slate-100 px-4">
-                            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Trying Duration</p>
-                            <p className="text-sm font-bold text-slate-900">6 Months</p>
+                      <div className="grid grid-cols-4 gap-4 bg-saivie-ivory border border-saivie-border rounded-xl p-4 shadow-sm">
+                         <div className="border-r border-saivie-border px-4">
+                            <p className="text-[10px] uppercase tracking-wider text-saivie-plum font-medium mb-1">Trying Duration</p>
+                            <p className="text-sm font-bold text-saivie-plum">6 Months</p>
                          </div>
-                         <div className="border-r border-slate-100 px-4">
-                            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Ovulatory Status</p>
+                         <div className="border-r border-saivie-border px-4">
+                            <p className="text-[10px] uppercase tracking-wider text-saivie-plum font-medium mb-1">Ovulatory Status</p>
                             <p className="text-sm font-bold text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Confirmed</p>
                          </div>
-                         <div className="border-r border-slate-100 px-4">
-                            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Luteal Adequacy</p>
+                         <div className="border-r border-saivie-border px-4">
+                            <p className="text-[10px] uppercase tracking-wider text-saivie-plum font-medium mb-1">Luteal Adequacy</p>
                             <p className="text-sm font-bold text-amber-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Borderline (9d)</p>
                          </div>
                          <div className="px-4">
-                            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Partner Status</p>
-                            <p className="text-sm font-bold text-slate-900">Normal</p>
+                            <p className="text-[10px] uppercase tracking-wider text-saivie-plum font-medium mb-1">Partner Status</p>
+                            <p className="text-sm font-bold text-saivie-plum">Normal</p>
                          </div>
                       </div>
                    )}
@@ -6958,8 +6958,8 @@ export default function ClinicianPortal() {
                                <span className="text-xs text-rose-700">BP elevated at 122/82. Monitoring closely.</span>
                             </div>
                             <div className="flex gap-2">
-                               <Badge className="bg-white text-rose-700 border-rose-200 hover:bg-rose-100">GDM Diet Controlled</Badge>
-                               <Button size="sm" variant="outline" className="h-7 text-xs border-rose-200 text-rose-700 hover:bg-rose-100 bg-white/50">
+                               <Badge className="bg-saivie-ivory text-rose-700 border-rose-200 hover:bg-rose-100">GDM Diet Controlled</Badge>
+                               <Button size="sm" variant="outline" className="h-7 text-xs border-rose-200 text-rose-700 hover:bg-rose-100 bg-saivie-ivory/50">
                                   Protocol
                                </Button>
                             </div>
@@ -6975,12 +6975,12 @@ export default function ClinicianPortal() {
                          
                          {/* 1. HORMONE CARE / NATURAL CONCEPTION DASHBOARD */}
                          {(careMode === 'hormone_care' || careMode === 'natural_conception') && (
-                            <Card className="shadow-sm border-slate-200">
-                               <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
-                                  <CardTitle className="text-base font-bold text-slate-800">Ovulation Intelligence</CardTitle>
+                            <Card className="shadow-sm border-saivie-border">
+                               <CardHeader className="py-4 border-b border-saivie-border flex flex-row items-center justify-between">
+                                  <CardTitle className="text-base font-bold text-saivie-plum">Ovulation Intelligence</CardTitle>
                                   <div className="flex gap-2">
-                                     <Badge variant="outline" className="font-normal text-xs text-slate-500">BBT Confirmed</Badge>
-                                     <Badge variant="outline" className="font-normal text-xs text-slate-500">LH Surge Detected</Badge>
+                                     <Badge variant="outline" className="font-normal text-xs text-saivie-plum">BBT Confirmed</Badge>
+                                     <Badge variant="outline" className="font-normal text-xs text-saivie-plum">LH Surge Detected</Badge>
                                   </div>
                                </CardHeader>
                                <CardContent className="pt-6">
@@ -7009,11 +7009,11 @@ export default function ClinicianPortal() {
 
                          {/* 2. IUI / INDUCTION WORKSPACE */}
                          {(careMode === 'iui' || careMode === 'induction') && (
-                            <Card className="shadow-sm border-slate-200 overflow-hidden">
+                            <Card className="shadow-sm border-saivie-border overflow-hidden">
                                <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `url(${follicleTrackingBg})`, backgroundSize: 'cover' }}></div>
-                               <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between relative z-10">
-                                  <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
-                                     <Microscope className="w-4 h-4 text-purple-600" /> Follicle Monitoring
+                               <CardHeader className="py-4 border-b border-saivie-border flex flex-row items-center justify-between relative z-10">
+                                  <CardTitle className="text-base font-bold text-saivie-plum flex items-center gap-2">
+                                     <Microscope className="w-4 h-4 text-saivie-teal" /> Follicle Monitoring
                                   </CardTitle>
                                   <Button size="sm" variant="outline" className="h-7 text-xs">Add Scan Data</Button>
                                </CardHeader>
@@ -7039,13 +7039,13 @@ export default function ClinicianPortal() {
                          {careMode === 'pregnancy' && (
                             <>
                                {/* Fetal Biometry (USG) */}
-                               <Card className="shadow-sm border-slate-200">
-                                  <CardHeader className="py-3 border-b border-slate-100 flex flex-row items-center justify-between">
-                                     <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+                               <Card className="shadow-sm border-saivie-border">
+                                  <CardHeader className="py-3 border-b border-saivie-border flex flex-row items-center justify-between">
+                                     <CardTitle className="text-base font-bold text-saivie-plum flex items-center gap-2">
                                         <Activity className="w-4 h-4 text-emerald-600" /> Fetal Biometry (USG)
                                      </CardTitle>
                                      {usgData.length > 0 && (
-                                       <Badge variant="outline" className="text-[10px] font-normal text-slate-500">
+                                       <Badge variant="outline" className="text-[10px] font-normal text-saivie-plum">
                                          {usgData.length} scan{usgData.length > 1 ? 's' : ''} recorded
                                        </Badge>
                                      )}
@@ -7056,21 +7056,21 @@ export default function ClinicianPortal() {
                                        const latest = usgData[usgData.length - 1];
                                        return (
                                          <div className="grid grid-cols-4 gap-3 mb-4">
-                                           <div className="bg-slate-50 p-2.5 rounded border border-slate-100 text-center">
-                                             <div className="text-[10px] text-slate-500 uppercase font-bold">BPD</div>
-                                             <div className="text-base font-bold text-slate-800">{latest.bpd || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">mm</span></div>
+                                           <div className="bg-saivie-surface-muted p-2.5 rounded border border-saivie-border text-center">
+                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">BPD</div>
+                                             <div className="text-base font-bold text-saivie-plum">{latest.bpd || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">mm</span></div>
                                            </div>
-                                           <div className="bg-slate-50 p-2.5 rounded border border-slate-100 text-center">
-                                             <div className="text-[10px] text-slate-500 uppercase font-bold">HC</div>
-                                             <div className="text-base font-bold text-slate-800">{latest.hc || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">mm</span></div>
+                                           <div className="bg-saivie-surface-muted p-2.5 rounded border border-saivie-border text-center">
+                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">HC</div>
+                                             <div className="text-base font-bold text-saivie-plum">{latest.hc || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">mm</span></div>
                                            </div>
-                                           <div className="bg-slate-50 p-2.5 rounded border border-slate-100 text-center">
-                                             <div className="text-[10px] text-slate-500 uppercase font-bold">AC</div>
-                                             <div className="text-base font-bold text-slate-800">{latest.ac || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">mm</span></div>
+                                           <div className="bg-saivie-surface-muted p-2.5 rounded border border-saivie-border text-center">
+                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">AC</div>
+                                             <div className="text-base font-bold text-saivie-plum">{latest.ac || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">mm</span></div>
                                            </div>
-                                           <div className="bg-slate-50 p-2.5 rounded border border-slate-100 text-center">
-                                             <div className="text-[10px] text-slate-500 uppercase font-bold">FL</div>
-                                             <div className="text-base font-bold text-slate-800">{latest.fl || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">mm</span></div>
+                                           <div className="bg-saivie-surface-muted p-2.5 rounded border border-saivie-border text-center">
+                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">FL</div>
+                                             <div className="text-base font-bold text-saivie-plum">{latest.fl || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">mm</span></div>
                                            </div>
                                          </div>
                                        );
@@ -7092,20 +7092,20 @@ export default function ClinicianPortal() {
                                            </LineChart>
                                         </ResponsiveContainer>
                                        ) : (
-                                         <div className="flex items-center justify-center h-full text-sm text-slate-400">No USG data recorded yet</div>
+                                         <div className="flex items-center justify-center h-full text-sm text-saivie-plum">No USG data recorded yet</div>
                                        )}
                                      </div>
                                   </CardContent>
                                </Card>
 
                                {/* Maternal Vitals & Trends */}
-                               <Card className="shadow-sm border-slate-200">
-                                  <CardHeader className="py-3 border-b border-slate-100 flex flex-row items-center justify-between">
-                                     <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
-                                        <Heart className="w-4 h-4 text-pink-600" /> Maternal Vitals & Trends
+                               <Card className="shadow-sm border-saivie-border">
+                                  <CardHeader className="py-3 border-b border-saivie-border flex flex-row items-center justify-between">
+                                     <CardTitle className="text-base font-bold text-saivie-plum flex items-center gap-2">
+                                        <Heart className="w-4 h-4 text-saivie-rose" /> Maternal Vitals & Trends
                                      </CardTitle>
                                      {pregnancyData.length > 0 && (
-                                       <Badge variant="outline" className="text-[10px] font-normal text-slate-500">
+                                       <Badge variant="outline" className="text-[10px] font-normal text-saivie-plum">
                                          {pregnancyData.length} record{pregnancyData.length > 1 ? 's' : ''}
                                        </Badge>
                                      )}
@@ -7116,21 +7116,21 @@ export default function ClinicianPortal() {
                                        const latest = pregnancyData[pregnancyData.length - 1];
                                        return (
                                          <div className="grid grid-cols-4 gap-3 mb-4">
-                                           <div className="bg-pink-50/50 p-2.5 rounded border border-pink-100 text-center">
-                                             <div className="text-[10px] text-slate-500 uppercase font-bold">Weight</div>
-                                             <div className="text-base font-bold text-slate-800">{latest.weight || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">kg</span></div>
+                                           <div className="bg-saivie-surface-blush/50 p-2.5 rounded border border-saivie-blush text-center">
+                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">Weight</div>
+                                             <div className="text-base font-bold text-saivie-plum">{latest.weight || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">kg</span></div>
                                            </div>
                                            <div className="bg-rose-50/50 p-2.5 rounded border border-rose-100 text-center">
-                                             <div className="text-[10px] text-slate-500 uppercase font-bold">BP</div>
-                                             <div className="text-base font-bold text-slate-800">{latest.systolic || '—'}/{latest.diastolic || '—'}</div>
+                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">BP</div>
+                                             <div className="text-base font-bold text-saivie-plum">{latest.systolic || '—'}/{latest.diastolic || '—'}</div>
                                            </div>
                                            <div className="bg-blue-50/50 p-2.5 rounded border border-blue-100 text-center">
-                                             <div className="text-[10px] text-slate-500 uppercase font-bold">Fundal Ht</div>
-                                             <div className="text-base font-bold text-slate-800">{latest.fundalHeight || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">cm</span></div>
+                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">Fundal Ht</div>
+                                             <div className="text-base font-bold text-saivie-plum">{latest.fundalHeight || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">cm</span></div>
                                            </div>
                                            <div className="bg-emerald-50/50 p-2.5 rounded border border-emerald-100 text-center">
-                                             <div className="text-[10px] text-slate-500 uppercase font-bold">FHR</div>
-                                             <div className="text-base font-bold text-slate-800">{latest.fetalHr || '—'}<span className="text-[10px] font-normal text-slate-400 ml-0.5">bpm</span></div>
+                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">FHR</div>
+                                             <div className="text-base font-bold text-saivie-plum">{latest.fetalHr || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">bpm</span></div>
                                            </div>
                                          </div>
                                        );
@@ -7150,7 +7150,7 @@ export default function ClinicianPortal() {
                                           </ComposedChart>
                                         </ResponsiveContainer>
                                        ) : (
-                                         <div className="flex items-center justify-center h-full text-sm text-slate-400">No pregnancy vitals recorded yet</div>
+                                         <div className="flex items-center justify-center h-full text-sm text-saivie-plum">No pregnancy vitals recorded yet</div>
                                        )}
                                      </div>
                                   </CardContent>
@@ -7160,31 +7160,31 @@ export default function ClinicianPortal() {
 
                          {/* 4. POSTPARTUM WORKSPACE */}
                          {careMode === 'postpartum' && (
-                            <Card className="shadow-sm border-slate-200 overflow-hidden">
+                            <Card className="shadow-sm border-saivie-border overflow-hidden">
                                <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `url(${postpartumRecoveryBg})`, backgroundSize: 'cover' }}></div>
-                               <CardHeader className="py-4 border-b border-slate-100 relative z-10">
-                                  <CardTitle className="text-base font-bold text-slate-800">Postpartum Recovery Tracker</CardTitle>
+                               <CardHeader className="py-4 border-b border-saivie-border relative z-10">
+                                  <CardTitle className="text-base font-bold text-saivie-plum">Postpartum Recovery Tracker</CardTitle>
                                </CardHeader>
                                <CardContent className="pt-6 relative z-10 space-y-6">
                                   <div>
                                      <div className="flex justify-between text-sm mb-2 font-medium"><span>Physical Recovery</span> <span>85%</span></div>
-                                     <div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full w-[85%] bg-emerald-500 rounded-full"></div></div>
+                                     <div className="h-2 bg-saivie-sage rounded-full overflow-hidden"><div className="h-full w-[85%] bg-emerald-500 rounded-full"></div></div>
                                   </div>
                                   <div>
                                      <div className="flex justify-between text-sm mb-2 font-medium"><span>Hormone Reset</span> <span>60%</span></div>
-                                     <div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full w-[60%] bg-blue-500 rounded-full"></div></div>
+                                     <div className="h-2 bg-saivie-sage rounded-full overflow-hidden"><div className="h-full w-[60%] bg-blue-500 rounded-full"></div></div>
                                   </div>
                                </CardContent>
                             </Card>
                          )}
 
                          {/* SHARED: LAB INTELLIGENCE PANEL */}
-                         <Card className="shadow-sm border-slate-200">
-                            <CardHeader className="py-3 border-b border-slate-100 flex flex-row items-center justify-between">
-                               <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                                  <FlaskConical className="w-4 h-4 text-purple-600" /> Lab Intelligence
+                         <Card className="shadow-sm border-saivie-border">
+                            <CardHeader className="py-3 border-b border-saivie-border flex flex-row items-center justify-between">
+                               <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
+                                  <FlaskConical className="w-4 h-4 text-saivie-teal" /> Lab Intelligence
                                   {labResults.length > 0 && (
-                                    <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium">
+                                    <span className="text-[10px] bg-saivie-sage text-saivie-teal px-1.5 py-0.5 rounded-full font-medium">
                                       {labResults.length}
                                     </span>
                                   )}
@@ -7193,7 +7193,7 @@ export default function ClinicianPortal() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-7 text-[11px] gap-1.5 border-purple-200 text-purple-700 hover:bg-purple-50"
+                                    className="h-7 text-[11px] gap-1.5 border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted"
                                     disabled={extractLabMutation.isPending}
                                     onClick={() => selectedPatient && extractLabMutation.mutate(selectedPatient.id)}
                                     data-testid="button-extract-lab"
@@ -7214,7 +7214,7 @@ export default function ClinicianPortal() {
                             <CardContent className="p-0">
                                {labResults.length > 0 ? (
                                   <table className="w-full text-sm text-left">
-                                     <thead className="text-xs text-slate-500 bg-slate-50 uppercase">
+                                     <thead className="text-xs text-saivie-plum bg-saivie-surface-muted uppercase">
                                         <tr>
                                            <th className="px-4 py-2 font-medium">Test</th>
                                            <th className="px-4 py-2 font-medium">Value</th>
@@ -7228,12 +7228,12 @@ export default function ClinicianPortal() {
                                            const badgeClass = s === 'normal' ? 'border-emerald-200 text-emerald-700 bg-emerald-50'
                                               : s === 'high' || s === 'critical' ? 'border-rose-200 text-rose-700 bg-rose-50'
                                               : s === 'low' || s === 'monitor' || s === 'borderline' ? 'border-amber-200 text-amber-700 bg-amber-50'
-                                              : 'border-slate-200 text-slate-700 bg-slate-50';
+                                              : 'border-saivie-border text-saivie-plum bg-saivie-surface-muted';
                                            return (
                                               <tr key={lr.id} data-testid={`lab-result-row-${lr.id}`}>
-                                                 <td className="px-4 py-3 font-medium text-slate-700">{lr.testName}</td>
+                                                 <td className="px-4 py-3 font-medium text-saivie-plum">{lr.testName}</td>
                                                  <td className="px-4 py-3">{lr.value != null ? `${lr.value} ${lr.unit || ''}` : '-'}</td>
-                                                 <td className="px-4 py-3 text-xs text-slate-400">{lr.date ? new Date(lr.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '-'}</td>
+                                                 <td className="px-4 py-3 text-xs text-saivie-plum">{lr.date ? new Date(lr.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '-'}</td>
                                                  <td className="px-4 py-3">
                                                     <Badge variant="outline" className={badgeClass}>
                                                        {lr.status || 'N/A'}
@@ -7247,8 +7247,8 @@ export default function ClinicianPortal() {
                                ) : (
                                   <div className="p-6 text-center">
                                      <FlaskConical className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                                     <p className="text-sm text-slate-500">No lab results yet</p>
-                                     <p className="text-xs text-slate-400 mt-1">Upload blood reports from Staff Portal or extract from imported lab reports</p>
+                                     <p className="text-sm text-saivie-plum">No lab results yet</p>
+                                     <p className="text-xs text-saivie-plum mt-1">Upload blood reports from Staff Portal or extract from imported lab reports</p>
                                   </div>
                                )}
                             </CardContent>
@@ -7256,11 +7256,11 @@ export default function ClinicianPortal() {
 
                          {/* LAB REPORTS (from Google Drive) */}
                          {labDocuments.length > 0 && (
-                            <Card className="shadow-sm border-slate-200">
-                               <CardHeader className="py-3 border-b border-slate-100">
-                                  <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                                     <FileText className="w-4 h-4 text-purple-500" /> Lab Reports
-                                     <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium ml-auto">
+                            <Card className="shadow-sm border-saivie-border">
+                               <CardHeader className="py-3 border-b border-saivie-border">
+                                  <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
+                                     <FileText className="w-4 h-4 text-saivie-teal" /> Lab Reports
+                                     <span className="text-[10px] bg-saivie-sage text-saivie-teal px-1.5 py-0.5 rounded-full font-medium ml-auto">
                                         {labDocuments.length}
                                      </span>
                                   </CardTitle>
@@ -7268,16 +7268,16 @@ export default function ClinicianPortal() {
                                <CardContent className="p-0">
                                   <div className="divide-y divide-slate-100">
                                      {labDocuments.map((doc: any) => (
-                                        <div key={doc.id} className="px-4 py-3 flex items-center justify-between hover:bg-slate-50/50 transition-colors" data-testid={`lab-doc-${doc.id}`}>
+                                        <div key={doc.id} className="px-4 py-3 flex items-center justify-between hover:bg-saivie-surface-muted/50 transition-colors" data-testid={`lab-doc-${doc.id}`}>
                                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                                              <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
-                                                 <FileText className="w-4 h-4 text-purple-500" />
+                                              <div className="w-8 h-8 rounded-lg bg-saivie-surface-muted flex items-center justify-center shrink-0">
+                                                 <FileText className="w-4 h-4 text-saivie-teal" />
                                               </div>
                                               <div className="min-w-0">
-                                                 <p className="text-sm font-medium text-slate-700 truncate">
+                                                 <p className="text-sm font-medium text-saivie-plum truncate">
                                                     {doc.metadata?.extractedPatientName || doc.name?.replace(/TestReport_/g, '').replace(/_[^_]+\.pdf$/, '') || 'Lab Report'}
                                                  </p>
-                                                 <p className="text-[10px] text-slate-400">
+                                                 <p className="text-[10px] text-saivie-plum">
                                                     {doc.date ? new Date(doc.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Imported'}
                                                     {doc.metadata?.fileSize && ` · ${(parseInt(doc.metadata.fileSize) / 1024 / 1024).toFixed(1)} MB`}
                                                  </p>
@@ -7288,7 +7288,7 @@ export default function ClinicianPortal() {
                                                 href={doc.metadata.driveViewUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="shrink-0 ml-2 text-purple-500 hover:text-purple-700 transition-colors"
+                                                className="shrink-0 ml-2 text-saivie-teal hover:text-saivie-teal transition-colors"
                                                 title="View in Google Drive"
                                                 data-testid={`lab-doc-link-${doc.id}`}
                                               >
@@ -7308,58 +7308,58 @@ export default function ClinicianPortal() {
                       <div className="space-y-6">
                          
                          {/* PROTOCOL PLANNER */}
-                         <Card className="shadow-sm border-slate-200 bg-slate-50/50">
-                            <CardHeader className="py-3 border-b border-slate-100">
-                               <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                                  <ClipboardList className="w-4 h-4 text-indigo-600" /> Care Protocols
+                         <Card className="shadow-sm border-saivie-border bg-saivie-surface-muted/50">
+                            <CardHeader className="py-3 border-b border-saivie-border">
+                               <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
+                                  <ClipboardList className="w-4 h-4 text-saivie-teal" /> Care Protocols
                                </CardTitle>
                             </CardHeader>
                             <CardContent className="p-4 space-y-3">
                                {/* DYNAMIC PROTOCOL SUGGESTIONS */}
                                {careMode === 'pregnancy' && (
-                                  <div className="bg-white border border-rose-100 rounded-lg p-3 shadow-sm">
+                                  <div className="bg-saivie-ivory border border-rose-100 rounded-lg p-3 shadow-sm">
                                      <div className="flex justify-between items-center mb-2">
                                         <h4 className="text-xs font-bold text-rose-900">HIGH RISK PROTOCOL</h4>
                                         <Badge className="text-[10px] bg-rose-100 text-rose-700 border-none">PIH + GDM</Badge>
                                      </div>
                                      <ul className="space-y-2">
-                                        <li className="text-xs text-slate-600 flex items-center gap-2"><Scale className="w-3 h-3 text-rose-500" /> Weekly BP Log</li>
-                                        <li className="text-xs text-slate-600 flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> GDM Diet (1800 cal)</li>
-                                        <li className="text-xs text-slate-600 flex items-center gap-2"><Activity className="w-3 h-3 text-emerald-500" /> Daily Fetal Count</li>
+                                        <li className="text-xs text-saivie-plum flex items-center gap-2"><Scale className="w-3 h-3 text-rose-500" /> Weekly BP Log</li>
+                                        <li className="text-xs text-saivie-plum flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> GDM Diet (1800 cal)</li>
+                                        <li className="text-xs text-saivie-plum flex items-center gap-2"><Activity className="w-3 h-3 text-emerald-500" /> Daily Fetal Count</li>
                                      </ul>
                                   </div>
                                )}
 
                                {careMode === 'natural_conception' && (
-                                  <div className="bg-white border border-indigo-100 rounded-lg p-3 shadow-sm">
+                                  <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-3 shadow-sm">
                                      <div className="flex justify-between items-center mb-2">
-                                        <h4 className="text-xs font-bold text-indigo-900">TIMED INTERCOURSE</h4>
-                                        <Badge className="text-[10px] bg-indigo-100 text-indigo-700 border-none">Active</Badge>
+                                        <h4 className="text-xs font-bold text-saivie-plum">TIMED INTERCOURSE</h4>
+                                        <Badge className="text-[10px] bg-saivie-sage text-saivie-teal border-none">Active</Badge>
                                      </div>
                                      <ul className="space-y-2">
-                                        <li className="text-xs text-slate-600 flex items-center gap-2"><CalendarCheck className="w-3 h-3 text-emerald-500" /> Fertile Window: CD 12-16</li>
-                                        <li className="text-xs text-slate-600 flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> LH Surge Monitored</li>
+                                        <li className="text-xs text-saivie-plum flex items-center gap-2"><CalendarCheck className="w-3 h-3 text-emerald-500" /> Fertile Window: CD 12-16</li>
+                                        <li className="text-xs text-saivie-plum flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> LH Surge Monitored</li>
                                      </ul>
                                   </div>
                                )}
                                
                                {/* Default Fallback */}
                                {careMode !== 'pregnancy' && careMode !== 'natural_conception' && (
-                                  <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm opacity-70">
+                                  <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-3 shadow-sm opacity-70">
                                      <div className="flex justify-between items-center mb-2">
-                                        <h4 className="text-xs font-bold text-slate-700">LUTEAL SUPPORT</h4>
-                                        <Button size="sm" variant="ghost" className="h-5 text-[10px] text-slate-400">Add</Button>
+                                        <h4 className="text-xs font-bold text-saivie-plum">LUTEAL SUPPORT</h4>
+                                        <Button size="sm" variant="ghost" className="h-5 text-[10px] text-saivie-plum">Add</Button>
                                      </div>
-                                     <p className="text-[10px] text-slate-500">Standard luteal phase support protocol.</p>
+                                     <p className="text-[10px] text-saivie-plum">Standard luteal phase support protocol.</p>
                                   </div>
                                )}
                             </CardContent>
                          </Card>
                          
                          {/* MEDICATION MANAGEMENT */}
-                         <Card className="shadow-sm border-slate-200">
-                            <CardHeader className="py-3 border-b border-slate-100 flex justify-between items-center flex-row">
-                               <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                         <Card className="shadow-sm border-saivie-border">
+                            <CardHeader className="py-3 border-b border-saivie-border flex justify-between items-center flex-row">
+                               <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
                                   <Pill className="w-4 h-4 text-blue-600" /> Active Meds
                                   {medications.length > 0 && <Badge className="text-[9px] bg-blue-100 text-blue-700 border-blue-200">{medications.filter((m: any) => m.status === 'Active' || m.status === 'active').length}</Badge>}
                                </CardTitle>
@@ -7368,13 +7368,13 @@ export default function ClinicianPortal() {
                             <CardContent className="p-0">
                                {medications.length > 0 ? (
                                  medications.map((med: any, i: number) => (
-                                   <div key={med.id} className={`p-3 flex justify-between items-center ${i < medications.length - 1 ? 'border-b border-slate-50' : ''}`} data-testid={`active-med-card-${med.id}`}>
+                                   <div key={med.id} className={`p-3 flex justify-between items-center ${i < medications.length - 1 ? 'border-b border-saivie-border' : ''}`} data-testid={`active-med-card-${med.id}`}>
                                      <div className="min-w-0 flex-1">
-                                       <div className="font-medium text-sm text-slate-900 truncate">{med.name}</div>
-                                       <div className="text-xs text-slate-500">{[med.dose, med.frequency].filter(Boolean).join(' • ') || '—'}{med.notes ? ` • ${med.notes}` : ''}</div>
+                                       <div className="font-medium text-sm text-saivie-plum truncate">{med.name}</div>
+                                       <div className="text-xs text-saivie-plum">{[med.dose, med.frequency].filter(Boolean).join(' • ') || '—'}{med.notes ? ` • ${med.notes}` : ''}</div>
                                      </div>
                                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                                       <Badge variant="secondary" className={`text-[10px] ${med.status === 'Active' || med.status === 'active' ? 'bg-emerald-50 text-emerald-700' : med.status === 'Completed' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-500'}`}>
+                                       <Badge variant="secondary" className={`text-[10px] ${med.status === 'Active' || med.status === 'active' ? 'bg-emerald-50 text-emerald-700' : med.status === 'Completed' ? 'bg-blue-50 text-blue-600' : 'bg-saivie-surface-muted text-saivie-plum'}`}>
                                          {med.status || 'Active'}
                                        </Badge>
                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-300 hover:text-blue-600" onClick={() => { setShowDocumentation(true); setEditingMedId(med.id); setEditMedData({ name: med.name, dose: med.dose || '', frequency: med.frequency || '', startDate: med.startDate || '', status: med.status || 'Active', notes: med.notes || '' }); }} data-testid={`button-edit-med-card-${med.id}`}>
@@ -7385,7 +7385,7 @@ export default function ClinicianPortal() {
                                  ))
                                ) : (
                                  <div className="p-4 text-center">
-                                   <p className="text-xs text-slate-400 mb-2">No medications prescribed</p>
+                                   <p className="text-xs text-saivie-plum mb-2">No medications prescribed</p>
                                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-dashed border-blue-300 text-blue-600" onClick={() => { setShowDocumentation(true); setShowAddMedRow(true); }} data-testid="button-add-med-from-card">
                                      <Plus className="w-3 h-3" /> Add Medication
                                    </Button>
@@ -7395,19 +7395,19 @@ export default function ClinicianPortal() {
                          </Card>
 
                          {/* PATIENT COMMUNICATION LOG */}
-                         <Card className="shadow-sm border-slate-200">
-                            <CardHeader className="py-3 border-b border-slate-100">
-                               <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                                  <MessageSquare className="w-4 h-4 text-slate-500" /> Recent Comms
+                         <Card className="shadow-sm border-saivie-border">
+                            <CardHeader className="py-3 border-b border-saivie-border">
+                               <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
+                                  <MessageSquare className="w-4 h-4 text-saivie-plum" /> Recent Comms
                                </CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
-                               <div className="p-3 border-b border-slate-50">
+                               <div className="p-3 border-b border-saivie-border">
                                   <div className="flex justify-between text-xs mb-1">
-                                     <span className="font-semibold text-slate-700">Plan Updated</span>
-                                     <span className="text-slate-400">Today</span>
+                                     <span className="font-semibold text-saivie-plum">Plan Updated</span>
+                                     <span className="text-saivie-plum">Today</span>
                                   </div>
-                                  <p className="text-xs text-slate-500 truncate">
+                                  <p className="text-xs text-saivie-plum truncate">
                                      {careMode === 'pregnancy' ? "Added BP monitoring log to patient portal." : "Cycle plan updated."}
                                   </p>
                                </div>
@@ -7450,7 +7450,7 @@ export default function ClinicianPortal() {
                     riskDialogPatient.riskScore.level === 'Medium' ? 'bg-amber-100 text-amber-700' :
                     'bg-emerald-100 text-emerald-700'
                   }`}>{riskDialogPatient.riskScore.level} Risk</Badge>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
+                  <p className="text-[10px] text-saivie-plum mt-0.5">
                     Updated {riskDialogPatient.riskScore.updatedAt ? new Date(riskDialogPatient.riskScore.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'recently'}
                   </p>
                 </div>
@@ -7459,21 +7459,21 @@ export default function ClinicianPortal() {
               {/* Risk Factors */}
               {riskDialogPatient.riskScore.factors?.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Risk Factors</p>
+                  <p className="text-xs font-semibold text-saivie-plum uppercase tracking-wide mb-2">Risk Factors</p>
                   <div className="space-y-2">
                     {riskDialogPatient.riskScore.factors.map((f: any, i: number) => (
                       <div key={i} className={`flex items-start gap-2 p-2.5 rounded-lg text-xs ${
                         f.severity === 'high' ? 'bg-red-50 border border-red-100' :
                         f.severity === 'medium' ? 'bg-amber-50 border border-amber-100' :
-                        'bg-slate-50 border border-slate-100'
+                        'bg-saivie-surface-muted border border-saivie-border'
                       }`}>
                         <span className={`mt-0.5 shrink-0 w-1.5 h-1.5 rounded-full ${
                           f.severity === 'high' ? 'bg-red-500' :
                           f.severity === 'medium' ? 'bg-amber-500' : 'bg-slate-400'
                         }`} />
                         <div>
-                          <p className="font-semibold text-slate-800">{f.factor}</p>
-                          <p className="text-slate-600 mt-0.5">{f.detail}</p>
+                          <p className="font-semibold text-saivie-plum">{f.factor}</p>
+                          <p className="text-saivie-plum mt-0.5">{f.detail}</p>
                         </div>
                       </div>
                     ))}
@@ -7484,10 +7484,10 @@ export default function ClinicianPortal() {
               {/* Recommendations */}
               {riskDialogPatient.riskScore.recommendations?.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Recommended Actions</p>
+                  <p className="text-xs font-semibold text-saivie-plum uppercase tracking-wide mb-2">Recommended Actions</p>
                   <ul className="space-y-1.5">
                     {riskDialogPatient.riskScore.recommendations.map((r: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2 text-xs text-slate-700">
+                      <li key={i} className="flex items-start gap-2 text-xs text-saivie-plum">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                         {r}
                       </li>
@@ -7510,7 +7510,7 @@ export default function ClinicianPortal() {
                   setRiskDialogPatient(null);
                 }}
               >
-                {scoringPatientId === riskDialogPatient?.id ? <><Loader2 className="w-3 h-3 animate-spin mr-1.5" />Scoring…</> : <><Sparkles className="w-3 h-3 mr-1.5 text-violet-500" />Re-score with AI</>}
+                {scoringPatientId === riskDialogPatient?.id ? <><Loader2 className="w-3 h-3 animate-spin mr-1.5" />Scoring…</> : <><Sparkles className="w-3 h-3 mr-1.5 text-saivie-teal" />Re-score with AI</>}
               </Button>
             </div>
           )}

@@ -103,7 +103,7 @@ export default function AuthScreen() {
   const botPad = Platform.OS === "web" ? 34 : insets.bottom + Spacing.lg;
 
   return (
-    <LinearGradient colors={["#eaf2ff", "#f7f9fc", "#eef1f7"]} style={[styles.root, { paddingTop: topPad, paddingBottom: botPad }]}>
+    <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientMid, COLORS.gradientEnd]} style={[styles.root, { paddingTop: topPad, paddingBottom: botPad }]}>
 
       <View style={styles.logoSection}>
         <View style={[styles.logoIcon, { backgroundColor: COLORS.lavender }]}>

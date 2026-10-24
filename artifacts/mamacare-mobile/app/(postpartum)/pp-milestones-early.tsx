@@ -138,7 +138,7 @@ export default function PostpartumMilestonesEarlyScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.noticeCard}>
-          <Feather name="info" size={14} color="#6C63FF" style={{ marginRight: 6 }} />
+          <Feather name="info" size={14} color={COLORS.primary} style={{ marginRight: 6 }} />
           <ThemedText style={styles.noticeText}>
             All babies develop at their own pace. These are general guidelines. Talk to your doctor if you have concerns.
           </ThemedText>
@@ -193,35 +193,35 @@ export default function PostpartumMilestonesEarlyScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAFAFC" },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md,
-    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: COLORS.surfaceMuted,
   },
   backBtn: { padding: Spacing.sm, marginRight: Spacing.sm, marginLeft: -Spacing.sm },
   headerTitle: { flex: 1 },
   headerName: { fontSize: 17, fontWeight: "600", color: COLORS.textPrimary },
   headerSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 1 },
   badge: {
-    backgroundColor: "#F5F3FF", borderRadius: BorderRadius.full,
+    backgroundColor: COLORS.surfaceMuted, borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.md, paddingVertical: 4,
   },
-  badgeText: { fontSize: 13, fontWeight: "700", color: "#6C63FF" },
+  badgeText: { fontSize: 13, fontWeight: "700", color: COLORS.primary },
   scroll: { flex: 1 },
   noticeCard: {
     flexDirection: "row", alignItems: "flex-start",
-    backgroundColor: "#F5F3FF", borderRadius: 12, padding: Spacing.md,
+    backgroundColor: COLORS.surfaceMuted, borderRadius: 12, padding: Spacing.md,
     marginBottom: Spacing.xl,
   },
-  noticeText: { fontSize: 13, color: "#6C63FF", flex: 1, lineHeight: 18 },
+  noticeText: { fontSize: 13, color: COLORS.primary, flex: 1, lineHeight: 18 },
   monthSection: {
     backgroundColor: "#FFFFFF", borderRadius: 16, padding: Spacing.md,
-    marginBottom: Spacing.md, borderWidth: 1, borderColor: "#F3F4F6",
+    marginBottom: Spacing.md, borderWidth: 1, borderColor: COLORS.surfaceMuted,
   },
   monthSectionCurrent: {
-    borderColor: "#C4B5FD",
-    shadowColor: "#6C63FF", shadowOffset: { width: 0, height: 2 },
+    borderColor: COLORS.primaryLight,
+    shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08, shadowRadius: 8, elevation: 2,
   },
   monthHeader: {
@@ -230,11 +230,11 @@ const styles = StyleSheet.create({
   monthHeaderLeft: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
   monthHeaderRight: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
   monthBadge: {
-    backgroundColor: "#F5F3FF", borderRadius: BorderRadius.full,
+    backgroundColor: COLORS.surfaceMuted, borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.md, paddingVertical: 5,
   },
-  monthBadgeCurrent: { backgroundColor: "#6C63FF" },
-  monthBadgeText: { fontSize: 13, fontWeight: "700", color: "#6C63FF" },
+  monthBadgeCurrent: { backgroundColor: COLORS.primary },
+  monthBadgeText: { fontSize: 13, fontWeight: "700", color: COLORS.primary },
   monthBadgeTextCurrent: { color: "#FFFFFF" },
   currentTag: {
     backgroundColor: "#ECFDF5", borderRadius: BorderRadius.full,
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     width: 22, height: 22, borderRadius: 6, borderWidth: 2,
     borderColor: "#D1D5DB", alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
-  checkboxDone: { backgroundColor: "#6C63FF", borderColor: "#6C63FF" },
+  checkboxDone: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   milestoneText: { fontSize: 14, color: COLORS.textPrimary, flex: 1, lineHeight: 20 },
   milestoneDone: { color: COLORS.textMuted, textDecorationLine: "line-through" },
 });

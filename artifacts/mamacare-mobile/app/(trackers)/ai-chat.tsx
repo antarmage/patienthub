@@ -181,7 +181,7 @@ export default function AiChatScreen() {
       </View>
 
       <View style={styles.disclaimer}>
-        <Feather name="info" size={13} color="#6C63FF" style={{ marginRight: 6 }} />
+        <Feather name="info" size={13} color={COLORS.primary} style={{ marginRight: 6 }} />
         <ThemedText style={styles.disclaimerText}>
           Maya provides general information only — always consult your clinician for medical advice.
         </ThemedText>
@@ -279,7 +279,7 @@ export default function AiChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFC",
+    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: "row",
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: COLORS.surfaceMuted,
   },
   backBtn: {
     padding: Spacing.sm,
@@ -318,15 +318,15 @@ const styles = StyleSheet.create({
   disclaimer: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: "#F0EEFF",
+    backgroundColor: COLORS.surfaceMuted,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.sm + 2,
     borderBottomWidth: 1,
-    borderBottomColor: "#E8E4FF",
+    borderBottomColor: COLORS.border,
   },
   disclaimerText: {
     fontSize: 11,
-    color: "#6C63FF",
+    color: COLORS.primary,
     flex: 1,
     lineHeight: 16,
   },
@@ -340,11 +340,11 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#EDE9FF",
+    backgroundColor: COLORS.primaryLight,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: Spacing.lg,
-    shadowColor: "#6C63FF",
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.18,
     shadowRadius: 16,
@@ -383,11 +383,11 @@ const styles = StyleSheet.create({
   chip: {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E8E4FF",
+    borderColor: COLORS.border,
     borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm + 2,
-    shadowColor: "#6C63FF",
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 13,
-    color: "#6C63FF",
+    color: COLORS.primary,
     fontWeight: "500",
   },
   messageList: {
@@ -407,13 +407,13 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   userBubble: {
-    backgroundColor: "#6C63FF",
+    backgroundColor: COLORS.primary,
     borderRadius: 20,
     borderBottomRightRadius: 4,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     maxWidth: "80%",
-    shadowColor: "#6C63FF",
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#EDE9FF",
+    backgroundColor: COLORS.primaryLight,
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.sm,
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     maxWidth: "80%",
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: COLORS.surfaceMuted,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md + 4,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: COLORS.surfaceMuted,
     gap: 5,
     alignItems: "center",
   },
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: "#6C63FF",
+    backgroundColor: COLORS.primary,
   },
   errorBanner: {
     flexDirection: "row",
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
   chipsScrollRow: {
     flexGrow: 0,
     borderTopWidth: 1,
-    borderTopColor: "#F3F4F6",
+    borderTopColor: COLORS.surfaceMuted,
     backgroundColor: "#FFFFFF",
   },
   chipsScrollBottom: {
@@ -506,14 +506,14 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   chipSmall: {
-    backgroundColor: "#F5F3FF",
+    backgroundColor: COLORS.surfaceMuted,
     borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
   },
   chipSmallText: {
     fontSize: 12,
-    color: "#6C63FF",
+    color: COLORS.primary,
     fontWeight: "500",
   },
   inputRow: {
@@ -523,14 +523,14 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.sm,
     backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: "#F3F4F6",
+    borderTopColor: COLORS.surfaceMuted,
     gap: Spacing.sm,
   },
   textInput: {
     flex: 1,
     backgroundColor: "#F9FAFB",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.border,
     borderRadius: 24,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Platform.OS === "ios" ? 12 : 8,
@@ -542,17 +542,17 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#6C63FF",
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#6C63FF",
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   sendBtnDisabled: {
-    backgroundColor: "#C4C1F4",
+    backgroundColor: COLORS.primaryDisabled,
     shadowOpacity: 0,
     elevation: 0,
   },

@@ -29,15 +29,15 @@ interface HubCard {
 const RECOVERY_CARDS: HubCard[] = [
   { id: "vaccines", label: "Vaccines", desc: "Postpartum vaccine checklist", icon: "shield", bg: "#ECFDF5", iconColor: "#10B981" },
   { id: "lactation", label: "Lactation", desc: "Breastfeeding tips & support", icon: "droplet", bg: "#EFF6FF", iconColor: "#3B82F6" },
-  { id: "mental", label: "Mental Health", desc: "Mood check-in & resources", icon: "smile", bg: "#FDF4FF", iconColor: "#A855F7" },
+  { id: "mental", label: "Mental Health", desc: "Mood check-in & resources", icon: "smile", bg: COLORS.surfaceBlush, iconColor: COLORS.rose },
   { id: "fitness", label: "Fitness", desc: "Week-by-week recovery plan", icon: "activity", bg: "#FFF7ED", iconColor: "#F97316" },
   { id: "massage", label: "Massage", desc: "Guide & timing recommendations", icon: "heart", bg: "#FFF1F2", iconColor: "#F43F5E" },
   { id: "weight", label: "Weight Program", desc: "Safe gradual weight loss", icon: "trending-down", bg: "#F0FDF4", iconColor: "#22C55E" },
 ];
 
 const BABY_CARDS: HubCard[] = [
-  { id: "m06", label: "0–6 Month Milestones", desc: "Development checkpoints", icon: "star", bg: "#F5F3FF", iconColor: "#6C63FF" },
-  { id: "m612", label: "6–12 Month Milestones", desc: "Growth & learning stages", icon: "star", bg: "#FDF4FF", iconColor: "#A855F7" },
+  { id: "m06", label: "0–6 Month Milestones", desc: "Development checkpoints", icon: "star", bg: COLORS.surfaceMuted, iconColor: COLORS.primary },
+  { id: "m612", label: "6–12 Month Milestones", desc: "Growth & learning stages", icon: "star", bg: COLORS.surfaceBlush, iconColor: COLORS.rose },
   { id: "bvax", label: "Baby Vaccines", desc: "Schedule & reminders", icon: "shield", bg: "#FFFBEB", iconColor: "#F59E0B" },
 ];
 
@@ -192,11 +192,11 @@ export default function PostpartumHubScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAFAFC" },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md,
-    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: COLORS.surfaceMuted,
   },
   backBtn: { padding: Spacing.sm, marginRight: Spacing.sm, marginLeft: -Spacing.sm },
   headerTitle: { flex: 1 },
@@ -205,13 +205,13 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   bannerCard: {
     marginHorizontal: Spacing.xl, marginTop: Spacing.xl, marginBottom: Spacing.lg,
-    backgroundColor: "#FFF0F6", borderRadius: 20, padding: Spacing.lg,
-    borderWidth: 1, borderColor: "#FFD6E7",
+    backgroundColor: COLORS.surfaceBlush, borderRadius: 20, padding: Spacing.lg,
+    borderWidth: 1, borderColor: COLORS.blush,
   },
   bannerLeft: { flexDirection: "row", alignItems: "center", gap: Spacing.md },
   bannerEmoji: { fontSize: 32 },
-  bannerTitle: { fontSize: 15, fontWeight: "700", color: "#DB2777" },
-  bannerSub: { fontSize: 13, color: "#BE185D", marginTop: 2, maxWidth: "85%" },
+  bannerTitle: { fontSize: 15, fontWeight: "700", color: COLORS.rose },
+  bannerSub: { fontSize: 13, color: COLORS.plum, marginTop: 2, maxWidth: "85%" },
   sectionLabel: {
     fontSize: 12, fontWeight: "700", color: COLORS.textMuted,
     marginHorizontal: Spacing.xl, marginBottom: Spacing.sm,
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF", borderRadius: 16,
     padding: Spacing.md, flexDirection: "row", alignItems: "center",
-    borderWidth: 1, borderColor: "#F3F4F6",
+    borderWidth: 1, borderColor: COLORS.surfaceMuted,
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
   },
@@ -243,15 +243,15 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 20, fontWeight: "700", color: COLORS.textPrimary, marginBottom: Spacing.sm },
   modalSub: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 20, marginBottom: Spacing.xl },
   dobInput: {
-    borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 12,
+    borderWidth: 1, borderColor: COLORS.border, borderRadius: 12,
     paddingHorizontal: Spacing.lg, paddingVertical: 14,
     fontSize: 18, color: COLORS.textPrimary, textAlign: "center",
     letterSpacing: 2, marginBottom: Spacing.lg,
   },
   saveBtn: {
-    backgroundColor: "#6C63FF", borderRadius: 14,
+    backgroundColor: COLORS.primary, borderRadius: 14,
     paddingVertical: 14, alignItems: "center",
-    shadowColor: "#6C63FF", shadowOffset: { width: 0, height: 4 },
+    shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
   },
   saveBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },

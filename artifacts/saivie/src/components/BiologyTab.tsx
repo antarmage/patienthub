@@ -117,19 +117,19 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
   const bodyChanges = trimester === 1
     ? [
         { label: "Blood Volume", value: "Increasing", icon: <Droplets className="w-4 h-4 text-rose-500" />, detail: "Your body is making 50% more blood to support the baby" },
-        { label: "hCG Levels", value: "Rising Fast", icon: <TrendingUp className="w-4 h-4 text-pink-500" />, detail: "This hormone causes morning sickness but keeps the pregnancy healthy" },
+        { label: "hCG Levels", value: "Rising Fast", icon: <TrendingUp className="w-4 h-4 text-saivie-rose" />, detail: "This hormone causes morning sickness but keeps the pregnancy healthy" },
         { label: "Metabolism", value: "Adapting", icon: <Flame className="w-4 h-4 text-orange-500" />, detail: "Calorie needs increase slightly. Focus on quality nutrition" },
       ]
     : trimester === 2
     ? [
         { label: "Energy", value: "Improving", icon: <Zap className="w-4 h-4 text-amber-500" />, detail: "The placenta has taken over hormone production — you should feel better" },
-        { label: "Baby Movement", value: "Starting", icon: <Baby className="w-4 h-4 text-pink-500" />, detail: "You may feel gentle flutters or kicks as baby grows" },
+        { label: "Baby Movement", value: "Starting", icon: <Baby className="w-4 h-4 text-saivie-rose" />, detail: "You may feel gentle flutters or kicks as baby grows" },
         { label: "Ligaments", value: "Relaxing", icon: <Activity className="w-4 h-4 text-blue-500" />, detail: "Relaxin hormone loosens joints. Be gentle with stretches" },
       ]
     : [
-        { label: "Baby Position", value: "Settling", icon: <Baby className="w-4 h-4 text-pink-500" />, detail: "Baby is getting into position for birth" },
+        { label: "Baby Position", value: "Settling", icon: <Baby className="w-4 h-4 text-saivie-rose" />, detail: "Baby is getting into position for birth" },
         { label: "Braxton Hicks", value: "Possible", icon: <Activity className="w-4 h-4 text-amber-500" />, detail: "Practice contractions are normal — they prepare your body" },
-        { label: "Sleep", value: "Challenging", icon: <Moon className="w-4 h-4 text-indigo-500" />, detail: "Use pillows for support. Left-side sleeping improves blood flow" },
+        { label: "Sleep", value: "Challenging", icon: <Moon className="w-4 h-4 text-saivie-teal" />, detail: "Use pillows for support. Left-side sleeping improves blood flow" },
       ];
 
   const nutritionFocus = trimester === 1
@@ -145,7 +145,7 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
         <div className="flex flex-col gap-2">
           {bodyChanges.map((change, i) => (
             <div key={i} className="flex items-center gap-3">
-              <div className="w-1.5 h-1.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.6)]" />
+              <div className="w-1.5 h-1.5 rounded-full bg-saivie-rose shadow-[0_0_8px_rgba(236,72,153,0.6)]" />
               <span className="text-foreground font-medium text-lg">{change.label}: {change.value}</span>
             </div>
           ))}
@@ -155,25 +155,25 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
       <div>
         <div className="flex items-center justify-between mb-4 px-1">
           <h3 className="text-xl font-serif text-foreground">Baby Size This Week</h3>
-          <span className="text-xs font-medium text-muted-foreground bg-white/50 px-2 py-1 rounded-full">Week {weeks}</span>
+          <span className="text-xs font-medium text-muted-foreground bg-saivie-ivory/50 px-2 py-1 rounded-full">Week {weeks}</span>
         </div>
-        <Card className="border-none bg-gradient-to-br from-pink-50 to-rose-50 shadow-sm overflow-hidden">
+        <Card className="border-none bg-gradient-to-br from-saivie-surface-blush to-rose-50 shadow-sm overflow-hidden">
           <CardContent className="p-6">
             <div className="flex items-center gap-6">
               <div className="text-6xl">{currentSize.fruit}</div>
               <div className="flex-1">
-                <p className="text-xl font-serif text-pink-800 font-medium">{currentSize.size}</p>
+                <p className="text-xl font-serif text-saivie-plum font-medium">{currentSize.size}</p>
                 <div className="grid grid-cols-2 gap-2 mt-3">
-                  <div className="bg-white/60 rounded-lg p-2.5">
+                  <div className="bg-saivie-ivory/60 rounded-lg p-2.5">
                     <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Length</div>
                     <div className="text-sm font-semibold text-foreground flex items-center gap-1">
-                      <Ruler className="w-3 h-3 text-pink-400" /> {currentSize.length}
+                      <Ruler className="w-3 h-3 text-saivie-rose" /> {currentSize.length}
                     </div>
                   </div>
-                  <div className="bg-white/60 rounded-lg p-2.5">
+                  <div className="bg-saivie-ivory/60 rounded-lg p-2.5">
                     <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Weight</div>
                     <div className="text-sm font-semibold text-foreground flex items-center gap-1">
-                      <Scale className="w-3 h-3 text-pink-400" /> {currentSize.weight}
+                      <Scale className="w-3 h-3 text-saivie-rose" /> {currentSize.weight}
                     </div>
                   </div>
                 </div>
@@ -186,7 +186,7 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
       <div className="relative">
         <div className="flex items-center justify-between mb-4 px-1">
           <h3 className="text-xl font-serif text-foreground">Pregnancy Hormones</h3>
-          <Badge variant="outline" className="text-[10px] h-5 bg-pink-50 text-pink-700 border-pink-100">
+          <Badge variant="outline" className="text-[10px] h-5 bg-saivie-surface-blush text-saivie-rose border-saivie-blush">
             {trimester === 1 ? '1st Trimester' : trimester === 2 ? '2nd Trimester' : '3rd Trimester'}
           </Badge>
         </div>
@@ -218,8 +218,8 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
                 transition={{ delay: 0.5 }}
                 className="absolute top-3 right-4"
               >
-                <div className="bg-white/90 backdrop-blur-md px-3 py-2 rounded-xl shadow-lg border border-pink-100 text-xs font-medium text-center">
-                  <span className="text-pink-600">You are here</span>
+                <div className="bg-saivie-ivory/90 backdrop-blur-md px-3 py-2 rounded-xl shadow-lg border border-saivie-blush text-xs font-medium text-center">
+                  <span className="text-saivie-rose">You are here</span>
                   <span className="block text-[10px] text-muted-foreground font-normal mt-0.5">Week {weeks}</span>
                 </div>
               </motion.div>
@@ -228,10 +228,10 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
         </Card>
         <div className="flex gap-4 justify-center mt-3">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <div className="w-3 h-1.5 rounded-full bg-pink-400" /> hCG
+            <div className="w-3 h-1.5 rounded-full bg-saivie-rose" /> hCG
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <div className="w-3 h-1.5 rounded-full bg-purple-400" /> Progesterone
+            <div className="w-3 h-1.5 rounded-full bg-saivie-teal" /> Progesterone
           </div>
         </div>
       </div>
@@ -242,13 +242,13 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
           {bodyChanges.map((change, i) => (
             <Card key={i} className="glass-panel border-white/60">
               <CardContent className="p-4 flex items-start gap-4">
-                <div className="p-2.5 bg-pink-50 rounded-xl shrink-0">
+                <div className="p-2.5 bg-saivie-surface-blush rounded-xl shrink-0">
                   {change.icon}
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <p className="font-medium text-sm text-foreground">{change.label}</p>
-                    <Badge variant="outline" className="text-[10px] bg-pink-50 text-pink-600 border-pink-200">{change.value}</Badge>
+                    <Badge variant="outline" className="text-[10px] bg-saivie-surface-blush text-saivie-rose border-saivie-blush">{change.value}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">{change.detail}</p>
                 </div>
@@ -264,7 +264,7 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
           <div className="grid grid-cols-2 gap-3">
             {keyLabTests.slice(0, 6).map((lr: any, i: number) => {
               const s = (lr.status || '').toLowerCase();
-              const statusColor = s === 'normal' ? 'text-emerald-600 bg-emerald-50' : s === 'high' || s === 'critical' ? 'text-rose-600 bg-rose-50' : s === 'low' ? 'text-amber-600 bg-amber-50' : 'text-slate-600 bg-slate-50';
+              const statusColor = s === 'normal' ? 'text-emerald-600 bg-emerald-50' : s === 'high' || s === 'critical' ? 'text-rose-600 bg-rose-50' : s === 'low' ? 'text-amber-600 bg-amber-50' : 'text-saivie-plum bg-saivie-surface-muted';
               return (
                 <Card key={i} className="glass-panel border-white/60">
                   <CardContent className="p-3">
@@ -313,12 +313,12 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
                 <div className="text-sm font-bold text-foreground">Common</div>
               </div>
               <div className="glass-panel p-4 rounded-2xl flex flex-col items-center text-center gap-2">
-                <Moon className="w-5 h-5 text-indigo-500" />
+                <Moon className="w-5 h-5 text-saivie-teal" />
                 <div className="text-xs font-medium text-muted-foreground">Fatigue</div>
                 <div className="text-sm font-bold text-foreground">High</div>
               </div>
               <div className="glass-panel p-4 rounded-2xl flex flex-col items-center text-center gap-2">
-                <Brain className="w-5 h-5 text-purple-500" />
+                <Brain className="w-5 h-5 text-saivie-teal" />
                 <div className="text-xs font-medium text-muted-foreground">Mood</div>
                 <div className="text-sm font-bold text-foreground">Variable</div>
               </div>
@@ -331,12 +331,12 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
                 <div className="text-sm font-bold text-foreground">Better</div>
               </div>
               <div className="glass-panel p-4 rounded-2xl flex flex-col items-center text-center gap-2">
-                <Heart className="w-5 h-5 text-pink-500" />
+                <Heart className="w-5 h-5 text-saivie-rose" />
                 <div className="text-xs font-medium text-muted-foreground">Baby Kicks</div>
                 <div className="text-sm font-bold text-foreground">Starting</div>
               </div>
               <div className="glass-panel p-4 rounded-2xl flex flex-col items-center text-center gap-2">
-                <Brain className="w-5 h-5 text-purple-500" />
+                <Brain className="w-5 h-5 text-saivie-teal" />
                 <div className="text-xs font-medium text-muted-foreground">Mood</div>
                 <div className="text-sm font-bold text-foreground">Stable</div>
               </div>
@@ -349,7 +349,7 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
                 <div className="text-sm font-bold text-foreground">Practice</div>
               </div>
               <div className="glass-panel p-4 rounded-2xl flex flex-col items-center text-center gap-2">
-                <Moon className="w-5 h-5 text-indigo-500" />
+                <Moon className="w-5 h-5 text-saivie-teal" />
                 <div className="text-xs font-medium text-muted-foreground">Sleep</div>
                 <div className="text-sm font-bold text-foreground">Lighter</div>
               </div>
@@ -363,8 +363,8 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
         </div>
       </div>
 
-      <div className="bg-pink-900 text-pink-100 p-4 rounded-xl flex items-center gap-4 shadow-lg">
-        <Heart className="w-5 h-5 text-pink-300 shrink-0" />
+      <div className="bg-saivie-rose text-saivie-rose p-4 rounded-xl flex items-center gap-4 shadow-lg">
+        <Heart className="w-5 h-5 text-saivie-rose shrink-0" />
         <p className="text-xs font-medium leading-relaxed">
           {trimester === 1
             ? "Your baby's heart starts beating around week 6. Take folic acid daily — it's the most important supplement right now."
@@ -393,7 +393,7 @@ export default function BiologyTab({ mode, patient, labResults }: BiologyTabProp
          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground/80 mb-1">Today Your Biology Is In</h2>
          <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
-               <div className="w-1.5 h-1.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.6)]"></div>
+               <div className="w-1.5 h-1.5 rounded-full bg-saivie-teal shadow-[0_0_8px_rgba(168,85,247,0.6)]"></div>
                <span className="text-foreground font-medium text-lg">Ovulatory Hormone Rise</span>
             </div>
             <div className="flex items-center gap-3">
@@ -410,7 +410,7 @@ export default function BiologyTab({ mode, patient, labResults }: BiologyTabProp
       <div className="relative">
          <div className="flex items-center justify-between mb-4 px-1">
             <h3 className="text-xl font-serif text-foreground">Hormone Landscape</h3>
-            <span className="text-xs font-medium text-muted-foreground bg-white/50 px-2 py-1 rounded-full">Day 14</span>
+            <span className="text-xs font-medium text-muted-foreground bg-saivie-ivory/50 px-2 py-1 rounded-full">Day 14</span>
          </div>
          
          <Card className="overflow-hidden border-none shadow-sm relative group cursor-pointer transition-all hover:shadow-md">
@@ -448,8 +448,8 @@ export default function BiologyTab({ mode, patient, labResults }: BiologyTabProp
                   transition={{ delay: 0.5 }}
                   className="absolute left-[50%] top-[20%] -translate-x-1/2 flex flex-col items-center gap-2"
                >
-                  <div className="w-4 h-4 rounded-full bg-white border-4 border-primary shadow-[0_0_15px_rgba(236,72,153,0.6)] animate-pulse"></div>
-                  <div className="bg-white/90 backdrop-blur-md px-3 py-2 rounded-xl shadow-lg border border-white/50 text-xs font-medium max-w-[140px] text-center">
+                  <div className="w-4 h-4 rounded-full bg-saivie-ivory border-4 border-primary shadow-[0_0_15px_rgba(236,72,153,0.6)] animate-pulse"></div>
+                  <div className="bg-saivie-ivory/90 backdrop-blur-md px-3 py-2 rounded-xl shadow-lg border border-white/50 text-xs font-medium max-w-[140px] text-center">
                      Estrogen Surge
                      <span className="block text-[10px] text-muted-foreground font-normal mt-0.5">Supports confidence & verbal fluency</span>
                   </div>
@@ -468,19 +468,19 @@ export default function BiologyTab({ mode, patient, labResults }: BiologyTabProp
                      <h4 className="text-lg font-medium text-orange-900 mb-1">Carb Tolerant Phase</h4>
                      <p className="text-sm text-orange-700/80">Your insulin sensitivity is peaking.</p>
                   </div>
-                  <div className="bg-white/50 p-2.5 rounded-full text-orange-600">
+                  <div className="bg-saivie-ivory/50 p-2.5 rounded-full text-orange-600">
                      <Flame className="w-5 h-5" />
                   </div>
                </div>
                
                <div className="grid grid-cols-2 gap-3 mt-4">
-                  <div className="bg-white/60 rounded-lg p-3">
+                  <div className="bg-saivie-ivory/60 rounded-lg p-3">
                      <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Insulin</div>
                      <div className="font-semibold text-foreground flex items-center gap-1">
                         High <TrendingUp className="w-3 h-3 text-emerald-500" />
                      </div>
                   </div>
-                  <div className="bg-white/60 rounded-lg p-3">
+                  <div className="bg-saivie-ivory/60 rounded-lg p-3">
                      <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Recovery</div>
                      <div className="font-semibold text-foreground flex items-center gap-1">
                         Fast <Zap className="w-3 h-3 text-amber-500" />
@@ -502,8 +502,8 @@ export default function BiologyTab({ mode, patient, labResults }: BiologyTabProp
                <AccordionItem value="item-1" className="border-none glass-panel rounded-xl px-4 overflow-hidden">
                   <AccordionTrigger className="hover:no-underline py-4">
                      <div className="flex items-center gap-4 text-left w-full">
-                        <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
-                           <Dna className="w-5 h-5 text-indigo-500" />
+                        <div className="w-10 h-10 rounded-full bg-saivie-surface-muted flex items-center justify-center shrink-0">
+                           <Dna className="w-5 h-5 text-saivie-teal" />
                         </div>
                         <div>
                            <p className="font-medium text-foreground text-sm">Estrogen Metabolism</p>
@@ -514,7 +514,7 @@ export default function BiologyTab({ mode, patient, labResults }: BiologyTabProp
                   <AccordionContent className="pb-4 pl-[3.5rem] pr-2">
                      <div className="text-sm text-muted-foreground leading-relaxed">
                         This means estrogen may linger in your system longer. You might experience stronger pre-period symptoms but better skin and bone protection.
-                        <div className="mt-3 bg-indigo-50/50 p-3 rounded-lg border border-indigo-100/50 text-xs text-indigo-900 font-medium">
+                        <div className="mt-3 bg-saivie-surface-muted/50 p-3 rounded-lg border border-saivie-border/50 text-xs text-saivie-plum font-medium">
                            Tip: Cruciferous vegetables help clear excess estrogen effectively.
                         </div>
                      </div>
@@ -547,7 +547,7 @@ export default function BiologyTab({ mode, patient, labResults }: BiologyTabProp
          <h3 className="text-xl font-serif text-foreground mb-4 px-1">Mind & Nervous System</h3>
          <div className="grid grid-cols-3 gap-3">
             <div className="glass-panel p-4 rounded-2xl flex flex-col items-center text-center gap-2">
-               <Brain className="w-5 h-5 text-purple-500" />
+               <Brain className="w-5 h-5 text-saivie-teal" />
                <div className="text-xs font-medium text-muted-foreground">Social Confidence</div>
                <div className="text-sm font-bold text-foreground">High</div>
             </div>
@@ -564,7 +564,7 @@ export default function BiologyTab({ mode, patient, labResults }: BiologyTabProp
          </div>
       </div>
 
-      <div className="bg-slate-900 text-slate-200 p-4 rounded-xl flex items-center gap-4 shadow-lg">
+      <div className="bg-saivie-plum text-slate-200 p-4 rounded-xl flex items-center gap-4 shadow-lg">
          <Sparkles className="w-5 h-5 text-yellow-400 shrink-0" />
          <p className="text-xs font-medium leading-relaxed">
             Science Nudge: High estrogen can improve pain tolerance. Good day for waxing or deep tissue massage.

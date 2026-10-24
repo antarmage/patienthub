@@ -182,12 +182,12 @@ export default function WeightTrackerScreen() {
                           styles.bar,
                           {
                             height: (item.weight / maxWeight) * 120,
-                            backgroundColor: item.isNow ? "#6C63FF" : "#E0E7FF",
+                            backgroundColor: item.isNow ? COLORS.primary : COLORS.primaryLight,
                           }
                         ]}
                       />
                     ) : (
-                      <View style={[styles.bar, { height: 4, backgroundColor: "#F3F4F6" }]} />
+                      <View style={[styles.bar, { height: 4, backgroundColor: COLORS.surfaceMuted }]} />
                     )}
                   </View>
                   <ThemedText style={[
@@ -216,7 +216,7 @@ export default function WeightTrackerScreen() {
               return (
                 <View key={log.id} style={styles.logCard}>
                   <View style={styles.logIcon}>
-                    <Feather name="activity" size={18} color="#6C63FF" />
+                    <Feather name="activity" size={18} color={COLORS.primary} />
                   </View>
                   <View style={styles.logDetails}>
                     <ThemedText style={styles.logDate}>{dateInfo.primary}</ThemedText>
@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: COLORS.surfaceMuted,
   },
   barColumn: {
     flex: 1,
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     height: 130,
   },
   barLabel: {
-    backgroundColor: "#1F2937",
+    backgroundColor: COLORS.plum,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
   barWeekLabelActive: {
-    color: "#6C63FF",
+    color: COLORS.primary,
     fontWeight: "600",
   },
   emptyChart: {
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: Spacing.xl,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: COLORS.surfaceMuted,
     borderRadius: 20,
     backgroundColor: "#FFFFFF",
     marginBottom: Spacing.xl,
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: COLORS.surfaceMuted,
   },
   emptyText: {
     fontSize: 14,
@@ -465,13 +465,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing.sm,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: COLORS.surfaceMuted,
   },
   logIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F5F3FF",
+    backgroundColor: COLORS.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.md,
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 56,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.border,
     borderRadius: 14,
     paddingHorizontal: Spacing.lg,
     fontSize: 24,
@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
   },
   unitToggle: {
     flexDirection: "row",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: COLORS.surfaceMuted,
     borderRadius: 12,
     padding: 4,
   },
@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   unitButtonActive: {
-    backgroundColor: "#6C63FF",
+    backgroundColor: COLORS.primary,
   },
   unitText: {
     fontSize: 14,
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   saveButton: {
-    backgroundColor: "#6C63FF",
+    backgroundColor: COLORS.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",

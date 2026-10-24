@@ -237,12 +237,12 @@ export default function DiagnosticsScreen() {
           <Feather
             name={reportTypeIcons[type]}
             size={16}
-            color={reportType === type ? COLORS.white : COLORS.textSecondary}
+            color={reportType === type ? theme.buttonText : COLORS.textSecondary}
           />
           <ThemedText
             type="small"
             style={{
-              color: reportType === type ? COLORS.white : COLORS.textSecondary,
+              color: reportType === type ? theme.buttonText : COLORS.textSecondary,
               marginLeft: Spacing.xs,
             }}
           >
@@ -283,7 +283,7 @@ export default function DiagnosticsScreen() {
         style={[styles.fab, { backgroundColor: theme.primary }]}
         onPress={() => setShowModal(true)}
       >
-        <Feather name="plus" size={24} color={COLORS.white} />
+        <Feather name="plus" size={24} color={theme.buttonText} />
       </Pressable>
 
       <Modal

@@ -8,6 +8,7 @@ on:
       - 'artifacts/saivie-desk/**'
       - 'artifacts/saivie-recover/**'
       - 'artifacts/saiviegene/**'
+      - 'lib/brand/**'
       - 'scripts/deploy-frontends.sh'
       - '.github/workflows/deploy-frontends.yml'
       - 'package.json'

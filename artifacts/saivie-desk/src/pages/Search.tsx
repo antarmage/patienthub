@@ -28,16 +28,16 @@ export default function Search() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50 flex flex-col">
-      <header className="bg-white border-b px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+    <div className="min-h-[100dvh] bg-background flex flex-col">
+      <header className="bg-card border-b px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">SD</span>
+            <span className="text-primary-foreground font-bold text-sm">SD</span>
           </div>
-          <h1 className="text-xl font-bold text-slate-800">SaivieDesk</h1>
+          <h1 className="text-xl font-bold text-foreground">SaivieDesk</h1>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-slate-600">Staff: {user?.username}</span>
+          <span className="text-sm font-medium text-muted-foreground">Staff: {user?.username}</span>
           <Button variant="ghost" size="sm" onClick={logout} data-testid="button-logout">
             Log out
           </Button>
@@ -47,12 +47,12 @@ export default function Search() {
       <main className="flex-1 max-w-4xl w-full mx-auto p-6 flex flex-col gap-6">
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
-            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search patients by name or phone number..."
-              className="pl-12 h-14 text-lg shadow-sm bg-white"
+              className="pl-12 h-14 text-lg shadow-sm bg-card"
               data-testid="input-search"
             />
           </div>
@@ -65,7 +65,7 @@ export default function Search() {
         </div>
 
         <div className="flex-1 flex flex-col">
-          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4 px-1">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 px-1">
             {debouncedSearch ? "Search Results" : "Recent Patients"}
           </h2>
 
@@ -76,25 +76,25 @@ export default function Search() {
               ))}
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-xl border border-red-100">
+            <div className="flex flex-col items-center justify-center p-12 text-center bg-card rounded-xl border border-red-100">
               <AlertCircle className="h-10 w-10 text-red-500 mb-3" />
-              <p className="text-slate-800 font-medium">Failed to load patients</p>
+              <p className="text-foreground font-medium">Failed to load patients</p>
               <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>Retry</Button>
             </div>
           ) : patients && patients.length > 0 ? (
             <div className="space-y-3 pb-8">
               {patients.map((patient: DeskPatient) => (
                 <Link key={patient.id} href={`/patient/${patient.id}`}>
-                  <Card className="hover:border-primary/50 transition-colors cursor-pointer border-slate-200">
+                  <Card className="hover:border-primary/50 transition-colors cursor-pointer border-border">
                     <CardContent className="p-4 flex items-center justify-between">
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-3">
-                          <span className="font-semibold text-lg text-slate-800">{patient.name}</span>
-                          <span className="text-sm px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full font-medium">
+                          <span className="font-semibold text-lg text-foreground">{patient.name}</span>
+                          <span className="text-sm px-2 py-0.5 bg-secondary text-secondary-foreground rounded-full font-medium">
                             ID: #{patient.id}
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-slate-500">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Phone className="h-3.5 w-3.5" />
                             {patient.phone || "No phone"}
@@ -114,12 +114,12 @@ export default function Search() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center p-16 text-center bg-white rounded-xl border border-dashed">
-              <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <SearchIcon className="h-8 w-8 text-slate-400" />
+            <div className="flex flex-col items-center justify-center p-16 text-center bg-card rounded-xl border border-dashed">
+              <div className="h-16 w-16 bg-secondary rounded-full flex items-center justify-center mb-4">
+                <SearchIcon className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-800">No patients found</h3>
-              <p className="text-slate-500 mt-1 max-w-sm">
+              <h3 className="text-lg font-semibold text-foreground">No patients found</h3>
+              <p className="text-muted-foreground mt-1 max-w-sm">
                 Could not find any patients matching "{debouncedSearch}". Would you like to register them?
               </p>
               <Link href="/register" className="mt-6">

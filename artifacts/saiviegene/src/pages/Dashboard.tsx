@@ -114,7 +114,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-dvh bg-background flex flex-col relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-0 right-0 h-64" style={{ background: "radial-gradient(ellipse at 50% 0%, hsl(44 87% 55% / 0.07), transparent 60%)" }} />
+          <div className="absolute top-0 left-0 right-0 h-64" style={{ background: "radial-gradient(ellipse at 50% 0%, hsl(from var(--saivie-blush) h s l / 0.07), transparent 60%)" }} />
         </div>
         <div className="px-6 pt-14 flex items-center justify-between relative z-10">
           <div className="flex items-center gap-1.5">
@@ -125,7 +125,7 @@ export default function Dashboard() {
         </div>
         <div className="flex-1 flex flex-col items-center justify-center px-8 text-center relative z-10">
           <div className="w-24 h-24 rounded-3xl flex items-center justify-center mb-6 animate-float"
-            style={{ background: "hsl(44 87% 55% / 0.1)", border: "1px solid hsl(44 87% 55% / 0.2)" }}>
+            style={{ background: "hsl(from var(--saivie-blush) h s l / 0.1)", border: "1px solid hsl(from var(--saivie-blush) h s l / 0.2)" }}>
             <Dna className="w-12 h-12 text-primary" strokeWidth={1.5} />
           </div>
           <h2 className="text-2xl font-bold text-foreground mb-3">No Analysis Yet</h2>
@@ -133,7 +133,7 @@ export default function Dashboard() {
           <button
             onClick={() => navigate("/upload")}
             className="py-4 px-8 rounded-2xl font-semibold flex items-center gap-2"
-            style={{ background: "linear-gradient(135deg, hsl(44 87% 55%), hsl(38 90% 45%))", color: "hsl(225 35% 8%)" }}
+            style={{ background: "linear-gradient(135deg, var(--saivie-blush), var(--saivie-sage))", color: "var(--saivie-plum)" }}
           >
             <Upload className="w-5 h-5" />
             Upload Genome File
@@ -149,7 +149,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-dvh bg-background flex flex-col relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-64" style={{ background: "radial-gradient(ellipse at 50% 0%, hsl(44 87% 55% / 0.08), transparent 60%)" }} />
+        <div className="absolute top-0 left-0 right-0 h-64" style={{ background: "radial-gradient(ellipse at 50% 0%, hsl(from var(--saivie-blush) h s l / 0.08), transparent 60%)" }} />
       </div>
 
       <div className="px-6 pt-14 pb-4 flex items-center justify-between relative z-10">
@@ -189,9 +189,9 @@ export default function Dashboard() {
             { label: "Conditions", value: String(result.healthRisks.length + result.predispositions.length), sub: "screened" },
             { label: "Drugs", value: String(result.pharmacogenomics.length), sub: "mapped" },
           ].map((s) => (
-            <div key={s.label} className="rounded-2xl p-3 text-center" style={{ background: "hsl(225 35% 11%)", border: "1px solid hsl(225 25% 16%)" }}>
+            <div key={s.label} className="rounded-2xl p-3 text-center bg-card border border-border">
               <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
-              <p className="text-lg font-bold gold-text">{s.value}</p>
+              <p className="text-lg font-bold brand-text">{s.value}</p>
               <p className="text-xs text-muted-foreground">{s.sub}</p>
             </div>
           ))}
@@ -210,7 +210,7 @@ export default function Dashboard() {
                 transition={{ delay: i * 0.08 }}
                 onClick={() => navigate(`/section/${sec.key}`)}
                 className="w-full rounded-2xl p-4 flex items-center gap-4 text-left active:scale-[0.98] transition-transform card-glow"
-                style={{ background: "hsl(225 35% 11%)", border: "1px solid hsl(225 25% 16%)" }}
+                style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
               >
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ background: `${sec.color.slice(0, -1)} / 0.12)` }}>
@@ -241,7 +241,7 @@ export default function Dashboard() {
             onClick={handleDownload}
             disabled={downloading}
             className="w-full py-3.5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 border transition-colors"
-            style={{ borderColor: "hsl(44 87% 55% / 0.4)", color: "hsl(44 87% 60%)", background: "hsl(44 87% 55% / 0.06)" }}
+            style={{ borderColor: "hsl(from var(--saivie-blush) h s l / 0.4)", color: "var(--saivie-blush)", background: "hsl(from var(--saivie-blush) h s l / 0.06)" }}
           >
             {downloading ? (
               <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>

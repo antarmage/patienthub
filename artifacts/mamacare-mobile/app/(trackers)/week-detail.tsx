@@ -41,7 +41,7 @@ export default function WeekDetailScreen() {
           Shadows.card,
         ]}
       >
-        <View style={[styles.heroIcon, { backgroundColor: "rgba(107,78,255,0.15)" }]}>
+        <View style={[styles.heroIcon, { backgroundColor: COLORS.primaryTint }]}>
           <Feather
             name={weekData.babySizeIcon as keyof typeof Feather.glyphMap}
             size={48}

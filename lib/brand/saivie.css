@@ -1,0 +1,18 @@
+@import "./tokens.css";
+
+@theme inline {
+  --color-saivie-ivory: var(--saivie-ivory);
+  --color-saivie-sage: var(--saivie-sage);
+  --color-saivie-blush: var(--saivie-blush);
+  --color-saivie-plum: var(--saivie-plum);
+  --color-saivie-teal: var(--saivie-teal);
+  --color-saivie-rose: var(--saivie-rose);
+  --color-saivie-gold: var(--saivie-gold);
+  --color-saivie-page: var(--saivie-page);
+  --color-saivie-surface-muted: var(--saivie-surface-muted);
+  --color-saivie-surface-blush: var(--saivie-surface-blush);
+  --color-saivie-text: var(--saivie-text);
+  --color-saivie-primary-action: var(--saivie-primary-action);
+  --color-saivie-primary-action-text: var(--saivie-primary-action-text);
+  --color-saivie-border: var(--saivie-border);
+}

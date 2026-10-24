@@ -36,11 +36,11 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   const isWeb = Platform.OS === "web";
   const isIOS = Platform.OS === "ios";
 
-  const activeColor = isDark ? "#A78BFA" : COLORS.primary;
-  const inactiveColor = isDark ? "rgba(255,255,255,0.4)" : "rgba(28,28,30,0.4)";
-  const pillBg = isDark ? "rgba(30,27,50,0.82)" : "rgba(255,255,255,0.72)";
-  const pillBorder = isDark ? "rgba(167,139,250,0.18)" : "rgba(108,99,255,0.12)";
-  const activePillBg = isDark ? "rgba(167,139,250,0.2)" : "rgba(108,99,255,0.1)";
+  const activeColor = isDark ? COLORS.sage : COLORS.primary;
+  const inactiveColor = isDark ? "rgba(216, 226, 221, 0.6)" : COLORS.textMuted;
+  const pillBg = isDark ? "rgba(42, 35, 48, 0.82)" : "rgba(255, 255, 252, 0.78)";
+  const pillBorder = isDark ? "rgba(207, 226, 220, 0.18)" : COLORS.border;
+  const activePillBg = isDark ? "rgba(207, 226, 220, 0.16)" : COLORS.primaryTint;
 
   const bottomPad = isWeb ? 20 : Math.max(insets.bottom, 8) + 4;
 
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   shadowWrap: {
     width: "100%",
     borderRadius: 50,
-    shadowColor: "#6C63FF",
+    shadowColor: COLORS.plum,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.18,
     shadowRadius: 24,

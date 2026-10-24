@@ -83,11 +83,11 @@ export default function PostpartumLactationScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAFAFC" },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md,
-    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: COLORS.surfaceMuted,
   },
   backBtn: { padding: Spacing.sm, marginRight: Spacing.sm, marginLeft: -Spacing.sm },
   headerName: { flex: 1, fontSize: 17, fontWeight: "600", color: COLORS.textPrimary },
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   tipCard: {
     backgroundColor: "#FFFFFF", borderRadius: 14, padding: Spacing.md,
     flexDirection: "row", alignItems: "flex-start", gap: Spacing.md,
-    marginBottom: Spacing.sm, borderWidth: 1, borderColor: "#F3F4F6",
+    marginBottom: Spacing.sm, borderWidth: 1, borderColor: COLORS.surfaceMuted,
   },
   tipIcon: {
     width: 38, height: 38, borderRadius: 12, backgroundColor: "#EFF6FF",
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   tipDesc: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 18 },
   faqCard: {
     backgroundColor: "#FFFFFF", borderRadius: 14, padding: Spacing.md,
-    marginBottom: Spacing.sm, borderWidth: 1, borderColor: "#F3F4F6",
+    marginBottom: Spacing.sm, borderWidth: 1, borderColor: COLORS.surfaceMuted,
   },
   faqRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: Spacing.sm },
   faqQ: { fontSize: 14, fontWeight: "600", color: COLORS.textPrimary, flex: 1, lineHeight: 20 },

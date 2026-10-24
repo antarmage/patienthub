@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F5F5F7",
+    backgroundColor: COLORS.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: Spacing.lg,
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
   actionButton: {
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.sm,
-    backgroundColor: "#F5F3FF",
+    backgroundColor: COLORS.surfaceMuted,
     borderRadius: BorderRadius.full,
   },
   actionText: {

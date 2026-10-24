@@ -84,21 +84,21 @@ function ImportBody({ token, onSignOut, onDone }: { token: string; onSignOut: ()
         <DialogDescription>Paste the rate card (Service Code, Name, Classification, MRP, Net). Net is saved as the B2B price.</DialogDescription>
       </DialogHeader>
       <Textarea rows={7} value={text} onChange={(e) => { setText(e.target.value); setPreview(null); setDone(false); }} placeholder="Paste rows copied from your spreadsheet" data-testid="input-import-text" />
-      <label className="flex items-center gap-2 text-sm text-slate-600">
+      <label className="flex items-center gap-2 text-sm text-saivie-plum">
         <input type="checkbox" checked={updateMrp} onChange={(e) => { setUpdateMrp(e.target.checked); setPreview(null); }} />
         Also overwrite MRP of existing tests with the pasted MRP
       </label>
-      <p className="text-xs text-slate-500">{rows.length} row{rows.length === 1 ? "" : "s"} recognised. Tests are matched by name; new names are added as "Lab Test".</p>
+      <p className="text-xs text-saivie-plum">{rows.length} row{rows.length === 1 ? "" : "s"} recognised. Tests are matched by name; new names are added as "Lab Test".</p>
       {preview && (
-        <div className="max-h-56 overflow-auto rounded-md border border-slate-200 text-xs">
-          <p className="border-b bg-slate-50 px-3 py-2 font-semibold">{done ? "Imported: " : "Preview: "}{count("update")} to update, {count("create")} new, {count("skip")} skipped</p>
+        <div className="max-h-56 overflow-auto rounded-md border border-saivie-border text-xs">
+          <p className="border-b bg-saivie-surface-muted px-3 py-2 font-semibold">{done ? "Imported: " : "Preview: "}{count("update")} to update, {count("create")} new, {count("skip")} skipped</p>
           {preview.map((r, i) => (
             <div key={i} className="flex items-center justify-between gap-2 border-b px-3 py-1.5 last:border-0">
               <span className="truncate">{r.name}</span>
-              <span className="shrink-0 text-slate-500">
+              <span className="shrink-0 text-saivie-plum">
                 {r.action === "skip" ? r.reason : `MRP ${r.mrp}${r.action === "update" && r.oldMrp !== r.mrp ? ` (now ${r.oldMrp})` : ""} · B2B ${r.b2b}`}
               </span>
-              <Badge className={`border-0 ${r.action === "create" ? "bg-emerald-100 text-emerald-700" : r.action === "update" ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-500"}`}>{r.action}</Badge>
+              <Badge className={`border-0 ${r.action === "create" ? "bg-emerald-100 text-emerald-700" : r.action === "update" ? "bg-saivie-sage text-saivie-teal" : "bg-saivie-sage text-saivie-plum"}`}>{r.action}</Badge>
             </div>
           ))}
         </div>

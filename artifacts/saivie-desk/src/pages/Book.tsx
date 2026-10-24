@@ -72,14 +72,14 @@ export default function Book() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50 flex flex-col">
-      <header className="bg-white border-b px-6 py-4 flex items-center sticky top-0 z-10">
+    <div className="min-h-[100dvh] bg-background flex flex-col">
+      <header className="bg-card border-b px-6 py-4 flex items-center sticky top-0 z-10">
         <Link href={patientId ? `/patient/${patientId}` : "/search"}>
           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full mr-4" data-testid="button-back">
-            <ArrowLeft className="h-4 w-4 text-slate-600" />
+            <ArrowLeft className="h-4 w-4 text-muted-foreground" />
           </Button>
         </Link>
-        <h1 className="text-xl font-bold text-slate-800">Book Appointment</h1>
+        <h1 className="text-xl font-bold text-foreground">Book Appointment</h1>
       </header>
 
       <main className="flex-1 max-w-xl w-full mx-auto p-6">
@@ -90,10 +90,10 @@ export default function Book() {
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-primary">Patient</p>
-                <h2 className="text-xl font-bold text-slate-800">{patient.name}</h2>
+                <h2 className="text-xl font-bold text-foreground">{patient.name}</h2>
               </div>
               <div className="text-right">
-                <span className="text-xs bg-white px-2 py-1 rounded shadow-sm font-medium text-slate-600 border border-slate-100">
+                <span className="text-xs bg-card px-2 py-1 rounded shadow-sm font-medium text-muted-foreground border border-border">
                   ID: #{patient.id}
                 </span>
               </div>
@@ -105,7 +105,7 @@ export default function Book() {
           </div>
         )}
 
-        <Card className="border-slate-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardHeader>
             <CardTitle>Appointment Details</CardTitle>
             <CardDescription>Select the date, time, and service required.</CardDescription>

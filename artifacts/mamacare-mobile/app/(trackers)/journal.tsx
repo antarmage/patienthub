@@ -350,7 +350,7 @@ export default function JournalScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFC",
+    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: "row",
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: COLORS.surfaceMuted,
   },
   backButton: {
     width: 40,
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
     gap: Spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: COLORS.surfaceMuted,
   },
   tab: {
     paddingVertical: Spacing.sm,
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "transparent",
   },
   tabActive: {
-    borderBottomColor: "#6C63FF",
+    borderBottomColor: COLORS.primary,
   },
   tabText: {
     fontSize: 14,
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   tabTextActive: {
-    color: "#6C63FF",
+    color: COLORS.primary,
     fontWeight: "600",
   },
   scrollView: {
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: Spacing.md,
     borderWidth: 1.5,
-    borderColor: "#F3F4F6",
+    borderColor: COLORS.surfaceMuted,
     gap: 4,
   },
   moodEmoji: {
@@ -475,24 +475,24 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.border,
   },
   chipSelected: {
-    backgroundColor: "#EDE9FE",
-    borderColor: "#6C63FF",
+    backgroundColor: COLORS.primaryLight,
+    borderColor: COLORS.primary,
   },
   chipText: {
     fontSize: 13,
     color: COLORS.textSecondary,
   },
   chipTextSelected: {
-    color: "#6C63FF",
+    color: COLORS.primary,
     fontWeight: "600",
   },
   notesInput: {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.border,
     borderRadius: 16,
     padding: Spacing.lg,
     fontSize: 14,
@@ -507,18 +507,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#6C63FF",
+    backgroundColor: COLORS.primary,
     borderRadius: BorderRadius.full,
     paddingVertical: 16,
     gap: Spacing.sm,
-    shadowColor: "#6C63FF",
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 4,
   },
   saveButtonDisabled: {
-    backgroundColor: "#C4C0F0",
+    backgroundColor: COLORS.primaryDisabled,
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -565,8 +565,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
-    shadowColor: "#1F2937",
+    borderColor: COLORS.surfaceMuted,
+    shadowColor: COLORS.plum,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
@@ -610,7 +610,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   historyChip: {
-    backgroundColor: "#F3F4F6",
+    backgroundColor: COLORS.surfaceMuted,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,

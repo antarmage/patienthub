@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "../../../lib/brand/saivie.css";
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
@@ -66,7 +67,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* LIGHT MODE — Clinical teal/blue theme */
+/* Saivie palette; clinical chart and warning colours remain distinct. */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -74,35 +75,35 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 210 40% 98%;
-  --foreground: 222 47% 11%;
-  --border: 214 32% 91%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --card-border: 214 32% 91%;
-  --sidebar: 210 40% 96%;
-  --sidebar-foreground: 222 47% 11%;
-  --sidebar-border: 214 32% 88%;
-  --sidebar-primary: 199 89% 48%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 210 40% 94%;
-  --sidebar-accent-foreground: 222 47% 11%;
-  --sidebar-ring: 199 89% 48%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --popover-border: 214 32% 91%;
-  --primary: 199 89% 48%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 210 40% 94%;
-  --secondary-foreground: 222 47% 20%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 20% 50%;
-  --accent: 199 89% 94%;
-  --accent-foreground: 199 89% 30%;
+  --background: from var(--saivie-ivory) h s l;
+  --foreground: from var(--saivie-plum) h s l;
+  --border: from var(--saivie-border) h s l;
+  --card: from var(--saivie-ivory) h s l;
+  --card-foreground: var(--foreground);
+  --card-border: var(--border);
+  --sidebar: from var(--saivie-surface-muted) h s l;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-primary: from var(--saivie-teal) h s l;
+  --sidebar-primary-foreground: from var(--saivie-ivory) h s l;
+  --sidebar-accent: from var(--saivie-sage) h s l;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-ring: var(--sidebar-primary);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --popover-border: var(--border);
+  --primary: from var(--saivie-teal) h s l;
+  --primary-foreground: from var(--saivie-ivory) h s l;
+  --secondary: from var(--saivie-sage) h s l;
+  --secondary-foreground: var(--foreground);
+  --muted: from var(--saivie-surface-muted) h s l;
+  --muted-foreground: from color-mix(in srgb, var(--saivie-plum) 80%, var(--saivie-ivory)) h s l;
+  --accent: from var(--saivie-surface-blush) h s l;
+  --accent-foreground: from var(--saivie-rose) h s l;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --input: 214 32% 88%;
-  --ring: 199 89% 48%;
+  --input: var(--border);
+  --ring: var(--primary);
   --chart-1: 199 89% 48%;
   --chart-2: 160 60% 45%;
   --chart-3: 35 91% 55%;
@@ -139,6 +140,24 @@
   --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --destructive-border: hsl(var(--destructive));
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+.dark {
+  --background: from color-mix(in srgb, var(--saivie-plum) 45%, #111) h s l;
+  --foreground: from var(--saivie-ivory) h s l;
+  --border: from color-mix(in srgb, var(--saivie-plum) 80%, var(--saivie-sage)) h s l;
+  --card: from color-mix(in srgb, var(--saivie-plum) 65%, #111) h s l;
+  --sidebar: var(--card);
+  --sidebar-primary: from var(--saivie-sage) h s l;
+  --sidebar-primary-foreground: from var(--saivie-plum) h s l;
+  --sidebar-accent: from var(--saivie-plum) h s l;
+  --primary: from var(--saivie-sage) h s l;
+  --primary-foreground: from var(--saivie-plum) h s l;
+  --secondary: from var(--saivie-plum) h s l;
+  --muted: var(--card);
+  --muted-foreground: from color-mix(in srgb, var(--saivie-ivory) 70%, var(--saivie-plum)) h s l;
+  --accent: from var(--saivie-plum) h s l;
+  --accent-foreground: from var(--saivie-blush) h s l;
 }
 
 @layer base {

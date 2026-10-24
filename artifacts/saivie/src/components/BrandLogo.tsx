@@ -36,7 +36,7 @@ export function BrandLogo({ fallback = "S", className = "w-8 h-8" }: BrandLogoPr
     return <img src={logoUrl} alt="Saivie" className={`${className} rounded-lg object-contain`} />;
   }
   return (
-    <div className={`${className} rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-serif font-bold`}>
+    <div className={`${className} rounded-lg bg-gradient-to-br from-saivie-teal to-saivie-teal flex items-center justify-center text-white font-serif font-bold`}>
       {fallback}
     </div>
   );

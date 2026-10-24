@@ -66,7 +66,7 @@ export default function Section() {
     })();
   }, []);
 
-  const meta = META[key ?? ""] ?? { label: key, Icon: Dna, color: "hsl(44 87% 55%)" };
+  const meta = META[key ?? ""] ?? { label: key, Icon: Dna, color: "var(--saivie-blush)" };
   const Icon = meta.Icon;
 
   const items: unknown[] = result ? (result[key as keyof GenomeResult] as unknown[] ?? []) : [];
@@ -106,7 +106,7 @@ export default function Section() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.06 }}
                 className="rounded-2xl p-4"
-                style={{ background: "hsl(225 35% 11%)", border: "1px solid hsl(225 25% 16%)" }}
+                style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <p className="font-semibold text-foreground text-sm flex-1">

@@ -108,10 +108,10 @@ export function ReferralsCard({ patients, request, onRequestHandled }: {
 
   return (
     <>
-      <Card className="border-slate-200 shadow-sm" data-testid="card-referrals">
+      <Card className="border-saivie-border shadow-sm" data-testid="card-referrals">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
-            <ScanLine className="h-5 w-5 text-indigo-500" /> Scans awaiting report
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-saivie-plum">
+            <ScanLine className="h-5 w-5 text-saivie-teal" /> Scans awaiting report
           </CardTitle>
           <Button size="sm" variant="outline" className="h-8" onClick={() => { reset(); setOpen(true); }} data-testid="btn-new-referral">
             Refer for scan
@@ -121,21 +121,21 @@ export function ReferralsCard({ patients, request, onRequestHandled }: {
           {pending.slice(0, 6).map((r) => (
             <div key={r.id} className="flex items-center justify-between gap-3 px-5 py-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-800">{r.patientName}</p>
-                <p className="truncate text-xs text-slate-500">{r.serviceName} · {r.partnerName} · {r.referredAt}</p>
+                <p className="truncate text-sm font-semibold text-saivie-plum">{r.patientName}</p>
+                <p className="truncate text-xs text-saivie-plum">{r.serviceName} · {r.partnerName} · {r.referredAt}</p>
               </div>
               <div className="flex shrink-0 gap-1">
                 <Button size="sm" className="h-8 bg-emerald-600 text-xs hover:bg-emerald-700" onClick={() => setStatus.mutate({ id: r.id, status: "report_received" })} data-testid={`btn-report-received-${r.id}`}>
                   <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Report received
                 </Button>
-                <Button size="sm" variant="ghost" className="h-8 text-xs text-slate-500" onClick={() => { if (window.confirm("Cancel this referral?")) setStatus.mutate({ id: r.id, status: "cancelled" }); }}>
+                <Button size="sm" variant="ghost" className="h-8 text-xs text-saivie-plum" onClick={() => { if (window.confirm("Cancel this referral?")) setStatus.mutate({ id: r.id, status: "cancelled" }); }}>
                   Cancel
                 </Button>
               </div>
             </div>
           ))}
-          {pending.length === 0 && <p className="px-5 py-6 text-center text-sm text-slate-400">No scans waiting for a report</p>}
-          {pending.length > 6 && <p className="px-5 py-2 text-center text-xs text-slate-400">+{pending.length - 6} more</p>}
+          {pending.length === 0 && <p className="px-5 py-6 text-center text-sm text-saivie-plum">No scans waiting for a report</p>}
+          {pending.length > 6 && <p className="px-5 py-2 text-center text-xs text-saivie-plum">+{pending.length - 6} more</p>}
         </CardContent>
       </Card>
 

@@ -165,8 +165,8 @@ export default function PostpartumWeightLossScreen() {
                 <ThemedText style={[styles.statValue, { color: "#22C55E" }]}>{lost.toFixed(1)} kg</ThemedText>
                 <ThemedText style={styles.statLabel}>Lost so far</ThemedText>
               </View>
-              <View style={[styles.statCard, { borderColor: "#EDE9FE" }]}>
-                <ThemedText style={[styles.statValue, { color: "#6C63FF" }]}>{remaining.toFixed(1)} kg</ThemedText>
+              <View style={[styles.statCard, { borderColor: COLORS.primaryLight }]}>
+                <ThemedText style={[styles.statValue, { color: COLORS.primary }]}>{remaining.toFixed(1)} kg</ThemedText>
                 <ThemedText style={styles.statLabel}>To go</ThemedText>
               </View>
             </View>
@@ -214,11 +214,11 @@ export default function PostpartumWeightLossScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAFAFC" },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md,
-    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: COLORS.surfaceMuted,
   },
   backBtn: { padding: Spacing.sm, marginRight: Spacing.sm, marginLeft: -Spacing.sm },
   headerName: { flex: 1, fontSize: 17, fontWeight: "600", color: COLORS.textPrimary },
@@ -231,12 +231,12 @@ const styles = StyleSheet.create({
   guideText: { fontSize: 13, color: "#065F46", flex: 1, lineHeight: 18 },
   setupCard: {
     backgroundColor: "#FFFFFF", borderRadius: 20, padding: Spacing.xl,
-    borderWidth: 1, borderColor: "#F3F4F6",
+    borderWidth: 1, borderColor: COLORS.surfaceMuted,
   },
   setupTitle: { fontSize: 17, fontWeight: "700", color: COLORS.textPrimary, marginBottom: Spacing.lg },
   setupLabel: { fontSize: 14, fontWeight: "600", color: COLORS.textPrimary, marginBottom: Spacing.sm },
   setupInput: {
-    borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 12,
+    borderWidth: 1, borderColor: COLORS.border, borderRadius: 12,
     paddingHorizontal: Spacing.lg, paddingVertical: 12,
     fontSize: 18, color: COLORS.textPrimary, marginBottom: Spacing.lg,
   },
@@ -247,13 +247,13 @@ const styles = StyleSheet.create({
   setupBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
   progressCard: {
     backgroundColor: "#FFFFFF", borderRadius: 16, padding: Spacing.lg,
-    marginBottom: Spacing.md, borderWidth: 1, borderColor: "#F3F4F6",
+    marginBottom: Spacing.md, borderWidth: 1, borderColor: COLORS.surfaceMuted,
   },
   progressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md },
   progressLabel: { fontSize: 14, fontWeight: "600", color: COLORS.textPrimary },
   progressPct: { fontSize: 24, fontWeight: "700", color: "#22C55E" },
   progressTrack: {
-    height: 12, backgroundColor: "#F3F4F6", borderRadius: 6,
+    height: 12, backgroundColor: COLORS.surfaceMuted, borderRadius: 6,
     overflow: "hidden", marginBottom: Spacing.sm,
   },
   progressFill: { height: 12, backgroundColor: "#22C55E", borderRadius: 6 },
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.xl },
   statCard: {
     flex: 1, backgroundColor: "#FFFFFF", borderRadius: 14, padding: Spacing.md,
-    alignItems: "center", borderWidth: 1, borderColor: "#F3F4F6",
+    alignItems: "center", borderWidth: 1, borderColor: COLORS.surfaceMuted,
   },
   statValue: { fontSize: 16, fontWeight: "700", color: COLORS.textPrimary },
   statLabel: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
@@ -276,12 +276,12 @@ const styles = StyleSheet.create({
   addLogText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF" },
   logCard: {
     backgroundColor: "#FFFFFF", borderRadius: 14, padding: Spacing.md,
-    borderWidth: 1, borderColor: "#F3F4F6", marginBottom: Spacing.xl,
+    borderWidth: 1, borderColor: COLORS.surfaceMuted, marginBottom: Spacing.xl,
   },
   logTitle: { fontSize: 14, fontWeight: "600", color: COLORS.textPrimary, marginBottom: Spacing.sm },
   logRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
   logInput: {
-    flex: 1, borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10,
+    flex: 1, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10,
     paddingHorizontal: Spacing.md, paddingVertical: 10,
     fontSize: 17, color: COLORS.textPrimary,
   },
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   historyTitle: { fontSize: 14, fontWeight: "700", color: COLORS.textPrimary, marginBottom: Spacing.sm },
   historyRow: {
     flexDirection: "row", justifyContent: "space-between",
-    paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: COLORS.surfaceMuted,
   },
   historyDate: { fontSize: 13, color: COLORS.textSecondary },
   historyWeight: { fontSize: 13, fontWeight: "600", color: COLORS.textPrimary },

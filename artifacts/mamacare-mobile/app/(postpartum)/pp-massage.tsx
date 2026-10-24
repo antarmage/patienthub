@@ -10,7 +10,7 @@ const TIMING = [
   { week: "Weeks 1–2", icon: "x-circle" as const, iconColor: "#EF4444", bg: "#FEF2F2", label: "Avoid massage", desc: "Your body is in early healing. Avoid massage until wounds are closed and bleeding has significantly reduced." },
   { week: "Weeks 3–4", icon: "clock" as const, iconColor: "#F59E0B", bg: "#FFFBEB", label: "Light touch only", desc: "Gentle foot and leg massage is safe. Avoid the abdomen, C-section scar, and perineum area." },
   { week: "Weeks 5–6", icon: "check-circle" as const, iconColor: "#10B981", bg: "#ECFDF5", label: "Gentle body massage", desc: "Shoulders, upper back, and neck massage is beneficial. Get clearance from your doctor before abdominal massage." },
-  { week: "6+ Weeks", icon: "star" as const, iconColor: "#6C63FF", bg: "#F5F3FF", label: "Full body massage", desc: "Full postpartum massage is generally safe. Include abdominal scar massage for C-section moms (once healed)." },
+  { week: "6+ Weeks", icon: "star" as const, iconColor: COLORS.primary, bg: COLORS.surfaceMuted, label: "Full body massage", desc: "Full postpartum massage is generally safe. Include abdominal scar massage for C-section moms (once healed)." },
 ];
 
 const TIPS = [
@@ -79,11 +79,11 @@ export default function PostpartumMassageScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAFAFC" },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md,
-    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: COLORS.surfaceMuted,
   },
   backBtn: { padding: Spacing.sm, marginRight: Spacing.sm, marginLeft: -Spacing.sm },
   headerName: { flex: 1, fontSize: 17, fontWeight: "600", color: COLORS.textPrimary },
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   tipCard: {
     backgroundColor: "#FFFFFF", borderRadius: 14, padding: Spacing.md,
     flexDirection: "row", alignItems: "flex-start", gap: Spacing.md,
-    marginBottom: Spacing.sm, borderWidth: 1, borderColor: "#F3F4F6",
+    marginBottom: Spacing.sm, borderWidth: 1, borderColor: COLORS.surfaceMuted,
   },
   tipIcon: {
     width: 38, height: 38, borderRadius: 12, backgroundColor: "#FFF1F2",

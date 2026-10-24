@@ -59,7 +59,7 @@ export default function Paywall() {
   return (
     <div className="min-h-dvh bg-background flex flex-col relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-96" style={{ background: "radial-gradient(ellipse at 50% -10%, hsl(44 87% 55% / 0.12), transparent 65%)" }} />
+        <div className="absolute top-0 left-0 right-0 h-96" style={{ background: "radial-gradient(ellipse at 50% -10%, hsl(from var(--saivie-blush) h s l / 0.12), transparent 65%)" }} />
       </div>
 
       <div className="px-6 pt-14 pb-2 flex items-center justify-between relative z-10">
@@ -78,7 +78,7 @@ export default function Paywall() {
           <span className="text-xs font-semibold tracking-wider text-primary uppercase">Premium Access</span>
         </div>
         <h1 className="text-3xl font-bold text-foreground mb-1">Unlock Your</h1>
-        <h1 className="text-3xl font-bold gold-text mb-6">Genetic Blueprint</h1>
+        <h1 className="text-3xl font-bold brand-text mb-6">Genetic Blueprint</h1>
 
         <div className="flex gap-3 mb-6">
           {PLANS.map((plan) => (
@@ -87,12 +87,12 @@ export default function Paywall() {
               onClick={() => setSelected(plan.id)}
               className="flex-1 rounded-2xl p-4 border-2 transition-all duration-200 text-left relative overflow-hidden"
               style={{
-                borderColor: selected === plan.id ? "hsl(44 87% 55%)" : "hsl(225 25% 18%)",
-                background: selected === plan.id ? "hsl(44 87% 55% / 0.08)" : "hsl(225 35% 11%)",
+                borderColor: selected === plan.id ? "var(--saivie-blush)" : "hsl(var(--border))",
+                background: selected === plan.id ? "hsl(from var(--saivie-blush) h s l / 0.08)" : "hsl(var(--card))",
               }}
             >
               {plan.badge && (
-                <div className="absolute top-2 right-2 text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "linear-gradient(135deg, hsl(44 87% 55%), hsl(38 90% 45%))", color: "hsl(225 35% 8%)" }}>
+                <div className="absolute top-2 right-2 text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "linear-gradient(135deg, var(--saivie-blush), var(--saivie-sage))", color: "var(--saivie-plum)" }}>
                   {plan.badge}
                 </div>
               )}
@@ -103,7 +103,7 @@ export default function Paywall() {
               </div>
               <div className="text-xs text-muted-foreground mt-1">{plan.priceNote}</div>
               {selected === plan.id && (
-                <div className="absolute top-3 left-3 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "hsl(44 87% 55%)" }}>
+                <div className="absolute top-3 left-3 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "var(--saivie-blush)" }}>
                   <Check className="w-2.5 h-2.5 text-background" strokeWidth={3} />
                 </div>
               )}
@@ -120,7 +120,7 @@ export default function Paywall() {
               transition={{ delay: i * 0.05 }}
               className="flex items-start gap-3"
             >
-              <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "hsl(44 87% 55% / 0.15)" }}>
+              <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "hsl(from var(--saivie-blush) h s l / 0.15)" }}>
                 <Check className="w-3 h-3 text-primary" strokeWidth={2.5} />
               </div>
               <span className="text-sm text-foreground/80">{f}</span>
@@ -134,7 +134,7 @@ export default function Paywall() {
           onClick={handleSubscribe}
           disabled={loading}
           className="w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 mb-3 active:scale-[0.98] transition-all disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, hsl(44 87% 55%), hsl(38 90% 45%))", color: "hsl(225 35% 8%)" }}
+          style={{ background: "linear-gradient(135deg, var(--saivie-blush), var(--saivie-sage))", color: "var(--saivie-plum)" }}
         >
           {loading ? (
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>

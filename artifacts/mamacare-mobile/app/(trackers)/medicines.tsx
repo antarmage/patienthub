@@ -316,7 +316,7 @@ export default function MedicinesScreen() {
           <ThemedText
             type="small"
             style={{
-              color: frequency === option ? COLORS.white : COLORS.textSecondary,
+              color: frequency === option ? theme.buttonText : COLORS.textSecondary,
               fontWeight: "600",
             }}
           >
@@ -357,7 +357,7 @@ export default function MedicinesScreen() {
         style={[styles.fab, { backgroundColor: theme.primary }]}
         onPress={() => setShowModal(true)}
       >
-        <Feather name="plus" size={24} color={COLORS.white} />
+        <Feather name="plus" size={24} color={theme.buttonText} />
       </Pressable>
 
       <Modal

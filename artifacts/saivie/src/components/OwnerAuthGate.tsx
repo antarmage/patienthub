@@ -88,7 +88,7 @@ export function OwnerAuthGate({ children }: OwnerAuthGateProps) {
   if (step === "authenticated" && token) return <>{children({ token, signOut })}</>;
 
   return (
-    <Card className="mx-auto max-w-md border-slate-200 shadow-sm" data-testid="owner-auth-gate">
+    <Card className="mx-auto max-w-md border-saivie-border shadow-sm" data-testid="owner-auth-gate">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base"><Shield className="h-4 w-4 text-emerald-700" />Owner sign-in</CardTitle>
       </CardHeader>
@@ -103,7 +103,7 @@ export function OwnerAuthGate({ children }: OwnerAuthGateProps) {
           </>
         ) : (
           <>
-            <p className="text-sm text-slate-600">Enter the code sent to {otpPhone}.</p>
+            <p className="text-sm text-saivie-plum">Enter the code sent to {otpPhone}.</p>
             <Input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="6-digit code" inputMode="numeric" maxLength={6} onKeyDown={(e) => e.key === "Enter" && verifyOtp()} />
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setStep("credentials")}>Back</Button>

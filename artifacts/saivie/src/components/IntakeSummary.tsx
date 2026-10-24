@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AlertTriangle, Eye, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { getPrintBrandStyles } from "@/lib/brand";
 
 type WeightLog = { weight: number; unit: string; date: string; week: number | null };
 type BpLog = { systolic: number; diastolic: number; pulse: number | null; date: string };
@@ -148,9 +149,15 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], ch
     if (text(preg.weeksPregnant)) metrics.push({ label: "Gestation", value: `${preg.weeksPregnant} wks`, hint: text(preg.dueDate) ? `EDD ${fmtDate(preg.dueDate)}` : undefined });
     const g = num(preg.total);
     if (g !== null && (g > 0 || text(preg.currentStatus))) {
-        const p = (num(preg.vaginal) || 0) + (num(preg.cesarean) || 0);
-        const a = (num(preg.miscarriages) || 0) + (num(preg.terminations) || 0);
-        metrics.push({ label: "Obstetric", value: `G${g} P${p} A${a}`, hint: num(preg.cesarean) ? `${preg.cesarean} C-section` : undefined });
+        const vaginal = num(preg.vaginal), cesarean = num(preg.cesarean);
+        const miscarriages = num(preg.miscarriages), terminations = num(preg.terminations);
+        const p = vaginal !== null && cesarean !== null ? vaginal + cesarean : null;
+        const a = miscarriages !== null && terminations !== null ? miscarriages + terminations : null;
+        metrics.push({
+            label: "Obstetric",
+            value: [`G${g}`, p !== null ? `P${p}` : "", a !== null ? `A${a}` : ""].filter(Boolean).join(" "),
+            hint: p === null || a === null ? "Birth/loss history not fully reported" : num(preg.cesarean) ? `${preg.cesarean} C-section` : undefined,
+        });
     }
     if (text(pain.severity)) metrics.push({ label: "Pain", value: text(pain.severity), tone: pain.severity === "Severe" ? "alert" : pain.severity === "Moderate" ? "watch" : undefined });
 
@@ -179,9 +186,9 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], ch
     const highRisk = conds.filter((c) => ["Hypertension", "Diabetes", "Gestational diabetes", "Heart disease", "Blood coagulation disorder", "Epilepsy", "Postpartum depression"].includes(c));
     if (highRisk.length) insights.push({ level: "watch", text: `Relevant conditions: ${highRisk.join(", ")}.` });
 
-    const row = (label: string, value: unknown): [string, string] | null => {
+    const row = (label: string, value: unknown, includeZero = false): [string, string] | null => {
         const v = Array.isArray(value) ? list(value).join(", ") : text(value);
-        return v && v !== "0" ? [label, v] : null;
+        return v && (includeZero || v !== "0") ? [label, v] : null;
     };
     const section = (title: string, rows: ([string, string] | null)[]): Section => ({ title, rows: rows.filter(Boolean) as [string, string][] });
     const sections = [
@@ -200,16 +207,16 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], ch
         ]),
         section("Obstetric history", [
             row("Currently pregnant", preg.currentStatus), row("Weeks pregnant", preg.weeksPregnant), row("Due date", preg.dueDate && fmtDate(preg.dueDate)),
-            row("Pregnancies", preg.total), row("Vaginal births", preg.vaginal), row("C-sections", preg.cesarean), row("Miscarriages", preg.miscarriages),
-            row("Terminations", preg.terminations), row("Premature births", preg.premature), row("Notes", preg.details),
+            row("Pregnancies", preg.total, true), row("Vaginal births", preg.vaginal, true), row("C-sections", preg.cesarean, true), row("Miscarriages", preg.miscarriages, true),
+            row("Terminations", preg.terminations, true), row("Premature births", preg.premature, true), row("Notes", preg.details),
         ]),
         section("Gynecological history", [
             row("Sexually active", gyn.sexuallyActive), row("Age at first encounter", gyn.firstEncounterAge), row("Partners", gyn.partnerCount),
             row("Last Pap smear", gyn.lastPap && (Number.isNaN(new Date(gyn.lastPap).getTime()) ? gyn.lastPap : fmtDate(gyn.lastPap))), row("HPV vaccine", gyn.hpvVaccine), row("Contraception", gyn.birthControl), row("Concerns", gyn.concerns), row("Notes", gyn.details),
         ]),
         section("Medical history", [
-            row("Conditions", history.medical), row("Surgeries", history.surgical), row("Medications", history.drug),
-            row("Allergies", allergies.length ? allergies : "None reported"), row("Family history", history.family ?? health.familyHistory),
+            row("Conditions", history.medical ?? health.conditions), row("Surgeries", history.surgical ?? health.surgeries), row("Medications", history.drug ?? health.medications),
+            row("Allergies", allergies.length ? allergies : text(health.allergies) || "Not reported"), row("Family history", history.family ?? health.familyHistory),
         ]),
         section("Lifestyle & screening", [
             row("Smoking", life.smoking), row("Alcohol", life.alcohol), row("Exercise", life.exercise), row("Relationship", life.relationship),
@@ -285,11 +292,11 @@ const sectionIcon = (title: string) => {
 };
 
 function printSummary(s: Summary) {
-    const toneColor = (t?: string) => (t === "alert" ? "#b4234a" : t === "watch" ? "#a16207" : "#2f3b37");
+    const toneColor = (t?: string) => (t === "alert" ? "#b4234a" : t === "watch" ? "#a16207" : "var(--saivie-plum)");
     const levelStyle: Record<Insight["level"], string> = {
         alert: "background:#fdecef;border-color:#f3c0cc;color:#8f1d3d",
         watch: "background:#fff8e6;border-color:#f3dca0;color:#7a5410",
-        info: "background:#eef5f2;border-color:#cfe2da;color:#355a4f",
+        info: "background:var(--saivie-surface-muted);border-color:var(--saivie-border);color:var(--saivie-teal)",
     };
     const table = (head: string[], rows: string[][]) =>
         `<table class="log"><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
@@ -318,61 +325,62 @@ function printSummary(s: Summary) {
     }).join("");
 
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Patient Clinical Summary – ${esc(s.name)}</title><style>
+${getPrintBrandStyles()}
 *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#2f3b37;margin:0;padding:24px;font-size:11.5px;background:#fbf8f6}
+body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--saivie-plum);margin:0;padding:24px;font-size:11.5px;background:var(--saivie-ivory)}
 .page{max-width:820px;margin:0 auto;position:relative}
 .serif{font-family:Georgia,"Times New Roman",serif}
 .band{border-radius:14px;padding:14px 16px;margin-bottom:12px;break-inside:avoid}
-.band.rose{background:#f6e6ec}.band.sage{background:#e5eeea}
+.band.rose{background:var(--saivie-surface-blush)}.band.sage{background:var(--saivie-sage)}
 .patient{display:grid;grid-template-columns:1.6fr 1fr 1.2fr 1fr;align-items:center}
-.patient>div{padding:0 14px;border-left:1px solid #e4c9d4}.patient>div:first-child{border-left:0;padding-left:0}
+.patient>div{padding:0 14px;border-left:1px solid var(--saivie-border)}.patient>div:first-child{border-left:0;padding-left:0}
 .field{display:flex;gap:10px;align-items:flex-start}
-.fico{width:18px;height:18px;color:#6b7f79;flex:none;margin-top:1px}.fico svg{width:18px;height:18px}
-.fl{font-size:10px;color:#5f6f6a}.fv{font-size:12.5px;color:#2f3b37;font-weight:600;margin-top:2px}
+.fico{width:18px;height:18px;color:var(--saivie-teal);flex:none;margin-top:1px}.fico svg{width:18px;height:18px}
+.fl{font-size:10px;color:var(--saivie-plum)}.fv{font-size:12.5px;color:var(--saivie-plum);font-weight:600;margin-top:2px}
 .who{display:flex;gap:12px;align-items:center}
-.avatar{width:46px;height:46px;border-radius:50%;background:#e8c3d2;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}.avatar svg{width:26px;height:26px}
-.who .name{font-family:Georgia,"Times New Roman",serif;font-size:16px;color:#2f3b37}
-.who .det{font-size:10px;color:#5f6f6a;margin-top:2px}
+.avatar{width:46px;height:46px;border-radius:50%;background:var(--saivie-rose);color:#fff;display:flex;align-items:center;justify-content:center;flex:none}.avatar svg{width:26px;height:26px}
+.who .name{font-family:Georgia,"Times New Roman",serif;font-size:16px;color:var(--saivie-plum)}
+.who .det{font-size:10px;color:var(--saivie-plum);margin-top:2px}
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 0}
-.metric{display:flex;gap:10px;align-items:center;padding:6px 14px;border-left:1px solid #c9d8d2}
+.metric{display:flex;gap:10px;align-items:center;padding:6px 14px;border-left:1px solid var(--saivie-border)}
 .metric:nth-child(4n+1){border-left:0;padding-left:0}
-.mico{width:38px;height:38px;border-radius:50%;background:#5f8478;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}.mico svg{width:20px;height:20px}
-.ml{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#3c5b52;font-weight:600}
-.mv{font-size:15px;font-weight:600;margin-top:2px}.mh{font-size:9.5px;color:#5f6f6a;margin-top:1px}
-.alerts{background:#fff;border:1px solid #f0d9e1}
-.alerts h3,.reason h3{margin:0 0 8px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#9b4f73;font-weight:700;display:flex;align-items:center;gap:8px}
+.mico{width:38px;height:38px;border-radius:50%;background:var(--saivie-teal);color:#fff;display:flex;align-items:center;justify-content:center;flex:none}.mico svg{width:20px;height:20px}
+.ml{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--saivie-teal);font-weight:600}
+.mv{font-size:15px;font-weight:600;margin-top:2px}.mh{font-size:9.5px;color:var(--saivie-plum);margin-top:1px}
+.alerts{background:#fff;border:1px solid var(--saivie-border)}
+.alerts h3,.reason h3{margin:0 0 8px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--saivie-rose);font-weight:700;display:flex;align-items:center;gap:8px}
 .alerts h3 svg,.reason h3 svg{width:15px;height:15px}
 .insight{border:1px solid;border-radius:8px;padding:6px 10px;margin-bottom:5px;font-weight:600}
 .reason .grid2{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px}
-.chips span{display:inline-block;background:#fff;color:#7c3f5e;border:1px solid #ecc7d7;border-radius:999px;padding:3px 10px;margin:0 4px 4px 0;font-weight:600}
-.complaint{margin:6px 0 0;color:#2f3b37}
+.chips span{display:inline-block;background:#fff;color:var(--saivie-rose);border:1px solid var(--saivie-blush);border-radius:999px;padding:3px 10px;margin:0 4px 4px 0;font-weight:600}
+.complaint{margin:6px 0 0;color:var(--saivie-plum)}
 .cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
 .card{background:#fff;border-radius:14px;overflow:hidden;break-inside:avoid;border:1px solid}
-.card.rose{border-color:#f0d9e1}.card.sage{border-color:#d4e3dc}
+.card.rose{border-color:var(--saivie-border)}.card.sage{border-color:var(--saivie-border)}
 .card.wide{grid-column:1/-1}
 .card header{display:flex;align-items:center;gap:10px;padding:9px 14px}
-.card.rose header{background:#f6e6ec}.card.sage header{background:#e5eeea}
+.card.rose header{background:var(--saivie-surface-blush)}.card.sage header{background:var(--saivie-sage)}
 .card .ico{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;flex:none}
-.card.rose .ico{background:#b5799a}.card.sage .ico{background:#5f8478}
+.card.rose .ico{background:var(--saivie-rose)}.card.sage .ico{background:var(--saivie-teal)}
 .card .ico svg{width:17px;height:17px}
 .card h3{margin:0;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:700}
-.card.rose h3{color:#9b4f73}.card.sage h3{color:#3c5b52}
+.card.rose h3{color:var(--saivie-rose)}.card.sage h3{color:var(--saivie-teal)}
 .card .body{padding:8px 14px 10px}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
 table{width:100%;border-collapse:collapse}
-.kv td{padding:5px 0;vertical-align:top;border-bottom:1px solid #f1ecee}
+.kv td{padding:5px 0;vertical-align:top;border-bottom:1px solid var(--saivie-border)}
 .kv tr:last-child td{border-bottom:0}
-.kv td:first-child{width:46%;color:#5f6f6a;padding-right:10px;border-right:1px solid #ece4e8}
-.kv td:last-child{padding-left:12px;color:#2f3b37}
-.log th,.log td{text-align:left;padding:4px 6px;border-bottom:1px solid #eee}.log th{color:#5f6f6a;font-weight:600;font-size:9.5px;text-transform:uppercase}
-.notes{background:#fff;border:1px solid #cfe0d8;border-radius:14px;padding:12px 16px 16px;break-inside:avoid;margin-bottom:12px}
+.kv td:first-child{width:46%;color:var(--saivie-plum);padding-right:10px;border-right:1px solid var(--saivie-border)}
+.kv td:last-child{padding-left:12px;color:var(--saivie-plum)}
+.log th,.log td{text-align:left;padding:4px 6px;border-bottom:1px solid #eee}.log th{color:var(--saivie-plum);font-weight:600;font-size:9.5px;text-transform:uppercase}
+.notes{background:#fff;border:1px solid var(--saivie-border);border-radius:14px;padding:12px 16px 16px;break-inside:avoid;margin-bottom:12px}
 .notes header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
-.notes .ico{width:32px;height:32px;border-radius:50%;background:#5f8478;color:#fff;display:flex;align-items:center;justify-content:center}.notes .ico svg{width:17px;height:17px}
-.notes h3{margin:0;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#3c5b52;font-weight:700}
-.line{border-bottom:1px solid #d9e4df;height:26px}
-.disclaimer{background:#f6e6ec;border-radius:10px;padding:8px 14px;display:flex;align-items:center;justify-content:center;gap:8px;color:#5f6f6a;font-size:10px;margin-bottom:14px}
-.disclaimer svg{width:16px;height:16px;color:#b5799a}
-.printed{text-align:right;color:#8a9692;font-size:9px;margin-top:6px}
+.notes .ico{width:32px;height:32px;border-radius:50%;background:var(--saivie-teal);color:#fff;display:flex;align-items:center;justify-content:center}.notes .ico svg{width:17px;height:17px}
+.notes h3{margin:0;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--saivie-teal);font-weight:700}
+.line{border-bottom:1px solid var(--saivie-border);height:26px}
+.disclaimer{background:var(--saivie-surface-blush);border-radius:10px;padding:8px 14px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--saivie-plum);font-size:10px;margin-bottom:14px}
+.disclaimer svg{width:16px;height:16px;color:var(--saivie-rose)}
+.printed{text-align:right;color:var(--saivie-plum);font-size:9px;margin-top:6px}
 @page{size:A4;margin:42mm 10mm 12mm}
 @media print{body{padding:0;background:#fff}.page{max-width:none}}
 </style></head><body><div class="page">
@@ -409,11 +417,11 @@ ${s.bpRows.length || s.weightRows.length ? `<div class="cards">${s.bpRows.length
     return true;
 }
 
-const toneClass = (t?: Metric["tone"]) => (t === "alert" ? "text-rose-600" : t === "watch" ? "text-amber-600" : "text-[#342c52]");
+const toneClass = (t?: Metric["tone"]) => (t === "alert" ? "text-rose-600" : t === "watch" ? "text-amber-600" : "text-saivie-plum");
 const insightClass: Record<Insight["level"], string> = {
     alert: "border-rose-200 bg-rose-50 text-rose-800",
     watch: "border-amber-200 bg-amber-50 text-amber-800",
-    info: "border-[#e2d6f7] bg-[#f5f0ff] text-[#4a3d6e]",
+    info: "border-saivie-border bg-saivie-surface-muted text-saivie-teal",
 };
 
 export function printPatientSummary(patient: any, checkInVitals?: CheckInVitals | null) {
@@ -429,10 +437,10 @@ export function IntakeSummaryActions({ patient, weightLogs, bpLogs }: { patient:
 
     return (
         <>
-            <Button variant="outline" size="sm" className="h-7 gap-1 border-[#e2d6f7] text-xs text-[#66519c] hover:bg-[#f5f0ff]" onClick={() => setOpen(true)} data-testid="button-preview-intake">
+            <Button variant="outline" size="sm" className="h-7 gap-1 border-saivie-border text-xs text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setOpen(true)} data-testid="button-preview-intake">
                 <Eye className="h-3 w-3" /> Preview
             </Button>
-            <Button variant="outline" size="sm" className="h-7 gap-1 border-[#e2d6f7] text-xs text-[#66519c] hover:bg-[#f5f0ff]" onClick={print} data-testid="button-print-intake">
+            <Button variant="outline" size="sm" className="h-7 gap-1 border-saivie-border text-xs text-saivie-teal hover:bg-saivie-surface-muted" onClick={print} data-testid="button-print-intake">
                 <Printer className="h-3 w-3" /> Print
             </Button>
             <Dialog open={open} onOpenChange={setOpen}>
@@ -440,26 +448,26 @@ export function IntakeSummaryActions({ patient, weightLogs, bpLogs }: { patient:
                     <DialogHeader>
                         <DialogTitle className="flex items-center justify-between gap-4 pr-6">
                             <span>Intake summary · {summary.name}</span>
-                            <Button size="sm" className="h-8 gap-1 bg-[#66519c] hover:bg-[#544181]" onClick={print}><Printer className="h-3.5 w-3.5" /> Print</Button>
+                            <Button size="sm" className="h-8 gap-1 bg-saivie-teal hover:bg-saivie-teal" onClick={print}><Printer className="h-3.5 w-3.5" /> Print</Button>
                         </DialogTitle>
-                        {summary.meta.length > 0 && <p className="text-xs text-slate-500">{summary.meta.join(" · ")}</p>}
+                        {summary.meta.length > 0 && <p className="text-xs text-saivie-plum">{summary.meta.join(" · ")}</p>}
                     </DialogHeader>
 
                     {!summary.hasIntake && (
-                        <p className="rounded-lg border border-dashed border-[#e2d6f7] bg-[#faf8ff] p-3 text-xs text-[#625976]">This patient hasn't completed the online intake form yet. Showing clinic records and self-recorded vitals only.</p>
+                        <p className="rounded-lg border border-dashed border-saivie-border bg-saivie-ivory p-3 text-xs text-saivie-teal">This patient hasn't completed the online intake form yet. Showing clinic records and self-recorded vitals only.</p>
                     )}
 
                     {(summary.concerns.length > 0 || summary.complaint) && (
                         <div>
-                            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#66519c]">Reason for visit</h4>
-                            <div className="flex flex-wrap gap-1.5">{summary.concerns.map((c) => <span key={c} className="rounded-full bg-[#f1ebfb] px-2.5 py-1 text-xs font-semibold text-[#4a3d6e]">{c}</span>)}</div>
-                            {summary.complaint && <p className="mt-2 text-sm text-slate-700">{summary.complaint}</p>}
+                            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-saivie-teal">Reason for visit</h4>
+                            <div className="flex flex-wrap gap-1.5">{summary.concerns.map((c) => <span key={c} className="rounded-full bg-saivie-surface-muted px-2.5 py-1 text-xs font-semibold text-saivie-teal">{c}</span>)}</div>
+                            {summary.complaint && <p className="mt-2 text-sm text-saivie-plum">{summary.complaint}</p>}
                         </div>
                     )}
 
                     {summary.insights.length > 0 && (
                         <div>
-                            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#66519c]">Clinical insights</h4>
+                            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-saivie-teal">Clinical insights</h4>
                             <div className="space-y-1.5">
                                 {summary.insights.map((i, idx) => (
                                     <div key={idx} className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${insightClass[i.level]}`}>
@@ -472,13 +480,13 @@ export function IntakeSummaryActions({ patient, weightLogs, bpLogs }: { patient:
 
                     {summary.metrics.length > 0 && (
                         <div>
-                            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#66519c]">Vitals & key metrics</h4>
+                            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-saivie-teal">Vitals & key metrics</h4>
                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                 {summary.metrics.map((m) => (
-                                    <div key={m.label} className="rounded-xl border border-[#e9e3f1] bg-white p-3">
-                                        <p className="text-[10px] font-semibold uppercase text-slate-500">{m.label}</p>
+                                    <div key={m.label} className="rounded-xl border border-saivie-border bg-saivie-ivory p-3">
+                                        <p className="text-[10px] font-semibold uppercase text-saivie-plum">{m.label}</p>
                                         <p className={`text-lg font-bold ${toneClass(m.tone)}`}>{m.value}</p>
-                                        {m.hint && <p className="text-[10px] text-slate-500">{m.hint}</p>}
+                                        {m.hint && <p className="text-[10px] text-saivie-plum">{m.hint}</p>}
                                     </div>
                                 ))}
                             </div>
@@ -487,7 +495,7 @@ export function IntakeSummaryActions({ patient, weightLogs, bpLogs }: { patient:
 
                     {(summary.bpRows.length > 0 || summary.weightRows.length > 0) && (
                         <div>
-                            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#66519c]">Patient-recorded readings</h4>
+                            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-saivie-teal">Patient-recorded readings</h4>
                             <div className="grid gap-4 sm:grid-cols-2">
                                 {summary.bpRows.length > 0 && <MiniTable head={["Date", "BP (mmHg)", "Pulse"]} rows={summary.bpRows} />}
                                 {summary.weightRows.length > 0 && <MiniTable head={["Date", "Weight"]} rows={summary.weightRows} />}
@@ -498,10 +506,10 @@ export function IntakeSummaryActions({ patient, weightLogs, bpLogs }: { patient:
                     <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
                         {summary.sections.map((sec) => (
                             <div key={sec.title}>
-                                <h4 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[#66519c]">{sec.title}</h4>
+                                <h4 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-saivie-teal">{sec.title}</h4>
                                 <dl className="divide-y divide-[#eee8f4] text-xs">
                                     {sec.rows.map(([k, v]) => (
-                                        <div key={k} className="grid grid-cols-[40%_1fr] gap-2 py-1.5"><dt className="text-slate-500">{k}</dt><dd className="text-slate-800">{v}</dd></div>
+                                        <div key={k} className="grid grid-cols-[40%_1fr] gap-2 py-1.5"><dt className="text-saivie-plum">{k}</dt><dd className="text-saivie-plum">{v}</dd></div>
                                     ))}
                                 </dl>
                             </div>
@@ -516,8 +524,8 @@ export function IntakeSummaryActions({ patient, weightLogs, bpLogs }: { patient:
 function MiniTable({ head, rows }: { head: string[]; rows: string[][] }) {
     return (
         <table className="w-full text-xs">
-            <thead><tr>{head.map((h) => <th key={h} className="border-b border-[#eee8f4] py-1 text-left text-[10px] font-semibold uppercase text-slate-500">{h}</th>)}</tr></thead>
-            <tbody>{rows.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j} className="border-b border-[#f4f0f9] py-1 text-slate-700">{c}</td>)}</tr>)}</tbody>
+            <thead><tr>{head.map((h) => <th key={h} className="border-b border-saivie-border py-1 text-left text-[10px] font-semibold uppercase text-saivie-plum">{h}</th>)}</tr></thead>
+            <tbody>{rows.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j} className="border-b border-saivie-border py-1 text-saivie-plum">{c}</td>)}</tr>)}</tbody>
         </table>
     );
 }

@@ -32,8 +32,8 @@ const IDLE_SECONDS = 90;
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   "checked-in": { label: "Checked In — Waiting", color: "#f59e0b" },
   waiting: { label: "Waiting", color: "#f59e0b" },
-  "with doctor": { label: "With Doctor", color: "#6366f1" },
-  "with-doctor": { label: "With Doctor", color: "#6366f1" },
+  "with doctor": { label: "With Doctor", color: "var(--saivie-teal)" },
+  "with-doctor": { label: "With Doctor", color: "var(--saivie-teal)" },
   completed: { label: "Completed", color: "#10b981" },
   done: { label: "Completed", color: "#10b981" },
 };
@@ -249,11 +249,11 @@ export default function Kiosk() {
     <div
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)",
+        background: "var(--saivie-ivory)",
         display: "flex",
         flexDirection: "column",
         fontFamily: "'DM Sans', system-ui, sans-serif",
-        color: "#f8fafc",
+        color: "var(--saivie-plum)",
         userSelect: "none",
         touchAction: "manipulation",
       }}
@@ -262,8 +262,8 @@ export default function Kiosk() {
       {/* Top bar */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "16px 32px", borderBottom: "1px solid rgba(255,255,255,0.08)",
-        background: "rgba(0,0,0,0.3)",
+        padding: "16px 32px", borderBottom: "1px solid var(--saivie-border)",
+        background: "var(--saivie-sage)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {brandLogo ? (
@@ -271,27 +271,27 @@ export default function Kiosk() {
           ) : (
             <div style={{
               width: 40, height: 40, borderRadius: "50%",
-              background: "linear-gradient(135deg, #818cf8, #6366f1)",
+              background: "var(--saivie-teal)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 20, fontWeight: 700,
+              fontSize: 20, fontWeight: 700, color: "var(--saivie-ivory)",
             }}>S</div>
           )}
           <div>
             <div style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.3px" }}>Saivie</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>Patient Check-In Kiosk</div>
+            <div style={{ fontSize: 11, color: "var(--saivie-plum)", fontWeight: 500 }}>Patient Check-In Kiosk</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           {screen !== "phone" && (
             <div style={{
-              fontSize: 12, color: idleCountdown <= 20 ? "#fbbf24" : "rgba(255,255,255,0.4)",
+              fontSize: 12, color: idleCountdown <= 20 ? "#92400e" : "var(--saivie-border)",
               fontWeight: 500,
             }}>
               {idleCountdown <= 20 ? `↩ Resetting in ${idleCountdown}s` : "Touch anywhere to stay"}
             </div>
           )}
           <div style={{
-            fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)",
+            fontSize: 14, fontWeight: 600, color: "var(--saivie-plum)",
           }}>
             {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </div>
@@ -304,22 +304,22 @@ export default function Kiosk() {
         {/* ── PHONE SCREEN ── */}
         {screen === "phone" && (
           <div style={{ width: "100%", maxWidth: 440, textAlign: "center" }}>
-            <div style={{ marginBottom: 8, fontSize: 13, color: "#818cf8", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase" }}>
+            <div style={{ marginBottom: 8, fontSize: 13, color: "var(--saivie-teal)", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase" }}>
               Welcome
             </div>
             <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 8, letterSpacing: "-0.5px" }}>
               Check in for your appointment
             </h1>
-            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.55)", marginBottom: 36 }}>
+            <p style={{ fontSize: 16, color: "var(--saivie-plum)", marginBottom: 36 }}>
               Enter the mobile number you registered with us
             </p>
 
             <div style={{
-              background: "rgba(255,255,255,0.06)", border: "2px solid rgba(129,140,248,0.5)",
+              background: "var(--saivie-surface-muted)", border: "2px solid var(--saivie-teal)",
               borderRadius: 16, padding: "20px 24px", marginBottom: 20,
               fontSize: 32, fontWeight: 700, letterSpacing: 4, minHeight: 72,
               display: "flex", alignItems: "center", justifyContent: "center",
-              color: phone ? "#f8fafc" : "rgba(255,255,255,0.2)",
+              color: "var(--saivie-plum)",
             }}>
               {phone || "+91 XXXXX XXXXX"}
             </div>
@@ -328,7 +328,7 @@ export default function Kiosk() {
               <div style={{
                 background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)",
                 borderRadius: 10, padding: "10px 16px", marginBottom: 16,
-                color: "#fca5a5", fontSize: 14, fontWeight: 500,
+                color: "#b91c1c", fontSize: 14, fontWeight: 500,
               }}>
                 {error}
               </div>
@@ -342,11 +342,11 @@ export default function Kiosk() {
                   key={d}
                   onClick={() => dialPhone(d)}
                   style={{
-                    background: d === "⌫" ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.08)",
-                    border: `1px solid ${d === "⌫" ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.12)"}`,
+                    background: d === "⌫" ? "rgba(239,68,68,0.15)" : "var(--saivie-border)",
+                    border: `1px solid ${d === "⌫" ? "rgba(239,68,68,0.3)" : "var(--saivie-border)"}`,
                     borderRadius: 14, padding: "22px 12px",
                     fontSize: d === "⌫" ? 20 : 26, fontWeight: 600,
-                    color: d === "⌫" ? "#fca5a5" : "#f8fafc",
+                    color: d === "⌫" ? "#b91c1c" : "var(--saivie-plum)",
                     cursor: "pointer",
                     transition: "background 0.1s, transform 0.05s",
                   }}
@@ -364,10 +364,10 @@ export default function Kiosk() {
               style={{
                 width: "100%", padding: "20px", borderRadius: 16, border: "none",
                 background: loading || phone.replace(/\D/g, "").length < 7
-                  ? "rgba(99,102,241,0.3)" : "linear-gradient(135deg, #818cf8, #6366f1)",
+                  ? "var(--saivie-teal)" : "var(--saivie-teal)",
                 color: "#fff", fontSize: 18, fontWeight: 700, cursor: loading ? "wait" : "pointer",
                 transition: "opacity 0.2s",
-                boxShadow: "0 4px 24px rgba(99,102,241,0.4)",
+                boxShadow: "0 4px 24px color-mix(in srgb, var(--saivie-teal) 25%, transparent)",
               }}
             >
               {loading ? "Looking up…" : "Find My Appointment →"}
@@ -379,24 +379,24 @@ export default function Kiosk() {
         {screen === "appointments" && patient && (
           <div style={{ width: "100%", maxWidth: 640 }}>
             <div style={{ textAlign: "center", marginBottom: 32 }}>
-              <div style={{ fontSize: 13, color: "#818cf8", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
+              <div style={{ fontSize: 13, color: "var(--saivie-teal)", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
                 Today's Appointments
               </div>
               <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 6 }}>
                 Welcome, {patient.name.split(" ")[0]}
               </h2>
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 15 }}>
+              <p style={{ color: "var(--saivie-plum)", fontSize: 15 }}>
                 Select your appointment to check in
               </p>
             </div>
 
             {appointments.length === 0 ? (
               <div style={{
-                background: "rgba(255,255,255,0.05)", borderRadius: 20, padding: "40px 32px", textAlign: "center",
-                border: "1px solid rgba(255,255,255,0.1)",
+                background: "var(--saivie-surface-muted)", borderRadius: 20, padding: "40px 32px", textAlign: "center",
+                border: "1px solid var(--saivie-border)",
               }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>📅</div>
-                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 16 }}>
+                <p style={{ color: "var(--saivie-plum)", fontSize: 16 }}>
                   No appointments found for today. Please speak to a staff member.
                 </p>
               </div>
@@ -407,22 +407,22 @@ export default function Kiosk() {
                     key={appt.id}
                     onClick={() => handleSelectAppointment(appt)}
                     style={{
-                      background: "rgba(255,255,255,0.07)",
-                      border: "1.5px solid rgba(129,140,248,0.3)",
+                      background: "var(--saivie-surface-muted)",
+                      border: "1.5px solid var(--saivie-teal)",
                       borderRadius: 18, padding: "24px 28px",
                       display: "flex", alignItems: "center", justifyContent: "space-between",
-                      cursor: "pointer", color: "#f8fafc", textAlign: "left",
+                      cursor: "pointer", color: "var(--saivie-plum)", textAlign: "left",
                       transition: "background 0.15s, border-color 0.15s",
                     }}
-                    onPointerEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(99,102,241,0.18)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(129,140,248,0.7)"; }}
-                    onPointerLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(129,140,248,0.3)"; }}
+                    onPointerEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--saivie-sage)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--saivie-teal)"; }}
+                    onPointerLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--saivie-border)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--saivie-teal)"; }}
                   >
                     <div>
                       <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{appt.time}</div>
-                      <div style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>
+                      <div style={{ fontSize: 15, color: "var(--saivie-plum)", marginBottom: 4 }}>
                         {appt.type || "Consultation"}
                       </div>
-                      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>
+                      <div style={{ fontSize: 13, color: "var(--saivie-plum)" }}>
                         with {appt.providerName}
                       </div>
                     </div>
@@ -430,12 +430,12 @@ export default function Kiosk() {
                       <div style={{
                         display: "inline-block", padding: "6px 14px", borderRadius: 20,
                         background: appt.checkedInAt ? "rgba(16,185,129,0.2)" : "rgba(245,158,11,0.15)",
-                        color: appt.checkedInAt ? "#6ee7b7" : "#fcd34d",
+                        color: appt.checkedInAt ? "#047857" : "#92400e",
                         fontSize: 12, fontWeight: 600, marginBottom: 8,
                       }}>
                         {appt.checkedInAt ? "Already Checked In" : "Tap to Check In"}
                       </div>
-                      <div style={{ fontSize: 24, color: "rgba(255,255,255,0.4)" }}>›</div>
+                      <div style={{ fontSize: 24, color: "var(--saivie-plum)" }}>›</div>
                     </div>
                   </button>
                 ))}
@@ -446,8 +446,8 @@ export default function Kiosk() {
               onClick={resetToHome}
               style={{
                 marginTop: 24, width: "100%", padding: "14px", borderRadius: 12,
-                background: "transparent", border: "1px solid rgba(255,255,255,0.15)",
-                color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer",
+                background: "transparent", border: "1px solid var(--saivie-border)",
+                color: "var(--saivie-plum)", fontSize: 14, cursor: "pointer",
               }}
             >
               ← Go Back
@@ -458,24 +458,24 @@ export default function Kiosk() {
         {/* ── CONFIRM CHECK-IN SCREEN ── */}
         {screen === "confirm-checkin" && selected && patient && (
           <div style={{ width: "100%", maxWidth: 520, textAlign: "center" }}>
-            <div style={{ fontSize: 13, color: "#818cf8", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: "var(--saivie-teal)", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 16 }}>
               Confirm Check-In
             </div>
 
             <div style={{
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+              background: "var(--saivie-surface-muted)", border: "1px solid var(--saivie-border)",
               borderRadius: 24, padding: "32px", marginBottom: 24,
             }}>
               <div style={{
                 width: 72, height: 72, borderRadius: "50%",
-                background: "linear-gradient(135deg, #818cf8, #6366f1)",
+                background: "var(--saivie-teal)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 28, fontWeight: 800, margin: "0 auto 16px",
               }}>
                 {patient.name.charAt(0).toUpperCase()}
               </div>
               <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>{patient.name}</h2>
-              <p style={{ color: "rgba(255,255,255,0.5)", marginBottom: 28 }}>Please confirm your details below</p>
+              <p style={{ color: "var(--saivie-plum)", marginBottom: 28 }}>Please confirm your details below</p>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, textAlign: "left" }}>
                 {[
@@ -485,9 +485,9 @@ export default function Kiosk() {
                   { label: "Date", value: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long" }) },
                 ].map(item => (
                   <div key={item.label} style={{
-                    background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: "14px 16px",
+                    background: "var(--saivie-surface-muted)", borderRadius: 12, padding: "14px 16px",
                   }}>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+                    <div style={{ fontSize: 11, color: "var(--saivie-plum)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
                       {item.label}
                     </div>
                     <div style={{ fontSize: 15, fontWeight: 600 }}>{item.value}</div>
@@ -499,7 +499,7 @@ export default function Kiosk() {
             {error && (
               <div style={{
                 background: "rgba(239,68,68,0.15)", borderRadius: 10, padding: "10px 16px",
-                color: "#fca5a5", fontSize: 14, marginBottom: 16,
+                color: "#b91c1c", fontSize: 14, marginBottom: 16,
               }}>{error}</div>
             )}
 
@@ -508,9 +508,9 @@ export default function Kiosk() {
               disabled={loading}
               style={{
                 width: "100%", padding: "20px", borderRadius: 16, border: "none",
-                background: "linear-gradient(135deg, #818cf8, #6366f1)",
+                background: "var(--saivie-teal)",
                 color: "#fff", fontSize: 18, fontWeight: 700, cursor: loading ? "wait" : "pointer",
-                boxShadow: "0 4px 24px rgba(99,102,241,0.4)", marginBottom: 12,
+                boxShadow: "0 4px 24px color-mix(in srgb, var(--saivie-teal) 25%, transparent)", marginBottom: 12,
               }}
             >
               {loading ? "Checking you in…" : "✓ Confirm Check-In"}
@@ -519,8 +519,8 @@ export default function Kiosk() {
               onClick={() => setScreen("appointments")}
               style={{
                 width: "100%", padding: "14px", borderRadius: 12,
-                background: "transparent", border: "1px solid rgba(255,255,255,0.15)",
-                color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer",
+                background: "transparent", border: "1px solid var(--saivie-border)",
+                color: "var(--saivie-plum)", fontSize: 14, cursor: "pointer",
               }}
             >
               ← Back
@@ -535,17 +535,17 @@ export default function Kiosk() {
               <div style={{
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
                 width: 56, height: 56, borderRadius: "50%",
-                background: "rgba(16,185,129,0.2)", border: "2px solid #6ee7b7",
+                background: "rgba(16,185,129,0.2)", border: "2px solid #047857",
                 fontSize: 26, marginBottom: 14,
               }}>✓</div>
               <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>You're checked in!</h2>
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 15 }}>
+              <p style={{ color: "var(--saivie-plum)", fontSize: 15 }}>
                 Please take a moment to complete a quick pre-visit form
               </p>
             </div>
 
             <div style={{
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+              background: "var(--saivie-surface-muted)", border: "1px solid var(--saivie-border)",
               borderRadius: 20, padding: "28px", marginBottom: 20,
             }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -556,7 +556,7 @@ export default function Kiosk() {
                   { key: "newSymptoms", label: "Any new symptoms since your last visit?", placeholder: "e.g. Mild nausea, headaches, swelling… or 'None'" },
                 ].map(field => (
                   <div key={field.key}>
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 6, letterSpacing: "0.2px" }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--saivie-plum)", marginBottom: 6, letterSpacing: "0.2px" }}>
                       {field.label}
                     </label>
                     <textarea
@@ -566,13 +566,13 @@ export default function Kiosk() {
                       rows={2}
                       style={{
                         width: "100%", boxSizing: "border-box",
-                        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
+                        background: "var(--saivie-surface-muted)", border: "1px solid var(--saivie-border)",
                         borderRadius: 10, padding: "12px 14px",
-                        color: "#f8fafc", fontSize: 15, resize: "none",
+                        color: "var(--saivie-plum)", fontSize: 15, resize: "none",
                         outline: "none", fontFamily: "inherit",
                       }}
-                      onFocus={e => { e.currentTarget.style.borderColor = "rgba(129,140,248,0.7)"; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}
+                      onFocus={e => { e.currentTarget.style.borderColor = "var(--saivie-teal)"; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = "var(--saivie-border)"; }}
                     />
                   </div>
                 ))}
@@ -582,7 +582,7 @@ export default function Kiosk() {
             {error && (
               <div style={{
                 background: "rgba(239,68,68,0.15)", borderRadius: 10, padding: "10px 16px",
-                color: "#fca5a5", fontSize: 14, marginBottom: 16,
+                color: "#b91c1c", fontSize: 14, marginBottom: 16,
               }}>{error}</div>
             )}
 
@@ -591,9 +591,9 @@ export default function Kiosk() {
               disabled={loading}
               style={{
                 width: "100%", padding: "20px", borderRadius: 16, border: "none",
-                background: "linear-gradient(135deg, #818cf8, #6366f1)",
+                background: "var(--saivie-teal)",
                 color: "#fff", fontSize: 18, fontWeight: 700, cursor: loading ? "wait" : "pointer",
-                boxShadow: "0 4px 24px rgba(99,102,241,0.4)", marginBottom: 12,
+                boxShadow: "0 4px 24px color-mix(in srgb, var(--saivie-teal) 25%, transparent)", marginBottom: 12,
               }}
             >
               {loading ? "Saving…" : "Submit & See My Status →"}
@@ -602,8 +602,8 @@ export default function Kiosk() {
               onClick={handleSkipIntake}
               style={{
                 width: "100%", padding: "14px", borderRadius: 12,
-                background: "transparent", border: "1px solid rgba(255,255,255,0.15)",
-                color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer",
+                background: "transparent", border: "1px solid var(--saivie-border)",
+                color: "var(--saivie-plum)", fontSize: 14, cursor: "pointer",
               }}
             >
               Skip — Go to Status Screen
@@ -616,23 +616,23 @@ export default function Kiosk() {
           <div style={{ width: "100%", maxWidth: 480, textAlign: "center" }}>
             <div style={{ marginBottom: 32 }}>
               <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 6 }}>Your Appointment</h2>
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 15 }}>
+              <p style={{ color: "var(--saivie-plum)", fontSize: 15 }}>
                 Live status — refreshes every 30 seconds
               </p>
             </div>
 
             <div style={{
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+              background: "var(--saivie-surface-muted)", border: "1px solid var(--saivie-border)",
               borderRadius: 24, padding: "36px 32px", marginBottom: 24,
             }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>🏥</div>
               <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
                 {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
               </div>
-              <div style={{ fontSize: 18, color: "rgba(255,255,255,0.6)", marginBottom: 6 }}>
+              <div style={{ fontSize: 18, color: "var(--saivie-plum)", marginBottom: 6 }}>
                 {selected.time} · {selected.type || "Consultation"}
               </div>
-              <div style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", marginBottom: 28 }}>
+              <div style={{ fontSize: 15, color: "var(--saivie-plum)", marginBottom: 28 }}>
                 with {selected.providerName}
               </div>
 
@@ -678,21 +678,21 @@ export default function Kiosk() {
                       <div style={{ textAlign: "center" }}>
                         <div style={{
                           width: 28, height: 28, borderRadius: "50%",
-                          background: isDone ? "#10b981" : isActive ? "#6366f1" : "rgba(255,255,255,0.1)",
-                          border: `2px solid ${isDone ? "#6ee7b7" : isActive ? "#818cf8" : "rgba(255,255,255,0.2)"}`,
+                          background: isDone ? "#10b981" : isActive ? "var(--saivie-teal)" : "var(--saivie-border)",
+                          border: `2px solid ${isDone ? "#047857" : isActive ? "var(--saivie-teal)" : "var(--saivie-border)"}`,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: 13, fontWeight: 700, margin: "0 auto 6px",
-                          color: isDone || isActive ? "#fff" : "rgba(255,255,255,0.3)",
+                          color: isDone || isActive ? "#fff" : "var(--saivie-plum)",
                         }}>
                           {isDone ? "✓" : idx + 1}
                         </div>
-                        <div style={{ fontSize: 11, color: isActive ? "#f8fafc" : "rgba(255,255,255,0.35)", fontWeight: isActive ? 600 : 400, maxWidth: 70 }}>
+                        <div style={{ fontSize: 11, color: isActive ? "var(--saivie-plum)" : "var(--saivie-border)", fontWeight: isActive ? 600 : 400, maxWidth: 70 }}>
                           {step.label}
                         </div>
                       </div>
                       {idx < 2 && (
                         <div style={{
-                          width: 48, height: 2, background: isDone ? "#10b981" : "rgba(255,255,255,0.1)",
+                          width: 48, height: 2, background: isDone ? "#10b981" : "var(--saivie-border)",
                           marginTop: 13, alignSelf: "flex-start",
                         }} />
                       )}
@@ -702,7 +702,7 @@ export default function Kiosk() {
               </div>
             </div>
 
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", marginBottom: 24 }}>
+            <p style={{ fontSize: 13, color: "var(--saivie-plum)", marginBottom: 24 }}>
               Please take a seat in the waiting area. You will be called when the doctor is ready.
             </p>
 
@@ -710,8 +710,8 @@ export default function Kiosk() {
               onClick={resetToHome}
               style={{
                 width: "100%", padding: "16px", borderRadius: 14,
-                background: "transparent", border: "1px solid rgba(255,255,255,0.2)",
-                color: "rgba(255,255,255,0.5)", fontSize: 15, cursor: "pointer",
+                background: "transparent", border: "1px solid var(--saivie-border)",
+                color: "var(--saivie-plum)", fontSize: 15, cursor: "pointer",
                 fontWeight: 600,
               }}
             >
@@ -727,8 +727,8 @@ export default function Kiosk() {
           50% { opacity: 0.5; }
         }
         * { -webkit-tap-highlight-color: transparent; }
-        textarea::placeholder { color: rgba(255,255,255,0.2); }
-        textarea { caret-color: #818cf8; }
+        textarea::placeholder { color: var(--saivie-plum); opacity: .7; }
+        textarea { caret-color: var(--saivie-teal); }
       `}</style>
     </div>
   );

@@ -182,11 +182,11 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
         </DialogHeader>
 
         <div className="space-y-5">
-          <div className="rounded-lg border border-dashed border-teal-300 bg-teal-50/50 p-3">
+          <div className="rounded-lg border border-dashed border-saivie-border bg-saivie-surface-muted/50 p-3">
             <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" data-testid="input-rx-file"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) scanFile(f); }} />
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-saivie-plum">
                 {scanned ? "Filled from the photo — review and correct below." : "Have a photo of the paper prescription? Upload it and the fields below are filled in for you to check."}
               </p>
               <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={scanning} onClick={() => fileRef.current?.click()} data-testid="btn-rx-scan">
@@ -240,7 +240,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
               {tests.map((t, i) => (
                 <div key={`${t.name}-${i}`} className="flex items-center justify-between rounded-md border px-2 py-1 text-sm">
                   <span>
-                    {t.name} <span className="text-xs text-slate-500">· {t.type === "usg" ? "USG" : "Lab"}{t.fromBilling ? " · from billing" : ""}</span>
+                    {t.name} <span className="text-xs text-saivie-plum">· {t.type === "usg" ? "USG" : "Lab"}{t.fromBilling ? " · from billing" : ""}</span>
                   </span>
                   <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => setTests(tests.filter((_, idx) => idx !== i))}>
                     <Trash2 className="h-3.5 w-3.5" />

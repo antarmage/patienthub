@@ -84,7 +84,7 @@ export default function PostpartumMentalHealthScreen() {
       >
         {submitted && savedDate && (
           <View style={styles.savedBadge}>
-            <Feather name="check-circle" size={14} color="#6C63FF" />
+            <Feather name="check-circle" size={14} color={COLORS.primary} />
             <ThemedText style={styles.savedText}>Last check-in: {savedDate}</ThemedText>
             <Pressable onPress={handleReset}><ThemedText style={styles.resetText}>Redo</ThemedText></Pressable>
           </View>
@@ -146,7 +146,7 @@ export default function PostpartumMentalHealthScreen() {
 
         {submitted && !concerning && (
           <View style={styles.okCard}>
-            <Feather name="smile" size={22} color="#6C63FF" />
+            <Feather name="smile" size={22} color={COLORS.primary} />
             <ThemedText style={styles.okText}>You're doing well. Keep taking care of yourself!</ThemedText>
           </View>
         )}
@@ -155,7 +155,7 @@ export default function PostpartumMentalHealthScreen() {
         {RESOURCES.map((r, i) => (
           <View key={i} style={styles.resourceCard}>
             <View style={styles.resourceIcon}>
-              <Feather name={r.icon} size={18} color="#A855F7" />
+              <Feather name={r.icon} size={18} color={COLORS.rose} />
             </View>
             <View style={styles.resourceText}>
               <ThemedText style={styles.resourceTitle}>{r.title}</ThemedText>
@@ -170,22 +170,22 @@ export default function PostpartumMentalHealthScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAFAFC" },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md,
-    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: COLORS.surfaceMuted,
   },
   backBtn: { padding: Spacing.sm, marginRight: Spacing.sm, marginLeft: -Spacing.sm },
   headerName: { flex: 1, fontSize: 17, fontWeight: "600", color: COLORS.textPrimary },
   scroll: { flex: 1 },
   savedBadge: {
     flexDirection: "row", alignItems: "center", gap: Spacing.sm,
-    backgroundColor: "#F5F3FF", borderRadius: 10, padding: Spacing.sm + 2,
+    backgroundColor: COLORS.surfaceMuted, borderRadius: 10, padding: Spacing.sm + 2,
     marginBottom: Spacing.lg,
   },
-  savedText: { flex: 1, fontSize: 13, color: "#6C63FF" },
-  resetText: { fontSize: 13, color: "#6C63FF", fontWeight: "600" },
+  savedText: { flex: 1, fontSize: 13, color: COLORS.primary },
+  resetText: { fontSize: 13, color: COLORS.primary, fontWeight: "600" },
   warningCard: {
     flexDirection: "row", backgroundColor: "#FEF2F2", borderRadius: 14,
     padding: Spacing.md, marginBottom: Spacing.lg,
@@ -194,52 +194,52 @@ const styles = StyleSheet.create({
   warningTitle: { fontSize: 14, fontWeight: "700", color: "#DC2626", marginBottom: 4 },
   warningText: { fontSize: 13, color: "#B91C1C", lineHeight: 19 },
   infoCard: {
-    backgroundColor: "#F5F3FF", borderRadius: 12, padding: Spacing.md,
+    backgroundColor: COLORS.surfaceMuted, borderRadius: 12, padding: Spacing.md,
     marginBottom: Spacing.lg,
   },
-  infoText: { fontSize: 13, color: "#6C63FF", lineHeight: 18 },
+  infoText: { fontSize: 13, color: COLORS.primary, lineHeight: 18 },
   questionCard: {
     backgroundColor: "#FFFFFF", borderRadius: 16, padding: Spacing.lg,
-    marginBottom: Spacing.md, borderWidth: 1, borderColor: "#F3F4F6",
+    marginBottom: Spacing.md, borderWidth: 1, borderColor: COLORS.surfaceMuted,
   },
   questionLabel: { fontSize: 14, fontWeight: "600", color: COLORS.textPrimary, marginBottom: Spacing.md, lineHeight: 20 },
   scaleRow: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.xs },
   scoreBtn: {
     flex: 1, paddingVertical: 10, borderRadius: 10,
-    borderWidth: 1.5, borderColor: "#E5E7EB",
+    borderWidth: 1.5, borderColor: COLORS.border,
     alignItems: "center", backgroundColor: "#F9FAFB",
   },
-  scoreBtnActive: { backgroundColor: "#6C63FF", borderColor: "#6C63FF" },
+  scoreBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   scoreBtnText: { fontSize: 15, fontWeight: "600", color: COLORS.textMuted },
   scoreBtnTextActive: { color: "#FFFFFF" },
   scaleLabelRow: { flexDirection: "row", justifyContent: "space-between" },
   scaleLabel: { fontSize: 10, color: COLORS.textMuted },
   submitBtn: {
-    backgroundColor: "#6C63FF", borderRadius: 14, paddingVertical: 14,
+    backgroundColor: COLORS.primary, borderRadius: 14, paddingVertical: 14,
     alignItems: "center", marginBottom: Spacing.xl,
-    shadowColor: "#6C63FF", shadowOffset: { width: 0, height: 4 },
+    shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
   },
-  submitBtnDisabled: { backgroundColor: "#C4C1F4", shadowOpacity: 0, elevation: 0 },
+  submitBtnDisabled: { backgroundColor: COLORS.primaryDisabled, shadowOpacity: 0, elevation: 0 },
   submitBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
   okCard: {
     flexDirection: "row", alignItems: "center", gap: Spacing.md,
-    backgroundColor: "#F5F3FF", borderRadius: 14, padding: Spacing.md,
+    backgroundColor: COLORS.surfaceMuted, borderRadius: 14, padding: Spacing.md,
     marginBottom: Spacing.xl,
   },
-  okText: { fontSize: 14, color: "#6C63FF", flex: 1, lineHeight: 20 },
+  okText: { fontSize: 14, color: COLORS.primary, flex: 1, lineHeight: 20 },
   resourcesTitle: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary, marginBottom: Spacing.md },
   resourceCard: {
     backgroundColor: "#FFFFFF", borderRadius: 14, padding: Spacing.md,
     flexDirection: "row", alignItems: "center", gap: Spacing.md,
-    marginBottom: Spacing.sm, borderWidth: 1, borderColor: "#F3F4F6",
+    marginBottom: Spacing.sm, borderWidth: 1, borderColor: COLORS.surfaceMuted,
   },
   resourceIcon: {
-    width: 38, height: 38, borderRadius: 12, backgroundColor: "#FDF4FF",
+    width: 38, height: 38, borderRadius: 12, backgroundColor: COLORS.surfaceBlush,
     alignItems: "center", justifyContent: "center",
   },
   resourceText: { flex: 1 },
   resourceTitle: { fontSize: 14, fontWeight: "600", color: COLORS.textPrimary },
   resourceDesc: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
-  resourceLink: { fontSize: 13, color: "#A855F7", fontWeight: "600", marginTop: 2 },
+  resourceLink: { fontSize: 13, color: COLORS.rose, fontWeight: "600", marginTop: 2 },
 });

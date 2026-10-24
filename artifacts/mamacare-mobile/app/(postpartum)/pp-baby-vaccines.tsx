@@ -194,7 +194,7 @@ export default function PostpartumBabyVaccinesScreen() {
                       isPast ? { color: "#6B7280" } :
                       isToday ? { color: "#DC2626" } :
                       isSoon ? { color: "#D97706" } :
-                      { color: "#6C63FF" },
+                      { color: COLORS.primary },
                     ]}>
                       {isPast ? "Past due" : isToday ? "Today!" : `${days}d`}
                     </ThemedText>
@@ -218,7 +218,7 @@ export default function PostpartumBabyVaccinesScreen() {
                       <Switch
                         value={notifOn}
                         onValueChange={() => toggleNotif(vaccine, dueDate, notifOn)}
-                        trackColor={{ false: "#E5E7EB", true: "#FEF9C3" }}
+                        trackColor={{ false: COLORS.border, true: "#FEF9C3" }}
                         thumbColor={notifOn ? "#F59E0B" : "#9CA3AF"}
                         style={{ transform: [{ scale: 0.8 }] }}
                       />
@@ -235,11 +235,11 @@ export default function PostpartumBabyVaccinesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAFAFC" },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md,
-    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: COLORS.surfaceMuted,
   },
   backBtn: { padding: Spacing.sm, marginRight: Spacing.sm, marginLeft: -Spacing.sm },
   headerName: { flex: 1, fontSize: 17, fontWeight: "600", color: COLORS.textPrimary },
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   infoText: { fontSize: 13, color: "#92400E", flex: 1, lineHeight: 18 },
   vaccineCard: {
     backgroundColor: "#FFFFFF", borderRadius: 16, padding: Spacing.md,
-    marginBottom: Spacing.md, borderWidth: 1, borderColor: "#F3F4F6",
+    marginBottom: Spacing.md, borderWidth: 1, borderColor: COLORS.surfaceMuted,
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03, shadowRadius: 6, elevation: 1,
   },
@@ -271,14 +271,14 @@ const styles = StyleSheet.create({
   },
   ageText: { fontSize: 12, fontWeight: "700", color: "#D97706" },
   statusBadge: { borderRadius: BorderRadius.full, paddingHorizontal: Spacing.sm, paddingVertical: 3 },
-  badgeDone: { backgroundColor: "#F3F4F6" },
+  badgeDone: { backgroundColor: COLORS.surfaceMuted },
   badgeToday: { backgroundColor: "#FEE2E2" },
   badgeSoon: { backgroundColor: "#FEF3C7" },
-  badgeUpcoming: { backgroundColor: "#F5F3FF" },
+  badgeUpcoming: { backgroundColor: COLORS.surfaceMuted },
   statusText: { fontSize: 12, fontWeight: "700" },
   vaccineName: { fontSize: 14, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 3 },
   vaccineDiseases: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 17, marginBottom: Spacing.sm },
-  vaccineBottom: { borderTopWidth: 1, borderTopColor: "#F3F4F6", paddingTop: Spacing.sm, gap: Spacing.sm },
+  vaccineBottom: { borderTopWidth: 1, borderTopColor: COLORS.surfaceMuted, paddingTop: Spacing.sm, gap: Spacing.sm },
   dueDateRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   dueDateText: { fontSize: 13, color: COLORS.textMuted },
   notifRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },

@@ -39,12 +39,12 @@ export default function PregnancyTrackersTab({ patient, medications, patientId }
   return (
     <div className="space-y-4 pb-24 animate-in fade-in duration-500">
       {/* Section Switcher */}
-      <div className="flex gap-2 bg-white/30 backdrop-blur-sm rounded-2xl p-1.5">
+      <div className="flex gap-2 bg-saivie-ivory/30 backdrop-blur-sm rounded-2xl p-1.5">
         {(["trackers", "records"] as const).map(s => (
           <button
             key={s}
             onClick={() => setSection(s)}
-            className={`flex-1 text-xs font-semibold py-2 rounded-xl transition-all ${section === s ? "bg-white shadow text-pink-700" : "text-slate-500 hover:text-slate-700"}`}
+            className={`flex-1 text-xs font-semibold py-2 rounded-xl transition-all ${section === s ? "bg-saivie-ivory shadow text-saivie-rose" : "text-saivie-plum hover:text-saivie-plum"}`}
           >
             {s === "trackers" ? "My Trackers" : "My Records"}
           </button>
@@ -109,19 +109,19 @@ function WaterTracker({ patientId }: { patientId: number }) {
 
   return (
     <Card className="glass-panel border-blue-200/40 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/60 via-sky-50/30 to-white/40" />
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/60 via-sky-50/30 to-saivie-ivory/40" />
       <CardContent className="relative p-5 z-10 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-blue-100 rounded-xl"><Droplets className="w-4 h-4 text-blue-600" /></div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Water Intake</h3>
+              <h3 className="text-sm font-semibold text-saivie-plum">Water Intake</h3>
               <p className="text-[10px] text-muted-foreground">Goal: {goal} ml/day</p>
             </div>
           </div>
           <div className="text-right">
             <span className={`text-2xl font-bold ${statusColor}`}>{totalMl}</span>
-            <span className="text-xs text-slate-400 ml-1">/ {goal} ml</span>
+            <span className="text-xs text-saivie-plum ml-1">/ {goal} ml</span>
           </div>
         </div>
 
@@ -135,11 +135,11 @@ function WaterTracker({ patientId }: { patientId: number }) {
                 strokeLinecap="round" className="transition-all duration-700" />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-sm font-bold text-slate-700">{pct}%</span>
+              <span className="text-sm font-bold text-saivie-plum">{pct}%</span>
             </div>
           </div>
           <div className="flex-1 space-y-2">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-saivie-plum">
               {pct >= 100 ? "🎉 Daily goal reached!" : `${goal - totalMl} ml more to reach your goal`}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -155,15 +155,15 @@ function WaterTracker({ patientId }: { patientId: number }) {
 
         {logs.length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Today's Log</p>
+            <p className="text-[10px] font-semibold text-saivie-plum uppercase tracking-wider">Today's Log</p>
             {[...logs].reverse().slice(0, 5).map((l: any) => (
-              <div key={l.id} className="flex items-center justify-between bg-white/50 rounded-lg px-3 py-1.5">
+              <div key={l.id} className="flex items-center justify-between bg-saivie-ivory/50 rounded-lg px-3 py-1.5">
                 <div className="flex items-center gap-2">
                   <Droplets className="w-3 h-3 text-blue-400" />
-                  <span className="text-xs text-slate-700">{l.amountMl} ml</span>
+                  <span className="text-xs text-saivie-plum">{l.amountMl} ml</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-saivie-plum">
                     {l.loggedAt ? new Date(l.loggedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : ""}
                   </span>
                   <button onClick={() => delLog.mutate(l.id)} className="text-slate-300 hover:text-rose-400 transition-colors">
@@ -225,13 +225,13 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
 
   return (
     <Card className="glass-panel border-amber-200/40 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-50/50 via-yellow-50/30 to-white/40" />
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-50/50 via-yellow-50/30 to-saivie-ivory/40" />
       <CardContent className="relative p-5 z-10 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-amber-100 rounded-xl"><Scale className="w-4 h-4 text-amber-600" /></div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Weight</h3>
+              <h3 className="text-sm font-semibold text-saivie-plum">Weight</h3>
               <p className="text-[10px] text-muted-foreground">Pregnancy weight tracker</p>
             </div>
           </div>
@@ -241,23 +241,23 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
         </div>
 
         {latest && (
-          <div className="flex items-center gap-3 bg-white/50 rounded-xl px-4 py-3">
+          <div className="flex items-center gap-3 bg-saivie-ivory/50 rounded-xl px-4 py-3">
             <div>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Latest</p>
+              <p className="text-[10px] text-saivie-plum uppercase tracking-wider">Latest</p>
               <p className="text-2xl font-bold text-amber-700">
-                {latest.weight} <span className="text-sm font-normal text-slate-500">kg</span>
+                {latest.weight} <span className="text-sm font-normal text-saivie-plum">kg</span>
               </p>
-              <p className="text-[10px] text-slate-400">Week {latest.week}{latest.enteredBy === "patient" ? " · Self-reported" : ""}</p>
+              <p className="text-[10px] text-saivie-plum">Week {latest.week}{latest.enteredBy === "patient" ? " · Self-reported" : ""}</p>
             </div>
             {gainKg !== null && (
               <>
-                <div className="h-10 w-px bg-slate-200" />
+                <div className="h-10 w-px bg-saivie-sage" />
                 <div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wider">Gained</p>
-                  <p className="text-lg font-semibold text-slate-700">+{gainKg} kg</p>
+                  <p className="text-[10px] text-saivie-plum uppercase tracking-wider">Gained</p>
+                  <p className="text-lg font-semibold text-saivie-plum">+{gainKg} kg</p>
                   <div className="flex items-center gap-1 mt-0.5">
-                    <TrendingUp className="w-3 h-3 text-slate-400" />
-                    <p className="text-[10px] text-slate-400">
+                    <TrendingUp className="w-3 h-3 text-saivie-plum" />
+                    <p className="text-[10px] text-saivie-plum">
                       Expected ~{expectedGainAtWeek.toFixed(1)} kg by W{currentWeek}
                     </p>
                   </div>
@@ -278,12 +278,12 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
         {showForm && (
           <div className="flex gap-2 items-center">
             <input type="number" step="0.1" placeholder="Weight in kg" value={weight} onChange={e => setWeight(e.target.value)}
-              className="flex-1 border border-amber-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 bg-white/70" />
+              className="flex-1 border border-amber-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 bg-saivie-ivory/70" />
             <button onClick={() => addWeight.mutate()} disabled={!weight || addWeight.isPending}
               className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors disabled:opacity-50">
               Save
             </button>
-            <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            <button onClick={() => setShowForm(false)} className="text-saivie-plum hover:text-saivie-plum"><X className="w-4 h-4" /></button>
           </div>
         )}
 
@@ -301,7 +301,7 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
         )}
 
         {chartData.length === 0 && !showForm && (
-          <p className="text-xs text-slate-400 text-center py-2">No weight logs yet. Tap + to add your first reading.</p>
+          <p className="text-xs text-saivie-plum text-center py-2">No weight logs yet. Tap + to add your first reading.</p>
         )}
       </CardContent>
     </Card>
@@ -359,13 +359,13 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
 
   return (
     <Card className="glass-panel border-rose-200/40 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-rose-50/50 via-pink-50/30 to-white/40" />
+      <div className="absolute inset-0 bg-gradient-to-br from-rose-50/50 via-saivie-surface-blush/30 to-saivie-ivory/40" />
       <CardContent className="relative p-5 z-10 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-rose-100 rounded-xl"><Activity className="w-4 h-4 text-rose-600" /></div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Blood Pressure</h3>
+              <h3 className="text-sm font-semibold text-saivie-plum">Blood Pressure</h3>
               <p className="text-[10px] text-muted-foreground">Systolic / Diastolic mmHg</p>
             </div>
           </div>
@@ -375,13 +375,13 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
         </div>
 
         {latest && status && (
-          <div className="flex items-center gap-4 bg-white/50 rounded-xl px-4 py-3">
+          <div className="flex items-center gap-4 bg-saivie-ivory/50 rounded-xl px-4 py-3">
             <div>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Latest Reading</p>
+              <p className="text-[10px] text-saivie-plum uppercase tracking-wider">Latest Reading</p>
               <p className="text-2xl font-bold text-rose-700">
-                {latest.systolic}<span className="text-base text-slate-400 font-normal">/{latest.diastolic}</span>
+                {latest.systolic}<span className="text-base text-saivie-plum font-normal">/{latest.diastolic}</span>
               </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">
+              <p className="text-[10px] text-saivie-plum mt-0.5">
                 mmHg · Week {latest.week}{latest.enteredBy === "patient" ? " · Self-reported" : ""}
               </p>
             </div>
@@ -394,30 +394,30 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
         {showForm && (
           <div className="flex gap-2 items-center">
             <input type="number" placeholder="Systolic" value={systolic} onChange={e => setSystolic(e.target.value)}
-              className="w-1/3 border border-rose-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white/70 text-center" />
-            <span className="text-slate-400 font-bold">/</span>
+              className="w-1/3 border border-rose-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-saivie-ivory/70 text-center" />
+            <span className="text-saivie-plum font-bold">/</span>
             <input type="number" placeholder="Diastolic" value={diastolic} onChange={e => setDiastolic(e.target.value)}
-              className="w-1/3 border border-rose-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-white/70 text-center" />
+              className="w-1/3 border border-rose-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 bg-saivie-ivory/70 text-center" />
             <button onClick={() => addBP.mutate()} disabled={!systolic || !diastolic || addBP.isPending}
               className="flex-1 bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold px-3 py-2 rounded-xl transition-colors disabled:opacity-50">
               Save
             </button>
-            <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            <button onClick={() => setShowForm(false)} className="text-saivie-plum hover:text-saivie-plum"><X className="w-4 h-4" /></button>
           </div>
         )}
 
         {bpLogs.length > 1 && (
           <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Recent Readings</p>
+            <p className="text-[10px] font-semibold text-saivie-plum uppercase tracking-wider">Recent Readings</p>
             {bpLogs.slice(0, 4).map((m: any, i: number) => {
               const s = getBPStatus(m.systolic, m.diastolic);
               return (
-                <div key={m.id || i} className="flex items-center justify-between bg-white/50 rounded-lg px-3 py-1.5">
-                  <span className="text-xs text-slate-700 font-medium">
-                    {m.systolic}/{m.diastolic} <span className="text-[10px] font-normal text-slate-400">mmHg</span>
+                <div key={m.id || i} className="flex items-center justify-between bg-saivie-ivory/50 rounded-lg px-3 py-1.5">
+                  <span className="text-xs text-saivie-plum font-medium">
+                    {m.systolic}/{m.diastolic} <span className="text-[10px] font-normal text-saivie-plum">mmHg</span>
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-400">Week {m.week}</span>
+                    <span className="text-[10px] text-saivie-plum">Week {m.week}</span>
                     <Badge className={`text-[10px] border ${s.color}`}>{s.label.split(" —")[0]}</Badge>
                   </div>
                 </div>
@@ -427,7 +427,7 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
         )}
 
         {bpLogs.length === 0 && !showForm && (
-          <p className="text-xs text-slate-400 text-center py-2">No BP readings yet. Tap + to log your first reading.</p>
+          <p className="text-xs text-saivie-plum text-center py-2">No BP readings yet. Tap + to log your first reading.</p>
         )}
       </CardContent>
     </Card>
@@ -482,33 +482,33 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
   });
 
   return (
-    <Card className="glass-panel border-violet-200/40 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-violet-50/50 via-purple-50/30 to-white/40" />
+    <Card className="glass-panel border-saivie-border/40 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-saivie-surface-muted/50 via-saivie-surface-muted/30 to-saivie-ivory/40" />
       <CardContent className="relative p-5 z-10 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-violet-100 rounded-xl"><Pill className="w-4 h-4 text-violet-600" /></div>
+            <div className="p-2 bg-saivie-sage rounded-xl"><Pill className="w-4 h-4 text-saivie-teal" /></div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Today's Medicines</h3>
+              <h3 className="text-sm font-semibold text-saivie-plum">Today's Medicines</h3>
               <p className="text-[10px] text-muted-foreground">{takenCount} of {activeMeds.length} taken today</p>
             </div>
           </div>
-          <div className={`text-sm font-bold ${takenCount === activeMeds.length && activeMeds.length > 0 ? "text-emerald-600" : "text-violet-600"}`}>
+          <div className={`text-sm font-bold ${takenCount === activeMeds.length && activeMeds.length > 0 ? "text-emerald-600" : "text-saivie-teal"}`}>
             {takenCount}/{activeMeds.length}
           </div>
         </div>
 
         {activeMeds.length > 0 && (
-          <div className="w-full bg-violet-100 rounded-full h-1.5">
+          <div className="w-full bg-saivie-sage rounded-full h-1.5">
             <div
-              className="bg-gradient-to-r from-violet-400 to-purple-500 h-1.5 rounded-full transition-all duration-500"
+              className="bg-gradient-to-r from-saivie-teal to-saivie-teal h-1.5 rounded-full transition-all duration-500"
               style={{ width: `${activeMeds.length > 0 ? (takenCount / activeMeds.length) * 100 : 0}%` }}
             />
           </div>
         )}
 
         {activeMeds.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-2">No active medications prescribed.</p>
+          <p className="text-xs text-saivie-plum text-center py-2">No active medications prescribed.</p>
         ) : (
           <div className="space-y-2">
             {activeMeds.map((med: any) => {
@@ -517,16 +517,16 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
                 <button
                   key={med.id}
                   onClick={() => taken ? unmarkTaken.mutate(med.id) : markTaken.mutate(med.id)}
-                  className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 border transition-all text-left ${taken ? "bg-emerald-50 border-emerald-200" : "bg-white/60 border-white/60 hover:border-violet-200"}`}
+                  className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 border transition-all text-left ${taken ? "bg-emerald-50 border-emerald-200" : "bg-saivie-ivory/60 border-white/60 hover:border-saivie-border"}`}
                 >
                   <div className={`shrink-0 ${taken ? "text-emerald-500" : "text-slate-300"}`}>
                     {taken ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${taken ? "text-emerald-800 line-through opacity-70" : "text-slate-800"}`}>
+                    <p className={`text-sm font-medium truncate ${taken ? "text-emerald-800 line-through opacity-70" : "text-saivie-plum"}`}>
                       {med.name}
                     </p>
-                    <p className="text-[10px] text-slate-400">{[med.dose, med.frequency].filter(Boolean).join(" — ")}</p>
+                    <p className="text-[10px] text-saivie-plum">{[med.dose, med.frequency].filter(Boolean).join(" — ")}</p>
                   </div>
                   {taken && <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200 shrink-0">Taken</Badge>}
                 </button>
@@ -625,13 +625,13 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
   return (
     <div className="space-y-5 animate-in fade-in duration-500">
       {/* Upload Section */}
-      <Card className="glass-panel border-indigo-200/40 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 via-blue-50/30 to-white/40" />
+      <Card className="glass-panel border-saivie-border/40 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-saivie-surface-muted/50 via-blue-50/30 to-saivie-ivory/40" />
         <CardContent className="relative p-5 z-10 space-y-4">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-indigo-100 rounded-xl"><Upload className="w-4 h-4 text-indigo-600" /></div>
+            <div className="p-2 bg-saivie-sage rounded-xl"><Upload className="w-4 h-4 text-saivie-teal" /></div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Upload Report</h3>
+              <h3 className="text-sm font-semibold text-saivie-plum">Upload Report</h3>
               <p className="text-[10px] text-muted-foreground">JPG, PNG, PDF · Max 5 MB</p>
             </div>
           </div>
@@ -639,14 +639,14 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
           <div className="flex gap-2">
             {(["Diagnostic", "Prescription"] as const).map(t => (
               <button key={t} onClick={() => setDocType(t)}
-                className={`flex-1 text-xs font-semibold py-2 rounded-xl border transition-all ${docType === t ? "bg-indigo-100 text-indigo-700 border-indigo-200" : "bg-white/60 text-slate-500 border-white/60 hover:border-indigo-100"}`}>
+                className={`flex-1 text-xs font-semibold py-2 rounded-xl border transition-all ${docType === t ? "bg-saivie-sage text-saivie-teal border-saivie-border" : "bg-saivie-ivory/60 text-saivie-plum border-white/60 hover:border-saivie-border"}`}>
                 {t === "Diagnostic" ? "🔬 Diagnostic" : "📋 Prescription"}
               </button>
             ))}
           </div>
 
           <input placeholder="Label (e.g. Anomaly Scan W20)" value={label} onChange={e => setLabel(e.target.value)}
-            className="w-full border border-indigo-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 bg-white/70" />
+            className="w-full border border-saivie-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-saivie-border bg-saivie-ivory/70" />
 
           {uploadError && <p className="text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2">{uploadError}</p>}
 
@@ -654,11 +654,11 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
             onChange={e => { const f = e.target.files?.[0]; if (f) uploadDoc(f); e.target.value = ""; }} />
 
           <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="w-full border-2 border-dashed border-indigo-200 hover:border-indigo-400 rounded-2xl py-4 flex flex-col items-center gap-2 transition-colors group disabled:opacity-50">
+            className="w-full border-2 border-dashed border-saivie-border hover:border-saivie-teal rounded-2xl py-4 flex flex-col items-center gap-2 transition-colors group disabled:opacity-50">
             {uploading
-              ? <div className="w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-              : <Upload className="w-5 h-5 text-indigo-400 group-hover:text-indigo-600 transition-colors" />}
-            <p className="text-xs text-slate-500">{uploading ? "Uploading…" : "Tap to choose file"}</p>
+              ? <div className="w-6 h-6 border-2 border-saivie-teal border-t-transparent rounded-full animate-spin" />
+              : <Upload className="w-5 h-5 text-saivie-teal group-hover:text-saivie-teal transition-colors" />}
+            <p className="text-xs text-saivie-plum">{uploading ? "Uploading…" : "Tap to choose file"}</p>
           </button>
         </CardContent>
       </Card>
@@ -667,25 +667,25 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
       {clinicianDocs.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-2 px-1">
-            <FileText className="w-4 h-4 text-slate-500" />
-            <h4 className="text-sm font-semibold text-slate-700">From Your Clinic</h4>
+            <FileText className="w-4 h-4 text-saivie-plum" />
+            <h4 className="text-sm font-semibold text-saivie-plum">From Your Clinic</h4>
             <Badge variant="outline" className="text-[10px] ml-auto">{clinicianDocs.length}</Badge>
           </div>
           <div className="space-y-2">
             {clinicianDocs.map((doc: any) => (
               <Card key={doc.id} className="glass-panel border-white/60">
                 <CardContent className="p-3 flex items-center gap-3">
-                  <div className="p-2 bg-slate-100 rounded-lg shrink-0">
-                    <FileText className="w-4 h-4 text-slate-500" />
+                  <div className="p-2 bg-saivie-sage rounded-lg shrink-0">
+                    <FileText className="w-4 h-4 text-saivie-plum" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-700 truncate">{doc.name || doc.type || "Document"}</p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-sm font-medium text-saivie-plum truncate">{doc.name || doc.type || "Document"}</p>
+                    <p className="text-[10px] text-saivie-plum">
                       {doc.date ? new Date(doc.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : ""}
                       {doc.type ? ` · ${doc.type}` : ""}
                     </p>
                   </div>
-                  <Badge variant="outline" className="text-[10px] shrink-0 text-slate-400">Clinic</Badge>
+                  <Badge variant="outline" className="text-[10px] shrink-0 text-saivie-plum">Clinic</Badge>
                 </CardContent>
               </Card>
             ))}
@@ -696,7 +696,7 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
       {/* Patient-uploaded: Diagnostic */}
       <DocList
         title="My Diagnostic Reports"
-        icon={<FileText className="w-4 h-4 text-purple-600" />}
+        icon={<FileText className="w-4 h-4 text-saivie-teal" />}
         docs={patientDiag}
         onDelete={id => deleteDoc.mutate(id)}
         patientId={patientId}
@@ -712,7 +712,7 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
       />
 
       {patientDocs.length === 0 && clinicianDocs.length === 0 && (
-        <div className="text-center py-8 text-slate-400">
+        <div className="text-center py-8 text-saivie-plum">
           <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
           <p className="text-sm">No documents yet. Upload your first report above.</p>
         </div>
@@ -736,14 +736,14 @@ function DocViewer({ doc, patientId, onClose }: { doc: any; patientId: number; o
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="bg-saivie-ivory rounded-2xl max-w-lg w-full max-h-[80vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b">
-          <p className="text-sm font-semibold text-slate-800 truncate max-w-[80%]">{doc.label || doc.fileName}</p>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors"><X className="w-5 h-5" /></button>
+          <p className="text-sm font-semibold text-saivie-plum truncate max-w-[80%]">{doc.label || doc.fileName}</p>
+          <button onClick={onClose} className="text-saivie-plum hover:text-saivie-plum transition-colors"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-4 flex items-center justify-center min-h-[200px]">
-          {loading && <div className="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />}
-          {!loading && !src && <p className="text-sm text-slate-400">Unable to load file preview.</p>}
+          {loading && <div className="w-8 h-8 border-2 border-saivie-teal border-t-transparent rounded-full animate-spin" />}
+          {!loading && !src && <p className="text-sm text-saivie-plum">Unable to load file preview.</p>}
           {!loading && src && doc.mimeType?.includes("image") && (
             <img src={src} alt={doc.label || doc.fileName} className="max-w-full max-h-[60vh] object-contain rounded-lg" />
           )}
@@ -754,7 +754,7 @@ function DocViewer({ doc, patientId, onClose }: { doc: any; patientId: number; o
         {src && (
           <div className="px-4 pb-4">
             <a href={src} download={doc.fileName}
-              className="w-full flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-semibold py-2.5 rounded-xl transition-colors">
+              className="w-full flex items-center justify-center gap-2 bg-saivie-surface-muted hover:bg-saivie-sage text-saivie-teal text-sm font-semibold py-2.5 rounded-xl transition-colors">
               <Upload className="w-4 h-4 rotate-180" /> Download
             </a>
           </div>
@@ -774,23 +774,23 @@ function DocList({ title, icon, docs, onDelete, patientId }: {
       {viewing && <DocViewer doc={viewing} patientId={patientId} onClose={() => setViewing(null)} />}
       <div className="flex items-center gap-2 mb-2 px-1">
         {icon}
-        <h4 className="text-sm font-semibold text-slate-700">{title}</h4>
+        <h4 className="text-sm font-semibold text-saivie-plum">{title}</h4>
         <Badge variant="outline" className="text-[10px] ml-auto">{docs.length}</Badge>
       </div>
       <div className="space-y-2">
         {docs.map((doc: any) => (
           <Card key={doc.id} className="glass-panel border-white/60">
             <CardContent className="p-3 flex items-center gap-3">
-              <button onClick={() => setViewing(doc)} className="p-2 bg-slate-100 hover:bg-indigo-100 rounded-lg shrink-0 transition-colors">
-                {doc.mimeType?.includes("image") ? <Image className="w-4 h-4 text-slate-500" /> : <FileText className="w-4 h-4 text-slate-500" />}
+              <button onClick={() => setViewing(doc)} className="p-2 bg-saivie-sage hover:bg-saivie-sage rounded-lg shrink-0 transition-colors">
+                {doc.mimeType?.includes("image") ? <Image className="w-4 h-4 text-saivie-plum" /> : <FileText className="w-4 h-4 text-saivie-plum" />}
               </button>
               <button onClick={() => setViewing(doc)} className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium text-slate-700 truncate">{doc.label || doc.fileName}</p>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-sm font-medium text-saivie-plum truncate">{doc.label || doc.fileName}</p>
+                <p className="text-[10px] text-saivie-plum">
                   {doc.trimester ? `Trimester ${doc.trimester}` : ""}
                   {doc.trimester && doc.uploadedAt ? " · " : ""}
                   {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : ""}
-                  <span className="text-indigo-400 ml-2">Tap to view</span>
+                  <span className="text-saivie-teal ml-2">Tap to view</span>
                 </p>
               </button>
               <button onClick={() => onDelete(doc.id)} className="text-slate-300 hover:text-rose-400 transition-colors shrink-0">

@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "../../../lib/brand/saivie.css";
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
@@ -79,62 +80,62 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 210 40% 98%; 
+  --background: from var(--saivie-ivory) h s l;
 
-  --foreground: 222 47% 11%;
+  --foreground: from var(--saivie-plum) h s l;
 
-  --border: 214 32% 91%;
+  --border: from var(--saivie-border) h s l;
 
-  --card: 0 0% 100%;
+  --card: from var(--saivie-ivory) h s l;
 
-  --card-foreground: 222 47% 11%;
+  --card-foreground: from var(--saivie-plum) h s l;
 
-  --card-border: 214 32% 91%;
+  --card-border: from var(--saivie-border) h s l;
 
-  --sidebar: 0 0% 100%;
+  --sidebar: from var(--saivie-surface-muted) h s l;
 
-  --sidebar-foreground: 222 47% 11%;
+  --sidebar-foreground: from var(--saivie-plum) h s l;
 
-  --sidebar-border: 214 32% 91%;
+  --sidebar-border: from var(--saivie-border) h s l;
 
-  --sidebar-primary: 191 91% 37%;
+  --sidebar-primary: from var(--saivie-teal) h s l;
 
-  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-primary-foreground: from var(--saivie-ivory) h s l;
 
-  --sidebar-accent: 210 40% 96.1%;
+  --sidebar-accent: from var(--saivie-sage) h s l;
 
-  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-accent-foreground: from var(--saivie-plum) h s l;
 
-  --sidebar-ring: 191 91% 37%;
+  --sidebar-ring: from var(--saivie-teal) h s l;
 
-  --popover: 0 0% 100%;
+  --popover: from var(--saivie-ivory) h s l;
 
-  --popover-foreground: 222 47% 11%;
+  --popover-foreground: from var(--saivie-plum) h s l;
 
-  --popover-border: 214 32% 91%;
+  --popover-border: from var(--saivie-border) h s l;
 
-  --primary: 191 91% 37%;
+  --primary: from var(--saivie-teal) h s l;
 
-  --primary-foreground: 0 0% 100%;
+  --primary-foreground: from var(--saivie-ivory) h s l;
 
-  --secondary: 210 40% 96.1%;
+  --secondary: from var(--saivie-sage) h s l;
 
-  --secondary-foreground: 222 47% 11%;
+  --secondary-foreground: from var(--saivie-plum) h s l;
 
-  --muted: 210 40% 96.1%;
+  --muted: from var(--saivie-surface-muted) h s l;
 
-  --muted-foreground: 215 16% 47%;
+  --muted-foreground: from color-mix(in srgb, var(--saivie-plum) 80%, var(--saivie-ivory)) h s l;
 
-  --accent: 210 40% 96.1%;
+  --accent: from var(--saivie-surface-blush) h s l;
 
-  --accent-foreground: 222 47% 11%;
+  --accent-foreground: from var(--saivie-rose) h s l;
 
   --destructive: 0 84% 60%;
 
   --destructive-foreground: 0 0% 100%;
 
-  --input: 214 32% 91%;
-  --ring: 191 91% 37%;
+  --input: from var(--saivie-border) h s l;
+  --ring: from var(--saivie-teal) h s l;
   --chart-1: 191 91% 37%;
   --chart-2: 214 32% 91%;
   --chart-3: 0 84% 60%;
@@ -197,63 +198,63 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 222 47% 11%;
+  --background: from color-mix(in srgb, var(--saivie-plum) 45%, #111) h s l;
 
-  --foreground: 210 40% 98%;
+  --foreground: from var(--saivie-ivory) h s l;
 
-  --border: 217.2 32.6% 17.5%;
+  --border: from color-mix(in srgb, var(--saivie-plum) 80%, var(--saivie-sage)) h s l;
 
-  --card: 222 47% 11%;
+  --card: from color-mix(in srgb, var(--saivie-plum) 65%, #111) h s l;
 
-  --card-foreground: 210 40% 98%;
+  --card-foreground: from var(--saivie-ivory) h s l;
 
-  --card-border: 217.2 32.6% 17.5%;
+  --card-border: var(--border);
 
-  --sidebar: 222 47% 11%;
+  --sidebar: var(--card);
 
-  --sidebar-foreground: 210 40% 98%;
+  --sidebar-foreground: var(--foreground);
 
-  --sidebar-border: 217.2 32.6% 17.5%;
+  --sidebar-border: var(--border);
 
-  --sidebar-primary: 191 91% 37%;
+  --sidebar-primary: from var(--saivie-sage) h s l;
 
-  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-primary-foreground: from var(--saivie-plum) h s l;
 
-  --sidebar-accent: 217.2 32.6% 17.5%;
+  --sidebar-accent: from var(--saivie-plum) h s l;
 
-  --sidebar-accent-foreground: 210 40% 98%;
+  --sidebar-accent-foreground: var(--foreground);
 
-  --sidebar-ring: 191 91% 37%;
+  --sidebar-ring: var(--sidebar-primary);
 
-  --popover: 222 47% 11%;
+  --popover: var(--card);
 
-  --popover-foreground: 210 40% 98%;
+  --popover-foreground: var(--foreground);
 
-  --popover-border: 217.2 32.6% 17.5%;
+  --popover-border: var(--border);
 
-  --primary: 191 91% 37%;
+  --primary: from var(--saivie-sage) h s l;
 
-  --primary-foreground: 0 0% 100%;
+  --primary-foreground: from var(--saivie-plum) h s l;
 
-  --secondary: 217.2 32.6% 17.5%;
+  --secondary: from var(--saivie-plum) h s l;
 
-  --secondary-foreground: 210 40% 98%;
+  --secondary-foreground: var(--foreground);
 
-  --muted: 217.2 32.6% 17.5%;
+  --muted: var(--card);
 
-  --muted-foreground: 215 20.2% 65.1%;
+  --muted-foreground: from color-mix(in srgb, var(--saivie-ivory) 70%, var(--saivie-plum)) h s l;
 
-  --accent: 217.2 32.6% 17.5%;
+  --accent: from var(--saivie-plum) h s l;
 
-  --accent-foreground: 210 40% 98%;
+  --accent-foreground: from var(--saivie-blush) h s l;
 
   --destructive: 0 84% 60%;
 
   --destructive-foreground: 0 0% 100%;
 
   /* Used as the border around inputs. Dark mode: Should be a border that is light enough to have high contrast when rendered on a --card background. More contrast than standard --border */
-  --input: 217.2 32.6% 17.5%;
-  --ring: 191 91% 37%;
+  --input: var(--border);
+  --ring: var(--primary);
   --chart-1: 191 91% 37%;
   --chart-2: 217.2 32.6% 17.5%;
   --chart-3: 0 84% 60%;

@@ -63,7 +63,7 @@ export default function Processing() {
   return (
     <div className="min-h-dvh bg-background flex flex-col items-center justify-center relative overflow-hidden px-6">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 bottom-0" style={{ background: "radial-gradient(ellipse at 50% 40%, hsl(44 87% 55% / 0.06), transparent 65%)" }} />
+        <div className="absolute top-0 left-0 right-0 bottom-0" style={{ background: "radial-gradient(ellipse at 50% 40%, hsl(from var(--saivie-blush) h s l / 0.06), transparent 65%)" }} />
       </div>
 
       <div className="flex items-center gap-1.5 absolute top-14 left-6">
@@ -79,7 +79,7 @@ export default function Processing() {
             style={{
               width: size,
               height: size,
-              borderColor: `hsl(44 87% 55% / ${0.12 + i * 0.06})`,
+              borderColor: `hsl(from var(--saivie-blush) h s l / ${0.12 + i * 0.06})`,
             }}
             animate={{ rotate: 360 }}
             transition={{ duration: 8 + i * 4, repeat: Infinity, ease: "linear", repeatType: i % 2 === 0 ? "loop" : "reverse" }}
@@ -89,11 +89,11 @@ export default function Processing() {
               style={{
                 width: 8,
                 height: 8,
-                background: "hsl(44 87% 55%)",
+                background: "var(--saivie-blush)",
                 top: -4,
                 left: "50%",
                 transform: "translateX(-50%)",
-                boxShadow: "0 0 12px hsl(44 87% 55%)",
+                boxShadow: "0 0 12px var(--saivie-blush)",
               }}
             />
           </motion.div>
@@ -101,7 +101,7 @@ export default function Processing() {
 
         <motion.div
           className="w-20 h-20 rounded-2xl flex items-center justify-center animate-pulse-glow"
-          style={{ background: "hsl(44 87% 55% / 0.12)", border: "1px solid hsl(44 87% 55% / 0.3)" }}
+          style={{ background: "hsl(from var(--saivie-blush) h s l / 0.12)", border: "1px solid hsl(from var(--saivie-blush) h s l / 0.3)" }}
         >
           <Dna className="w-10 h-10 text-primary" strokeWidth={1.5} />
         </motion.div>
@@ -139,7 +139,7 @@ export default function Processing() {
             <motion.div
               key={i}
               className="w-1.5 rounded-full"
-              style={{ background: "hsl(44 87% 55%)" }}
+              style={{ background: "var(--saivie-blush)" }}
               animate={{ height: [8, 20, 8] }}
               transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
             />

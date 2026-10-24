@@ -279,7 +279,7 @@ export default function Landing() {
             transition={{ delay: 0.2, duration: 0.5 }}
           >
             <div
-              className={`group bg-white/60 backdrop-blur-md border p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all cursor-pointer ${
+              className={`group bg-saivie-ivory/60 backdrop-blur-md border p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all cursor-pointer ${
                 showPatientLogin ? "border-primary/30 ring-2 ring-primary/10" : "border-white/50"
               }`}
               onClick={() => { if (!showPatientLogin) setShowPatientLogin(true); }}
@@ -310,7 +310,7 @@ export default function Landing() {
                     <div className="mt-6 pt-5 border-t border-primary/10 space-y-3" onClick={(e) => e.stopPropagation()}>
                       {!patientOtpSent ? (
                         <>
-                          <p className="text-sm text-slate-600 font-medium flex items-center gap-2">
+                          <p className="text-sm text-saivie-plum font-medium flex items-center gap-2">
                             <Phone className="w-4 h-4 text-primary" />
                             Enter your registered phone number
                           </p>
@@ -320,7 +320,7 @@ export default function Landing() {
                             onChange={(e) => { setPatientPhone(e.target.value); setPatientError(""); }}
                             onKeyDown={handlePatientKeyDown}
                             placeholder="10-digit phone number"
-                            className="h-12 text-lg tracking-wider bg-white border-slate-200 focus:border-primary focus:ring-primary/20"
+                            className="h-12 text-lg tracking-wider bg-saivie-ivory border-saivie-border focus:border-primary focus:ring-primary/20"
                             autoFocus
                             maxLength={13}
                             data-testid="input-patient-phone"
@@ -351,7 +351,7 @@ export default function Landing() {
                         </>
                       ) : (
                         <>
-                          <p className="text-sm text-slate-600 font-medium">
+                          <p className="text-sm text-saivie-plum font-medium">
                             Enter the 6-digit code sent {patientOtpDestination ? `to ${patientOtpDestination} ` : ""}via {patientDeliveryMethod === "email" ? "email" : patientDeliveryMethod === "development" ? "the development console" : "WhatsApp"}
                           </p>
                           <Input
@@ -360,7 +360,7 @@ export default function Landing() {
                             onChange={(e) => { setPatientOtp(e.target.value.slice(0, 6)); setPatientError(""); }}
                             onKeyDown={handlePatientKeyDown}
                             placeholder="000000"
-                            className="h-12 text-2xl tracking-widest text-center bg-white border-slate-200 focus:border-primary focus:ring-primary/20"
+                            className="h-12 text-2xl tracking-widest text-center bg-saivie-ivory border-saivie-border focus:border-primary focus:ring-primary/20"
                             autoFocus
                             data-testid="input-patient-otp"
                           />
@@ -389,7 +389,7 @@ export default function Landing() {
                           <button
                             onClick={handlePatientResendOtp}
                             disabled={patientLoading || patientResendCooldown > 0}
-                            className="text-xs text-primary hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed w-full text-center"
+                            className="text-xs text-primary hover:underline disabled:text-saivie-plum disabled:no-underline disabled:cursor-not-allowed w-full text-center"
                             data-testid="button-patient-resend-otp"
                           >
                             {patientResendCooldown > 0 ? `Resend code in ${patientResendCooldown}s` : "Resend code"}
@@ -399,11 +399,11 @@ export default function Landing() {
                           )}
                           <button
                             onClick={() => { setPatientOtpSent(false); setPatientOtp(""); setPatientError(""); }}
-                            className="text-xs text-slate-400 hover:text-slate-600 w-full text-center"
+                            className="text-xs text-saivie-plum hover:text-saivie-plum w-full text-center"
                           >
                             ← Change number
                           </button>
-                          <p className="text-xs text-slate-400 text-center">Code expires in 5 minutes.</p>
+                          <p className="text-xs text-saivie-plum text-center">Code expires in 5 minutes.</p>
                         </>
                       )}
                     </div>
@@ -420,7 +420,7 @@ export default function Landing() {
             transition={{ delay: 0.3, duration: 0.5 }}
           >
             <div
-              className={`group bg-white/80 backdrop-blur-md border p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all cursor-pointer ${
+              className={`group bg-saivie-ivory/80 backdrop-blur-md border p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all cursor-pointer ${
                 showPasscode ? "border-blue-300 ring-2 ring-blue-100" : "border-blue-100 hover:border-blue-300"
               }`}
               onClick={() => { if (!showPasscode) setShowPasscode(true); }}
@@ -434,10 +434,10 @@ export default function Landing() {
                   <h3 className="text-2xl font-serif text-blue-900 group-hover:text-blue-700 transition-colors">
                     Clinician & Staff Portal
                   </h3>
-                  <p className="text-slate-500">Secure access for healthcare team.</p>
+                  <p className="text-saivie-plum">Secure access for healthcare team.</p>
                 </div>
                 {!showPasscode && (
-                  <Lock className="ml-auto w-5 h-5 text-slate-400" />
+                  <Lock className="ml-auto w-5 h-5 text-saivie-plum" />
                 )}
               </div>
 
@@ -453,7 +453,7 @@ export default function Landing() {
                     <div className="mt-6 pt-5 border-t border-blue-100 space-y-3" onClick={(e) => e.stopPropagation()}>
                       {!staffOtpRequired ? (
                         <>
-                          <p className="text-sm text-slate-600 font-medium">Enter your passcode to continue</p>
+                          <p className="text-sm text-saivie-plum font-medium">Enter your passcode to continue</p>
                           <div className="relative">
                             <Input
                               type={showPin ? "text" : "password"}
@@ -461,14 +461,14 @@ export default function Landing() {
                               onChange={(e) => { setPasscode(e.target.value); setError(""); }}
                               onKeyDown={handleKeyDown}
                               placeholder="Enter passcode"
-                              className="pr-10 h-12 text-lg tracking-widest bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-200"
+                              className="pr-10 h-12 text-lg tracking-widest bg-saivie-ivory border-saivie-border focus:border-blue-400 focus:ring-blue-200"
                               autoFocus
                               data-testid="input-passcode"
                             />
                             <button
                               type="button"
                               onClick={() => setShowPin(!showPin)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-saivie-plum hover:text-saivie-plum"
                               data-testid="button-toggle-pin"
                             >
                               {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -488,7 +488,7 @@ export default function Landing() {
                           <Button
                             onClick={handlePasscodeSubmit}
                             disabled={loading}
-                            className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white"
+                            className="w-full h-11 bg-saivie-teal hover:bg-saivie-teal text-white"
                             data-testid="button-passcode-submit"
                           >
                             {loading ? (
@@ -500,7 +500,7 @@ export default function Landing() {
                         </>
                       ) : (
                         <>
-                          <p className="text-sm text-slate-600 font-medium">
+                          <p className="text-sm text-saivie-plum font-medium">
                             Enter the 6-digit code sent to <strong>{staffMaskedPhone || "your registered contact"}</strong> via {staffDeliveryMethod === "email" ? "email" : staffDeliveryMethod === "development" ? "the development console" : "WhatsApp"}
                           </p>
                           <Input
@@ -509,7 +509,7 @@ export default function Landing() {
                             onChange={(e) => { setStaffOtp(e.target.value.slice(0, 6)); setError(""); }}
                             onKeyDown={handleKeyDown}
                             placeholder="000000"
-                            className="h-12 text-2xl tracking-widest text-center bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-200"
+                            className="h-12 text-2xl tracking-widest text-center bg-saivie-ivory border-saivie-border focus:border-blue-400 focus:ring-blue-200"
                             autoFocus
                             data-testid="input-staff-otp"
                           />
@@ -526,7 +526,7 @@ export default function Landing() {
                           <Button
                             onClick={handleStaffOtpSubmit}
                             disabled={loading || staffOtp.length !== 6}
-                            className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white"
+                            className="w-full h-11 bg-saivie-teal hover:bg-saivie-teal text-white"
                             data-testid="button-staff-otp-submit"
                           >
                             {loading ? (
@@ -538,7 +538,7 @@ export default function Landing() {
                           <button
                             onClick={handleStaffResendOtp}
                             disabled={loading || staffResendCooldown > 0}
-                            className="text-xs text-blue-600 hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed w-full text-center"
+                            className="text-xs text-blue-600 hover:underline disabled:text-saivie-plum disabled:no-underline disabled:cursor-not-allowed w-full text-center"
                             data-testid="button-staff-resend-otp"
                           >
                             {staffResendCooldown > 0 ? `Resend code in ${staffResendCooldown}s` : "Resend code"}
@@ -548,15 +548,15 @@ export default function Landing() {
                           )}
                           <button
                             onClick={() => { setStaffOtpRequired(false); setStaffOtp(""); setError(""); setPasscode(""); }}
-                            className="text-xs text-slate-400 hover:text-slate-600 w-full text-center"
+                            className="text-xs text-saivie-plum hover:text-saivie-plum w-full text-center"
                           >
                             ← Back to passcode
                           </button>
-                          <p className="text-xs text-slate-400 text-center">Code expires in 5 minutes.</p>
+                          <p className="text-xs text-saivie-plum text-center">Code expires in 5 minutes.</p>
                         </>
                       )}
                       {!staffOtpRequired && (
-                        <p className="text-xs text-slate-400 text-center">
+                        <p className="text-xs text-saivie-plum text-center">
                           Your role determines which portal opens.
                         </p>
                       )}

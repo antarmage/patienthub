@@ -181,7 +181,7 @@ export function InvoiceTemplateEditor() {
 
   if (authStep !== "authenticated") {
     return (
-      <Card className="mx-auto max-w-md border-slate-200 shadow-sm">
+      <Card className="mx-auto max-w-md border-saivie-border shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><Shield className="h-4 w-4 text-emerald-700" />Owner sign-in</CardTitle>
         </CardHeader>
@@ -196,7 +196,7 @@ export function InvoiceTemplateEditor() {
             </>
           ) : (
             <>
-              <p className="text-sm text-slate-600">Enter the code sent to {otpPhone}.</p>
+              <p className="text-sm text-saivie-plum">Enter the code sent to {otpPhone}.</p>
               <Input value={loginOtp} onChange={(e) => setLoginOtp(e.target.value)} placeholder="6-digit code" inputMode="numeric" maxLength={6} onKeyDown={(e) => e.key === "Enter" && verifyOtp()} />
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => setAuthStep("credentials")}>Back</Button>
@@ -212,7 +212,7 @@ export function InvoiceTemplateEditor() {
     );
   }
 
-  if (templateQuery.isLoading) return <div className="flex items-center gap-2 py-12 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Loading invoice template...</div>;
+  if (templateQuery.isLoading) return <div className="flex items-center gap-2 py-12 text-sm text-saivie-plum"><Loader2 className="h-4 w-4 animate-spin" />Loading invoice template...</div>;
 
   const updateField = (field: keyof InvoiceTemplateData, value: string) => setDraft((current) => ({ ...current, [field]: value }));
   const updateSection = (section: keyof NonNullable<InvoiceTemplateData["sections"]>, checked: boolean) => {
@@ -223,8 +223,8 @@ export function InvoiceTemplateEditor() {
     <div className="space-y-6" data-testid="view-invoice-template">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 font-serif">Invoice Template</h2>
-          <p className="mt-1 text-sm text-slate-500">Set the clinic details and sections shown on receptionist invoices.</p>
+          <h2 className="text-2xl font-bold text-saivie-plum font-serif">Invoice Template</h2>
+          <p className="mt-1 text-sm text-saivie-plum">Set the clinic details and sections shown on receptionist invoices.</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline">A4 · Shared clinic template</Badge>
@@ -234,8 +234,8 @@ export function InvoiceTemplateEditor() {
 
       {templateQuery.isError && <p role="alert" className="text-sm text-rose-600">{(templateQuery.error as Error).message}</p>}
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(300px,0.8fr)_minmax(0,1.2fr)]">
-        <Card className="border-slate-200 shadow-sm">
-          <CardHeader className="border-b border-slate-100 pb-4"><CardTitle className="text-base">Clinic details</CardTitle></CardHeader>
+        <Card className="border-saivie-border shadow-sm">
+          <CardHeader className="border-b border-saivie-border pb-4"><CardTitle className="text-base">Clinic details</CardTitle></CardHeader>
           <CardContent className="space-y-4 pt-5">
             <div className="space-y-1.5">
               <label htmlFor="invoice-clinic-name" className="text-sm font-medium">Clinic name</label>
@@ -255,7 +255,7 @@ export function InvoiceTemplateEditor() {
               <div className="flex flex-wrap items-center gap-3">
                 {draft.logoUrl && (
                   <>
-                    <img src={draft.logoUrl} alt="Current clinic logo" className="h-12 w-16 border border-slate-200 object-contain p-1" />
+                    <img src={draft.logoUrl} alt="Current clinic logo" className="h-12 w-16 border border-saivie-border object-contain p-1" />
                     <Button type="button" variant="outline" size="icon" title="Remove clinic logo" aria-label="Remove clinic logo" onClick={() => removeLogoMutation.mutate()} disabled={removeLogoMutation.isPending}>
                       {removeLogoMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     </Button>
@@ -263,22 +263,22 @@ export function InvoiceTemplateEditor() {
                 )}
                 <Input id="invoice-logo" type="file" accept="image/jpeg,image/png,image/webp" className="max-w-sm" onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadLogoMutation.mutate(file); e.currentTarget.value = ""; }} />
               </div>
-              <p className="text-xs text-slate-500">JPG, PNG, or WebP, up to 1 MB.</p>
-              {uploadLogoMutation.isPending && <p className="text-xs text-slate-500">Uploading logo...</p>}
+              <p className="text-xs text-saivie-plum">JPG, PNG, or WebP, up to 1 MB.</p>
+              {uploadLogoMutation.isPending && <p className="text-xs text-saivie-plum">Uploading logo...</p>}
               {uploadLogoMutation.isError && <p role="alert" className="text-xs text-rose-600">{uploadLogoMutation.error.message}</p>}
               {removeLogoMutation.isError && <p role="alert" className="text-xs text-rose-600">{removeLogoMutation.error.message}</p>}
             </div>
             <div className="space-y-1.5"><label htmlFor="invoice-footer" className="text-sm font-medium">Footer message</label><Textarea id="invoice-footer" value={draft.footerText || ""} onChange={(e) => updateField("footerText", e.target.value)} maxLength={500} rows={2} placeholder="Thank you for choosing us." /></div>
-            <div className="space-y-3 border-t border-slate-100 pt-4">
+            <div className="space-y-3 border-t border-saivie-border pt-4">
               <p className="text-sm font-semibold">Visible invoice sections</p>
               {sectionOptions.map((option) => (
-                <label key={option.id} className="flex cursor-pointer items-center gap-3 text-sm text-slate-700">
+                <label key={option.id} className="flex cursor-pointer items-center gap-3 text-sm text-saivie-plum">
                   <Checkbox checked={draft.sections?.[option.id] ?? true} onCheckedChange={(checked) => updateSection(option.id, checked === true)} />
                   {option.label}
                 </label>
               ))}
             </div>
-            <div className="flex items-center gap-3 border-t border-slate-100 pt-4">
+            <div className="flex items-center gap-3 border-t border-saivie-border pt-4">
               <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || uploadLogoMutation.isPending} data-testid="btn-save-invoice-template">
                 {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save template
@@ -290,7 +290,7 @@ export function InvoiceTemplateEditor() {
         </Card>
 
         <section className="min-w-0 space-y-3" aria-label="Invoice template preview">
-          <div className="flex items-center gap-2"><ImagePlus className="h-4 w-4 text-emerald-700" /><h3 className="text-sm font-semibold text-slate-800">Live A4 preview</h3></div>
+          <div className="flex items-center gap-2"><ImagePlus className="h-4 w-4 text-emerald-700" /><h3 className="text-sm font-semibold text-saivie-plum">Live A4 preview</h3></div>
           <InvoiceDocument
             template={draft}
             patient={{ name: "Aarohi Sharma", phone: "+91 98765 43210", email: "aarohi@example.com", address: "Bengaluru, Karnataka", type: "Fertility", isPrimeMember: true }}

@@ -1,3 +1,5 @@
+import { getPrintBrandStyles } from "./brand";
+
 export interface PrescriptionData {
   providerName: string;
   providerSpecialty: string;
@@ -127,21 +129,21 @@ function buildInvestigations(investigations: string[]): string {
 
 const PRESCRIPTION_STYLES = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; font-size: 13px; line-height: 1.4; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: var(--saivie-plum); font-size: 13px; line-height: 1.4; }
   @page { size: A4 portrait; margin: 10mm 15mm 15mm 15mm; }
   @media print { body { padding: 0; } .no-print { display: none !important; } .letterhead-spacer { display: block !important; height: 29mm; } }
   .page { max-width: 210mm; margin: 0 auto; padding: 0 20px 20px 20px; }
 
   /* Pre-printed letterhead spacer: 2.9cm header with logo area (3x2.5cm centered) */
   .letterhead-spacer { height: 29mm; position: relative; margin-bottom: 6px; }
-  .letterhead-preview { height: 29mm; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; position: relative; background: #fafafa; margin-bottom: 6px; }
+  .letterhead-preview { height: 29mm; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; position: relative; background: var(--saivie-surface-muted); margin-bottom: 6px; }
   .letterhead-preview .logo-placeholder { width: 30mm; height: 25mm; border: 1px dashed #aaa; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999; text-align: center; }
   .letterhead-preview .left-text, .letterhead-preview .right-text { position: absolute; top: 4px; font-size: 9px; color: #bbb; }
   .letterhead-preview .left-text { left: 8px; }
   .letterhead-preview .right-text { right: 8px; text-align: right; }
   @media print { .letterhead-preview { display: none; } }
 
-  .header-line { border-bottom: 1.5px solid #1a3a5c; margin-bottom: 8px; }
+  .header-line { border-bottom: 1.5px solid var(--saivie-teal); margin-bottom: 8px; }
 
   .patient-section { border-bottom: 1px solid #ccc; padding-bottom: 6px; margin-bottom: 8px; }
   .patient-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
@@ -160,7 +162,7 @@ const PRESCRIPTION_STYLES = `
   .cc-content { font-size: 11px; color: #333; white-space: pre-wrap; }
 
   .diagnosis-section { margin-bottom: 8px; }
-  .obs-assess-section { display: flex; gap: 12px; margin-bottom: 8px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+  .obs-assess-section { display: flex; gap: 12px; margin-bottom: 8px; border-bottom: 1px solid var(--saivie-border); padding-bottom: 6px; }
   .obs-assess-section > div { flex: 1; }
   .obs-assess-label { font-size: 11px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
   .obs-assess-content { font-size: 12px; color: #333; white-space: pre-wrap; line-height: 1.4; }
@@ -168,11 +170,11 @@ const PRESCRIPTION_STYLES = `
   .diagnosis-label { font-size: 13px; font-weight: 700; }
   .diagnosis-text { font-size: 13px; color: #333; margin-left: 4px; }
 
-  .rx-symbol { font-size: 22px; font-weight: 700; font-family: serif; margin: 6px 0; color: #1a1a1a; }
+  .rx-symbol { font-size: 22px; font-weight: 700; font-family: serif; margin: 6px 0; color: var(--saivie-plum); }
 
   .med-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
   .med-table th { text-align: left; font-size: 11px; font-weight: 700; border-bottom: 2px solid #333; padding: 4px 6px; }
-  .med-table td { padding: 5px 6px; vertical-align: top; border-bottom: 1px solid #e0e0e0; }
+  .med-table td { padding: 5px 6px; vertical-align: top; border-bottom: 1px solid var(--saivie-border); }
   .med-num { width: 28px; font-weight: 600; }
   .med-name-col { }
   .med-drug-name { font-size: 12px; font-weight: 600; }
@@ -191,7 +193,7 @@ const PRESCRIPTION_STYLES = `
   .advice-content { font-size: 11px; color: #333; margin-left: 4px; white-space: pre-wrap; line-height: 1.5; }
 
   .followup { font-size: 13px; font-weight: 700; margin: 10px 0; }
-  .vaccination-date { font-size: 12px; font-weight: 600; color: #2563eb; margin: 4px 0; }
+  .vaccination-date { font-size: 12px; font-weight: 600; color: var(--saivie-teal); margin: 4px 0; }
 
   .footer-line { text-align: center; font-size: 9px; color: #999; margin-top: 16px; padding-top: 6px; border-top: 1px solid #ddd; font-style: italic; }
 
@@ -199,8 +201,8 @@ const PRESCRIPTION_STYLES = `
   .signature-box { text-align: center; }
   .sig-line { border-top: 1px solid #555; width: 180px; padding-top: 4px; font-size: 11px; color: #555; }
 
-  .print-btn { position: fixed; bottom: 20px; right: 20px; background: #1a3a5c; color: white; border: none; padding: 12px 28px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 100; }
-  .print-btn:hover { background: #0f2840; }
+  .print-btn { position: fixed; bottom: 20px; right: 20px; background: var(--saivie-teal); color: white; border: none; padding: 12px 28px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 100; }
+  .print-btn:hover { background: var(--saivie-plum); }
 `;
 
 export function generatePrescriptionHTML(data: PrescriptionData): string {
@@ -225,7 +227,7 @@ export function generatePrescriptionHTML(data: PrescriptionData): string {
 
   return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Prescription - ${data.patient.name}</title>
-<style>${PRESCRIPTION_STYLES}</style></head><body>
+<style>${getPrintBrandStyles()}${PRESCRIPTION_STYLES}</style></head><body>
 <button class="print-btn no-print" onclick="window.print()">Print Prescription</button>
 <div class="page">
 

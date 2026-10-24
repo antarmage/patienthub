@@ -190,8 +190,8 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
     <div className="space-y-4" data-testid="view-inventory">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Inventory</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-xl font-bold text-saivie-plum">Inventory</h2>
+          <p className="text-sm text-saivie-plum">
             {alerts.stock.length} low or out of stock · {alerts.expiry.length} expiring or expired
           </p>
         </div>
@@ -212,9 +212,9 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
         </Select>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-saivie-border bg-saivie-ivory">
         <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
+          <thead className="bg-saivie-surface-muted text-[11px] uppercase tracking-wider text-saivie-plum">
             <tr>
               <th className="px-4 py-3">Item</th>
               <th className="px-3 py-3">Category</th>
@@ -234,20 +234,20 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
               return (
                 <tr key={item.id} data-testid={`inventory-row-${item.id}`}>
                   <td className="px-4 py-3">
-                    <p className="font-semibold text-slate-900">{item.name}</p>
-                    {item.batchNumber && <p className="text-xs text-slate-500">Batch {item.batchNumber}</p>}
+                    <p className="font-semibold text-saivie-plum">{item.name}</p>
+                    {item.batchNumber && <p className="text-xs text-saivie-plum">Batch {item.batchNumber}</p>}
                   </td>
-                  <td className="px-3 py-3 text-slate-600">{item.category}</td>
-                  <td className="px-3 py-3 font-semibold text-slate-900">{item.quantity} <span className="text-xs font-normal text-slate-500">{item.unit}</span></td>
-                  <td className="px-3 py-3 text-slate-600">{item.lowStockThreshold}</td>
-                  <td className="px-3 py-3 text-slate-600">
+                  <td className="px-3 py-3 text-saivie-plum">{item.category}</td>
+                  <td className="px-3 py-3 font-semibold text-saivie-plum">{item.quantity} <span className="text-xs font-normal text-saivie-plum">{item.unit}</span></td>
+                  <td className="px-3 py-3 text-saivie-plum">{item.lowStockThreshold}</td>
+                  <td className="px-3 py-3 text-saivie-plum">
                     {item.sellingPrice != null ? `₹${item.sellingPrice.toLocaleString("en-IN")}` : "—"}
                     {(item.primeDiscountPercent > 0 || item.nonPrimeDiscountPercent > 0) && (
                       <p className="mt-0.5 text-[10px] text-emerald-700">Prime {item.primeDiscountPercent || 0}% · Non-Prime {item.nonPrimeDiscountPercent || 0}%</p>
                     )}
                   </td>
-                  <td className="px-3 py-3 text-slate-600">{formatCost(ownerCosts.costs?.inventory[item.id])}</td>
-                  <td className="px-3 py-3 text-slate-600">{item.expiryDate ? String(item.expiryDate).slice(0, 10) : "—"}</td>
+                  <td className="px-3 py-3 text-saivie-plum">{formatCost(ownerCosts.costs?.inventory[item.id])}</td>
+                  <td className="px-3 py-3 text-saivie-plum">{item.expiryDate ? String(item.expiryDate).slice(0, 10) : "—"}</td>
                   <td className="space-x-1 px-3 py-3">
                     {stock === "out" && <Badge className="border-0 bg-rose-100 text-rose-700">Out of stock</Badge>}
                     {stock === "low" && <Badge className="border-0 bg-amber-100 text-amber-700">Low stock</Badge>}
@@ -271,7 +271,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
               );
             })}
             {visible.length === 0 && (
-              <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-slate-400">{isLoading ? "Loading..." : "No inventory items yet"}</td></tr>
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-saivie-plum">{isLoading ? "Loading..." : "No inventory items yet"}</td></tr>
             )}
           </tbody>
         </table>
@@ -284,7 +284,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
             <DialogDescription>All recorded sales and stock changes for this product.</DialogDescription>
           </DialogHeader>
           {movementsQuery.isLoading ? (
-            <p className="py-6 text-center text-sm text-slate-500">Loading product history...</p>
+            <p className="py-6 text-center text-sm text-saivie-plum">Loading product history...</p>
           ) : movementsQuery.isError ? (
             <p role="alert" className="py-6 text-center text-sm text-rose-600">{movementsQuery.error.message}</p>
           ) : movementsQuery.data?.length ? (
@@ -292,8 +292,8 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
               {movementsQuery.data.map((movement) => (
                 <div key={movement.id} className="flex items-start justify-between gap-4 p-3" data-testid={`inventory-movement-${movement.id}`}>
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{movement.reason || "Stock adjustment"}</p>
-                    <p className="mt-1 text-xs text-slate-500">{new Date(movement.createdAt).toLocaleString()}</p>
+                    <p className="text-sm font-medium text-saivie-plum">{movement.reason || "Stock adjustment"}</p>
+                    <p className="mt-1 text-xs text-saivie-plum">{new Date(movement.createdAt).toLocaleString()}</p>
                   </div>
                   <span className={`shrink-0 text-sm font-semibold ${movement.change < 0 ? "text-rose-700" : "text-emerald-700"}`}>
                     {movement.change > 0 ? "+" : ""}{movement.change} {historyItem?.unit}
@@ -302,7 +302,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
               ))}
             </div>
           ) : (
-            <p className="py-6 text-center text-sm text-slate-500">No product movements recorded yet. Sales and stock adjustments will appear here.</p>
+            <p className="py-6 text-center text-sm text-saivie-plum">No product movements recorded yet. Sales and stock adjustments will appear here.</p>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setHistoryItem(null)}>Close</Button>
@@ -366,7 +366,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
               <Label>Non-Prime discount (%)</Label>
               <Input type="number" min={0} max={100} step="0.01" value={form.nonPrimeDiscountPercent} onChange={(e) => setForm({ ...form, nonPrimeDiscountPercent: e.target.value })} data-testid="input-inv-non-prime-discount" />
             </div>
-            <p className="col-span-2 text-xs text-slate-500">The matching discount is applied automatically to the product when billing a Prime or non-Prime patient. Leave at 0% for no discount.</p>
+            <p className="col-span-2 text-xs text-saivie-plum">The matching discount is applied automatically to the product when billing a Prime or non-Prime patient. Leave at 0% for no discount.</p>
             <div className="col-span-2 space-y-1">
               <Label>Purchase price per {form.unit || "unit"} (₹, owner only)</Label>
               <Input type="number" min={0} step="0.01" value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} data-testid="input-inv-cost" />

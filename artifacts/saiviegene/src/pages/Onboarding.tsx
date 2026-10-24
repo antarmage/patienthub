@@ -9,25 +9,25 @@ const slides = [
     icon: Dna,
     title: "Your DNA,\nDecoded",
     subtitle: "Upload your genome file and unlock precision health insights powered by advanced genomic analysis.",
-    color: "from-[#0a0e1a] via-[#0d1428] to-[#0a0e1a]",
-    iconBg: "hsl(44 87% 55% / 0.12)",
-    iconColor: "hsl(44 87% 55%)",
+    color: "from-background via-card to-background",
+    iconBg: "color-mix(in srgb, var(--saivie-blush) 12%, transparent)",
+    iconColor: "var(--saivie-blush)",
   },
   {
     icon: ShieldCheck,
     title: "Know Your\nRisks Early",
     subtitle: "Discover genetic predispositions to health conditions before symptoms appear. Knowledge is your best prevention.",
-    color: "from-[#0a0e1a] via-[#0e1220] to-[#0a0e1a]",
-    iconBg: "hsl(142 70% 45% / 0.12)",
-    iconColor: "hsl(142 70% 45%)",
+    color: "from-background via-card to-background",
+    iconBg: "color-mix(in srgb, var(--saivie-sage) 12%, transparent)",
+    iconColor: "var(--saivie-sage)",
   },
   {
     icon: FlaskConical,
     title: "Personalised\nMedicine",
     subtitle: "Understand how your genes affect medication response, nutrition, and fitness — tailored guidance just for you.",
-    color: "from-[#0a0e1a] via-[#120e1e] to-[#0a0e1a]",
-    iconBg: "hsl(260 70% 60% / 0.12)",
-    iconColor: "hsl(260 70% 65%)",
+    color: "from-background via-secondary to-background",
+    iconBg: "color-mix(in srgb, var(--saivie-gold) 12%, transparent)",
+    iconColor: "var(--saivie-gold)",
   },
 ];
 
@@ -94,11 +94,11 @@ export default function Onboarding() {
 
       <div className="flex items-center justify-between px-6 pt-14 pb-4 relative z-10">
         <div className="flex items-center gap-1.5">
-          <Dna className="w-5 h-5" style={{ color: "hsl(44 87% 55%)" }} />
-          <span className="text-sm font-semibold tracking-wider text-white/70">SAIVIEGENE</span>
+          <Dna className="w-5 h-5 text-saivie-blush" />
+          <span className="text-sm font-semibold tracking-wider text-foreground">SAIVIEGENE</span>
         </div>
         {current < slides.length - 1 && (
-          <button onClick={handleSkip} className="text-sm text-white/40 hover:text-white/70 transition-colors">
+          <button onClick={handleSkip} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             Skip
           </button>
         )}
@@ -116,17 +116,17 @@ export default function Onboarding() {
           >
             <motion.div
               className="w-28 h-28 rounded-3xl flex items-center justify-center mb-10 animate-float"
-              style={{ background: slide.iconBg, border: `1px solid ${slide.iconColor}22` }}
-              animate={{ boxShadow: [`0 0 30px ${slide.iconColor}22`, `0 0 60px ${slide.iconColor}44`, `0 0 30px ${slide.iconColor}22`] }}
+              style={{ background: slide.iconBg, border: `1px solid color-mix(in srgb, ${slide.iconColor} 15%, transparent)` }}
+              animate={{ boxShadow: [`0 0 30px color-mix(in srgb, ${slide.iconColor} 15%, transparent)`, `0 0 60px color-mix(in srgb, ${slide.iconColor} 30%, transparent)`, `0 0 30px color-mix(in srgb, ${slide.iconColor} 15%, transparent)`] }}
               transition={{ duration: 2.5, repeat: Infinity }}
             >
               <Icon className="w-14 h-14" style={{ color: slide.iconColor }} strokeWidth={1.5} />
             </motion.div>
 
-            <h1 className="text-4xl font-bold text-white leading-tight mb-5 whitespace-pre-line">
+            <h1 className="text-4xl font-bold text-foreground leading-tight mb-5 whitespace-pre-line">
               {slide.title}
             </h1>
-            <p className="text-base text-white/55 leading-relaxed max-w-xs">
+            <p className="text-base text-muted-foreground leading-relaxed max-w-xs">
               {slide.subtitle}
             </p>
           </motion.div>
@@ -143,7 +143,7 @@ export default function Onboarding() {
               style={{
                 width: i === current ? 24 : 8,
                 height: 8,
-                background: i === current ? "hsl(44 87% 55%)" : "hsl(225 25% 25%)",
+                background: i === current ? "var(--saivie-blush)" : "hsl(var(--border))",
               }}
             />
           ))}
@@ -152,7 +152,7 @@ export default function Onboarding() {
         <button
           onClick={handleNext}
           className="w-full py-4 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-          style={{ background: "linear-gradient(135deg, hsl(44 87% 55%), hsl(38 90% 45%))", color: "hsl(225 35% 8%)" }}
+          style={{ background: "linear-gradient(135deg, var(--saivie-blush), var(--saivie-sage))", color: "var(--saivie-plum)" }}
         >
           {isLast ? "Get Started" : "Continue"}
           <ChevronRight className="w-5 h-5" />

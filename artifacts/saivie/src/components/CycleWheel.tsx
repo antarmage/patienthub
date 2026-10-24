@@ -88,7 +88,7 @@ export function CycleWheel({ mode = "general" }: { mode?: string }) {
           <motion.button 
              whileHover={{ scale: 1.05 }}
              whileTap={{ scale: 0.95 }}
-             className="mt-4 px-4 py-1.5 bg-white/50 backdrop-blur-sm border border-white/60 rounded-full text-xs font-medium text-primary shadow-sm hover:bg-white/80 transition-colors flex items-center gap-1"
+             className="mt-4 px-4 py-1.5 bg-saivie-ivory/50 backdrop-blur-sm border border-white/60 rounded-full text-xs font-medium text-primary shadow-sm hover:bg-saivie-ivory/80 transition-colors flex items-center gap-1"
           >
              View Insights <ChevronRight className="w-3 h-3" />
           </motion.button>
@@ -191,7 +191,7 @@ function SatelliteButton({ position, icon, label, isActive, onHover, onLeave }: 
             scale: isActive ? 1.1 : 1,
             boxShadow: isActive ? "0 4px 12px rgba(0,0,0,0.08)" : "0 2px 4px rgba(0,0,0,0.02)"
          }}
-         className={`absolute ${positionClasses[position]} bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-white/60 transition-colors z-30 group`}
+         className={`absolute ${positionClasses[position]} bg-saivie-ivory/80 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-white/60 transition-colors z-30 group`}
       >
          <div className={`text-muted-foreground group-hover:text-primary transition-colors duration-300`}>
             {icon}

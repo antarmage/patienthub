@@ -105,14 +105,14 @@ export default function HomeScreen() {
 
   const getWeightStatus = () => {
     if (!latestWeight) return { text: "Not tracked", color: "#6B7280" };
-    return { text: "On Track", color: "#A855F7" };
+    return { text: "On Track", color: COLORS.rose };
   };
 
   const getBPStatus = () => {
     if (!latestBP) return { text: "Not tracked", color: "#6B7280" };
     const systolic = latestBP.systolic;
     if (systolic < 90) return { text: "Low", color: "#F59E0B" };
-    if (systolic <= 120) return { text: "Stable", color: "#F472B6" };
+    if (systolic <= 120) return { text: "Stable", color: COLORS.rose };
     if (systolic <= 140) return { text: "Elevated", color: "#F59E0B" };
     return { text: "High", color: "#EF4444" };
   };
@@ -134,8 +134,8 @@ export default function HomeScreen() {
       id: "doctor",
       label: "Doctor",
       icon: "calendar" as const,
-      bgColor: "#F5F3FF",
-      iconColor: "#6C63FF",
+      bgColor: COLORS.surfaceMuted,
+      iconColor: COLORS.primary,
       onPress: () => router.push("/(trackers)/appointments"),
     },
     {
@@ -150,8 +150,8 @@ export default function HomeScreen() {
       id: "journal",
       label: "Journal",
       icon: "edit-3" as const,
-      bgColor: "#FDF4FF",
-      iconColor: "#A855F7",
+      bgColor: COLORS.surfaceBlush,
+      iconColor: COLORS.rose,
       onPress: () => router.push("/(trackers)/journal"),
     },
     {
@@ -250,8 +250,8 @@ export default function HomeScreen() {
             </>
           ) : (
             <>
-              <View style={[styles.checkinIconWrap, { backgroundColor: "#FDF4FF" }]}>
-                <Feather name="edit-3" size={18} color="#A855F7" />
+              <View style={[styles.checkinIconWrap, { backgroundColor: COLORS.surfaceBlush }]}>
+                <Feather name="edit-3" size={18} color={COLORS.rose} />
               </View>
               <View style={styles.checkinTextWrap}>
                 <ThemedText style={styles.checkinTitle}>Daily Check-in</ThemedText>
@@ -289,7 +289,7 @@ export default function HomeScreen() {
               onPress={() => router.push("/(trackers)/weight")}
             >
               <View style={styles.healthSignalHeader}>
-                <Feather name="trending-up" size={16} color="#A78BFA" />
+                <Feather name="trending-up" size={16} color={COLORS.rose} />
                 <ThemedText style={styles.healthSignalLabel}>Weight</ThemedText>
               </View>
               <ThemedText style={[styles.healthSignalStatus, { color: weightStatus.color }]}>
@@ -330,7 +330,7 @@ export default function HomeScreen() {
                 </ThemedText>
               </View>
             </View>
-            <Feather name="chevron-right" size={18} color="#DB2777" />
+            <Feather name="chevron-right" size={18} color={COLORS.rose} />
           </Pressable>
         )}
 
@@ -345,7 +345,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFC",
+    backgroundColor: COLORS.background,
   },
   scrollView: {
     flex: 1,
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: "rgba(108, 99, 255, 0.1)",
+    borderColor: COLORS.primaryTint,
     position: "relative",
     overflow: "hidden",
   },
@@ -441,12 +441,12 @@ const styles = StyleSheet.create({
   bloodTestCta: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#6C63FF",
+    backgroundColor: COLORS.primary,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm + 2,
     borderRadius: BorderRadius.full,
     gap: Spacing.xs,
-    shadowColor: "#6C63FF",
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -471,8 +471,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: Spacing.sm,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
-    shadowColor: "#1F2937",
+    borderColor: COLORS.surfaceMuted,
+    shadowColor: COLORS.plum,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.04,
     shadowRadius: 12,
@@ -499,9 +499,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: COLORS.surfaceMuted,
     minWidth: 140,
-    shadowColor: "#1F2937",
+    shadowColor: COLORS.plum,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.04,
     shadowRadius: 12,
@@ -527,8 +527,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
-    shadowColor: "#1F2937",
+    borderColor: COLORS.surfaceMuted,
+    shadowColor: COLORS.plum,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.04,
     shadowRadius: 12,
@@ -555,8 +555,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
-    shadowColor: "#1F2937",
+    borderColor: COLORS.surfaceMuted,
+    shadowColor: COLORS.plum,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
@@ -588,7 +588,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   checkinCta: {
-    backgroundColor: "#A855F7",
+    backgroundColor: COLORS.rose,
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
     borderRadius: BorderRadius.full,
@@ -606,8 +606,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
     borderRadius: 20,
     padding: Spacing.md,
-    backgroundColor: "#6C63FF",
-    shadowColor: "#6C63FF",
+    backgroundColor: COLORS.primary,
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
@@ -661,13 +661,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#FFF0F6",
+    backgroundColor: COLORS.surfaceBlush,
     marginHorizontal: Spacing.xl,
     marginBottom: Spacing.xl,
     borderRadius: 20,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: "#FFD6E7",
+    borderColor: COLORS.blush,
   },
   postpartumLeft: {
     flexDirection: "row",
@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(219,39,119,0.1)",
+    backgroundColor: COLORS.roseTint,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -692,11 +692,11 @@ const styles = StyleSheet.create({
   postpartumTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#DB2777",
+    color: COLORS.rose,
   },
   postpartumSub: {
     fontSize: 12,
-    color: "#BE185D",
+    color: COLORS.plum,
     marginTop: 2,
   },
 });

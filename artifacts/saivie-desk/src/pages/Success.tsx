@@ -12,20 +12,20 @@ export default function Success() {
   const { data: patient, isLoading } = usePatient(patientId || undefined);
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50 flex items-center justify-center p-6">
+    <div className="min-h-[100dvh] bg-background flex items-center justify-center p-6">
       <div className="max-w-md w-full">
         <div className="flex flex-col items-center text-center mb-8">
           <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
             <CheckCircle2 className="h-10 w-10 text-green-600" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-800">Success!</h1>
-          <p className="text-slate-500 mt-2">The patient workflow was completed successfully.</p>
+          <h1 className="text-3xl font-bold text-foreground">Success!</h1>
+          <p className="text-muted-foreground mt-2">The patient workflow was completed successfully.</p>
         </div>
 
         {isLoading ? (
           <Card className="mb-8">
             <CardContent className="p-6">
-              <div className="h-24 bg-slate-100 rounded-lg animate-pulse" />
+              <div className="h-24 bg-muted rounded-lg animate-pulse" />
             </CardContent>
           </Card>
         ) : patient ? (
@@ -34,24 +34,24 @@ export default function Success() {
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between border-b pb-4">
                   <div>
-                    <h2 className="text-xl font-bold text-slate-800">{patient.name}</h2>
-                    <p className="text-sm text-slate-500 font-medium">ID: #{patient.id}</p>
+                    <h2 className="text-xl font-bold text-foreground">{patient.name}</h2>
+                    <p className="text-sm text-muted-foreground font-medium">ID: #{patient.id}</p>
                   </div>
-                  <div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center">
-                    <User className="h-6 w-6 text-slate-500" />
+                  <div className="h-12 w-12 bg-secondary rounded-full flex items-center justify-center">
+                    <User className="h-6 w-6 text-secondary-foreground" />
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-y-4 pt-2 text-sm">
                   <div className="flex flex-col gap-1">
-                    <span className="text-slate-400 font-medium">Phone</span>
-                    <span className="font-semibold text-slate-700 flex items-center gap-1">
+                    <span className="text-muted-foreground font-medium">Phone</span>
+                    <span className="font-semibold text-foreground flex items-center gap-1">
                       <Phone className="h-3.5 w-3.5" />
                       {patient.phone}
                     </span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-slate-400 font-medium">Mode</span>
+                    <span className="text-muted-foreground font-medium">Mode</span>
                     <span className="font-semibold text-primary">{patient.mode || "Unspecified"}</span>
                   </div>
                 </div>

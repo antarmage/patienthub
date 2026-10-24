@@ -22,7 +22,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **`artifacts/saivie-recover/`** — SaivieRecover tablet app for nursing staff post-op data collection (React + Vite, preview path: `/recover/`)
 - **`artifacts/saivie-desk/`** — SaivieDesk receptionist/front-desk patient intake app (React + Vite, preview path: `/desk/`)
 - **`artifacts/mamacare-mobile/`** — SaivieMom maternal health mobile app (Expo React Native)
-- **`artifacts/saiviegene/`** — SaivieGene premium genome analysis web app (React + Vite, preview path: `/saiviegene/`); dark navy + gold mobile-first design
+- **`artifacts/saiviegene/`** — SaivieGene premium genome analysis web app (React + Vite, preview path: `/saiviegene/`)
 - **`artifacts/api-server/`** — Backend API server (Express 5, preview path: `/api`)
 - **`artifacts/mockup-sandbox/`** — Design/mockup canvas (pre-existing)
 
@@ -73,9 +73,18 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Uses Tailwind v4 via `@tailwindcss/vite` plugin
 - Font: DM Sans (Google Fonts)
 
+## Saivie Brand Colours
+
+- Production web apps import shared [brand tokens](./lib/brand/tokens.css) through [Tailwind brand utilities](./lib/brand/saivie.css). Use `saivie-*` utilities rather than inventing per-screen brand shades.
+- Core colours are Warm Ivory `#FFFFFC`, Soft Sage `#CFE2DC`, and Soft Blush `#E5C4DB`. Aim for an ivory-led 61.8/23.6/14.6 visual balance, not a rigid per-screen pixel quota.
+- Deep Plum `#3E3440` is for text; Deep Teal `#2F6B60` is for actions; Muted Rose `#8D5B7B` is an accent. Champagne Gold `#B38B56` is decorative, not small text on ivory.
+- Keep clinical alerts, warnings, success indicators, and distinct chart series semantically recognisable; they are not brand accents.
+- Standalone clinical print windows copy the live brand variables using `getPrintBrandStyles`. Keep paper white, pastel fills limited, and the existing letterhead space clear.
+- Test palette fidelity, text contrast, shared imports, and print token propagation with `pnpm --filter @workspace/saivie exec tsx --test src/lib/brand.test.ts`.
+
 ## SaivieGene Genome App
 
-Mobile-first React + Vite web app at `/saiviegene/`. Dark navy (#0a0e1a) + gold (hsl 44 87% 55%) branding.
+Mobile-first React + Vite web app at `/saiviegene/`, using the shared Saivie brand palette.
 
 **Screens:**
 - `Onboarding.tsx` — 3-slide animated onboarding (DNA decoded, health risks, personalised medicine)

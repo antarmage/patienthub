@@ -100,13 +100,13 @@ export function VitalsDialog({ appointment, patient, saving, onClose, onSave }: 
             <Label>Height (cm)</Label>
             <Input type="number" value={form.height} onChange={set("height")} />
           </div>
-          <div className="flex items-end pb-2 text-sm text-slate-600">
+          <div className="flex items-end pb-2 text-sm text-saivie-plum">
             BMI: <span className="ml-1 font-semibold">{bmi && Number.isFinite(bmi) ? bmi.toFixed(1) : "--"}</span>
           </div>
           <div className="col-span-2 space-y-1">
             <Label>LMP (last menstrual period)</Label>
             <Input type="date" value={lmp} max={new Date().toISOString().split("T")[0]} onChange={(e) => setLmp(e.target.value)} data-testid="input-vitals-lmp" />
-            {weeks !== null && <p className="text-xs text-slate-500">Gestational age: {weeks} weeks</p>}
+            {weeks !== null && <p className="text-xs text-saivie-plum">Gestational age: {weeks} weeks</p>}
           </div>
         </div>
         <DialogFooter className="gap-2">
@@ -258,7 +258,7 @@ export function AfterVisitDialog({ appointment, patient, onClose }: AfterVisitDi
             { key: "lab", title: "Lab test", state: lab, set: setLab },
             { key: "usg", title: "USG", state: usg, set: setUsg },
           ].map(({ key, title, state, set }) => (
-            <div key={key} className="space-y-2 rounded-lg border border-slate-200 p-3">
+            <div key={key} className="space-y-2 rounded-lg border border-saivie-border p-3">
               <label className="flex items-center gap-2 font-medium">
                 <Checkbox checked={state.on} onCheckedChange={(v) => set({ ...state, on: !!v })} data-testid={`check-${key}`} />
                 Schedule {title}
@@ -278,7 +278,7 @@ export function AfterVisitDialog({ appointment, patient, onClose }: AfterVisitDi
             </div>
           ))}
 
-          <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+          <div className="space-y-2 rounded-lg border border-saivie-border p-3">
             <p className="font-medium">Referrals</p>
             <div className="grid grid-cols-2 gap-2">
               {REFERRAL_OPTIONS.map((name) => {
@@ -304,10 +304,10 @@ export function AfterVisitDialog({ appointment, patient, onClose }: AfterVisitDi
                 );
               })}
             </div>
-            <p className="text-xs text-slate-500">Pick a date to also book the referral appointment.</p>
+            <p className="text-xs text-saivie-plum">Pick a date to also book the referral appointment.</p>
           </div>
 
-          <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+          <div className="space-y-2 rounded-lg border border-saivie-border p-3">
             <label className="flex items-center gap-2 font-medium">
               <Checkbox checked={followUp.on} onCheckedChange={(v) => setFollowUp({ ...followUp, on: !!v })} data-testid="check-followup" />
               Follow-up call (default: 2 days after the visit)

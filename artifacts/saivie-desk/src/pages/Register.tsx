@@ -137,28 +137,28 @@ export default function Register() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50 flex flex-col">
-      <header className="bg-white border-b px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+    <div className="min-h-[100dvh] bg-background flex flex-col">
+      <header className="bg-card border-b px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <Link href="/search">
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" data-testid="button-back">
-              <ArrowLeft className="h-4 w-4 text-slate-600" />
+              <ArrowLeft className="h-4 w-4 text-muted-foreground" />
             </Button>
           </Link>
-          <h1 className="text-xl font-bold text-slate-800">Register New Patient</h1>
+          <h1 className="text-xl font-bold text-foreground">Register New Patient</h1>
         </div>
       </header>
 
       <main className="flex-1 max-w-2xl w-full mx-auto p-6">
         <div className="mb-8 flex items-center justify-between relative">
-          <div className="absolute left-0 top-1/2 w-full h-0.5 bg-slate-200 -z-10" />
+          <div className="absolute left-0 top-1/2 w-full h-0.5 bg-border -z-10" />
           <div className={`absolute left-0 top-1/2 h-0.5 bg-primary transition-all duration-300 -z-10 ${step === 1 ? "w-0" : step === 2 ? "w-1/2" : "w-full"}`} />
           
           {[1, 2, 3].map((s) => (
             <div
               key={s}
               className={`h-8 w-8 rounded-full flex items-center justify-center font-medium text-sm transition-colors
-                ${step >= s ? "bg-primary text-white" : "bg-slate-100 text-slate-400 border border-slate-200"}`}
+                ${step >= s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground border border-border"}`}
             >
               {s}
             </div>
@@ -172,7 +172,7 @@ export default function Register() {
             <AlertDescription className="flex items-center justify-between">
               <span>This phone number is already registered.</span>
               <Link href={`/patient/${duplicatePhoneId}`}>
-                <Button variant="outline" size="sm" className="bg-white hover:bg-slate-100">
+                <Button variant="outline" size="sm" className="bg-card hover:bg-secondary">
                   View Existing Patient
                 </Button>
               </Link>
@@ -182,7 +182,7 @@ export default function Register() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <Card className="border-slate-200 shadow-sm">
+            <Card className="border-border shadow-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg">
                   {step === 1 && "Personal Information"}
@@ -349,8 +349,8 @@ export default function Register() {
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-base font-semibold text-slate-800">Book Initial Appointment</FormLabel>
-                          <FormDescription className="text-sm text-slate-500">
+                          <FormLabel className="text-base font-semibold text-foreground">Book Initial Appointment</FormLabel>
+                          <FormDescription className="text-sm text-muted-foreground">
                             Schedule their first visit now
                           </FormDescription>
                         </div>
@@ -469,4 +469,3 @@ export default function Register() {
     </div>
   );
 }
-

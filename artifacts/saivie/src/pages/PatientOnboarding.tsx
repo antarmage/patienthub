@@ -1,9 +1,11 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
-import { ArrowLeft, ArrowRight, Baby, Check, CheckCircle2, Flower2, Heart, Hospital, Leaf, LockKeyhole, Minus, PenLine, Plus, Printer, ShieldCheck, Timer, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Baby, Check, CheckCircle2, Flower2, Heart, Hospital, Leaf, LockKeyhole, Minus, Plus, Printer, ShieldCheck, Timer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { getOnboardingQuestions, getRelevantIntake, initialForm, type IntakeForm, type OptionalHistory } from "@/lib/onboardingFlow";
+import { getPrintBrandStyles } from "@/lib/brand";
 
 const sections = [
     { key: "about", title: "About you", eyebrow: "First things first" },
@@ -112,15 +114,16 @@ function printOnboardingSummary(form: IntakeForm) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Patient onboarding and history</title>
     <style>
+        ${getPrintBrandStyles()}
         * { box-sizing: border-box; }
-        body { max-width: 850px; margin: 0 auto; padding: 36px 28px; color: #342c52; font: 13px/1.5 Arial, sans-serif; }
-        .meta { margin: 0 0 20px; font-weight: 600; color: #625976; }
-        h2 { margin: 22px 0 7px; color: #66519c; font-size: 16px; break-after: avoid; }
+        body { max-width: 850px; margin: 0 auto; padding: 36px 28px; color: var(--saivie-plum); font: 13px/1.5 Arial, sans-serif; }
+        .meta { margin: 0 0 20px; font-weight: 600; color: var(--saivie-plum); }
+        h2 { margin: 22px 0 7px; color: var(--saivie-teal); font-size: 16px; break-after: avoid; }
         table { width: 100%; border-collapse: collapse; }
         tr { break-inside: avoid; }
-        th, td { padding: 7px 9px; border-bottom: 1px solid #e9e3f1; text-align: left; vertical-align: top; }
-        th { width: 34%; color: #625976; font-weight: 600; }
-        .note { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e9e3f1; color: #797187; font-size: 11px; }
+        th, td { padding: 7px 9px; border-bottom: 1px solid var(--saivie-border); text-align: left; vertical-align: top; }
+        th { width: 34%; color: var(--saivie-plum); font-weight: 600; }
+        .note { margin-top: 24px; padding-top: 10px; border-top: 1px solid var(--saivie-border); color: var(--saivie-plum); font-size: 11px; }
         @page { margin: 42mm 18mm 18mm; }
         @media print { body { padding: 0; } }
     </style>
@@ -142,6 +145,8 @@ const concernOptions = [
     "I am pregnant",
     "Pregnancy care",
     "Abdominal or pelvic pain",
+    "Breast problem",
+    "Gut / bowel problems",
     "Irregular or heavy bleeding",
     "Fertility",
     "Birth control",
@@ -154,43 +159,13 @@ const conditions = [
     "Breast problem", "Blood coagulation disorder", "Depression", "Postpartum depression",
     "Diabetes", "Eating disorder", "Epilepsy", "GERD / reflux", "Gestational diabetes",
     "Heart disease", "Headaches / migraine", "High cholesterol", "Hypertension",
-    "Irritable bowel syndrome", "Thyroid condition", "Kidney disease / stones",
+    "Irritable bowel syndrome", "Gut / bowel problems", "Thyroid condition", "Kidney disease / stones",
     "Liver disease / hepatitis", "Osteoporosis", "Stroke", "Urinary incontinence",
 ];
 
-type IntakeForm = {
-    name: string;
-    dob: string;
-    referredBy: string;
-    occupation: string;
-    chiefComplaint: string;
-    concerns: string[];
-    pain: { location: string[]; duration: string; severity: string; relatedSymptoms: string[] };
-    cycle: { lastPeriod: string; regularity: string; lateBy: string; pregnancyTest: string; menarcheAge: string; cycleLength: string; flow: string; symptoms: string[]; details: string };
-    gyn: { firstEncounterAge: string; partnerCount: string; lastPap: string; sexuallyActive: string; hpvVaccine: string; birthControl: string[]; concerns: string[]; details: string };
-    pregnancies: { currentStatus: string; weeksPregnant: string; dueDate: string; total: string; vaginal: string; cesarean: string; miscarriages: string; terminations: string; premature: string; details: string };
-    lifestyle: { smoking: string; relationship: string; alcohol: string; exercise: string; mammogram: string; colonoscopy: string; other: string };
-    health: { conditions: string[]; medicalDetails: string; surgeries: string; medications: string; allergies: string; familyHistory: string };
-};
-
-const initialForm: IntakeForm = {
-    name: "",
-    dob: "",
-    referredBy: "",
-    occupation: "",
-    chiefComplaint: "",
-    concerns: [],
-    pain: { location: [], duration: "", severity: "", relatedSymptoms: [] },
-    cycle: { lastPeriod: "", regularity: "", lateBy: "", pregnancyTest: "", menarcheAge: "", cycleLength: "", flow: "", symptoms: [], details: "" },
-    gyn: { firstEncounterAge: "", partnerCount: "", lastPap: "", sexuallyActive: "", hpvVaccine: "", birthControl: [], concerns: [], details: "" },
-    pregnancies: { currentStatus: "", weeksPregnant: "", dueDate: "", total: "0", vaginal: "0", cesarean: "0", miscarriages: "0", terminations: "0", premature: "0", details: "" },
-    lifestyle: { smoking: "", relationship: "", alcohol: "", exercise: "", mammogram: "", colonoscopy: "", other: "" },
-    health: { conditions: [], medicalDetails: "", surgeries: "", medications: "", allergies: "", familyHistory: "" },
-};
-
-const inputClass = "w-full rounded-lg border border-[#e8e0f3] bg-[#fdfbff] px-3 py-2.5 text-sm text-[#342c52] placeholder:text-[#aaa2b5] outline-none transition focus:border-[#8b70c9] focus:ring-2 focus:ring-[#d9c8f2]/40";
-const labelClass = "mb-1.5 block text-xs font-semibold text-[#625976]";
-const cardClass = "rounded-2xl border border-[#e9e3f1] bg-white p-6 shadow-[0_8px_30px_rgba(72,53,106,0.05)] sm:p-8";
+const inputClass = "w-full rounded-lg border border-saivie-border bg-saivie-ivory px-3 py-2.5 text-sm text-saivie-plum placeholder:text-saivie-teal outline-none transition focus:border-saivie-teal focus:ring-2 focus:ring-saivie-border/40";
+const labelClass = "mb-1.5 block text-xs font-semibold text-saivie-plum";
+const cardClass = "rounded-2xl border border-saivie-border bg-saivie-ivory p-6 shadow-[0_8px_30px_color-mix(in_srgb,var(--saivie-teal)_5%,transparent)] sm:p-8";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return <label className="block min-w-0"><span className={labelClass}>{label}</span>{children}</label>;
@@ -218,14 +193,14 @@ function RulerSlider({ label, value, onChange, min, max, step = 1, unit, optiona
         <fieldset className="min-w-0">
             <div className="mb-5 flex items-end justify-between gap-3">
                 <legend className={`${labelClass} mb-0`}>{label}</legend>
-                <output className={`rounded-full px-3 py-1 text-sm font-bold tabular-nums ${value ? "bg-[#efe9fb] text-[#5e4b89]" : "bg-[#f4f1f8] text-[#91889d]"}`}>
+                <output className={`rounded-full px-3 py-1 text-sm font-bold tabular-nums ${value ? "bg-saivie-surface-muted text-saivie-teal" : "bg-saivie-surface-muted text-saivie-teal"}`}>
                     {displayValue}
                 </output>
             </div>
             <div className="relative px-1 pb-5 pt-2">
                 <div aria-hidden="true" className="pointer-events-none absolute inset-x-1 top-[18px] flex h-6 justify-between">
                     {marks.map((mark) => (
-                        <span key={mark} className={`w-px ${mark % 5 === 0 ? "h-5 bg-[#b7a9d3]" : "mt-1 h-3 bg-[#e5ddec]"}`} />
+                        <span key={mark} className={`w-px ${mark % 5 === 0 ? "h-5 bg-saivie-sage" : "mt-1 h-3 bg-saivie-sage"}`} />
                     ))}
                 </div>
                 <input
@@ -238,12 +213,12 @@ function RulerSlider({ label, value, onChange, min, max, step = 1, unit, optiona
                     onChange={(event) => onChange(event.target.value)}
                     className="onboarding-ruler-slider relative z-10 w-full cursor-pointer appearance-none bg-transparent"
                 />
-                <div aria-hidden="true" className="mt-2 flex justify-between px-0.5 text-[10px] tabular-nums text-[#91889d]">
+                <div aria-hidden="true" className="mt-2 flex justify-between px-0.5 text-[10px] tabular-nums text-saivie-teal">
                     <span>{min}{unit ? ` ${unit}` : ""}</span>
                     <span>{max}{unit ? ` ${unit}` : ""}</span>
                 </div>
             </div>
-            {optional && <button type="button" onClick={() => onChange("")} className="mt-1 text-[11px] font-medium text-[#797187] underline decoration-[#d8d0e2] underline-offset-2 hover:text-[#4a3d6e]">Prefer not to answer</button>}
+            {optional && <button type="button" onClick={() => onChange("")} className="mt-1 text-[11px] font-medium text-saivie-teal underline decoration-saivie-border underline-offset-2 hover:text-saivie-teal">Prefer not to answer</button>}
         </fieldset>
     );
 }
@@ -255,16 +230,16 @@ function Glass({ filled, index }: { filled: boolean; index: number }) {
             <defs>
                 <clipPath id={clipId}><path d="M6 4 L34 4 L30 50 Q30 52 28 52 L12 52 Q10 52 10 50 Z" /></clipPath>
                 <linearGradient id={`${clipId}-fill`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#cbb5f2" />
-                    <stop offset="100%" stopColor="#8b70c9" />
+                    <stop offset="0%" stopColor="var(--saivie-sage)" />
+                    <stop offset="100%" stopColor="var(--saivie-teal)" />
                 </linearGradient>
             </defs>
             <g clipPath={`url(#${clipId})`}>
                 <rect x="0" width="40" height="56" fill={`url(#${clipId}-fill)`}
                     style={{ transform: `translateY(${filled ? 16 : 56}px)`, transition: `transform 450ms cubic-bezier(.3,1.4,.5,1) ${index * 40}ms` }} />
-                <ellipse cx="20" cy="16" rx="16" ry="2" fill="#efe6ff" opacity={filled ? 0.9 : 0} style={{ transition: "opacity 300ms" }} />
+                <ellipse cx="20" cy="16" rx="16" ry="2" fill="var(--saivie-surface-muted)" opacity={filled ? 0.9 : 0} style={{ transition: "opacity 300ms" }} />
             </g>
-            <path d="M6 4 L34 4 L30 50 Q30 52 28 52 L12 52 Q10 52 10 50 Z" fill="none" stroke={filled ? "#66519c" : "#cfc4df"} strokeWidth="2" strokeLinejoin="round" />
+            <path d="M6 4 L34 4 L30 50 Q30 52 28 52 L12 52 Q10 52 10 50 Z" fill="none" stroke={filled ? "var(--saivie-teal)" : "var(--saivie-border)"} strokeWidth="2" strokeLinejoin="round" />
             <path d="M10 10 L12 44" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
         </svg>
     );
@@ -279,20 +254,20 @@ function GlassPicker({ label, value, onChange }: { label: string; value: string;
         <fieldset className="min-w-0">
             <div className="mb-3 flex items-end justify-between gap-3">
                 <legend className={`${labelClass} mb-0`}>{label}</legend>
-                <output className={`rounded-full px-3 py-1 text-sm font-bold ${value ? "bg-[#efe9fb] text-[#5e4b89]" : "bg-[#f4f1f8] text-[#91889d]"}`}>{caption}</output>
+                <output className={`rounded-full px-3 py-1 text-sm font-bold ${value ? "bg-saivie-surface-muted text-saivie-teal" : "bg-saivie-surface-muted text-saivie-teal"}`}>{caption}</output>
             </div>
-            <div className="flex flex-wrap items-end gap-1 rounded-xl border border-[#eee8f4] bg-[#fdfbff] px-3 py-3">
+            <div className="flex flex-wrap items-end gap-1 rounded-xl border border-saivie-border bg-saivie-ivory px-3 py-3">
                 {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
                     <button key={n} type="button" onClick={() => set(count === n ? n - 1 : n)} aria-label={`${n}${n === max ? "+" : ""} drinks per week`} aria-pressed={n <= count}
                         className="group flex flex-col items-center rounded-lg px-0.5 transition hover:-translate-y-0.5">
                         <Glass filled={n <= count} index={n} />
-                        <span className={`mt-0.5 text-[10px] tabular-nums ${n <= count ? "font-bold text-[#66519c]" : "text-[#aaa2b5]"}`}>{n === max ? `${max}+` : n}</span>
+                        <span className={`mt-0.5 text-[10px] tabular-nums ${n <= count ? "font-bold text-saivie-teal" : "text-saivie-teal"}`}>{n === max ? `${max}+` : n}</span>
                     </button>
                 ))}
             </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-[#91889d]">
+            <div className="mt-2 flex items-center justify-between text-[11px] text-saivie-teal">
                 <span>Drinks per week</span>
-                <button type="button" onClick={() => onChange(value === "None" ? "" : "None")} className={`rounded-full border px-2.5 py-1 font-medium transition ${value === "None" ? "border-[#66519c] bg-[#66519c] text-white" : "border-[#e6dfef] text-[#625976] hover:border-[#a18bd0]"}`}>I don't drink</button>
+                <button type="button" onClick={() => onChange(value === "None" ? "" : "None")} className={`rounded-full border px-2.5 py-1 font-medium transition ${value === "None" ? "border-saivie-teal bg-saivie-teal text-white" : "border-saivie-border text-saivie-teal hover:border-saivie-border"}`}>I don't drink</button>
             </div>
         </fieldset>
     );
@@ -307,28 +282,28 @@ function ExerciseMeter({ label, value, onChange }: { label: string; value: strin
         <fieldset className="min-w-0">
             <div className="mb-3 flex items-end justify-between gap-3">
                 <legend className={`${labelClass} mb-0`}>{label}</legend>
-                <output className={`rounded-full px-3 py-1 text-sm font-bold ${value ? "bg-[#efe9fb] text-[#5e4b89]" : "bg-[#f4f1f8] text-[#91889d]"}`}>
+                <output className={`rounded-full px-3 py-1 text-sm font-bold ${value ? "bg-saivie-surface-muted text-saivie-teal" : "bg-saivie-surface-muted text-saivie-teal"}`}>
                     {days < 0 ? "Tap the bars" : `${days} day${days === 1 ? "" : "s"} / week`}
                 </output>
             </div>
-            <div className="rounded-xl border border-[#eee8f4] bg-[#fdfbff] px-3 pb-2 pt-3">
+            <div className="rounded-xl border border-saivie-border bg-saivie-ivory px-3 pb-2 pt-3">
                 <div className="flex h-20 items-end gap-1.5">
                     {dayLabels.map((d, i) => {
                         const active = i < days;
                         return (
                             <button key={i} type="button" onClick={() => onChange(`${days === i + 1 ? i : i + 1} days per week`)} aria-label={`${i + 1} days per week`} aria-pressed={active}
                                 className="flex h-full flex-1 flex-col items-center justify-end gap-1">
-                                <span className={`w-full rounded-md transition-all duration-300 ${active ? "bg-gradient-to-t from-[#66519c] to-[#aa91dc] shadow-[0_4px_12px_rgba(102,81,156,0.25)]" : "bg-[#eee8f4] hover:bg-[#e2d6f7]"}`}
+                                <span className={`w-full rounded-md transition-all duration-300 ${active ? "bg-gradient-to-t from-saivie-teal to-saivie-sage shadow-[0_4px_12px_color-mix(in_srgb,var(--saivie-teal)_25%,transparent)]" : "bg-saivie-surface-muted hover:bg-saivie-surface-muted"}`}
                                     style={{ height: `${28 + i * 10}%`, transitionDelay: `${i * 35}ms` }} />
-                                <span className={`text-[10px] ${active ? "font-bold text-[#66519c]" : "text-[#aaa2b5]"}`}>{d}</span>
+                                <span className={`text-[10px] ${active ? "font-bold text-saivie-teal" : "text-saivie-teal"}`}>{d}</span>
                             </button>
                         );
                     })}
                 </div>
             </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-[#91889d]">
-                <span className="font-medium text-[#8b70c9]">{days >= 0 ? exerciseMoods[days] : "Days you move 30+ min"}</span>
-                <button type="button" onClick={() => onChange(value === "0 days per week" ? "" : "0 days per week")} className={`rounded-full border px-2.5 py-1 font-medium transition ${days === 0 ? "border-[#66519c] bg-[#66519c] text-white" : "border-[#e6dfef] text-[#625976] hover:border-[#a18bd0]"}`}>Not currently</button>
+            <div className="mt-2 flex items-center justify-between text-[11px] text-saivie-teal">
+                <span className="font-medium text-saivie-teal">{days >= 0 ? exerciseMoods[days] : "Days you move 30+ min"}</span>
+                <button type="button" onClick={() => onChange(value === "0 days per week" ? "" : "0 days per week")} className={`rounded-full border px-2.5 py-1 font-medium transition ${days === 0 ? "border-saivie-teal bg-saivie-teal text-white" : "border-saivie-border text-saivie-teal hover:border-saivie-border"}`}>Not currently</button>
             </div>
         </fieldset>
     );
@@ -342,28 +317,28 @@ function ScreeningTimeline({ label, value, onChange }: { label: string; value: s
         <fieldset className="min-w-0">
             <div className="mb-3 flex items-end justify-between gap-3">
                 <legend className={`${labelClass} mb-0`}>{label}</legend>
-                <output className={`rounded-full px-3 py-1 text-xs font-bold ${value ? "bg-[#efe9fb] text-[#5e4b89]" : "bg-[#f4f1f8] text-[#91889d]"}`}>{value || "When was it?"}</output>
+                <output className={`rounded-full px-3 py-1 text-xs font-bold ${value ? "bg-saivie-surface-muted text-saivie-teal" : "bg-saivie-surface-muted text-saivie-teal"}`}>{value || "When was it?"}</output>
             </div>
-            <div className="rounded-xl border border-[#eee8f4] bg-[#fdfbff] px-4 pb-3 pt-4">
+            <div className="rounded-xl border border-saivie-border bg-saivie-ivory px-4 pb-3 pt-4">
                 <div className="relative">
-                    <div className="absolute left-[11px] right-[11px] top-[9px] h-1 rounded-full bg-[#eee8f4]" />
-                    <div className="absolute left-[11px] top-[9px] h-1 rounded-full bg-gradient-to-r from-[#66519c] to-[#aa91dc] transition-all duration-500"
+                    <div className="absolute left-[11px] right-[11px] top-[9px] h-1 rounded-full bg-saivie-surface-muted" />
+                    <div className="absolute left-[11px] top-[9px] h-1 rounded-full bg-gradient-to-r from-saivie-teal to-saivie-sage transition-all duration-500"
                         style={{ width: selected < 0 ? 0 : `calc((100% - 22px) * ${selected / (screeningStops.length - 1)})` }} />
                     <div className="relative flex justify-between">
                         {screeningStops.map((stop, i) => (
                             <button key={stop} type="button" onClick={() => onChange(value === stop ? "" : stop)} aria-pressed={value === stop} className="flex w-14 flex-col items-center text-center first:items-start last:items-end">
-                                <span className={`flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition ${i === selected ? "scale-110 border-[#66519c] bg-[#66519c] shadow-[0_0_0_4px_rgba(170,145,220,0.3)]" : i < selected ? "border-[#8b70c9] bg-[#cbb5f2]" : "border-[#d8cde8] bg-white hover:border-[#8b70c9]"}`}>
+                                <span className={`flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition ${i === selected ? "scale-110 border-saivie-teal bg-saivie-teal shadow-[0_0_0_4px_color-mix(in_srgb,var(--saivie-teal)_30%,transparent)]" : i < selected ? "border-saivie-teal bg-saivie-sage" : "border-saivie-border bg-saivie-ivory hover:border-saivie-teal"}`}>
                                     {i === selected && <Check size={12} className="text-white" />}
                                 </span>
-                                <span className={`mt-1.5 text-[10px] leading-tight ${i === selected ? "font-bold text-[#66519c]" : "text-[#91889d]"}`}>{stop.replace(" ago", "")}</span>
+                                <span className={`mt-1.5 text-[10px] leading-tight ${i === selected ? "font-bold text-saivie-teal" : "text-saivie-teal"}`}>{stop.replace(" ago", "")}</span>
                             </button>
                         ))}
                     </div>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[#f1ecf7] pt-3">
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-saivie-border pt-3">
                     {["Never had one", "Not applicable", "Not sure"].map((option) => (
                         <button key={option} type="button" onClick={() => onChange(value === option ? "" : option)} aria-pressed={value === option}
-                            className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${value === option ? "border-[#66519c] bg-[#66519c] text-white" : "border-[#e6dfef] text-[#625976] hover:border-[#a18bd0]"}`}>{option}</button>
+                            className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${value === option ? "border-saivie-teal bg-saivie-teal text-white" : "border-saivie-border text-saivie-teal hover:border-saivie-border"}`}>{option}</button>
                     ))}
                 </div>
             </div>
@@ -385,27 +360,28 @@ function CountTile({ label, hint, icon: Icon, value, onChange, tint }: CountTile
     const pips = 6;
     const set = (n: number) => onChange(String(Math.max(0, Math.min(15, n))));
     return (
-        <div className={`group relative overflow-hidden rounded-2xl border p-4 transition ${count > 0 ? "border-[#cbb5f2] bg-white shadow-[0_6px_20px_rgba(102,81,156,0.10)]" : "border-[#eee8f4] bg-[#fdfbff]"}`}>
+        <div className={`group relative overflow-hidden rounded-2xl border p-4 transition ${count > 0 ? "border-saivie-border bg-saivie-ivory shadow-[0_6px_20px_color-mix(in_srgb,var(--saivie-teal)_10%,transparent)]" : "border-saivie-border bg-saivie-ivory"}`}>
             <div className="flex items-start gap-3">
-                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${count > 0 ? tint : "bg-[#f1ecf7] text-[#aaa2b5]"}`}><Icon size={20} /></span>
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${count > 0 ? tint : "bg-saivie-surface-muted text-saivie-teal"}`}><Icon size={20} /></span>
                 <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-[#4a3d6e]">{label}</p>
-                    <p className="text-[11px] leading-4 text-[#91889d]">{hint}</p>
+                    <p className="text-sm font-semibold text-saivie-teal">{label}</p>
+                    <p className="text-[11px] leading-4 text-saivie-teal">{hint}</p>
                 </div>
             </div>
             <div className="mt-4 flex items-center justify-between gap-2">
                 <button type="button" onClick={() => set(count - 1)} disabled={count === 0} aria-label={`Decrease ${label}`}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#e2d6f7] bg-white text-[#66519c] transition hover:bg-[#f5f0ff] active:scale-90 disabled:opacity-30"><Minus size={16} /></button>
-                <output key={count} aria-live="polite" className="onboarding-pop font-serif text-4xl font-semibold tabular-nums text-[#382e56]">{count}</output>
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-saivie-border bg-saivie-ivory text-saivie-teal transition hover:bg-saivie-surface-muted active:scale-90 disabled:opacity-30"><Minus size={16} /></button>
+                <output key={value} aria-live="polite" className={`onboarding-pop font-serif font-semibold tabular-nums text-saivie-plum ${value === "" ? "text-lg" : "text-4xl"}`}>{value === "" ? "Not answered" : count}</output>
+                {value === "" && <button type="button" onClick={() => set(0)} className="text-xs font-semibold text-saivie-teal">None / 0</button>}
                 <button type="button" onClick={() => set(count + 1)} aria-label={`Increase ${label}`}
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-[#66519c] text-white shadow-[0_4px_12px_rgba(102,81,156,0.35)] transition hover:bg-[#544181] active:scale-90"><Plus size={16} /></button>
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-saivie-teal text-white shadow-[0_4px_12px_color-mix(in_srgb,var(--saivie-teal)_35%,transparent)] transition hover:bg-saivie-teal active:scale-90"><Plus size={16} /></button>
             </div>
             <div className="mt-3 flex items-center justify-center gap-1.5">
                 {Array.from({ length: pips }, (_, i) => i + 1).map((n) => (
                     <button key={n} type="button" onClick={() => set(count === n ? n - 1 : n)} aria-label={`Set ${label} to ${n}`}
-                        className={`h-2.5 rounded-full transition-all duration-300 ${n <= count ? "w-5 bg-gradient-to-r from-[#8b70c9] to-[#aa91dc]" : "w-2.5 bg-[#e9e3f1] hover:bg-[#cbb5f2]"}`} />
+                        className={`h-2.5 rounded-full transition-all duration-300 ${n <= count ? "w-5 bg-gradient-to-r from-saivie-teal to-saivie-sage" : "w-2.5 bg-saivie-surface-muted hover:bg-saivie-sage"}`} />
                 ))}
-                {count > pips && <span className="ml-1 text-[10px] font-bold text-[#8b70c9]">+{count - pips}</span>}
+                {count > pips && <span className="ml-1 text-[10px] font-bold text-saivie-teal">+{count - pips}</span>}
             </div>
         </div>
     );
@@ -432,7 +408,7 @@ function QuickPick({ label, options, value, onChange, noneLabel = "None", otherP
         setDraft("");
         setAdding(false);
     };
-    const chip = (active: boolean) => `inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition active:scale-95 ${active ? "border-[#66519c] bg-[#66519c] text-white shadow-[0_3px_10px_rgba(102,81,156,0.25)]" : "border-[#e6dfef] bg-[#fdfbff] text-[#625976] hover:border-[#a18bd0]"}`;
+    const chip = (active: boolean) => `inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition active:scale-95 ${active ? "border-saivie-teal bg-saivie-teal text-white shadow-[0_3px_10px_color-mix(in_srgb,var(--saivie-teal)_25%,transparent)]" : "border-saivie-border bg-saivie-ivory text-saivie-teal hover:border-saivie-border"}`;
     return (
         <fieldset>
             <legend className={labelClass}>{label}</legend>
@@ -448,26 +424,14 @@ function QuickPick({ label, options, value, onChange, noneLabel = "None", otherP
                     <span className="inline-flex items-center gap-1">
                         <input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={addDraft}
                             onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addDraft(); } if (event.key === "Escape") { setDraft(""); setAdding(false); } }}
-                            placeholder={otherPlaceholder} className="w-56 rounded-full border border-[#cbb5f2] bg-white px-3 py-1.5 text-xs text-[#342c52] outline-none focus:ring-2 focus:ring-[#d9c8f2]/50" />
+                            placeholder={otherPlaceholder} className="w-56 rounded-full border border-saivie-border bg-saivie-ivory px-3 py-1.5 text-xs text-saivie-plum outline-none focus:ring-2 focus:ring-saivie-border/50" />
                     </span>
                 ) : (
-                    <button type="button" onClick={() => setAdding(true)} className="inline-flex items-center gap-1 rounded-full border border-dashed border-[#cbb5f2] px-3 py-1.5 text-xs font-medium text-[#8b70c9] hover:bg-[#f5f0ff]"><Plus size={12} />Other</button>
+                    <button type="button" onClick={() => setAdding(true)} className="inline-flex items-center gap-1 rounded-full border border-dashed border-saivie-border px-3 py-1.5 text-xs font-medium text-saivie-teal hover:bg-saivie-surface-muted"><Plus size={12} />Other</button>
                 )}
             </div>
         </fieldset>
     );
-}
-
-function NoteToggle({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
-    const [open, setOpen] = useState(Boolean(value));
-    if (!open) {
-        return (
-            <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[#d8cde8] px-3 py-1.5 text-xs font-medium text-[#8b70c9] transition hover:border-[#8b70c9] hover:bg-[#f5f0ff]">
-                <PenLine size={13} />{label} <span className="font-normal text-[#aaa2b5]">(optional)</span>
-            </button>
-        );
-    }
-    return <TextArea label={label} value={value} onChange={onChange} placeholder={placeholder} />;
 }
 
 function TextArea({ label, value, onChange, placeholder }: {
@@ -486,7 +450,7 @@ function ChoiceGroup({ label, options, value, onChange }: {
                 {options.map((option) => (
                     <button key={option} type="button" onClick={() => onChange(value === option ? "" : option)}
                         aria-pressed={value === option}
-                        className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${value === option ? "border-[#66519c] bg-[#66519c] text-white" : "border-[#e6dfef] bg-[#fdfbff] text-[#625976] hover:border-[#a18bd0]"}`}>
+                        className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${value === option ? "border-saivie-teal bg-saivie-teal text-white" : "border-saivie-border bg-saivie-ivory text-saivie-teal hover:border-saivie-border"}`}>
                         {option}
                     </button>
                 ))}
@@ -512,8 +476,8 @@ function CheckGrid({ label, options, value, onChange, exclusiveOption }: {
             <legend className={labelClass}>{label}</legend>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {options.map((option) => (
-                    <label key={option} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${value.includes(option) ? "border-[#a88de0] bg-[#f3edfb] text-[#554476]" : "border-[#e9e3f0] bg-[#fdfbff] text-[#716782]"}`}>
-                        <input type="checkbox" checked={value.includes(option)} onChange={() => toggle(option)} className="accent-[#8b70c9]" />
+                    <label key={option} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${value.includes(option) ? "border-saivie-border bg-saivie-surface-muted text-saivie-teal" : "border-saivie-border bg-saivie-ivory text-saivie-teal"}`}>
+                        <input type="checkbox" checked={value.includes(option)} onChange={() => toggle(option)} className="accent-saivie-teal" />
                         {option}
                     </label>
                 ))}
@@ -526,8 +490,10 @@ export default function PatientOnboarding() {
     const { id } = useParams();
     const [, setLocation] = useLocation();
     const { toast } = useToast();
-    const [step, setStep] = useState("about");
+    const [step, setStep] = useState("name");
     const [form, setForm] = useState<IntakeForm>(initialForm);
+    const [extra, setExtra] = useState<OptionalHistory>({ cycle: false, gyn: false, pregnancy: false, background: false });
+    const questionHeading = useRef<HTMLHeadingElement>(null);
     const [submitted, setSubmitted] = useState(false);
 
     const { data: onboardingData, isLoading } = useQuery({
@@ -539,27 +505,20 @@ export default function PatientOnboarding() {
         },
     });
 
-    const needsCycle = form.concerns.some((concern) =>
-        ["Missed or late period", "Possible pregnancy", "I am pregnant", "Pregnancy care", "Irregular or heavy bleeding"].includes(concern));
-    const needsGyn = form.concerns.some((concern) =>
-        ["Abdominal or pelvic pain", "Irregular or heavy bleeding", "Fertility", "Birth control", "Routine checkup", "Other"].includes(concern));
-    const needsPregnancy = form.concerns.some((concern) =>
-        ["Possible pregnancy", "I am pregnant", "Pregnancy care"].includes(concern));
-    const visibleSections = [
-        sections[0],
-        sections[1],
-        ...(needsCycle ? [sections[2]] : []),
-        ...(needsGyn ? [sections[3]] : []),
-        ...(needsPregnancy ? [sections[4]] : []),
-        sections[5],
-        sections[6],
-        sections[7],
-    ];
-    const visibleSectionKeys = visibleSections.map((section) => section.key).join(",");
+    const questions = getOnboardingQuestions(form, extra);
+    const answers = getRelevantIntake(form, extra);
+    const questionKeys = questions.map((question) => question.id).join(",");
+    const visibleSections = sections.filter((section) => questions.some((question) => question.section === section.key))
+        .sort((a, b) => questions.findIndex((question) => question.section === a.key) - questions.findIndex((question) => question.section === b.key));
 
     useEffect(() => {
-        if (!visibleSectionKeys.split(",").includes(step)) setStep("concern");
-    }, [step, visibleSectionKeys]);
+        if (!questionKeys.split(",").includes(step)) setStep("concerns");
+    }, [step, questionKeys]);
+
+    useEffect(() => {
+        questionHeading.current?.focus();
+        window.scrollTo({ top: 0, behavior: "instant" });
+    }, [step]);
 
     useEffect(() => {
         const patient = onboardingData?.patient;
@@ -575,9 +534,10 @@ export default function PatientOnboarding() {
 
     const mutation = useMutation({
         mutationFn: async () => {
+            const form = answers;
             const noneValues = ["None", "None known", "No known allergies", "Not taking any", "Nothing known"];
             const historyEntries = (value: string) => value.split("\n").map((entry) => entry.trim()).filter((entry) => entry && !noneValues.includes(entry));
-            const medical = [...form.health.conditions, ...historyEntries(form.health.medicalDetails)];
+            const medical = [...form.health.conditions.filter((condition) => condition !== "None of these"), ...historyEntries(form.health.medicalDetails)];
             const surgical = historyEntries(form.health.surgeries);
             const drug = historyEntries(form.health.medications);
             const allergies = historyEntries(form.health.allergies);
@@ -633,27 +593,88 @@ export default function PatientOnboarding() {
             return { ...current, pregnancies: next };
         });
 
+    const optionalHistory = (key: keyof OptionalHistory, label: string) => (
+        <ChoiceGroup label={label} options={["Yes, add details", "No, keep it short"]} value={extra[key] ? "Yes, add details" : "No, keep it short"}
+            onChange={(value) => setExtra((current) => ({ ...current, [key]: value === "Yes, add details" }))} />
+    );
+    const questionContent: Record<string, React.ReactNode> = {
+        name: <TextInput label="What is your full name?" value={form.name} onChange={(value) => update("name", value)} placeholder="Your full name" />,
+        dob: <TextInput label="What is your date of birth?" value={form.dob} onChange={(value) => update("dob", value)} type="date" />,
+        concerns: <CheckGrid label="What brings you in today?" options={concernOptions} value={form.concerns} onChange={(value) => update("concerns", value)} />,
+        chiefComplaint: <TextArea label="Anything you would like your doctor to know about your concern?" value={form.chiefComplaint} onChange={(value) => update("chiefComplaint", value)} placeholder="A few words are enough. You may skip this." />,
+        painLocation: <CheckGrid label="Where do you feel the pain?" options={["Lower abdomen", "One side", "Pelvis", "Back", "Not sure"]} value={form.pain.location} onChange={(value) => updateGroup("pain", "location", value)} />,
+        painDuration: <ChoiceGroup label="How long have you had the pain?" options={["Today", "2–3 days", "About a week", "A few weeks", "Months or longer"]} value={form.pain.duration} onChange={(value) => updateGroup("pain", "duration", value)} />,
+        painSeverity: <ChoiceGroup label="How would you describe the pain?" options={["Mild", "Moderate", "Severe", "Comes and goes"]} value={form.pain.severity} onChange={(value) => updateGroup("pain", "severity", value)} />,
+        painSymptoms: <CheckGrid label="Anything else happening with the pain?" options={["Fever", "Nausea or vomiting", "Bleeding", "Dizziness", "None of these"]} exclusiveOption="None of these" value={form.pain.relatedSymptoms} onChange={(value) => updateGroup("pain", "relatedSymptoms", value)} />,
+        lastPeriod: <TextInput label="When did your last period start?" value={form.cycle.lastPeriod} onChange={(value) => updateGroup("cycle", "lastPeriod", value)} type="date" />,
+        lateBy: <ChoiceGroup label="How late is your period?" options={["Less than a week", "1–2 weeks", "More than 2 weeks", "Not sure"]} value={form.cycle.lateBy} onChange={(value) => updateGroup("cycle", "lateBy", value)} />,
+        regularity: <ChoiceGroup label="Are your periods usually regular?" options={["Usually regular", "Often irregular", "Not sure", "No longer having periods"]} value={form.cycle.regularity} onChange={(value) => updateGroup("cycle", "regularity", value)} />,
+        cycleLength: <RulerSlider label="Typical cycle length" value={form.cycle.cycleLength} onChange={(value) => updateGroup("cycle", "cycleLength", value)} min={15} max={90} unit="days" />,
+        flow: <ChoiceGroup label="How would you describe your period flow?" options={["Light", "Average", "Heavy", "Not sure"]} value={form.cycle.flow} onChange={(value) => updateGroup("cycle", "flow", value)} />,
+        cycleSymptoms: <CheckGrid label="Do you experience any of these?" options={["PMS", "Menstrual cramps", "Bleeding between periods", "Pain with intercourse", "I am totally OK (no issues)"]} exclusiveOption="I am totally OK (no issues)" value={form.cycle.symptoms} onChange={(value) => updateGroup("cycle", "symptoms", value)} />,
+        extraCycle: optionalHistory("cycle", "Would you like to add more about your period history?"),
+        menarcheAge: <RulerSlider label="Age when periods started" value={form.cycle.menarcheAge} onChange={(value) => updateGroup("cycle", "menarcheAge", value)} min={5} max={20} unit="years" />,
+        cycleDetails: <TextArea label="Anything else about your periods?" value={form.cycle.details} onChange={(value) => updateGroup("cycle", "details", value)} />,
+        pregnancyTest: <ChoiceGroup label="Have you taken a pregnancy test?" options={["Positive", "Negative", "Not yet", "Not sure"]} value={form.cycle.pregnancyTest} onChange={(value) => updateGroup("cycle", "pregnancyTest", value)} />,
+        currentStatus: <ChoiceGroup label="Are you currently pregnant?" options={["Yes", "No", "Not sure"]} value={form.pregnancies.currentStatus} onChange={(value) => updateGroup("pregnancies", "currentStatus", value)} />,
+        weeksPregnant: <RulerSlider label="About how many weeks pregnant?" value={form.pregnancies.weeksPregnant} onChange={(value) => updateGroup("pregnancies", "weeksPregnant", value)} min={1} max={42} unit="weeks" />,
+        dueDate: <TextInput label="What is your estimated due date, if known?" value={form.pregnancies.dueDate} onChange={(value) => updateGroup("pregnancies", "dueDate", value)} type="date" />,
+        totalPregnancies: <CountTile label="Total pregnancies" hint="Include your current pregnancy, if any" icon={Heart} tint="bg-saivie-surface-muted text-saivie-teal" value={form.pregnancies.total} onChange={(value) => setPregnancyCount("total", value)} />,
+        extraPregnancy: optionalHistory("pregnancy", "Would you like to share details of your pregnancies?"),
+        vaginal: <CountTile label="Vaginal deliveries" hint="How many, if any?" icon={Baby} tint="bg-saivie-blush text-saivie-plum" value={form.pregnancies.vaginal} onChange={(value) => setPregnancyCount("vaginal", value)} />,
+        cesarean: <CountTile label="C-sections" hint="How many, if any?" icon={Hospital} tint="bg-saivie-sage text-saivie-teal" value={form.pregnancies.cesarean} onChange={(value) => setPregnancyCount("cesarean", value)} />,
+        miscarriages: <CountTile label="Miscarriages" hint="Share only if you feel comfortable" icon={Flower2} tint="bg-saivie-surface-muted text-saivie-teal" value={form.pregnancies.miscarriages} onChange={(value) => setPregnancyCount("miscarriages", value)} />,
+        terminations: <CountTile label="Terminations" hint="Share only if you feel comfortable" icon={Leaf} tint="bg-saivie-sage text-saivie-teal" value={form.pregnancies.terminations} onChange={(value) => setPregnancyCount("terminations", value)} />,
+        premature: <CountTile label="Premature births" hint="Births before 37 weeks" icon={Timer} tint="bg-saivie-blush text-saivie-plum" value={form.pregnancies.premature} onChange={(value) => setPregnancyCount("premature", value)} />,
+        pregnancyDetails: <TextArea label="Anything else about your pregnancies?" value={form.pregnancies.details} onChange={(value) => updateGroup("pregnancies", "details", value)} />,
+        gynConcerns: <CheckGrid label="Have you experienced any of these gynecological conditions?" options={["Abnormal pap", "Ectopic pregnancy", "Endometriosis", "Genital warts", "Infertility", "Irregular periods", "Ovarian cysts", "Recurrent miscarriage", "Fibroids", "Vaginal infections", "Vaginal discharge", "Vulvar pain", "None of these"]} exclusiveOption="None of these" value={form.gyn.concerns} onChange={(value) => updateGroup("gyn", "concerns", value)} />,
+        extraGyn: optionalHistory("gyn", "Would you like to add optional screening or sexual-health history?"),
+        sexuallyActive: <ChoiceGroup label="Are you currently sexually active?" options={["Yes", "No", "Prefer not to answer"]} value={form.gyn.sexuallyActive} onChange={(value) => updateGroup("gyn", "sexuallyActive", value)} />,
+        birthControl: <CheckGrid label="Current birth control methods" options={["None", "Pill", "Condoms", "IUD", "Implant", "Other"]} exclusiveOption="None" value={form.gyn.birthControl} onChange={(value) => updateGroup("gyn", "birthControl", value)} />,
+        lastPap: <ScreeningTimeline label="Last Pap smear" value={form.gyn.lastPap} onChange={(value) => updateGroup("gyn", "lastPap", value)} />,
+        hpvVaccine: <ChoiceGroup label="Are you vaccinated against HPV (cervical cancer vaccine)?" options={["Yes, all doses", "Yes, some doses", "No", "Not sure"]} value={form.gyn.hpvVaccine} onChange={(value) => updateGroup("gyn", "hpvVaccine", value)} />,
+        firstEncounterAge: <RulerSlider label="Age at first sexual encounter" value={form.gyn.firstEncounterAge} onChange={(value) => updateGroup("gyn", "firstEncounterAge", value)} min={10} max={80} unit="years" />,
+        partnerCount: <RulerSlider label="Total number of partners" value={form.gyn.partnerCount} onChange={(value) => updateGroup("gyn", "partnerCount", value)} min={0} max={100} />,
+        gynDetails: <TextArea label="Anything else about your gynecological history?" value={form.gyn.details} onChange={(value) => updateGroup("gyn", "details", value)} />,
+        conditions: <CheckGrid label="Have you experienced or been diagnosed with any of these?" options={[...conditions, "None of these"]} exclusiveOption="None of these" value={form.health.conditions} onChange={(value) => updateGroup("health", "conditions", value)} />,
+        mammogram: <ScreeningTimeline label="Last mammogram (optional)" value={form.lifestyle.mammogram} onChange={(value) => updateGroup("lifestyle", "mammogram", value)} />,
+        colonoscopy: <ScreeningTimeline label="Last colonoscopy (optional)" value={form.lifestyle.colonoscopy} onChange={(value) => updateGroup("lifestyle", "colonoscopy", value)} />,
+        medicalDetails: <TextArea label="Would you like to add details about those conditions?" value={form.health.medicalDetails} onChange={(value) => updateGroup("health", "medicalDetails", value)} />,
+        medications: <QuickPick label="Which medicines do you take regularly?" noneLabel="Not taking any" options={["Folic acid", "Iron", "Calcium", "Vitamin D", "Thyroid tablet", "Metformin", "BP medicine", "Birth control pill", "Progesterone", "Painkillers"]} value={form.health.medications} onChange={(value) => updateGroup("health", "medications", value)} otherPlaceholder="Medicine name and dose" />,
+        allergies: <QuickPick label="Do you have any medicine allergies?" noneLabel="No known allergies" options={["Penicillin", "Sulfa drugs", "Aspirin / NSAIDs", "Latex", "Iodine / contrast dye", "Local anaesthetic"]} value={form.health.allergies} onChange={(value) => updateGroup("health", "allergies", value)} otherPlaceholder="Medicine and reaction" />,
+        surgeries: <QuickPick label="Have you had any surgeries?" options={["C-section", "Laparoscopy", "D&C", "Fibroid removal", "Ovarian cyst removal", "Tubal ligation", "Hysterectomy", "Appendix removal", "Gallbladder removal"]} value={form.health.surgeries} onChange={(value) => updateGroup("health", "surgeries", value)} />,
+        familyHistory: <QuickPick label="Any conditions in your close family?" noneLabel="Nothing known" options={["Breast cancer", "Ovarian cancer", "Uterine cancer", "Diabetes", "High BP", "Heart disease", "Thyroid", "PCOS", "Twins", "Blood clots"]} value={form.health.familyHistory} onChange={(value) => updateGroup("health", "familyHistory", value)} otherPlaceholder="Condition and relative" />,
+        extraBackground: optionalHistory("background", "Would you like to add lifestyle and background information?"),
+        referredBy: <TextInput label="Were you referred by someone?" value={form.referredBy} onChange={(value) => update("referredBy", value)} placeholder="Provider name, if any" />,
+        occupation: <ChoiceGroup label="What is your occupation?" options={["Homemaker", "Student", "Working professional", "Healthcare worker", "Self-employed", "Retired"]} value={form.occupation} onChange={(value) => update("occupation", value)} />,
+        smoking: <ChoiceGroup label="Do you smoke?" options={["Never", "Former", "Current"]} value={form.lifestyle.smoking} onChange={(value) => updateGroup("lifestyle", "smoking", value)} />,
+        relationship: <ChoiceGroup label="What is your relationship status?" options={["Single", "Married", "Partnered", "Divorced", "Widowed", "Prefer not to answer"]} value={form.lifestyle.relationship} onChange={(value) => updateGroup("lifestyle", "relationship", value)} />,
+        alcohol: <GlassPicker label="Alcohol use" value={form.lifestyle.alcohol} onChange={(value) => updateGroup("lifestyle", "alcohol", value)} />,
+        exercise: <ExerciseMeter label="Exercise" value={form.lifestyle.exercise} onChange={(value) => updateGroup("lifestyle", "exercise", value)} />,
+        lifestyleOther: <TextArea label="Anything else you would like your care team to know?" value={form.lifestyle.other} onChange={(value) => updateGroup("lifestyle", "other", value)} />,
+    };
+
     if (isLoading) {
-        return <div className="flex min-h-screen items-center justify-center bg-[#faf8ff] text-sm text-[#625976]">Preparing your care journey…</div>;
+        return <div className="flex min-h-screen items-center justify-center bg-saivie-ivory text-sm text-saivie-teal">Preparing your care journey…</div>;
     }
 
     if (submitted) {
         return (
-            <main className="flex min-h-screen items-center justify-center bg-[#faf8ff] p-6">
+            <main className="flex min-h-screen items-center justify-center bg-saivie-ivory p-6">
                 <section className={`${cardClass} w-full max-w-2xl text-center`}>
-                    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#eee7fa] text-[#66519c]"><CheckCircle2 size={32} /></div>
-                    <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-[#8b70c9]">Thank you</p>
-                    <h1 className="font-serif text-3xl font-semibold text-[#382e56]">Your care team is ready</h1>
-                    <p className="mt-3 text-sm leading-6 text-[#797187]">Thanks, {form.name || onboardingData?.patient?.name}. Your answers have been securely shared with the team.</p>
-                    <div className="mt-7 rounded-2xl border border-[#e9e3f1] bg-[#faf8ff] p-4 text-left sm:p-5">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8b70c9]">While you wait</p>
-                        <h2 className="mt-1 font-serif text-xl font-semibold text-[#382e56]">Cervical cancer is preventable</h2>
-                        <p className="mt-1 text-xs leading-5 text-[#797187]">
+                    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-saivie-surface-muted text-saivie-teal"><CheckCircle2 size={32} /></div>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-saivie-teal">Thank you</p>
+                    <h1 className="font-serif text-3xl font-semibold text-saivie-plum">Your care team is ready</h1>
+                    <p className="mt-3 text-sm leading-6 text-saivie-teal">Thanks, {form.name || onboardingData?.patient?.name}. Your answers have been securely shared with the team.</p>
+                    <div className="mt-7 rounded-2xl border border-saivie-border bg-saivie-ivory p-4 text-left sm:p-5">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-saivie-teal">While you wait</p>
+                        <h2 className="mt-1 font-serif text-xl font-semibold text-saivie-plum">Cervical cancer is preventable</h2>
+                        <p className="mt-1 text-xs leading-5 text-saivie-teal">
                             {["No", "Not sure", "Yes, some doses"].includes(form.gyn.hpvVaccine)
                                 ? "Learn how the HPV vaccine and regular screening protect you. Ask your doctor about HPV vaccination at your visit."
                                 : "Learn how HPV vaccination and regular screening help prevent cervical cancer."}
                         </p>
-                        <div className="mt-4 aspect-video w-full overflow-hidden rounded-xl bg-[#332852]">
+                        <div className="mt-4 aspect-video w-full overflow-hidden rounded-xl bg-saivie-plum">
                             <iframe
                                 className="h-full w-full"
                                 src={`https://www.youtube-nocookie.com/embed/${cervicalCancerVideoId}?rel=0`}
@@ -665,9 +686,9 @@ export default function PatientOnboarding() {
                         </div>
                         <Button
                             variant="outline"
-                            className="mt-3 border-[#e2d6f7] text-[#66519c] hover:bg-[#f5f0ff]"
+                            className="mt-3 border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted"
                             onClick={() => {
-                                if (!printOnboardingSummary(form)) {
+                                if (!printOnboardingSummary(answers)) {
                                     toast({ title: "Unable to print history", description: "Please allow pop-ups to print your onboarding history.", variant: "destructive" });
                                 }
                             }}
@@ -676,252 +697,122 @@ export default function PatientOnboarding() {
                             <Printer className="mr-2 h-4 w-4" /> Print onboarding history
                         </Button>
                     </div>
-                    <Button className="mt-7 bg-[#66519c] hover:bg-[#544181]" onClick={() => setLocation("/")}>Done</Button>
+                    <Button className="mt-7 bg-saivie-teal hover:bg-saivie-teal" onClick={() => setLocation("/")}>Done</Button>
                 </section>
             </main>
         );
     }
 
-    const currentIndex = visibleSections.findIndex((section) => section.key === step);
-    const currentSection = visibleSections[currentIndex] ?? visibleSections[0];
-    const progress = Math.round(((currentIndex + 1) / visibleSections.length) * 100);
+    const currentIndex = Math.max(0, questions.findIndex((question) => question.id === step));
+    const currentQuestion = questions[currentIndex];
+    const currentSection = sections.find((section) => section.key === currentQuestion.section) ?? sections[0];
+    const progress = Math.round(((currentIndex + 1) / questions.length) * 100);
 
     const goToSection = (offset: number) => {
-        const next = visibleSections[currentIndex + offset];
-        if (next) setStep(next.key);
+        const next = questions[currentIndex + offset];
+        if (next) setStep(next.id);
     };
+    const editSection = (sectionKey: string) => {
+        const first = questions.find((question) => question.section === sectionKey);
+        if (first) setStep(first.id);
+    };
+    const reviewSections: { key: string; title: string; items: string[] }[] = [
+        { key: "about", title: "About you", items: [answers.name, answers.dob] },
+        { key: "concern", title: "Your concern", items: [...answers.concerns, answers.chiefComplaint, ...answers.pain.location, answers.pain.duration, answers.pain.severity, ...answers.pain.relatedSymptoms] },
+        { key: "cycle", title: "Cycle", items: [answers.cycle.lastPeriod && `Last period began ${answers.cycle.lastPeriod}`, answers.cycle.lateBy && `Period late: ${answers.cycle.lateBy}`, answers.cycle.regularity, answers.cycle.pregnancyTest && `Pregnancy test: ${answers.cycle.pregnancyTest}`, answers.cycle.menarcheAge && `Periods started at ${answers.cycle.menarcheAge}`, answers.cycle.cycleLength && `${answers.cycle.cycleLength}-day cycle`, answers.cycle.flow, ...answers.cycle.symptoms, answers.cycle.details] },
+        { key: "gyn", title: "GYN history", items: [answers.gyn.sexuallyActive && `Sexually active: ${answers.gyn.sexuallyActive}`, answers.gyn.firstEncounterAge && `First sexual encounter at ${answers.gyn.firstEncounterAge}`, answers.gyn.partnerCount && `Partners: ${answers.gyn.partnerCount}`, answers.gyn.lastPap && `Last Pap: ${answers.gyn.lastPap}`, answers.gyn.hpvVaccine && `HPV vaccine: ${answers.gyn.hpvVaccine}`, ...answers.gyn.birthControl, ...answers.gyn.concerns, answers.gyn.details] },
+        { key: "pregnancy", title: "Pregnancies", items: [
+            answers.pregnancies.currentStatus && `Currently pregnant: ${answers.pregnancies.currentStatus}`,
+            answers.pregnancies.weeksPregnant && `${answers.pregnancies.weeksPregnant} weeks pregnant`,
+            answers.pregnancies.dueDate && `Due date: ${answers.pregnancies.dueDate}`,
+            ...(["total", "vaginal", "cesarean", "miscarriages", "terminations", "premature"] as const).map((key) =>
+                answers.pregnancies[key] && `${key}: ${answers.pregnancies[key]}`),
+            answers.pregnancies.details,
+        ] },
+        { key: "lifestyle", title: "Lifestyle & background", items: [answers.referredBy && `Referred by ${answers.referredBy}`, answers.occupation, answers.lifestyle.smoking && `Smoking: ${answers.lifestyle.smoking}`, answers.lifestyle.relationship, answers.lifestyle.alcohol && `Alcohol: ${answers.lifestyle.alcohol}`, answers.lifestyle.exercise && `Exercise: ${answers.lifestyle.exercise}`, answers.lifestyle.other] },
+        { key: "health", title: "Health history", items: [...answers.health.conditions, answers.health.medicalDetails, answers.health.surgeries && `Surgeries: ${splitLines(answers.health.surgeries).join(", ")}`, answers.health.medications && `Medicines: ${splitLines(answers.health.medications).join(", ")}`, answers.health.allergies && `Allergies: ${splitLines(answers.health.allergies).join(", ")}`, answers.health.familyHistory && `Family history: ${splitLines(answers.health.familyHistory).join(", ")}`, answers.lifestyle.mammogram && `Last mammogram: ${answers.lifestyle.mammogram}`, answers.lifestyle.colonoscopy && `Last colonoscopy: ${answers.lifestyle.colonoscopy}`] },
+    ];
 
     return (
-        <main className="min-h-screen bg-[#faf8ff] text-[#342c52]">
+        <main className="min-h-screen bg-saivie-ivory text-saivie-plum">
             <style>{`
                 @keyframes onboarding-pop { 0% { transform: scale(.6); opacity: .3; } 60% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
                 .onboarding-pop { display: inline-block; animation: onboarding-pop 260ms cubic-bezier(.3,1.4,.5,1); }
                 .onboarding-ruler-slider { height: 24px; }
-                .onboarding-ruler-slider::-webkit-slider-runnable-track { height: 3px; border-radius: 999px; background: #c5b4e8; }
-                .onboarding-ruler-slider::-moz-range-track { height: 3px; border-radius: 999px; background: #c5b4e8; }
-                .onboarding-ruler-slider::-webkit-slider-thumb { width: 18px; height: 18px; margin-top: -7.5px; border: 3px solid white; border-radius: 50%; background: #66519c; box-shadow: 0 1px 5px #66519c55; appearance: none; }
-                .onboarding-ruler-slider::-moz-range-thumb { width: 14px; height: 14px; border: 3px solid white; border-radius: 50%; background: #66519c; box-shadow: 0 1px 5px #66519c55; }
-                .onboarding-ruler-slider:focus-visible { outline: 2px solid #aa91dc; outline-offset: 5px; border-radius: 999px; }
+                .onboarding-ruler-slider::-webkit-slider-runnable-track { height: 3px; border-radius: 999px; background: var(--saivie-sage); }
+                .onboarding-ruler-slider::-moz-range-track { height: 3px; border-radius: 999px; background: var(--saivie-sage); }
+                .onboarding-ruler-slider::-webkit-slider-thumb { width: 18px; height: 18px; margin-top: -7.5px; border: 3px solid white; border-radius: 50%; background: var(--saivie-teal); box-shadow: 0 1px 5px color-mix(in srgb, var(--saivie-teal) 33%, transparent); appearance: none; }
+                .onboarding-ruler-slider::-moz-range-thumb { width: 14px; height: 14px; border: 3px solid white; border-radius: 50%; background: var(--saivie-teal); box-shadow: 0 1px 5px color-mix(in srgb, var(--saivie-teal) 33%, transparent); }
+                .onboarding-ruler-slider:focus-visible { outline: 2px solid var(--saivie-teal); outline-offset: 5px; border-radius: 999px; }
             `}</style>
-            <aside className="fixed inset-y-0 left-0 z-20 hidden w-[230px] flex-col bg-[#332852] px-5 py-6 text-white lg:flex">
-                <div className="flex items-center gap-2.5 font-semibold"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#cbb5f2] text-[#382e56]"><Heart size={18} /></span>Saivie</div>
-                <p className="mt-10 text-[10px] font-bold uppercase tracking-[0.18em] text-[#c2b4dc]">Your care journey</p>
+            <aside className="fixed inset-y-0 left-0 z-20 hidden w-[230px] flex-col bg-saivie-sage px-5 py-6 text-saivie-plum lg:flex">
+                <div className="flex items-center gap-2.5 font-semibold"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-saivie-sage text-saivie-plum"><Heart size={18} /></span>Saivie</div>
+                <p className="mt-10 text-[10px] font-bold uppercase tracking-[0.18em] text-saivie-plum">Your care journey</p>
                 <nav className="mt-4 space-y-1" aria-label="Onboarding sections">
                     {visibleSections.map((section, index) => (
-                        <button key={section.key} type="button" onClick={() => setStep(section.key)}
-                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs transition ${step === section.key ? "bg-white/15 text-white" : "text-[#d4cbe4] hover:bg-white/10"}`}>
-                            <span className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] ${index < currentIndex ? "border-[#cbb5f2] bg-[#cbb5f2] text-[#382e56]" : step === section.key ? "border-[#cbb5f2] text-[#cbb5f2]" : "border-white/30"}`}>
-                                {index < currentIndex ? <Check size={12} /> : index + 1}
+                        <button key={section.key} type="button" onClick={() => editSection(section.key)}
+                            aria-current={currentQuestion.section === section.key ? "step" : undefined}
+                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs transition ${currentQuestion.section === section.key ? "bg-saivie-blush text-saivie-plum" : "text-saivie-plum hover:bg-saivie-ivory/50"}`}>
+                            <span className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] ${currentQuestion.section === section.key ? "border-saivie-plum text-saivie-plum" : "border-saivie-plum/30"}`}>
+                                {index + 1}
                             </span>
                             {section.title}
                         </button>
                     ))}
                 </nav>
-                <div className="mt-auto rounded-xl border border-white/10 bg-white/5 p-3.5">
-                    <div className="flex items-center gap-2 text-[11px] font-semibold"><LockKeyhole size={13} className="text-[#cbb5f2]" /> Your privacy matters</div>
-                    <p className="mt-1.5 pl-5 text-[10px] leading-4 text-[#d4cbe4]">Your answers are shared only with your care team.</p>
+                <div className="mt-auto rounded-xl border border-saivie-border bg-saivie-ivory/50 p-3.5">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold"><LockKeyhole size={13} className="text-saivie-teal" /> Your privacy matters</div>
+                    <p className="mt-1.5 pl-5 text-[10px] leading-4 text-saivie-plum">Your answers are shared only with your care team.</p>
                 </div>
             </aside>
 
             <div className="lg:pl-[230px]">
-                <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-[#e8e1ef] bg-white/90 px-5 backdrop-blur sm:px-8">
-                    <span className="text-sm font-semibold text-[#4a3d6e] lg:hidden">Saivie care journey</span>
-                    <span className="hidden items-center gap-2 text-xs text-[#7a7186] sm:flex"><ShieldCheck size={15} className="text-[#8b70c9]" /> Secure patient onboarding</span>
-                    <span className="ml-auto rounded-full border border-[#e5daf8] bg-[#f5effc] px-3 py-1.5 text-[11px] font-medium text-[#655282]">Step {currentIndex + 1} of {visibleSections.length}</span>
+                <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-saivie-border bg-saivie-ivory/90 px-5 backdrop-blur sm:px-8">
+                    <span className="text-sm font-semibold text-saivie-teal lg:hidden">Saivie care journey</span>
+                    <span className="hidden items-center gap-2 text-xs text-saivie-teal sm:flex"><ShieldCheck size={15} className="text-saivie-teal" /> Secure patient onboarding</span>
+                    <span className="ml-auto rounded-full border border-saivie-border bg-saivie-surface-muted px-3 py-1.5 text-[11px] font-medium text-saivie-teal">{step === "review" ? "Review" : `Question ${currentIndex + 1} of ${questions.length - 1}`}</span>
                 </header>
 
                 <div className="mx-auto max-w-[900px] px-4 pb-12 pt-8 sm:px-8 sm:pt-12">
                     <div className="mb-6 flex items-end justify-between gap-4">
                         <div>
-                            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[#8e79bf]">{currentSection.eyebrow}</p>
-                            <h1 className="font-serif text-3xl font-semibold tracking-tight text-[#382e56] sm:text-4xl">{currentSection.title}</h1>
+                            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-saivie-teal">{currentSection.eyebrow}</p>
+                            <h1 ref={questionHeading} tabIndex={-1} className="font-serif text-3xl font-semibold tracking-tight text-saivie-plum outline-none sm:text-4xl">{currentSection.title}</h1>
                         </div>
-                        <p className="shrink-0 pb-1 text-xs font-semibold text-[#66519c]"><span className="text-base">{progress}%</span> complete</p>
+                        <p className="shrink-0 pb-1 text-xs font-semibold text-saivie-teal"><span className="text-base">{progress}%</span> through</p>
                     </div>
-                    <div className="mb-7 h-1.5 overflow-hidden rounded-full bg-[#e9e2f1]">
-                        <div className="h-full rounded-full bg-[#aa91dc] transition-all duration-300" style={{ width: `${progress}%` }} />
+                    <div className="mb-7 h-1.5 overflow-hidden rounded-full bg-saivie-surface-muted">
+                        <div className="h-full rounded-full bg-saivie-sage transition-all duration-300" style={{ width: `${progress}%` }} />
                     </div>
 
-                    {step === "about" && (
-                        <div className="space-y-4">
-                            <div className="flex gap-3 rounded-2xl border border-[#e6ddf3] bg-[#f3eef9] p-5">
-                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e5d8f6] text-[#66519c]"><Heart size={18} /></span>
-                                <div><h2 className="font-serif text-base font-semibold text-[#4a3d6e]">Let’s get to know you</h2><p className="mt-1 text-xs leading-5 text-[#797187]">This helps your care team prepare for your visit. Take your time—your answers are saved when you submit.</p></div>
-                            </div>
-                            <section className={cardClass}>
-                                <SectionHeading number="01" title="Your details" subtitle="Tell us the basics." />
-                                <div className="mt-6 grid gap-5 border-t border-[#eee8f4] pt-6 sm:grid-cols-2">
-                                    <TextInput label="Full name" value={form.name} onChange={(value) => update("name", value)} placeholder="Your full name" />
-                                    <TextInput label="Date of birth" value={form.dob} onChange={(value) => update("dob", value)} type="date" />
-                                    <TextInput label="Referred by" value={form.referredBy} onChange={(value) => update("referredBy", value)} placeholder="Provider name (optional)" />
-                                    <ChoiceGroup label="Occupation" options={["Homemaker", "Student", "Working professional", "Healthcare worker", "Self-employed", "Retired"]} value={form.occupation} onChange={(value) => update("occupation", value)} />
-                                </div>
-                            </section>
-                        </div>
-                    )}
-
-                    {step === "concern" && (
-                        <section className={cardClass}>
-                            <SectionHeading number="02" title="What brings you in today?" subtitle="Choose all the topics you would like help with. We’ll ask a few relevant follow-up questions." />
-                            <div className="mt-6 space-y-6 border-t border-[#eee8f4] pt-6">
-                                <CheckGrid label="Your visit concerns" options={concernOptions} value={form.concerns} onChange={(value) => update("concerns", value)} />
-                                {form.concerns.includes("Abdominal or pelvic pain") && (
-                                    <div className="space-y-5 rounded-xl border border-[#e9e3f0] bg-[#fdfbff] p-4">
-                                        <h3 className="font-serif text-sm font-semibold text-[#4a3d6e]">About the pain</h3>
-                                        <CheckGrid label="Where do you feel it?" options={["Lower abdomen", "One side", "Pelvis", "Back", "Not sure"]} value={form.pain.location} onChange={(value) => updateGroup("pain", "location", value)} />
-                                        <div className="grid gap-5 sm:grid-cols-2">
-                                            <ChoiceGroup label="How long have you had it?" options={["Today", "2–3 days", "About a week", "A few weeks", "Months or longer"]} value={form.pain.duration} onChange={(value) => updateGroup("pain", "duration", value)} />
-                                            <ChoiceGroup label="How would you describe it?" options={["Mild", "Moderate", "Severe", "Comes and goes"]} value={form.pain.severity} onChange={(value) => updateGroup("pain", "severity", value)} />
-                                        </div>
-                                        <CheckGrid label="Anything else happening with it?" options={["Fever", "Nausea or vomiting", "Bleeding", "Dizziness", "None of these", "Prefer not to say"]} value={form.pain.relatedSymptoms} onChange={(value) => updateGroup("pain", "relatedSymptoms", value)} />
-                                    </div>
-                                )}
-                                {needsCycle && (
-                                    <div className="space-y-5 rounded-xl border border-[#e6ddf3] bg-[#f5f0fb] p-4">
-                                        <h3 className="font-serif text-sm font-semibold text-[#4a3d6e]">A little about your cycle</h3>
-                                        {(form.concerns.includes("Missed or late period") || form.concerns.includes("Possible pregnancy") || form.concerns.includes("Pregnancy care")) && (
-                                            <>
-                                                <TextInput label="When did your last period start?" value={form.cycle.lastPeriod} onChange={(value) => updateGroup("cycle", "lastPeriod", value)} type="date" />
-                                                {form.concerns.includes("Missed or late period") && (
-                                                    <ChoiceGroup label="How late is your period?" options={["Less than a week", "1–2 weeks", "More than 2 weeks", "Not sure"]} value={form.cycle.lateBy} onChange={(value) => updateGroup("cycle", "lateBy", value)} />
-                                                )}
-                                            </>
-                                        )}
-                                        {form.concerns.some((concern) => ["Missed or late period", "Irregular or heavy bleeding"].includes(concern)) && (
-                                            <ChoiceGroup label="Are your periods usually regular?" options={["Usually regular", "Often irregular", "Not sure"]} value={form.cycle.regularity} onChange={(value) => updateGroup("cycle", "regularity", value)} />
-                                        )}
-                                        {needsPregnancy && (
-                                            <ChoiceGroup label="Have you taken a pregnancy test?" options={["Positive", "Negative", "Not yet", "Prefer not to answer"]} value={form.cycle.pregnancyTest} onChange={(value) => updateGroup("cycle", "pregnancyTest", value)} />
-                                        )}
-                                    </div>
-                                )}
-                                <NoteToggle label="Tell us more about your concern" value={form.chiefComplaint} onChange={(value) => update("chiefComplaint", value)} placeholder="Add any details you think would help your care team" />
-                                {!form.concerns.length && <p className="text-xs text-[#7b887f]">Select a topic to see relevant questions. You can also continue without selecting one.</p>}
-                            </div>
-                        </section>
-                    )}
-
-                    {step === "cycle" && (
-                        <section className={cardClass}>
-                            <SectionHeading number="03" title="Menstrual history" subtitle="Share what your typical cycle looks like." />
-                            <div className="mt-6 grid gap-5 border-t border-[#eee8f4] pt-6 sm:grid-cols-2">
-                                <RulerSlider label="Age when periods started" value={form.cycle.menarcheAge} onChange={(value) => updateGroup("cycle", "menarcheAge", value)} min={5} max={20} unit="years" optional />
-                                <RulerSlider label="Typical cycle length" value={form.cycle.cycleLength} onChange={(value) => updateGroup("cycle", "cycleLength", value)} min={15} max={90} unit="days" optional />
-                                {form.concerns.includes("Irregular or heavy bleeding") && <div className="sm:col-span-2"><ChoiceGroup label="How would you describe your flow?" options={["Light", "Average", "Heavy", "Not sure"]} value={form.cycle.flow} onChange={(value) => updateGroup("cycle", "flow", value)} /></div>}
-                                <div className="sm:col-span-2"><CheckGrid label="Do you experience any of these?" options={["PMS", "Menstrual cramps", "Bleeding between periods", "Pain with intercourse", "No issues"]} exclusiveOption="No issues" value={form.cycle.symptoms} onChange={(value) => updateGroup("cycle", "symptoms", value)} /></div>
-                                <div className="sm:col-span-2"><NoteToggle label="Add anything else" value={form.cycle.details} onChange={(value) => updateGroup("cycle", "details", value)} placeholder="Optional details" /></div>
-                            </div>
-                        </section>
-                    )}
-
-                    {step === "gyn" && (
-                        <section className={cardClass}>
-                            <SectionHeading number="04" title="Gynecological history" subtitle="Sensitive questions help us provide better care. You may skip any question." />
-                            <div className="mt-6 grid gap-5 border-t border-[#eee8f4] pt-6 sm:grid-cols-2">
-                                <RulerSlider label="Age at first sexual encounter" value={form.gyn.firstEncounterAge} onChange={(value) => updateGroup("gyn", "firstEncounterAge", value)} min={10} max={80} unit="years" optional />
-                                <RulerSlider label="Total number of partners" value={form.gyn.partnerCount} onChange={(value) => updateGroup("gyn", "partnerCount", value)} min={0} max={100} optional />
-                                <ScreeningTimeline label="Last Pap smear" value={form.gyn.lastPap} onChange={(value) => updateGroup("gyn", "lastPap", value)} />
-                                <div className="sm:col-span-2"><ChoiceGroup label="Are you currently sexually active?" options={["Yes", "No", "Prefer not to answer"]} value={form.gyn.sexuallyActive} onChange={(value) => updateGroup("gyn", "sexuallyActive", value)} /></div>
-                                <div className="sm:col-span-2"><CheckGrid label="Current birth control methods" options={["None", "Pill", "Condoms", "IUD", "Implant", "Other"]} value={form.gyn.birthControl} onChange={(value) => updateGroup("gyn", "birthControl", value)} /></div>
-                                <div className="sm:col-span-2"><CheckGrid label="Have you experienced any of the following?" options={["Abnormal pap", "Ectopic pregnancy", "Endometriosis", "Genital warts", "Infertility", "Irregular periods", "Ovarian cysts", "Recurrent miscarriage", "Fibroids", "Vaginal infections", "Vaginal discharge", "Vulvar pain"]} value={form.gyn.concerns} onChange={(value) => updateGroup("gyn", "concerns", value)} /></div>
-                                <div className="sm:col-span-2"><NoteToggle label="Add details or past birth control" value={form.gyn.details} onChange={(value) => updateGroup("gyn", "details", value)} placeholder="Add dates or details your care team should know" /></div>
-                            </div>
-                        </section>
-                    )}
-
-                    {step === "pregnancy" && (
-                        <section className={cardClass}>
-                            <SectionHeading number="05" title="Pregnancy history" subtitle="Share what you are comfortable sharing. These answers help your care team prepare." />
-                            <div className="mt-6 space-y-5 border-t border-[#eee8f4] pt-6">
-                                <ChoiceGroup label="Are you currently pregnant?" options={["Yes", "No", "Not sure", "Prefer not to answer"]} value={form.pregnancies.currentStatus} onChange={(value) => updateGroup("pregnancies", "currentStatus", value)} />
-                                {form.pregnancies.currentStatus === "Yes" && (
-                                    <div className="grid gap-5 rounded-xl bg-[#f5f0fb] p-4 sm:grid-cols-2">
-                                        <RulerSlider label="About how many weeks pregnant?" value={form.pregnancies.weeksPregnant} onChange={(value) => updateGroup("pregnancies", "weeksPregnant", value)} min={1} max={42} unit="weeks" optional />
-                                        <TextInput label="Estimated due date" value={form.pregnancies.dueDate} onChange={(value) => updateGroup("pregnancies", "dueDate", value)} type="date" />
-                                    </div>
-                                )}
-                                <div className="flex items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-[#f5f0ff] to-[#fdfbff] px-4 py-3">
-                                    <p className="text-xs text-[#625976]">Tap <span className="font-semibold text-[#66519c]">+</span> or the dots to count. Leave at 0 if it doesn’t apply.</p>
-                                    {Number(form.pregnancies.total) > 0 && <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-bold text-[#66519c] shadow-sm">{form.pregnancies.total} pregnanc{form.pregnancies.total === "1" ? "y" : "ies"}</span>}
-                                </div>
-                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                    <CountTile label="Pregnancies" hint="Total, including current" icon={Heart} tint="bg-[#efe6ff] text-[#66519c]" value={form.pregnancies.total} onChange={(value) => setPregnancyCount("total", value)} />
-                                    <CountTile label="Normal deliveries" hint="Vaginal births" icon={Baby} tint="bg-[#fde7f1] text-[#b4537f]" value={form.pregnancies.vaginal} onChange={(value) => setPregnancyCount("vaginal", value)} />
-                                    <CountTile label="C-sections" hint="Cesarean births" icon={Hospital} tint="bg-[#e4effd] text-[#4c6fae]" value={form.pregnancies.cesarean} onChange={(value) => setPregnancyCount("cesarean", value)} />
-                                    <CountTile label="Miscarriages" hint="Pregnancy loss" icon={Flower2} tint="bg-[#f3e8fb] text-[#8b5fb0]" value={form.pregnancies.miscarriages} onChange={(value) => setPregnancyCount("miscarriages", value)} />
-                                    <CountTile label="Terminations" hint="Planned endings (MTP)" icon={Leaf} tint="bg-[#e7f5ef] text-[#4b8a6e]" value={form.pregnancies.terminations} onChange={(value) => setPregnancyCount("terminations", value)} />
-                                    <CountTile label="Premature births" hint="Born before 37 weeks" icon={Timer} tint="bg-[#fff3e2] text-[#b07a2c]" value={form.pregnancies.premature} onChange={(value) => setPregnancyCount("premature", value)} />
-                                </div>
-                                <NoteToggle label="Add pregnancy details" value={form.pregnancies.details} onChange={(value) => updateGroup("pregnancies", "details", value)} placeholder="Dates, weeks at delivery, baby weight, and any complications" />
-                            </div>
-                        </section>
-                    )}
-
-                    {step === "lifestyle" && (
-                        <section className={cardClass}>
-                            <SectionHeading number="06" title="Social & lifestyle" subtitle="Daily habits can offer useful context for your care." />
-                            <div className="mt-6 space-y-6 border-t border-[#eee8f4] pt-6">
-                                <ChoiceGroup label="Smoking history" options={["Never", "Former", "Current"]} value={form.lifestyle.smoking} onChange={(value) => updateGroup("lifestyle", "smoking", value)} />
-                                <ChoiceGroup label="Relationship status" options={["Single", "Married", "Partnered", "Divorced", "Widowed", "Prefer not to answer"]} value={form.lifestyle.relationship} onChange={(value) => updateGroup("lifestyle", "relationship", value)} />
-                                <div className="grid gap-5 sm:grid-cols-2">
-                                    <GlassPicker label="Alcohol use" value={form.lifestyle.alcohol} onChange={(value) => updateGroup("lifestyle", "alcohol", value)} />
-                                    <ExerciseMeter label="Exercise" value={form.lifestyle.exercise} onChange={(value) => updateGroup("lifestyle", "exercise", value)} />
-                                    <ScreeningTimeline label="Last mammogram" value={form.lifestyle.mammogram} onChange={(value) => updateGroup("lifestyle", "mammogram", value)} />
-                                    <ScreeningTimeline label="Last colonoscopy" value={form.lifestyle.colonoscopy} onChange={(value) => updateGroup("lifestyle", "colonoscopy", value)} />
-                                </div>
-                                <NoteToggle label="Add other context" value={form.lifestyle.other} onChange={(value) => updateGroup("lifestyle", "other", value)} placeholder="Recreational drug use or anything else" />
-                            </div>
-                        </section>
-                    )}
-
-                    {step === "health" && (
-                        <section className={cardClass}>
-                            <SectionHeading number="07" title="Medical history" subtitle="Just tap what applies — no typing needed. Use “Other” only if something is missing." />
-                            <div className="mt-6 space-y-6 border-t border-[#eee8f4] pt-6">
-                                <CheckGrid label="Have you ever experienced or been diagnosed with:" options={conditions} value={form.health.conditions} onChange={(value) => updateGroup("health", "conditions", value)} />
-                                <NoteToggle label="Add condition details" value={form.health.medicalDetails} onChange={(value) => updateGroup("health", "medicalDetails", value)} placeholder="Include approximate dates or treatment, if known" />
-                                <QuickPick label="Past surgeries" options={["C-section", "Laparoscopy", "D&C", "Fibroid removal", "Ovarian cyst removal", "Tubal ligation", "Hysterectomy", "Appendix removal", "Gallbladder removal"]} value={form.health.surgeries} onChange={(value) => updateGroup("health", "surgeries", value)} />
-                                <QuickPick label="Medicines you take regularly" noneLabel="Not taking any" options={["Folic acid", "Iron", "Calcium", "Vitamin D", "Thyroid tablet", "Metformin", "BP medicine", "Birth control pill", "Progesterone", "Painkillers"]} value={form.health.medications} onChange={(value) => updateGroup("health", "medications", value)} otherPlaceholder="Medicine name and dose" />
-                                <QuickPick label="Medicine allergies" noneLabel="No known allergies" options={["Penicillin", "Sulfa drugs", "Aspirin / NSAIDs", "Latex", "Iodine / contrast dye", "Local anaesthetic"]} value={form.health.allergies} onChange={(value) => updateGroup("health", "allergies", value)} otherPlaceholder="Medicine and reaction" />
-                                <QuickPick label="Family history (parents, siblings, grandparents)" noneLabel="Nothing known" options={["Breast cancer", "Ovarian cancer", "Uterine cancer", "Diabetes", "High BP", "Heart disease", "Thyroid", "PCOS", "Twins", "Blood clots"]} value={form.health.familyHistory} onChange={(value) => updateGroup("health", "familyHistory", value)} otherPlaceholder="Condition and relative" />
-                            </div>
+                    {step !== "review" && (
+                        <section key={step} className={`${cardClass} min-h-[260px]`} data-testid={`onboarding-question-${step}`}>
+                            <p className="mb-5 text-xs leading-5 text-saivie-teal">
+                                {step === "concerns" ? "Choose all that apply. Your next questions will match these concerns." : "Optional. Answer if you can, or skip this question."}
+                            </p>
+                            {questionContent[currentQuestion.id]}
+                            {step === "name" && <p className="mt-6 text-xs leading-5 text-saivie-teal">One question at a time. Your answers stay here as you move back and forth, and are shared only when you submit. Closing or refreshing the page discards unsubmitted answers.</p>}
                         </section>
                     )}
 
                     {step === "review" && (
                         <section className={cardClass}>
-                            <SectionHeading number="08" title="Review your answers" subtitle="Please check your information before sharing it with your care team." />
-                            <div className="mt-6 rounded-2xl border border-[#e2d6f7] bg-gradient-to-br from-[#f5f0ff] to-[#fdfbff] p-5">
-                                <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#8b70c9]">One last question</p>
-                                <ChoiceGroup label="Are you vaccinated against HPV (cervical cancer vaccine)?" options={["Yes, all doses", "Yes, some doses", "No", "Not sure"]} value={form.gyn.hpvVaccine} onChange={(value) => updateGroup("gyn", "hpvVaccine", value)} />
-                                <p className="mt-3 text-xs leading-5 text-[#797187]">The HPV vaccine protects against the virus that causes most cervical cancers. Your doctor can guide you if you're not sure.</p>
-                            </div>
-                            <div className="mt-6 space-y-3 border-t border-[#eee8f4] pt-6">
-                                {[
-                                    ["About you", [form.name, form.dob, form.referredBy && `Referred by ${form.referredBy}`, form.occupation]],
-                                    ["Your concern", [...form.concerns, form.chiefComplaint, ...form.pain.location, form.pain.duration, form.pain.severity, ...form.pain.relatedSymptoms]],
-                                    ["Cycle", [form.cycle.lastPeriod && `Last period began ${form.cycle.lastPeriod}`, form.cycle.lateBy && `Period late: ${form.cycle.lateBy}`, form.cycle.regularity, form.cycle.pregnancyTest && `Pregnancy test: ${form.cycle.pregnancyTest}`, form.cycle.menarcheAge && `Periods started at ${form.cycle.menarcheAge}`, form.cycle.cycleLength && `${form.cycle.cycleLength}-day cycle`, form.cycle.flow, ...form.cycle.symptoms, form.cycle.details]],
-                                    ["GYN history", [form.gyn.sexuallyActive, form.gyn.lastPap && `Last Pap: ${form.gyn.lastPap}`, ...form.gyn.birthControl, ...form.gyn.concerns, form.gyn.details]],
-                                    ["Pregnancies", [form.pregnancies.currentStatus && `Currently pregnant: ${form.pregnancies.currentStatus}`, form.pregnancies.weeksPregnant && `${form.pregnancies.weeksPregnant} weeks pregnant`, form.pregnancies.dueDate && `Due date: ${form.pregnancies.dueDate}`, `${form.pregnancies.total} pregnancies`, `${form.pregnancies.vaginal} normal deliveries`, `${form.pregnancies.cesarean} C-sections`, Number(form.pregnancies.miscarriages) > 0 && `${form.pregnancies.miscarriages} miscarriages`, Number(form.pregnancies.terminations) > 0 && `${form.pregnancies.terminations} terminations`, Number(form.pregnancies.premature) > 0 && `${form.pregnancies.premature} premature births`, form.pregnancies.details]],
-                                    ["Lifestyle", [form.lifestyle.smoking, form.lifestyle.relationship, form.lifestyle.alcohol && `Alcohol: ${form.lifestyle.alcohol}`, form.lifestyle.exercise && `Exercise: ${form.lifestyle.exercise}`, form.lifestyle.mammogram && `Last mammogram: ${form.lifestyle.mammogram}`, form.lifestyle.colonoscopy && `Last colonoscopy: ${form.lifestyle.colonoscopy}`, form.lifestyle.other]],
-                                    ["Health history", [...form.health.conditions, form.health.medicalDetails, form.health.surgeries && `Surgeries: ${splitLines(form.health.surgeries).join(", ")}`, form.health.medications && `Medicines: ${splitLines(form.health.medications).join(", ")}`, form.health.allergies && `Allergies: ${splitLines(form.health.allergies).join(", ")}`, form.health.familyHistory && `Family history: ${splitLines(form.health.familyHistory).join(", ")}`]],
-                                ].map(([title, rawItems]) => {
-                                    const items = (rawItems as (string | false)[]).filter(Boolean);
-                                    return <div key={title as string} className="rounded-xl border border-[#ebe5f2] bg-[#fdfbff] p-4">
+                            <h2 className="font-serif text-lg font-semibold text-saivie-teal">Review your answers</h2>
+                            <p className="mt-1 text-xs text-saivie-teal">Check your answers before sharing. Anything skipped remains unanswered.</p>
+                            <div className="mt-6 space-y-3 border-t border-saivie-border pt-6">
+                                {reviewSections.filter((section) => visibleSections.some((visible) => visible.key === section.key)).map(({ key, title, items: rawItems }) => {
+                                    const items = rawItems.filter(Boolean);
+                                    return <div key={key} className="rounded-xl border border-saivie-border bg-saivie-ivory p-4">
                                         <div className="flex items-center justify-between gap-3">
-                                            <h3 className="font-serif text-base font-semibold text-[#4a3d6e]">{title}</h3>
-                                            <button type="button" onClick={() => {
-                                                const targetKey = sections.find((section) => section.title === title)?.key;
-                                                if (targetKey && visibleSections.some((section) => section.key === targetKey)) setStep(targetKey);
-                                                else setStep("concern");
-                                            }} className="text-xs font-semibold text-[#8368bf] hover:underline">Edit</button>
+                                            <h3 className="font-serif text-base font-semibold text-saivie-teal">{title}</h3>
+                                            <button type="button" onClick={() => editSection(key)} aria-label={`Edit ${title}`} className="text-xs font-semibold text-saivie-teal hover:underline">Edit</button>
                                         </div>
-                                        <p className="mt-2 text-xs leading-5 text-[#797187]">{items.length ? items.join(" · ") : "No details added"}</p>
+                                        <p className="mt-2 text-xs leading-5 text-saivie-teal">{items.length ? items.join(" · ") : "Skipped / not answered"}</p>
                                     </div>;
                                 })}
                             </div>
-                            <div className="mt-5 flex gap-2 rounded-xl bg-[#f2ecf9] p-4 text-xs leading-5 text-[#6e6480]">
-                                <ShieldCheck size={16} className="mt-0.5 shrink-0 text-[#8368bf]" />
+                            <div className="mt-5 flex gap-2 rounded-xl bg-saivie-surface-muted p-4 text-xs leading-5 text-saivie-teal">
+                                <ShieldCheck size={16} className="mt-0.5 shrink-0 text-saivie-teal" />
                                 Your information is securely shared with your care team to help prepare for your visit.
                             </div>
                         </section>
@@ -929,26 +820,21 @@ export default function PatientOnboarding() {
 
                     <div className="mt-5 flex items-center justify-between">
                         {currentIndex > 0 ? (
-                            <Button variant="ghost" className="text-xs text-[#797187] hover:text-[#4a3d6e]" onClick={() => goToSection(-1)}><ArrowLeft className="mr-2 h-3.5 w-3.5" />Back</Button>
+                            <Button variant="ghost" className="text-xs text-saivie-teal hover:text-saivie-teal" onClick={() => goToSection(-1)}><ArrowLeft className="mr-2 h-3.5 w-3.5" />Back</Button>
                         ) : <span />}
-                        {currentIndex < visibleSections.length - 1 ? (
-                            <Button className="h-11 rounded-lg bg-[#66519c] px-5 text-xs font-semibold text-white shadow-lg shadow-[#66519c]/15 hover:bg-[#544181]" onClick={() => goToSection(1)}>Continue<ArrowRight className="ml-2 h-3.5 w-3.5" /></Button>
+                        {currentIndex < questions.length - 1 ? (
+                            <div className="flex items-center gap-2">
+                                <Button variant="ghost" className="text-xs text-saivie-teal" onClick={() => goToSection(1)}>Skip question</Button>
+                                <Button className="h-11 rounded-lg bg-saivie-teal px-5 text-xs font-semibold text-white shadow-lg shadow-saivie-teal/15 hover:bg-saivie-teal" onClick={() => goToSection(1)}>Continue<ArrowRight className="ml-2 h-3.5 w-3.5" /></Button>
+                            </div>
                         ) : (
-                            <Button className="h-11 rounded-lg bg-[#66519c] px-5 text-xs font-semibold text-white shadow-lg shadow-[#66519c]/15 hover:bg-[#544181]" disabled={mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Submitting…" : "Submit to care team"}<ArrowRight className="ml-2 h-3.5 w-3.5" /></Button>
+                            <Button className="h-11 rounded-lg bg-saivie-teal px-5 text-xs font-semibold text-white shadow-lg shadow-saivie-teal/15 hover:bg-saivie-teal" disabled={mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Submitting…" : "Submit to care team"}<ArrowRight className="ml-2 h-3.5 w-3.5" /></Button>
                         )}
                     </div>
-                    <p className="mt-8 text-center text-[10px] text-[#91889d]">You may skip sensitive questions. Your information is only shared with your care team.</p>
+                    {step !== "review" && <button type="button" onClick={() => setStep("review")} className="mx-auto mt-5 block text-xs font-semibold text-saivie-teal underline underline-offset-4">Finish early and review my answers</button>}
+                    <p className="mt-8 text-center text-[10px] text-saivie-teal">All questions are optional. Skipped answers are not treated as “No”. Your care team can ask for more detail during your visit.</p>
                 </div>
             </div>
         </main>
-    );
-}
-
-function SectionHeading({ number, title, subtitle }: { number: string; title: string; subtitle: string }) {
-    return (
-        <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eee7f7] text-[10px] font-bold text-[#8167b7]">{number}</span>
-            <div><h2 className="font-serif text-lg font-semibold text-[#4a3d6e]">{title}</h2><p className="mt-0.5 text-xs text-[#8a8194]">{subtitle}</p></div>
-        </div>
     );
 }

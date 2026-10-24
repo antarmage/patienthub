@@ -141,7 +141,7 @@ export default function PostpartumMilestonesLateScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.noticeCard}>
-          <Feather name="info" size={14} color="#A855F7" style={{ marginRight: 6 }} />
+          <Feather name="info" size={14} color={COLORS.rose} style={{ marginRight: 6 }} />
           <ThemedText style={styles.noticeText}>
             Milestones are ranges, not deadlines. Consult your paediatrician if your baby isn't meeting key milestones.
           </ThemedText>
@@ -196,35 +196,35 @@ export default function PostpartumMilestonesLateScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAFAFC" },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md,
-    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: COLORS.surfaceMuted,
   },
   backBtn: { padding: Spacing.sm, marginRight: Spacing.sm, marginLeft: -Spacing.sm },
   headerTitle: { flex: 1 },
   headerName: { fontSize: 17, fontWeight: "600", color: COLORS.textPrimary },
   headerSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 1 },
   badge: {
-    backgroundColor: "#FDF4FF", borderRadius: BorderRadius.full,
+    backgroundColor: COLORS.surfaceBlush, borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.md, paddingVertical: 4,
   },
-  badgeText: { fontSize: 13, fontWeight: "700", color: "#A855F7" },
+  badgeText: { fontSize: 13, fontWeight: "700", color: COLORS.rose },
   scroll: { flex: 1 },
   noticeCard: {
     flexDirection: "row", alignItems: "flex-start",
-    backgroundColor: "#FDF4FF", borderRadius: 12, padding: Spacing.md,
+    backgroundColor: COLORS.surfaceBlush, borderRadius: 12, padding: Spacing.md,
     marginBottom: Spacing.xl,
   },
-  noticeText: { fontSize: 13, color: "#A855F7", flex: 1, lineHeight: 18 },
+  noticeText: { fontSize: 13, color: COLORS.rose, flex: 1, lineHeight: 18 },
   monthSection: {
     backgroundColor: "#FFFFFF", borderRadius: 16, padding: Spacing.md,
-    marginBottom: Spacing.md, borderWidth: 1, borderColor: "#F3F4F6",
+    marginBottom: Spacing.md, borderWidth: 1, borderColor: COLORS.surfaceMuted,
   },
   monthSectionCurrent: {
-    borderColor: "#E9D5FF",
-    shadowColor: "#A855F7", shadowOffset: { width: 0, height: 2 },
+    borderColor: COLORS.blush,
+    shadowColor: COLORS.rose, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08, shadowRadius: 8, elevation: 2,
   },
   monthHeader: {
@@ -233,11 +233,11 @@ const styles = StyleSheet.create({
   monthHeaderLeft: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
   monthHeaderRight: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
   monthBadge: {
-    backgroundColor: "#FDF4FF", borderRadius: BorderRadius.full,
+    backgroundColor: COLORS.surfaceBlush, borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.md, paddingVertical: 5,
   },
-  monthBadgeCurrent: { backgroundColor: "#A855F7" },
-  monthBadgeText: { fontSize: 13, fontWeight: "700", color: "#A855F7" },
+  monthBadgeCurrent: { backgroundColor: COLORS.rose },
+  monthBadgeText: { fontSize: 13, fontWeight: "700", color: COLORS.rose },
   monthBadgeTextCurrent: { color: "#FFFFFF" },
   currentTag: {
     backgroundColor: "#ECFDF5", borderRadius: BorderRadius.full,
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     width: 22, height: 22, borderRadius: 6, borderWidth: 2,
     borderColor: "#D1D5DB", alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
-  checkboxDone: { backgroundColor: "#A855F7", borderColor: "#A855F7" },
+  checkboxDone: { backgroundColor: COLORS.rose, borderColor: COLORS.rose },
   milestoneText: { fontSize: 14, color: COLORS.textPrimary, flex: 1, lineHeight: 20 },
   milestoneDone: { color: COLORS.textMuted, textDecorationLine: "line-through" },
 });

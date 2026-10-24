@@ -70,7 +70,7 @@ export default function Upload() {
   return (
     <div className="min-h-dvh bg-background flex flex-col relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-64" style={{ background: "radial-gradient(ellipse at 50% 0%, hsl(44 87% 55% / 0.08), transparent 60%)" }} />
+        <div className="absolute top-0 left-0 right-0 h-64" style={{ background: "radial-gradient(ellipse at 50% 0%, hsl(from var(--saivie-blush) h s l / 0.08), transparent 60%)" }} />
       </div>
 
       <div className="px-6 pt-14 pb-4 flex items-center justify-between relative z-10">
@@ -85,7 +85,7 @@ export default function Upload() {
 
       <div className="flex-1 flex flex-col px-6 pt-6 relative z-10">
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 animate-float"
-          style={{ background: "hsl(44 87% 55% / 0.12)", border: "1px solid hsl(44 87% 55% / 0.2)" }}>
+          style={{ background: "hsl(from var(--saivie-blush) h s l / 0.12)", border: "1px solid hsl(from var(--saivie-blush) h s l / 0.2)" }}>
           <UploadIcon className="w-8 h-8 text-primary" strokeWidth={1.5} />
         </div>
 
@@ -101,8 +101,8 @@ export default function Upload() {
           onClick={() => !file && fileRef.current?.click()}
           className="rounded-3xl border-2 border-dashed p-8 flex flex-col items-center text-center cursor-pointer transition-all duration-200 mb-4"
           style={{
-            borderColor: dragging ? "hsl(44 87% 55%)" : file ? "hsl(142 70% 45% / 0.6)" : "hsl(225 25% 22%)",
-            background: dragging ? "hsl(44 87% 55% / 0.06)" : file ? "hsl(142 70% 45% / 0.05)" : "hsl(225 35% 10%)",
+            borderColor: dragging ? "var(--saivie-blush)" : file ? "hsl(142 70% 45% / 0.6)" : "hsl(var(--border))",
+            background: dragging ? "hsl(from var(--saivie-blush) h s l / 0.06)" : file ? "hsl(142 70% 45% / 0.05)" : "hsl(var(--card))",
           }}
         >
           <AnimatePresence mode="wait">
@@ -124,7 +124,7 @@ export default function Upload() {
               </motion.div>
             ) : (
               <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-3">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "hsl(225 35% 14%)" }}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-secondary">
                   <FileText className="w-8 h-8 text-muted-foreground" strokeWidth={1.5} />
                 </div>
                 <div>
@@ -133,7 +133,7 @@ export default function Upload() {
                 </div>
                 <div className="flex gap-2 flex-wrap justify-center">
                   {ACCEPTED_LABELS.map((l) => (
-                    <span key={l} className="text-xs px-2 py-1 rounded-lg font-medium" style={{ background: "hsl(225 35% 14%)", color: "hsl(225 20% 55%)" }}>
+                    <span key={l} className="text-xs px-2 py-1 rounded-lg font-medium bg-secondary text-muted-foreground">
                       {l}
                     </span>
                   ))}
@@ -165,7 +165,7 @@ export default function Upload() {
           onClick={handleUpload}
           disabled={!file || uploading}
           className="w-full py-4 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
-          style={{ background: "linear-gradient(135deg, hsl(44 87% 55%), hsl(38 90% 45%))", color: "hsl(225 35% 8%)" }}
+          style={{ background: "linear-gradient(135deg, var(--saivie-blush), var(--saivie-sage))", color: "var(--saivie-plum)" }}
         >
           {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
             <><UploadIcon className="w-5 h-5" />Analyse My Genome<ChevronRight className="w-5 h-5" /></>

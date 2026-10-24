@@ -118,28 +118,28 @@ export function VaccinationScheduleSettings() {
 
   return (
     <div className="space-y-4" data-testid="vaccination-schedule-settings">
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-saivie-border shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <div>
-            <CardTitle className="text-base font-bold text-slate-800">Vaccination schedules</CardTitle>
-            <p className="mt-1 text-sm text-slate-500">Set dose timing, eligibility, and how many days ahead staff should be reminded. Overdue doses remain visible.</p>
+            <CardTitle className="text-base font-bold text-saivie-plum">Vaccination schedules</CardTitle>
+            <p className="mt-1 text-sm text-saivie-plum">Set dose timing, eligibility, and how many days ahead staff should be reminded. Overdue doses remain visible.</p>
           </div>
           <Button size="sm" variant="outline" onClick={startAdd}><Plus className="mr-1 h-4 w-4" />Add rule</Button>
         </CardHeader>
         <CardContent className="space-y-3">
-          {schedulesQuery.isLoading && <p className="text-sm text-slate-500">Loading schedules...</p>}
+          {schedulesQuery.isLoading && <p className="text-sm text-saivie-plum">Loading schedules...</p>}
           {schedulesQuery.isError && <p role="alert" className="text-sm text-rose-600">{schedulesQuery.error.message}</p>}
           {(schedulesQuery.data || []).map((schedule) => {
             const doses = schedule.eligibility === "pregnancy" ? schedule.doseGestationalWeeks : schedule.doseOffsetsMonths;
             return (
-              <div key={schedule.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3">
+              <div key={schedule.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-saivie-border p-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold text-slate-900">{schedule.vaccineName}</p>
+                    <p className="font-semibold text-saivie-plum">{schedule.vaccineName}</p>
                     <Badge variant="outline">{schedule.eligibility === "pregnancy" ? "Pregnancy" : "Age-based"}</Badge>
                     {!schedule.isActive && <Badge variant="secondary">Disabled</Badge>}
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-saivie-plum">
                     {schedule.eligibility === "pregnancy"
                       ? `Dose weeks: ${doses.join(", ")}`
                       : `Ages ${schedule.minAge ?? "any"}–${schedule.maxAge ?? "any"} · Dose months: ${doses.join(", ")}`}
@@ -154,8 +154,8 @@ export function VaccinationScheduleSettings() {
       </Card>
 
       {(!editing || editing !== null) && (
-        <Card className="border-slate-200 shadow-sm">
-          <CardHeader><CardTitle className="text-sm font-bold text-slate-700">{editing ? "Edit vaccination rule" : "Add vaccination rule"}</CardTitle></CardHeader>
+        <Card className="border-saivie-border shadow-sm">
+          <CardHeader><CardTitle className="text-sm font-bold text-saivie-plum">{editing ? "Edit vaccination rule" : "Add vaccination rule"}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
@@ -187,7 +187,7 @@ export function VaccinationScheduleSettings() {
               <div className="space-y-1 sm:col-span-2">
                 <Label>{timingLabel}</Label>
                 <Input value={form.timings} onChange={(e) => setForm({ ...form, timings: e.target.value })} placeholder={form.eligibility === "pregnancy" ? "e.g. 12, 16, 27" : "e.g. 0, 2, 6"} />
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-saivie-plum">
                   {form.eligibility === "pregnancy"
                     ? "Comma-separated gestational weeks; dose reminders use the patient's LMP."
                     : "Comma-separated months after dose 1. The first value must be 0."}
@@ -202,7 +202,7 @@ export function VaccinationScheduleSettings() {
                   <Button type="button" variant={form.isActive ? "outline" : "secondary"} onClick={() => setForm({ ...form, isActive: !form.isActive })}>
                     {form.isActive ? "Disable rule" : "Enable rule"}
                   </Button>
-                  <span className="pb-2 text-xs text-slate-500">{form.isActive ? "Active" : "Disabled"}</span>
+                  <span className="pb-2 text-xs text-saivie-plum">{form.isActive ? "Active" : "Disabled"}</span>
                 </div>
               )}
             </div>

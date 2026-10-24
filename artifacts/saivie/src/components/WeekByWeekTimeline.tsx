@@ -81,8 +81,8 @@ export default function WeekByWeekTimeline({ patient, compact = false }: Props) 
     <div className={compact ? "space-y-3" : "space-y-4 animate-in fade-in duration-500"}>
       {!compact && (
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-base font-serif font-semibold text-slate-800">Week by Week Guide</h3>
-          <Badge className="text-[10px] bg-pink-100 text-pink-700 border-pink-200">Week {currentWeek} now</Badge>
+          <h3 className="text-base font-serif font-semibold text-saivie-plum">Week by Week Guide</h3>
+          <Badge className="text-[10px] bg-saivie-blush text-saivie-plum border-saivie-blush">Week {currentWeek} now</Badge>
         </div>
       )}
 
@@ -90,7 +90,7 @@ export default function WeekByWeekTimeline({ patient, compact = false }: Props) 
       <div ref={scrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
         {Array.from({ length: 40 }, (_, i) => i + 1).map(week => (
           <button key={week} data-week={week} onClick={() => setSelectedWeek(week)}
-            className={`shrink-0 w-10 h-10 rounded-full text-xs font-bold transition-all border ${week === selectedWeek ? "bg-pink-500 text-white border-pink-500 shadow" : week === currentWeek ? "bg-pink-100 text-pink-700 border-pink-300" : "bg-white/60 text-slate-500 border-white/60 hover:border-pink-200"}`}>
+            className={`shrink-0 w-10 h-10 rounded-full text-xs font-bold transition-all border ${week === selectedWeek ? "bg-saivie-rose text-white border-saivie-blush shadow" : week === currentWeek ? "bg-saivie-blush text-saivie-plum border-saivie-blush" : "bg-saivie-ivory/60 text-saivie-plum border-white/60 hover:border-saivie-blush"}`}>
             {week}
           </button>
         ))}
@@ -99,22 +99,22 @@ export default function WeekByWeekTimeline({ patient, compact = false }: Props) 
       {/* Week Detail Card */}
       <AnimatePresence mode="wait">
         <motion.div key={selectedWeek} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }}>
-          <Card className="border-pink-200/40 overflow-hidden shadow-sm">
-            <div className="absolute inset-0 bg-gradient-to-br from-pink-50/70 via-rose-50/30 to-white/60" />
+          <Card className="border-saivie-blush/40 overflow-hidden shadow-sm">
+            <div className="absolute inset-0 bg-gradient-to-br from-saivie-surface-blush/70 via-rose-50/30 to-saivie-ivory/60" />
             <CardContent className="relative p-5 z-10 space-y-4">
               {/* Header */}
               <div className="flex items-center gap-4">
                 <div className="text-5xl">{data.emoji}</div>
                 <div>
-                  <p className="text-[10px] text-pink-400 uppercase tracking-wider font-semibold">Week {selectedWeek}</p>
-                  <p className="text-lg font-serif text-pink-800 font-semibold">{data.fruit}</p>
+                  <p className="text-[10px] text-saivie-rose uppercase tracking-wider font-semibold">Week {selectedWeek}</p>
+                  <p className="text-lg font-serif text-saivie-plum font-semibold">{data.fruit}</p>
                   <div className="flex gap-3 mt-1">
-                    <span className="text-xs text-slate-500">📏 {data.length}</span>
-                    <span className="text-xs text-slate-500">⚖️ {data.weight}</span>
+                    <span className="text-xs text-saivie-plum">📏 {data.length}</span>
+                    <span className="text-xs text-saivie-plum">⚖️ {data.weight}</span>
                   </div>
                 </div>
                 <div className="ml-auto">
-                  <Badge className={`text-[10px] ${selectedWeek < 13 ? "bg-violet-100 text-violet-700 border-violet-200" : selectedWeek < 28 ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-rose-100 text-rose-700 border-rose-200"}`}>
+                  <Badge className={`text-[10px] ${selectedWeek < 13 ? "bg-saivie-sage text-saivie-teal border-saivie-border" : selectedWeek < 28 ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-rose-100 text-rose-700 border-rose-200"}`}>
                     {selectedWeek < 13 ? "T1" : selectedWeek < 28 ? "T2" : "T3"}
                   </Badge>
                 </div>
@@ -122,14 +122,14 @@ export default function WeekByWeekTimeline({ patient, compact = false }: Props) 
 
               {/* Development */}
               <div>
-                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Baby className="w-3.5 h-3.5 text-pink-500" />Baby's Development
+                <p className="text-xs font-semibold text-saivie-plum uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Baby className="w-3.5 h-3.5 text-saivie-rose" />Baby's Development
                 </p>
                 <div className="space-y-1">
                   {data.development.map((d, i) => (
                     <div key={i} className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-pink-400 mt-1.5 shrink-0" />
-                      <p className="text-sm text-slate-700">{d}</p>
+                      <div className="w-1.5 h-1.5 rounded-full bg-saivie-rose mt-1.5 shrink-0" />
+                      <p className="text-sm text-saivie-plum">{d}</p>
                     </div>
                   ))}
                 </div>
@@ -137,7 +137,7 @@ export default function WeekByWeekTimeline({ patient, compact = false }: Props) 
 
               {/* Symptoms */}
               <div>
-                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-saivie-plum uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Activity className="w-3.5 h-3.5 text-amber-500" />Common Symptoms
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -155,7 +155,7 @@ export default function WeekByWeekTimeline({ patient, compact = false }: Props) 
                     {data.dos.map((d, i) => (
                       <div key={i} className="flex items-start gap-1.5">
                         <div className="w-1 h-1 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
-                        <p className="text-xs text-slate-600 leading-relaxed">{d}</p>
+                        <p className="text-xs text-saivie-plum leading-relaxed">{d}</p>
                       </div>
                     ))}
                   </div>
@@ -166,7 +166,7 @@ export default function WeekByWeekTimeline({ patient, compact = false }: Props) 
                     {data.donts.map((d, i) => (
                       <div key={i} className="flex items-start gap-1.5">
                         <div className="w-1 h-1 rounded-full bg-rose-400 mt-1.5 shrink-0" />
-                        <p className="text-xs text-slate-600 leading-relaxed">{d}</p>
+                        <p className="text-xs text-saivie-plum leading-relaxed">{d}</p>
                       </div>
                     ))}
                   </div>
@@ -188,14 +188,14 @@ export default function WeekByWeekTimeline({ patient, compact = false }: Props) 
       {/* Week nav buttons */}
       <div className="flex justify-between items-center">
         <button onClick={() => setSelectedWeek(w => Math.max(4, w - 1))} disabled={selectedWeek <= 4}
-          className="flex items-center gap-1 text-xs text-slate-500 hover:text-pink-600 disabled:opacity-30 transition-colors">
+          className="flex items-center gap-1 text-xs text-saivie-plum hover:text-saivie-rose disabled:opacity-30 transition-colors">
           <ChevronLeft className="w-4 h-4" /> Prev week
         </button>
-        <button onClick={() => setSelectedWeek(currentWeek)} className="text-xs text-pink-500 hover:text-pink-700 font-medium transition-colors">
+        <button onClick={() => setSelectedWeek(currentWeek)} className="text-xs text-saivie-rose hover:text-saivie-rose font-medium transition-colors">
           Jump to Week {currentWeek}
         </button>
         <button onClick={() => setSelectedWeek(w => Math.min(40, w + 1))} disabled={selectedWeek >= 40}
-          className="flex items-center gap-1 text-xs text-slate-500 hover:text-pink-600 disabled:opacity-30 transition-colors">
+          className="flex items-center gap-1 text-xs text-saivie-plum hover:text-saivie-rose disabled:opacity-30 transition-colors">
           Next week <ChevronRight className="w-4 h-4" />
         </button>
       </div>

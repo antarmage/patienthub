@@ -71,8 +71,8 @@ export function GlassCard({ title, description, children, onPress, style, tint =
 }
 
 const styles = StyleSheet.create({
-  blur: { overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.35)" },
-  fallback: { backgroundColor: "rgba(255,255,255,0.85)", borderWidth: 1, borderColor: "rgba(255,255,255,0.35)" },
+  blur: { overflow: "hidden", borderWidth: 1, borderColor: COLORS.glassBorder },
+  fallback: { backgroundColor: "rgba(255, 255, 252, 0.85)", borderWidth: 1, borderColor: COLORS.glassBorder },
   title: { marginBottom: Spacing.xs },
   desc: { color: COLORS.textSecondary },
 });

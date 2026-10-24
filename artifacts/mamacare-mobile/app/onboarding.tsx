@@ -12,8 +12,8 @@ const { width } = Dimensions.get("window");
 const slides = [
   { id: "1", icon: "alert-circle" as const, iconBg: "#FEE2E2", iconColor: "#F87171", title: "Overwhelmed by medical jargon?", description: "Pregnancy shouldn't feel like project management. You deserve clarity, not clutter.", btn: "Find Clarity" },
   { id: "2", icon: "check-circle" as const, iconBg: "#DCFCE7", iconColor: "#22C55E", title: "A timeline that thinks for you", description: "SaivieMom transforms chaos into a calm, predictive timeline — right when it matters.", btn: "See How It Works" },
-  { id: "3", icon: "droplet" as const, iconBg: "#EDE9FF", iconColor: COLORS.primary, title: "Track every milestone", description: "Log water, medicines, weight and BP. Your Saivie care team sees it all in real-time.", btn: "Let's Do This" },
-  { id: "4", icon: "heart" as const, iconBg: "#EDE9FF", iconColor: COLORS.primary, title: "You're all set!", description: "Your personalised roadmap is ready and synced with Saivie.", btn: "Start My Journey" },
+  { id: "3", icon: "droplet" as const, iconBg: COLORS.primaryLight, iconColor: COLORS.primary, title: "Track every milestone", description: "Log water, medicines, weight and BP. Your Saivie care team sees it all in real-time.", btn: "Let's Do This" },
+  { id: "4", icon: "heart" as const, iconBg: COLORS.primaryLight, iconColor: COLORS.primary, title: "You're all set!", description: "Your personalised roadmap is ready and synced with Saivie.", btn: "Start My Journey" },
 ];
 
 export default function OnboardingScreen() {
@@ -35,7 +35,7 @@ export default function OnboardingScreen() {
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   return (
-    <LinearGradient colors={["#eaf2ff", "#f7f9fc", "#eef1f7"]} style={styles.root}>
+    <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientMid, COLORS.gradientEnd]} style={styles.root}>
       <FlatList
         ref={listRef}
         data={slides}

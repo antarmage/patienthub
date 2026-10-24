@@ -19,8 +19,8 @@ import {
 
 const PP_ENABLED_KEY = "@saiviemom_pp_enabled";
 
-const PROVIDER_COLORS = ["#F5F3FF", "#FCE7F3", "#ECFDF5", "#EFF6FF", "#FEF3C7"];
-const PROVIDER_TEXT_COLORS = ["#6C63FF", "#EC4899", "#10B981", "#3B82F6", "#F59E0B"];
+const PROVIDER_COLORS = [COLORS.surfaceMuted, COLORS.surfaceBlush, "#ECFDF5", "#EFF6FF", "#FEF3C7"];
+const PROVIDER_TEXT_COLORS = [COLORS.primary, COLORS.rose, "#10B981", "#3B82F6", "#F59E0B"];
 
 interface Provider {
   id: number;
@@ -150,13 +150,13 @@ export default function CareScreen() {
             </View>
           </Pressable>
           <View style={styles.postpartumToggleWrap}>
-            {ppEnabled && <Feather name="chevron-right" size={16} color="#DB2777" style={{ marginRight: 8 }} />}
+            {ppEnabled && <Feather name="chevron-right" size={16} color={COLORS.rose} style={{ marginRight: 8 }} />}
             <Switch
               value={ppEnabled}
               onValueChange={togglePp}
-              trackColor={{ false: "#E5E7EB", true: "#FBCFE8" }}
-              thumbColor={ppEnabled ? "#DB2777" : "#9CA3AF"}
-              ios_backgroundColor="#E5E7EB"
+              trackColor={{ false: COLORS.border, true: COLORS.blush }}
+              thumbColor={ppEnabled ? COLORS.rose : "#9CA3AF"}
+              ios_backgroundColor={COLORS.border}
             />
           </View>
         </View>
@@ -168,7 +168,7 @@ export default function CareScreen() {
               style={styles.addButton}
               onPress={() => router.push("/(trackers)/appointments")}
             >
-              <Feather name="plus" size={14} color="#6C63FF" />
+              <Feather name="plus" size={14} color={COLORS.primary} />
               <ThemedText style={styles.addButtonText}>New</ThemedText>
             </Pressable>
           </View>
@@ -271,7 +271,7 @@ export default function CareScreen() {
                 </View>
                 <View style={[
                   styles.medicineStatus,
-                  { backgroundColor: index === 1 ? "#DCFCE7" : "#F3F4F6" }
+                  { backgroundColor: index === 1 ? "#DCFCE7" : COLORS.surfaceMuted }
                 ]}>
                   <ThemedText style={[
                     styles.medicineStatusText,
@@ -303,7 +303,7 @@ export default function CareScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFC",
+    backgroundColor: COLORS.background,
   },
   scrollView: {
     flex: 1,
@@ -343,13 +343,13 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 6,
-    backgroundColor: "#F5F3FF",
+    backgroundColor: COLORS.surfaceMuted,
     borderRadius: BorderRadius.full,
   },
   addButtonText: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#6C63FF",
+    color: COLORS.primary,
   },
   viewAllText: {
     fontSize: 14,
@@ -361,8 +361,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
-    shadowColor: "#1F2937",
+    borderColor: COLORS.surfaceMuted,
+    shadowColor: COLORS.plum,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.04,
     shadowRadius: 12,
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   appointmentDateBadge: {
     width: 56,
     height: 56,
-    backgroundColor: "#F5F3FF",
+    backgroundColor: COLORS.surfaceMuted,
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
@@ -384,13 +384,13 @@ const styles = StyleSheet.create({
   appointmentDay: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#6C63FF",
+    color: COLORS.primary,
     lineHeight: 22,
   },
   appointmentMonth: {
     fontSize: 10,
     fontWeight: "600",
-    color: "#6C63FF",
+    color: COLORS.primary,
     letterSpacing: 0.5,
   },
   appointmentDetails: {
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
   },
   rescheduleButton: {
     flex: 1,
-    backgroundColor: "#6C63FF",
+    backgroundColor: COLORS.primary,
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: "center",
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.border,
   },
   detailsButtonText: {
     fontSize: 14,
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: COLORS.surfaceMuted,
   },
   emptyText: {
     fontSize: 14,
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
   emptyButton: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
-    backgroundColor: "#F5F3FF",
+    backgroundColor: COLORS.surfaceMuted,
     borderRadius: BorderRadius.full,
   },
   emptyButtonText: {
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     borderWidth: 2,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.border,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
@@ -517,8 +517,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing.sm,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
-    shadowColor: "#1F2937",
+    borderColor: COLORS.surfaceMuted,
+    shadowColor: COLORS.plum,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.02,
     shadowRadius: 8,
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#F5F3FF",
+    backgroundColor: COLORS.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.md,
@@ -559,17 +559,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#FFF0F6",
+    backgroundColor: COLORS.surfaceBlush,
     marginHorizontal: Spacing.xl,
     marginBottom: Spacing.xl,
     borderRadius: 20,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: "#FFD6E7",
+    borderColor: COLORS.blush,
   },
   postpartumCardOff: {
     backgroundColor: "#F9FAFB",
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.border,
   },
   postpartumLeft: {
     flexDirection: "row",
@@ -581,12 +581,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(219,39,119,0.1)",
+    backgroundColor: COLORS.roseTint,
     alignItems: "center",
     justifyContent: "center",
   },
   postpartumIconWrapOff: {
-    backgroundColor: "#F3F4F6",
+    backgroundColor: COLORS.surfaceMuted,
   },
   postpartumEmoji: {
     fontSize: 22,
@@ -597,14 +597,14 @@ const styles = StyleSheet.create({
   postpartumTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#DB2777",
+    color: COLORS.rose,
   },
   postpartumTitleOff: {
     color: "#6B7280",
   },
   postpartumSub: {
     fontSize: 12,
-    color: "#BE185D",
+    color: COLORS.plum,
     marginTop: 2,
   },
   postpartumSubOff: {

@@ -99,7 +99,7 @@ export default function WeeklyScreen() {
 
   const getSymptomColor = (status: string) => {
     if (status === "Moderate") return "#FEF3C7";
-    if (status === "Mild") return "#E9D5FF";
+    if (status === "Mild") return COLORS.blush;
     return "#FFFFFF";
   };
 
@@ -139,7 +139,7 @@ export default function WeeklyScreen() {
           >
             <ThemedText
               type="small"
-              style={{ color: viewMode === mode ? "#FFFFFF" : COLORS.textMuted }}
+              style={{ color: viewMode === mode ? theme.buttonText : COLORS.textMuted }}
             >
               {mode}
             </ThemedText>
@@ -278,7 +278,7 @@ export default function WeeklyScreen() {
           </ThemedText>
         </View>
         <View style={styles.tipItem}>
-          <View style={[styles.tipDot, { backgroundColor: "#6366F1" }]} />
+          <View style={[styles.tipDot, { backgroundColor: COLORS.gold }]} />
           <ThemedText type="small" style={{ color: COLORS.textSecondary, flex: 1 }}>
             Trimester {trimester} - {trimester === 1 ? "Foundation phase" : trimester === 2 ? "Growth phase" : "Final stretch"}
           </ThemedText>
@@ -349,7 +349,7 @@ export default function WeeklyScreen() {
       {weekData?.motherSymptoms && weekData.motherSymptoms.length > 0 ? (
         <Card style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <View style={[styles.sectionIcon, { backgroundColor: "#F3E8FF" }]}>
+            <View style={[styles.sectionIcon, { backgroundColor: COLORS.surfaceBlush }]}>
               <Feather name="heart" size={18} color={theme.primary} />
             </View>
             <ThemedText type="h4" style={{ color: COLORS.textPrimary }}>

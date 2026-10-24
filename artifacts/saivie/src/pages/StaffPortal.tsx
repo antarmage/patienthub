@@ -522,11 +522,11 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-indigo-600" />
+            <FileText className="w-5 h-5 text-saivie-teal" />
             Upload Patient Records
           </DialogTitle>
           <DialogDescription>
-            Attach external medical documents for <span className="font-bold text-slate-900">{patient?.name}</span>
+            Attach external medical documents for <span className="font-bold text-saivie-plum">{patient?.name}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -541,9 +541,9 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
 
           {activeDocTab === 'prescription' && (
             <div className="mt-2 px-1">
-              <div className="flex items-center gap-2 p-2 bg-indigo-50 border border-indigo-100 rounded-lg">
-                <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
-                <p className="text-xs text-indigo-700 font-medium">AI-powered handwriting recognition will automatically read prescriptions</p>
+              <div className="flex items-center gap-2 p-2 bg-saivie-surface-muted border border-saivie-border rounded-lg">
+                <Sparkles className="w-4 h-4 text-saivie-teal shrink-0" />
+                <p className="text-xs text-saivie-teal font-medium">AI-powered handwriting recognition will automatically read prescriptions</p>
               </div>
             </div>
           )}
@@ -562,62 +562,62 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
 
           {!uploadedFile ? (
             <div
-              className="mt-4 p-8 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-slate-50 hover:bg-indigo-50/50 hover:border-indigo-300 transition-colors cursor-pointer"
+              className="mt-4 p-8 border-2 border-dashed border-saivie-border rounded-lg flex flex-col items-center justify-center bg-saivie-surface-muted hover:bg-saivie-surface-muted/50 hover:border-saivie-border transition-colors cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               data-testid="drop-zone-upload"
             >
-              <div className="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center mb-3">
-                <Upload className="w-7 h-7 text-indigo-500" />
+              <div className="w-14 h-14 bg-saivie-surface-muted rounded-full flex items-center justify-center mb-3">
+                <Upload className="w-7 h-7 text-saivie-teal" />
               </div>
-              <p className="text-sm font-medium text-slate-900">Click to upload or drag and drop</p>
-              <p className="text-xs text-slate-500 mt-1">JPG, PNG, or PDF (max 10MB)</p>
+              <p className="text-sm font-medium text-saivie-plum">Click to upload or drag and drop</p>
+              <p className="text-xs text-saivie-plum mt-1">JPG, PNG, or PDF (max 10MB)</p>
               {activeDocTab === 'prescription' && (
-                <p className="text-xs text-indigo-600 font-medium mt-2">Handwritten prescriptions will be automatically read</p>
+                <p className="text-xs text-saivie-teal font-medium mt-2">Handwritten prescriptions will be automatically read</p>
               )}
             </div>
           ) : (
             <div className="mt-4 space-y-4">
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
-                <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="border border-saivie-border rounded-lg overflow-hidden">
+                <div className="p-3 bg-saivie-surface-muted border-b border-saivie-border flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-indigo-50 rounded flex items-center justify-center">
-                      <ImageIcon className="w-4 h-4 text-indigo-600" />
+                    <div className="w-8 h-8 bg-saivie-surface-muted rounded flex items-center justify-center">
+                      <ImageIcon className="w-4 h-4 text-saivie-teal" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-800">{uploadedFile.name}</p>
-                      <p className="text-[10px] text-slate-400">{uploadedFile.size}</p>
+                      <p className="text-sm font-medium text-saivie-plum">{uploadedFile.name}</p>
+                      <p className="text-[10px] text-saivie-plum">{uploadedFile.size}</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-rose-500" onClick={() => { setUploadedFile(null); setOcrResult(null); }} data-testid="btn-remove-file">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-saivie-plum hover:text-rose-500" onClick={() => { setUploadedFile(null); setOcrResult(null); }} data-testid="btn-remove-file">
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
 
                 {uploadedFile.preview && uploadedFile.type.startsWith('image/') && (
-                  <div className="p-3 bg-white flex justify-center">
-                    <img src={uploadedFile.preview} alt="Preview" className="max-h-48 rounded border border-slate-100 object-contain" />
+                  <div className="p-3 bg-saivie-ivory flex justify-center">
+                    <img src={uploadedFile.preview} alt="Preview" className="max-h-48 rounded border border-saivie-border object-contain" />
                   </div>
                 )}
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Eye className="w-4 h-4 text-indigo-600" />
-                  <Label className="text-xs font-bold text-indigo-700 uppercase tracking-wider">
+                  <Eye className="w-4 h-4 text-saivie-teal" />
+                  <Label className="text-xs font-bold text-saivie-teal uppercase tracking-wider">
                     {activeDocTab === 'prescription' ? 'AI Prescription Reading' : activeDocTab === 'blood' ? 'AI Lab Report Reading' : 'AI Scan/USG Reading'}
                   </Label>
-                  {ocrMutation.isPending && <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />}
+                  {ocrMutation.isPending && <Loader2 className="w-4 h-4 text-saivie-teal animate-spin" />}
                 </div>
 
                 {ocrMutation.isPending && (
-                  <div className="p-6 bg-indigo-50/50 border border-indigo-100 rounded-lg flex flex-col items-center gap-3">
-                    <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-                    <p className="text-sm font-medium text-indigo-700">
+                  <div className="p-6 bg-saivie-surface-muted/50 border border-saivie-border rounded-lg flex flex-col items-center gap-3">
+                    <Loader2 className="w-8 h-8 text-saivie-teal animate-spin" />
+                    <p className="text-sm font-medium text-saivie-teal">
                       {activeDocTab === 'prescription' ? 'Reading handwritten prescription...' : activeDocTab === 'blood' ? 'Reading lab report...' : 'Reading scan/USG report...'}
                     </p>
-                    <p className="text-xs text-indigo-500">AI is analyzing the document</p>
+                    <p className="text-xs text-saivie-teal">AI is analyzing the document</p>
                   </div>
                 )}
 
@@ -631,9 +631,9 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                 )}
 
                 {ocrResult && (
-                  <div className="bg-white border border-indigo-100 rounded-lg overflow-hidden">
-                    <div className="p-3 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
-                      <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Extracted Information</span>
+                  <div className="bg-saivie-ivory border border-saivie-border rounded-lg overflow-hidden">
+                    <div className="p-3 bg-saivie-surface-muted border-b border-saivie-border flex items-center justify-between">
+                      <span className="text-xs font-bold text-saivie-teal uppercase tracking-wider">Extracted Information</span>
                       <Badge className={`text-[10px] ${ocrResult.confidence === 'high' ? 'bg-emerald-100 text-emerald-700' : ocrResult.confidence === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>
                         {ocrResult.confidence === 'high' ? 'High Confidence' : ocrResult.confidence === 'medium' ? 'Medium Confidence' : 'Low Confidence'}
                       </Badge>
@@ -642,66 +642,66 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                     <div className="p-4 space-y-4">
                       {(ocrResult.doctorName || ocrResult.labName) && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">{ocrResult.labName ? 'Lab' : 'Doctor'}</span>
-                          <span className="text-sm text-slate-800">{ocrResult.labName || ocrResult.doctorName}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">{ocrResult.labName ? 'Lab' : 'Doctor'}</span>
+                          <span className="text-sm text-saivie-plum">{ocrResult.labName || ocrResult.doctorName}</span>
                         </div>
                       )}
                       {ocrResult.patientName && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Patient</span>
-                          <span className="text-sm text-slate-800">{ocrResult.patientName}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">Patient</span>
+                          <span className="text-sm text-saivie-plum">{ocrResult.patientName}</span>
                         </div>
                       )}
                       {ocrResult.date && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Date</span>
-                          <span className="text-sm text-slate-800">{ocrResult.date}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">Date</span>
+                          <span className="text-sm text-saivie-plum">{ocrResult.date}</span>
                         </div>
                       )}
                       {(ocrResult.reportType) && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Report Type</span>
-                          <span className="text-sm text-slate-800 font-medium">{ocrResult.reportType}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">Report Type</span>
+                          <span className="text-sm text-saivie-plum font-medium">{ocrResult.reportType}</span>
                         </div>
                       )}
                       {ocrResult.diagnosis && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Diagnosis</span>
-                          <span className="text-sm text-slate-800 font-medium">{ocrResult.diagnosis}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">Diagnosis</span>
+                          <span className="text-sm text-saivie-plum font-medium">{ocrResult.diagnosis}</span>
                         </div>
                       )}
 
                       {ocrResult.gestationalAge && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Gest. Age</span>
-                          <span className="text-sm text-slate-800 font-medium">{ocrResult.gestationalAge}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">Gest. Age</span>
+                          <span className="text-sm text-saivie-plum font-medium">{ocrResult.gestationalAge}</span>
                         </div>
                       )}
                       {ocrResult.edd && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">EDD</span>
-                          <span className="text-sm text-slate-800">{ocrResult.edd}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">EDD</span>
+                          <span className="text-sm text-saivie-plum">{ocrResult.edd}</span>
                         </div>
                       )}
                       {ocrResult.endometrialThickness && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">ET</span>
-                          <span className="text-sm text-slate-800 font-medium">{ocrResult.endometrialThickness}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">ET</span>
+                          <span className="text-sm text-saivie-plum font-medium">{ocrResult.endometrialThickness}</span>
                         </div>
                       )}
 
                       {ocrResult.findings?.length > 0 && (
                         <div className="space-y-2">
-                          <span className="text-xs font-bold text-slate-500 uppercase">USG Findings</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase">USG Findings</span>
                           <div className="space-y-1.5">
                             {ocrResult.findings.map((f: any, i: number) => (
                               <div key={i} className="p-2.5 bg-blue-50/50 rounded-lg border border-blue-100" data-testid={`finding-item-${i}`}>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-slate-800">{f.organ}</span>
+                                  <span className="text-sm font-medium text-saivie-plum">{f.organ}</span>
                                   {f.status && <Badge variant="outline" className={`text-[10px] ${f.status === 'Normal' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>{f.status}</Badge>}
                                 </div>
-                                {f.measurement && <p className="text-xs text-slate-600 mt-1"><span className="font-medium">Size:</span> {f.measurement}</p>}
-                                {f.description && <p className="text-xs text-slate-600 mt-0.5">{f.description}</p>}
+                                {f.measurement && <p className="text-xs text-saivie-plum mt-1"><span className="font-medium">Size:</span> {f.measurement}</p>}
+                                {f.description && <p className="text-xs text-saivie-plum mt-0.5">{f.description}</p>}
                               </div>
                             ))}
                           </div>
@@ -710,14 +710,14 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
 
                       {ocrResult.follicles?.length > 0 && (
                         <div className="space-y-2">
-                          <span className="text-xs font-bold text-slate-500 uppercase">Follicles</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase">Follicles</span>
                           <div className="space-y-1.5">
                             {ocrResult.follicles.map((f: any, i: number) => (
-                              <div key={i} className="p-2 bg-purple-50/50 rounded-lg border border-purple-100 flex items-center justify-between" data-testid={`follicle-item-${i}`}>
-                                <span className="text-sm text-slate-800">{f.side} Ovary</span>
+                              <div key={i} className="p-2 bg-saivie-surface-muted/50 rounded-lg border border-saivie-border flex items-center justify-between" data-testid={`follicle-item-${i}`}>
+                                <span className="text-sm text-saivie-plum">{f.side} Ovary</span>
                                 <div className="flex items-center gap-2">
-                                  {f.size && <Badge variant="outline" className="text-[10px] bg-white border-purple-200 text-purple-700">{f.size}</Badge>}
-                                  {f.count && <span className="text-xs text-slate-500">({f.count} follicles)</span>}
+                                  {f.size && <Badge variant="outline" className="text-[10px] bg-saivie-ivory border-saivie-border text-saivie-teal">{f.size}</Badge>}
+                                  {f.count && <span className="text-xs text-saivie-plum">({f.count} follicles)</span>}
                                 </div>
                               </div>
                             ))}
@@ -727,12 +727,12 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
 
                       {ocrResult.fetalParameters && Object.values(ocrResult.fetalParameters).some(Boolean) && (
                         <div className="space-y-2">
-                          <span className="text-xs font-bold text-slate-500 uppercase">Fetal Parameters</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase">Fetal Parameters</span>
                           <div className="grid grid-cols-2 gap-1.5">
                             {Object.entries(ocrResult.fetalParameters).filter(([, v]) => v).map(([key, val]: [string, any]) => (
-                              <div key={key} className="p-2 bg-pink-50/50 rounded border border-pink-100 flex justify-between">
-                                <span className="text-xs font-medium text-slate-600 uppercase">{key}</span>
-                                <span className="text-xs text-slate-800 font-medium">{val}</span>
+                              <div key={key} className="p-2 bg-saivie-surface-blush/50 rounded border border-saivie-blush flex justify-between">
+                                <span className="text-xs font-medium text-saivie-plum uppercase">{key}</span>
+                                <span className="text-xs text-saivie-plum font-medium">{val}</span>
                               </div>
                             ))}
                           </div>
@@ -741,16 +741,16 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
 
                       {ocrResult.results?.length > 0 && (
                         <div className="space-y-2">
-                          <span className="text-xs font-bold text-slate-500 uppercase">Lab Results</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase">Lab Results</span>
                           <div className="space-y-1.5">
                             {ocrResult.results.map((r: any, i: number) => (
                               <div key={i} className="p-2.5 bg-emerald-50/30 rounded-lg border border-emerald-100 flex items-center justify-between" data-testid={`lab-result-item-${i}`}>
                                 <div className="flex items-center gap-2">
                                   <FlaskConical className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                  <span className="text-sm font-medium text-slate-800">{r.testName}</span>
+                                  <span className="text-sm font-medium text-saivie-plum">{r.testName}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-bold text-slate-900">{r.value}</span>
+                                  <span className="text-sm font-bold text-saivie-plum">{r.value}</span>
                                   {r.status && r.status !== 'Normal' && (
                                     <Badge variant="outline" className={`text-[10px] ${r.status === 'High' ? 'bg-rose-50 text-rose-700 border-rose-200' : r.status === 'Low' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                                       {r.status}
@@ -765,21 +765,21 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
 
                       {ocrResult.medications?.length > 0 && (
                         <div className="space-y-2">
-                          <span className="text-xs font-bold text-slate-500 uppercase">Medications</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase">Medications</span>
                           <div className="space-y-2">
                             {ocrResult.medications.map((med: any, i: number) => (
-                              <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-100" data-testid={`medication-item-${i}`}>
+                              <div key={i} className="p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border" data-testid={`medication-item-${i}`}>
                                 <div className="flex items-start justify-between">
                                   <div className="flex items-center gap-2">
-                                    <Pill className="w-4 h-4 text-indigo-500 shrink-0" />
-                                    <span className="text-sm font-bold text-slate-900">{med.name}</span>
+                                    <Pill className="w-4 h-4 text-saivie-teal shrink-0" />
+                                    <span className="text-sm font-bold text-saivie-plum">{med.name}</span>
                                   </div>
                                   {med.dosage && <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">{med.dosage}</Badge>}
                                 </div>
                                 <div className="ml-6 mt-1.5 space-y-0.5">
-                                  {med.frequency && <p className="text-xs text-slate-600"><span className="font-medium">Frequency:</span> {med.frequency}</p>}
-                                  {med.duration && <p className="text-xs text-slate-600"><span className="font-medium">Duration:</span> {med.duration}</p>}
-                                  {med.instructions && <p className="text-xs text-slate-500 italic">{med.instructions}</p>}
+                                  {med.frequency && <p className="text-xs text-saivie-plum"><span className="font-medium">Frequency:</span> {med.frequency}</p>}
+                                  {med.duration && <p className="text-xs text-saivie-plum"><span className="font-medium">Duration:</span> {med.duration}</p>}
+                                  {med.instructions && <p className="text-xs text-saivie-plum italic">{med.instructions}</p>}
                                 </div>
                               </div>
                             ))}
@@ -789,31 +789,31 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
 
                       {ocrResult.chiefComplaint && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Complaint</span>
-                          <span className="text-sm text-slate-800">{ocrResult.chiefComplaint}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">Complaint</span>
+                          <span className="text-sm text-saivie-plum">{ocrResult.chiefComplaint}</span>
                         </div>
                       )}
 
                       {ocrResult.examination && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Exam</span>
-                          <span className="text-sm text-slate-800">{ocrResult.examination}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">Exam</span>
+                          <span className="text-sm text-saivie-plum">{ocrResult.examination}</span>
                         </div>
                       )}
 
                       {ocrResult.investigations?.length > 0 && (
                         <div className="space-y-2">
-                          <span className="text-xs font-bold text-slate-500 uppercase">Investigations</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase">Investigations</span>
                           <div className="space-y-1.5">
                             {ocrResult.investigations.map((inv: any, i: number) => (
                               <div key={i} className="p-2.5 bg-amber-50/50 rounded-lg border border-amber-100 flex items-center justify-between" data-testid={`investigation-item-${i}`}>
                                 <div className="flex items-center gap-2">
                                   <FlaskConical className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                  <span className="text-sm font-medium text-slate-800">{inv.name}</span>
+                                  <span className="text-sm font-medium text-saivie-plum">{inv.name}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  {inv.result && <Badge variant="outline" className="text-[10px] bg-white border-amber-200 text-amber-700">{inv.result}</Badge>}
-                                  {inv.date && <span className="text-[10px] text-slate-400">{inv.date}</span>}
+                                  {inv.result && <Badge variant="outline" className="text-[10px] bg-saivie-ivory border-amber-200 text-amber-700">{inv.result}</Badge>}
+                                  {inv.date && <span className="text-[10px] text-saivie-plum">{inv.date}</span>}
                                 </div>
                               </div>
                             ))}
@@ -823,36 +823,36 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
 
                       {(ocrResult.impression) && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Impression</span>
-                          <span className="text-sm text-slate-800 font-medium">{ocrResult.impression}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">Impression</span>
+                          <span className="text-sm text-saivie-plum font-medium">{ocrResult.impression}</span>
                         </div>
                       )}
 
                       {ocrResult.advice && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Advice</span>
-                          <span className="text-sm text-slate-700">{ocrResult.advice}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">Advice</span>
+                          <span className="text-sm text-saivie-plum">{ocrResult.advice}</span>
                         </div>
                       )}
 
                       {ocrResult.followUp && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Follow-up</span>
-                          <span className="text-sm text-slate-700 font-medium">{ocrResult.followUp}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">Follow-up</span>
+                          <span className="text-sm text-saivie-plum font-medium">{ocrResult.followUp}</span>
                         </div>
                       )}
 
                       {ocrResult.notes && (
                         <div className="flex gap-3">
-                          <span className="text-xs font-bold text-slate-500 uppercase w-24 shrink-0 pt-0.5">Notes</span>
-                          <span className="text-sm text-slate-700">{ocrResult.notes}</span>
+                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">Notes</span>
+                          <span className="text-sm text-saivie-plum">{ocrResult.notes}</span>
                         </div>
                       )}
 
                       {ocrResult.rawText && (
                         <details className="mt-2">
-                          <summary className="text-xs font-bold text-slate-400 uppercase cursor-pointer hover:text-slate-600">Raw Text</summary>
-                          <pre className="mt-2 p-3 bg-slate-50 rounded text-xs text-slate-600 whitespace-pre-wrap border border-slate-100 max-h-32 overflow-y-auto">{ocrResult.rawText}</pre>
+                          <summary className="text-xs font-bold text-saivie-plum uppercase cursor-pointer hover:text-saivie-plum">Raw Text</summary>
+                          <pre className="mt-2 p-3 bg-saivie-surface-muted rounded text-xs text-saivie-plum whitespace-pre-wrap border border-saivie-border max-h-32 overflow-y-auto">{ocrResult.rawText}</pre>
                         </details>
                       )}
                     </div>
@@ -863,7 +863,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
           )}
 
           <div className="mt-4">
-            <Label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Notes / Description</Label>
+            <Label className="text-xs font-bold text-saivie-plum uppercase mb-1.5 block">Notes / Description</Label>
             <Textarea
               placeholder="Add any relevant details about these documents..."
               className="h-20"
@@ -888,7 +888,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
         <DialogFooter>
           <Button variant="outline" onClick={resetDialog} data-testid="btn-cancel-upload">Cancel</Button>
           <Button
-            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="bg-saivie-teal hover:bg-saivie-teal text-white"
             disabled={!uploadedFile || ocrMutation.isPending || isSaving || saveSuccess}
             onClick={handleSaveToPatient}
             data-testid="btn-confirm-upload"
@@ -941,8 +941,8 @@ function PrimeMembersView({ patients }: { patients: any[] }) {
         <div className="flex items-center gap-3">
           <Crown className="w-6 h-6 text-amber-500" />
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Prime Members</h2>
-            <p className="text-sm text-slate-500">Manage premium membership for patients</p>
+            <h2 className="text-xl font-bold text-saivie-plum">Prime Members</h2>
+            <p className="text-sm text-saivie-plum">Manage premium membership for patients</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -962,11 +962,11 @@ function PrimeMembersView({ patients }: { patients: any[] }) {
 
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-9">
-          <Card className="shadow-sm border-slate-200">
-            <CardHeader className="py-3 border-b border-slate-100 flex justify-between items-center">
-              <CardTitle className="text-sm font-bold text-slate-700">Prime Members List</CardTitle>
+          <Card className="shadow-sm border-saivie-border">
+            <CardHeader className="py-3 border-b border-saivie-border flex justify-between items-center">
+              <CardTitle className="text-sm font-bold text-saivie-plum">Prime Members List</CardTitle>
               <div className="relative w-64">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-saivie-plum" />
                 <Input
                   placeholder="Search by name or phone..."
                   value={searchTerm}
@@ -979,44 +979,44 @@ function PrimeMembersView({ patients }: { patients: any[] }) {
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-slate-50/50">
-                    <TableHead className="text-[10px] uppercase font-bold text-slate-500 w-10">#</TableHead>
-                    <TableHead className="text-[10px] uppercase font-bold text-slate-500">Patient</TableHead>
-                    <TableHead className="text-[10px] uppercase font-bold text-slate-500">Phone</TableHead>
-                    <TableHead className="text-[10px] uppercase font-bold text-slate-500">Type</TableHead>
-                    <TableHead className="text-[10px] uppercase font-bold text-slate-500">Since</TableHead>
-                    <TableHead className="text-[10px] uppercase font-bold text-slate-500 text-right">Actions</TableHead>
+                  <TableRow className="bg-saivie-surface-muted/50">
+                    <TableHead className="text-[10px] uppercase font-bold text-saivie-plum w-10">#</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-saivie-plum">Patient</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-saivie-plum">Phone</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-saivie-plum">Type</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-saivie-plum">Since</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-saivie-plum text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredPrime.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-sm text-slate-400">
+                      <TableCell colSpan={6} className="text-center py-8 text-sm text-saivie-plum">
                         {searchTerm ? "No matching prime members found" : "No prime members yet. Add patients as prime members using the button above."}
                       </TableCell>
                     </TableRow>
                   )}
                   {filteredPrime.map((p: any, idx: number) => (
                     <TableRow key={p.id} className="hover:bg-amber-50/30" data-testid={`row-prime-${p.id}`}>
-                      <TableCell className="text-xs text-slate-400">{idx + 1}</TableCell>
+                      <TableCell className="text-xs text-saivie-plum">{idx + 1}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-amber-700 font-bold text-xs">
                             {p.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                           </div>
                           <div>
-                            <p className="font-medium text-sm text-slate-900 flex items-center gap-1">
+                            <p className="font-medium text-sm text-saivie-plum flex items-center gap-1">
                               {p.name} <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                             </p>
-                            <p className="text-[10px] text-slate-500">ID: {p.id} • Age: {p.age}</p>
+                            <p className="text-[10px] text-saivie-plum">ID: {p.id} • Age: {p.age}</p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-slate-600">{p.phone || "—"}</TableCell>
+                      <TableCell className="text-xs text-saivie-plum">{p.phone || "—"}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-[10px]">{p.type || p.condition || "General"}</Badge>
                       </TableCell>
-                      <TableCell className="text-xs text-slate-600">{p.primeMemberSince || "—"}</TableCell>
+                      <TableCell className="text-xs text-saivie-plum">{p.primeMemberSince || "—"}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           size="sm"
@@ -1072,7 +1072,7 @@ function PrimeMembersView({ patients }: { patients: any[] }) {
             <DialogDescription>Search for a patient and add them as a prime member</DialogDescription>
           </DialogHeader>
           <div className="relative mb-3">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-saivie-plum" />
             <Input
               placeholder="Search patient by name or phone..."
               value={addSearchTerm}
@@ -1084,20 +1084,20 @@ function PrimeMembersView({ patients }: { patients: any[] }) {
           <ScrollArea className="max-h-[400px]">
             <div className="divide-y divide-slate-100">
               {addSearchTerm.length < 2 && (
-                <div className="py-6 text-center text-sm text-slate-400">Type at least 2 characters to search</div>
+                <div className="py-6 text-center text-sm text-saivie-plum">Type at least 2 characters to search</div>
               )}
               {addSearchTerm.length >= 2 && nonPrimePatients.length === 0 && (
-                <div className="py-6 text-center text-sm text-slate-400">No matching patients found</div>
+                <div className="py-6 text-center text-sm text-saivie-plum">No matching patients found</div>
               )}
               {addSearchTerm.length >= 2 && nonPrimePatients.slice(0, 20).map((p: any) => (
-                <div key={p.id} className="flex items-center justify-between py-3 px-2 hover:bg-slate-50 rounded" data-testid={`add-prime-row-${p.id}`}>
+                <div key={p.id} className="flex items-center justify-between py-3 px-2 hover:bg-saivie-surface-muted rounded" data-testid={`add-prime-row-${p.id}`}>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-700 font-bold text-xs">
+                    <div className="w-8 h-8 bg-saivie-sage rounded-full flex items-center justify-center text-saivie-plum font-bold text-xs">
                       {p.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                     </div>
                     <div>
-                      <p className="font-medium text-sm text-slate-900">{p.name}</p>
-                      <p className="text-[10px] text-slate-500">ID: {p.id} • {p.phone || 'No phone'} • {p.type || 'General'}</p>
+                      <p className="font-medium text-sm text-saivie-plum">{p.name}</p>
+                      <p className="text-[10px] text-saivie-plum">ID: {p.id} • {p.phone || 'No phone'} • {p.type || 'General'}</p>
                     </div>
                   </div>
                   <Button
@@ -2016,11 +2016,11 @@ export default function StaffPortal() {
 
   const roles = [
     { id: "nutritionist", label: "Nutritionist", icon: Apple, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { id: "psychologist", label: "Psychologist", icon: Brain, color: "text-purple-600", bg: "bg-purple-50" },
+    { id: "psychologist", label: "Psychologist", icon: Brain, color: "text-saivie-teal", bg: "bg-saivie-surface-muted" },
     { id: "trainer", label: "Physical Trainer", icon: Dumbbell, color: "text-blue-600", bg: "bg-blue-50" },
     { id: "dermatologist", label: "Dermatologist", icon: Sparkles, color: "text-rose-600", bg: "bg-rose-50" },
     { id: "phlebotomist", label: "Phlebotomist", icon: FlaskConical, color: "text-amber-600", bg: "bg-amber-50" },
-    { id: "receptionist", label: "Receptionist", icon: CalendarCheck, color: "text-slate-600", bg: "bg-slate-50" },
+    { id: "receptionist", label: "Receptionist", icon: CalendarCheck, color: "text-saivie-plum", bg: "bg-saivie-surface-muted" },
   ];
 
   const currentRole = roles.find(r => r.id === activeRole);
@@ -2032,12 +2032,12 @@ export default function StaffPortal() {
 
   if (!isLoggedIn) {
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-            <Card className="max-w-md w-full shadow-lg border-slate-200">
+        <div className="min-h-screen bg-saivie-surface-muted flex items-center justify-center p-6">
+            <Card className="max-w-md w-full shadow-lg border-saivie-border">
                 <CardHeader className="text-center pb-2">
                     <div className="mx-auto mb-4 w-fit"><BrandLogo fallback="S" className="w-14 h-14 text-2xl" /></div>
-                    <CardTitle className="text-2xl font-serif text-slate-900">Saivie Staff Portal</CardTitle>
-                    <p className="text-slate-500 text-sm">Select your role to access the care workspace.</p>
+                    <CardTitle className="text-2xl font-serif text-saivie-plum">Saivie Staff Portal</CardTitle>
+                    <p className="text-saivie-plum text-sm">Select your role to access the care workspace.</p>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-4">
                     <div className="grid grid-cols-2 gap-3">
@@ -2045,12 +2045,12 @@ export default function StaffPortal() {
                             <button
                                 key={role.id}
                                 onClick={() => handleLogin(role.id)}
-                                className="flex flex-col items-center justify-center p-4 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all bg-white group"
+                                className="flex flex-col items-center justify-center p-4 rounded-lg border border-saivie-border hover:border-blue-400 hover:bg-blue-50 transition-all bg-saivie-ivory group"
                             >
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 group-hover:bg-white transition-colors ${role.bg}`}>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 group-hover:bg-saivie-ivory transition-colors ${role.bg}`}>
                                     <role.icon className={`w-5 h-5 ${role.color}`} />
                                 </div>
-                                <span className="text-xs font-bold text-slate-700 group-hover:text-blue-700">{role.label}</span>
+                                <span className="text-xs font-bold text-saivie-plum group-hover:text-blue-700">{role.label}</span>
                             </button>
                         ))}
                     </div>
@@ -2061,20 +2061,20 @@ export default function StaffPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 overflow-hidden">
+    <div className="min-h-screen bg-saivie-surface-muted flex font-sans text-saivie-plum overflow-hidden">
       
       {/* Sidebar - Logged In State */}
-      <aside className={`bg-white border-r border-slate-200 flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+      <aside className={`bg-saivie-ivory border-r border-saivie-border flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
+        <div className="p-4 border-b border-saivie-border flex items-center justify-between">
           {sidebarOpen ? (
             <div className="flex items-center gap-2">
                 <BrandLogo fallback="S" />
-                <span className="font-serif font-bold text-lg text-slate-800">Saivie</span>
+                <span className="font-serif font-bold text-lg text-saivie-plum">Saivie</span>
             </div>
           ) : (
             <BrandLogo fallback="S" className="w-8 h-8 mx-auto" />
           )}
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={() => setSidebarOpen(!sidebarOpen)}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-saivie-plum" onClick={() => setSidebarOpen(!sidebarOpen)}>
              <Menu className="w-4 h-4" />
           </Button>
         </div>
@@ -2083,7 +2083,7 @@ export default function StaffPortal() {
             <div className="space-y-1">
                  <Button 
                     variant={activeView === 'dashboard' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'dashboard' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'dashboard' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('dashboard')}
                  >
                     <Activity className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
@@ -2091,7 +2091,7 @@ export default function StaffPortal() {
                  </Button>
                  <Button 
                     variant={activeView === 'patients' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'patients' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'patients' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('patients')}
                  >
                     <Users className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
@@ -2099,7 +2099,7 @@ export default function StaffPortal() {
                  </Button>
                  <Button 
                     variant={activeView === 'schedule' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'schedule' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'schedule' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('schedule')}
                  >
                     <CalendarCheck className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
@@ -2107,7 +2107,7 @@ export default function StaffPortal() {
                  </Button>
                  <Button 
                     variant={activeView === 'reports' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'reports' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'reports' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('reports')}
                  >
                     <FileText className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
@@ -2116,7 +2116,7 @@ export default function StaffPortal() {
                  {activeRole === 'receptionist' && (
                  <Button 
                     variant={activeView === 'followup' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'followup' ? 'bg-orange-50 text-orange-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'followup' ? 'bg-orange-50 text-orange-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('followup')}
                  >
                     <Phone className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
@@ -2126,7 +2126,7 @@ export default function StaffPortal() {
                  {activeRole === 'receptionist' && (
                  <Button 
                     variant={activeView === 'prime' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'prime' ? 'bg-amber-50 text-amber-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'prime' ? 'bg-amber-50 text-amber-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('prime')}
                     data-testid="btn-prime-members"
                  >
@@ -2137,7 +2137,7 @@ export default function StaffPortal() {
                  {activeRole === 'receptionist' && (
                  <Button 
                     variant={activeView === 'billing' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'billing' ? 'bg-emerald-50 text-emerald-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'billing' ? 'bg-emerald-50 text-emerald-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('billing')}
                     data-testid="btn-billing"
                  >
@@ -2148,7 +2148,7 @@ export default function StaffPortal() {
                  {activeRole === 'receptionist' && (
                  <Button 
                     variant={activeView === 'sync' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'sync' ? 'bg-blue-50 text-blue-900' : 'text-slate-500 hover:text-slate-900'}`}
+                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'sync' ? 'bg-blue-50 text-blue-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('sync')}
                     data-testid="btn-sync-import"
                  >
@@ -2159,14 +2159,14 @@ export default function StaffPortal() {
             </div>
         </div>
 
-        <div className="mt-auto p-4 border-t border-slate-100">
+        <div className="mt-auto p-4 border-t border-saivie-border">
              <div className="flex items-center gap-3">
-                <Avatar className="h-9 w-9 border border-slate-200">
-                    <AvatarFallback className="bg-slate-100 text-slate-600">ST</AvatarFallback>
+                <Avatar className="h-9 w-9 border border-saivie-border">
+                    <AvatarFallback className="bg-saivie-sage text-saivie-plum">ST</AvatarFallback>
                 </Avatar>
                 {sidebarOpen && (
                     <div className="overflow-hidden">
-                        <p className="text-sm font-medium text-slate-900 truncate">{currentRole?.label || 'Staff'}</p>
+                        <p className="text-sm font-medium text-saivie-plum truncate">{currentRole?.label || 'Staff'}</p>
                         <button onClick={() => { localStorage.removeItem("staffUsername"); setLocation("/"); }} className="text-xs text-rose-500 hover:text-rose-700 truncate text-left block w-full">Sign Out</button>
                     </div>
                 )}
@@ -2175,10 +2175,10 @@ export default function StaffPortal() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50/50">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-saivie-surface-muted/50">
         
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 z-10">
+        <header className="h-16 bg-saivie-ivory border-b border-saivie-border px-6 flex items-center justify-between shrink-0 z-10">
             <div className="flex items-center gap-4">
                 <div className={`p-2 rounded-lg ${currentRole?.bg}`}>
                     {currentRole && <currentRole.icon className={`w-5 h-5 ${currentRole.color}`} />}
@@ -2186,25 +2186,25 @@ export default function StaffPortal() {
                 <div>
                     {activeRole === 'receptionist' && activeView === 'dashboard' ? (
                       <>
-                        <h1 className="text-lg font-bold text-slate-900">
+                        <h1 className="text-lg font-bold text-saivie-plum">
                           Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, Receptionist
                         </h1>
-                        <p className="text-xs text-slate-500">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        <p className="text-xs text-saivie-plum">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
                       </>
                     ) : (
                       <>
-                        <h1 className="text-lg font-bold text-slate-900">{currentRole?.label} Dashboard</h1>
-                        <p className="text-xs text-slate-500">Welcome back, here's your daily overview.</p>
+                        <h1 className="text-lg font-bold text-saivie-plum">{currentRole?.label} Dashboard</h1>
+                        <p className="text-xs text-saivie-plum">Welcome back, here's your daily overview.</p>
                       </>
                     )}
                 </div>
             </div>
             <div className="flex items-center gap-3">
                 <div className="relative" ref={headerSearchRef}>
-                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 z-10" />
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-saivie-plum z-10" />
                     <Input
                       placeholder="Search patient by name, phone, ID..."
-                      className="pl-9 w-72 h-9 bg-slate-50 border-slate-200"
+                      className="pl-9 w-72 h-9 bg-saivie-surface-muted border-saivie-border"
                       value={headerSearchTerm}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         setHeaderSearchTerm(e.target.value);
@@ -2214,14 +2214,14 @@ export default function StaffPortal() {
                       data-testid="input-header-patient-search"
                     />
                     {headerSearchOpen && headerSearchTerm.length >= 2 && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-saivie-ivory border border-saivie-border rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
                         {headerSearchResults.length === 0 ? (
-                          <div className="p-4 text-center text-sm text-slate-400">No patients found</div>
+                          <div className="p-4 text-center text-sm text-saivie-plum">No patients found</div>
                         ) : (
                           headerSearchResults.map((p: any) => (
                             <div
                               key={p.id}
-                              className="px-4 py-3 flex items-center gap-3 hover:bg-slate-50 border-b border-slate-50 last:border-0"
+                              className="px-4 py-3 flex items-center gap-3 hover:bg-saivie-surface-muted border-b border-saivie-border last:border-0"
                               data-testid={`header-search-result-${p.id}`}
                             >
                               <button
@@ -2233,11 +2233,11 @@ export default function StaffPortal() {
                                 }}
                               >
                                 <Avatar className="h-8 w-8 text-xs shrink-0">
-                                  <AvatarFallback className="bg-indigo-100 text-indigo-700">{p.name?.charAt(0)}</AvatarFallback>
+                                  <AvatarFallback className="bg-saivie-sage text-saivie-teal">{p.name?.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium text-slate-900 truncate">{p.name}</p>
-                                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                                  <p className="text-sm font-medium text-saivie-plum truncate">{p.name}</p>
+                                  <div className="flex items-center gap-2 text-xs text-saivie-plum">
                                     <span>ID: {p.id}</span>
                                     {p.phone && <span>| {p.phone}</span>}
                                     {p.type && <span>| {p.type}</span>}
@@ -2248,7 +2248,7 @@ export default function StaffPortal() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-7 text-[10px] px-2 border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
+                                  className="h-7 text-[10px] px-2 border-saivie-border text-saivie-teal bg-saivie-surface-muted hover:bg-saivie-sage"
                                   data-testid={`btn-upload-prescription-${p.id}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -2268,8 +2268,8 @@ export default function StaffPortal() {
                       </div>
                     )}
                 </div>
-                <Button variant="outline" size="icon" className="h-9 w-9 rounded-full border-slate-200 relative">
-                    <Bell className="w-4 h-4 text-slate-500" />
+                <Button variant="outline" size="icon" className="h-9 w-9 rounded-full border-saivie-border relative">
+                    <Bell className="w-4 h-4 text-saivie-plum" />
                     <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white"></span>
                 </Button>
                 {activeRole === 'receptionist' && (
@@ -2294,11 +2294,11 @@ export default function StaffPortal() {
             {activeView === 'schedule' && (
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold text-slate-900 font-serif">Staff Schedule</h2>
+                        <h2 className="text-2xl font-bold text-saivie-plum font-serif">Staff Schedule</h2>
                         <div className="flex gap-2">
                              <Button
                                variant="outline"
-                               className="bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-700"
+                               className="bg-saivie-ivory border-saivie-border text-saivie-plum hover:border-saivie-border hover:text-saivie-teal"
                                data-testid="btn-optimise-schedule"
                                onClick={async () => {
                                  const today = new Date().toISOString().split('T')[0];
@@ -2318,16 +2318,16 @@ export default function StaffPortal() {
                                  }
                                }}
                              >
-                               <Sparkles className="w-4 h-4 mr-2 text-indigo-500" />
+                               <Sparkles className="w-4 h-4 mr-2 text-saivie-teal" />
                                {optimiseLoading ? 'Optimising…' : 'Optimise Schedule'}
                              </Button>
                              <Link href="/staff/check-in">
-                                <Button variant="outline" className="bg-white border-slate-200">
+                                <Button variant="outline" className="bg-saivie-ivory border-saivie-border">
                                    <CheckCircle2 className="w-4 h-4 mr-2" /> Check In
                                 </Button>
                              </Link>
                              <Link href="/staff/booking">
-                                <Button className="bg-slate-900 text-white hover:bg-slate-800">
+                                <Button className="bg-saivie-plum text-white hover:bg-saivie-plum">
                                    <Plus className="w-4 h-4 mr-2" /> New Appointment
                                 </Button>
                              </Link>
@@ -2337,15 +2337,15 @@ export default function StaffPortal() {
                     {/* Optimise Schedule Dialog */}
                     {showOptimiseDialog && optimiseResult && (
                       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowOptimiseDialog(false)}>
-                        <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
+                        <div className="bg-saivie-ivory rounded-xl shadow-2xl max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center gap-2 mb-4">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                              <Sparkles className="w-4 h-4 text-indigo-600" />
+                            <div className="w-8 h-8 rounded-full bg-saivie-sage flex items-center justify-center">
+                              <Sparkles className="w-4 h-4 text-saivie-teal" />
                             </div>
-                            <h3 className="font-bold text-slate-900">AI Schedule Optimisation</h3>
-                            <button onClick={() => setShowOptimiseDialog(false)} className="ml-auto text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+                            <h3 className="font-bold text-saivie-plum">AI Schedule Optimisation</h3>
+                            <button onClick={() => setShowOptimiseDialog(false)} className="ml-auto text-saivie-plum hover:text-saivie-plum text-lg leading-none">✕</button>
                           </div>
-                          <p className="text-sm text-slate-600 mb-4">{optimiseResult.summary || 'Schedule analysis complete.'}</p>
+                          <p className="text-sm text-saivie-plum mb-4">{optimiseResult.summary || 'Schedule analysis complete.'}</p>
                           {optimiseResult.estimatedTimeSaved && (
                             <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-4 text-sm text-emerald-700 font-medium">
                               ⏱ {optimiseResult.estimatedTimeSaved}
@@ -2353,20 +2353,20 @@ export default function StaffPortal() {
                           )}
                           {optimiseResult.suggestions?.length > 0 ? (
                             <div className="space-y-2">
-                              <p className="text-xs font-bold text-slate-500 uppercase">Recommended Changes</p>
+                              <p className="text-xs font-bold text-saivie-plum uppercase">Recommended Changes</p>
                               {optimiseResult.suggestions.map((s: any, i: number) => (
-                                <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                                  <div className="text-xs font-mono text-slate-500 shrink-0 pt-0.5">{s.currentTime} → {s.suggestedTime}</div>
-                                  <div className="text-xs text-slate-700 flex-1">{s.reason}</div>
+                                <div key={i} className="flex items-start gap-3 p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border">
+                                  <div className="text-xs font-mono text-saivie-plum shrink-0 pt-0.5">{s.currentTime} → {s.suggestedTime}</div>
+                                  <div className="text-xs text-saivie-plum flex-1">{s.reason}</div>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <div className="text-center py-4 text-sm text-slate-400">Schedule is already optimally arranged ✓</div>
+                            <div className="text-center py-4 text-sm text-saivie-plum">Schedule is already optimally arranged ✓</div>
                           )}
                           <button
                             onClick={() => setShowOptimiseDialog(false)}
-                            className="mt-4 w-full py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                            className="mt-4 w-full py-2 bg-saivie-teal text-white rounded-lg text-sm font-medium hover:bg-saivie-teal transition-colors"
                           >
                             Got it
                           </button>
@@ -2376,10 +2376,10 @@ export default function StaffPortal() {
 
                     <div className="grid grid-cols-12 gap-6 h-[calc(100vh-12rem)]">
                         {/* Calendar Sidebar */}
-                        <Card className="col-span-3 border-slate-200 shadow-sm flex flex-col">
-                            <CardHeader className="py-4 border-b border-slate-100">
+                        <Card className="col-span-3 border-saivie-border shadow-sm flex flex-col">
+                            <CardHeader className="py-4 border-b border-saivie-border">
                                 <div className="flex justify-between items-center">
-                                    <h3 className="text-sm font-bold text-slate-800">February 2026</h3>
+                                    <h3 className="text-sm font-bold text-saivie-plum">February 2026</h3>
                                     <div className="flex gap-1">
                                         <Button variant="ghost" size="icon" className="h-6 w-6"><ChevronRight className="w-4 h-4 rotate-180" /></Button>
                                         <Button variant="ghost" size="icon" className="h-6 w-6"><ChevronRight className="w-4 h-4" /></Button>
@@ -2388,13 +2388,13 @@ export default function StaffPortal() {
                             </CardHeader>
                             <CardContent className="p-4">
                                 <div className="grid grid-cols-7 gap-1 text-center text-xs mb-2">
-                                    <span className="text-slate-400">Su</span>
-                                    <span className="text-slate-400">Mo</span>
-                                    <span className="text-slate-400">Tu</span>
-                                    <span className="text-slate-400">We</span>
-                                    <span className="text-slate-400">Th</span>
-                                    <span className="text-slate-400">Fr</span>
-                                    <span className="text-slate-400">Sa</span>
+                                    <span className="text-saivie-plum">Su</span>
+                                    <span className="text-saivie-plum">Mo</span>
+                                    <span className="text-saivie-plum">Tu</span>
+                                    <span className="text-saivie-plum">We</span>
+                                    <span className="text-saivie-plum">Th</span>
+                                    <span className="text-saivie-plum">Fr</span>
+                                    <span className="text-saivie-plum">Sa</span>
                                 </div>
                                 <div className="grid grid-cols-7 gap-1 text-center text-sm">
                                     {/* Mock Calendar Grid */}
@@ -2402,7 +2402,7 @@ export default function StaffPortal() {
                                     {[...Array(28)].map((_, i) => (
                                         <button 
                                             key={i} 
-                                            className={`p-2 rounded-full hover:bg-slate-100 ${i === 7 ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'text-slate-700'}`}
+                                            className={`p-2 rounded-full hover:bg-saivie-sage ${i === 7 ? 'bg-saivie-teal text-white hover:bg-saivie-teal' : 'text-saivie-plum'}`}
                                         >
                                             {i + 1}
                                         </button>
@@ -2411,7 +2411,7 @@ export default function StaffPortal() {
                                 
                                 <div className="mt-6 space-y-4">
                                     <div>
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Filters</h4>
+                                        <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2">Filters</h4>
                                         <div className="space-y-2">
                                             <div className="flex items-center space-x-2">
                                                 <Checkbox id="filter-consult" defaultChecked />
@@ -2432,22 +2432,22 @@ export default function StaffPortal() {
                         </Card>
 
                         {/* Daily Schedule */}
-                        <Card className="col-span-9 border-slate-200 shadow-sm flex flex-col overflow-hidden">
-                             <CardHeader className="py-3 border-b border-slate-100 bg-slate-50/50 flex flex-row items-center justify-between">
+                        <Card className="col-span-9 border-saivie-border shadow-sm flex flex-col overflow-hidden">
+                             <CardHeader className="py-3 border-b border-saivie-border bg-saivie-surface-muted/50 flex flex-row items-center justify-between">
                                  <div className="flex gap-4">
-                                    <span className="text-sm font-bold text-slate-900 border-b-2 border-indigo-600 pb-3 -mb-3.5">Day View</span>
-                                    <span className="text-sm font-medium text-slate-500 cursor-pointer hover:text-slate-900">Week View</span>
+                                    <span className="text-sm font-bold text-saivie-plum border-b-2 border-saivie-teal pb-3 -mb-3.5">Day View</span>
+                                    <span className="text-sm font-medium text-saivie-plum cursor-pointer hover:text-saivie-plum">Week View</span>
                                  </div>
-                                 <span className="text-xs font-medium text-slate-500">Sunday, Feb 8th</span>
+                                 <span className="text-xs font-medium text-saivie-plum">Sunday, Feb 8th</span>
                              </CardHeader>
-                             <ScrollArea className="flex-1 bg-white">
+                             <ScrollArea className="flex-1 bg-saivie-ivory">
                                 <div className="divide-y divide-slate-50">
                                     {(() => {
                                         const todayStr = new Date().toISOString().split('T')[0];
                                         const todayAppts = appointments.filter((a: any) => a.date === todayStr);
                                         const colorSchemes = [
-                                            { bg: 'bg-indigo-50', border: 'border-indigo-500', title: 'text-indigo-900', sub: 'text-indigo-700', avatarBg: 'bg-indigo-200', avatarText: 'text-indigo-800', badgeBg: 'bg-white', badgeText: 'text-indigo-700', accent: 'text-indigo-600' },
-                                            { bg: 'bg-emerald-50', border: 'border-emerald-500', title: 'text-emerald-900', sub: 'text-emerald-700', avatarBg: 'bg-emerald-200', avatarText: 'text-emerald-800', badgeBg: 'bg-white', badgeText: 'text-emerald-700', accent: 'text-emerald-600' },
+                                            { bg: 'bg-saivie-surface-muted', border: 'border-saivie-teal', title: 'text-saivie-plum', sub: 'text-saivie-teal', avatarBg: 'bg-saivie-sage', avatarText: 'text-saivie-plum', badgeBg: 'bg-saivie-ivory', badgeText: 'text-saivie-teal', accent: 'text-saivie-teal' },
+                                            { bg: 'bg-emerald-50', border: 'border-emerald-500', title: 'text-emerald-900', sub: 'text-emerald-700', avatarBg: 'bg-emerald-200', avatarText: 'text-emerald-800', badgeBg: 'bg-saivie-ivory', badgeText: 'text-emerald-700', accent: 'text-emerald-600' },
                                         ];
                                         return todayAppts.slice(0, 2).map((appt: any, idx: number) => {
                                             const patient = patients.find((p: any) => p.id === appt.patientId);
@@ -2456,7 +2456,7 @@ export default function StaffPortal() {
                                             const colors = colorSchemes[idx % colorSchemes.length];
                                             return (
                                                 <div key={appt.id} className="flex h-32 group">
-                                                    <div className="w-20 py-4 px-2 text-right text-xs text-slate-400 font-medium border-r border-slate-100 group-hover:bg-slate-50/50">
+                                                    <div className="w-20 py-4 px-2 text-right text-xs text-saivie-plum font-medium border-r border-saivie-border group-hover:bg-saivie-surface-muted/50">
                                                         {appt.time || '—'}
                                                     </div>
                                                     <div className="flex-1 p-2 relative">
@@ -2483,11 +2483,11 @@ export default function StaffPortal() {
 
                                     {/* 11:00 Slot (Empty) */}
                                     <div className="flex h-20 group">
-                                        <div className="w-20 py-4 px-2 text-right text-xs text-slate-400 font-medium border-r border-slate-100 group-hover:bg-slate-50/50">
+                                        <div className="w-20 py-4 px-2 text-right text-xs text-saivie-plum font-medium border-r border-saivie-border group-hover:bg-saivie-surface-muted/50">
                                             11:00 AM
                                         </div>
-                                        <div className="flex-1 p-2 group-hover:bg-slate-50/30 cursor-pointer border-b border-transparent group-hover:border-slate-100 flex items-center justify-center">
-                                            <Button variant="ghost" size="sm" className="hidden group-hover:flex text-slate-400 text-xs h-8">
+                                        <div className="flex-1 p-2 group-hover:bg-saivie-surface-muted/30 cursor-pointer border-b border-transparent group-hover:border-saivie-border flex items-center justify-center">
+                                            <Button variant="ghost" size="sm" className="hidden group-hover:flex text-saivie-plum text-xs h-8">
                                                 <Plus className="w-3 h-3 mr-1" /> Add Slot
                                             </Button>
                                         </div>
@@ -2495,7 +2495,7 @@ export default function StaffPortal() {
 
                                      {/* 12:00 Slot */}
                                     <div className="flex h-32 group">
-                                        <div className="w-20 py-4 px-2 text-right text-xs text-slate-400 font-medium border-r border-slate-100 group-hover:bg-slate-50/50">
+                                        <div className="w-20 py-4 px-2 text-right text-xs text-saivie-plum font-medium border-r border-saivie-border group-hover:bg-saivie-surface-muted/50">
                                             12:00 PM
                                         </div>
                                         <div className="flex-1 p-2 relative">
@@ -2505,16 +2505,16 @@ export default function StaffPortal() {
                                                         <p className="font-bold text-amber-900 text-sm">Staff Case Review</p>
                                                         <p className="text-xs text-amber-700 mt-0.5">Multidisciplinary Team • Conf Room B</p>
                                                     </div>
-                                                    <Badge variant="secondary" className="bg-white text-amber-700 text-[10px] hover:bg-white">Internal</Badge>
+                                                    <Badge variant="secondary" className="bg-saivie-ivory text-amber-700 text-[10px] hover:bg-saivie-ivory">Internal</Badge>
                                                 </div>
                                                 <div className="mt-3 flex -space-x-2">
                                                     <Avatar className="h-6 w-6 text-[10px] border-2 border-white">
-                                                        <AvatarFallback className="bg-slate-200 text-slate-700">DR</AvatarFallback>
+                                                        <AvatarFallback className="bg-saivie-sage text-saivie-plum">DR</AvatarFallback>
                                                     </Avatar>
                                                     <Avatar className="h-6 w-6 text-[10px] border-2 border-white">
-                                                        <AvatarFallback className="bg-slate-200 text-slate-700">ST</AvatarFallback>
+                                                        <AvatarFallback className="bg-saivie-sage text-saivie-plum">ST</AvatarFallback>
                                                     </Avatar>
-                                                    <div className="h-6 w-6 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[9px] font-bold text-slate-500">+3</div>
+                                                    <div className="h-6 w-6 rounded-full bg-saivie-sage border-2 border-white flex items-center justify-center text-[9px] font-bold text-saivie-plum">+3</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -2532,54 +2532,54 @@ export default function StaffPortal() {
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="flex justify-between items-center">
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-clinical-doc-heading">Clinical Documentation</h2>
-                            <p className="text-slate-500 text-sm mt-1">Manage progress notes, lab reports, and care summaries.</p>
+                            <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-clinical-doc-heading">Clinical Documentation</h2>
+                            <p className="text-saivie-plum text-sm mt-1">Manage progress notes, lab reports, and care summaries.</p>
                         </div>
                         <div className="flex gap-2">
-                             <Badge variant="secondary" className="bg-slate-100 text-slate-600 text-xs">{documentationItems.length} Records</Badge>
+                             <Badge variant="secondary" className="bg-saivie-sage text-saivie-plum text-xs">{documentationItems.length} Records</Badge>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-12 gap-6">
                         {/* Reports Sidebar */}
-                        <Card className="col-span-4 border-slate-200 shadow-sm h-[calc(100vh-12rem)] flex flex-col">
-                            <CardHeader className="py-4 border-b border-slate-100">
+                        <Card className="col-span-4 border-saivie-border shadow-sm h-[calc(100vh-12rem)] flex flex-col">
+                            <CardHeader className="py-4 border-b border-saivie-border">
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                                    <Input placeholder="Filter by patient or type..." className="pl-9 bg-slate-50 border-slate-200" data-testid="input-filter-docs" />
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-saivie-plum" />
+                                    <Input placeholder="Filter by patient or type..." className="pl-9 bg-saivie-surface-muted border-saivie-border" data-testid="input-filter-docs" />
                                 </div>
                             </CardHeader>
                             <CardContent className="p-0 flex-1 overflow-y-auto">
                                 <div className="divide-y divide-slate-100">
                                     {documentationItems.length === 0 && (
-                                        <div className="p-6 text-center text-slate-400 text-sm">No clinical documentation found.</div>
+                                        <div className="p-6 text-center text-saivie-plum text-sm">No clinical documentation found.</div>
                                     )}
                                     {documentationItems.map((item: any) => {
                                         const initials = item.patientName?.split(' ').map((n: string) => n[0]).join('') || '?';
                                         const isSelected = selectedDocItem?.id === item.id;
                                         const badgeConfig = item.source === 'visit' 
-                                            ? { label: item.type || 'Visit', bg: 'bg-indigo-100', text: 'text-indigo-700' }
-                                            : { label: item.type || 'Note', bg: 'bg-purple-100', text: 'text-purple-700' };
+                                            ? { label: item.type || 'Visit', bg: 'bg-saivie-sage', text: 'text-saivie-teal' }
+                                            : { label: item.type || 'Note', bg: 'bg-saivie-sage', text: 'text-saivie-teal' };
                                         const description = item.source === 'visit' 
                                             ? (item.diagnosis || item.subjective || item.assessment || 'No details')
                                             : (item.content || 'No content');
                                         return (
                                             <div 
                                                 key={item.id} 
-                                                className={`p-4 hover:bg-slate-50 cursor-pointer border-l-4 transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50/30' : 'border-transparent'}`}
+                                                className={`p-4 hover:bg-saivie-surface-muted cursor-pointer border-l-4 transition-all ${isSelected ? 'border-saivie-teal bg-saivie-surface-muted/30' : 'border-transparent'}`}
                                                 onClick={() => setSelectedDocItem(item)}
                                                 data-testid={`doc-item-${item.id}`}
                                             >
                                                 <div className="flex justify-between items-start mb-1">
-                                                    <span className="font-bold text-slate-900 text-sm line-clamp-1">{item.title}</span>
-                                                    <span className="text-[10px] text-slate-400 shrink-0 ml-2">{item.date}</span>
+                                                    <span className="font-bold text-saivie-plum text-sm line-clamp-1">{item.title}</span>
+                                                    <span className="text-[10px] text-saivie-plum shrink-0 ml-2">{item.date}</span>
                                                 </div>
-                                                <p className="text-xs text-slate-500 mb-2 line-clamp-2">{description}</p>
+                                                <p className="text-xs text-saivie-plum mb-2 line-clamp-2">{description}</p>
                                                 <div className="flex items-center gap-2">
                                                     <Avatar className="h-5 w-5 text-[8px]">
-                                                        <AvatarFallback className="bg-slate-200">{initials}</AvatarFallback>
+                                                        <AvatarFallback className="bg-saivie-sage">{initials}</AvatarFallback>
                                                     </Avatar>
-                                                    <span className="text-xs text-slate-600 font-medium">{item.patientName}</span>
+                                                    <span className="text-xs text-saivie-plum font-medium">{item.patientName}</span>
                                                     <Badge variant="secondary" className={`ml-auto text-[10px] ${badgeConfig.bg} ${badgeConfig.text}`}>{badgeConfig.label}</Badge>
                                                 </div>
                                             </div>
@@ -2590,9 +2590,9 @@ export default function StaffPortal() {
                         </Card>
 
                         {/* Detail/Editor Area */}
-                        <Card className="col-span-8 border-slate-200 shadow-sm flex flex-col h-[calc(100vh-12rem)]">
+                        <Card className="col-span-8 border-saivie-border shadow-sm flex flex-col h-[calc(100vh-12rem)]">
                             {!selectedDocItem ? (
-                                <div className="flex-1 flex items-center justify-center text-slate-400">
+                                <div className="flex-1 flex items-center justify-center text-saivie-plum">
                                     <div className="text-center">
                                         <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                                         <p className="text-sm font-medium">Select a record to view details</p>
@@ -2601,17 +2601,17 @@ export default function StaffPortal() {
                                 </div>
                             ) : (
                                 <>
-                                    <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between bg-slate-50/30">
+                                    <CardHeader className="py-4 border-b border-saivie-border flex flex-row items-center justify-between bg-saivie-surface-muted/30">
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="font-bold text-slate-900" data-testid="text-doc-detail-title">{selectedDocItem.title}</h3>
-                                                <Badge variant="outline" className="text-xs text-slate-500 font-normal">{selectedDocItem.source === 'visit' ? selectedDocItem.type : selectedDocItem.type}</Badge>
+                                                <h3 className="font-bold text-saivie-plum" data-testid="text-doc-detail-title">{selectedDocItem.title}</h3>
+                                                <Badge variant="outline" className="text-xs text-saivie-plum font-normal">{selectedDocItem.source === 'visit' ? selectedDocItem.type : selectedDocItem.type}</Badge>
                                             </div>
-                                            <p className="text-xs text-slate-500">
-                                                By <span className="font-medium text-slate-700">{selectedDocItem.providerName}</span> • {selectedDocItem.date}
+                                            <p className="text-xs text-saivie-plum">
+                                                By <span className="font-medium text-saivie-plum">{selectedDocItem.providerName}</span> • {selectedDocItem.date}
                                             </p>
                                         </div>
-                                        <Button variant="ghost" size="sm" className="h-8 text-xs text-slate-500" onClick={() => setSelectedDocItem(null)}>
+                                        <Button variant="ghost" size="sm" className="h-8 text-xs text-saivie-plum" onClick={() => setSelectedDocItem(null)}>
                                             <X className="w-4 h-4 mr-1" /> Close
                                         </Button>
                                     </CardHeader>
@@ -2619,13 +2619,13 @@ export default function StaffPortal() {
                                         <div className="space-y-6 max-w-2xl">
                                             <div className="flex items-center gap-3 p-3 bg-blue-50/50 border border-blue-100 rounded-lg">
                                                 <Avatar className="h-10 w-10 border-2 border-white">
-                                                    <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">
+                                                    <AvatarFallback className="bg-saivie-sage text-saivie-teal font-bold">
                                                         {selectedDocItem.patientName?.split(' ').map((n: string) => n[0]).join('') || '?'}
                                                     </AvatarFallback>
                                                 </Avatar>
                                                 <div>
-                                                    <p className="font-bold text-sm text-slate-900" data-testid="text-doc-patient-name">{selectedDocItem.patientName}</p>
-                                                    <p className="text-xs text-slate-500">MRN: #{selectedDocItem.patientId}</p>
+                                                    <p className="font-bold text-sm text-saivie-plum" data-testid="text-doc-patient-name">{selectedDocItem.patientName}</p>
+                                                    <p className="text-xs text-saivie-plum">MRN: #{selectedDocItem.patientId}</p>
                                                 </div>
                                             </div>
 
@@ -2634,43 +2634,43 @@ export default function StaffPortal() {
                                                     {selectedDocItem.diagnosis && (
                                                         <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg">
                                                             <Label className="text-xs font-bold text-amber-700 uppercase tracking-wider">Diagnosis</Label>
-                                                            <p className="text-sm text-slate-800 mt-1">{selectedDocItem.diagnosis}</p>
+                                                            <p className="text-sm text-saivie-plum mt-1">{selectedDocItem.diagnosis}</p>
                                                         </div>
                                                     )}
 
                                                     {selectedDocItem.subjective && (
                                                         <div className="space-y-1">
-                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">S (Subjective)</Label>
-                                                            <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700">{selectedDocItem.subjective}</div>
+                                                            <Label className="text-xs font-bold text-saivie-plum uppercase tracking-wider">S (Subjective)</Label>
+                                                            <div className="p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border text-sm text-saivie-plum">{selectedDocItem.subjective}</div>
                                                         </div>
                                                     )}
                                                     {selectedDocItem.objective && (
                                                         <div className="space-y-1">
-                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">O (Objective)</Label>
-                                                            <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700">{selectedDocItem.objective}</div>
+                                                            <Label className="text-xs font-bold text-saivie-plum uppercase tracking-wider">O (Objective)</Label>
+                                                            <div className="p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border text-sm text-saivie-plum">{selectedDocItem.objective}</div>
                                                         </div>
                                                     )}
                                                     {selectedDocItem.assessment && (
                                                         <div className="space-y-1">
-                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">A (Assessment)</Label>
-                                                            <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700">{selectedDocItem.assessment}</div>
+                                                            <Label className="text-xs font-bold text-saivie-plum uppercase tracking-wider">A (Assessment)</Label>
+                                                            <div className="p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border text-sm text-saivie-plum">{selectedDocItem.assessment}</div>
                                                         </div>
                                                     )}
                                                     {selectedDocItem.plan && (
                                                         <div className="space-y-1">
-                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">P (Plan)</Label>
-                                                            <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700">{selectedDocItem.plan}</div>
+                                                            <Label className="text-xs font-bold text-saivie-plum uppercase tracking-wider">P (Plan)</Label>
+                                                            <div className="p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border text-sm text-saivie-plum">{selectedDocItem.plan}</div>
                                                         </div>
                                                     )}
 
                                                     {selectedDocItem.vitals && (
                                                         <div className="space-y-1">
-                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vitals</Label>
+                                                            <Label className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Vitals</Label>
                                                             <div className="grid grid-cols-3 gap-2">
                                                                 {Object.entries(selectedDocItem.vitals as Record<string, any>).map(([key, val]) => (
-                                                                    <div key={key} className="p-2 bg-slate-50 rounded border border-slate-100 text-center">
-                                                                        <p className="text-[10px] text-slate-400 uppercase">{key}</p>
-                                                                        <p className="text-sm font-bold text-slate-800">{String(val)}</p>
+                                                                    <div key={key} className="p-2 bg-saivie-surface-muted rounded border border-saivie-border text-center">
+                                                                        <p className="text-[10px] text-saivie-plum uppercase">{key}</p>
+                                                                        <p className="text-sm font-bold text-saivie-plum">{String(val)}</p>
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -2679,16 +2679,16 @@ export default function StaffPortal() {
 
                                                     {selectedDocItem.prescriptions?.length > 0 && (
                                                         <div className="space-y-2">
-                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Prescriptions</Label>
+                                                            <Label className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Prescriptions</Label>
                                                             {selectedDocItem.prescriptions.map((rx: any, i: number) => (
                                                                 <div key={i} className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg flex items-center justify-between">
                                                                     <div className="flex items-center gap-2">
                                                                         <Pill className="w-4 h-4 text-blue-600" />
-                                                                        <span className="text-sm font-bold text-slate-800">{rx.name}</span>
+                                                                        <span className="text-sm font-bold text-saivie-plum">{rx.name}</span>
                                                                     </div>
                                                                     <div className="flex gap-2">
-                                                                        {rx.dose && <Badge variant="outline" className="text-[10px] bg-white">{rx.dose}</Badge>}
-                                                                        {rx.frequency && <Badge variant="outline" className="text-[10px] bg-white">{rx.frequency}</Badge>}
+                                                                        {rx.dose && <Badge variant="outline" className="text-[10px] bg-saivie-ivory">{rx.dose}</Badge>}
+                                                                        {rx.frequency && <Badge variant="outline" className="text-[10px] bg-saivie-ivory">{rx.frequency}</Badge>}
                                                                     </div>
                                                                 </div>
                                                             ))}
@@ -2697,11 +2697,11 @@ export default function StaffPortal() {
 
                                                     {selectedDocItem.procedures?.length > 0 && (
                                                         <div className="space-y-2">
-                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Procedures</Label>
+                                                            <Label className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Procedures</Label>
                                                             {selectedDocItem.procedures.map((proc: any, i: number) => (
                                                                 <div key={i} className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-lg">
-                                                                    <p className="text-sm font-bold text-slate-800">{proc.name}</p>
-                                                                    {proc.finding && <p className="text-xs text-slate-600 mt-1">{proc.finding}</p>}
+                                                                    <p className="text-sm font-bold text-saivie-plum">{proc.name}</p>
+                                                                    {proc.finding && <p className="text-xs text-saivie-plum mt-1">{proc.finding}</p>}
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -2709,13 +2709,13 @@ export default function StaffPortal() {
 
                                                     {selectedDocItem.labsOrdered?.length > 0 && (
                                                         <div className="space-y-2">
-                                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Labs Ordered</Label>
+                                                            <Label className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Labs Ordered</Label>
                                                             <div className="grid grid-cols-2 gap-2">
                                                                 {selectedDocItem.labsOrdered.map((lab: any, i: number) => (
-                                                                    <div key={i} className="p-2 bg-purple-50/50 border border-purple-100 rounded-lg">
-                                                                        <p className="text-xs font-bold text-slate-700">{lab.test}</p>
-                                                                        {lab.result !== undefined && <p className="text-sm font-bold text-purple-700">{lab.result} {lab.unit || ''}</p>}
-                                                                        {lab.scheduled && <p className="text-[10px] text-slate-500">Scheduled: {lab.scheduled}</p>}
+                                                                    <div key={i} className="p-2 bg-saivie-surface-muted/50 border border-saivie-border rounded-lg">
+                                                                        <p className="text-xs font-bold text-saivie-plum">{lab.test}</p>
+                                                                        {lab.result !== undefined && <p className="text-sm font-bold text-saivie-teal">{lab.result} {lab.unit || ''}</p>}
+                                                                        {lab.scheduled && <p className="text-[10px] text-saivie-plum">Scheduled: {lab.scheduled}</p>}
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -2723,15 +2723,15 @@ export default function StaffPortal() {
                                                     )}
 
                                                     {selectedDocItem.followUpPlan && (
-                                                        <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
-                                                            <Label className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Follow-up Plan</Label>
-                                                            <p className="text-sm text-slate-800 mt-1">{selectedDocItem.followUpPlan}</p>
+                                                        <div className="p-3 bg-saivie-surface-muted border border-saivie-border rounded-lg">
+                                                            <Label className="text-xs font-bold text-saivie-teal uppercase tracking-wider">Follow-up Plan</Label>
+                                                            <p className="text-sm text-saivie-plum mt-1">{selectedDocItem.followUpPlan}</p>
                                                         </div>
                                                     )}
 
                                                     {selectedDocItem.outcome && (
                                                         <div className="flex gap-2 items-center">
-                                                            <Label className="text-xs font-bold text-slate-500 uppercase">Outcome:</Label>
+                                                            <Label className="text-xs font-bold text-saivie-plum uppercase">Outcome:</Label>
                                                             <Badge variant="outline" className={`text-xs ${selectedDocItem.outcome === 'Resolved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                                                                 {selectedDocItem.outcome}
                                                             </Badge>
@@ -2742,13 +2742,13 @@ export default function StaffPortal() {
 
                                             {selectedDocItem.source === 'note' && (
                                                 <div className="space-y-4">
-                                                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
-                                                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{selectedDocItem.content}</p>
+                                                    <div className="p-4 bg-saivie-surface-muted rounded-lg border border-saivie-border">
+                                                        <p className="text-sm text-saivie-plum whitespace-pre-wrap">{selectedDocItem.content}</p>
                                                     </div>
                                                     {selectedDocItem.tags?.length > 0 && (
                                                         <div className="flex gap-2 flex-wrap">
                                                             {selectedDocItem.tags.map((tag: string, i: number) => (
-                                                                <Badge key={i} variant="secondary" className="text-xs bg-slate-100 text-slate-600">{tag}</Badge>
+                                                                <Badge key={i} variant="secondary" className="text-xs bg-saivie-sage text-saivie-plum">{tag}</Badge>
                                                             ))}
                                                         </div>
                                                     )}
@@ -2800,18 +2800,18 @@ export default function StaffPortal() {
                     <div className="grid grid-cols-3 gap-6">
                         <div className="col-span-2 space-y-6">
                             {/* Patient List */}
-                            <Card className="shadow-sm border-slate-200">
-                                <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
-                                    <CardTitle className="text-base font-bold text-slate-800">Assigned Patients</CardTitle>
+                            <Card className="shadow-sm border-saivie-border">
+                                <CardHeader className="py-4 border-b border-saivie-border flex flex-row items-center justify-between">
+                                    <CardTitle className="text-base font-bold text-saivie-plum">Assigned Patients</CardTitle>
                                     <div className="flex gap-2">
-                                        <Badge variant="outline" className="cursor-pointer bg-slate-50 hover:bg-slate-100">All</Badge>
-                                        <Badge variant="outline" className="cursor-pointer bg-slate-50 hover:bg-slate-100">Fertility</Badge>
-                                        <Badge variant="outline" className="cursor-pointer bg-slate-50 hover:bg-slate-100">PCOS</Badge>
+                                        <Badge variant="outline" className="cursor-pointer bg-saivie-surface-muted hover:bg-saivie-sage">All</Badge>
+                                        <Badge variant="outline" className="cursor-pointer bg-saivie-surface-muted hover:bg-saivie-sage">Fertility</Badge>
+                                        <Badge variant="outline" className="cursor-pointer bg-saivie-surface-muted hover:bg-saivie-sage">PCOS</Badge>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <table className="w-full text-sm text-left">
-                                        <thead className="bg-slate-50 text-slate-500 uppercase text-xs border-b border-slate-100">
+                                        <thead className="bg-saivie-surface-muted text-saivie-plum uppercase text-xs border-b border-saivie-border">
                                             <tr>
                                                 <th className="px-4 py-3 font-medium">Patient</th>
                                                 <th className="px-4 py-3 font-medium">Type</th>
@@ -2822,19 +2822,19 @@ export default function StaffPortal() {
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {patients.map((p: any) => (
-                                                <tr key={p.id} className="hover:bg-slate-50/50">
+                                                <tr key={p.id} className="hover:bg-saivie-surface-muted/50">
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-3">
                                                             <Avatar className="h-8 w-8 text-xs">
                                                                 <AvatarFallback>{p.avatar}</AvatarFallback>
                                                             </Avatar>
-                                                            <span className="font-semibold text-slate-900">{p.name}</span>
+                                                            <span className="font-semibold text-saivie-plum">{p.name}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-3"><Badge variant="secondary" className="text-[10px]">{p.type}</Badge></td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-slate-700 font-medium">{p.weight}kg</span>
+                                                            <span className="text-saivie-plum font-medium">{p.weight}kg</span>
                                                             <TrendingUp className="w-3 h-3 text-red-500" />
                                                         </div>
                                                     </td>
@@ -2851,7 +2851,7 @@ export default function StaffPortal() {
                                                             {functionalMedicinePatients.find((fp: any) => fp.name === p.name) && (
                                                                 <Button 
                                                                     size="sm" 
-                                                                    className="h-7 text-xs bg-slate-900 text-white hover:bg-slate-800"
+                                                                    className="h-7 text-xs bg-saivie-plum text-white hover:bg-saivie-plum"
                                                                     onClick={() => {
                                                                         const fp = functionalMedicinePatients.find((f: any) => f.name === p.name);
                                                                         if (fp) {
@@ -2874,20 +2874,20 @@ export default function StaffPortal() {
                         
                         <div className="col-span-1 space-y-6">
                             {/* Meal Plan Templates */}
-                            <Card className="shadow-sm border-slate-200">
-                                <CardHeader className="py-3 border-b border-slate-100">
-                                    <CardTitle className="text-sm font-bold text-slate-800">Diet Plan Templates</CardTitle>
+                            <Card className="shadow-sm border-saivie-border">
+                                <CardHeader className="py-3 border-b border-saivie-border">
+                                    <CardTitle className="text-sm font-bold text-saivie-plum">Diet Plan Templates</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-0 divide-y divide-slate-100">
                                     {nutritionPlans.map((plan: any) => (
-                                        <div key={plan.id} className="p-3 hover:bg-slate-50 cursor-pointer">
+                                        <div key={plan.id} className="p-3 hover:bg-saivie-surface-muted cursor-pointer">
                                             <div className="flex justify-between items-center mb-1">
-                                                <span className="font-medium text-sm text-slate-800">{plan.name}</span>
-                                                <span className="text-xs text-slate-400">{plan.assignedTo} users</span>
+                                                <span className="font-medium text-sm text-saivie-plum">{plan.name}</span>
+                                                <span className="text-xs text-saivie-plum">{plan.assignedTo} users</span>
                                             </div>
                                             <div className="flex flex-wrap gap-1 mt-2">
                                                 {plan.tags?.map((tag: any) => (
-                                                    <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded border border-indigo-100">{tag}</span>
+                                                    <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-saivie-surface-muted text-saivie-teal rounded border border-saivie-border">{tag}</span>
                                                 ))}
                                             </div>
                                         </div>
@@ -2909,11 +2909,11 @@ export default function StaffPortal() {
                 <div className="max-w-7xl mx-auto space-y-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-900 font-serif">Functional Nutrition Panel</h2>
-                            <p className="text-slate-500 mt-1">Integrative care combining genomics, gut health, and nutrient biomarkers.</p>
+                            <h2 className="text-2xl font-bold text-saivie-plum font-serif">Functional Nutrition Panel</h2>
+                            <p className="text-saivie-plum mt-1">Integrative care combining genomics, gut health, and nutrient biomarkers.</p>
                         </div>
                         <div className="flex gap-2">
-                             <Button variant="outline" className="bg-white border-slate-200">
+                             <Button variant="outline" className="bg-saivie-ivory border-saivie-border">
                                 <FlaskConical className="w-4 h-4 mr-2" /> Request Lab Panel
                              </Button>
                              
@@ -2937,20 +2937,20 @@ export default function StaffPortal() {
                                         <div className="grid gap-6 py-4">
                                             
                                             {/* 1. Patient Context (Read Only) */}
-                                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex justify-between items-center">
+                                            <div className="bg-saivie-surface-muted p-4 rounded-lg border border-saivie-border flex justify-between items-center">
                                                 <div>
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <Avatar className="h-8 w-8 text-xs">
                                                             <AvatarFallback>{selectedPatientForAdjust.name.charAt(0)}</AvatarFallback>
                                                         </Avatar>
                                                         <div>
-                                                            <p className="font-bold text-slate-900 text-sm">{selectedPatientForAdjust.name}</p>
-                                                            <p className="text-xs text-slate-500">{selectedPatientForAdjust.condition}</p>
+                                                            <p className="font-bold text-saivie-plum text-sm">{selectedPatientForAdjust.name}</p>
+                                                            <p className="text-xs text-saivie-plum">{selectedPatientForAdjust.condition}</p>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                     <p className="text-[10px] font-bold text-slate-500 uppercase">Current Goal</p>
+                                                     <p className="text-[10px] font-bold text-saivie-plum uppercase">Current Goal</p>
                                                      <p className="font-bold text-emerald-700 text-sm">{selectedPatientForAdjust.functional.hormone.focus}</p>
                                                 </div>
                                             </div>
@@ -2969,21 +2969,21 @@ export default function StaffPortal() {
                                             {/* 2. Clinical Context & Goal Adjustment */}
                                             <div className="space-y-6">
                                                 {/* Context Banner */}
-                                                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                                                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Clinical Context</h4>
+                                                <div className="bg-saivie-surface-muted p-4 rounded-lg border border-saivie-border">
+                                                    <h4 className="text-xs font-bold text-saivie-plum uppercase mb-3">Clinical Context</h4>
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div>
-                                                            <span className="text-[10px] text-slate-400 block">Genomics</span>
+                                                            <span className="text-[10px] text-saivie-plum block">Genomics</span>
                                                             <div className="flex flex-wrap gap-1 mt-1">
-                                                                <Badge variant="outline" className={`text-[10px] bg-white ${selectedPatientForAdjust.genomics.mthfr.risk === 'Medium' ? 'text-amber-700 border-amber-200' : 'text-slate-600 border-slate-200'}`}>MTHFR: {selectedPatientForAdjust.genomics.mthfr.status}</Badge>
-                                                                <Badge variant="outline" className={`text-[10px] bg-white ${selectedPatientForAdjust.genomics.caffeine.risk === 'High' ? 'text-rose-700 border-rose-200' : 'text-slate-600 border-slate-200'}`}>{selectedPatientForAdjust.genomics.caffeine.status === "Slow Metabolizer" ? "Slow Caffeine" : "Fast Caffeine"}</Badge>
+                                                                <Badge variant="outline" className={`text-[10px] bg-saivie-ivory ${selectedPatientForAdjust.genomics.mthfr.risk === 'Medium' ? 'text-amber-700 border-amber-200' : 'text-saivie-plum border-saivie-border'}`}>MTHFR: {selectedPatientForAdjust.genomics.mthfr.status}</Badge>
+                                                                <Badge variant="outline" className={`text-[10px] bg-saivie-ivory ${selectedPatientForAdjust.genomics.caffeine.risk === 'High' ? 'text-rose-700 border-rose-200' : 'text-saivie-plum border-saivie-border'}`}>{selectedPatientForAdjust.genomics.caffeine.status === "Slow Metabolizer" ? "Slow Caffeine" : "Fast Caffeine"}</Badge>
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            <span className="text-[10px] text-slate-400 block">Biomarkers</span>
+                                                            <span className="text-[10px] text-saivie-plum block">Biomarkers</span>
                                                             <div className="flex flex-wrap gap-1 mt-1">
-                                                                 <Badge variant="outline" className={`text-[10px] bg-white ${selectedPatientForAdjust.functional.gut.score < 50 ? 'text-rose-700 border-rose-200' : 'text-slate-600 border-slate-200'}`}>Gut: {selectedPatientForAdjust.functional.gut.status}</Badge>
-                                                                 <Badge variant="outline" className={`text-[10px] bg-white ${selectedPatientForAdjust.functional.inflammation.status === 'Elevated' ? 'text-amber-700 border-amber-200' : 'text-slate-600 border-slate-200'}`}>Inflam: {selectedPatientForAdjust.functional.inflammation.status}</Badge>
+                                                                 <Badge variant="outline" className={`text-[10px] bg-saivie-ivory ${selectedPatientForAdjust.functional.gut.score < 50 ? 'text-rose-700 border-rose-200' : 'text-saivie-plum border-saivie-border'}`}>Gut: {selectedPatientForAdjust.functional.gut.status}</Badge>
+                                                                 <Badge variant="outline" className={`text-[10px] bg-saivie-ivory ${selectedPatientForAdjust.functional.inflammation.status === 'Elevated' ? 'text-amber-700 border-amber-200' : 'text-saivie-plum border-saivie-border'}`}>Inflam: {selectedPatientForAdjust.functional.inflammation.status}</Badge>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -3022,50 +3022,50 @@ export default function StaffPortal() {
                                             </div>
 
                                             {/* 3. Genomic Modifiers (Preserved) */}
-                                            <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                                            <div className="bg-saivie-surface-muted p-4 rounded-lg border border-saivie-border">
                                                 <div className="flex items-center gap-2 mb-3">
-                                                    <Dna className="w-4 h-4 text-purple-600" />
-                                                    <h4 className="text-sm font-bold text-purple-900">Genomic Adjustments (Active)</h4>
+                                                    <Dna className="w-4 h-4 text-saivie-teal" />
+                                                    <h4 className="text-sm font-bold text-saivie-plum">Genomic Adjustments (Active)</h4>
                                                 </div>
                                                 <div className="grid grid-cols-3 gap-3">
                                                     <div className="flex items-start space-x-2">
                                                         <Checkbox id="adj-mthfr" defaultChecked={selectedPatientForAdjust.genomics.mthfr.risk === 'Medium' || selectedPatientForAdjust.genomics.mthfr.risk === 'High'} />
                                                         <div className="grid gap-0.5 leading-none">
-                                                            <label htmlFor="adj-mthfr" className="text-xs font-medium text-slate-700 cursor-pointer">Methylation Support</label>
-                                                            <p className="text-[10px] text-slate-500">MTHFR Status: {selectedPatientForAdjust.genomics.mthfr.status}</p>
+                                                            <label htmlFor="adj-mthfr" className="text-xs font-medium text-saivie-plum cursor-pointer">Methylation Support</label>
+                                                            <p className="text-[10px] text-saivie-plum">MTHFR Status: {selectedPatientForAdjust.genomics.mthfr.status}</p>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-start space-x-2">
                                                         <Checkbox id="adj-caffeine" defaultChecked={selectedPatientForAdjust.genomics.caffeine.risk === 'High'} />
                                                         <div className="grid gap-0.5 leading-none">
-                                                            <label htmlFor="adj-caffeine" className="text-xs font-medium text-slate-700 cursor-pointer">Caffeine Protocol</label>
-                                                            <p className="text-[10px] text-slate-500">{selectedPatientForAdjust.genomics.caffeine.status}</p>
+                                                            <label htmlFor="adj-caffeine" className="text-xs font-medium text-saivie-plum cursor-pointer">Caffeine Protocol</label>
+                                                            <p className="text-[10px] text-saivie-plum">{selectedPatientForAdjust.genomics.caffeine.status}</p>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-start space-x-2">
                                                         <Checkbox id="adj-gluten" defaultChecked={selectedPatientForAdjust.genomics.gluten?.risk === 'High'} />
                                                         <div className="grid gap-0.5 leading-none">
-                                                            <label htmlFor="adj-gluten" className="text-xs font-medium text-slate-700 cursor-pointer">Gluten Elimination</label>
-                                                            <p className="text-[10px] text-slate-500">Risk: {selectedPatientForAdjust.genomics.gluten?.risk || 'Low'}</p>
+                                                            <label htmlFor="adj-gluten" className="text-xs font-medium text-saivie-plum cursor-pointer">Gluten Elimination</label>
+                                                            <p className="text-[10px] text-saivie-plum">Risk: {selectedPatientForAdjust.genomics.gluten?.risk || 'Low'}</p>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {/* 4. Daily Schedule (Wake/Sleep) */}
-                                            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                            <div className="grid grid-cols-2 gap-4 bg-saivie-surface-muted p-3 rounded-lg border border-saivie-border">
                                                 <div className="space-y-2">
-                                                    <Label className="text-xs font-bold text-slate-500 uppercase">Wake Up Time</Label>
+                                                    <Label className="text-xs font-bold text-saivie-plum uppercase">Wake Up Time</Label>
                                                     <div className="relative">
-                                                        <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-                                                        <Input type="time" className="pl-9 bg-white" defaultValue="07:00" />
+                                                        <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-saivie-plum" />
+                                                        <Input type="time" className="pl-9 bg-saivie-ivory" defaultValue="07:00" />
                                                     </div>
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label className="text-xs font-bold text-slate-500 uppercase">Bedtime</Label>
+                                                    <Label className="text-xs font-bold text-saivie-plum uppercase">Bedtime</Label>
                                                     <div className="relative">
-                                                        <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-                                                        <Input type="time" className="pl-9 bg-white" defaultValue="22:30" />
+                                                        <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-saivie-plum" />
+                                                        <Input type="time" className="pl-9 bg-saivie-ivory" defaultValue="22:30" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -3076,43 +3076,43 @@ export default function StaffPortal() {
                                                     <Label>Daily Meal Structure</Label>
                                                     <div className="flex gap-2">
                                                         <Badge variant="outline" className="bg-emerald-50 text-emerald-700 cursor-pointer">Training Day</Badge>
-                                                        <Badge variant="outline" className="text-slate-500 cursor-pointer hover:bg-slate-50">Rest Day</Badge>
+                                                        <Badge variant="outline" className="text-saivie-plum cursor-pointer hover:bg-saivie-surface-muted">Rest Day</Badge>
                                                     </div>
                                                 </div>
 
-                                                <div className="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+                                                <div className="space-y-4 border border-saivie-border rounded-lg p-4 bg-saivie-surface-muted/50">
                                                     {mealPlanItems.map((meal, index) => (
-                                                        <div key={meal.id} className={`space-y-2 ${index !== 0 ? 'pt-2 border-t border-slate-200' : ''}`}>
+                                                        <div key={meal.id} className={`space-y-2 ${index !== 0 ? 'pt-2 border-t border-saivie-border' : ''}`}>
                                                             <div className="flex items-center gap-2">
-                                                                <div className={`w-2 h-2 rounded-full ${index % 3 === 0 ? 'bg-amber-400' : index % 3 === 1 ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
+                                                                <div className={`w-2 h-2 rounded-full ${index % 3 === 0 ? 'bg-amber-400' : index % 3 === 1 ? 'bg-emerald-500' : 'bg-saivie-teal'}`}></div>
                                                                 <Input 
                                                                     defaultValue={meal.name} 
-                                                                    className="h-6 w-32 text-xs font-bold text-slate-800 border-none bg-transparent p-0 focus-visible:ring-0" 
+                                                                    className="h-6 w-32 text-xs font-bold text-saivie-plum border-none bg-transparent p-0 focus-visible:ring-0"
                                                                 />
                                                                 <div className="relative ml-auto">
-                                                                    <Clock className="absolute left-2 top-1.5 h-3 w-3 text-slate-400" />
+                                                                    <Clock className="absolute left-2 top-1.5 h-3 w-3 text-saivie-plum" />
                                                                     <Input 
                                                                         type="time" 
                                                                         defaultValue={meal.time} 
-                                                                        className="h-6 w-24 text-xs bg-white pl-6 border-slate-200" 
+                                                                        className="h-6 w-24 text-xs bg-saivie-ivory pl-6 border-saivie-border"
                                                                     />
                                                                 </div>
                                                             </div>
                                                             <div className="grid grid-cols-12 gap-2">
                                                                 <div className="col-span-5">
-                                                                    <Input placeholder="E.g., Oatmeal with Berries" className="h-8 text-xs bg-white" defaultValue={meal.item} />
+                                                                    <Input placeholder="E.g., Oatmeal with Berries" className="h-8 text-xs bg-saivie-ivory" defaultValue={meal.item} />
                                                                 </div>
                                                                 <div className="col-span-3">
-                                                                    <Input placeholder="Qty" className="h-8 text-xs bg-white" defaultValue={meal.qty} />
+                                                                    <Input placeholder="Qty" className="h-8 text-xs bg-saivie-ivory" defaultValue={meal.qty} />
                                                                 </div>
                                                                 <div className="col-span-3">
-                                                                    <Input placeholder="Macros" className="h-8 text-xs bg-white" defaultValue={meal.macros} />
+                                                                    <Input placeholder="Macros" className="h-8 text-xs bg-saivie-ivory" defaultValue={meal.macros} />
                                                                 </div>
                                                                 <div className="col-span-1">
                                                                     <Button 
                                                                         variant="ghost" 
                                                                         size="icon" 
-                                                                        className="h-8 w-8 text-slate-400 hover:text-red-500"
+                                                                        className="h-8 w-8 text-saivie-plum hover:text-red-500"
                                                                         onClick={() => removeMealItem(meal.id)}
                                                                     >
                                                                         <Minus className="w-3 h-3" />
@@ -3125,7 +3125,7 @@ export default function StaffPortal() {
                                                     <Button 
                                                         variant="outline" 
                                                         size="sm" 
-                                                        className="w-full text-xs border-dashed border-slate-300 text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                                                        className="w-full text-xs border-dashed border-saivie-border text-saivie-plum hover:text-saivie-plum hover:bg-saivie-sage"
                                                         onClick={addMealItem}
                                                     >
                                                         <Plus className="w-3 h-3 mr-1" /> Add Meal Time
@@ -3136,17 +3136,17 @@ export default function StaffPortal() {
                                             {/* 6. Supplement Stack */}
                                             <div className="space-y-3">
                                                 <Label>Active Supplements</Label>
-                                                <div className="border border-slate-200 rounded-md divide-y divide-slate-100">
+                                                <div className="border border-saivie-border rounded-md divide-y divide-slate-100">
                                                     <div className="p-3 flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
                                                             <Checkbox id="supp1" defaultChecked />
                                                             <div>
                                                                 <p className="text-sm font-medium">Magnesium Glycinate</p>
-                                                                <p className="text-xs text-slate-500">400mg • Bedtime</p>
+                                                                <p className="text-xs text-saivie-plum">400mg • Bedtime</p>
                                                             </div>
                                                         </div>
                                                         <div className="flex gap-2">
-                                                            <Button variant="ghost" size="sm" className="h-6 text-xs text-slate-400">Edit</Button>
+                                                            <Button variant="ghost" size="sm" className="h-6 text-xs text-saivie-plum">Edit</Button>
                                                             <Button variant="ghost" size="sm" className="h-6 text-xs text-rose-500">Stop</Button>
                                                         </div>
                                                     </div>
@@ -3155,16 +3155,16 @@ export default function StaffPortal() {
                                                             <Checkbox id="supp2" defaultChecked />
                                                             <div>
                                                                 <p className="text-sm font-medium">Omega-3 (EPA/DHA)</p>
-                                                                <p className="text-xs text-slate-500">2g • With Lunch</p>
+                                                                <p className="text-xs text-saivie-plum">2g • With Lunch</p>
                                                             </div>
                                                         </div>
                                                         <div className="flex gap-2">
-                                                            <Button variant="ghost" size="sm" className="h-6 text-xs text-slate-400">Edit</Button>
+                                                            <Button variant="ghost" size="sm" className="h-6 text-xs text-saivie-plum">Edit</Button>
                                                             <Button variant="ghost" size="sm" className="h-6 text-xs text-rose-500">Stop</Button>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <Button variant="outline" size="sm" className="w-full text-xs bg-slate-50 hover:bg-slate-100 border-dashed border-slate-300 text-slate-500">
+                                                <Button variant="outline" size="sm" className="w-full text-xs bg-saivie-surface-muted hover:bg-saivie-sage border-dashed border-saivie-border text-saivie-plum">
                                                     + Add New Supplement
                                                 </Button>
                                             </div>
@@ -3180,7 +3180,7 @@ export default function StaffPortal() {
 
                                     <DialogFooter>
                                         <Button variant="outline" onClick={() => setIsAdjustProtocolOpen(false)}>Cancel</Button>
-                                        <Button className="bg-slate-900 text-white hover:bg-slate-800" onClick={() => setIsAdjustProtocolOpen(false)}>Save Changes</Button>
+                                        <Button className="bg-saivie-plum text-white hover:bg-saivie-plum" onClick={() => setIsAdjustProtocolOpen(false)}>Save Changes</Button>
                                     </DialogFooter>
                                 </DialogContent>
                              </Dialog>
@@ -3189,43 +3189,43 @@ export default function StaffPortal() {
 
                     {/* Filters */}
                     <div className="flex gap-2 pb-2">
-                        <Badge variant="secondary" className="px-3 py-1 bg-slate-900 text-white hover:bg-slate-800 cursor-pointer">All Patients</Badge>
-                        <Badge variant="outline" className="px-3 py-1 bg-white hover:bg-slate-50 cursor-pointer">PCOS</Badge>
-                        <Badge variant="outline" className="px-3 py-1 bg-white hover:bg-slate-50 cursor-pointer">Endometriosis</Badge>
-                        <Badge variant="outline" className="px-3 py-1 bg-white hover:bg-slate-50 cursor-pointer">Fertility Prep</Badge>
-                        <Badge variant="outline" className="px-3 py-1 bg-white hover:bg-slate-50 cursor-pointer">GDM Risk</Badge>
+                        <Badge variant="secondary" className="px-3 py-1 bg-saivie-plum text-white hover:bg-saivie-plum cursor-pointer">All Patients</Badge>
+                        <Badge variant="outline" className="px-3 py-1 bg-saivie-ivory hover:bg-saivie-surface-muted cursor-pointer">PCOS</Badge>
+                        <Badge variant="outline" className="px-3 py-1 bg-saivie-ivory hover:bg-saivie-surface-muted cursor-pointer">Endometriosis</Badge>
+                        <Badge variant="outline" className="px-3 py-1 bg-saivie-ivory hover:bg-saivie-surface-muted cursor-pointer">Fertility Prep</Badge>
+                        <Badge variant="outline" className="px-3 py-1 bg-saivie-ivory hover:bg-saivie-surface-muted cursor-pointer">GDM Risk</Badge>
                     </div>
 
                     <div className="grid gap-6">
                         {functionalMedicinePatients.map((patient: any) => (
-                            <Card key={patient.id} className="shadow-sm border-slate-200 overflow-hidden group hover:shadow-md transition-shadow">
+                            <Card key={patient.id} className="shadow-sm border-saivie-border overflow-hidden group hover:shadow-md transition-shadow">
                                 <div className="grid grid-cols-12 divide-x divide-slate-100">
                                     
                                     {/* Patient Info */}
-                                    <div className="col-span-3 p-5 bg-slate-50/50">
+                                    <div className="col-span-3 p-5 bg-saivie-surface-muted/50">
                                         <div className="flex items-center gap-3 mb-3">
                                             <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
-                                                <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">{patient.name.charAt(0)}</AvatarFallback>
+                                                <AvatarFallback className="bg-saivie-sage text-saivie-teal font-bold">{patient.name.charAt(0)}</AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <h3 className="font-bold text-slate-900">{patient.name}</h3>
-                                                <p className="text-xs text-slate-500">{patient.age}y • {patient.condition}</p>
+                                                <h3 className="font-bold text-saivie-plum">{patient.name}</h3>
+                                                <p className="text-xs text-saivie-plum">{patient.age}y • {patient.condition}</p>
                                             </div>
                                         </div>
                                         <div className="space-y-2 mt-4">
                                             <div className="flex justify-between text-xs">
-                                                <span className="text-slate-500">Dietary Plan</span>
-                                                <span className="font-medium text-slate-700">{patient.plan}</span>
+                                                <span className="text-saivie-plum">Dietary Plan</span>
+                                                <span className="font-medium text-saivie-plum">{patient.plan}</span>
                                             </div>
                                             <div className="flex justify-between text-xs">
-                                                <span className="text-slate-500">Next Review</span>
+                                                <span className="text-saivie-plum">Next Review</span>
                                                 <span className="font-medium text-blue-600">{patient.nextReview}</span>
                                             </div>
                                         </div>
                                         <Button 
                                             size="sm" 
                                             variant="outline" 
-                                            className="w-full mt-4 text-xs bg-white"
+                                            className="w-full mt-4 text-xs bg-saivie-ivory"
                                             onClick={() => setLocation(`/staff/protocol/${patient.id}`)}
                                         >
                                             Full Profile
@@ -3234,29 +3234,29 @@ export default function StaffPortal() {
 
                                     {/* Genomics Column */}
                                     <div className="col-span-3 p-5">
-                                        <h4 className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                        <h4 className="text-xs font-bold text-saivie-teal uppercase tracking-wider mb-4 flex items-center gap-2">
                                             <Dna className="w-4 h-4" /> Genomic Insight
                                         </h4>
                                         <div className="space-y-3">
-                                            <div className="flex justify-between items-center bg-purple-50 p-2 rounded border border-purple-100">
+                                            <div className="flex justify-between items-center bg-saivie-surface-muted p-2 rounded border border-saivie-border">
                                                 <div>
-                                                    <p className="text-[10px] font-bold text-purple-900">MTHFR</p>
-                                                    <p className="text-[10px] text-purple-700">{patient.genomics.mthfr.status}</p>
+                                                    <p className="text-[10px] font-bold text-saivie-plum">MTHFR</p>
+                                                    <p className="text-[10px] text-saivie-teal">{patient.genomics.mthfr.status}</p>
                                                 </div>
                                                 <Badge className={`${patient.genomics.mthfr.risk === 'High' ? 'bg-rose-500' : patient.genomics.mthfr.risk === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'} h-1.5 w-1.5 p-0 rounded-full`}></Badge>
                                             </div>
-                                            <div className="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-100">
+                                            <div className="flex justify-between items-center bg-saivie-surface-muted p-2 rounded border border-saivie-border">
                                                 <div>
-                                                    <p className="text-[10px] font-bold text-slate-700">Caffeine Metabolism</p>
-                                                    <p className="text-[10px] text-slate-500">{patient.genomics.caffeine.status}</p>
+                                                    <p className="text-[10px] font-bold text-saivie-plum">Caffeine Metabolism</p>
+                                                    <p className="text-[10px] text-saivie-plum">{patient.genomics.caffeine.status}</p>
                                                 </div>
                                                 <Badge className={`${patient.genomics.caffeine.risk === 'High' ? 'bg-rose-500' : 'bg-emerald-500'} h-1.5 w-1.5 p-0 rounded-full`}></Badge>
                                             </div>
                                             {(patient.genomics.gluten || patient.genomics.carbs) && (
-                                                <div className="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-100">
+                                                <div className="flex justify-between items-center bg-saivie-surface-muted p-2 rounded border border-saivie-border">
                                                     <div>
-                                                        <p className="text-[10px] font-bold text-slate-700">{patient.genomics.gluten ? 'Gluten Sensitivity' : 'Carb Sensitivity'}</p>
-                                                        <p className="text-[10px] text-slate-500">{patient.genomics.gluten ? patient.genomics.gluten.status : patient.genomics.carbs?.status}</p>
+                                                        <p className="text-[10px] font-bold text-saivie-plum">{patient.genomics.gluten ? 'Gluten Sensitivity' : 'Carb Sensitivity'}</p>
+                                                        <p className="text-[10px] text-saivie-plum">{patient.genomics.gluten ? patient.genomics.gluten.status : patient.genomics.carbs?.status}</p>
                                                     </div>
                                                     <Badge className={`${(patient.genomics.gluten?.risk === 'High' || patient.genomics.carbs?.risk === 'High') ? 'bg-rose-500' : 'bg-emerald-500'} h-1.5 w-1.5 p-0 rounded-full`}></Badge>
                                                 </div>
@@ -3272,18 +3272,18 @@ export default function StaffPortal() {
                                         <div className="space-y-4">
                                             <div>
                                                 <div className="flex justify-between text-xs mb-1">
-                                                    <span className="text-slate-600">Gut Microbiome</span>
+                                                    <span className="text-saivie-plum">Gut Microbiome</span>
                                                     <span className={`font-bold ${patient.functional.gut.score < 50 ? 'text-rose-600' : 'text-emerald-600'}`}>{patient.functional.gut.status}</span>
                                                 </div>
-                                                <Progress value={patient.functional.gut.score} className="h-1.5 bg-slate-100" />
+                                                <Progress value={patient.functional.gut.score} className="h-1.5 bg-saivie-sage" />
                                             </div>
                                             <div>
                                                 <div className="flex justify-between text-xs mb-1">
-                                                    <span className="text-slate-600">Inflammation ({patient.functional.inflammation.marker})</span>
+                                                    <span className="text-saivie-plum">Inflammation ({patient.functional.inflammation.marker})</span>
                                                     <span className="font-bold text-amber-600">{patient.functional.inflammation.value}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <div className="h-1.5 flex-1 bg-slate-100 rounded-full overflow-hidden">
+                                                    <div className="h-1.5 flex-1 bg-saivie-sage rounded-full overflow-hidden">
                                                         <div className="h-full bg-amber-500 w-3/4 rounded-full"></div>
                                                     </div>
                                                     <span className="text-[10px] text-amber-600 font-medium">{patient.functional.inflammation.status}</span>
@@ -3300,26 +3300,26 @@ export default function StaffPortal() {
                                     </div>
 
                                     {/* Action Plan Column */}
-                                    <div className="col-span-3 p-5 bg-slate-50/30">
-                                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                    <div className="col-span-3 p-5 bg-saivie-surface-muted/30">
+                                        <h4 className="text-xs font-bold text-saivie-plum uppercase tracking-wider mb-4 flex items-center gap-2">
                                             <Zap className="w-4 h-4 text-amber-500" /> Intervention
                                         </h4>
                                         <div className="space-y-3">
                                             <div className="flex items-start gap-2">
                                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5" />
-                                                <p className="text-xs text-slate-600">{patient.intervention?.protocol || "Standard Protocol"} <span className="text-slate-400 text-[10px]">(Active)</span></p>
+                                                <p className="text-xs text-saivie-plum">{patient.intervention?.protocol || "Standard Protocol"} <span className="text-saivie-plum text-[10px]">(Active)</span></p>
                                             </div>
                                             <div className="flex items-start gap-2">
                                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5" />
-                                                <p className="text-xs text-slate-600">{patient.intervention?.dietPhase || "Maintenance"} <span className="text-slate-400 text-[10px]">(Current)</span></p>
+                                                <p className="text-xs text-saivie-plum">{patient.intervention?.dietPhase || "Maintenance"} <span className="text-saivie-plum text-[10px]">(Current)</span></p>
                                             </div>
-                                            <div className="mt-4 pt-4 border-t border-slate-200">
-                                                <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Primary Focus</p>
-                                                <p className="text-sm font-medium text-slate-800">{patient.functional.hormone.focus}</p>
+                                            <div className="mt-4 pt-4 border-t border-saivie-border">
+                                                <p className="text-[10px] font-bold text-saivie-plum mb-1 uppercase">Primary Focus</p>
+                                                <p className="text-sm font-medium text-saivie-plum">{patient.functional.hormone.focus}</p>
                                             </div>
                                             <Button 
                                                 size="sm" 
-                                                className="w-full bg-slate-900 text-white hover:bg-slate-800 h-8 text-xs mt-2"
+                                                className="w-full bg-saivie-plum text-white hover:bg-saivie-plum h-8 text-xs mt-2"
                                                 onClick={() => setLocation(`/staff/protocol/${patient.id}`)}
                                             >
                                                 Adjust Protocol
@@ -3338,36 +3338,36 @@ export default function StaffPortal() {
             {activeRole === 'psychologist' && activeView === 'dashboard' && (
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="grid grid-cols-4 gap-4">
-                        <Card className="shadow-sm border-slate-200 col-span-1">
+                        <Card className="shadow-sm border-saivie-border col-span-1">
                             <CardContent className="p-4">
-                                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">High Stress Alerts</p>
-                                <p className="text-2xl font-bold text-slate-900">4</p>
+                                <p className="text-xs text-saivie-plum font-bold uppercase tracking-wider mb-1">High Stress Alerts</p>
+                                <p className="text-2xl font-bold text-saivie-plum">4</p>
                                 <p className="text-xs text-rose-600 mt-1">Requires immediate contact</p>
                             </CardContent>
                         </Card>
-                        <Card className="shadow-sm border-slate-200 col-span-1">
+                        <Card className="shadow-sm border-saivie-border col-span-1">
                             <CardContent className="p-4">
-                                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Avg EPDS Score</p>
-                                <p className="text-2xl font-bold text-slate-900">8.2</p>
+                                <p className="text-xs text-saivie-plum font-bold uppercase tracking-wider mb-1">Avg EPDS Score</p>
+                                <p className="text-2xl font-bold text-saivie-plum">8.2</p>
                                 <p className="text-xs text-emerald-600 mt-1">Improved by 1.2 pts</p>
                             </CardContent>
                         </Card>
-                        <Card className="shadow-sm border-slate-200 col-span-1">
+                        <Card className="shadow-sm border-saivie-border col-span-1">
                             <CardContent className="p-4">
-                                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Sessions Today</p>
-                                <p className="text-2xl font-bold text-slate-900">6</p>
-                                <p className="text-xs text-slate-500 mt-1">2 Couples / 4 Individual</p>
+                                <p className="text-xs text-saivie-plum font-bold uppercase tracking-wider mb-1">Sessions Today</p>
+                                <p className="text-2xl font-bold text-saivie-plum">6</p>
+                                <p className="text-xs text-saivie-plum mt-1">2 Couples / 4 Individual</p>
                             </CardContent>
                         </Card>
                     </div>
 
-                    <Card className="shadow-sm border-slate-200">
-                        <CardHeader className="py-4 border-b border-slate-100">
-                             <CardTitle className="text-base font-bold text-slate-800">Patient Monitoring</CardTitle>
+                    <Card className="shadow-sm border-saivie-border">
+                        <CardHeader className="py-4 border-b border-saivie-border">
+                             <CardTitle className="text-base font-bold text-saivie-plum">Patient Monitoring</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                              <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50 text-slate-500 uppercase text-xs border-b border-slate-100">
+                                <thead className="bg-saivie-surface-muted text-saivie-plum uppercase text-xs border-b border-saivie-border">
                                     <tr>
                                         <th className="px-4 py-3 font-medium">Patient</th>
                                         <th className="px-4 py-3 font-medium">Stage</th>
@@ -3378,20 +3378,20 @@ export default function StaffPortal() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {patients.map((p: any) => (
-                                        <tr key={p.id} className="hover:bg-slate-50/50">
-                                            <td className="px-4 py-3 font-semibold text-slate-900">{p.name}</td>
-                                            <td className="px-4 py-3 text-slate-500">{p.status}</td>
+                                        <tr key={p.id} className="hover:bg-saivie-surface-muted/50">
+                                            <td className="px-4 py-3 font-semibold text-saivie-plum">{p.name}</td>
+                                            <td className="px-4 py-3 text-saivie-plum">{p.status}</td>
                                             <td className="px-4 py-3">
                                                 <Badge variant="outline" className={`
                                                     ${p.mood === 'Anxious' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
                                                     ${p.mood === 'Depressed' ? 'bg-rose-50 text-rose-700 border-rose-200' : ''}
                                                     ${p.mood === 'Stable' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : ''}
-                                                    ${p.mood === 'Stressed' ? 'bg-purple-50 text-purple-700 border-purple-200' : ''}
+                                                    ${p.mood === 'Stressed' ? 'bg-saivie-surface-muted text-saivie-teal border-saivie-border' : ''}
                                                 `}>
                                                     {p.mood}
                                                 </Badge>
                                             </td>
-                                            <td className="px-4 py-3 text-xs text-slate-500">
+                                            <td className="px-4 py-3 text-xs text-saivie-plum">
                                                 {p.type === 'Fertility' && p.mood !== 'Stable' && "Failed Cycle x2"}
                                                 {p.type === 'Postpartum' && "Sleep Deprived"}
                                             </td>
@@ -3411,34 +3411,34 @@ export default function StaffPortal() {
             {activeRole === 'trainer' && (
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="grid grid-cols-2 gap-6">
-                         <Card className="shadow-sm border-slate-200">
-                            <CardHeader className="py-3 border-b border-slate-100">
-                                <CardTitle className="text-sm font-bold text-slate-800">Workout Plans</CardTitle>
+                         <Card className="shadow-sm border-saivie-border">
+                            <CardHeader className="py-3 border-b border-saivie-border">
+                                <CardTitle className="text-sm font-bold text-saivie-plum">Workout Plans</CardTitle>
                             </CardHeader>
                             <CardContent className="p-4 space-y-4">
                                 {workouts.map((w: any) => (
-                                    <div key={w.id} className="flex items-center justify-between p-3 border border-slate-100 rounded-lg hover:border-blue-200 transition-colors cursor-pointer bg-white">
+                                    <div key={w.id} className="flex items-center justify-between p-3 border border-saivie-border rounded-lg hover:border-blue-200 transition-colors cursor-pointer bg-saivie-ivory">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded bg-blue-50 flex items-center justify-center text-blue-600">
                                                 <Activity className="w-5 h-5" />
                                             </div>
                                             <div>
-                                                <p className="font-bold text-sm text-slate-900">{w.name}</p>
-                                                <p className="text-xs text-slate-500">{w.phase} Phase • {w.intensity} Intensity</p>
+                                                <p className="font-bold text-sm text-saivie-plum">{w.name}</p>
+                                                <p className="text-xs text-saivie-plum">{w.phase} Phase • {w.intensity} Intensity</p>
                                             </div>
                                         </div>
                                         <ChevronRight className="w-4 h-4 text-slate-300" />
                                     </div>
                                 ))}
-                                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                                <Button className="w-full bg-saivie-teal hover:bg-saivie-teal text-white">
                                     Create New Plan
                                 </Button>
                             </CardContent>
                          </Card>
 
-                         <Card className="shadow-sm border-slate-200">
-                            <CardHeader className="py-3 border-b border-slate-100">
-                                <CardTitle className="text-sm font-bold text-slate-800">Activity Alerts</CardTitle>
+                         <Card className="shadow-sm border-saivie-border">
+                            <CardHeader className="py-3 border-b border-saivie-border">
+                                <CardTitle className="text-sm font-bold text-saivie-plum">Activity Alerts</CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <div className="divide-y divide-slate-100">
@@ -3455,8 +3455,8 @@ export default function StaffPortal() {
                                                 <div key={idx} className="p-4 flex gap-3">
                                                     <div className={`w-2 h-2 rounded-full ${tmpl.color} mt-1.5 shrink-0`}></div>
                                                     <div>
-                                                        <p className="text-sm font-medium text-slate-900">{tmpl.title}</p>
-                                                        <p className="text-xs text-slate-500">{patientLabel} {tmpl.suffix}</p>
+                                                        <p className="text-sm font-medium text-saivie-plum">{tmpl.title}</p>
+                                                        <p className="text-xs text-saivie-plum">{patientLabel} {tmpl.suffix}</p>
                                                     </div>
                                                 </div>
                                             );
@@ -3474,7 +3474,7 @@ export default function StaffPortal() {
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="grid grid-cols-3 gap-6">
                          {patients.filter((p: any) => p.type === 'PCOS' || p.type === 'Pregnant' || p.type === 'Pregnancy').map((p: any) => (
-                             <Card key={p.id} className="shadow-sm border-slate-200">
+                             <Card key={p.id} className="shadow-sm border-saivie-border">
                                  <CardHeader className="pb-2">
                                      <div className="flex justify-between items-start">
                                          <div className="flex items-center gap-3">
@@ -3482,21 +3482,21 @@ export default function StaffPortal() {
                                                  <AvatarFallback>{p.avatar}</AvatarFallback>
                                              </Avatar>
                                              <div>
-                                                 <CardTitle className="text-sm font-bold text-slate-900">{p.name}</CardTitle>
-                                                 <p className="text-xs text-slate-500">{p.type} • {p.status}</p>
+                                                 <CardTitle className="text-sm font-bold text-saivie-plum">{p.name}</CardTitle>
+                                                 <p className="text-xs text-saivie-plum">{p.type} • {p.status}</p>
                                              </div>
                                          </div>
                                      </div>
                                  </CardHeader>
                                  <CardContent className="space-y-3 pt-2">
                                      <div className="grid grid-cols-2 gap-2 text-center">
-                                         <div className="bg-slate-50 p-2 rounded">
-                                             <p className="text-[10px] text-slate-500 uppercase">Acne Score</p>
-                                             <p className="font-bold text-slate-800">3/5</p>
+                                         <div className="bg-saivie-surface-muted p-2 rounded">
+                                             <p className="text-[10px] text-saivie-plum uppercase">Acne Score</p>
+                                             <p className="font-bold text-saivie-plum">3/5</p>
                                          </div>
-                                         <div className="bg-slate-50 p-2 rounded">
-                                             <p className="text-[10px] text-slate-500 uppercase">Hair Fall</p>
-                                             <p className="font-bold text-slate-800">Mild</p>
+                                         <div className="bg-saivie-surface-muted p-2 rounded">
+                                             <p className="text-[10px] text-saivie-plum uppercase">Hair Fall</p>
+                                             <p className="font-bold text-saivie-plum">Mild</p>
                                          </div>
                                      </div>
                                      <div className="flex gap-2">
@@ -3513,16 +3513,16 @@ export default function StaffPortal() {
             {/* 5. PHLEBOTOMIST VIEW */}
             {activeRole === 'phlebotomist' && activeView === 'dashboard' && (
                 <div className="max-w-6xl mx-auto space-y-6">
-                    <Card className="shadow-sm border-slate-200">
-                        <CardHeader className="py-4 border-b border-slate-100 flex flex-row items-center justify-between">
-                            <CardTitle className="text-base font-bold text-slate-800">Investigation Queue</CardTitle>
+                    <Card className="shadow-sm border-saivie-border">
+                        <CardHeader className="py-4 border-b border-saivie-border flex flex-row items-center justify-between">
+                            <CardTitle className="text-base font-bold text-saivie-plum">Investigation Queue</CardTitle>
                             <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-xs">
                                 <FlaskConical className="w-3.5 h-3.5 mr-1.5" /> Log New Collection
                             </Button>
                         </CardHeader>
                         <CardContent className="p-0">
                             <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50 text-slate-500 uppercase text-xs border-b border-slate-100">
+                                <thead className="bg-saivie-surface-muted text-saivie-plum uppercase text-xs border-b border-saivie-border">
                                     <tr>
                                         <th className="px-6 py-3 font-medium">Status</th>
                                         <th className="px-6 py-3 font-medium">Patient</th>
@@ -3533,21 +3533,21 @@ export default function StaffPortal() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {labTasks.map((task: any) => (
-                                        <tr key={task.id} className="hover:bg-slate-50/50">
+                                        <tr key={task.id} className="hover:bg-saivie-surface-muted/50">
                                             <td className="px-6 py-4">
                                                 <Badge variant="outline" className={`
                                                     ${task.status === 'Pending' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
-                                                    ${task.status === 'Scheduled' ? 'bg-slate-100 text-slate-700 border-slate-200' : ''}
+                                                    ${task.status === 'Scheduled' ? 'bg-saivie-sage text-saivie-plum border-saivie-border' : ''}
                                                     ${task.status === 'Delayed' ? 'bg-rose-50 text-rose-700 border-rose-200' : ''}
                                                 `}>
                                                     {task.status}
                                                 </Badge>
                                             </td>
-                                            <td className="px-6 py-4 font-semibold text-slate-900">{task.patient}</td>
-                                            <td className="px-6 py-4 text-slate-600">{task.test}</td>
+                                            <td className="px-6 py-4 font-semibold text-saivie-plum">{task.patient}</td>
+                                            <td className="px-6 py-4 text-saivie-plum">{task.test}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-1.5 text-xs font-medium">
-                                                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                                    <Clock className="w-3.5 h-3.5 text-saivie-plum" />
                                                     {task.due}
                                                 </div>
                                             </td>
@@ -3623,8 +3623,8 @@ export default function StaffPortal() {
                         <div className="flex items-center gap-3">
                             <Phone className="w-6 h-6 text-orange-600" />
                             <div>
-                                <h2 className="text-xl font-bold text-slate-900">Follow-Up Cold Calls</h2>
-                                <p className="text-sm text-slate-500">Automatic 7-day check-ins, milestone and prescription reminders, pending tests and results</p>
+                                <h2 className="text-xl font-bold text-saivie-plum">Follow-Up Cold Calls</h2>
+                                <p className="text-sm text-saivie-plum">Automatic 7-day check-ins, milestone and prescription reminders, pending tests and results</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -3634,15 +3634,15 @@ export default function StaffPortal() {
                             <div className="flex items-center gap-2 text-sm">
                                 <Badge className="bg-orange-100 text-orange-700 border-orange-200">{followUpCalls.filter((c: any) => c.status === 'pending').length} Pending</Badge>
                                 <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">{followUpCalls.filter((c: any) => c.status === 'completed').length} Completed</Badge>
-                                <Badge variant="outline" className="text-slate-500">{followUpCalls.length} Total</Badge>
+                                <Badge variant="outline" className="text-saivie-plum">{followUpCalls.length} Total</Badge>
                             </div>
-                            <p className="text-xs text-slate-500">Reminders start 1 day before a milestone or prescription due date. Pending-test calls start 3 days after ordering. Missed calls remain pending; oldest calls appear first.</p>
+                            <p className="text-xs text-saivie-plum">Reminders start 1 day before a milestone or prescription due date. Pending-test calls start 3 days after ordering. Missed calls remain pending; oldest calls appear first.</p>
                             {followUpCallsQuery.isError && (
                                 <div role="alert" className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
                                     Could not refresh the automatic call queue. {followUpCallsQuery.error.message} Use Refresh queue to retry.
                                 </div>
                             )}
-                            {followUpCallsQuery.isLoading && <p role="status" className="text-sm text-slate-500">Preparing follow-up calls...</p>}
+                            {followUpCallsQuery.isLoading && <p role="status" className="text-sm text-saivie-plum">Preparing follow-up calls...</p>}
                             <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white text-xs h-8" onClick={() => { setSelectedCallPatient(null); setFollowUpCallForm({ feeling: '', gotMedicines: '', concerns: '', crossSell: '', nextVisit: '', notes: '', nextMilestone: '', didntPickCallTime: '' }); setIsFollowUpCallOpen(true); }}>
                                 <Plus className="w-3 h-3 mr-1" /> Log Call
                             </Button>
@@ -3651,26 +3651,26 @@ export default function StaffPortal() {
 
                     <div className="grid grid-cols-12 gap-6">
                         <div className="col-span-9">
-                            <Card className="shadow-sm border-slate-200">
-                                <CardHeader className="py-3 border-b border-slate-100 flex justify-between items-center">
-                                    <div className="flex border border-slate-200 rounded-md overflow-hidden text-xs">
+                            <Card className="shadow-sm border-saivie-border">
+                                <CardHeader className="py-3 border-b border-saivie-border flex justify-between items-center">
+                                    <div className="flex border border-saivie-border rounded-md overflow-hidden text-xs">
                                         {(['pending', 'completed', 'all'] as const).map(f => (
-                                            <button key={f} onClick={() => setFollowUpCallFilter(f)} className={`px-4 py-2 capitalize ${followUpCallFilter === f ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{f}</button>
+                                            <button key={f} onClick={() => setFollowUpCallFilter(f)} className={`px-4 py-2 capitalize ${followUpCallFilter === f ? 'bg-saivie-plum text-white' : 'bg-saivie-ivory text-saivie-plum hover:bg-saivie-surface-muted'}`}>{f}</button>
                                         ))}
                                     </div>
-                                    <select aria-label="Filter calls by reason" className="rounded-md border border-slate-200 bg-white p-2 text-xs" value={followUpTriggerFilter} onChange={(event) => setFollowUpTriggerFilter(event.target.value)}>
+                                    <select aria-label="Filter calls by reason" className="rounded-md border border-saivie-border bg-saivie-ivory p-2 text-xs" value={followUpTriggerFilter} onChange={(event) => setFollowUpTriggerFilter(event.target.value)}>
                                         <option value="all">All reasons</option>
                                         {Object.entries(CALL_TRIGGER_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                                         <option value="manual">Manual / imported</option>
                                     </select>
-                                    <div className="text-xs text-slate-400">
+                                    <div className="text-xs text-saivie-plum">
                                         Showing {visibleFollowUpCalls.length} records
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="max-h-[calc(100vh-280px)] overflow-y-auto">
                                         <table className="w-full text-sm text-left">
-                                            <thead className="bg-slate-50 text-slate-500 uppercase text-xs border-b border-slate-100 sticky top-0 z-10">
+                                            <thead className="bg-saivie-surface-muted text-saivie-plum uppercase text-xs border-b border-saivie-border sticky top-0 z-10">
                                                 <tr>
                                                     <th className="px-3 py-2.5 font-medium">Date</th>
                                                     <th className="px-3 py-2.5 font-medium">Patient</th>
@@ -3687,12 +3687,12 @@ export default function StaffPortal() {
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {visibleFollowUpCalls.map((call) => (
-                                                    <tr key={call.id} className="hover:bg-slate-50/50">
-                                                        <td className="px-3 py-2.5 text-xs text-slate-500 whitespace-nowrap">{call.actualDate || call.plannedDate || '—'}</td>
+                                                    <tr key={call.id} className="hover:bg-saivie-surface-muted/50">
+                                                        <td className="px-3 py-2.5 text-xs text-saivie-plum whitespace-nowrap">{call.actualDate || call.plannedDate || '—'}</td>
                                                         <td className="px-3 py-2.5">
                                                             <div>
-                                                                <span className="font-semibold text-slate-900 text-xs">{call.patientName}</span>
-                                                                {call.phone && <div className="text-[10px] text-slate-400">{call.phone}</div>}
+                                                                <span className="font-semibold text-saivie-plum text-xs">{call.patientName}</span>
+                                                                {call.phone && <div className="text-[10px] text-saivie-plum">{call.phone}</div>}
                                                             </div>
                                                         </td>
                                                         <td className="px-3 py-2.5">
@@ -3700,11 +3700,11 @@ export default function StaffPortal() {
                                                         </td>
                                                         <td className="px-3 py-2.5 text-xs min-w-[220px]">
                                                             <Badge variant="outline" className="text-[10px]">{CALL_TRIGGER_LABELS[call.triggerType as CallTrigger] || 'Manual / imported'}</Badge>
-                                                            <p className="mt-1 text-slate-600">{call.triggerReason || call.nextMilestone || 'Patient follow-up'}</p>
-                                                            {call.dueDate && <p className="mt-1 text-slate-500">Due: {call.dueDate}</p>}
+                                                            <p className="mt-1 text-saivie-plum">{call.triggerReason || call.nextMilestone || 'Patient follow-up'}</p>
+                                                            {call.dueDate && <p className="mt-1 text-saivie-plum">Due: {call.dueDate}</p>}
                                                             {call.status === 'pending' && call.plannedDate && call.plannedDate < clinicDate() && <span className="font-medium text-rose-600">Overdue call</span>}
                                                             {call.didntPickCallTime && <p className="text-amber-700">Missed: {call.didntPickCallTime}</p>}
-                                                            {call.status === 'cancelled' && <p className="text-slate-500">No longer required</p>}
+                                                            {call.status === 'cancelled' && <p className="text-saivie-plum">No longer required</p>}
                                                         </td>
                                                         <td className="px-3 py-2.5 text-xs">
                                                             {call.feeling ? (
@@ -3716,10 +3716,10 @@ export default function StaffPortal() {
                                                                 <span className={`font-medium ${call.gotMedicines.toLowerCase() === 'yes' ? 'text-emerald-600' : 'text-rose-600'}`}>{call.gotMedicines}</span>
                                                             ) : <span className="text-slate-300">—</span>}
                                                         </td>
-                                                        <td className="px-3 py-2.5 text-xs text-slate-600 max-w-[120px] truncate" title={call.concerns || ''}>{call.concerns || '—'}</td>
-                                                        <td className="px-3 py-2.5 text-xs text-slate-600 max-w-[180px] truncate" title={call.notes || ''}>{call.notes || '—'}</td>
-                                                        <td className="px-3 py-2.5 text-xs text-slate-500">{call.crossSell || '—'}</td>
-                                                        <td className="px-3 py-2.5 text-xs text-slate-500">{call.nextVisit || '—'}</td>
+                                                        <td className="px-3 py-2.5 text-xs text-saivie-plum max-w-[120px] truncate" title={call.concerns || ''}>{call.concerns || '—'}</td>
+                                                        <td className="px-3 py-2.5 text-xs text-saivie-plum max-w-[180px] truncate" title={call.notes || ''}>{call.notes || '—'}</td>
+                                                        <td className="px-3 py-2.5 text-xs text-saivie-plum">{call.crossSell || '—'}</td>
+                                                        <td className="px-3 py-2.5 text-xs text-saivie-plum">{call.nextVisit || '—'}</td>
                                                         <td className="px-3 py-2.5">
                                                             <Button size="sm" variant="ghost" className="h-7 text-xs text-orange-600 hover:text-orange-800 hover:bg-orange-50 px-2" onClick={() => {
                                                                 setSelectedCallPatient(call);
@@ -3741,7 +3741,7 @@ export default function StaffPortal() {
                                                     </tr>
                                                 ))}
                                                 {!followUpCallsQuery.isLoading && !followUpCallsQuery.isError && visibleFollowUpCalls.length === 0 && (
-                                                    <tr><td colSpan={11} className="px-4 py-12 text-center text-sm text-slate-400">
+                                                    <tr><td colSpan={11} className="px-4 py-12 text-center text-sm text-saivie-plum">
                                                         {followUpCallFilter === 'pending' ? 'No pending follow-up calls' : followUpCallFilter === 'completed' ? 'No completed calls yet' : 'No follow-up calls recorded'}
                                                     </td></tr>
                                                 )}
@@ -3753,7 +3753,7 @@ export default function StaffPortal() {
                         </div>
 
                         <div className="col-span-3 space-y-4">
-                            <Card className="shadow-sm border-slate-200 bg-orange-50/30">
+                            <Card className="shadow-sm border-saivie-border bg-orange-50/30">
                                 <CardHeader className="py-3 border-b border-orange-100 bg-orange-50/50">
                                     <div className="flex items-center gap-2">
                                         <RefreshCw className="w-4 h-4 text-orange-600" />
@@ -3761,7 +3761,7 @@ export default function StaffPortal() {
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-4 space-y-3">
-                                    <div className="text-xs text-slate-600">
+                                    <div className="text-xs text-saivie-plum">
                                         <p>Import follow-up records from the Google Sheet.</p>
                                         {followUpSheetStatus && (
                                             <div className="mt-2 flex items-center gap-2">
@@ -3789,34 +3789,34 @@ export default function StaffPortal() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="shadow-sm border-slate-200">
-                                <CardHeader className="py-3 border-b border-slate-100">
-                                    <CardTitle className="text-sm font-bold text-slate-800">Quick Stats</CardTitle>
+                            <Card className="shadow-sm border-saivie-border">
+                                <CardHeader className="py-3 border-b border-saivie-border">
+                                    <CardTitle className="text-sm font-bold text-saivie-plum">Quick Stats</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-3 space-y-3">
                                     <div className="flex justify-between items-center text-xs">
-                                        <span className="text-slate-500">Feeling Good</span>
+                                        <span className="text-saivie-plum">Feeling Good</span>
                                         <span className="font-bold text-emerald-600">{followUpCalls.filter((c: any) => c.feeling?.toLowerCase() === 'good').length}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-xs">
-                                        <span className="text-slate-500">Not Well</span>
+                                        <span className="text-saivie-plum">Not Well</span>
                                         <span className="font-bold text-rose-600">{followUpCalls.filter((c: any) => c.feeling?.toLowerCase() === 'not well').length}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-xs">
-                                        <span className="text-slate-500">Got Medicines</span>
+                                        <span className="text-saivie-plum">Got Medicines</span>
                                         <span className="font-bold text-emerald-600">{followUpCalls.filter((c: any) => c.gotMedicines?.toLowerCase() === 'yes').length}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-xs">
-                                        <span className="text-slate-500">Didn't Get Medicines</span>
+                                        <span className="text-saivie-plum">Didn't Get Medicines</span>
                                         <span className="font-bold text-rose-600">{followUpCalls.filter((c: any) => c.gotMedicines?.toLowerCase() === 'no').length}</span>
                                     </div>
                                     <Separator />
                                     <div className="flex justify-between items-center text-xs">
-                                        <span className="text-slate-500">With Cross-sell</span>
-                                        <span className="font-bold text-slate-700">{followUpCalls.filter((c: any) => c.crossSell && c.crossSell !== 'NA' && c.crossSell !== 'na').length}</span>
+                                        <span className="text-saivie-plum">With Cross-sell</span>
+                                        <span className="font-bold text-saivie-plum">{followUpCalls.filter((c: any) => c.crossSell && c.crossSell !== 'NA' && c.crossSell !== 'na').length}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-xs">
-                                        <span className="text-slate-500">Didn't Pick Up</span>
+                                        <span className="text-saivie-plum">Didn't Pick Up</span>
                                         <span className="font-bold text-amber-600">{followUpCalls.filter((c: any) => c.didntPickCallTime).length}</span>
                                     </div>
                                 </CardContent>
@@ -3834,17 +3834,17 @@ export default function StaffPortal() {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-900 font-serif" data-testid="text-billing-title">Patient Billing</h2>
-                    <p className="text-sm text-slate-500 mt-1">Select a patient to auto-estimate, then review and confirm</p>
+                    <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-billing-title">Patient Billing</h2>
+                    <p className="text-sm text-saivie-plum mt-1">Select a patient to auto-estimate, then review and confirm</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 space-y-4">
-                    <Card className="border-slate-200 shadow-sm">
+                    <Card className="border-saivie-border shadow-sm">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                          <Users className="w-4 h-4 text-indigo-500" />
+                        <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
+                          <Users className="w-4 h-4 text-saivie-teal" />
                           Today's Queue
                         </CardTitle>
                       </CardHeader>
@@ -3875,31 +3875,31 @@ export default function StaffPortal() {
                                       <button
                                         key={p.id}
                                         onClick={() => selectPatient(p.id)}
-                                        className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${isSelected ? 'border-indigo-400 bg-indigo-50 ring-2 ring-indigo-200' : 'border-slate-200 hover:border-indigo-200 hover:bg-slate-50'}`}
+                                        className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${isSelected ? 'border-saivie-teal bg-saivie-surface-muted ring-2 ring-saivie-border' : 'border-saivie-border hover:border-saivie-border hover:bg-saivie-surface-muted'}`}
                                         data-testid={`btn-queue-patient-${p.id}`}
                                       >
-                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${isSelected ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${isSelected ? 'bg-saivie-teal text-white' : 'bg-saivie-sage text-saivie-plum'}`}>
                                           {p.name?.charAt(0)}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                          <div className="text-sm font-semibold text-slate-800 truncate">
+                                          <div className="text-sm font-semibold text-saivie-plum truncate">
                                             {p.name} {p.isPrimeMember ? '⭐' : ''}
                                           </div>
-                                          <div className="text-xs text-slate-500 truncate">
+                                          <div className="text-xs text-saivie-plum truncate">
                                             {appt?.time || ''} · {p.type || appt?.visitType || 'General'}
                                           </div>
                                         </div>
-                                        {isSelected && <CheckCircle2 className="w-4 h-4 text-indigo-500 flex-shrink-0" />}
+                                        {isSelected && <CheckCircle2 className="w-4 h-4 text-saivie-teal flex-shrink-0" />}
                                       </button>
                                     );
                                   })}
                                 </div>
                               ) : (
-                                <div className="text-center py-4 text-sm text-slate-400">No appointments scheduled for today</div>
+                                <div className="text-center py-4 text-sm text-saivie-plum">No appointments scheduled for today</div>
                               )}
 
-                              <div className="pt-2 border-t border-slate-100">
-                                <p className="text-xs text-slate-400 mb-2">Or search all patients</p>
+                              <div className="pt-2 border-t border-saivie-border">
+                                <p className="text-xs text-saivie-plum mb-2">Or search all patients</p>
                                 <Popover open={isBillingPatientPickerOpen} onOpenChange={setIsBillingPatientPickerOpen}>
                                   <PopoverTrigger asChild>
                                     <Button
@@ -3917,7 +3917,7 @@ export default function StaffPortal() {
                                           <Badge variant="secondary" className="shrink-0 text-xs">{selectedPatient.type || "General"}</Badge>
                                         </span>
                                       ) : (
-                                        <span className="text-slate-500">Search by name or patient type...</span>
+                                        <span className="text-saivie-plum">Search by name or patient type...</span>
                                       )}
                                       <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
@@ -3956,9 +3956,9 @@ export default function StaffPortal() {
                     </Card>
 
                     {billingPatientId && (
-                      <Card className="border-slate-200 shadow-sm">
+                      <Card className="border-saivie-border shadow-sm">
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider">Quick Estimate Templates</CardTitle>
+                          <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider">Quick Estimate Templates</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="flex flex-wrap gap-2">
@@ -3967,7 +3967,7 @@ export default function StaffPortal() {
                                 key={key}
                                 size="sm"
                                 variant="outline"
-                                className={`h-7 text-xs ${billingEstimateSource.includes(tmpl.label) ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-slate-200 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200'}`}
+                                className={`h-7 text-xs ${billingEstimateSource.includes(tmpl.label) ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-saivie-border text-saivie-plum hover:bg-saivie-surface-muted hover:border-saivie-border'}`}
                                 onClick={() => {
                                   const matchedItems = tmpl.items.map(name => {
                                     const catalogItem = billingCatalogItems.find((c: any) => c.name === name && c.isActive !== false);
@@ -4006,12 +4006,12 @@ export default function StaffPortal() {
                     )}
 
                     {billingPatientId && (
-                      <Card className="border-slate-200 shadow-sm">
+                      <Card className="border-saivie-border shadow-sm">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                          <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center justify-between">
                             <span>{billingIsEstimate ? 'Adjust Estimated Items' : 'Add Services and Products'}</span>
                             {billingIsEstimate && (
-                              <Button variant="ghost" size="sm" className="text-xs text-slate-500 h-6" onClick={() => { setBillingItems([]); setBillingIsEstimate(false); }} data-testid="btn-clear-estimate">
+                              <Button variant="ghost" size="sm" className="text-xs text-saivie-plum h-6" onClick={() => { setBillingItems([]); setBillingIsEstimate(false); }} data-testid="btn-clear-estimate">
                                 Clear All
                               </Button>
                             )}
@@ -4019,22 +4019,22 @@ export default function StaffPortal() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <section className="space-y-2" aria-label="Products">
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Products</p>
+                            <p className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Products</p>
                             {billingInventoryQuery.isLoading ? (
-                              <p className="text-sm text-slate-400">Loading products...</p>
+                              <p className="text-sm text-saivie-plum">Loading products...</p>
                             ) : billingInventoryQuery.isError ? (
                               <p role="alert" className="text-sm text-rose-600">Could not load products: {billingInventoryQuery.error.message}</p>
                             ) : billingProducts.length === 0 ? (
-                              <p className="text-sm text-slate-400">No active products with a selling price. Add a selling price in Inventory to make products available here.</p>
+                              <p className="text-sm text-saivie-plum">No active products with a selling price. Add a selling price in Inventory to make products available here.</p>
                             ) : (
                               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                 {billingProducts.map((product: any) => {
                                   const alreadyAdded = billingItems.some((line) => line.inventoryItemId === product.id);
                                   return (
-                                    <div key={product.id} className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 ${alreadyAdded ? "border-emerald-200 bg-emerald-50" : "border-slate-200"}`} data-testid={`billing-product-${product.id}`}>
+                                    <div key={product.id} className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 ${alreadyAdded ? "border-emerald-200 bg-emerald-50" : "border-saivie-border"}`} data-testid={`billing-product-${product.id}`}>
                                       <div className="min-w-0">
-                                        <p className="truncate text-sm font-medium text-slate-900">{product.name}</p>
-                                        <p className="text-xs text-slate-500">
+                                        <p className="truncate text-sm font-medium text-saivie-plum">{product.name}</p>
+                                        <p className="text-xs text-saivie-plum">
                                           MRP ₹{Number(product.sellingPrice).toLocaleString("en-IN")} · GST {Number(product.taxRate) || 0}% · Stock {product.quantity} {product.unit}
                                         </p>
                                         {(Number(product.primeDiscountPercent) > 0 || Number(product.nonPrimeDiscountPercent) > 0) && (
@@ -4085,24 +4085,24 @@ export default function StaffPortal() {
                               }, {})
                           ).map(([category, items]: [string, any]) => (
                             <div key={category}>
-                              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{category}</p>
+                              <p className="text-xs font-bold text-saivie-plum uppercase tracking-wider mb-2">{category}</p>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 {items.map((item: any) => {
                                   const alreadyAdded = billingItems.some((b: any) => b.catalogItemId === item.id);
                                   const wasEstimated = alreadyAdded && billingItems.find((b: any) => b.catalogItemId === item.id)?.isEstimated;
                                   return (
-                                    <div key={item.id} className={`flex items-center justify-between p-2.5 rounded-lg border transition-colors ${alreadyAdded ? (wasEstimated ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50') : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'}`} data-testid={`catalog-item-${item.id}`}>
+                                    <div key={item.id} className={`flex items-center justify-between p-2.5 rounded-lg border transition-colors ${alreadyAdded ? (wasEstimated ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50') : 'border-saivie-border hover:border-saivie-border hover:bg-saivie-surface-muted'}`} data-testid={`catalog-item-${item.id}`}>
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-1.5">
-                                          <p className="text-sm font-medium text-slate-900 truncate">{item.name}</p>
+                                          <p className="text-sm font-medium text-saivie-plum truncate">{item.name}</p>
                                           {wasEstimated && <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] px-1.5 py-0">Auto</Badge>}
                                         </div>
-                                        <p className="text-xs text-slate-500">₹{item.price?.toLocaleString('en-IN')} {item.taxRate > 0 ? `+ ${item.taxRate}% GST` : '(No GST)'}</p>
+                                        <p className="text-xs text-saivie-plum">₹{item.price?.toLocaleString('en-IN')} {item.taxRate > 0 ? `+ ${item.taxRate}% GST` : '(No GST)'}</p>
                                       </div>
                                       <Button
                                         size="sm"
                                         variant={alreadyAdded ? "outline" : "default"}
-                                        className={`h-7 text-xs ml-2 shrink-0 ${alreadyAdded ? 'border-emerald-300 text-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                                        className={`h-7 text-xs ml-2 shrink-0 ${alreadyAdded ? 'border-emerald-300 text-emerald-700' : 'bg-saivie-teal hover:bg-saivie-teal text-white'}`}
                                         onClick={() => {
                                           if (alreadyAdded) {
                                             setBillingItems(billingItems.filter((b: any) => b.catalogItemId !== item.id));
@@ -4125,18 +4125,18 @@ export default function StaffPortal() {
                     )}
 
                     {billingPatientId && (
-                      <Card className="border-slate-200 shadow-sm">
+                      <Card className="border-saivie-border shadow-sm">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                          <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
                             <History className="w-4 h-4 text-emerald-600" />
                             Invoice History
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
                           {patientInvoicesQuery.isLoading ? (
-                            <p className="text-sm text-slate-400 text-center py-4">Loading invoices...</p>
+                            <p className="text-sm text-saivie-plum text-center py-4">Loading invoices...</p>
                           ) : patientInvoices.length === 0 ? (
-                            <p className="text-sm text-slate-400 text-center py-4">No invoices yet for this patient</p>
+                            <p className="text-sm text-saivie-plum text-center py-4">No invoices yet for this patient</p>
                           ) : (
                             <div className="divide-y divide-slate-100">
                               {[...patientInvoices]
@@ -4144,8 +4144,8 @@ export default function StaffPortal() {
                                 .map((inv: any) => (
                                   <div key={inv.id} className="py-2.5 flex items-center justify-between gap-3" data-testid={`invoice-history-row-${inv.id}`}>
                                     <div className="min-w-0">
-                                      <p className="text-sm font-bold text-slate-900">Invoice {formatInvoiceNumber(inv.id)} · ₹{Math.round(inv.total || 0).toLocaleString('en-IN')}</p>
-                                      <p className="text-xs text-slate-500 mt-0.5">
+                                      <p className="text-sm font-bold text-saivie-plum">Invoice {formatInvoiceNumber(inv.id)} · ₹{Math.round(inv.total || 0).toLocaleString('en-IN')}</p>
+                                      <p className="text-xs text-saivie-plum mt-0.5">
                                         {inv.date} · {(inv.items || []).length} item{(inv.items || []).length === 1 ? "" : "s"} · <span className="capitalize">{inv.paymentMethod || "cash"}</span>
                                       </p>
                                     </div>
@@ -4159,7 +4159,7 @@ export default function StaffPortal() {
                                       <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => openEditInvoice(inv)} data-testid={`btn-edit-invoice-${inv.id}`}>
                                         <Pencil className="w-3.5 h-3.5" />
                                       </Button>
-                                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-slate-400 hover:text-red-600" onClick={() => confirmDeleteInvoice(inv)} disabled={deleteInvoiceMutation.isPending} data-testid={`btn-delete-invoice-${inv.id}`}>
+                                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-saivie-plum hover:text-red-600" onClick={() => confirmDeleteInvoice(inv)} disabled={deleteInvoiceMutation.isPending} data-testid={`btn-delete-invoice-${inv.id}`}>
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </Button>
                                     </div>
@@ -4173,17 +4173,17 @@ export default function StaffPortal() {
 
                     {!billingPatientId && (
                       <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                          <Receipt className="w-7 h-7 text-slate-400" />
+                        <div className="w-16 h-16 rounded-full bg-saivie-sage flex items-center justify-center mb-4">
+                          <Receipt className="w-7 h-7 text-saivie-plum" />
                         </div>
-                        <p className="text-slate-500 font-medium">Select a patient to start billing</p>
-                        <p className="text-xs text-slate-400 mt-1">The system will auto-estimate charges based on their visit type</p>
+                        <p className="text-saivie-plum font-medium">Select a patient to start billing</p>
+                        <p className="text-xs text-saivie-plum mt-1">The system will auto-estimate charges based on their visit type</p>
                       </div>
                     )}
 
-                    <Card className="border-slate-200 shadow-sm" data-testid="card-all-invoices">
+                    <Card className="border-saivie-border shadow-sm" data-testid="card-all-invoices">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                        <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
                           <History className="w-4 h-4 text-emerald-600" />
                           All Invoices
                         </CardTitle>
@@ -4202,15 +4202,15 @@ export default function StaffPortal() {
                             .map((inv: any) => ({ inv, patient: patients.find((p: any) => p.id === inv.patientId) }))
                             .filter(({ inv, patient }) => !q || (patient?.name || "").toLowerCase().includes(q) || String(inv.id) === q)
                             .sort((a, b) => (b.inv.date || "").localeCompare(a.inv.date || "") || b.inv.id - a.inv.id);
-                          if (allInvoicesQuery.isLoading) return <p className="text-sm text-slate-400 text-center py-4">Loading invoices...</p>;
-                          if (rows.length === 0) return <p className="text-sm text-slate-400 text-center py-4">{q ? "No matching invoices" : "No invoices yet"}</p>;
+                          if (allInvoicesQuery.isLoading) return <p className="text-sm text-saivie-plum text-center py-4">Loading invoices...</p>;
+                          if (rows.length === 0) return <p className="text-sm text-saivie-plum text-center py-4">{q ? "No matching invoices" : "No invoices yet"}</p>;
                           return (
                             <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
                               {rows.map(({ inv, patient }) => (
                                 <div key={inv.id} className="py-2.5 flex items-center justify-between gap-3" data-testid={`all-invoices-row-${inv.id}`}>
                                   <div className="min-w-0">
-                                    <p className="text-sm font-bold text-slate-900 truncate">{patient?.name || `Patient #${inv.patientId}`}</p>
-                                    <p className="text-xs text-slate-500 mt-0.5">
+                                    <p className="text-sm font-bold text-saivie-plum truncate">{patient?.name || `Patient #${inv.patientId}`}</p>
+                                    <p className="text-xs text-saivie-plum mt-0.5">
                                       Invoice {formatInvoiceNumber(inv.id)} · {inv.date} · ₹{Math.round(inv.total || 0).toLocaleString('en-IN')}
                                     </p>
                                   </div>
@@ -4227,7 +4227,7 @@ export default function StaffPortal() {
                                     <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => openEditInvoice(inv)} data-testid={`btn-all-edit-invoice-${inv.id}`}>
                                       <Pencil className="w-3.5 h-3.5" />
                                     </Button>
-                                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-slate-400 hover:text-red-600" onClick={() => confirmDeleteInvoice(inv)} disabled={deleteInvoiceMutation.isPending} data-testid={`btn-all-delete-invoice-${inv.id}`}>
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-saivie-plum hover:text-red-600" onClick={() => confirmDeleteInvoice(inv)} disabled={deleteInvoiceMutation.isPending} data-testid={`btn-all-delete-invoice-${inv.id}`}>
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </Button>
                                   </div>
@@ -4241,9 +4241,9 @@ export default function StaffPortal() {
                   </div>
 
                   <div className="space-y-4">
-                    <Card className={`shadow-sm sticky top-6 ${billingIsEstimate ? 'border-amber-200 border-2' : 'border-slate-200'}`}>
-                      <CardHeader className="pb-3 border-b border-slate-100">
-                        <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                    <Card className={`shadow-sm sticky top-6 ${billingIsEstimate ? 'border-amber-200 border-2' : 'border-saivie-border'}`}>
+                      <CardHeader className="pb-3 border-b border-saivie-border">
+                        <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
                           <Receipt className="w-4 h-4 text-emerald-600" />
                           {billingIsEstimate ? 'Estimated Bill' : 'Invoice Summary'}
                           {billingIsEstimate && <Badge className="bg-amber-100 text-amber-700 border-amber-200 ml-auto text-[10px]">Est.</Badge>}
@@ -4251,15 +4251,15 @@ export default function StaffPortal() {
                       </CardHeader>
                       <CardContent className="space-y-4 pt-4">
                         {billingPatientId && (
-                          <div className={`p-3 rounded-lg border ${billingIsEstimate ? 'bg-amber-50 border-amber-100' : 'bg-indigo-50 border-indigo-100'}`}>
-                            <p className={`text-xs font-medium ${billingIsEstimate ? 'text-amber-600' : 'text-indigo-600'}`}>Patient</p>
-                            <p className={`text-sm font-bold ${billingIsEstimate ? 'text-amber-900' : 'text-indigo-900'}`}>{patients.find((p: any) => p.id === billingPatientId)?.name || 'Unknown'}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">{patients.find((p: any) => p.id === billingPatientId)?.type || 'General'}</p>
+                          <div className={`p-3 rounded-lg border ${billingIsEstimate ? 'bg-amber-50 border-amber-100' : 'bg-saivie-surface-muted border-saivie-border'}`}>
+                            <p className={`text-xs font-medium ${billingIsEstimate ? 'text-amber-600' : 'text-saivie-teal'}`}>Patient</p>
+                            <p className={`text-sm font-bold ${billingIsEstimate ? 'text-amber-900' : 'text-saivie-plum'}`}>{patients.find((p: any) => p.id === billingPatientId)?.name || 'Unknown'}</p>
+                            <p className="text-xs text-saivie-plum mt-0.5">{patients.find((p: any) => p.id === billingPatientId)?.type || 'General'}</p>
                           </div>
                         )}
 
                         {billingItems.length === 0 ? (
-                          <p className="text-sm text-slate-400 text-center py-6">No items added yet</p>
+                          <p className="text-sm text-saivie-plum text-center py-6">No items added yet</p>
                         ) : (
                           <div className="space-y-2">
                             {billingItems.map((item: any, idx: number) => {
@@ -4271,26 +4271,26 @@ export default function StaffPortal() {
                               );
                               const itemTax = quoteItem?.taxAmount || 0;
                               return (
-                                <div key={idx} className="flex items-start justify-between py-2 border-b border-slate-100 last:border-0" data-testid={`billing-line-${idx}`}>
+                                <div key={idx} className="flex items-start justify-between py-2 border-b border-saivie-border last:border-0" data-testid={`billing-line-${idx}`}>
                                   <div className="flex-1">
                                     <div className="flex items-center gap-1.5">
-                                      <p className="text-sm font-medium text-slate-900">{item.name}</p>
+                                      <p className="text-sm font-medium text-saivie-plum">{item.name}</p>
                                       {item.isEstimated && <span className="text-[10px] text-amber-600 font-medium">•auto</span>}
                                     </div>
                                     <div className="flex items-center gap-2 mt-1">
-                                      <button className="text-xs text-slate-400 hover:text-slate-600" onClick={() => { if (item.quantity > 1) { const updated = [...billingItems]; updated[idx] = { ...item, quantity: item.quantity - 1 }; setBillingItems(updated); } }}>−</button>
-                                      <span className="text-xs font-medium text-slate-600">Qty: {item.quantity}</span>
-                                      <button className="text-xs text-slate-400 hover:text-slate-600" onClick={() => { const updated = [...billingItems]; updated[idx] = { ...item, quantity: item.quantity + 1 }; setBillingItems(updated); }}>+</button>
+                                      <button className="text-xs text-saivie-plum hover:text-saivie-plum" onClick={() => { if (item.quantity > 1) { const updated = [...billingItems]; updated[idx] = { ...item, quantity: item.quantity - 1 }; setBillingItems(updated); } }}>−</button>
+                                      <span className="text-xs font-medium text-saivie-plum">Qty: {item.quantity}</span>
+                                      <button className="text-xs text-saivie-plum hover:text-saivie-plum" onClick={() => { const updated = [...billingItems]; updated[idx] = { ...item, quantity: item.quantity + 1 }; setBillingItems(updated); }}>+</button>
                                     </div>
-                                    {quoteItem && <p className="text-xs text-slate-400 mt-0.5">GST {quoteItem.taxRate}% after discount: ₹{itemTax.toLocaleString('en-IN')}</p>}
+                                    {quoteItem && <p className="text-xs text-saivie-plum mt-0.5">GST {quoteItem.taxRate}% after discount: ₹{itemTax.toLocaleString('en-IN')}</p>}
                                     {quoteItem?.discountAmount ? <p className="text-xs text-emerald-700 mt-0.5">{quoteItem.discountLabel}: −₹{quoteItem.discountAmount.toLocaleString('en-IN')}</p> : null}
                                   </div>
                                   <div className="text-right flex items-start gap-2">
                                     <div className="text-right">
-                                      <p className="text-[10px] text-slate-400">MRP ₹{itemSubtotal.toLocaleString('en-IN')}</p>
-                                      <p className="text-sm font-bold text-slate-900">₹{quoteItem?.lineTotal?.toLocaleString('en-IN') ?? "…"}</p>
+                                      <p className="text-[10px] text-saivie-plum">MRP ₹{itemSubtotal.toLocaleString('en-IN')}</p>
+                                      <p className="text-sm font-bold text-saivie-plum">₹{quoteItem?.lineTotal?.toLocaleString('en-IN') ?? "…"}</p>
                                     </div>
-                                    <button className="text-slate-400 hover:text-red-500 mt-0.5" onClick={() => setBillingItems(billingItems.filter((_: any, i: number) => i !== idx))} data-testid={`btn-remove-item-${idx}`}>
+                                    <button className="text-saivie-plum hover:text-red-500 mt-0.5" onClick={() => setBillingItems(billingItems.filter((_: any, i: number) => i !== idx))} data-testid={`btn-remove-item-${idx}`}>
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
@@ -4303,7 +4303,7 @@ export default function StaffPortal() {
                         {billingItems.length > 0 && (() => {
                           const quote = billingQuoteQuery.data;
                           if (!quote) {
-                            return <p role={billingQuoteQuery.isError ? "alert" : undefined} className={`text-sm ${billingQuoteQuery.isError ? "text-rose-600" : "text-slate-500"}`}>
+                            return <p role={billingQuoteQuery.isError ? "alert" : undefined} className={`text-sm ${billingQuoteQuery.isError ? "text-rose-600" : "text-saivie-plum"}`}>
                               {billingQuoteQuery.isError ? billingQuoteQuery.error.message : "Calculating bill..."}
                             </p>;
                           }
@@ -4312,18 +4312,18 @@ export default function StaffPortal() {
                           return (
                             <div className="space-y-3 pt-2">
                               <div className="space-y-1 text-sm">
-                                <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>₹{subtotal.toLocaleString('en-IN')}</span></div>
-                                <div className="flex justify-between text-slate-600"><span>GST after discount</span><span>₹{Math.round(tax).toLocaleString('en-IN')}</span></div>
+                                <div className="flex justify-between text-saivie-plum"><span>Subtotal</span><span>₹{subtotal.toLocaleString('en-IN')}</span></div>
+                                <div className="flex justify-between text-saivie-plum"><span>GST after discount</span><span>₹{Math.round(tax).toLocaleString('en-IN')}</span></div>
                                 <div className="flex justify-between font-medium text-emerald-700"><span>Discounts</span><span>−₹{discountTotal.toLocaleString('en-IN')}</span></div>
                                 <Separator />
-                                <div className="flex justify-between font-bold text-lg text-slate-900">
+                                <div className="flex justify-between font-bold text-lg text-saivie-plum">
                                   <span>{billingIsEstimate ? 'Estimated Total' : 'Total'}</span>
                                   <span>₹{Math.round(total).toLocaleString('en-IN')}</span>
                                 </div>
                               </div>
 
                               <div>
-                                <Label className="text-xs font-medium text-slate-600">Payment Method</Label>
+                                <Label className="text-xs font-medium text-saivie-plum">Payment Method</Label>
                                 <Select value={billingPaymentMethod} onValueChange={setBillingPaymentMethod}>
                                   <SelectTrigger className="mt-1" data-testid="select-payment-method">
                                     <SelectValue />
@@ -4338,7 +4338,7 @@ export default function StaffPortal() {
                               </div>
 
                               <div>
-                                <Label className="text-xs font-medium text-slate-600">Notes (optional)</Label>
+                                <Label className="text-xs font-medium text-saivie-plum">Notes (optional)</Label>
                                 <Textarea value={billingNotes} onChange={(e) => setBillingNotes(e.target.value)} placeholder="Add notes..." className="mt-1 min-h-[60px]" data-testid="input-billing-notes" />
                               </div>
 
@@ -4374,7 +4374,7 @@ export default function StaffPortal() {
 
                 <Dialog open={isInvoicePreviewOpen} onOpenChange={setIsInvoicePreviewOpen}>
                   <DialogContent className="max-h-[95vh] max-w-5xl overflow-y-auto">
-                    <div className="sticky top-0 z-10 -mt-2 flex justify-end bg-white/90 py-1 print:hidden">
+                    <div className="sticky top-0 z-10 -mt-2 flex justify-end bg-saivie-ivory/90 py-1 print:hidden">
                       <Button variant="secondary" size="sm" className="h-10 px-4" onClick={() => setIsInvoicePreviewOpen(false)} data-testid="btn-close-invoice-top">
                         <X className="mr-1.5 h-4 w-4" />Close
                       </Button>
@@ -4497,7 +4497,7 @@ export default function StaffPortal() {
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
-                        <Label className="text-xs font-medium text-slate-600">Payment Status</Label>
+                        <Label className="text-xs font-medium text-saivie-plum">Payment Status</Label>
                         <Select value={editPaymentStatus} onValueChange={setEditPaymentStatus}>
                           <SelectTrigger className="mt-1" data-testid="select-edit-payment-status"><SelectValue /></SelectTrigger>
                           <SelectContent>
@@ -4507,7 +4507,7 @@ export default function StaffPortal() {
                         </Select>
                       </div>
                       <div>
-                        <Label className="text-xs font-medium text-slate-600">Payment Method</Label>
+                        <Label className="text-xs font-medium text-saivie-plum">Payment Method</Label>
                         <Select value={editPaymentMethod} onValueChange={setEditPaymentMethod}>
                           <SelectTrigger className="mt-1" data-testid="select-edit-payment-method"><SelectValue /></SelectTrigger>
                           <SelectContent>
@@ -4519,7 +4519,7 @@ export default function StaffPortal() {
                         </Select>
                       </div>
                       <div>
-                        <Label className="text-xs font-medium text-slate-600">Notes</Label>
+                        <Label className="text-xs font-medium text-saivie-plum">Notes</Label>
                         <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="mt-1 min-h-[60px]" data-testid="input-edit-invoice-notes" />
                       </div>
                     </div>
@@ -4544,8 +4544,8 @@ export default function StaffPortal() {
             {activeRole === 'receptionist' && activeView === 'sync' && (
               <div className="max-w-4xl mx-auto space-y-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 font-serif">Sync & Import Data</h2>
-                  <p className="text-sm text-slate-500 mt-1">Import patient records from Google Sheets, lab reports from Google Drive, or upload prescriptions for any patient.</p>
+                  <h2 className="text-2xl font-bold text-saivie-plum font-serif">Sync & Import Data</h2>
+                  <p className="text-sm text-saivie-plum mt-1">Import patient records from Google Sheets, lab reports from Google Drive, or upload prescriptions for any patient.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -4557,11 +4557,11 @@ export default function StaffPortal() {
                       </div>
                     </CardHeader>
                     <CardContent className="p-5 space-y-4">
-                      <p className="text-sm text-slate-600">Import patient registration data from the clinic's Google Sheet form. This syncs old and new patient records into the system.</p>
+                      <p className="text-sm text-saivie-plum">Import patient registration data from the clinic's Google Sheet form. This syncs old and new patient records into the system.</p>
                       {sheetStatus && (
                         <div className="flex items-center gap-2 text-sm">
                           <span className={`w-2.5 h-2.5 rounded-full ${sheetStatus.connected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                          <span className="text-slate-700">{sheetStatus.connected ? `${sheetStatus.rowCount} records available in sheet` : 'Not connected'}</span>
+                          <span className="text-saivie-plum">{sheetStatus.connected ? `${sheetStatus.rowCount} records available in sheet` : 'Not connected'}</span>
                         </div>
                       )}
                       {syncResult && (
@@ -4575,7 +4575,7 @@ export default function StaffPortal() {
                         </div>
                       )}
                       <Button
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full bg-saivie-teal hover:bg-saivie-teal text-white"
                         onClick={handleSheetSync}
                         disabled={isSyncing}
                         data-testid="btn-sync-sheets-full"
@@ -4589,20 +4589,20 @@ export default function StaffPortal() {
                     </CardContent>
                   </Card>
 
-                  <Card className="shadow-sm border-purple-200 bg-purple-50/20">
-                    <CardHeader className="py-4 border-b border-purple-100 bg-purple-50/50">
+                  <Card className="shadow-sm border-saivie-border bg-saivie-surface-muted/20">
+                    <CardHeader className="py-4 border-b border-saivie-border bg-saivie-surface-muted/50">
                       <div className="flex items-center gap-2">
-                        <FlaskConical className="w-5 h-5 text-purple-600" />
-                        <CardTitle className="text-base font-bold text-purple-900">Lab Reports Import</CardTitle>
+                        <FlaskConical className="w-5 h-5 text-saivie-teal" />
+                        <CardTitle className="text-base font-bold text-saivie-plum">Lab Reports Import</CardTitle>
                       </div>
                     </CardHeader>
                     <CardContent className="p-5 space-y-4">
-                      <p className="text-sm text-slate-600">Import lab report PDFs from Google Drive and automatically map them to patients by name.</p>
+                      <p className="text-sm text-saivie-plum">Import lab report PDFs from Google Drive and automatically map them to patients by name.</p>
                       {driveStatus && (
                         <div className="space-y-1 text-sm">
                           <div className="flex items-center gap-2">
                             <span className={`w-2.5 h-2.5 rounded-full ${driveStatus.connected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                            <span className="text-slate-700">{driveStatus.connected ? `${driveStatus.testReports} lab reports found` : 'Not connected'}</span>
+                            <span className="text-saivie-plum">{driveStatus.connected ? `${driveStatus.testReports} lab reports found` : 'Not connected'}</span>
                           </div>
                           {driveStatus.connected && driveStatus.alreadyImported > 0 && (
                             <div className="flex items-center gap-2 text-emerald-600 ml-4">
@@ -4634,7 +4634,7 @@ export default function StaffPortal() {
                         </div>
                       )}
                       <Button
-                        className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                        className="w-full bg-saivie-teal hover:bg-saivie-teal text-white"
                         onClick={handleLabImport}
                         disabled={isImportingLabs}
                         data-testid="btn-import-labs-full"
@@ -4648,18 +4648,18 @@ export default function StaffPortal() {
                     </CardContent>
                   </Card>
 
-                  <Card className="shadow-sm border-indigo-200 bg-indigo-50/20 md:col-span-2">
-                    <CardHeader className="py-4 border-b border-indigo-100 bg-indigo-50/50">
+                  <Card className="shadow-sm border-saivie-border bg-saivie-surface-muted/20 md:col-span-2">
+                    <CardHeader className="py-4 border-b border-saivie-border bg-saivie-surface-muted/50">
                       <div className="flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-indigo-600" />
-                        <CardTitle className="text-base font-bold text-indigo-900">Upload Prescription for Patient</CardTitle>
+                        <Sparkles className="w-5 h-5 text-saivie-teal" />
+                        <CardTitle className="text-base font-bold text-saivie-plum">Upload Prescription for Patient</CardTitle>
                       </div>
                     </CardHeader>
                     <CardContent className="p-5 space-y-4">
-                      <p className="text-sm text-slate-600">Search for any patient and upload their prescription. AI will automatically read handwritten prescriptions.</p>
+                      <p className="text-sm text-saivie-plum">Search for any patient and upload their prescription. AI will automatically read handwritten prescriptions.</p>
                       <div className="flex gap-3 items-end">
                         <div className="flex-1">
-                          <Label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Select Patient</Label>
+                          <Label className="text-xs font-bold text-saivie-plum uppercase mb-1.5 block">Select Patient</Label>
                           <Select onValueChange={(val) => {
                             const p = (patients || []).find((pt: any) => String(pt.id) === val);
                             if (p) {
@@ -4667,7 +4667,7 @@ export default function StaffPortal() {
                               setIsUploadOpen(true);
                             }
                           }}>
-                            <SelectTrigger className="bg-white" data-testid="select-upload-patient">
+                            <SelectTrigger className="bg-saivie-ivory" data-testid="select-upload-patient">
                               <SelectValue placeholder="Search and select patient..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -4691,11 +4691,11 @@ export default function StaffPortal() {
                 <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-xl font-serif">
-                             <ClipboardList className="w-6 h-6 text-indigo-600" />
+                             <ClipboardList className="w-6 h-6 text-saivie-teal" />
                              Post-Consultation Action Plan
                         </DialogTitle>
                         <DialogDescription>
-                            Complete next steps for <span className="font-bold text-slate-900">{selectedPatientForCheckout?.name}</span>
+                            Complete next steps for <span className="font-bold text-saivie-plum">{selectedPatientForCheckout?.name}</span>
                         </DialogDescription>
                     </DialogHeader>
                     
@@ -4703,22 +4703,22 @@ export default function StaffPortal() {
                         
                         {/* 1. Clinical Referrals & Lifestyle */}
                         <div className="space-y-3">
-                            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-saivie-plum uppercase tracking-wide flex items-center gap-2">
                                 <Activity className="w-4 h-4 text-emerald-600" /> Clinical Referrals & Lifestyle
                             </h3>
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="flex items-start space-x-3 p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
+                                <div className="flex items-start space-x-3 p-3 rounded-lg border border-saivie-border bg-saivie-surface-muted hover:bg-saivie-sage transition-colors cursor-pointer">
                                     <Checkbox id="ref-lifestyle" />
                                     <div className="grid gap-1.5 leading-none">
                                         <label htmlFor="ref-lifestyle" className="text-sm font-medium leading-none cursor-pointer">Lifestyle Modification</label>
-                                        <p className="text-xs text-slate-500">Sleep hygiene & stress mgmt handout</p>
+                                        <p className="text-xs text-saivie-plum">Sleep hygiene & stress mgmt handout</p>
                                     </div>
                                 </div>
-                                <div className="flex items-start space-x-3 p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
+                                <div className="flex items-start space-x-3 p-3 rounded-lg border border-saivie-border bg-saivie-surface-muted hover:bg-saivie-sage transition-colors cursor-pointer">
                                     <Checkbox id="ref-nutrition" defaultChecked />
                                     <div className="grid gap-1.5 leading-none">
                                         <label htmlFor="ref-nutrition" className="text-sm font-medium leading-none cursor-pointer">Nutrition Consultation</label>
-                                        <p className="text-xs text-slate-500">Book w/ Ms. Gupta (PCOS Protocol)</p>
+                                        <p className="text-xs text-saivie-plum">Book w/ Ms. Gupta (PCOS Protocol)</p>
                                     </div>
                                 </div>
                             </div>
@@ -4728,7 +4728,7 @@ export default function StaffPortal() {
 
                         {/* 2. Pharmacy & Education */}
                         <div className="space-y-3">
-                             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                             <h3 className="text-sm font-bold text-saivie-plum uppercase tracking-wide flex items-center gap-2">
                                 <Pill className="w-4 h-4 text-blue-600" /> Pharmacy & Education
                             </h3>
                             <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
@@ -4737,13 +4737,13 @@ export default function StaffPortal() {
                                     <label htmlFor="task-explain" className="text-sm font-bold text-blue-900 cursor-pointer">Explain Prescribed Medicine</label>
                                 </div>
                                 <div className="space-y-2 pl-7">
-                                    <div className="flex justify-between text-xs bg-white p-2 rounded border border-blue-100">
+                                    <div className="flex justify-between text-xs bg-saivie-ivory p-2 rounded border border-blue-100">
                                         <span className="font-medium">Metformin 500mg</span>
-                                        <span className="text-slate-500">1-0-1 (After meals)</span>
+                                        <span className="text-saivie-plum">1-0-1 (After meals)</span>
                                     </div>
-                                    <div className="flex justify-between text-xs bg-white p-2 rounded border border-blue-100">
+                                    <div className="flex justify-between text-xs bg-saivie-ivory p-2 rounded border border-blue-100">
                                         <span className="font-medium">Folic Acid 5mg</span>
-                                        <span className="text-slate-500">0-1-0</span>
+                                        <span className="text-saivie-plum">0-1-0</span>
                                     </div>
                                 </div>
                             </div>
@@ -4753,26 +4753,26 @@ export default function StaffPortal() {
 
                         {/* 3. Scheduling & Next Steps */}
                         <div className="space-y-3">
-                            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                                <CalendarCheck className="w-4 h-4 text-purple-600" /> Scheduling
+                            <h3 className="text-sm font-bold text-saivie-plum uppercase tracking-wide flex items-center gap-2">
+                                <CalendarCheck className="w-4 h-4 text-saivie-teal" /> Scheduling
                             </h3>
                             <div className="grid grid-cols-2 gap-4">
-                                <Button variant="outline" className="h-auto py-3 flex flex-col items-start gap-1 border-slate-200 hover:border-purple-300 hover:bg-purple-50">
-                                    <span className="font-bold text-slate-900 flex items-center gap-2"><Plus className="w-3 h-3" /> Book USG Appointment</span>
-                                    <span className="text-xs text-slate-500 font-normal">Pelvic Scan / Follicular Study</span>
+                                <Button variant="outline" className="h-auto py-3 flex flex-col items-start gap-1 border-saivie-border hover:border-saivie-border hover:bg-saivie-surface-muted">
+                                    <span className="font-bold text-saivie-plum flex items-center gap-2"><Plus className="w-3 h-3" /> Book USG Appointment</span>
+                                    <span className="text-xs text-saivie-plum font-normal">Pelvic Scan / Follicular Study</span>
                                 </Button>
-                                <Button variant="outline" className="h-auto py-3 flex flex-col items-start gap-1 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50">
-                                    <span className="font-bold text-slate-900 flex items-center gap-2"><Clock className="w-3 h-3" /> Schedule Follow-up</span>
-                                    <span className="text-xs text-slate-500 font-normal">Review in 2 weeks</span>
+                                <Button variant="outline" className="h-auto py-3 flex flex-col items-start gap-1 border-saivie-border hover:border-saivie-border hover:bg-saivie-surface-muted">
+                                    <span className="font-bold text-saivie-plum flex items-center gap-2"><Clock className="w-3 h-3" /> Schedule Follow-up</span>
+                                    <span className="text-xs text-saivie-plum font-normal">Review in 2 weeks</span>
                                 </Button>
                             </div>
                         </div>
 
                     </div>
 
-                    <DialogFooter className="py-4 border-t border-slate-100">
+                    <DialogFooter className="py-4 border-t border-saivie-border">
                         <Button variant="outline" onClick={() => setIsCheckoutOpen(false)}>Save as Draft</Button>
-                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[150px]" onClick={() => setIsCheckoutOpen(false)}>
+                        <Button className="bg-saivie-teal hover:bg-saivie-teal text-white min-w-[150px]" onClick={() => setIsCheckoutOpen(false)}>
                             <CheckCircle2 className="w-4 h-4 mr-2" /> Complete & Close
                         </Button>
                     </DialogFooter>
@@ -4788,7 +4788,7 @@ export default function StaffPortal() {
                             {selectedFollowUp?.action}
                         </DialogTitle>
                         <DialogDescription>
-                            Initiate follow-up with <span className="font-bold text-slate-900">{selectedFollowUp?.patient}</span>
+                            Initiate follow-up with <span className="font-bold text-saivie-plum">{selectedFollowUp?.patient}</span>
                         </DialogDescription>
                     </DialogHeader>
                     
@@ -4833,7 +4833,7 @@ export default function StaffPortal() {
                         </DialogTitle>
                         <DialogDescription>
                             {selectedCallPatient?.patientName ? (
-                                <span>Recording call with <span className="font-bold text-slate-900">{selectedCallPatient.patientName}</span> {selectedCallPatient.phone ? `(${selectedCallPatient.phone})` : ''}</span>
+                                <span>Recording call with <span className="font-bold text-saivie-plum">{selectedCallPatient.patientName}</span> {selectedCallPatient.phone ? `(${selectedCallPatient.phone})` : ''}</span>
                             ) : 'Select a patient and record the follow-up call details'}
                         </DialogDescription>
                     </DialogHeader>
@@ -4919,7 +4919,7 @@ export default function StaffPortal() {
                             <div>
                                 <Label className="text-xs font-medium">Missed call / retry details</Label>
                                 <Input className="h-9 text-xs" placeholder="No answer at 10:30; retry tomorrow" value={followUpCallForm.didntPickCallTime} onChange={(e) => setFollowUpCallForm(f => ({ ...f, didntPickCallTime: e.target.value }))} />
-                                <p className="mt-1 text-[10px] text-slate-500">Keeps the call pending. Clear after a successful call.</p>
+                                <p className="mt-1 text-[10px] text-saivie-plum">Keeps the call pending. Clear after a successful call.</p>
                             </div>
                         </div>
                     </div>
@@ -4960,18 +4960,18 @@ export default function StaffPortal() {
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <Activity className="w-5 h-5 text-indigo-600" /> 
+                            <Activity className="w-5 h-5 text-saivie-teal" />
                             Record Vitals
                         </DialogTitle>
                         <DialogDescription>
-                            Enter current vital signs for <span className="font-bold text-slate-900">{selectedPatientForVitals?.name}</span>
+                            Enter current vital signs for <span className="font-bold text-saivie-plum">{selectedPatientForVitals?.name}</span>
                         </DialogDescription>
                     </DialogHeader>
                     
                     <div className="grid gap-6 py-4">
                         {/* Blood Pressure */}
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-500 uppercase">Blood Pressure (mmHg)</Label>
+                            <Label className="text-xs font-bold text-saivie-plum uppercase">Blood Pressure (mmHg)</Label>
                             <div className="flex items-center gap-2">
                                 <div className="relative flex-1">
                                     <Input 
@@ -4980,7 +4980,7 @@ export default function StaffPortal() {
                                         value={vitalsData.systolic}
                                         onChange={(e) => setVitalsData({...vitalsData, systolic: e.target.value})}
                                     />
-                                    <span className="absolute right-3 top-2.5 text-xs text-slate-400">SYS</span>
+                                    <span className="absolute right-3 top-2.5 text-xs text-saivie-plum">SYS</span>
                                 </div>
                                 <span className="text-slate-300 text-xl font-light">/</span>
                                 <div className="relative flex-1">
@@ -4990,14 +4990,14 @@ export default function StaffPortal() {
                                         value={vitalsData.diastolic}
                                         onChange={(e) => setVitalsData({...vitalsData, diastolic: e.target.value})}
                                     />
-                                    <span className="absolute right-3 top-2.5 text-xs text-slate-400">DIA</span>
+                                    <span className="absolute right-3 top-2.5 text-xs text-saivie-plum">DIA</span>
                                 </div>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-3 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">Height (cm)</Label>
+                                <Label className="text-xs font-bold text-saivie-plum uppercase">Height (cm)</Label>
                                 <Input 
                                     placeholder="165" 
                                     className="font-mono" 
@@ -5006,7 +5006,7 @@ export default function StaffPortal() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">Weight (kg)</Label>
+                                <Label className="text-xs font-bold text-saivie-plum uppercase">Weight (kg)</Label>
                                 <Input 
                                     placeholder="65.0" 
                                     className="font-mono" 
@@ -5015,7 +5015,7 @@ export default function StaffPortal() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">Pulse (bpm)</Label>
+                                <Label className="text-xs font-bold text-saivie-plum uppercase">Pulse (bpm)</Label>
                                 <Input 
                                     placeholder="72" 
                                     className="font-mono" 
@@ -5025,10 +5025,10 @@ export default function StaffPortal() {
                             </div>
                         </div>
                         
-                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <div className="bg-saivie-surface-muted p-3 rounded-lg border border-saivie-border">
                              <div className="flex justify-between items-center text-sm">
-                                <span className="text-slate-500">BMI Calculation:</span>
-                                <span className="font-bold text-slate-900">
+                                <span className="text-saivie-plum">BMI Calculation:</span>
+                                <span className="font-bold text-saivie-plum">
                                     {vitalsData.height && vitalsData.weight 
                                         ? (Number(vitalsData.weight) / Math.pow(Number(vitalsData.height)/100, 2)).toFixed(1)
                                         : '--'}
@@ -5039,7 +5039,7 @@ export default function StaffPortal() {
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsVitalsOpen(false)}>Cancel</Button>
-                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setIsVitalsOpen(false)}>Save Vitals</Button>
+                        <Button className="bg-saivie-teal hover:bg-saivie-teal text-white" onClick={() => setIsVitalsOpen(false)}>Save Vitals</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -5166,11 +5166,11 @@ export default function StaffPortal() {
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <Users className="w-5 h-5 text-indigo-600" /> 
+                            <Users className="w-5 h-5 text-saivie-teal" />
                             New Patient Onboarding
                         </DialogTitle>
                         <DialogDescription>
-                            Complete registration for <span className="font-bold text-slate-900">{selectedPatientForOnboarding?.name}</span>
+                            Complete registration for <span className="font-bold text-saivie-plum">{selectedPatientForOnboarding?.name}</span>
                         </DialogDescription>
                     </DialogHeader>
                     
@@ -5184,21 +5184,21 @@ export default function StaffPortal() {
                         <TabsContent value="demographics" className="space-y-4 mt-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase">First Name</Label>
+                                    <Label className="text-xs font-bold text-saivie-plum uppercase">First Name</Label>
                                     <Input placeholder="Jane" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase">Last Name</Label>
+                                    <Label className="text-xs font-bold text-saivie-plum uppercase">Last Name</Label>
                                     <Input placeholder="Doe" />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase">Date of Birth</Label>
+                                    <Label className="text-xs font-bold text-saivie-plum uppercase">Date of Birth</Label>
                                     <Input type="date" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase">Gender</Label>
+                                    <Label className="text-xs font-bold text-saivie-plum uppercase">Gender</Label>
                                     <Select>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select" />
@@ -5212,30 +5212,30 @@ export default function StaffPortal() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">Contact Number</Label>
+                                <Label className="text-xs font-bold text-saivie-plum uppercase">Contact Number</Label>
                                 <Input placeholder="+1 (555) 000-0000" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">Email Address</Label>
+                                <Label className="text-xs font-bold text-saivie-plum uppercase">Email Address</Label>
                                 <Input placeholder="patient@example.com" type="email" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">Referred By <span className="text-slate-400 font-normal lowercase">(optional)</span></Label>
+                                <Label className="text-xs font-bold text-saivie-plum uppercase">Referred By <span className="text-saivie-plum font-normal lowercase">(optional)</span></Label>
                                 <Input placeholder="Dr. Name or Clinic" />
                             </div>
                         </TabsContent>
 
                         <TabsContent value="medical" className="space-y-4 mt-4">
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">Chief Complaint</Label>
+                                <Label className="text-xs font-bold text-saivie-plum uppercase">Chief Complaint</Label>
                                 <Textarea placeholder="Reason for visit..." className="h-20" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">Known Allergies</Label>
+                                <Label className="text-xs font-bold text-saivie-plum uppercase">Known Allergies</Label>
                                 <Input placeholder="e.g. Penicillin, Peanuts" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">Current Medications</Label>
+                                <Label className="text-xs font-bold text-saivie-plum uppercase">Current Medications</Label>
                                 <Textarea placeholder="List current medications..." className="h-20" />
                             </div>
                         </TabsContent>
@@ -5243,16 +5243,16 @@ export default function StaffPortal() {
                         <TabsContent value="insurance" className="space-y-4 mt-4">
                              <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase">Insurance Provider</Label>
+                                    <Label className="text-xs font-bold text-saivie-plum uppercase">Insurance Provider</Label>
                                     <Input placeholder="Provider Name" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase">Policy Number</Label>
+                                    <Label className="text-xs font-bold text-saivie-plum uppercase">Policy Number</Label>
                                     <Input placeholder="Policy #" />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase">Payment Method</Label>
+                                <Label className="text-xs font-bold text-saivie-plum uppercase">Payment Method</Label>
                                 <Select>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select Method" />
@@ -5265,9 +5265,9 @@ export default function StaffPortal() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="flex items-start gap-2 mt-4 p-4 bg-slate-50 rounded border border-slate-100">
+                            <div className="flex items-start gap-2 mt-4 p-4 bg-saivie-surface-muted rounded border border-saivie-border">
                                 <Checkbox id="terms" />
-                                <Label htmlFor="terms" className="text-sm text-slate-600 leading-snug">
+                                <Label htmlFor="terms" className="text-sm text-saivie-plum leading-snug">
                                     I confirm that the insurance details provided are accurate and authorize billing.
                                 </Label>
                             </div>
@@ -5276,7 +5276,7 @@ export default function StaffPortal() {
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsOnboardingOpen(false)}>Cancel</Button>
-                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setIsOnboardingOpen(false)}>Complete Registration</Button>
+                        <Button className="bg-saivie-teal hover:bg-saivie-teal text-white" onClick={() => setIsOnboardingOpen(false)}>Complete Registration</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -5286,8 +5286,8 @@ export default function StaffPortal() {
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            {selectedTaskForAction?.type === 'lab' && <FlaskConical className="w-5 h-5 text-indigo-600" />}
-                            {selectedTaskForAction?.type === 'usg' && <Activity className="w-5 h-5 text-purple-600" />}
+                            {selectedTaskForAction?.type === 'lab' && <FlaskConical className="w-5 h-5 text-saivie-teal" />}
+                            {selectedTaskForAction?.type === 'usg' && <Activity className="w-5 h-5 text-saivie-teal" />}
                             {selectedTaskForAction?.type === 'onboard' && <Users className="w-5 h-5 text-emerald-600" />}
                             
                             {selectedTaskForAction?.type === 'lab' && "Schedule Lab Test"}
@@ -5295,7 +5295,7 @@ export default function StaffPortal() {
                             {selectedTaskForAction?.type === 'onboard' && "Complete Registration"}
                         </DialogTitle>
                         <DialogDescription>
-                            Action for <span className="font-bold text-slate-900">{selectedTaskForAction?.patient}</span>: {selectedTaskForAction?.title}
+                            Action for <span className="font-bold text-saivie-plum">{selectedTaskForAction?.patient}</span>: {selectedTaskForAction?.title}
                         </DialogDescription>
                     </DialogHeader>
                     
@@ -5303,16 +5303,16 @@ export default function StaffPortal() {
                         {selectedTaskForAction?.type === 'lab' && (
                             <>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase">Test Type</Label>
-                                    <Input value="Oral Glucose Tolerance Test (OGTT)" readOnly className="bg-slate-50" />
+                                    <Label className="text-xs font-bold text-saivie-plum uppercase">Test Type</Label>
+                                    <Input value="Oral Glucose Tolerance Test (OGTT)" readOnly className="bg-saivie-surface-muted" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-slate-500 uppercase">Date</Label>
+                                        <Label className="text-xs font-bold text-saivie-plum uppercase">Date</Label>
                                         <Input type="date" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-slate-500 uppercase">Time Slot</Label>
+                                        <Label className="text-xs font-bold text-saivie-plum uppercase">Time Slot</Label>
                                         <Select>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select Time" />
@@ -5326,7 +5326,7 @@ export default function StaffPortal() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase">Phlebotomist</Label>
+                                    <Label className="text-xs font-bold text-saivie-plum uppercase">Phlebotomist</Label>
                                     <Select>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Assign Staff" />
@@ -5343,16 +5343,16 @@ export default function StaffPortal() {
                         {selectedTaskForAction?.type === 'usg' && (
                             <>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase">Scan Type</Label>
-                                    <Input value="T2 Anomaly Scan (20 Weeks)" readOnly className="bg-slate-50" />
+                                    <Label className="text-xs font-bold text-saivie-plum uppercase">Scan Type</Label>
+                                    <Input value="T2 Anomaly Scan (20 Weeks)" readOnly className="bg-saivie-surface-muted" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-slate-500 uppercase">Preferred Date</Label>
+                                        <Label className="text-xs font-bold text-saivie-plum uppercase">Preferred Date</Label>
                                         <Input type="date" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-slate-500 uppercase">Radiologist</Label>
+                                        <Label className="text-xs font-bold text-saivie-plum uppercase">Radiologist</Label>
                                         <Select>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select Doctor" />
@@ -5373,8 +5373,8 @@ export default function StaffPortal() {
 
                         {selectedTaskForAction?.type === 'onboard' && (
                             <div className="text-center p-4">
-                                <p className="text-sm text-slate-600 mb-4">This patient is waiting in the queue. Please proceed to the full onboarding form.</p>
-                                <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => {
+                                <p className="text-sm text-saivie-plum mb-4">This patient is waiting in the queue. Please proceed to the full onboarding form.</p>
+                                <Button className="w-full bg-saivie-teal hover:bg-saivie-teal text-white" onClick={() => {
                                     setIsClinicalActionOpen(false);
                                     setSelectedPatientForOnboarding({ name: selectedTaskForAction.patient });
                                     setIsOnboardingOpen(true);
@@ -5388,7 +5388,7 @@ export default function StaffPortal() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsClinicalActionOpen(false)}>Cancel</Button>
                         {selectedTaskForAction?.type !== 'onboard' && (
-                            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setIsClinicalActionOpen(false)}>
+                            <Button className="bg-saivie-teal hover:bg-saivie-teal text-white" onClick={() => setIsClinicalActionOpen(false)}>
                                 Confirm Booking
                             </Button>
                         )}
@@ -5401,13 +5401,13 @@ export default function StaffPortal() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-3">
                             <Avatar className="h-9 w-9">
-                                <AvatarFallback className="bg-indigo-100 text-indigo-700 text-sm font-bold">
+                                <AvatarFallback className="bg-saivie-sage text-saivie-teal text-sm font-bold">
                                     {selectedPatientForLog?.name?.split(' ').map((n: string) => n[0]).join('') || '?'}
                                 </AvatarFallback>
                             </Avatar>
                             <div>
                                 <span className="text-lg">{selectedPatientForLog?.name || 'Patient'} — Log</span>
-                                <p className="text-xs text-slate-500 font-normal mt-0.5">
+                                <p className="text-xs text-saivie-plum font-normal mt-0.5">
                                     {selectedPatientForLog?.carePathway && <Badge variant="secondary" className="text-[10px] mr-2">{selectedPatientForLog.carePathway}</Badge>}
                                     ID: {selectedPatientForLog?.id}
                                 </p>
@@ -5425,7 +5425,7 @@ export default function StaffPortal() {
                         </DialogTitle>
                     </DialogHeader>
 
-                    <div className="flex gap-1 border-b border-slate-100 pb-2">
+                    <div className="flex gap-1 border-b border-saivie-border pb-2">
                         {[
                             { key: "all", label: "All" },
                             { key: "visits", label: "Visits" },
@@ -5438,7 +5438,7 @@ export default function StaffPortal() {
                                 key={tab.key}
                                 size="sm"
                                 variant={logTab === tab.key ? "default" : "ghost"}
-                                className={`h-7 text-xs ${logTab === tab.key ? 'bg-slate-900 text-white' : ''}`}
+                                className={`h-7 text-xs ${logTab === tab.key ? 'bg-saivie-plum text-white' : ''}`}
                                 onClick={() => setLogTab(tab.key)}
                                 data-testid={`log-tab-${tab.key}`}
                             >
@@ -5450,28 +5450,28 @@ export default function StaffPortal() {
                     <ScrollArea className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: '60vh' }}>
                         {logLoading ? (
                             <div className="flex items-center justify-center py-12">
-                                <div className="animate-spin w-6 h-6 border-2 border-slate-300 border-t-slate-700 rounded-full" />
-                                <span className="ml-3 text-sm text-slate-500">Loading patient log...</span>
+                                <div className="animate-spin w-6 h-6 border-2 border-saivie-border border-t-slate-700 rounded-full" />
+                                <span className="ml-3 text-sm text-saivie-plum">Loading patient log...</span>
                             </div>
                         ) : (
                             <div className="space-y-3 py-2">
                                 {(logTab === "all" || logTab === "visits") && logData.visits.length > 0 && (
                                     <div>
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                        <h4 className="text-xs font-bold text-saivie-plum uppercase tracking-wide mb-2 flex items-center gap-2">
                                             <ClipboardList className="w-3.5 h-3.5" /> Visit History
                                         </h4>
                                         <div className="space-y-2">
                                             {logData.visits.map((v: any, i: number) => (
-                                                <div key={i} className="bg-slate-50 rounded-lg p-3 border border-slate-100" data-testid={`log-visit-${i}`}>
+                                                <div key={i} className="bg-saivie-surface-muted rounded-lg p-3 border border-saivie-border" data-testid={`log-visit-${i}`}>
                                                     <div className="flex items-center justify-between mb-1">
-                                                        <span className="font-semibold text-sm text-slate-800">{v.visitType || 'Visit'}</span>
-                                                        <span className="text-[10px] text-slate-400">{v.visitDate || v.createdAt || ''}</span>
+                                                        <span className="font-semibold text-sm text-saivie-plum">{v.visitType || 'Visit'}</span>
+                                                        <span className="text-[10px] text-saivie-plum">{v.visitDate || v.createdAt || ''}</span>
                                                     </div>
-                                                    {v.subjective && <p className="text-xs text-slate-600"><span className="font-medium">S:</span> {v.subjective}</p>}
-                                                    {v.objective && <p className="text-xs text-slate-600"><span className="font-medium">O:</span> {v.objective}</p>}
-                                                    {v.assessment && <p className="text-xs text-slate-600"><span className="font-medium">A:</span> {v.assessment}</p>}
-                                                    {v.plan && <p className="text-xs text-slate-600"><span className="font-medium">P:</span> {v.plan}</p>}
-                                                    {v.provider && <p className="text-[10px] text-slate-400 mt-1">Provider: {v.provider}</p>}
+                                                    {v.subjective && <p className="text-xs text-saivie-plum"><span className="font-medium">S:</span> {v.subjective}</p>}
+                                                    {v.objective && <p className="text-xs text-saivie-plum"><span className="font-medium">O:</span> {v.objective}</p>}
+                                                    {v.assessment && <p className="text-xs text-saivie-plum"><span className="font-medium">A:</span> {v.assessment}</p>}
+                                                    {v.plan && <p className="text-xs text-saivie-plum"><span className="font-medium">P:</span> {v.plan}</p>}
+                                                    {v.provider && <p className="text-[10px] text-saivie-plum mt-1">Provider: {v.provider}</p>}
                                                 </div>
                                             ))}
                                         </div>
@@ -5480,7 +5480,7 @@ export default function StaffPortal() {
 
                                 {(logTab === "all" || logTab === "medications") && (
                                     <div>
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                        <h4 className="text-xs font-bold text-saivie-plum uppercase tracking-wide mb-2 flex items-center gap-2">
                                             <Pill className="w-3.5 h-3.5" /> Medications
                                         </h4>
                                         {logData.medications.length > 0 ? (
@@ -5488,23 +5488,23 @@ export default function StaffPortal() {
                                             {logData.medications.map((m: any, i: number) => (
                                                 <div key={i} className="bg-blue-50/50 rounded-lg p-3 border border-blue-100" data-testid={`log-med-${i}`}>
                                                     <div className="flex items-center justify-between">
-                                                        <span className="font-semibold text-sm text-slate-800">{m.name}</span>
-                                                        <Badge className={`text-[10px] ${m.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'} border-none`}>
+                                                        <span className="font-semibold text-sm text-saivie-plum">{m.name}</span>
+                                                        <Badge className={`text-[10px] ${m.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-saivie-sage text-saivie-plum'} border-none`}>
                                                             {m.status || 'active'}
                                                         </Badge>
                                                     </div>
-                                                    <p className="text-xs text-slate-600 mt-1">{m.dose || m.dosage || ''} — {m.frequency || ''}</p>
-                                                    {m.prescribedBy && <p className="text-[10px] text-slate-400 mt-1">Prescribed by: {m.prescribedBy}</p>}
+                                                    <p className="text-xs text-saivie-plum mt-1">{m.dose || m.dosage || ''} — {m.frequency || ''}</p>
+                                                    {m.prescribedBy && <p className="text-[10px] text-saivie-plum mt-1">Prescribed by: {m.prescribedBy}</p>}
                                                 </div>
                                             ))}
                                         </div>
                                         ) : (
-                                        <div className="text-center py-6 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
+                                        <div className="text-center py-6 bg-saivie-surface-muted/50 rounded-lg border border-dashed border-saivie-border">
                                             <Pill className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                                            <p className="text-sm text-slate-500">No medications found for this patient.</p>
+                                            <p className="text-sm text-saivie-plum">No medications found for this patient.</p>
                                             <Button
                                               size="sm"
-                                              className="mt-3 bg-indigo-600 hover:bg-indigo-700 text-white"
+                                              className="mt-3 bg-saivie-teal hover:bg-saivie-teal text-white"
                                               data-testid="btn-upload-rx-no-meds"
                                               onClick={() => {
                                                 setIsViewLogOpen(false);
@@ -5524,18 +5524,18 @@ export default function StaffPortal() {
 
                                 {(logTab === "all" || logTab === "notes") && logData.notes.length > 0 && (
                                     <div>
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                        <h4 className="text-xs font-bold text-saivie-plum uppercase tracking-wide mb-2 flex items-center gap-2">
                                             <FileText className="w-3.5 h-3.5" /> Clinical Notes
                                         </h4>
                                         <div className="space-y-2">
                                             {logData.notes.map((n: any, i: number) => (
                                                 <div key={i} className="bg-amber-50/50 rounded-lg p-3 border border-amber-100" data-testid={`log-note-${i}`}>
                                                     <div className="flex items-center justify-between mb-1">
-                                                        <span className="font-semibold text-sm text-slate-800">{n.title || n.type || n.noteType || 'Note'}</span>
-                                                        <span className="text-[10px] text-slate-400">{n.date || n.createdAt || ''}</span>
+                                                        <span className="font-semibold text-sm text-saivie-plum">{n.title || n.type || n.noteType || 'Note'}</span>
+                                                        <span className="text-[10px] text-saivie-plum">{n.date || n.createdAt || ''}</span>
                                                     </div>
-                                                    <p className="text-xs text-slate-600 whitespace-pre-line">{n.content}</p>
-                                                    {n.author && <p className="text-[10px] text-slate-400 mt-1">By: {n.author}</p>}
+                                                    <p className="text-xs text-saivie-plum whitespace-pre-line">{n.content}</p>
+                                                    {n.author && <p className="text-[10px] text-saivie-plum mt-1">By: {n.author}</p>}
                                                 </div>
                                             ))}
                                         </div>
@@ -5544,14 +5544,14 @@ export default function StaffPortal() {
 
                                 {(logTab === "all" || logTab === "appointments") && logData.appointments.length > 0 && (
                                     <div>
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                        <h4 className="text-xs font-bold text-saivie-plum uppercase tracking-wide mb-2 flex items-center gap-2">
                                             <CalendarCheck className="w-3.5 h-3.5" /> Appointments
                                         </h4>
                                         <div className="space-y-2">
                                             {logData.appointments.map((a: any, i: number) => (
-                                                <div key={i} className="bg-violet-50/50 rounded-lg p-3 border border-violet-100" data-testid={`log-appt-${i}`}>
+                                                <div key={i} className="bg-saivie-surface-muted/50 rounded-lg p-3 border border-saivie-border" data-testid={`log-appt-${i}`}>
                                                     <div className="flex items-center justify-between mb-1">
-                                                        <span className="font-semibold text-sm text-slate-800">{a.type || a.service || 'Appointment'}</span>
+                                                        <span className="font-semibold text-sm text-saivie-plum">{a.type || a.service || 'Appointment'}</span>
                                                         <Badge className={`text-[10px] border-none ${
                                                             a.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
                                                             a.status === 'cancelled' ? 'bg-red-100 text-red-700' :
@@ -5560,9 +5560,9 @@ export default function StaffPortal() {
                                                             {a.status || 'scheduled'}
                                                         </Badge>
                                                     </div>
-                                                    <p className="text-xs text-slate-600">{a.date} at {a.time}</p>
-                                                    {a.provider && <p className="text-[10px] text-slate-400 mt-1">With: {a.provider}</p>}
-                                                    {a.notes && <p className="text-xs text-slate-500 mt-1 italic">{a.notes}</p>}
+                                                    <p className="text-xs text-saivie-plum">{a.date} at {a.time}</p>
+                                                    {a.provider && <p className="text-[10px] text-saivie-plum mt-1">With: {a.provider}</p>}
+                                                    {a.notes && <p className="text-xs text-saivie-plum mt-1 italic">{a.notes}</p>}
                                                 </div>
                                             ))}
                                         </div>
@@ -5571,21 +5571,21 @@ export default function StaffPortal() {
 
                                 {(logTab === "all" || logTab === "protocols") && logData.protocols.length > 0 && (
                                     <div>
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                        <h4 className="text-xs font-bold text-saivie-plum uppercase tracking-wide mb-2 flex items-center gap-2">
                                             <Apple className="w-3.5 h-3.5" /> Nutrition Protocols
                                         </h4>
                                         <div className="space-y-2">
                                             {logData.protocols.map((pr: any, i: number) => (
                                                 <div key={i} className="bg-emerald-50/50 rounded-lg p-3 border border-emerald-100" data-testid={`log-protocol-${i}`}>
                                                     <div className="flex items-center justify-between mb-1">
-                                                        <span className="font-semibold text-sm text-slate-800">Saved Protocol</span>
-                                                        <span className="text-[10px] text-slate-400">{pr.savedAt || ''}</span>
+                                                        <span className="font-semibold text-sm text-saivie-plum">Saved Protocol</span>
+                                                        <span className="text-[10px] text-saivie-plum">{pr.savedAt || ''}</span>
                                                     </div>
-                                                    {pr.primaryGoal && <p className="text-xs text-slate-600"><span className="font-medium">Goal:</span> {pr.primaryGoal}</p>}
-                                                    {pr.dietaryStrategy && <p className="text-xs text-slate-600"><span className="font-medium">Strategy:</span> {pr.dietaryStrategy}</p>}
-                                                    {pr.savedBy && <p className="text-[10px] text-slate-400 mt-1">Saved by: {pr.savedBy}</p>}
+                                                    {pr.primaryGoal && <p className="text-xs text-saivie-plum"><span className="font-medium">Goal:</span> {pr.primaryGoal}</p>}
+                                                    {pr.dietaryStrategy && <p className="text-xs text-saivie-plum"><span className="font-medium">Strategy:</span> {pr.dietaryStrategy}</p>}
+                                                    {pr.savedBy && <p className="text-[10px] text-saivie-plum mt-1">Saved by: {pr.savedBy}</p>}
                                                     {pr.weeklyPlan && (
-                                                        <p className="text-[10px] text-slate-400 mt-1">
+                                                        <p className="text-[10px] text-saivie-plum mt-1">
                                                             {Object.keys(pr.weeklyPlan).length} day(s) planned
                                                         </p>
                                                     )}
@@ -5607,10 +5607,10 @@ export default function StaffPortal() {
                                             return (
                                                 <div className="text-center py-12">
                                                     <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                                                    <p className="text-sm text-slate-500">No {logTab === 'all' ? 'records' : logTab} found for this patient.</p>
+                                                    <p className="text-sm text-saivie-plum">No {logTab === 'all' ? 'records' : logTab} found for this patient.</p>
                                                     <Button
                                                       size="sm"
-                                                      className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white"
+                                                      className="mt-4 bg-saivie-teal hover:bg-saivie-teal text-white"
                                                       data-testid="btn-upload-rx-empty"
                                                       onClick={() => {
                                                         setIsViewLogOpen(false);
@@ -5633,7 +5633,7 @@ export default function StaffPortal() {
                         )}
                     </ScrollArea>
 
-                    <DialogFooter className="pt-2 border-t border-slate-100">
+                    <DialogFooter className="pt-2 border-t border-saivie-border">
                         <Button variant="outline" onClick={() => setIsViewLogOpen(false)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>
@@ -5663,7 +5663,7 @@ export default function StaffPortal() {
                         )}
 
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Quick Templates</Label>
+                            <Label className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Quick Templates</Label>
                             <div className="flex flex-wrap gap-2">
                                 {[
                                     "Your appointment is confirmed for tomorrow. Please arrive 10 minutes early. 💜",
@@ -5674,7 +5674,7 @@ export default function StaffPortal() {
                                     <button
                                         key={i}
                                         onClick={() => setWhatsAppMessage(tmpl)}
-                                        className="text-xs px-2 py-1 rounded-md border border-slate-200 bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-colors text-left"
+                                        className="text-xs px-2 py-1 rounded-md border border-saivie-border bg-saivie-surface-muted text-saivie-plum hover:bg-saivie-surface-muted hover:border-saivie-border hover:text-saivie-teal transition-colors text-left"
                                     >
                                         {tmpl.slice(0, 40)}…
                                     </button>
@@ -5683,7 +5683,7 @@ export default function StaffPortal() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Message</Label>
+                            <Label className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Message</Label>
                             <Textarea
                                 placeholder="Type your message here..."
                                 className="min-h-[120px] resize-none text-sm"
@@ -5691,7 +5691,7 @@ export default function StaffPortal() {
                                 onChange={e => setWhatsAppMessage(e.target.value)}
                                 data-testid="textarea-whatsapp-message"
                             />
-                            <p className="text-xs text-slate-400">{whatsAppMessage.length} characters</p>
+                            <p className="text-xs text-saivie-plum">{whatsAppMessage.length} characters</p>
                         </div>
                     </div>
 
