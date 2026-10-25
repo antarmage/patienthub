@@ -1876,6 +1876,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       slf: text(source.slf),
       pulse: text(source.pulse),
       bp: text(source.bp),
+      spo2: text(source.spo2),
+      rr: text(source.rr),
       perAbdomen: text(source.perAbdomen),
       uterusSize: text(source.uterusSize),
       uterusSizeDate: date(source.uterusSizeDate),
@@ -1959,6 +1961,11 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       examination: String(body.examination || "").trim() ? { findings: String(body.examination).trim() } : null,
       objective: String(body.examination || "").trim() || null,
       vitals: {
+        datingEstimate: body.datingEstimate || null,
+        pulse: String(body.vitals?.pulse ?? antenatal?.pulse ?? "").trim() || null,
+        bp: String(body.vitals?.bp ?? antenatal?.bp ?? "").trim() || null,
+        spo2: String(body.vitals?.spo2 ?? antenatal?.spo2 ?? "").trim() || null,
+        rr: String(body.vitals?.rr ?? antenatal?.rr ?? "").trim() || null,
         lmp: body.lmp || null,
         height: body.height ? String(body.height).trim() : null,
         weight: body.weight !== "" && body.weight != null && !Number.isNaN(Number(body.weight)) ? Number(body.weight) : null,
@@ -2008,6 +2015,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
           surgicalHistory: String(body.surgicalHistory || "").trim() || null,
           bloodGroup: antenatal?.bloodGroup || (typeof existingObstetric.bloodGroup === "string" ? existingObstetric.bloodGroup : null),
           antenatal,
+          datingEstimate: body.datingEstimate || null,
         },
       };
     }
@@ -2027,6 +2035,11 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
     const summary = [
       `Prescription date: ${prescriptionDate}`,
+      body.datingEstimate?.estimatedLmp ? `Estimated LMP equivalent: ${body.datingEstimate.estimatedLmp} (not patient-reported; requires clinician confirmation)` : null,
+      body.vitals?.pulse ? `PR: ${body.vitals.pulse}` : null,
+      body.vitals?.bp ? `BP: ${body.vitals.bp}` : null,
+      body.vitals?.spo2 ? `SpO2: ${body.vitals.spo2}%` : null,
+      body.vitals?.rr ? `RR: ${body.vitals.rr} breaths/min` : null,
       body.patientType ? `Patient type: ${String(body.patientType).trim()}` : null,
       body.eod ? `EOD: ${String(body.eod).slice(0, 10)}` : null,
       body.pog ? `POG: ${String(body.pog).trim()}` : null,
@@ -2057,6 +2070,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       description: summary,
       metadata: {
         source: "manual-entry",
+        vitals: visitPayload.vitals,
+        datingEstimate: body.datingEstimate || null,
         appointmentId: appointment.id,
         visitId: visit?.id ?? null,
         savedMedications: medicines.map((med: any) => String(med.name).trim()),

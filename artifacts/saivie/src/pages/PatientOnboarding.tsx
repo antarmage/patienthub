@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { getOnboardingQuestions, getRelevantIntake, initialForm, type IntakeForm, type OptionalHistory } from "@/lib/onboardingFlow";
 import { getPrintBrandStyles } from "@/lib/brand";
+import { estimatePregnancyDating } from "@/lib/pregnancyDating";
 
 const sections = [
     { key: "about", title: "About you", eyebrow: "First things first" },
@@ -495,6 +496,10 @@ export default function PatientOnboarding() {
     const [extra, setExtra] = useState<OptionalHistory>({ cycle: false, gyn: false, pregnancy: false, background: false });
     const questionHeading = useRef<HTMLHeadingElement>(null);
     const [submitted, setSubmitted] = useState(false);
+    const [datingAsOf] = useState(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    });
 
     const { data: onboardingData, isLoading } = useQuery({
         queryKey: ["/api/onboarding", id],
@@ -507,6 +512,19 @@ export default function PatientOnboarding() {
 
     const questions = getOnboardingQuestions(form, extra);
     const answers = getRelevantIntake(form, extra);
+    const datingEstimate = answers.pregnancies.currentStatus === "Yes" && !answers.cycle.lastPeriod
+        ? estimatePregnancyDating({
+            asOf: datingAsOf,
+            pog: answers.pregnancies.dueDate ? "" : answers.pregnancies.weeksPregnant,
+            dueDate: answers.pregnancies.dueDate,
+        })
+        : null;
+    const datingNote = datingEstimate ? (
+        <div className="mt-3 rounded-xl border border-saivie-border p-3 text-sm text-saivie-teal" data-testid="onboarding-dating-estimate">
+            <p className="font-medium">Estimated LMP equivalent: {datingEstimate.estimatedLmp}</p>
+            <p className="mt-1 text-xs">Calculated from {datingEstimate.source === "due-date" ? "your due date" : `your weeks pregnant as of ${datingAsOf}`}. This is an estimate, not a remembered period date. Your care team will confirm pregnancy dating.</p>
+        </div>
+    ) : null;
     const questionKeys = questions.map((question) => question.id).join(",");
     const visibleSections = sections.filter((section) => questions.some((question) => question.section === section.key))
         .sort((a, b) => questions.findIndex((question) => question.section === a.key) - questions.findIndex((question) => question.section === b.key));
@@ -548,6 +566,7 @@ export default function PatientOnboarding() {
                 ...(allergies.length ? { allergies } : {}),
                 ...(historyEntries(form.health.familyHistory).length ? { family: historyEntries(form.health.familyHistory) } : {}),
                 onboarding: form,
+                pregnancyDatingEstimate: datingEstimate,
             };
             const complaint = [
                 form.concerns.length ? `Visit concerns: ${form.concerns.join(", ")}` : "",
@@ -606,7 +625,7 @@ export default function PatientOnboarding() {
         painDuration: <ChoiceGroup label="How long have you had the pain?" options={["Today", "2–3 days", "About a week", "A few weeks", "Months or longer"]} value={form.pain.duration} onChange={(value) => updateGroup("pain", "duration", value)} />,
         painSeverity: <ChoiceGroup label="How would you describe the pain?" options={["Mild", "Moderate", "Severe", "Comes and goes"]} value={form.pain.severity} onChange={(value) => updateGroup("pain", "severity", value)} />,
         painSymptoms: <CheckGrid label="Anything else happening with the pain?" options={["Fever", "Nausea or vomiting", "Bleeding", "Dizziness", "None of these"]} exclusiveOption="None of these" value={form.pain.relatedSymptoms} onChange={(value) => updateGroup("pain", "relatedSymptoms", value)} />,
-        lastPeriod: <TextInput label="When did your last period start?" value={form.cycle.lastPeriod} onChange={(value) => updateGroup("cycle", "lastPeriod", value)} type="date" />,
+        lastPeriod: <div><TextInput label="When did your last period start?" value={form.cycle.lastPeriod} onChange={(value) => updateGroup("cycle", "lastPeriod", value)} type="date" /><p className="mt-2 text-xs text-saivie-teal">Don't remember? Leave this blank and continue. If pregnant, your known due date or weeks pregnant can help estimate dating.</p></div>,
         lateBy: <ChoiceGroup label="How late is your period?" options={["Less than a week", "1–2 weeks", "More than 2 weeks", "Not sure"]} value={form.cycle.lateBy} onChange={(value) => updateGroup("cycle", "lateBy", value)} />,
         regularity: <ChoiceGroup label="Are your periods usually regular?" options={["Usually regular", "Often irregular", "Not sure", "No longer having periods"]} value={form.cycle.regularity} onChange={(value) => updateGroup("cycle", "regularity", value)} />,
         cycleLength: <RulerSlider label="Typical cycle length" value={form.cycle.cycleLength} onChange={(value) => updateGroup("cycle", "cycleLength", value)} min={15} max={90} unit="days" />,
@@ -617,8 +636,8 @@ export default function PatientOnboarding() {
         cycleDetails: <TextArea label="Anything else about your periods?" value={form.cycle.details} onChange={(value) => updateGroup("cycle", "details", value)} />,
         pregnancyTest: <ChoiceGroup label="Have you taken a pregnancy test?" options={["Positive", "Negative", "Not yet", "Not sure"]} value={form.cycle.pregnancyTest} onChange={(value) => updateGroup("cycle", "pregnancyTest", value)} />,
         currentStatus: <ChoiceGroup label="Are you currently pregnant?" options={["Yes", "No", "Not sure"]} value={form.pregnancies.currentStatus} onChange={(value) => updateGroup("pregnancies", "currentStatus", value)} />,
-        weeksPregnant: <RulerSlider label="About how many weeks pregnant?" value={form.pregnancies.weeksPregnant} onChange={(value) => updateGroup("pregnancies", "weeksPregnant", value)} min={1} max={42} unit="weeks" />,
-        dueDate: <TextInput label="What is your estimated due date, if known?" value={form.pregnancies.dueDate} onChange={(value) => updateGroup("pregnancies", "dueDate", value)} type="date" />,
+        weeksPregnant: <div><RulerSlider label="About how many weeks pregnant today?" value={form.pregnancies.weeksPregnant} onChange={(value) => updateGroup("pregnancies", "weeksPregnant", value)} min={1} max={42} unit="weeks" />{datingNote}</div>,
+        dueDate: <div><TextInput label="What is your estimated due date, if known?" value={form.pregnancies.dueDate} onChange={(value) => updateGroup("pregnancies", "dueDate", value)} type="date" />{datingNote}</div>,
         totalPregnancies: <CountTile label="Total pregnancies" hint="Include your current pregnancy, if any" icon={Heart} tint="bg-saivie-surface-muted text-saivie-teal" value={form.pregnancies.total} onChange={(value) => setPregnancyCount("total", value)} />,
         extraPregnancy: optionalHistory("pregnancy", "Would you like to share details of your pregnancies?"),
         vaginal: <CountTile label="Vaginal deliveries" hint="How many, if any?" icon={Baby} tint="bg-saivie-blush text-saivie-plum" value={form.pregnancies.vaginal} onChange={(value) => setPregnancyCount("vaginal", value)} />,
@@ -725,6 +744,7 @@ export default function PatientOnboarding() {
             answers.pregnancies.currentStatus && `Currently pregnant: ${answers.pregnancies.currentStatus}`,
             answers.pregnancies.weeksPregnant && `${answers.pregnancies.weeksPregnant} weeks pregnant`,
             answers.pregnancies.dueDate && `Due date: ${answers.pregnancies.dueDate}`,
+            datingEstimate ? `Estimated LMP equivalent: ${datingEstimate.estimatedLmp} (not patient-reported; care team to confirm)` : "",
             ...(["total", "vaginal", "cesarean", "miscarriages", "terminations", "premature"] as const).map((key) =>
                 answers.pregnancies[key] && `${key}: ${answers.pregnancies[key]}`),
             answers.pregnancies.details,

@@ -2114,6 +2114,10 @@ export default function StaffPortal() {
       edit: true,
       draft: {
         prescriptionDate: date,
+        pulse: visit?.vitals?.pulse ?? doc?.metadata?.vitals?.pulse ?? visit?.vitals?.antenatal?.pulse ?? "",
+        bp: visit?.vitals?.bp ?? doc?.metadata?.vitals?.bp ?? visit?.vitals?.antenatal?.bp ?? "",
+        spo2: visit?.vitals?.spo2 ?? doc?.metadata?.vitals?.spo2 ?? visit?.vitals?.antenatal?.spo2 ?? "",
+        rr: visit?.vitals?.rr ?? doc?.metadata?.vitals?.rr ?? visit?.vitals?.antenatal?.rr ?? "",
         chiefComplaint: visit?.chiefComplaint || "",
         examination: typeof visit?.examination === "string" ? visit.examination : visit?.examination?.findings || visit?.objective || "",
         diagnosis: visit?.diagnosis || "",
@@ -5853,8 +5857,11 @@ export default function StaffPortal() {
                                                     {v.vitals?.antenatal?.urineRe && <p className="text-xs text-saivie-plum"><span className="font-medium">Urine RE:</span> {v.vitals.antenatal.urineRe}{v.vitals.antenatal.urineReDate ? ` (${String(v.vitals.antenatal.urineReDate).slice(0, 10)})` : ""}</p>}
                                                     {Array.isArray(v.vitals?.antenatal?.usg) && v.vitals.antenatal.usg.length > 0 && <p className="text-xs text-saivie-plum"><span className="font-medium">USG:</span> {v.vitals.antenatal.usg.map((line: any) => [line.scanDate || line.date ? `Scan date ${String(line.scanDate || line.date).slice(0, 10)}` : null, line.finding, line.weeks ? `POG ${line.weeks}` : null, line.placenta ? `Placenta ${line.placenta}` : null, line.liquor ? `Liquor ${line.liquor}` : null, line.efw ? `EFW ${line.efw}` : null, line.anomaly].filter(Boolean).join(", ")).join("; ")}</p>}
                                                     {v.vitals?.antenatal?.slf && <p className="text-xs text-saivie-plum"><span className="font-medium">SLF:</span> {v.vitals.antenatal.slf}</p>}
-                                                    {v.vitals?.antenatal?.pulse && <p className="text-xs text-saivie-plum"><span className="font-medium">PR:</span> {v.vitals.antenatal.pulse}</p>}
-                                                    {v.vitals?.antenatal?.bp && <p className="text-xs text-saivie-plum"><span className="font-medium">BP:</span> {v.vitals.antenatal.bp}</p>}
+                                                    {(v.vitals?.pulse || v.vitals?.antenatal?.pulse) && <p className="text-xs text-saivie-plum"><span className="font-medium">PR:</span> {v.vitals.pulse || v.vitals.antenatal.pulse}</p>}
+                                                    {(v.vitals?.bp || v.vitals?.antenatal?.bp) && <p className="text-xs text-saivie-plum"><span className="font-medium">BP:</span> {v.vitals.bp || v.vitals.antenatal.bp}</p>}
+                                                    {(v.vitals?.spo2 || v.vitals?.antenatal?.spo2) && <p className="text-xs text-saivie-plum"><span className="font-medium">SpO2:</span> {v.vitals.spo2 || v.vitals.antenatal.spo2}%</p>}
+                                                    {(v.vitals?.rr || v.vitals?.antenatal?.rr) && <p className="text-xs text-saivie-plum"><span className="font-medium">RR:</span> {v.vitals.rr || v.vitals.antenatal.rr} breaths/min</p>}
+                                                    {v.vitals?.datingEstimate?.estimatedLmp && <p className="text-xs text-saivie-plum"><span className="font-medium">Estimated LMP equivalent:</span> {v.vitals.datingEstimate.estimatedLmp} (from {v.vitals.datingEstimate.source}; not patient-reported, clinician confirmation needed)</p>}
                                                     {v.vitals?.antenatal?.perAbdomen && <p className="text-xs text-saivie-plum"><span className="font-medium">P/A:</span> {v.vitals.antenatal.perAbdomen}</p>}
                                                     {v.vitals?.antenatal?.uterusSize && <p className="text-xs text-saivie-plum"><span className="font-medium">Uterus:</span> {v.vitals.antenatal.uterusSize}{v.vitals.antenatal.uterusSizeDate ? ` (${String(v.vitals.antenatal.uterusSizeDate).slice(0, 10)})` : ""}</p>}
                                                     {v.vitals?.antenatal?.fetalMovements && <p className="text-xs text-saivie-plum"><span className="font-medium">FM:</span> {v.vitals.antenatal.fetalMovements}</p>}

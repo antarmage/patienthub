@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { pregnancyWeeks, prescriptionTestOptions } from "@/lib/prescriptionTests";
+import { estimatePregnancyDating } from "@/lib/pregnancyDating";
 
 interface Medicine {
   name: string;
@@ -37,6 +39,29 @@ async function readApiJson(res: Response) {
 
 const emptyMedicine = (): Medicine => ({ name: "", dose: "", frequency: "", duration: "", instructions: "" });
 const PATIENT_TYPES = ["General", "PCOS", "Pregnant", "Fertility", "Postpartum", "Gynecology"];
+const UTERUS_SIZES = Array.from({ length: 42 }, (_, index) => `${index + 1} weeks`);
+const FETAL_HEART_SOUNDS = Array.from({ length: 121 }, (_, index) => String(index + 60));
+type EntryStep = "patient" | "examination" | "scans" | "medicines" | "plan";
+
+function ExamSelect({ label, value, options, onChange, testId, unit = "" }: {
+  label: string;
+  value: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+  testId: string;
+  unit?: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label htmlFor={testId}>{label}</Label>
+      <select id={testId} className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm" value={value} onChange={(event) => onChange(event.target.value)} data-testid={testId}>
+        <option value="">Not recorded</option>
+        {value && !options.includes(value) && <option value={value}>{value} (previously recorded)</option>}
+        {options.map((option) => <option key={option} value={option}>{option}{unit}</option>)}
+      </select>
+    </div>
+  );
+}
 
 function demographicsFrom(sourcePatient: any, visit?: any) {
   const vitals = visit?.vitals && typeof visit.vitals === "object" ? visit.vitals : {};
@@ -102,6 +127,8 @@ interface AntenatalExam {
   slf: string;
   pulse: string;
   bp: string;
+  spo2: string;
+  rr: string;
   perAbdomen: string;
   uterusSize: string;
   uterusSizeDate: string;
@@ -135,6 +162,8 @@ function emptyAntenatal(): AntenatalExam {
     slf: "",
     pulse: "",
     bp: "",
+    spo2: "",
+    rr: "",
     perAbdomen: "",
     uterusSize: "",
     uterusSizeDate: "",
@@ -161,8 +190,10 @@ function antenatalFrom(vitals: any, sourcePatient: any, draft?: any, examination
     hb: String(saved.hb || ""),
     urineRe: String(saved.urineRe || ""),
     slf: String(saved.slf || ""),
-    pulse: String(saved.pulse || ""),
-    bp: String(saved.bp || ""),
+    pulse: String(vitals?.pulse ?? draft?.pulse ?? saved.pulse ?? ""),
+    bp: String(vitals?.bp ?? draft?.bp ?? saved.bp ?? ""),
+    spo2: String(vitals?.spo2 ?? draft?.spo2 ?? saved.spo2 ?? ""),
+    rr: String(vitals?.rr ?? draft?.rr ?? saved.rr ?? ""),
     perAbdomen: String(saved.perAbdomen || ""),
     uterusSize: String(saved.uterusSize || ""),
     fetalMovements: String(saved.fetalMovements || ""),
@@ -203,6 +234,8 @@ function antenatalPayload(exam: AntenatalExam) {
     slf: exam.slf.trim() || null,
     pulse: exam.pulse.trim() || null,
     bp: exam.bp.trim() || null,
+    spo2: exam.spo2.trim() || null,
+    rr: exam.rr.trim() || null,
     perAbdomen: exam.perAbdomen.trim() || null,
     uterusSize: exam.uterusSize.trim() || null,
     uterusSizeDate: exam.uterusSizeDate || null,
@@ -231,6 +264,8 @@ function antenatalLines(exam: ReturnType<typeof antenatalPayload>) {
     exam.slf ? `SLF: ${exam.slf}` : null,
     exam.pulse ? `PR: ${exam.pulse}` : null,
     exam.bp ? `BP: ${exam.bp}` : null,
+    exam.spo2 ? `SpO2: ${exam.spo2}%` : null,
+    exam.rr ? `RR: ${exam.rr} breaths/min` : null,
     exam.perAbdomen ? `P/A: ${exam.perAbdomen}` : null,
     exam.uterusSize ? `Uterus: ${exam.uterusSize}${exam.uterusSizeDate ? ` (${exam.uterusSizeDate})` : ""}` : null,
     exam.fetalMovements ? `FM: ${exam.fetalMovements}` : null,
@@ -289,11 +324,50 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   const [entered, setEntered] = useState(false);
   const closing = useRef(false);
   const [prescriptionDate, setPrescriptionDate] = useState("");
+  const [step, setStep] = useState<EntryStep>("patient");
   const fileRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const patientId = appointment?.patientId ?? patient?.id;
   const editing = !!appointment?.edit;
   const needsDate = !appointment?.id || editing;
+  const recordedVitals = {
+    pulse: antenatal.pulse.trim() || null,
+    bp: antenatal.bp.trim() || null,
+    spo2: antenatal.spo2.trim() || null,
+    rr: antenatal.rr.trim() || null,
+  };
+  const datingEstimate = pregnant && !lmp ? estimatePregnancyDating({
+    asOf: prescriptionDate || String(appointment?.date || "").slice(0, 10),
+    pog,
+    dueDate: eod,
+    scans: antenatal.usg,
+  }) : null;
+  const suggestedTests = prescriptionTestOptions(patientType, pregnancyWeeks(pog, lmp || datingEstimate?.estimatedLmp || "", prescriptionDate || String(appointment?.date || "").slice(0, 10)));
+  const steps: { id: EntryStep; label: string; description: string }[] = [
+    { id: "patient", label: "Patient & date", description: "Start with the prescription date and patient details." },
+    { id: "examination", label: "Complaint & O/E", description: "Record the complaint, examination and diagnosis. Leave anything not recorded blank." },
+    ...(pregnant ? [{ id: "scans" as const, label: "Ultrasound scans", description: "Add scan findings if available. Blood test results belong in the separate report section." }] : []),
+    { id: "medicines", label: "Medicines", description: "Add the medicines from the prescription, or continue if there are none." },
+    { id: "plan", label: "Plan & save", description: "Add advised tests, advice and follow-up, then save the prescription." },
+  ];
+  const stepIndex = steps.findIndex((item) => item.id === step);
+  const currentStep = steps[stepIndex];
+
+  const goToStep = (next: EntryStep) => {
+    if (needsDate && !/^\d{4}-\d{2}-\d{2}$/.test(prescriptionDate)) {
+      toast({ title: "Enter the prescription date", variant: "destructive" });
+      setStep("patient");
+      return;
+    }
+    setStep(next);
+  };
+
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0 });
+    stepHeadingRef.current?.focus();
+  }, [step]);
 
   const { data: visits = [], isFetched } = useQuery<any[]>({
     queryKey: ["/api/patients", patientId, "visit-history"],
@@ -325,6 +399,9 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       fromBilling: true,
     }))
     .filter((t: TestLine) => t.name);
+  const testOptions = [...suggestedTests.tests, ...billedTests, ...tests].filter((test, index, all) =>
+    all.findIndex((item) => item.name.toLowerCase() === test.name.toLowerCase()) === index,
+  );
 
   useEffect(() => {
     if (!appointment) return;
@@ -449,8 +526,6 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   const updateMedicine = (i: number, key: keyof Medicine, value: string) =>
     setMedicines(medicines.map((m, idx) => (idx === i ? { ...m, [key]: value } : m)));
 
-  const missingBilled = billedTests.filter((b) => !tests.some((t) => t.name.toLowerCase() === b.name.toLowerCase()));
-
   const saveOnCurrentServer = async () => {
     const visitDate = (prescriptionDate || String(appointment?.date || "")).slice(0, 10);
     let visitAppointment = appointment?.id ? appointment : null;
@@ -509,6 +584,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
         examination: examination.trim() ? { findings: examination.trim() } : null,
         objective: examination.trim() || null,
         vitals: {
+          ...recordedVitals,
+          datingEstimate,
           lmp: lmp || null,
           height: height.trim() || null,
           weight: weight.trim() ? Number(weight) : null,
@@ -536,12 +613,19 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     if (!saved.ok) throw new Error(savedBody.error || "Failed to save");
     const summary = [
       `Prescription date: ${visitDate}`,
+      datingEstimate ? `Estimated LMP equivalent: ${datingEstimate.estimatedLmp} (from ${datingEstimate.source}; not patient-reported)` : null,
       patientType.trim() ? `Patient type: ${patientType.trim()}` : null,
       pregnant && eod ? `EOD: ${eod}` : null,
       pregnant && pog.trim() ? `POG: ${pog.trim()}` : null,
       pregnant && gravida.trim() ? `Gravida: ${gravida.trim()}` : null,
       pregnant && surgicalHistory.trim() ? `Past surgery: ${surgicalHistory.trim()}` : null,
       ...(antenatalExam ? antenatalLines(antenatalExam) : []),
+      ...(!pregnant ? [
+        recordedVitals.pulse ? `PR: ${recordedVitals.pulse}` : null,
+        recordedVitals.bp ? `BP: ${recordedVitals.bp}` : null,
+        recordedVitals.spo2 ? `SpO2: ${recordedVitals.spo2}%` : null,
+        recordedVitals.rr ? `RR: ${recordedVitals.rr} breaths/min` : null,
+      ] : []),
       chiefComplaint.trim() ? `Chief complaint: ${chiefComplaint.trim()}` : null,
       examination.trim() ? `O/E: ${examination.trim()}` : null,
       namedMedicines.length ? `Medicines: ${namedMedicines.map((med) => med.name.trim()).join(", ")}` : "No medicines entered",
@@ -568,6 +652,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           gravida: pregnant ? gravida.trim() || null : null,
           surgicalHistory: pregnant ? surgicalHistory.trim() || null : null,
           antenatal: antenatalExam,
+          datingEstimate,
         },
       }),
     });
@@ -592,6 +677,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           surgicalHistory: surgicalHistory.trim() || null,
           bloodGroup: antenatal.bloodGroup.trim() || existingHistory.obstetric?.bloodGroup || null,
           antenatal: antenatalPayload(antenatal),
+          datingEstimate,
         },
       };
     }
@@ -617,32 +703,33 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     })));
   };
 
-  const persistScanReport = async (appointmentId?: number) => {
-    if (!patientId || !antenatalExam || !antenatalLines(antenatalExam).length) return;
+  const persistExamination = async (appointmentId?: number) => {
+    if (!patientId) return;
     const visitDate = (prescriptionDate || String(appointment?.date || "")).slice(0, 10);
     const visitsRes = await fetch(`/api/patients/${patientId}/visit-history`);
     const visits = await readApiJson(visitsRes);
     const visit = Array.isArray(visits)
       ? visits.find((item: any) => appointmentId && item.appointmentId === appointmentId) || visits.find((item: any) => String(item.date || "").slice(0, 10) === visitDate)
       : null;
-    if (!visit?.id) throw new Error("The scan report could not be attached to this visit");
+    if (!visit?.id) throw new Error("The examination could not be attached to this visit");
     const patched = await fetch(`/api/visit-history/${visit.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        vitals: { ...(visit.vitals || {}), patientType: patientType || visit.vitals?.patientType || null, antenatal: antenatalExam },
+        vitals: { ...(visit.vitals || {}), ...recordedVitals, datingEstimate, patientType: patientType || visit.vitals?.patientType || null, antenatal: antenatalExam },
         examination: {
           ...(visit.examination && typeof visit.examination === "object" ? visit.examination : {}),
           findings: examination.trim() || visit.examination?.findings || visit.objective || "",
-          scans: antenatalExam.usg,
+          scans: antenatalExam?.usg || [],
         },
       }),
     });
     const patchedBody = await readApiJson(patched);
     const savedScanDates = (patchedBody?.vitals?.antenatal?.usg || []).map((line: any) => toIsoDate(line?.scanDate || line?.date));
-    const missingScanDate = antenatalExam.usg.some((line) => line.scanDate && !savedScanDates.includes(line.scanDate));
-    if (!patched.ok || (antenatalExam.usg.length && !patchedBody?.vitals?.antenatal?.usg?.length) || missingScanDate) {
-      throw new Error(patchedBody.error || "Scan date was not saved");
+    const missingScanDate = antenatalExam?.usg.some((line) => line.scanDate && !savedScanDates.includes(line.scanDate));
+    const missingVitals = Object.entries(recordedVitals).some(([key, value]) => value !== (patchedBody?.vitals?.[key] ?? null));
+    if (!patched.ok || (antenatalExam?.usg.length && !patchedBody?.vitals?.antenatal?.usg?.length) || missingScanDate || missingVitals) {
+      throw new Error(patchedBody.error || "The examination or scan details were not saved");
     }
     const docsRes = await fetch(`/api/patients/${patientId}/documents`);
     const docs = await readApiJson(docsRes);
@@ -650,21 +737,26 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       ? docs.find((item: any) => item.metadata?.source === "manual-entry" && (item.metadata?.appointmentId === appointmentId || String(item.date || "").slice(0, 10) === visitDate))
       : null;
     if (!doc?.id) return;
-    const usgSummary = antenatalLines(antenatalExam).find((line) => line.startsWith("USG:"));
+    const usgSummary = antenatalExam ? antenatalLines(antenatalExam).find((line) => line.startsWith("USG:")) : undefined;
     const description = String(doc.description || "")
       .split("\n")
-      .filter((line) => line && !line.startsWith("USG:"))
-      .concat(usgSummary ? [usgSummary] : [])
+      .filter((line) => line && !/^(USG:|PR:|BP:|SpO2:|RR:|Estimated LMP equivalent:)/.test(line))
+      .concat([
+        ...(datingEstimate ? [`Estimated LMP equivalent: ${datingEstimate.estimatedLmp} (from ${datingEstimate.source}; not patient-reported)`] : []),
+        ...(usgSummary ? [usgSummary] : []),
+        ...Object.entries(recordedVitals).filter(([, value]) => value !== null).map(([key, value]) =>
+          `${({ pulse: "PR", bp: "BP", spo2: "SpO2", rr: "RR" })[key as keyof typeof recordedVitals]}: ${value}${key === "spo2" ? "%" : key === "rr" ? " breaths/min" : ""}`),
+      ])
       .join("\n");
     const recorded = await fetch(`/api/documents/${doc.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         description,
-        metadata: { ...(doc.metadata || {}), antenatal: antenatalExam },
+        metadata: { ...(doc.metadata || {}), vitals: recordedVitals, datingEstimate, antenatal: antenatalExam },
       }),
     });
-    if (!recorded.ok) throw new Error("The scan report was saved on the visit, but not on the patient record");
+    if (!recorded.ok) throw new Error("The examination was saved on the visit, but not on the patient record");
   };
 
   const closePage = () => {
@@ -678,6 +770,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   };
 
   useEffect(() => {
+    setStep("patient");
     if (!appointment) {
       setEntered(false);
       return;
@@ -691,6 +784,12 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     if (!patientId || (!appointment?.id && !appointment?.historical && !patient)) return;
     if (needsDate && !/^\d{4}-\d{2}-\d{2}$/.test(prescriptionDate)) {
       toast({ title: "Enter the prescription date", variant: "destructive" });
+      return;
+    }
+    if ((antenatal.spo2 && (!Number.isFinite(Number(antenatal.spo2)) || Number(antenatal.spo2) < 0 || Number(antenatal.spo2) > 100)) ||
+        (antenatal.rr && (!Number.isInteger(Number(antenatal.rr)) || Number(antenatal.rr) < 0))) {
+      toast({ title: "Check vitals", description: "SpO2 must be between 0 and 100%. RR must be a non-negative whole number.", variant: "destructive" });
+      setStep("examination");
       return;
     }
     setSaving(true);
@@ -708,6 +807,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           weight: weight.trim(),
           age: age.trim(),
           patientType,
+          vitals: recordedVitals,
+          datingEstimate,
           eod: pregnant ? eod : "",
           pog: pregnant ? pog : "",
           gravida: pregnant ? gravida : "",
@@ -731,7 +832,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
         if (!res.ok) throw new Error(body.error || "Could not save prescription");
         savedAppointmentId = body.appointment?.id || body.visit?.appointmentId || appointment?.id;
       }
-      await persistScanReport(savedAppointmentId);
+      await persistExamination(savedAppointmentId);
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "visit-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visit-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
@@ -769,10 +870,28 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           </p>
         </div>
       </header>
-      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+      <nav aria-label="Prescription entry steps" className="border-b px-4 py-3 sm:px-6">
+        <ol className="mx-auto flex max-w-3xl gap-2 overflow-x-auto">
+          {steps.map((item, index) => (
+            <li key={item.id} className="shrink-0">
+              <Button type="button" size="sm" variant={step === item.id ? "default" : "ghost"} aria-current={step === item.id ? "step" : undefined} disabled={saving || scanning} onClick={() => goToStep(item.id)} data-testid={`btn-rx-step-${item.id}`}>
+                {index + 1}. {item.label}
+              </Button>
+            </li>
+          ))}
+        </ol>
+      </nav>
+      <div ref={contentRef} className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
         <div className="mx-auto max-w-3xl">
+        <div className="mb-6">
+          <p className="text-xs text-muted-foreground">Step {stepIndex + 1} of {steps.length}</p>
+          <h2 ref={stepHeadingRef} tabIndex={-1} className="mt-1 text-xl font-semibold outline-none">{currentStep.label}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{currentStep.description}</p>
+        </div>
 
         <div className="space-y-5">
+          {step === "patient" && (
+          <>
           {needsDate && (
             <div className="space-y-1">
               <Label>Prescription date</Label>
@@ -784,6 +903,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
             <div className="space-y-1">
               <Label>LMP</Label>
               <Input type="date" value={lmp} onChange={(e) => setLmp(e.target.value)} data-testid="input-rx-lmp" />
+              <p className="text-xs text-muted-foreground">Leave blank if unknown. We can estimate dating from POG, due date or a dated scan.</p>
             </div>
             <div className="space-y-1">
               <Label>Age</Label>
@@ -824,6 +944,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
               <div className="space-y-1">
                 <Label>POG</Label>
                 <Input value={pog} onChange={(e) => setPog(e.target.value)} placeholder="28 weeks 3 days" data-testid="input-rx-pog" />
+                <p className="text-xs text-muted-foreground">Gestation on the prescription date, not the scan date.</p>
               </div>
               <div className="space-y-1">
                 <Label>Gravida</Label>
@@ -840,6 +961,17 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
                   if (calculated.pog) setPog(calculated.pog);
                 }}>Calculate EOD and POG from LMP</Button>
               </div>
+              {!lmp && (
+                <div className="col-span-2 rounded-md bg-muted/30 p-3 text-sm" data-testid="rx-dating-estimate">
+                  {datingEstimate ? (
+                    <>
+                      <p className="font-medium">Estimated LMP equivalent: {datingEstimate.estimatedLmp}</p>
+                      <p>Estimated due date: {datingEstimate.dueDate} · POG: {datingEstimate.pog}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Based on {datingEstimate.source === "scan" ? `the earliest entered dated scan (${datingEstimate.sourceDate})` : datingEstimate.source === "due-date" ? "the entered due date" : "POG at the prescription date"}. Saved separately from reported LMP. Clinician confirmation is needed; this does not establish or change the official pregnancy dating.</p>
+                    </>
+                  ) : <p className="text-muted-foreground">LMP unknown? Enter POG with the prescription date, an expected due date, or scan date and scan POG in the ultrasound step.</p>}
+                </div>
+              )}
             </div>
           )}
           <div className="rounded-lg border border-dashed border-saivie-border bg-saivie-surface-muted/50 p-3">
@@ -856,6 +988,10 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
             </div>
           </div>
 
+          </>
+          )}
+          {step === "examination" && (
+          <>
           <div className="space-y-1">
             <Label>Chief complaint</Label>
             <Textarea rows={2} placeholder="Why the patient came in" value={chiefComplaint} onChange={(e) => setChiefComplaint(e.target.value)} data-testid="input-rx-chief-complaint" />
@@ -864,41 +1000,55 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           <div className="space-y-1">
             <Label>O/E</Label>
             <Textarea rows={2} placeholder="On examination" value={examination} onChange={(e) => setExamination(e.target.value)} data-testid="input-rx-examination" />
-            {pregnant && (
-              <div className="space-y-3 rounded-lg border border-saivie-border p-3">
-                <div>
-                  <p className="text-sm font-medium">Investigations</p>
-                  <p className="text-[11px] text-muted-foreground">Scan and lab lines from the paper, with the abbreviation written out under each field.</p>
-                </div>
+              <fieldset className="rounded-lg border border-saivie-border p-3">
+                <legend className="px-1 text-sm font-semibold">Vitals</legend>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label>Blood group</Label>
-                    <p className="text-[11px] text-muted-foreground">Example: O +ve</p>
-                    <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={antenatal.bloodGroup} onChange={(e) => setAntenatal({ ...antenatal, bloodGroup: e.target.value })} data-testid="input-rx-blood-group">
-                      <option value="">—</option>
-                      {[...new Set([antenatal.bloodGroup, "A +ve", "A -ve", "B +ve", "B -ve", "O +ve", "O -ve", "AB +ve", "AB -ve"])].filter(Boolean).map((group) => <option key={group} value={group}>{group}</option>)}
-                    </select>
+                    <Label htmlFor="input-rx-pulse">PR (pulse rate)</Label>
+                    <Input id="input-rx-pulse" value={antenatal.pulse} onChange={(e) => setAntenatal({ ...antenatal, pulse: e.target.value })} placeholder="Beats per minute" data-testid="input-rx-pulse" />
                   </div>
                   <div className="space-y-1">
-                    <Label>Hb</Label>
-                    <p className="text-[11px] text-muted-foreground">Hemoglobin, with the report date</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input value={antenatal.hb} onChange={(e) => setAntenatal({ ...antenatal, hb: e.target.value })} placeholder="10.2" data-testid="input-rx-hb" />
-                      <Input type="date" value={antenatal.hbDate} onChange={(e) => setAntenatal({ ...antenatal, hbDate: e.target.value })} data-testid="input-rx-hb-date" />
-                    </div>
+                    <Label htmlFor="input-rx-bp">BP (blood pressure)</Label>
+                    <Input id="input-rx-bp" value={antenatal.bp} onChange={(e) => setAntenatal({ ...antenatal, bp: e.target.value })} placeholder="120/80" data-testid="input-rx-bp" />
                   </div>
-                  <div className="col-span-2 space-y-1">
-                    <Label>Urine RE</Label>
-                    <p className="text-[11px] text-muted-foreground">Urine routine examination, with the report date</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input value={antenatal.urineRe} onChange={(e) => setAntenatal({ ...antenatal, urineRe: e.target.value })} placeholder="Result" data-testid="input-rx-urine" />
-                      <Input type="date" value={antenatal.urineReDate} onChange={(e) => setAntenatal({ ...antenatal, urineReDate: e.target.value })} data-testid="input-rx-urine-date" />
-                    </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="input-rx-spo2">SpO2 (oxygen saturation, %)</Label>
+                    <Input id="input-rx-spo2" type="number" min="0" max="100" step="0.1" value={antenatal.spo2} onChange={(e) => setAntenatal({ ...antenatal, spo2: e.target.value })} placeholder="%" data-testid="input-rx-spo2" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="input-rx-rr">RR (respiratory rate)</Label>
+                    <Input id="input-rx-rr" type="number" min="0" step="1" value={antenatal.rr} onChange={(e) => setAntenatal({ ...antenatal, rr: e.target.value })} placeholder="Breaths per minute" data-testid="input-rx-rr" />
                   </div>
                 </div>
+              </fieldset>
+            {pregnant && (
+              <div className="space-y-3 rounded-lg border border-saivie-border p-3">
+                <fieldset className="rounded-md border p-3">
+                  <legend className="px-1 text-sm font-semibold">Per abdomen</legend>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <ExamSelect label="Uterus size" value={antenatal.uterusSize} options={UTERUS_SIZES} onChange={(value) => setAntenatal({ ...antenatal, uterusSize: value })} testId="input-rx-uterus" />
+                    <ExamSelect label="Fetal movement" value={antenatal.fetalMovements} options={["Perceived", "Not perceived", "Decreased"]} onChange={(value) => setAntenatal({ ...antenatal, fetalMovements: value })} testId="input-rx-fm" />
+                    <ExamSelect label="Fetal heart sound" value={antenatal.fetalHeartSound} options={FETAL_HEART_SOUNDS} unit=" bpm" onChange={(value) => setAntenatal({ ...antenatal, fetalHeartSound: value })} testId="input-rx-fhs" />
+                    <ExamSelect label="Scar tenderness" value={antenatal.scarTenderness} options={["Present", "Absent", "NA"]} onChange={(value) => setAntenatal({ ...antenatal, scarTenderness: value })} testId="input-rx-scar" />
+                  </div>
+                </fieldset>
+                <div className="space-y-1">
+                  <Label htmlFor="input-rx-doppler">Fetal heart Doppler (optional)</Label>
+                  <Input id="input-rx-doppler" value={antenatal.fetalHeartDoppler} onChange={(e) => setAntenatal({ ...antenatal, fetalHeartDoppler: e.target.value })} placeholder="Doppler findings" data-testid="input-rx-doppler" />
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="space-y-1">
+            <Label>Diagnosis / notes</Label>
+            <Textarea rows={2} value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} data-testid="input-rx-diagnosis" />
+          </div>
+          </>
+          )}
+          {step === "scans" && pregnant && (
                 <div className="space-y-2">
                   <Label>USG</Label>
-                  <p className="text-[11px] text-muted-foreground">Ultrasound. SLF means single live fetus. POG is the period of gestation on that scan, not today’s gestation. Placenta, liquor, and EFW (estimated fetal weight) are the findings from the same scan.</p>
+                  <p className="text-xs text-muted-foreground">Record each scan separately. POG is the gestation on that scan, not today's gestation.</p>
                   {antenatal.usg.map((line, index) => (
                     <div key={index} className="space-y-2 rounded-md border p-2">
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -943,85 +1093,9 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
                   ))}
                   <Button type="button" size="sm" variant="outline" onClick={() => setAntenatal({ ...antenatal, usg: [...antenatal.usg, emptyUsg()] })}>Add scan</Button>
                 </div>
-                <div>
-                  <p className="text-sm font-medium">On examination</p>
-                  <p className="text-[11px] text-muted-foreground">Today’s obstetric examination. Pt c/o stays in Chief complaint above.</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>SLF</Label>
-                    <p className="text-[11px] text-muted-foreground">Single live fetus</p>
-                    <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={antenatal.slf} onChange={(e) => setAntenatal({ ...antenatal, slf: e.target.value })} data-testid="input-rx-slf">
-                      <option value="">—</option>
-                      <option value="Yes">Yes</option>
-                      <option value="No">No</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>PR</Label>
-                    <p className="text-[11px] text-muted-foreground">Pulse rate, per minute</p>
-                    <Input value={antenatal.pulse} onChange={(e) => setAntenatal({ ...antenatal, pulse: e.target.value })} placeholder="92" data-testid="input-rx-pulse" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>BP</Label>
-                    <p className="text-[11px] text-muted-foreground">Blood pressure</p>
-                    <Input value={antenatal.bp} onChange={(e) => setAntenatal({ ...antenatal, bp: e.target.value })} placeholder="120/80" data-testid="input-rx-bp" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>P/A</Label>
-                    <p className="text-[11px] text-muted-foreground">Per abdomen</p>
-                    <Input value={antenatal.perAbdomen} onChange={(e) => setAntenatal({ ...antenatal, perAbdomen: e.target.value })} placeholder="Nil" data-testid="input-rx-pa" />
-                  </div>
-                  <div className="col-span-2 space-y-1">
-                    <Label>Uterus size</Label>
-                    <p className="text-[11px] text-muted-foreground">Uterus size in weeks, with the examination date</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input value={antenatal.uterusSize} onChange={(e) => setAntenatal({ ...antenatal, uterusSize: e.target.value })} placeholder="26 wk" data-testid="input-rx-uterus" />
-                      <Input type="date" value={antenatal.uterusSizeDate} onChange={(e) => setAntenatal({ ...antenatal, uterusSizeDate: e.target.value })} data-testid="input-rx-uterus-date" />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>FM</Label>
-                    <p className="text-[11px] text-muted-foreground">Fetal movements</p>
-                    <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={antenatal.fetalMovements} onChange={(e) => setAntenatal({ ...antenatal, fetalMovements: e.target.value })} data-testid="input-rx-fm">
-                      <option value="">—</option>
-                      <option value="Present">Present</option>
-                      <option value="Absent">Absent</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>FHS</Label>
-                    <p className="text-[11px] text-muted-foreground">Fetal heart sound</p>
-                    <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={antenatal.fetalHeartSound} onChange={(e) => setAntenatal({ ...antenatal, fetalHeartSound: e.target.value })} data-testid="input-rx-fhs">
-                      <option value="">—</option>
-                      <option value="Present">Present</option>
-                      <option value="Absent">Absent</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Fetal heart Doppler</Label>
-                    <p className="text-[11px] text-muted-foreground">Doppler check of the fetal heart</p>
-                    <Input value={antenatal.fetalHeartDoppler} onChange={(e) => setAntenatal({ ...antenatal, fetalHeartDoppler: e.target.value })} placeholder="Heard" data-testid="input-rx-doppler" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Scar tenderness</Label>
-                    <p className="text-[11px] text-muted-foreground">Tenderness over a previous caesarean scar</p>
-                    <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={antenatal.scarTenderness} onChange={(e) => setAntenatal({ ...antenatal, scarTenderness: e.target.value })} data-testid="input-rx-scar">
-                      <option value="">—</option>
-                      <option value="None">No scar tenderness</option>
-                      <option value="Present">Tender</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
 
-          <div className="space-y-1">
-            <Label>Diagnosis / notes</Label>
-            <Textarea rows={2} value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} data-testid="input-rx-diagnosis" />
-          </div>
-
+          {step === "medicines" && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Medicines prescribed</Label>
@@ -1042,35 +1116,35 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
               </div>
             ))}
           </div>
+          )}
 
+          {step === "plan" && (
+          <>
           <div className="space-y-2">
-            <Label>Tests (lab / USG)</Label>
-            {missingBilled.length > 0 && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-sm">
-                <p className="mb-1 text-xs font-medium text-amber-800">Billed but not in prescription — tap to add</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {missingBilled.map((b) => (
-                    <Button key={b.name} type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => addTest(b)} data-testid="btn-rx-add-billed-test">
-                      <Plus className="mr-1 h-3 w-3" /> {b.name}
-                    </Button>
+            <Label>Tests advised (lab / USG)</Label>
+            <p className="text-xs text-muted-foreground">Tests ordered on this prescription, not report results.</p>
+            <div className="rounded-md border bg-muted/30 p-3" data-testid="rx-test-context">
+              <p className="text-sm font-medium">{suggestedTests.context}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Options for clinician review, not automatic orders. Confirm timing, prior results and local protocol. Only checked tests are saved.</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(["lab", "usg"] as const).map((type) => (
+                <fieldset key={type} className="space-y-2 rounded-md border p-3">
+                  <legend className="px-1 text-sm font-medium">{type === "lab" ? "Labs" : "USG / ultrasound"}</legend>
+                  {testOptions.filter((test) => test.type === type).map((test) => (
+                    <label key={test.name} className="flex cursor-pointer items-start gap-2 rounded p-1 text-sm">
+                      <input type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={tests.some((item) => item.name.toLowerCase() === test.name.toLowerCase())} onChange={(event) => {
+                        if (event.target.checked) addTest(test);
+                        else setTests(tests.filter((item) => item.name.toLowerCase() !== test.name.toLowerCase()));
+                      }} />
+                      <span>{test.name}{billedTests.some((item) => item.name.toLowerCase() === test.name.toLowerCase()) ? " (billed)" : ""}</span>
+                    </label>
                   ))}
-                </div>
-              </div>
-            )}
-            <div className="space-y-1">
-              {tests.map((t, i) => (
-                <div key={`${t.name}-${i}`} className="flex items-center justify-between rounded-md border px-2 py-1 text-sm">
-                  <span>
-                    {t.name} <span className="text-xs text-saivie-plum">· {t.type === "usg" ? "USG" : "Lab"}{t.fromBilling ? " · from billing" : ""}</span>
-                  </span>
-                  <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => setTests(tests.filter((_, idx) => idx !== i))}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+                </fieldset>
               ))}
             </div>
             <div className="flex gap-2">
-              <Input placeholder="Add a test" value={newTest} onChange={(e) => setNewTest(e.target.value)} data-testid="input-rx-test" />
+              <Input aria-label="Other test" placeholder="Other test (optional)" value={newTest} onChange={(e) => setNewTest(e.target.value)} data-testid="input-rx-test" />
               <Button type="button" variant="outline" disabled={!newTest.trim()} onClick={() => { addTest({ name: newTest.trim(), type: USG_CATEGORY.test(newTest) ? "usg" : "lab" }); setNewTest(""); }}>
                 Add
               </Button>
@@ -1085,16 +1159,35 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
             <Label>Follow-up</Label>
             <Input placeholder="e.g. Review after 2 weeks with reports" value={followUp} onChange={(e) => setFollowUp(e.target.value)} />
           </div>
+          <div className="rounded-lg border bg-muted/30 p-3 text-sm" data-testid="rx-save-summary">
+            <p className="font-medium">Ready to save</p>
+            <p className="mt-1 text-muted-foreground">
+              {patient?.name} · {prescriptionDate || String(appointment.date).slice(0, 10)} · {patientType}
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              {medicines.filter((medicine) => medicine.name.trim()).length} medicines
+              {pregnant ? ` · ${antenatalExam?.usg.length || 0} scans` : ""}
+              {` · ${tests.length} advised tests`}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">Use the steps above to check or change any section before saving.</p>
+            {datingEstimate && <p className="mt-2 text-xs text-muted-foreground">Estimated LMP equivalent: {datingEstimate.estimatedLmp} · {datingEstimate.pog}. Not patient-reported; requires clinician confirmation.</p>}
+          </div>
+          </>
+          )}
         </div>
 
         </div>
       </div>
-      <footer className="flex justify-end gap-2 border-t px-4 py-3 sm:px-6">
-        <Button variant="outline" onClick={closePage} disabled={saving}>Close</Button>
-        <Button onClick={save} disabled={saving || (needsDate && !prescriptionDate)} data-testid="btn-rx-save">
+      <footer className="flex items-center justify-between gap-2 border-t px-4 py-3 sm:px-6">
+        <Button type="button" variant="outline" onClick={() => goToStep(steps[stepIndex - 1].id)} disabled={stepIndex === 0 || saving || scanning} data-testid="btn-rx-back">Back</Button>
+        {stepIndex < steps.length - 1 ? (
+          <Button type="button" onClick={() => goToStep(steps[stepIndex + 1].id)} disabled={saving || scanning} data-testid="btn-rx-next">Next</Button>
+        ) : (
+        <Button type="button" onClick={save} disabled={saving || scanning || (needsDate && !prescriptionDate)} data-testid="btn-rx-save">
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {editing ? "Update prescription" : "Save prescription"}
         </Button>
+        )}
       </footer>
     </div>
   );
