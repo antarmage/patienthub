@@ -1304,7 +1304,7 @@ export default function StaffPortal() {
         patientId: v.patientId,
         patientName: patient?.name || `Patient #${v.patientId}`,
         providerName: provider?.name || 'Unknown',
-        title: /uploaded/i.test(v.outcome || '') ? v.outcome : (v.chiefComplaint || v.visitType || 'Visit Note'),
+        title: /prescription/i.test(v.outcome || "") || v.prescriptions?.source?.startsWith("paper") ? `Prescription${v.date ? ` — ${String(v.date).slice(0, 10)}` : ""}` : /uploaded/i.test(v.outcome || '') ? v.outcome : (v.chiefComplaint || v.visitType || 'Visit Note'),
         type: v.visitType || 'Visit',
         date: v.date,
         diagnosis: v.diagnosis,
@@ -1312,7 +1312,7 @@ export default function StaffPortal() {
         objective: v.objective,
         assessment: v.assessment,
         plan: v.planNotes,
-        prescriptions: v.prescriptions,
+        prescriptions: Array.isArray(v.prescriptions) ? v.prescriptions : Array.isArray(v.prescriptions?.medicines) ? v.prescriptions.medicines : [],
         procedures: v.procedures,
         labsOrdered: v.labsOrdered,
         followUpPlan: v.followUpPlan,
@@ -3037,13 +3037,15 @@ export default function StaffPortal() {
                             if (!query) return true;
                             return [patient.name, patient.phone, patient.id].filter(Boolean).join(" ").toLowerCase().includes(query);
                         }).map((patient: any) => {
-                            const uploads = allDocuments.filter((doc: any) => doc.patientId === patient.id);
+                            const uploads = allDocuments.filter((doc: any) => doc.patientId === patient.id && /prescription/i.test(`${doc.type || ""} ${doc.category || ""} ${doc.name || ""}`));
+                            const manualVisits = allVisitHistory.filter((visit: any) => visit.patientId === patient.id && (visit.prescriptions || /prescription/i.test(visit.outcome || "")));
+                            const prescriptionCount = uploads.length || manualVisits.length;
                             return (
                                 <div key={patient.id} className="flex items-center justify-between gap-3 p-4">
                                     <div>
                                         <p className="font-semibold text-sm text-saivie-plum">{patient.name}</p>
                                         <p className="text-xs text-saivie-plum mt-0.5">ID: {patient.id}{patient.phone ? ` · ${patient.phone}` : ""}</p>
-                                        <p className="text-xs text-saivie-teal mt-1">{!allDocumentsQuery.isSuccess ? "Open the record to see uploads" : uploads.length > 0 ? `${uploads.length} uploaded prescription${uploads.length === 1 ? "" : "s"}` : "No uploaded prescription"}</p>
+                                        <p className="text-xs text-saivie-teal mt-1">{!allDocumentsQuery.isSuccess ? "Open the record to see prescriptions" : prescriptionCount > 0 ? `${prescriptionCount} prescription${prescriptionCount === 1 ? "" : "s"}` : "No prescription recorded"}</p>
                                     </div>
                                     <Button size="sm" variant="outline" onClick={() => openViewLog(patient)}>Open record</Button>
                                 </div>
@@ -5235,6 +5237,10 @@ export default function StaffPortal() {
               appointment={prescriptionAppointment}
               patient={patients.find((p: any) => p.id === prescriptionAppointment?.patientId) || null}
               onClose={() => setPrescriptionAppointment(null)}
+              onSaved={(patientId) => {
+                const savedPatient = patients.find((p: any) => p.id === patientId) || selectedPatientForLog;
+                if (savedPatient) openViewLog(savedPatient);
+              }}
             />
             <AfterVisitDialog
               appointment={afterVisitAppointment}
@@ -5607,7 +5613,7 @@ export default function StaffPortal() {
                                 {(logTab === "all" || logTab === "uploads") && logData.documents.length > 0 && (
                                     <div>
                                         <h4 className="text-xs font-bold text-saivie-plum uppercase tracking-wide mb-2 flex items-center gap-2">
-                                            <FileText className="w-3.5 h-3.5" /> Uploaded prescriptions
+                                            <FileText className="w-3.5 h-3.5" /> Prescriptions
                                         </h4>
                                         <div className="space-y-2">
                                             {logData.documents.map((doc: any) => {
@@ -5641,18 +5647,23 @@ export default function StaffPortal() {
                                                         <span className="text-[10px] text-saivie-plum">{v.date || v.visitDate || v.createdAt || ''}</span>
                                                     </div>
                                                     {v.outcome && <p className="text-xs text-saivie-teal font-medium">{v.outcome}</p>}
-                                                    {v.subjective && <p className="text-xs text-saivie-plum"><span className="font-medium">S:</span> {v.subjective}</p>}
-                                                    {v.objective && <p className="text-xs text-saivie-plum"><span className="font-medium">O:</span> {typeof v.objective === "string" ? v.objective : ""}</p>}
+                                                    {v.chiefComplaint && <p className="text-xs text-saivie-plum"><span className="font-medium">Chief complaint:</span> {v.chiefComplaint}</p>}
+                                                    {v.vitals?.patientType && <p className="text-xs text-saivie-plum"><span className="font-medium">Patient type:</span> {v.vitals.patientType}</p>}
+                                                    {v.subjective && v.subjective !== v.chiefComplaint && <p className="text-xs text-saivie-plum"><span className="font-medium">S:</span> {v.subjective}</p>}
+                                                    {v.objective && <p className="text-xs text-saivie-plum"><span className="font-medium">O/E:</span> {typeof v.objective === "string" ? v.objective : v.examination?.findings || ""}</p>}
                                                     {v.assessment && <p className="text-xs text-saivie-plum"><span className="font-medium">A:</span> {v.assessment}</p>}
                                                     {(v.planNotes || v.plan) && <p className="text-xs text-saivie-plum"><span className="font-medium">P:</span> {v.planNotes || v.plan}</p>}
-                                                    {Array.isArray(v.prescriptions) && v.prescriptions.length > 0 && (
+                                                    {(() => {
+                                                        const medicines = Array.isArray(v.prescriptions) ? v.prescriptions : Array.isArray(v.prescriptions?.medicines) ? v.prescriptions.medicines : [];
+                                                        return medicines.length > 0 ? (
                                                         <div className="mt-2 space-y-1">
                                                             <p className="text-[10px] font-bold uppercase text-saivie-teal">Prescription</p>
-                                                            {v.prescriptions.map((med: any, medIndex: number) => (
-                                                                <p key={medIndex} className="text-xs text-saivie-plum">{[med.name, med.dosage, med.frequency, med.duration].filter(Boolean).join(" · ")}</p>
+                                                            {medicines.map((med: any, medIndex: number) => (
+                                                                <p key={medIndex} className="text-xs text-saivie-plum">{[med.name, med.dosage || med.dose, med.frequency, med.duration].filter(Boolean).join(" · ")}</p>
                                                             ))}
                                                         </div>
-                                                    )}
+                                                        ) : null;
+                                                    })()}
                                                     {Array.isArray(v.labsOrdered) && v.labsOrdered.length > 0 && (
                                                         <p className="text-xs text-saivie-plum mt-1"><span className="font-medium">Labs:</span> {v.labsOrdered.map((lab: any) => lab.name || lab.result).filter(Boolean).join(", ")}</p>
                                                     )}

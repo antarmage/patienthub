@@ -56,9 +56,10 @@ interface Props {
   appointment: any | null;
   patient: any | null;
   onClose: () => void;
+  onSaved?: (patientId: number) => void;
 }
 
-export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props) {
+export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [medicines, setMedicines] = useState<Medicine[]>([emptyMedicine()]);
@@ -268,7 +269,34 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
         labsOrdered: tests,
       }),
     });
-    if (!saved.ok) throw new Error("Failed to save");
+    const savedBody = await readApiJson(saved);
+    if (!saved.ok) throw new Error(savedBody.error || "Failed to save");
+    const summary = [
+      `Prescription date: ${visitDate}`,
+      patientType.trim() ? `Patient type: ${patientType.trim()}` : null,
+      chiefComplaint.trim() ? `Chief complaint: ${chiefComplaint.trim()}` : null,
+      examination.trim() ? `O/E: ${examination.trim()}` : null,
+      namedMedicines.length ? `Medicines: ${namedMedicines.map((med) => med.name.trim()).join(", ")}` : "No medicines entered",
+    ].filter(Boolean).join("\n");
+    const recorded = await fetch(`/api/patients/${patientId}/documents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: `Prescription - ${visitDate}`,
+        type: "Prescription",
+        category: "prescription",
+        date: visitDate,
+        description: summary,
+        metadata: {
+          source: "manual-entry",
+          appointmentId: visitAppointment.id,
+          savedMedications: namedMedicines.map((med) => med.name.trim()),
+          patientType: patientType.trim() || null,
+        },
+      }),
+    });
+    const recordedBody = await readApiJson(recorded);
+    if (!recorded.ok) throw new Error(recordedBody.error || "The visit was saved, but it could not be added to the patient record");
     const patientPatch: Record<string, unknown> = {};
     if (lmp) patientPatch.lmp = lmp;
     if (height.trim()) patientPatch.height = height.trim();
@@ -339,7 +367,10 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/medications`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] });
       toast({ title: appointment?.id ? "Prescription recorded" : "Prescription recorded and visit created" });
+      onSaved?.(patientId);
       onClose();
     } catch (err: any) {
       toast({ title: "Could not save prescription", description: err.message, variant: "destructive" });

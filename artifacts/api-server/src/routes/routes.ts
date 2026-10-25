@@ -1138,7 +1138,7 @@ export async function registerRoutes(
     const sid = sessionPatientId(req);
     const isStaff = !!(req.headers["x-staff-token"] && staffAuthTokens.has(req.headers["x-staff-token"] as string));
     const headerPid = parseId((req.headers["x-patient-id"] as string) ?? "");
-    const filterPatientId: number | null = sid ?? (isStaff && headerPid ? headerPid : null);
+    const filterPatientId: number | null = sid ?? headerPid ?? null;
 
     let appts;
     if (date) {
@@ -1922,6 +1922,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       diagnosis: body.diagnosis || null,
       planNotes: body.advice || null,
       followUpPlan: body.followUp || null,
+      outcome: "Prescription entered manually",
       prescriptions: {
         source: body.scanned ? "paper-scanned-reviewed" : "paper-transcribed",
         enteredAt: matchedVisit?.prescriptions && typeof matchedVisit.prescriptions === "object" && "enteredAt" in matchedVisit.prescriptions
@@ -1956,7 +1957,37 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       })));
     }
 
-    res.status(201).json({ appointment, visit });
+    const summary = [
+      `Prescription date: ${prescriptionDate}`,
+      body.patientType ? `Patient type: ${String(body.patientType).trim()}` : null,
+      chiefComplaint ? `Chief complaint: ${chiefComplaint}` : null,
+      String(body.examination || "").trim() ? `O/E: ${String(body.examination).trim()}` : null,
+      medicines.length ? `Medicines: ${medicines.map((med: any) => String(med.name).trim()).join(", ")}` : "No medicines entered",
+    ].filter(Boolean).join("\n");
+    const docPayload = {
+      name: `Prescription - ${prescriptionDate}`,
+      type: "Prescription",
+      category: "prescription",
+      date: prescriptionDate,
+      description: summary,
+      metadata: {
+        source: "manual-entry",
+        appointmentId: appointment.id,
+        visitId: visit?.id ?? null,
+        savedMedications: medicines.map((med: any) => String(med.name).trim()),
+        patientType: body.patientType ? String(body.patientType).trim() : null,
+      },
+    };
+    const existingDocs = await storage.getDocuments(id);
+    const existingDoc = existingDocs.find((doc) => {
+      const metadata = doc.metadata;
+      return !!metadata && typeof metadata === "object" && (metadata as { source?: string; appointmentId?: number }).source === "manual-entry" && (metadata as { appointmentId?: number }).appointmentId === appointment.id;
+    });
+    const document = existingDoc
+      ? await storage.updateDocument(existingDoc.id, docPayload)
+      : await storage.createDocument({ ...docPayload, patientId: id });
+
+    res.status(201).json({ appointment, visit, document });
   });
 
   app.patch("/api/visit-history/:visitId", async (req, res) => {
