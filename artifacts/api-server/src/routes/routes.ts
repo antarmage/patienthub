@@ -1847,18 +1847,25 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     if (!/pregnant/i.test(String(body?.patientType || ""))) return null;
     const source = body?.antenatal && typeof body.antenatal === "object" ? body.antenatal : {};
     const text = (value: unknown) => String(value || "").trim() || null;
-    const date = (value: unknown) => String(value || "").slice(0, 10) || null;
-    const usg = Array.isArray(source.usg)
-      ? source.usg.map((line: any) => ({
-        date: date(line?.date),
-        finding: text(line?.finding),
-        weeks: text(line?.weeks || line?.pog),
-        placenta: text(line?.placenta),
-        liquor: text(line?.liquor),
-        efw: text(line?.efw),
-        anomaly: text(line?.anomaly),
-      })).filter((line: { date: string | null; finding: string | null; weeks: string | null; placenta: string | null; liquor: string | null; efw: string | null; anomaly: string | null }) => line.date || line.finding || line.weeks || line.placenta || line.liquor || line.efw || line.anomaly)
-      : [];
+    const date = (value: unknown) => {
+      const raw = String(value || "").trim();
+      const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+      const dmy = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+      if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+      return null;
+    };
+    const rawUsg: any[] = Array.isArray(source.usg) ? source.usg : [];
+    const mappedUsg = rawUsg.map((line) => ({
+      scanDate: date(line?.scanDate || line?.date),
+      finding: text(line?.finding),
+      weeks: text(line?.weeks || line?.pog),
+      placenta: text(line?.placenta),
+      liquor: text(line?.liquor),
+      efw: text(line?.efw),
+      anomaly: text(line?.anomaly),
+    }));
+    const usg = mappedUsg.filter((line) => line.scanDate || line.finding || line.weeks || line.placenta || line.liquor || line.efw || line.anomaly);
     return {
       bloodGroup: text(source.bloodGroup),
       hb: text(source.hb),
@@ -2028,7 +2035,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       antenatal?.bloodGroup ? `Blood group: ${antenatal.bloodGroup}` : null,
       antenatal?.hb ? `Hb: ${antenatal.hb}${antenatal.hbDate ? ` (${antenatal.hbDate})` : ""}` : null,
       antenatal?.urineRe ? `Urine RE: ${antenatal.urineRe}${antenatal.urineReDate ? ` (${antenatal.urineReDate})` : ""}` : null,
-      antenatal?.usg.length ? `USG: ${antenatal.usg.map((line) => [line.date, line.finding, line.weeks ? `POG ${line.weeks}` : null, line.placenta ? `Placenta ${line.placenta}` : null, line.liquor ? `Liquor ${line.liquor}` : null, line.efw ? `EFW ${line.efw}` : null, line.anomaly].filter(Boolean).join(", ")).join("; ")}` : null,
+      antenatal?.usg.length ? `USG: ${antenatal.usg.map((line: { scanDate: string | null; finding: string | null; weeks: string | null; placenta: string | null; liquor: string | null; efw: string | null; anomaly: string | null }) => [line.scanDate ? `Scan date ${line.scanDate}` : null, line.finding, line.weeks ? `POG ${line.weeks}` : null, line.placenta ? `Placenta ${line.placenta}` : null, line.liquor ? `Liquor ${line.liquor}` : null, line.efw ? `EFW ${line.efw}` : null, line.anomaly].filter(Boolean).join(", ")).join("; ")}` : null,
       antenatal?.slf ? `SLF: ${antenatal.slf}` : null,
       antenatal?.pulse ? `PR: ${antenatal.pulse}` : null,
       antenatal?.bp ? `BP: ${antenatal.bp}` : null,
@@ -2054,6 +2061,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         visitId: visit?.id ?? null,
         savedMedications: medicines.map((med: any) => String(med.name).trim()),
         patientType: body.patientType ? String(body.patientType).trim() : null,
+        antenatal,
       },
     };
     const existingDocs = await storage.getDocuments(id);

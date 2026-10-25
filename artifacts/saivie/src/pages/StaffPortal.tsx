@@ -169,8 +169,8 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
     let savedDoc = false;
     let savedNote = false;
 
-    const visitDate = ocrResult?.date || null;
-    const hasValidDate = visitDate && /^\d{4}-\d{2}-\d{2}$/.test(visitDate);
+    const visitDate = toIsoDate(ocrResult?.date);
+    const hasValidDate = /^\d{4}-\d{2}-\d{2}$/.test(visitDate);
     const effectiveVisitDate = hasValidDate ? visitDate : today;
     const dateTag = hasValidDate ? '' : ' [Date to be confirmed]';
 
@@ -268,7 +268,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
           const weekMatch = ocrResult.gestationalAge?.match(/(\d+)\s*week/i);
           const week = weekMatch ? parseInt(weekMatch[1]) : null;
           try {
-            await fetch(`/api/usg-data`, {
+            const usgRes = await fetch(`/api/patients/${patient.id}/usg-data`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -279,6 +279,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                 fl: fp.fl ? parseFloat(String(fp.fl).replace(/[^0-9.]/g, '')) || null : null,
               }),
             });
+            if (!usgRes.ok) console.error('Failed to save USG data:', await usgRes.text());
           } catch (e) {
             console.error('Failed to save USG data:', e);
           }
@@ -290,7 +291,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
           const etVal = ocrResult.endometrialThickness ? parseFloat(String(ocrResult.endometrialThickness).replace(/[^0-9.]/g, '')) : null;
 
           try {
-            await fetch(`/api/follicle-data`, {
+            const follicleRes = await fetch(`/api/patients/${patient.id}/follicle-data`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -301,6 +302,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                 endometrium: etVal && !isNaN(etVal) ? etVal : null,
               }),
             });
+            if (!follicleRes.ok) console.error('Failed to save follicle data:', await follicleRes.text());
           } catch (e) {
             console.error('Failed to save follicle data:', e);
           }
@@ -320,7 +322,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
       const ocrSummary = ocrResult ? {
         doctorName: ocrResult.doctorName || null,
         patientName: ocrResult.patientName || null,
-        date: ocrResult.date || null,
+        date: visitDate || ocrResult.date || null,
         diagnosis: ocrResult.diagnosis || null,
         confidence: ocrResult.confidence || null,
         medicationCount: scannedMedications.length,
@@ -334,7 +336,18 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
           type: activeDocTab === 'prescription' ? 'Prescription' : activeDocTab === 'blood' ? 'Lab Report' : 'USG Report',
           category: activeDocTab,
           date: effectiveVisitDate,
-          description: uploadNotes || null,
+          description: activeDocTab === 'usg'
+            ? [
+                hasValidDate ? `Scan date: ${effectiveVisitDate}` : null,
+                ocrResult?.reportType ? `Scan: ${ocrResult.reportType}` : null,
+                ocrResult?.gestationalAge ? `POG: ${ocrResult.gestationalAge}` : null,
+                ocrResult?.fetalParameters?.placenta ? `Placenta: ${ocrResult.fetalParameters.placenta}` : null,
+                ocrResult?.fetalParameters?.afi ? `Liquor: ${ocrResult.fetalParameters.afi}` : null,
+                ocrResult?.fetalParameters?.efw ? `EFW: ${ocrResult.fetalParameters.efw}` : null,
+                ocrResult?.impression || null,
+                uploadNotes || null,
+              ].filter(Boolean).join("\n") || null
+            : uploadNotes || null,
           metadata: {
             fileName: uploadedFile.name,
             fileSize: uploadedFile.size,
@@ -342,13 +355,60 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
             savedMedications: savedMeds,
             contentFingerprint,
             dateConfirmed: hasValidDate,
+            scanDate: hasValidDate ? effectiveVisitDate : null,
+            gestationalAge: ocrResult?.gestationalAge || null,
+            placenta: ocrResult?.fetalParameters?.placenta || null,
+            liquor: ocrResult?.fetalParameters?.afi || null,
+            efw: ocrResult?.fetalParameters?.efw || null,
+            fetalParameters: ocrResult?.fetalParameters || null,
           },
           fileData: uploadedFile.preview,
           mimeType: uploadedFile.type,
         }),
       });
       if (docRes.ok) savedDoc = true;
-      else console.error('Document save failed:', await docRes.text());
+      else {
+        const failure = await docRes.text();
+        console.error('Document save failed:', failure);
+        const retry = await fetch(`/api/patients/${patient.id}/documents`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: docName,
+            type: activeDocTab === 'prescription' ? 'Prescription' : activeDocTab === 'blood' ? 'Lab Report' : 'USG Report',
+            category: activeDocTab,
+            date: effectiveVisitDate,
+            description: activeDocTab === 'usg'
+              ? [
+                  hasValidDate ? `Scan date: ${effectiveVisitDate}` : null,
+                  ocrResult?.reportType ? `Scan: ${ocrResult.reportType}` : null,
+                  ocrResult?.gestationalAge ? `POG: ${ocrResult.gestationalAge}` : null,
+                  ocrResult?.fetalParameters?.placenta ? `Placenta: ${ocrResult.fetalParameters.placenta}` : null,
+                  ocrResult?.fetalParameters?.afi ? `Liquor: ${ocrResult.fetalParameters.afi}` : null,
+                  ocrResult?.fetalParameters?.efw ? `EFW: ${ocrResult.fetalParameters.efw}` : null,
+                  ocrResult?.impression || null,
+                  uploadNotes || null,
+                ].filter(Boolean).join("\n") || null
+              : uploadNotes || null,
+            metadata: {
+              fileName: uploadedFile.name,
+              fileSize: uploadedFile.size,
+              ocrSummary,
+              savedMedications: savedMeds,
+              contentFingerprint,
+              dateConfirmed: hasValidDate,
+              scanDate: hasValidDate ? effectiveVisitDate : null,
+              fileStored: false,
+              gestationalAge: ocrResult?.gestationalAge || null,
+              placenta: ocrResult?.fetalParameters?.placenta || null,
+              liquor: ocrResult?.fetalParameters?.afi || null,
+              efw: ocrResult?.fetalParameters?.efw || null,
+            },
+          }),
+        });
+        if (retry.ok) savedDoc = true;
+        else console.error('Document retry failed:', await retry.text());
+      }
     } catch (e) {
       console.error('Error saving document:', e);
     }
@@ -392,7 +452,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
           noteContent = [
             ocrResult.doctorName ? `Sonologist: ${ocrResult.doctorName}` : '',
             ocrResult.reportType ? `Scan Type: ${ocrResult.reportType}` : '',
-            !hasValidDate ? '⚠ Date to be confirmed' : '',
+            hasValidDate ? `Scan date: ${effectiveVisitDate}` : '⚠ Date to be confirmed',
             ocrResult.gestationalAge ? `Gestational Age: ${ocrResult.gestationalAge}` : '',
             ocrResult.edd ? `EDD: ${ocrResult.edd}` : '',
             ocrResult.endometrialThickness ? `Endometrial Thickness: ${ocrResult.endometrialThickness}` : '',
@@ -445,6 +505,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
           : null;
 
         const usgData = activeDocTab === 'usg' && ocrResult ? {
+          scanDate: hasValidDate ? effectiveVisitDate : null,
           reportType: ocrResult.reportType,
           gestationalAge: ocrResult.gestationalAge,
           edd: ocrResult.edd,
@@ -463,7 +524,20 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
             visitType: activeDocTab === 'prescription' ? 'Consultation' : activeDocTab === 'blood' ? 'Lab Visit' : 'Scan/USG',
             chiefComplaint: ocrResult?.chiefComplaint || ocrResult?.diagnosis || ocrResult?.impression || null,
             diagnosis: ocrResult?.diagnosis || ocrResult?.impression || null,
-            examination: usgData ? usgData : ocrResult?.examination ? { findings: ocrResult.examination } : null,
+            vitals: activeDocTab === 'usg' ? {
+              antenatal: {
+                usg: [{
+                  scanDate: hasValidDate ? effectiveVisitDate : null,
+                  finding: ocrResult?.reportType || ocrResult?.impression || null,
+                  weeks: ocrResult?.gestationalAge || null,
+                  placenta: ocrResult?.fetalParameters?.placenta || null,
+                  liquor: ocrResult?.fetalParameters?.afi || null,
+                  efw: ocrResult?.fetalParameters?.efw || null,
+                  anomaly: null,
+                }],
+              },
+            } : null,
+            examination: usgData ? { ...usgData, scans: [{ scanDate: hasValidDate ? effectiveVisitDate : null, finding: ocrResult?.impression || ocrResult?.reportType || null, weeks: ocrResult?.gestationalAge || null, placenta: ocrResult?.fetalParameters?.placenta || null, liquor: ocrResult?.fetalParameters?.afi || null, efw: ocrResult?.fetalParameters?.efw || null }] } : ocrResult?.examination ? { findings: ocrResult.examination } : null,
             prescriptions: scannedMedications.length > 0 ? scannedMedications.map((m: any) => ({
               name: m.name || m.drug, dosage: m.dosage || m.dose, frequency: m.frequency, duration: m.duration, instructions: m.instructions
             })) : null,
@@ -497,6 +571,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
         savedDoc ? "Document saved to the patient record" : "",
         savedNote ? "Clinical note saved" : "",
         savedVisit ? "Visit history updated" : "",
+        activeDocTab === "usg" && hasValidDate ? `Scan date saved: ${effectiveVisitDate}` : "",
         savedMeds.length > 0 ? `Medications added: ${savedMeds.join(", ")}` : "",
         scannedMedications.length > savedMeds.length ? `${scannedMedications.length - savedMeds.length} medicine(s) were read but not added to the medication list. They are stored on the visit.` : "",
         ocrResult?.investigations?.length ? `Investigations: ${ocrResult.investigations.map((inv: any) => inv.name).filter(Boolean).join(", ")}` : "",
@@ -705,12 +780,10 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                           <span className="text-sm text-saivie-plum">{ocrResult.patientName}</span>
                         </div>
                       )}
-                      {ocrResult.date && (
-                        <div className="flex gap-3">
-                          <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">Date</span>
-                          <span className="text-sm text-saivie-plum">{ocrResult.date}</span>
-                        </div>
-                      )}
+                      <div className="flex gap-3 items-center">
+                        <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0">{activeDocTab === "usg" ? "Scan date" : "Date"}</span>
+                        <Input type="date" className="h-8 max-w-[180px]" value={toIsoDate(ocrResult.date)} onChange={(e) => setOcrResult({ ...ocrResult, date: e.target.value })} data-testid="input-scan-date" />
+                      </div>
                       {(ocrResult.reportType) && (
                         <div className="flex gap-3">
                           <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0 pt-0.5">Report Type</span>
@@ -1198,6 +1271,29 @@ function PrimeMembersView({ patients }: { patients: any[] }) {
       </Dialog>
     </div>
   );
+}
+
+function toIsoDate(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw || raw === "null" || raw === "undefined") return "";
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const dmy = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (dmy) {
+    const year = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
+    const month = Number(dmy[2]);
+    const day = Number(dmy[1]);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+  if (/[a-z]/i.test(raw)) {
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) {
+      return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+    }
+  }
+  return "";
 }
 
 export default function StaffPortal() {
@@ -2034,7 +2130,18 @@ export default function StaffPortal() {
         pog: visit?.vitals?.pog || patient.history?.obstetric?.pog || "",
         gravida: visit?.vitals?.gravida || patient.history?.obstetric?.gravida || "",
         surgicalHistory: visit?.vitals?.surgicalHistory || patient.history?.obstetric?.surgicalHistory || "",
-        antenatal: visit?.vitals?.antenatal || { bloodGroup: patient.history?.obstetric?.bloodGroup || "" },
+        antenatal: {
+          ...(visit?.vitals?.antenatal || doc?.metadata?.antenatal || { bloodGroup: patient.history?.obstetric?.bloodGroup || "" }),
+          usg: [visit?.vitals?.antenatal?.usg, visit?.examination?.scans, doc?.metadata?.antenatal?.usg]
+            .filter(Array.isArray)
+            .reduce((merged: any[], list: any[]) => {
+              list.forEach((line: any, index: number) => {
+                const scanDate = String(line?.scanDate || line?.date || "").slice(0, 10);
+                merged[index] = { ...(merged[index] || {}), ...line, ...(scanDate ? { scanDate, date: scanDate } : {}) };
+              });
+              return merged;
+            }, []),
+        },
       },
     });
   };
@@ -3078,7 +3185,7 @@ export default function StaffPortal() {
                             return [patient.name, patient.phone, patient.id].filter(Boolean).join(" ").toLowerCase().includes(query);
                         }).map((patient: any) => {
                             const visits = allVisitHistory.filter((visit: any) => visit.patientId === patient.id);
-                            const uploads = allDocuments.filter((doc: any) => doc.patientId === patient.id && /prescription/i.test(`${doc.type || ""} ${doc.category || ""} ${doc.name || ""}`));
+                            const uploads = allDocuments.filter((doc: any) => doc.patientId === patient.id && /prescription|usg|scan/i.test(`${doc.type || ""} ${doc.category || ""} ${doc.name || ""}`));
                             const seen = new Set<string>();
                             const records = [
                               ...uploads.map((doc: any) => {
@@ -3119,7 +3226,7 @@ export default function StaffPortal() {
                                                 <div key={record.key} className="flex items-center justify-between gap-3 rounded-md border border-saivie-border bg-saivie-surface-muted px-3 py-2">
                                                     <div className="min-w-0">
                                                         <p className="text-sm text-saivie-plum truncate">{record.label}</p>
-                                                        <p className="text-[10px] text-saivie-plum">{record.date || "Date not recorded"}</p>
+                                                        <p className="text-[10px] text-saivie-plum">{String(record.date || "").slice(0, 10) || "Date not recorded"}{(record.visit?.vitals?.antenatal?.usg || record.visit?.examination?.scans || record.document?.metadata?.antenatal?.usg || []).map((line: any) => toIsoDate(line?.scanDate || line?.date)).filter(Boolean).filter((date: string, index: number, dates: string[]) => dates.indexOf(date) === index).map((date: string) => ` · Scan date ${date}`)}</p>
                                                     </div>
                                                     <Button size="sm" variant="outline" className="h-7 shrink-0 text-xs" data-testid={`btn-edit-record-${patient.id}-${record.key}`} onClick={() => openEditPrescription(patient, record)}>
                                                         <Pencil className="w-3 h-3 mr-1" /> Edit
@@ -5744,7 +5851,7 @@ export default function StaffPortal() {
                                                     {v.vitals?.antenatal?.bloodGroup && <p className="text-xs text-saivie-plum"><span className="font-medium">Blood group:</span> {v.vitals.antenatal.bloodGroup}</p>}
                                                     {v.vitals?.antenatal?.hb && <p className="text-xs text-saivie-plum"><span className="font-medium">Hb:</span> {v.vitals.antenatal.hb}{v.vitals.antenatal.hbDate ? ` (${String(v.vitals.antenatal.hbDate).slice(0, 10)})` : ""}</p>}
                                                     {v.vitals?.antenatal?.urineRe && <p className="text-xs text-saivie-plum"><span className="font-medium">Urine RE:</span> {v.vitals.antenatal.urineRe}{v.vitals.antenatal.urineReDate ? ` (${String(v.vitals.antenatal.urineReDate).slice(0, 10)})` : ""}</p>}
-                                                    {Array.isArray(v.vitals?.antenatal?.usg) && v.vitals.antenatal.usg.length > 0 && <p className="text-xs text-saivie-plum"><span className="font-medium">USG:</span> {v.vitals.antenatal.usg.map((line: any) => [line.date, line.finding, line.weeks ? `POG ${line.weeks}` : null, line.placenta ? `Placenta ${line.placenta}` : null, line.liquor ? `Liquor ${line.liquor}` : null, line.efw ? `EFW ${line.efw}` : null, line.anomaly].filter(Boolean).join(", ")).join("; ")}</p>}
+                                                    {Array.isArray(v.vitals?.antenatal?.usg) && v.vitals.antenatal.usg.length > 0 && <p className="text-xs text-saivie-plum"><span className="font-medium">USG:</span> {v.vitals.antenatal.usg.map((line: any) => [line.scanDate || line.date ? `Scan date ${String(line.scanDate || line.date).slice(0, 10)}` : null, line.finding, line.weeks ? `POG ${line.weeks}` : null, line.placenta ? `Placenta ${line.placenta}` : null, line.liquor ? `Liquor ${line.liquor}` : null, line.efw ? `EFW ${line.efw}` : null, line.anomaly].filter(Boolean).join(", ")).join("; ")}</p>}
                                                     {v.vitals?.antenatal?.slf && <p className="text-xs text-saivie-plum"><span className="font-medium">SLF:</span> {v.vitals.antenatal.slf}</p>}
                                                     {v.vitals?.antenatal?.pulse && <p className="text-xs text-saivie-plum"><span className="font-medium">PR:</span> {v.vitals.antenatal.pulse}</p>}
                                                     {v.vitals?.antenatal?.bp && <p className="text-xs text-saivie-plum"><span className="font-medium">BP:</span> {v.vitals.antenatal.bp}</p>}

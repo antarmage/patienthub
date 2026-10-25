@@ -60,13 +60,36 @@ function obstetricFrom(vitals: any, sourcePatient: any, draft?: any) {
 }
 
 interface UsgLine {
-  date: string;
+  scanDate: string;
   finding: string;
   weeks: string;
   placenta: string;
   liquor: string;
   efw: string;
   anomaly: string;
+}
+
+function toIsoDate(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw || raw === "null" || raw === "undefined") return "";
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const dmy = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (dmy) {
+    const year = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
+    const month = Number(dmy[2]);
+    const day = Number(dmy[1]);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+  if (/[a-z]/i.test(raw)) {
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) {
+      return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+    }
+  }
+  return "";
 }
 
 interface AntenatalExam {
@@ -89,7 +112,16 @@ interface AntenatalExam {
 }
 
 function emptyUsg(): UsgLine {
-  return { date: "", finding: "", weeks: "", placenta: "", liquor: "", efw: "", anomaly: "" };
+  return { scanDate: "", finding: "", weeks: "", placenta: "", liquor: "", efw: "", anomaly: "" };
+}
+
+function usgListsFrom(...sources: any[]): any[][] {
+  return sources.flatMap((source) => {
+    if (Array.isArray(source)) return [source];
+    if (Array.isArray(source?.usg)) return [source.usg];
+    if (Array.isArray(source?.scans)) return [source.scans];
+    return [];
+  }).filter((list) => list.length);
 }
 
 function emptyAntenatal(): AntenatalExam {
@@ -113,10 +145,12 @@ function emptyAntenatal(): AntenatalExam {
   };
 }
 
-function antenatalFrom(vitals: any, sourcePatient: any, draft?: any): AntenatalExam {
+function antenatalFrom(vitals: any, sourcePatient: any, draft?: any, examination?: any): AntenatalExam {
   const history = sourcePatient?.history && typeof sourcePatient.history === "object" ? sourcePatient.history.obstetric || {} : {};
   const saved = vitals?.antenatal || draft?.antenatal || {};
-  const usg = Array.isArray(saved.usg) && saved.usg.length ? saved.usg : [emptyUsg()];
+  const lists = usgListsFrom(saved, examination, draft?.antenatal, history.antenatal);
+  const longest = Math.max(1, ...lists.map((list) => list.length));
+  const usg = Array.from({ length: longest }, (_, index) => lists.reduce((line, list) => ({ ...line, ...(list[index] || {}) }), {}));
   return {
     ...emptyAntenatal(),
     ...saved,
@@ -136,7 +170,7 @@ function antenatalFrom(vitals: any, sourcePatient: any, draft?: any): AntenatalE
     fetalHeartDoppler: String(saved.fetalHeartDoppler || ""),
     scarTenderness: String(saved.scarTenderness || ""),
     usg: usg.map((line: any) => ({
-      date: String(line?.date || "").slice(0, 10),
+      scanDate: toIsoDate(line?.scanDate || line?.date),
       finding: String(line?.finding || ""),
       weeks: String(line?.weeks || line?.pog || ""),
       placenta: String(line?.placenta || ""),
@@ -150,7 +184,7 @@ function antenatalFrom(vitals: any, sourcePatient: any, draft?: any): AntenatalE
 function antenatalPayload(exam: AntenatalExam) {
   const usg = exam.usg
     .map((line) => ({
-      date: line.date || null,
+      scanDate: toIsoDate(line.scanDate) || null,
       finding: line.finding.trim() || null,
       weeks: line.weeks.trim() || null,
       placenta: line.placenta.trim() || null,
@@ -158,7 +192,7 @@ function antenatalPayload(exam: AntenatalExam) {
       efw: line.efw.trim() || null,
       anomaly: line.anomaly.trim() || null,
     }))
-    .filter((line) => line.date || line.finding || line.weeks || line.placenta || line.liquor || line.efw || line.anomaly);
+    .filter((line) => line.scanDate || line.finding || line.weeks || line.placenta || line.liquor || line.efw || line.anomaly);
   return {
     bloodGroup: exam.bloodGroup.trim() || null,
     hb: exam.hb.trim() || null,
@@ -181,7 +215,7 @@ function antenatalPayload(exam: AntenatalExam) {
 
 function antenatalLines(exam: ReturnType<typeof antenatalPayload>) {
   const usg = exam.usg.map((line) => [
-    line.date,
+    line.scanDate ? `Scan date ${line.scanDate}` : null,
     line.finding,
     line.weeks ? `POG ${line.weeks}` : null,
     line.placenta ? `Placenta ${line.placenta}` : null,
@@ -312,7 +346,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       setPog(obstetric.pog);
       setGravida(obstetric.gravida);
       setSurgicalHistory(obstetric.surgicalHistory);
-      setAntenatal(antenatalFrom(existing?.vitals, patient, draft));
+      setAntenatal(antenatalFrom(existing?.vitals, patient, draft, existing?.examination));
       setChiefComplaint(existing?.chiefComplaint || draft.chiefComplaint || "");
       setExamination(typeof existing?.examination === "string" ? existing.examination : existing?.examination?.findings || existing?.objective || draft.examination || "");
       setDiagnosis(existing?.diagnosis || draft.diagnosis || "");
@@ -360,7 +394,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     setPog(obstetric.pog);
     setGravida(obstetric.gravida);
     setSurgicalHistory(obstetric.surgicalHistory);
-    setAntenatal(antenatalFrom(existing?.vitals, patient));
+    setAntenatal(antenatalFrom(existing?.vitals, patient, undefined, existing?.examination));
     setChiefComplaint(existing?.chiefComplaint || "");
     setExamination(typeof existing?.examination === "string" ? existing.examination : existing?.examination?.findings || existing?.objective || "");
     setDiagnosis(existing?.diagnosis || "");
@@ -583,6 +617,56 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     })));
   };
 
+  const persistScanReport = async (appointmentId?: number) => {
+    if (!patientId || !antenatalExam || !antenatalLines(antenatalExam).length) return;
+    const visitDate = (prescriptionDate || String(appointment?.date || "")).slice(0, 10);
+    const visitsRes = await fetch(`/api/patients/${patientId}/visit-history`);
+    const visits = await readApiJson(visitsRes);
+    const visit = Array.isArray(visits)
+      ? visits.find((item: any) => appointmentId && item.appointmentId === appointmentId) || visits.find((item: any) => String(item.date || "").slice(0, 10) === visitDate)
+      : null;
+    if (!visit?.id) throw new Error("The scan report could not be attached to this visit");
+    const patched = await fetch(`/api/visit-history/${visit.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        vitals: { ...(visit.vitals || {}), patientType: patientType || visit.vitals?.patientType || null, antenatal: antenatalExam },
+        examination: {
+          ...(visit.examination && typeof visit.examination === "object" ? visit.examination : {}),
+          findings: examination.trim() || visit.examination?.findings || visit.objective || "",
+          scans: antenatalExam.usg,
+        },
+      }),
+    });
+    const patchedBody = await readApiJson(patched);
+    const savedScanDates = (patchedBody?.vitals?.antenatal?.usg || []).map((line: any) => toIsoDate(line?.scanDate || line?.date));
+    const missingScanDate = antenatalExam.usg.some((line) => line.scanDate && !savedScanDates.includes(line.scanDate));
+    if (!patched.ok || (antenatalExam.usg.length && !patchedBody?.vitals?.antenatal?.usg?.length) || missingScanDate) {
+      throw new Error(patchedBody.error || "Scan date was not saved");
+    }
+    const docsRes = await fetch(`/api/patients/${patientId}/documents`);
+    const docs = await readApiJson(docsRes);
+    const doc = Array.isArray(docs)
+      ? docs.find((item: any) => item.metadata?.source === "manual-entry" && (item.metadata?.appointmentId === appointmentId || String(item.date || "").slice(0, 10) === visitDate))
+      : null;
+    if (!doc?.id) return;
+    const usgSummary = antenatalLines(antenatalExam).find((line) => line.startsWith("USG:"));
+    const description = String(doc.description || "")
+      .split("\n")
+      .filter((line) => line && !line.startsWith("USG:"))
+      .concat(usgSummary ? [usgSummary] : [])
+      .join("\n");
+    const recorded = await fetch(`/api/documents/${doc.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        description,
+        metadata: { ...(doc.metadata || {}), antenatal: antenatalExam },
+      }),
+    });
+    if (!recorded.ok) throw new Error("The scan report was saved on the visit, but not on the patient record");
+  };
+
   const closePage = () => {
     if (closing.current) return;
     closing.current = true;
@@ -639,12 +723,15 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       });
       const raw = await res.text();
       const routeMissing = res.status === 404 || raw.includes("Cannot POST") || raw.trimStart().startsWith("<");
+      let savedAppointmentId = appointment?.id;
       if (routeMissing) {
         await saveOnCurrentServer();
       } else {
         const body = raw.trim() ? JSON.parse(raw) : {};
         if (!res.ok) throw new Error(body.error || "Could not save prescription");
+        savedAppointmentId = body.appointment?.id || body.visit?.appointmentId || appointment?.id;
       }
+      await persistScanReport(savedAppointmentId);
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "visit-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visit-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
@@ -817,7 +904,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                         <div className="space-y-1">
                           <Label className="text-xs">Scan date</Label>
-                          <Input type="date" value={line.date} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, date: e.target.value } : item) })} aria-label="USG date" />
+                          <Input type="date" value={toIsoDate(line.scanDate)} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, scanDate: e.target.value } : item) })} aria-label="Scan date" data-testid={`input-rx-usg-date-${index}`} />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Finding</Label>
