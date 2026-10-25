@@ -41,7 +41,55 @@ const emptyMedicine = (): Medicine => ({ name: "", dose: "", frequency: "", dura
 const PATIENT_TYPES = ["General", "PCOS", "Pregnant", "Fertility", "Postpartum", "Gynecology"];
 const UTERUS_SIZES = Array.from({ length: 42 }, (_, index) => `${index + 1} weeks`);
 const FETAL_HEART_SOUNDS = Array.from({ length: 121 }, (_, index) => String(index + 60));
+const SCAN_WEIGHTS = Array.from({ length: 120 }, (_, index) => `${(index + 1) * 50} g`);
 type EntryStep = "patient" | "examination" | "scans" | "medicines" | "plan";
+
+function ScanSelect({ label, value, options, onChange, testId }: {
+  label: string;
+  value: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+  testId: string;
+}) {
+  const [other, setOther] = useState(false);
+  return (
+    <div className="space-y-1">
+      <Label htmlFor={testId}>{label}</Label>
+      <select id={testId} className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm" value={other ? "__other" : value} onChange={(event) => {
+        const next = event.target.value;
+        setOther(next === "__other");
+        if (next !== "__other") onChange(next);
+      }} data-testid={testId}>
+        <option value="">Not recorded</option>
+        {value && !options.includes(value) && <option value={value}>{value}</option>}
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+        <option value="__other">Other / exact value</option>
+      </select>
+      {other && <Input aria-label={`${label} - exact value`} value={value} placeholder="Enter exactly as reported" onChange={(event) => onChange(event.target.value)} />}
+    </div>
+  );
+}
+
+function ScanGestation({ value, onChange, index }: { value: string; onChange: (value: string) => void; index: number }) {
+  const gestation = pregnancyWeeks(value, "", "");
+  const weeks = gestation === null ? "" : String(Math.floor(gestation));
+  const days = gestation === null ? "0" : String(Math.round((gestation - Math.floor(gestation)) * 7));
+  return (
+    <fieldset className="space-y-1">
+      <legend className="text-sm font-medium">POG at scan</legend>
+      {value && gestation === null && <p className="text-xs text-muted-foreground">Recorded: {value}</p>}
+      <div className="flex gap-2">
+        <select aria-label="Scan gestation weeks" data-testid={`input-rx-usg-weeks-${index}`} className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm" value={weeks} onChange={(event) => onChange(event.target.value ? `${event.target.value} weeks ${days} days` : "")}>
+          <option value="">Weeks</option>
+          {Array.from({ length: 43 }, (_, week) => <option key={week} value={String(week)}>{week} weeks</option>)}
+        </select>
+        <select aria-label="Scan gestation days" className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm" disabled={weeks === ""} value={days} onChange={(event) => onChange(`${weeks} weeks ${event.target.value} days`)}>
+          {Array.from({ length: 7 }, (_, day) => <option key={day} value={String(day)}>{day} days</option>)}
+        </select>
+      </div>
+    </fieldset>
+  );
+}
 
 function ExamSelect({ label, value, options, onChange, testId, unit = "" }: {
   label: string;
@@ -1048,46 +1096,31 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           {step === "scans" && pregnant && (
                 <div className="space-y-2">
                   <Label>USG</Label>
-                  <p className="text-xs text-muted-foreground">Record each scan separately. POG is the gestation on that scan, not today's gestation.</p>
+                  <p className="text-xs text-muted-foreground">Pick the date and select findings from the report. Leave anything not reported blank.</p>
                   {antenatal.usg.map((line, index) => (
-                    <div key={index} className="space-y-2 rounded-md border p-2">
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div key={index} className="space-y-3 rounded-lg border p-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold">Scan {index + 1}</h3>
+                        {antenatal.usg.length > 1 && (
+                          <Button type="button" size="sm" variant="ghost" aria-label={`Remove scan ${index + 1}`} onClick={() => setAntenatal({ ...antenatal, usg: antenatal.usg.filter((_, i) => i !== index) })}>
+                            <Trash2 className="mr-1 h-3.5 w-3.5" /> Remove
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
                         <div className="space-y-1">
                           <Label className="text-xs">Scan date</Label>
                           <Input type="date" value={toIsoDate(line.scanDate)} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, scanDate: e.target.value } : item) })} aria-label="Scan date" data-testid={`input-rx-usg-date-${index}`} />
                         </div>
+                        <ScanGestation value={line.weeks} index={index} onChange={(value) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, weeks: value } : item) })} />
+                        <ScanSelect label="Finding" value={line.finding} options={["Single live fetus", "Live twin pregnancy", "Multiple live fetuses", "Intrauterine gestational sac"]} onChange={(value) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, finding: value } : item) })} testId={`input-rx-usg-finding-${index}`} />
+                        <ScanSelect label="Placenta" value={line.placenta} options={["Anterior", "Posterior", "Fundal", "Anterior upper segment", "Posterior upper segment", "Lateral", "Low-lying", "Placenta previa"]} onChange={(value) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, placenta: value } : item) })} testId={`input-rx-usg-placenta-${index}`} />
+                        <ScanSelect label="Liquor (amniotic fluid)" value={line.liquor} options={["Adequate", "Reduced", "Increased", "Oligohydramnios", "Polyhydramnios"]} onChange={(value) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, liquor: value } : item) })} testId={`input-rx-usg-liquor-${index}`} />
                         <div className="space-y-1">
-                          <Label className="text-xs">Finding</Label>
-                          <Input value={line.finding} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, finding: e.target.value } : item) })} placeholder="SLF" aria-label="USG finding" />
+                          <ScanSelect label="Estimated fetal weight" value={line.efw} options={SCAN_WEIGHTS} onChange={(value) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, efw: value } : item) })} testId={`input-rx-usg-efw-${index}`} />
+                          <p className="text-xs text-muted-foreground">Use the exact report value; choose Other if needed. Do not round.</p>
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">POG of this scan</Label>
-                          <Input value={line.weeks} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, weeks: e.target.value } : item) })} placeholder="21 w" aria-label="USG period of gestation" />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Placenta</Label>
-                          <Input value={line.placenta} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, placenta: e.target.value } : item) })} placeholder="Posterior, upper" aria-label="Placenta" />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Liquor</Label>
-                          <Input value={line.liquor} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, liquor: e.target.value } : item) })} placeholder="Adequate" aria-label="Liquor" />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">EFW</Label>
-                          <p className="text-[11px] text-muted-foreground">Estimated fetal weight</p>
-                          <Input value={line.efw} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, efw: e.target.value } : item) })} placeholder="1.8 kg" aria-label="Estimated fetal weight" />
-                        </div>
-                        <div className="col-span-2 flex gap-1">
-                          <div className="flex-1 space-y-1">
-                            <Label className="text-xs">Anomaly</Label>
-                            <Input value={line.anomaly} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, anomaly: e.target.value } : item) })} placeholder="No gross anomaly" aria-label="USG anomaly" />
-                          </div>
-                          {antenatal.usg.length > 1 && (
-                            <Button type="button" size="icon" variant="ghost" className="mt-5 shrink-0" onClick={() => setAntenatal({ ...antenatal, usg: antenatal.usg.filter((_, i) => i !== index) })}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
+                        <ScanSelect label="Anomaly" value={line.anomaly} options={["No gross anomaly detected", "Anomaly reported", "Assessment incomplete"]} onChange={(value) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, anomaly: value } : item) })} testId={`input-rx-usg-anomaly-${index}`} />
                       </div>
                     </div>
                   ))}
