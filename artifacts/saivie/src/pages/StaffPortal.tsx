@@ -2034,6 +2034,7 @@ export default function StaffPortal() {
         pog: visit?.vitals?.pog || patient.history?.obstetric?.pog || "",
         gravida: visit?.vitals?.gravida || patient.history?.obstetric?.gravida || "",
         surgicalHistory: visit?.vitals?.surgicalHistory || patient.history?.obstetric?.surgicalHistory || "",
+        antenatal: visit?.vitals?.antenatal || { bloodGroup: patient.history?.obstetric?.bloodGroup || "" },
       },
     });
   };
@@ -5744,6 +5745,19 @@ export default function StaffPortal() {
                                                     {v.vitals?.pog && <p className="text-xs text-saivie-plum"><span className="font-medium">POG:</span> {v.vitals.pog}</p>}
                                                     {v.vitals?.gravida && <p className="text-xs text-saivie-plum"><span className="font-medium">Gravida:</span> {v.vitals.gravida}</p>}
                                                     {v.vitals?.surgicalHistory && <p className="text-xs text-saivie-plum"><span className="font-medium">Past surgery:</span> {v.vitals.surgicalHistory}</p>}
+                                                    {v.vitals?.antenatal?.bloodGroup && <p className="text-xs text-saivie-plum"><span className="font-medium">Blood group:</span> {v.vitals.antenatal.bloodGroup}</p>}
+                                                    {v.vitals?.antenatal?.hb && <p className="text-xs text-saivie-plum"><span className="font-medium">Hb:</span> {v.vitals.antenatal.hb}{v.vitals.antenatal.hbDate ? ` (${String(v.vitals.antenatal.hbDate).slice(0, 10)})` : ""}</p>}
+                                                    {v.vitals?.antenatal?.urineRe && <p className="text-xs text-saivie-plum"><span className="font-medium">Urine RE:</span> {v.vitals.antenatal.urineRe}{v.vitals.antenatal.urineReDate ? ` (${String(v.vitals.antenatal.urineReDate).slice(0, 10)})` : ""}</p>}
+                                                    {Array.isArray(v.vitals?.antenatal?.usg) && v.vitals.antenatal.usg.length > 0 && <p className="text-xs text-saivie-plum"><span className="font-medium">USG:</span> {v.vitals.antenatal.usg.map((line: any) => [line.date, line.finding, line.weeks, line.anomaly].filter(Boolean).join(", ")).join("; ")}</p>}
+                                                    {v.vitals?.antenatal?.slf && <p className="text-xs text-saivie-plum"><span className="font-medium">SLF:</span> {v.vitals.antenatal.slf}</p>}
+                                                    {v.vitals?.antenatal?.pulse && <p className="text-xs text-saivie-plum"><span className="font-medium">PR:</span> {v.vitals.antenatal.pulse}</p>}
+                                                    {v.vitals?.antenatal?.bp && <p className="text-xs text-saivie-plum"><span className="font-medium">BP:</span> {v.vitals.antenatal.bp}</p>}
+                                                    {v.vitals?.antenatal?.perAbdomen && <p className="text-xs text-saivie-plum"><span className="font-medium">P/A:</span> {v.vitals.antenatal.perAbdomen}</p>}
+                                                    {v.vitals?.antenatal?.uterusSize && <p className="text-xs text-saivie-plum"><span className="font-medium">Uterus:</span> {v.vitals.antenatal.uterusSize}{v.vitals.antenatal.uterusSizeDate ? ` (${String(v.vitals.antenatal.uterusSizeDate).slice(0, 10)})` : ""}</p>}
+                                                    {v.vitals?.antenatal?.fetalMovements && <p className="text-xs text-saivie-plum"><span className="font-medium">FM:</span> {v.vitals.antenatal.fetalMovements}</p>}
+                                                    {v.vitals?.antenatal?.fetalHeartSound && <p className="text-xs text-saivie-plum"><span className="font-medium">FHS:</span> {v.vitals.antenatal.fetalHeartSound}</p>}
+                                                    {v.vitals?.antenatal?.fetalHeartDoppler && <p className="text-xs text-saivie-plum"><span className="font-medium">Fetal heart Doppler:</span> {v.vitals.antenatal.fetalHeartDoppler}</p>}
+                                                    {v.vitals?.antenatal?.scarTenderness && <p className="text-xs text-saivie-plum"><span className="font-medium">Scar tenderness:</span> {v.vitals.antenatal.scarTenderness}</p>}
                                                     {v.subjective && v.subjective !== v.chiefComplaint && <p className="text-xs text-saivie-plum"><span className="font-medium">S:</span> {v.subjective}</p>}
                                                     {v.objective && <p className="text-xs text-saivie-plum"><span className="font-medium">O/E:</span> {typeof v.objective === "string" ? v.objective : v.examination?.findings || ""}</p>}
                                                     {v.assessment && <p className="text-xs text-saivie-plum"><span className="font-medium">A:</span> {v.assessment}</p>}

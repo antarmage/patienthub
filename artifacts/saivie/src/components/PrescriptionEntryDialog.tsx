@@ -60,6 +60,136 @@ function obstetricFrom(vitals: any, sourcePatient: any, draft?: any) {
   };
 }
 
+interface UsgLine {
+  date: string;
+  finding: string;
+  weeks: string;
+  anomaly: string;
+}
+
+interface AntenatalExam {
+  bloodGroup: string;
+  hb: string;
+  hbDate: string;
+  urineRe: string;
+  urineReDate: string;
+  usg: UsgLine[];
+  slf: string;
+  pulse: string;
+  bp: string;
+  perAbdomen: string;
+  uterusSize: string;
+  uterusSizeDate: string;
+  fetalMovements: string;
+  fetalHeartSound: string;
+  fetalHeartDoppler: string;
+  scarTenderness: string;
+}
+
+function emptyUsg(): UsgLine {
+  return { date: "", finding: "", weeks: "", anomaly: "" };
+}
+
+function emptyAntenatal(): AntenatalExam {
+  return {
+    bloodGroup: "",
+    hb: "",
+    hbDate: "",
+    urineRe: "",
+    urineReDate: "",
+    usg: [emptyUsg()],
+    slf: "",
+    pulse: "",
+    bp: "",
+    perAbdomen: "",
+    uterusSize: "",
+    uterusSizeDate: "",
+    fetalMovements: "",
+    fetalHeartSound: "",
+    fetalHeartDoppler: "",
+    scarTenderness: "",
+  };
+}
+
+function antenatalFrom(vitals: any, sourcePatient: any, draft?: any): AntenatalExam {
+  const history = sourcePatient?.history && typeof sourcePatient.history === "object" ? sourcePatient.history.obstetric || {} : {};
+  const saved = vitals?.antenatal || draft?.antenatal || {};
+  const usg = Array.isArray(saved.usg) && saved.usg.length ? saved.usg : [emptyUsg()];
+  return {
+    ...emptyAntenatal(),
+    ...saved,
+    bloodGroup: String(saved.bloodGroup || history.bloodGroup || ""),
+    hbDate: String(saved.hbDate || "").slice(0, 10),
+    urineReDate: String(saved.urineReDate || "").slice(0, 10),
+    uterusSizeDate: String(saved.uterusSizeDate || "").slice(0, 10),
+    hb: String(saved.hb || ""),
+    urineRe: String(saved.urineRe || ""),
+    slf: String(saved.slf || ""),
+    pulse: String(saved.pulse || ""),
+    bp: String(saved.bp || ""),
+    perAbdomen: String(saved.perAbdomen || ""),
+    uterusSize: String(saved.uterusSize || ""),
+    fetalMovements: String(saved.fetalMovements || ""),
+    fetalHeartSound: String(saved.fetalHeartSound || ""),
+    fetalHeartDoppler: String(saved.fetalHeartDoppler || ""),
+    scarTenderness: String(saved.scarTenderness || ""),
+    usg: usg.map((line: UsgLine) => ({
+      date: String(line?.date || "").slice(0, 10),
+      finding: String(line?.finding || ""),
+      weeks: String(line?.weeks || ""),
+      anomaly: String(line?.anomaly || ""),
+    })),
+  };
+}
+
+function antenatalPayload(exam: AntenatalExam) {
+  const usg = exam.usg
+    .map((line) => ({
+      date: line.date || null,
+      finding: line.finding.trim() || null,
+      weeks: line.weeks.trim() || null,
+      anomaly: line.anomaly.trim() || null,
+    }))
+    .filter((line) => line.date || line.finding || line.weeks || line.anomaly);
+  return {
+    bloodGroup: exam.bloodGroup.trim() || null,
+    hb: exam.hb.trim() || null,
+    hbDate: exam.hbDate || null,
+    urineRe: exam.urineRe.trim() || null,
+    urineReDate: exam.urineReDate || null,
+    usg,
+    slf: exam.slf.trim() || null,
+    pulse: exam.pulse.trim() || null,
+    bp: exam.bp.trim() || null,
+    perAbdomen: exam.perAbdomen.trim() || null,
+    uterusSize: exam.uterusSize.trim() || null,
+    uterusSizeDate: exam.uterusSizeDate || null,
+    fetalMovements: exam.fetalMovements.trim() || null,
+    fetalHeartSound: exam.fetalHeartSound.trim() || null,
+    fetalHeartDoppler: exam.fetalHeartDoppler.trim() || null,
+    scarTenderness: exam.scarTenderness.trim() || null,
+  };
+}
+
+function antenatalLines(exam: ReturnType<typeof antenatalPayload>) {
+  const usg = exam.usg.map((line) => [line.date, line.finding, line.weeks, line.anomaly].filter(Boolean).join(", "));
+  return [
+    exam.bloodGroup ? `Blood group: ${exam.bloodGroup}` : null,
+    exam.hb ? `Hb: ${exam.hb}${exam.hbDate ? ` (${exam.hbDate})` : ""}` : null,
+    exam.urineRe ? `Urine RE: ${exam.urineRe}${exam.urineReDate ? ` (${exam.urineReDate})` : ""}` : null,
+    usg.length ? `USG: ${usg.join("; ")}` : null,
+    exam.slf ? `SLF: ${exam.slf}` : null,
+    exam.pulse ? `PR: ${exam.pulse}` : null,
+    exam.bp ? `BP: ${exam.bp}` : null,
+    exam.perAbdomen ? `P/A: ${exam.perAbdomen}` : null,
+    exam.uterusSize ? `Uterus: ${exam.uterusSize}${exam.uterusSizeDate ? ` (${exam.uterusSizeDate})` : ""}` : null,
+    exam.fetalMovements ? `FM: ${exam.fetalMovements}` : null,
+    exam.fetalHeartSound ? `FHS: ${exam.fetalHeartSound}` : null,
+    exam.fetalHeartDoppler ? `Fetal heart Doppler: ${exam.fetalHeartDoppler}` : null,
+    exam.scarTenderness ? `Scar tenderness: ${exam.scarTenderness}` : null,
+  ].filter(Boolean) as string[];
+}
+
 function calculateObstetric(lmp: string, asOf: string) {
   const start = new Date(`${lmp}T00:00:00`);
   if (Number.isNaN(start.getTime())) return { eod: "", pog: "" };
@@ -94,7 +224,9 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   const [pog, setPog] = useState("");
   const [gravida, setGravida] = useState("");
   const [surgicalHistory, setSurgicalHistory] = useState("");
+  const [antenatal, setAntenatal] = useState<AntenatalExam>(emptyAntenatal());
   const pregnant = /pregnant/i.test(patientType);
+  const antenatalExam = pregnant ? antenatalPayload(antenatal) : null;
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [examination, setExamination] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
@@ -162,6 +294,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       setPog(obstetric.pog);
       setGravida(obstetric.gravida);
       setSurgicalHistory(obstetric.surgicalHistory);
+      setAntenatal(antenatalFrom(existing?.vitals, patient, draft));
       setChiefComplaint(existing?.chiefComplaint || draft.chiefComplaint || "");
       setExamination(typeof existing?.examination === "string" ? existing.examination : existing?.examination?.findings || existing?.objective || draft.examination || "");
       setDiagnosis(existing?.diagnosis || draft.diagnosis || "");
@@ -191,6 +324,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       setPog(obstetric.pog);
       setGravida(obstetric.gravida);
       setSurgicalHistory(obstetric.surgicalHistory);
+      setAntenatal(antenatalFrom(null, patient));
       return;
     }
     if (!isFetched) return;
@@ -208,6 +342,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     setPog(obstetric.pog);
     setGravida(obstetric.gravida);
     setSurgicalHistory(obstetric.surgicalHistory);
+    setAntenatal(antenatalFrom(existing?.vitals, patient));
     setChiefComplaint(existing?.chiefComplaint || "");
     setExamination(typeof existing?.examination === "string" ? existing.examination : existing?.examination?.findings || existing?.objective || "");
     setDiagnosis(existing?.diagnosis || "");
@@ -331,6 +466,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           pog: pregnant ? pog.trim() || null : null,
           gravida: pregnant ? gravida.trim() || null : null,
           surgicalHistory: pregnant ? surgicalHistory.trim() || null : null,
+          antenatal: antenatalExam,
         },
         diagnosis,
         planNotes: advice,
@@ -353,6 +489,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       pregnant && pog.trim() ? `POG: ${pog.trim()}` : null,
       pregnant && gravida.trim() ? `Gravida: ${gravida.trim()}` : null,
       pregnant && surgicalHistory.trim() ? `Past surgery: ${surgicalHistory.trim()}` : null,
+      ...(antenatalExam ? antenatalLines(antenatalExam) : []),
       chiefComplaint.trim() ? `Chief complaint: ${chiefComplaint.trim()}` : null,
       examination.trim() ? `O/E: ${examination.trim()}` : null,
       namedMedicines.length ? `Medicines: ${namedMedicines.map((med) => med.name.trim()).join(", ")}` : "No medicines entered",
@@ -378,6 +515,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           pog: pregnant ? pog.trim() || null : null,
           gravida: pregnant ? gravida.trim() || null : null,
           surgicalHistory: pregnant ? surgicalHistory.trim() || null : null,
+          antenatal: antenatalExam,
         },
       }),
     });
@@ -400,6 +538,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           pog: pog.trim() || null,
           gravida: gravida.trim() || null,
           surgicalHistory: surgicalHistory.trim() || null,
+          bloodGroup: antenatal.bloodGroup.trim() || existingHistory.obstetric?.bloodGroup || null,
+          antenatal: antenatalPayload(antenatal),
         },
       };
     }
@@ -450,6 +590,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           pog: pregnant ? pog : "",
           gravida: pregnant ? gravida : "",
           surgicalHistory: pregnant ? surgicalHistory : "",
+          antenatal: antenatalExam,
           diagnosis,
           advice,
           followUp,
@@ -589,6 +730,130 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           <div className="space-y-1">
             <Label>O/E</Label>
             <Textarea rows={2} placeholder="On examination" value={examination} onChange={(e) => setExamination(e.target.value)} data-testid="input-rx-examination" />
+            {pregnant && (
+              <div className="space-y-3 rounded-lg border border-saivie-border p-3">
+                <div>
+                  <p className="text-sm font-medium">Investigations</p>
+                  <p className="text-[11px] text-muted-foreground">Scan and lab lines from the paper, with the abbreviation written out under each field.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Blood group</Label>
+                    <p className="text-[11px] text-muted-foreground">Example: O +ve</p>
+                    <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={antenatal.bloodGroup} onChange={(e) => setAntenatal({ ...antenatal, bloodGroup: e.target.value })} data-testid="input-rx-blood-group">
+                      <option value="">—</option>
+                      {[...new Set([antenatal.bloodGroup, "A +ve", "A -ve", "B +ve", "B -ve", "O +ve", "O -ve", "AB +ve", "AB -ve"])].filter(Boolean).map((group) => <option key={group} value={group}>{group}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Hb</Label>
+                    <p className="text-[11px] text-muted-foreground">Hemoglobin, with the report date</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input value={antenatal.hb} onChange={(e) => setAntenatal({ ...antenatal, hb: e.target.value })} placeholder="10.2" data-testid="input-rx-hb" />
+                      <Input type="date" value={antenatal.hbDate} onChange={(e) => setAntenatal({ ...antenatal, hbDate: e.target.value })} data-testid="input-rx-hb-date" />
+                    </div>
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <Label>Urine RE</Label>
+                    <p className="text-[11px] text-muted-foreground">Urine routine examination, with the report date</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input value={antenatal.urineRe} onChange={(e) => setAntenatal({ ...antenatal, urineRe: e.target.value })} placeholder="Result" data-testid="input-rx-urine" />
+                      <Input type="date" value={antenatal.urineReDate} onChange={(e) => setAntenatal({ ...antenatal, urineReDate: e.target.value })} data-testid="input-rx-urine-date" />
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>USG</Label>
+                  <p className="text-[11px] text-muted-foreground">Ultrasound. SLF means single live fetus. Weeks is the gestation on that scan. Anomaly is the scan comment, such as no gross congenital anomaly.</p>
+                  {antenatal.usg.map((line, index) => (
+                    <div key={index} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      <Input type="date" value={line.date} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, date: e.target.value } : item) })} aria-label="USG date" />
+                      <Input value={line.finding} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, finding: e.target.value } : item) })} placeholder="SLF" aria-label="USG finding" />
+                      <Input value={line.weeks} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, weeks: e.target.value } : item) })} placeholder="21 w" aria-label="USG weeks" />
+                      <div className="flex gap-1">
+                        <Input value={line.anomaly} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, anomaly: e.target.value } : item) })} placeholder="No gross anomaly" aria-label="USG anomaly" />
+                        {antenatal.usg.length > 1 && (
+                          <Button type="button" size="icon" variant="ghost" className="shrink-0" onClick={() => setAntenatal({ ...antenatal, usg: antenatal.usg.filter((_, i) => i !== index) })}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <Button type="button" size="sm" variant="outline" onClick={() => setAntenatal({ ...antenatal, usg: [...antenatal.usg, emptyUsg()] })}>Add scan</Button>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">On examination</p>
+                  <p className="text-[11px] text-muted-foreground">Today’s obstetric examination. Pt c/o stays in Chief complaint above.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>SLF</Label>
+                    <p className="text-[11px] text-muted-foreground">Single live fetus</p>
+                    <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={antenatal.slf} onChange={(e) => setAntenatal({ ...antenatal, slf: e.target.value })} data-testid="input-rx-slf">
+                      <option value="">—</option>
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>PR</Label>
+                    <p className="text-[11px] text-muted-foreground">Pulse rate, per minute</p>
+                    <Input value={antenatal.pulse} onChange={(e) => setAntenatal({ ...antenatal, pulse: e.target.value })} placeholder="92" data-testid="input-rx-pulse" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>BP</Label>
+                    <p className="text-[11px] text-muted-foreground">Blood pressure</p>
+                    <Input value={antenatal.bp} onChange={(e) => setAntenatal({ ...antenatal, bp: e.target.value })} placeholder="120/80" data-testid="input-rx-bp" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>P/A</Label>
+                    <p className="text-[11px] text-muted-foreground">Per abdomen</p>
+                    <Input value={antenatal.perAbdomen} onChange={(e) => setAntenatal({ ...antenatal, perAbdomen: e.target.value })} placeholder="Nil" data-testid="input-rx-pa" />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <Label>Uterus size</Label>
+                    <p className="text-[11px] text-muted-foreground">Uterus size in weeks, with the examination date</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input value={antenatal.uterusSize} onChange={(e) => setAntenatal({ ...antenatal, uterusSize: e.target.value })} placeholder="26 wk" data-testid="input-rx-uterus" />
+                      <Input type="date" value={antenatal.uterusSizeDate} onChange={(e) => setAntenatal({ ...antenatal, uterusSizeDate: e.target.value })} data-testid="input-rx-uterus-date" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>FM</Label>
+                    <p className="text-[11px] text-muted-foreground">Fetal movements</p>
+                    <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={antenatal.fetalMovements} onChange={(e) => setAntenatal({ ...antenatal, fetalMovements: e.target.value })} data-testid="input-rx-fm">
+                      <option value="">—</option>
+                      <option value="Present">Present</option>
+                      <option value="Absent">Absent</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>FHS</Label>
+                    <p className="text-[11px] text-muted-foreground">Fetal heart sound</p>
+                    <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={antenatal.fetalHeartSound} onChange={(e) => setAntenatal({ ...antenatal, fetalHeartSound: e.target.value })} data-testid="input-rx-fhs">
+                      <option value="">—</option>
+                      <option value="Present">Present</option>
+                      <option value="Absent">Absent</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Fetal heart Doppler</Label>
+                    <p className="text-[11px] text-muted-foreground">Doppler check of the fetal heart</p>
+                    <Input value={antenatal.fetalHeartDoppler} onChange={(e) => setAntenatal({ ...antenatal, fetalHeartDoppler: e.target.value })} placeholder="Heard" data-testid="input-rx-doppler" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Scar tenderness</Label>
+                    <p className="text-[11px] text-muted-foreground">Tenderness over a previous caesarean scar</p>
+                    <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={antenatal.scarTenderness} onChange={(e) => setAntenatal({ ...antenatal, scarTenderness: e.target.value })} data-testid="input-rx-scar">
+                      <option value="">—</option>
+                      <option value="None">No scar tenderness</option>
+                      <option value="Present">Tender</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-1">

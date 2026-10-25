@@ -1843,6 +1843,39 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.status(201).json(visit);
   });
 
+  const antenatalFromBody = (body: any) => {
+    if (!/pregnant/i.test(String(body?.patientType || ""))) return null;
+    const source = body?.antenatal && typeof body.antenatal === "object" ? body.antenatal : {};
+    const text = (value: unknown) => String(value || "").trim() || null;
+    const date = (value: unknown) => String(value || "").slice(0, 10) || null;
+    const usg = Array.isArray(source.usg)
+      ? source.usg.map((line: any) => ({
+        date: date(line?.date),
+        finding: text(line?.finding),
+        weeks: text(line?.weeks),
+        anomaly: text(line?.anomaly),
+      })).filter((line: { date: string | null; finding: string | null; weeks: string | null; anomaly: string | null }) => line.date || line.finding || line.weeks || line.anomaly)
+      : [];
+    return {
+      bloodGroup: text(source.bloodGroup),
+      hb: text(source.hb),
+      hbDate: date(source.hbDate),
+      urineRe: text(source.urineRe),
+      urineReDate: date(source.urineReDate),
+      usg,
+      slf: text(source.slf),
+      pulse: text(source.pulse),
+      bp: text(source.bp),
+      perAbdomen: text(source.perAbdomen),
+      uterusSize: text(source.uterusSize),
+      uterusSizeDate: date(source.uterusSizeDate),
+      fetalMovements: text(source.fetalMovements),
+      fetalHeartSound: text(source.fetalHeartSound),
+      fetalHeartDoppler: text(source.fetalHeartDoppler),
+      scarTenderness: text(source.scarTenderness),
+    };
+  };
+
   app.post("/api/patients/:id/manual-prescription", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
@@ -1850,6 +1883,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     if (!patient) return res.status(404).json({ error: "Patient not found" });
 
     const body = req.body ?? {};
+    const antenatal = antenatalFromBody(body);
     const requestedDate = String(body.prescriptionDate || "").slice(0, 10);
     if (requestedDate && !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
       return res.status(400).json({ error: "Enter the prescription date" });
@@ -1924,6 +1958,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         pog: /pregnant/i.test(String(body.patientType || "")) ? String(body.pog || "").trim() || null : null,
         gravida: /pregnant/i.test(String(body.patientType || "")) ? String(body.gravida || "").trim() || null : null,
         surgicalHistory: /pregnant/i.test(String(body.patientType || "")) ? String(body.surgicalHistory || "").trim() || null : null,
+        antenatal,
       },
       diagnosis: body.diagnosis || null,
       planNotes: body.advice || null,
@@ -1961,6 +1996,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
           pog: String(body.pog || "").trim() || null,
           gravida: String(body.gravida || "").trim() || null,
           surgicalHistory: String(body.surgicalHistory || "").trim() || null,
+          bloodGroup: antenatal?.bloodGroup || (typeof existingObstetric.bloodGroup === "string" ? existingObstetric.bloodGroup : null),
+          antenatal,
         },
       };
     }
@@ -1985,6 +2022,19 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       body.pog ? `POG: ${String(body.pog).trim()}` : null,
       body.gravida ? `Gravida: ${String(body.gravida).trim()}` : null,
       body.surgicalHistory ? `Past surgery: ${String(body.surgicalHistory).trim()}` : null,
+      antenatal?.bloodGroup ? `Blood group: ${antenatal.bloodGroup}` : null,
+      antenatal?.hb ? `Hb: ${antenatal.hb}${antenatal.hbDate ? ` (${antenatal.hbDate})` : ""}` : null,
+      antenatal?.urineRe ? `Urine RE: ${antenatal.urineRe}${antenatal.urineReDate ? ` (${antenatal.urineReDate})` : ""}` : null,
+      antenatal?.usg.length ? `USG: ${antenatal.usg.map((line) => [line.date, line.finding, line.weeks, line.anomaly].filter(Boolean).join(", ")).join("; ")}` : null,
+      antenatal?.slf ? `SLF: ${antenatal.slf}` : null,
+      antenatal?.pulse ? `PR: ${antenatal.pulse}` : null,
+      antenatal?.bp ? `BP: ${antenatal.bp}` : null,
+      antenatal?.perAbdomen ? `P/A: ${antenatal.perAbdomen}` : null,
+      antenatal?.uterusSize ? `Uterus: ${antenatal.uterusSize}${antenatal.uterusSizeDate ? ` (${antenatal.uterusSizeDate})` : ""}` : null,
+      antenatal?.fetalMovements ? `FM: ${antenatal.fetalMovements}` : null,
+      antenatal?.fetalHeartSound ? `FHS: ${antenatal.fetalHeartSound}` : null,
+      antenatal?.fetalHeartDoppler ? `Fetal heart Doppler: ${antenatal.fetalHeartDoppler}` : null,
+      antenatal?.scarTenderness ? `Scar tenderness: ${antenatal.scarTenderness}` : null,
       chiefComplaint ? `Chief complaint: ${chiefComplaint}` : null,
       String(body.examination || "").trim() ? `O/E: ${String(body.examination).trim()}` : null,
       medicines.length ? `Medicines: ${medicines.map((med: any) => String(med.name).trim()).join(", ")}` : "No medicines entered",
