@@ -1852,9 +1852,12 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       ? source.usg.map((line: any) => ({
         date: date(line?.date),
         finding: text(line?.finding),
-        weeks: text(line?.weeks),
+        weeks: text(line?.weeks || line?.pog),
+        placenta: text(line?.placenta),
+        liquor: text(line?.liquor),
+        efw: text(line?.efw),
         anomaly: text(line?.anomaly),
-      })).filter((line: { date: string | null; finding: string | null; weeks: string | null; anomaly: string | null }) => line.date || line.finding || line.weeks || line.anomaly)
+      })).filter((line: { date: string | null; finding: string | null; weeks: string | null; placenta: string | null; liquor: string | null; efw: string | null; anomaly: string | null }) => line.date || line.finding || line.weeks || line.placenta || line.liquor || line.efw || line.anomaly)
       : [];
     return {
       bloodGroup: text(source.bloodGroup),
@@ -2025,7 +2028,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       antenatal?.bloodGroup ? `Blood group: ${antenatal.bloodGroup}` : null,
       antenatal?.hb ? `Hb: ${antenatal.hb}${antenatal.hbDate ? ` (${antenatal.hbDate})` : ""}` : null,
       antenatal?.urineRe ? `Urine RE: ${antenatal.urineRe}${antenatal.urineReDate ? ` (${antenatal.urineReDate})` : ""}` : null,
-      antenatal?.usg.length ? `USG: ${antenatal.usg.map((line) => [line.date, line.finding, line.weeks, line.anomaly].filter(Boolean).join(", ")).join("; ")}` : null,
+      antenatal?.usg.length ? `USG: ${antenatal.usg.map((line) => [line.date, line.finding, line.weeks ? `POG ${line.weeks}` : null, line.placenta ? `Placenta ${line.placenta}` : null, line.liquor ? `Liquor ${line.liquor}` : null, line.efw ? `EFW ${line.efw}` : null, line.anomaly].filter(Boolean).join(", ")).join("; ")}` : null,
       antenatal?.slf ? `SLF: ${antenatal.slf}` : null,
       antenatal?.pulse ? `PR: ${antenatal.pulse}` : null,
       antenatal?.bp ? `BP: ${antenatal.bp}` : null,

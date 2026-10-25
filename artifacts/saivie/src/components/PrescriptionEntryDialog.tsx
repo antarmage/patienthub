@@ -63,6 +63,9 @@ interface UsgLine {
   date: string;
   finding: string;
   weeks: string;
+  placenta: string;
+  liquor: string;
+  efw: string;
   anomaly: string;
 }
 
@@ -86,7 +89,7 @@ interface AntenatalExam {
 }
 
 function emptyUsg(): UsgLine {
-  return { date: "", finding: "", weeks: "", anomaly: "" };
+  return { date: "", finding: "", weeks: "", placenta: "", liquor: "", efw: "", anomaly: "" };
 }
 
 function emptyAntenatal(): AntenatalExam {
@@ -132,10 +135,13 @@ function antenatalFrom(vitals: any, sourcePatient: any, draft?: any): AntenatalE
     fetalHeartSound: String(saved.fetalHeartSound || ""),
     fetalHeartDoppler: String(saved.fetalHeartDoppler || ""),
     scarTenderness: String(saved.scarTenderness || ""),
-    usg: usg.map((line: UsgLine) => ({
+    usg: usg.map((line: any) => ({
       date: String(line?.date || "").slice(0, 10),
       finding: String(line?.finding || ""),
-      weeks: String(line?.weeks || ""),
+      weeks: String(line?.weeks || line?.pog || ""),
+      placenta: String(line?.placenta || ""),
+      liquor: String(line?.liquor || ""),
+      efw: String(line?.efw || ""),
       anomaly: String(line?.anomaly || ""),
     })),
   };
@@ -147,9 +153,12 @@ function antenatalPayload(exam: AntenatalExam) {
       date: line.date || null,
       finding: line.finding.trim() || null,
       weeks: line.weeks.trim() || null,
+      placenta: line.placenta.trim() || null,
+      liquor: line.liquor.trim() || null,
+      efw: line.efw.trim() || null,
       anomaly: line.anomaly.trim() || null,
     }))
-    .filter((line) => line.date || line.finding || line.weeks || line.anomaly);
+    .filter((line) => line.date || line.finding || line.weeks || line.placenta || line.liquor || line.efw || line.anomaly);
   return {
     bloodGroup: exam.bloodGroup.trim() || null,
     hb: exam.hb.trim() || null,
@@ -171,7 +180,15 @@ function antenatalPayload(exam: AntenatalExam) {
 }
 
 function antenatalLines(exam: ReturnType<typeof antenatalPayload>) {
-  const usg = exam.usg.map((line) => [line.date, line.finding, line.weeks, line.anomaly].filter(Boolean).join(", "));
+  const usg = exam.usg.map((line) => [
+    line.date,
+    line.finding,
+    line.weeks ? `POG ${line.weeks}` : null,
+    line.placenta ? `Placenta ${line.placenta}` : null,
+    line.liquor ? `Liquor ${line.liquor}` : null,
+    line.efw ? `EFW ${line.efw}` : null,
+    line.anomaly,
+  ].filter(Boolean).join(", "));
   return [
     exam.bloodGroup ? `Blood group: ${exam.bloodGroup}` : null,
     exam.hb ? `Hb: ${exam.hb}${exam.hbDate ? ` (${exam.hbDate})` : ""}` : null,
@@ -794,19 +811,46 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
                 </div>
                 <div className="space-y-2">
                   <Label>USG</Label>
-                  <p className="text-[11px] text-muted-foreground">Ultrasound. SLF means single live fetus. Weeks is the gestation on that scan. Anomaly is the scan comment, such as no gross congenital anomaly.</p>
+                  <p className="text-[11px] text-muted-foreground">Ultrasound. SLF means single live fetus. POG is the period of gestation on that scan, not today’s gestation. Placenta, liquor, and EFW (estimated fetal weight) are the findings from the same scan.</p>
                   {antenatal.usg.map((line, index) => (
-                    <div key={index} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      <Input type="date" value={line.date} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, date: e.target.value } : item) })} aria-label="USG date" />
-                      <Input value={line.finding} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, finding: e.target.value } : item) })} placeholder="SLF" aria-label="USG finding" />
-                      <Input value={line.weeks} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, weeks: e.target.value } : item) })} placeholder="21 w" aria-label="USG weeks" />
-                      <div className="flex gap-1">
-                        <Input value={line.anomaly} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, anomaly: e.target.value } : item) })} placeholder="No gross anomaly" aria-label="USG anomaly" />
-                        {antenatal.usg.length > 1 && (
-                          <Button type="button" size="icon" variant="ghost" className="shrink-0" onClick={() => setAntenatal({ ...antenatal, usg: antenatal.usg.filter((_, i) => i !== index) })}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
+                    <div key={index} className="space-y-2 rounded-md border p-2">
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Scan date</Label>
+                          <Input type="date" value={line.date} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, date: e.target.value } : item) })} aria-label="USG date" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Finding</Label>
+                          <Input value={line.finding} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, finding: e.target.value } : item) })} placeholder="SLF" aria-label="USG finding" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">POG of this scan</Label>
+                          <Input value={line.weeks} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, weeks: e.target.value } : item) })} placeholder="21 w" aria-label="USG period of gestation" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Placenta</Label>
+                          <Input value={line.placenta} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, placenta: e.target.value } : item) })} placeholder="Posterior, upper" aria-label="Placenta" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Liquor</Label>
+                          <Input value={line.liquor} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, liquor: e.target.value } : item) })} placeholder="Adequate" aria-label="Liquor" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">EFW</Label>
+                          <p className="text-[11px] text-muted-foreground">Estimated fetal weight</p>
+                          <Input value={line.efw} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, efw: e.target.value } : item) })} placeholder="1.8 kg" aria-label="Estimated fetal weight" />
+                        </div>
+                        <div className="col-span-2 flex gap-1">
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-xs">Anomaly</Label>
+                            <Input value={line.anomaly} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, anomaly: e.target.value } : item) })} placeholder="No gross anomaly" aria-label="USG anomaly" />
+                          </div>
+                          {antenatal.usg.length > 1 && (
+                            <Button type="button" size="icon" variant="ghost" className="mt-5 shrink-0" onClick={() => setAntenatal({ ...antenatal, usg: antenatal.usg.filter((_, i) => i !== index) })}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
