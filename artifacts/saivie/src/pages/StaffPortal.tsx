@@ -5524,15 +5524,14 @@ export default function StaffPortal() {
                                     </div>
                                 )}
 
-                                {((logTab === "all" && logData.medications.length > 0) || logTab === "medications") && (
+                                {(logTab === "all" || logTab === "medications") && logData.medications.length > 0 && (
                                     <div>
                                         <h4 className="text-xs font-bold text-saivie-plum uppercase tracking-wide mb-2 flex items-center gap-2">
                                             <Pill className="w-3.5 h-3.5" /> Medications
                                         </h4>
-                                        {logData.medications.length > 0 ? (
                                         <div className="space-y-2">
                                             {logData.medications.map((m: any, i: number) => (
-                                                <div key={i} className="bg-blue-50/50 rounded-lg p-3 border border-blue-100" data-testid={`log-med-${i}`}>
+                                                <div key={m.id ?? i} className="bg-blue-50/50 rounded-lg p-3 border border-blue-100" data-testid={`log-med-${i}`}>
                                                     <div className="flex items-center justify-between">
                                                         <span className="font-semibold text-sm text-saivie-plum">{m.name}</span>
                                                         <Badge className={`text-[10px] ${m.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-saivie-sage text-saivie-plum'} border-none`}>
@@ -5544,37 +5543,26 @@ export default function StaffPortal() {
                                                 </div>
                                             ))}
                                         </div>
-                                        ) : (
-                                        <div className="text-center py-6 bg-saivie-surface-muted/50 rounded-lg border border-dashed border-saivie-border">
-                                            <Pill className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                                            <p className="text-sm text-saivie-plum">No medications found for this patient.</p>
-                                            <Button
-                                              size="sm"
-                                              className="mt-3 bg-saivie-teal hover:bg-saivie-teal text-white"
-                                              data-testid="btn-upload-rx-no-meds"
-                                              onClick={() => {
-                                                setIsViewLogOpen(false);
-                                                setSelectedPatientForUpload(selectedPatientForLog);
-                                                setIsUploadOpen(true);
-                                              }}
-                                            >
-                                              <Upload className="w-4 h-4 mr-2" /> Upload Prescription
-                                            </Button>
-                                            <Button size="sm" variant="outline" className="mt-3 ml-2" data-testid="btn-upload-rx-no-meds-manual" onClick={() => openManualPrescription(selectedPatientForLog)}>
-                                              Add manually
-                                            </Button>
-                                        </div>
-                                        )}
                                     </div>
                                 )}
 
-                                {(logTab === "all" || logTab === "notes") && logData.notes.length > 0 && (
+                                {(logTab === "all" || logTab === "notes") && logData.notes.filter((note: any) => {
+                                    if (logTab !== "all") return true;
+                                    const mirrorsUpload = /upload/i.test(`${note.type || ""} ${note.title || ""}`);
+                                    const noteDate = String(note.date || "").slice(0, 10);
+                                    return !(mirrorsUpload && logData.visits.some((visit: any) => /uploaded/i.test(visit.outcome || "") && String(visit.date || "").slice(0, 10) === noteDate));
+                                }).length > 0 && (
                                     <div>
                                         <h4 className="text-xs font-bold text-saivie-plum uppercase tracking-wide mb-2 flex items-center gap-2">
                                             <FileText className="w-3.5 h-3.5" /> Clinical Notes
                                         </h4>
                                         <div className="space-y-2">
-                                            {logData.notes.map((n: any, i: number) => (
+                                            {logData.notes.filter((note: any) => {
+                                                if (logTab !== "all") return true;
+                                                const mirrorsUpload = /upload/i.test(`${note.type || ""} ${note.title || ""}`);
+                                                const noteDate = String(note.date || "").slice(0, 10);
+                                                return !(mirrorsUpload && logData.visits.some((visit: any) => /uploaded/i.test(visit.outcome || "") && String(visit.date || "").slice(0, 10) === noteDate));
+                                            }).map((n: any, i: number) => (
                                                 <div key={i} className="bg-amber-50/50 rounded-lg p-3 border border-amber-100" data-testid={`log-note-${i}`}>
                                                     <div className="flex items-center justify-between mb-1">
                                                         <span className="font-semibold text-sm text-saivie-plum">{n.title || n.type || n.noteType || 'Note'}</span>
@@ -5649,7 +5637,7 @@ export default function StaffPortal() {
                                             (logTab === "notes" && logData.notes.length > 0) ||
                                             (logTab === "appointments" && logData.appointments.length > 0) ||
                                             (logTab === "protocols" && logData.protocols.length > 0);
-                                        if (!hasData && logTab !== "medications") {
+                                        if (!hasData) {
                                             return (
                                                 <div className="text-center py-12">
                                                     <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
