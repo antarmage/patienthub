@@ -53,6 +53,13 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Migration: `pnpm --filter @workspace/db run push`
 - `genome_analyses` table: added via `ensureSchema()` in `db.ts` — stores SNP count, health risks, predispositions, pharmacogenomics, traits as JSONB
 
+## Staff personal names and receptionist greeting
+
+- Owner Portal -> Staff Accounts -> Edit includes an optional Personal name (up to 100 characters). Only authenticated owners can update it.
+- API startup adds `users.display_name` with an idempotent migration. Deploy/restart the API with the frontend.
+- Successful staff login stores the account's personal name for the welcome greeting. Name changes take effect after signing in again; older or unnamed accounts use the login username rather than an invented name.
+- On the receptionist dashboard, the time-of-day greeting and full date appear in the content immediately below the top navigation bar.
+
 ## Shared medicine autocomplete
 
 - Manual prescription entry and clinician medication Add/Edit use the same saved medicine suggestions, matching medicine and generic names.

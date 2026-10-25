@@ -1595,6 +1595,7 @@ export default function StaffPortal() {
   }, [patients, appointments, allVisits]);
 
   const staffUsername = typeof window !== 'undefined' ? localStorage.getItem("staffUsername") || "" : "";
+  const staffDisplayName = typeof window !== 'undefined' ? localStorage.getItem("staffDisplayName")?.trim() || staffUsername : staffUsername;
   const defaultRole = staffUsername.includes("reception") ? "receptionist" 
     : staffUsername.includes("nurse") ? "phlebotomist" 
     : staffUsername.includes("nutritionist") ? "nutritionist"
@@ -2418,7 +2419,7 @@ export default function StaffPortal() {
                 {sidebarOpen && (
                     <div className="overflow-hidden">
                         <p className="text-sm font-medium text-saivie-plum truncate">{currentRole?.label || 'Staff'}</p>
-                        <button onClick={() => { localStorage.removeItem("staffUsername"); setLocation("/"); }} className="text-xs text-rose-500 hover:text-rose-700 truncate text-left block w-full">Sign Out</button>
+                        <button onClick={() => { localStorage.removeItem("staffUsername"); localStorage.removeItem("staffDisplayName"); setLocation("/"); }} className="text-xs text-rose-500 hover:text-rose-700 truncate text-left block w-full">Sign Out</button>
                     </div>
                 )}
              </div>
@@ -2435,19 +2436,8 @@ export default function StaffPortal() {
                     {currentRole && <currentRole.icon className={`w-5 h-5 ${currentRole.color}`} />}
                 </div>
                 <div>
-                    {activeRole === 'receptionist' && activeView === 'dashboard' ? (
-                      <>
-                        <h1 className="text-lg font-bold text-saivie-plum">
-                          Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, Receptionist
-                        </h1>
-                        <p className="text-xs text-saivie-plum">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                      </>
-                    ) : (
-                      <>
-                        <h1 className="text-lg font-bold text-saivie-plum">{currentRole?.label} Dashboard</h1>
-                        <p className="text-xs text-saivie-plum">Welcome back, here's your daily overview.</p>
-                      </>
-                    )}
+                    <h1 className="text-lg font-bold text-saivie-plum">{currentRole?.label} Dashboard</h1>
+                    <p className="text-xs text-saivie-plum">Welcome back, here's your daily overview.</p>
                 </div>
             </div>
             <div className="flex items-center gap-3">
@@ -2540,6 +2530,14 @@ export default function StaffPortal() {
 
         {/* Dashboard Content */}
         <div className="flex-1 overflow-y-auto p-6">
+            {activeRole === 'receptionist' && activeView === 'dashboard' && (
+              <section className="mb-6" aria-label="Welcome" data-testid="receptionist-greeting">
+                <h2 className="text-2xl font-bold text-saivie-plum">
+                  Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}{staffDisplayName ? `, ${staffDisplayName}` : ''}
+                </h2>
+                <p className="mt-1 text-sm text-saivie-plum">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              </section>
+            )}
             
             {/* 6. SCHEDULE VIEW */}
             {activeView === 'schedule' && (

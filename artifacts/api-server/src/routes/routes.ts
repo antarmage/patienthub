@@ -2658,6 +2658,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.json({
       role: user.role,
       username: user.username,
+      displayName: user.displayName ?? null,
       id: user.id,
       provider: providerInfo ? { id: providerInfo.id, name: providerInfo.name, specialty: providerInfo.specialty, role: providerInfo.role } : null,
     });
@@ -5322,6 +5323,7 @@ Only include appointments that should move. If schedule is already optimal, retu
         .map((u: any) => ({
           id: u.id,
           username: u.username,
+          displayName: u.displayName ?? null,
           role: u.role,
           phone: u.phone ?? null,
           email: u.email ?? null,
@@ -5330,6 +5332,26 @@ Only include appointments that should move. If schedule is already optimal, retu
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
+  });
+
+  app.patch("/api/owner/staff-accounts/:id/name", async (req, res) => {
+    const callerId = getStaffUserId(req, res);
+    if (!callerId) return;
+    const caller = await storage.getUser(callerId);
+    if (!caller || caller.role !== "owner") {
+      return res.status(403).json({ error: "Owner access required" });
+    }
+    const { displayName } = req.body;
+    if (displayName !== null && typeof displayName !== "string") {
+      return res.status(400).json({ error: "Personal name must be a string or null" });
+    }
+    const trimmed = typeof displayName === "string" ? displayName.trim() : "";
+    if (trimmed.length > 100) {
+      return res.status(400).json({ error: "Personal name must be 100 characters or fewer" });
+    }
+    const updated = await storage.updateUserDisplayName(req.params.id, trimmed || null);
+    if (!updated) return res.status(404).json({ error: "User not found" });
+    res.json({ id: updated.id, displayName: updated.displayName ?? null });
   });
 
   // Update a staff account's phone number (owner only)

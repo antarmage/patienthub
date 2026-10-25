@@ -130,6 +130,8 @@ export default function Landing() {
       }
       // No phone on account — direct access (legacy)
       if (data.username) localStorage.setItem("staffUsername", data.username);
+      if (data.displayName?.trim()) localStorage.setItem("staffDisplayName", data.displayName.trim());
+      else localStorage.removeItem("staffDisplayName");
       if (data.provider) localStorage.setItem("clinicianProvider", JSON.stringify(data.provider));
       if (data.role === "clinician") setLocation("/clinician");
       else if (data.role === "staff") setLocation("/staff");
@@ -159,6 +161,8 @@ export default function Landing() {
       }
       const data = await res.json();
       if (data.username) localStorage.setItem("staffUsername", data.username);
+      if (data.displayName?.trim()) localStorage.setItem("staffDisplayName", data.displayName.trim());
+      else localStorage.removeItem("staffDisplayName");
       if (data.provider) localStorage.setItem("clinicianProvider", JSON.stringify(data.provider));
       if (data.role === "clinician") setLocation("/clinician");
       else if (data.role === "staff") setLocation("/staff");
