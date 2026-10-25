@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
@@ -30,5 +30,14 @@ app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 
 app.use("/api", router);
+
+export function registerApiErrorHandler(app: Express) {
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+    logger.error({ err, path: req.path }, "Unhandled API error");
+    if (res.headersSent) return;
+    const status = Number(err?.status || err?.statusCode) || 500;
+    res.status(status).json({ error: err?.message || "Server error" });
+  });
+}
 
 export default app;

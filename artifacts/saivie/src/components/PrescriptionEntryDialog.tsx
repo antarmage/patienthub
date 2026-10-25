@@ -22,6 +22,20 @@ interface TestLine {
   fromBilling?: boolean;
 }
 
+async function readApiJson(res: Response) {
+  const text = await res.text();
+  const trimmed = text.trimStart();
+  if (trimmed.startsWith("<")) {
+    throw new Error("The server returned a web page instead of saving the prescription. Restart the API server and try again.");
+  }
+  if (!trimmed) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(text.slice(0, 180) || "Unexpected server response");
+  }
+}
+
 const emptyMedicine = (): Medicine => ({ name: "", dose: "", frequency: "", duration: "", instructions: "" });
 const PATIENT_TYPES = ["General", "PCOS", "Pregnant", "Fertility", "Postpartum", "Gynecology"];
 
@@ -185,54 +199,48 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
 
   const missingBilled = billedTests.filter((b) => !tests.some((t) => t.name.toLowerCase() === b.name.toLowerCase()));
 
-  const ensureAppointment = async () => {
-    if (appointment?.id) return appointment;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(prescriptionDate)) {
-      throw new Error("Enter the prescription date");
+  const saveOnCurrentServer = async () => {
+    const visitDate = (prescriptionDate || String(appointment?.date || "")).slice(0, 10);
+    let visitAppointment = appointment?.id ? appointment : null;
+    if (!visitAppointment) {
+      const listed = await fetch(`/api/appointments?date=${visitDate}`);
+      const all = await readApiJson(listed);
+      visitAppointment = (Array.isArray(all) ? all : []).find((item: any) =>
+        item.patientId === patientId && item.status !== "cancelled",
+      );
     }
-    const listed = await fetch("/api/appointments");
-    const all = listed.ok ? await listed.json() : [];
-    const sameDay = (Array.isArray(all) ? all : []).find((item: any) =>
-      item.patientId === patientId && String(item.date).slice(0, 10) === prescriptionDate,
-    );
-    if (sameDay) return sameDay;
+    if (!visitAppointment) {
+      const today = new Date().toISOString().slice(0, 10);
+      const created = await fetch("/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          date: visitDate,
+          time: "09:00",
+          duration: 15,
+          type: "Consultation",
+          visitType: "Consultation",
+          visitMode: "in-clinic",
+          status: visitDate <= today ? "completed" : "scheduled",
+          chiefComplaint: chiefComplaint.trim() || null,
+          reason: chiefComplaint.trim() || diagnosis.trim() || "Historical prescription",
+          notes: "Created automatically from a manually entered prescription",
+          completedAt: visitDate <= today ? `${visitDate}T09:00:00.000Z` : null,
+        }),
+      });
+      visitAppointment = await readApiJson(created);
+      if (!created.ok) throw new Error(visitAppointment.error || "Could not create the visit for this prescription date");
+    }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const created = await fetch("/api/appointments", {
-      method: "POST",
+    const namedMedicines = medicines.filter((med) => med.name.trim());
+    const listedVisits = await fetch(`/api/patients/${patientId}/visit-history`);
+    const allVisits = await readApiJson(listedVisits);
+    const matchedVisit = existing || (Array.isArray(allVisits) ? allVisits.find((visit: any) => visit.appointmentId === visitAppointment.id) : null);
+    const saved = await fetch(matchedVisit ? `/api/visit-history/${matchedVisit.id}` : `/api/patients/${patientId}/visit-history`, {
+      method: matchedVisit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        patientId,
-        date: prescriptionDate,
-        time: "09:00",
-        duration: 15,
-        type: "Consultation",
-        visitType: "Consultation",
-        visitMode: "in-clinic",
-        status: prescriptionDate <= today ? "completed" : "scheduled",
-        chiefComplaint: chiefComplaint.trim() || null,
-        reason: chiefComplaint.trim() || diagnosis.trim() || "Historical prescription",
-        notes: "Created automatically from a manually entered prescription",
-        completedAt: prescriptionDate <= today ? `${prescriptionDate}T09:00:00.000Z` : null,
-        suppressNotification: true,
-      }),
-    });
-    const body = await created.json().catch(() => ({}));
-    if (!created.ok) throw new Error(body.error || "Could not create the visit for this prescription date");
-    return body;
-  };
-
-  const save = async () => {
-    if (!patientId || (!appointment?.id && !appointment?.historical && !patient)) return;
-    setSaving(true);
-    try {
-      const visitAppointment = await ensureAppointment();
-      const visitDate = String(visitAppointment.date || prescriptionDate).slice(0, 10);
-      const namedMedicines = medicines.filter((m) => m.name.trim());
-      const listedVisits = await fetch(`/api/patients/${patientId}/visit-history`);
-      const allVisits = listedVisits.ok ? await listedVisits.json() : [];
-      const matchedVisit = existing || (Array.isArray(allVisits) ? allVisits.find((visit: any) => visit.appointmentId === visitAppointment.id) : null);
-      const payload = {
         appointmentId: visitAppointment.id,
         providerId: visitAppointment.providerId ?? null,
         date: visitDate,
@@ -258,46 +266,74 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
           medicines: namedMedicines,
         },
         labsOrdered: tests,
-      };
-      const res = await fetch(matchedVisit ? `/api/visit-history/${matchedVisit.id}` : `/api/patients/${patientId}/visit-history`, {
-        method: matchedVisit ? "PATCH" : "POST",
+      }),
+    });
+    if (!saved.ok) throw new Error("Failed to save");
+    const patientPatch: Record<string, unknown> = {};
+    if (lmp) patientPatch.lmp = lmp;
+    if (height.trim()) patientPatch.height = height.trim();
+    if (weight.trim() && !Number.isNaN(Number(weight))) patientPatch.weight = Number(weight);
+    if (age.trim() && !Number.isNaN(Number(age))) patientPatch.age = Number(age);
+    if (patientType.trim()) patientPatch.type = patientType.trim();
+    if (Object.keys(patientPatch).length > 0) {
+      const patientRes = await fetch(`/api/patients/${patientId}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(patientPatch),
       });
-      if (!res.ok) throw new Error("Failed to save");
-      const patientPatch: Record<string, unknown> = {};
-      if (lmp) patientPatch.lmp = lmp;
-      if (height.trim()) patientPatch.height = height.trim();
-      if (weight.trim() && !Number.isNaN(Number(weight))) patientPatch.weight = Number(weight);
-      if (age.trim() && !Number.isNaN(Number(age))) patientPatch.age = Number(age);
-      if (patientType.trim()) patientPatch.type = patientType.trim();
-      if (Object.keys(patientPatch).length > 0) {
-        const patientRes = await fetch(`/api/patients/${patientId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(patientPatch),
-        });
-        if (!patientRes.ok) throw new Error("Prescription was saved, but the patient details could not be updated");
-      }
-      if (needsDate && chiefComplaint.trim() && visitAppointment.id) {
-        await fetch(`/api/appointments/${visitAppointment.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chiefComplaint: chiefComplaint.trim(), reason: chiefComplaint.trim() }),
-        });
-      }
-      if (!matchedVisit) await Promise.all(namedMedicines.map((med) => fetch(`/api/patients/${patientId}/medications`, {
+      if (!patientRes.ok) throw new Error("Prescription was saved, but the patient details could not be updated");
+    }
+    if (!matchedVisit) await Promise.all(namedMedicines.map((med) => fetch(`/api/patients/${patientId}/medications`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: med.name.trim(),
+        dose: med.dose || null,
+        frequency: med.frequency || null,
+        startDate: visitDate,
+        status: "active",
+        notes: [med.duration ? `Duration: ${med.duration}` : "", med.instructions || ""].filter(Boolean).join(". ") || null,
+      }),
+    })));
+  };
+
+  const save = async () => {
+    if (!patientId || (!appointment?.id && !appointment?.historical && !patient)) return;
+    if (needsDate && !/^\d{4}-\d{2}-\d{2}$/.test(prescriptionDate)) {
+      toast({ title: "Enter the prescription date", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/patients/${patientId}/manual-prescription`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: med.name.trim(),
-          dose: med.dose || null,
-          frequency: med.frequency || null,
-          startDate: visitDate,
-          status: "active",
-          notes: [med.duration ? `Duration: ${med.duration}` : "", med.instructions || ""].filter(Boolean).join(". ") || null,
+          appointmentId: appointment?.id ?? null,
+          prescriptionDate: prescriptionDate || String(appointment?.date || "").slice(0, 10),
+          chiefComplaint: chiefComplaint.trim(),
+          examination: examination.trim(),
+          lmp,
+          height: height.trim(),
+          weight: weight.trim(),
+          age: age.trim(),
+          patientType,
+          diagnosis,
+          advice,
+          followUp,
+          medicines: medicines.filter((med) => med.name.trim()),
+          tests,
+          scanned,
         }),
-      })));
+      });
+      const raw = await res.text();
+      const routeMissing = res.status === 404 || raw.includes("Cannot POST") || raw.trimStart().startsWith("<");
+      if (routeMissing) {
+        await saveOnCurrentServer();
+      } else {
+        const body = raw.trim() ? JSON.parse(raw) : {};
+        if (!res.ok) throw new Error(body.error || "Could not save prescription");
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "visit-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visit-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });

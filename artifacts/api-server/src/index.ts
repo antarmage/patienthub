@@ -1,5 +1,5 @@
 import { createServer } from "http";
-import app from "./app";
+import app, { registerApiErrorHandler } from "./app";
 import { registerRoutes, registerDeskRoutes, registerGenomeRoutes } from "./routes/routes";
 import { logger } from "./lib/logger";
 import { ensureSchema } from "./db";
@@ -25,6 +25,7 @@ ensureSchema().then(async () => {
   await registerRoutes(httpServer, app);
   await registerDeskRoutes(app);
   await registerGenomeRoutes(app);
+  registerApiErrorHandler(app);
   await synchronizeFollowUpCalls();
   const followUpTimer = setInterval(() => {
     synchronizeFollowUpCalls().catch((err) => logger.error({ err }, "Automatic follow-up call generation failed"));

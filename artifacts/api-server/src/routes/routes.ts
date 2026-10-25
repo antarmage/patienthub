@@ -1166,8 +1166,8 @@ export async function registerRoutes(
 
     const appt = await storage.createAppointment(body);
 
-    // Historical prescription entry should not text the patient about a visit that already happened.
-    if (!suppressNotification && appt.patientId) {
+    // A completed visit, including one created from a paper prescription, should not text the patient.
+    if (!suppressNotification && body.status !== "completed" && appt.patientId) {
       const patient = await storage.getPatient(appt.patientId);
       if (patient?.phone) {
         try {
@@ -1841,6 +1841,122 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       patientId: id,
     });
     res.status(201).json(visit);
+  });
+
+  app.post("/api/patients/:id/manual-prescription", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const patient = await storage.getPatient(id);
+    if (!patient) return res.status(404).json({ error: "Patient not found" });
+
+    const body = req.body ?? {};
+    const requestedDate = String(body.prescriptionDate || "").slice(0, 10);
+    if (requestedDate && !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+      return res.status(400).json({ error: "Enter the prescription date" });
+    }
+
+    const existingAppointments = await storage.getAppointmentsByPatient(id);
+    const requestedAppointmentId = Number(body.appointmentId);
+    let appointment = Number.isFinite(requestedAppointmentId)
+      ? existingAppointments.find((item) => item.id === requestedAppointmentId)
+      : undefined;
+    if (body.appointmentId && !appointment) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+    if (!appointment && requestedDate) {
+      appointment = existingAppointments.find((item) =>
+        String(item.date).slice(0, 10) === requestedDate && item.status !== "cancelled",
+      );
+    }
+    const prescriptionDate = String(appointment?.date || requestedDate).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(prescriptionDate)) {
+      return res.status(400).json({ error: "Enter the prescription date" });
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const historical = prescriptionDate <= today;
+    const chiefComplaint = String(body.chiefComplaint || "").trim() || null;
+    if (!appointment) {
+      appointment = await storage.createAppointment({
+        patientId: id,
+        date: prescriptionDate,
+        time: "09:00",
+        duration: 15,
+        type: "Consultation",
+        visitType: "Consultation",
+        visitMode: "in-clinic",
+        status: historical ? "completed" : "scheduled",
+        chiefComplaint,
+        reason: chiefComplaint || String(body.diagnosis || "").trim() || "Historical prescription",
+        notes: "Created automatically from a manually entered prescription",
+        completedAt: historical ? `${prescriptionDate}T09:00:00.000Z` : null,
+      });
+    } else if (chiefComplaint) {
+      appointment = await storage.updateAppointment(appointment.id, {
+        chiefComplaint,
+        reason: chiefComplaint,
+      }) ?? appointment;
+    }
+
+    const medicines = Array.isArray(body.medicines)
+      ? body.medicines.filter((med: any) => String(med?.name || "").trim())
+      : [];
+    const visits = await storage.getVisitHistory(id);
+    const matchedVisit = visits.find((visit) => visit.appointmentId === appointment.id);
+    const visitPayload = {
+      appointmentId: appointment.id,
+      providerId: appointment.providerId ?? null,
+      date: prescriptionDate,
+      visitType: appointment.type || appointment.visitType || "Consultation",
+      chiefComplaint,
+      subjective: chiefComplaint,
+      examination: String(body.examination || "").trim() ? { findings: String(body.examination).trim() } : null,
+      objective: String(body.examination || "").trim() || null,
+      vitals: {
+        lmp: body.lmp || null,
+        height: body.height ? String(body.height).trim() : null,
+        weight: body.weight !== "" && body.weight != null && !Number.isNaN(Number(body.weight)) ? Number(body.weight) : null,
+        age: body.age !== "" && body.age != null && !Number.isNaN(Number(body.age)) ? Number(body.age) : null,
+        patientType: body.patientType ? String(body.patientType).trim() : null,
+      },
+      diagnosis: body.diagnosis || null,
+      planNotes: body.advice || null,
+      followUpPlan: body.followUp || null,
+      prescriptions: {
+        source: body.scanned ? "paper-scanned-reviewed" : "paper-transcribed",
+        enteredAt: matchedVisit?.prescriptions && typeof matchedVisit.prescriptions === "object" && "enteredAt" in matchedVisit.prescriptions
+          ? (matchedVisit.prescriptions as { enteredAt?: string }).enteredAt
+          : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        medicines,
+      },
+      labsOrdered: Array.isArray(body.tests) ? body.tests : [],
+    };
+    const visit = matchedVisit
+      ? await storage.updateVisitHistory(matchedVisit.id, visitPayload)
+      : await storage.createVisitHistory({ ...visitPayload, patientId: id });
+
+    const patientPatch: Record<string, unknown> = {};
+    if (body.lmp) patientPatch.lmp = String(body.lmp).slice(0, 10);
+    if (String(body.height || "").trim()) patientPatch.height = String(body.height).trim();
+    if (body.weight !== "" && body.weight != null && !Number.isNaN(Number(body.weight))) patientPatch.weight = Number(body.weight);
+    if (body.age !== "" && body.age != null && !Number.isNaN(Number(body.age))) patientPatch.age = Number(body.age);
+    if (String(body.patientType || "").trim()) patientPatch.type = String(body.patientType).trim();
+    if (Object.keys(patientPatch).length > 0) await storage.updatePatient(id, patientPatch);
+
+    if (!matchedVisit) {
+      await Promise.all(medicines.map((med: any) => storage.createMedication({
+        patientId: id,
+        name: String(med.name).trim(),
+        dose: med.dose || null,
+        frequency: med.frequency || null,
+        startDate: prescriptionDate,
+        status: "active",
+        notes: [med.duration ? `Duration: ${med.duration}` : "", med.instructions || ""].filter(Boolean).join(". ") || null,
+      })));
+    }
+
+    res.status(201).json({ appointment, visit });
   });
 
   app.patch("/api/visit-history/:visitId", async (req, res) => {
