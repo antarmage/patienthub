@@ -4287,6 +4287,11 @@ export default function StaffPortal() {
                                     </Command>
                                   </PopoverContent>
                                 </Popover>
+                                {!billingPatientId && (
+                                  <p className="mt-2 text-xs text-saivie-plum" data-testid="billing-patient-hint">
+                                    Select a patient to review estimated charges and start billing.
+                                  </p>
+                                )}
                               </div>
                             </>
                           );
@@ -4508,16 +4513,6 @@ export default function StaffPortal() {
                           )}
                         </CardContent>
                       </Card>
-                    )}
-
-                    {!billingPatientId && (
-                      <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <div className="w-16 h-16 rounded-full bg-saivie-sage flex items-center justify-center mb-4">
-                          <Receipt className="w-7 h-7 text-saivie-plum" />
-                        </div>
-                        <p className="text-saivie-plum font-medium">Select a patient to start billing</p>
-                        <p className="text-xs text-saivie-plum mt-1">The system will auto-estimate charges based on their visit type</p>
-                      </div>
                     )}
 
                     <Card className="border-saivie-border shadow-sm" data-testid="card-all-invoices">
