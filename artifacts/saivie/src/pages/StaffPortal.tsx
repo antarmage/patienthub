@@ -1998,17 +1998,18 @@ export default function StaffPortal() {
     setIsViewLogOpen(false);
     setPrescriptionAppointment({ patientId: patient.id, historical: true });
   };
-  const openEditPrescription = (patient: any, source: { document?: any; visit?: any }) => {
+  const openEditPrescription = (patient: any, source: { document?: any; visit?: any; appointment?: any }) => {
     if (!patient?.id) return;
     const doc = source.document;
-    const visit = source.visit || logData.visits.find((item: any) => item.appointmentId && item.appointmentId === doc?.metadata?.appointmentId);
+    const appointmentIdHint = doc?.metadata?.appointmentId || source.appointment?.id || source.visit?.appointmentId;
+    const visit = source.visit || allVisitHistory.find((item: any) => item.patientId === patient.id && item.appointmentId && item.appointmentId === appointmentIdHint) || logData.visits.find((item: any) => item.appointmentId && item.appointmentId === appointmentIdHint);
     const savedMedicines = Array.isArray(visit?.prescriptions)
       ? visit.prescriptions
       : Array.isArray(visit?.prescriptions?.medicines)
         ? visit.prescriptions.medicines
         : (Array.isArray(doc?.metadata?.savedMedications) ? doc.metadata.savedMedications : []).map((name: string) => ({ name, dose: "", frequency: "", duration: "", instructions: "" }));
-    const appointmentId = Number(doc?.metadata?.appointmentId || visit?.appointmentId);
-    const date = String(doc?.date || visit?.date || "").slice(0, 10);
+    const appointmentId = Number(doc?.metadata?.appointmentId || visit?.appointmentId || source.appointment?.id);
+    const date = String(doc?.date || visit?.date || source.appointment?.date || "").slice(0, 10);
     setIsViewLogOpen(false);
     setPrescriptionAppointment({
       id: Number.isFinite(appointmentId) && appointmentId > 0 ? appointmentId : undefined,
@@ -2028,7 +2029,7 @@ export default function StaffPortal() {
         height: visit?.vitals?.height ?? patient.height ?? "",
         weight: visit?.vitals?.weight ?? patient.weight ?? "",
         age: visit?.vitals?.age ?? patient.age ?? "",
-        patientType: visit?.vitals?.patientType || doc?.metadata?.patientType || patient.type || "General",
+        patientType: visit?.vitals?.patientType || doc?.metadata?.patientType || source.appointment?.patientType || patient.type || "General",
       },
     });
   };
@@ -3062,7 +3063,7 @@ export default function StaffPortal() {
                 <div className="max-w-5xl mx-auto space-y-4">
                     <div>
                         <h2 className="text-2xl font-bold text-saivie-plum font-serif">Patients</h2>
-                        <p className="text-sm text-saivie-plum mt-1">Search a patient to open the record and see uploaded prescriptions.</p>
+                        <p className="text-sm text-saivie-plum mt-1">Each appointment and prescription is listed separately. Use Edit on the one you want to change.</p>
                     </div>
                     <Input placeholder="Search by name, phone, or ID" value={docSearch} onChange={(e) => setDocSearch(e.target.value)} className="max-w-md bg-saivie-ivory" />
                     <div className="divide-y divide-saivie-border rounded-lg border border-saivie-border bg-saivie-ivory">
@@ -3071,26 +3072,57 @@ export default function StaffPortal() {
                             if (!query) return true;
                             return [patient.name, patient.phone, patient.id].filter(Boolean).join(" ").toLowerCase().includes(query);
                         }).map((patient: any) => {
+                            const visits = allVisitHistory.filter((visit: any) => visit.patientId === patient.id);
                             const uploads = allDocuments.filter((doc: any) => doc.patientId === patient.id && /prescription/i.test(`${doc.type || ""} ${doc.category || ""} ${doc.name || ""}`));
-                            const manualVisits = allVisitHistory.filter((visit: any) => visit.patientId === patient.id && (visit.prescriptions || /prescription/i.test(visit.outcome || "")));
-                            const prescriptionCount = uploads.length || manualVisits.length;
-                            const latestPrescription = [...uploads].sort((a: any, b: any) => String(b.date || "").localeCompare(String(a.date || "")))[0];
-                            const latestVisit = [...manualVisits].sort((a: any, b: any) => String(b.date || "").localeCompare(String(a.date || "")))[0];
+                            const seen = new Set<string>();
+                            const records = [
+                              ...uploads.map((doc: any) => {
+                                const key = doc.metadata?.appointmentId ? `appt-${doc.metadata.appointmentId}` : `doc-${doc.id}`;
+                                seen.add(key);
+                                return { key, date: doc.date, label: doc.name || "Prescription", document: doc, visit: visits.find((visit: any) => visit.appointmentId === doc.metadata?.appointmentId) };
+                              }),
+                              ...visits.map((visit: any) => {
+                                const key = visit.appointmentId ? `appt-${visit.appointmentId}` : `visit-${visit.id}`;
+                                if (seen.has(key)) return null;
+                                seen.add(key);
+                                return { key, date: visit.date, label: visit.chiefComplaint || visit.visitType || "Visit", visit };
+                              }),
+                              ...appointmentsRaw.filter((appointment: any) => appointment.patientId === patient.id).map((appointment: any) => {
+                                const key = `appt-${appointment.id}`;
+                                if (seen.has(key)) return null;
+                                seen.add(key);
+                                return { key, date: appointment.date, label: `${appointment.type || "Appointment"}${appointment.time ? ` · ${appointment.time}` : ""}`, appointment, visit: visits.find((visit: any) => visit.appointmentId === appointment.id) };
+                              }),
+                            ].filter(Boolean).sort((a: any, b: any) => String(b.date || "").localeCompare(String(a.date || "")));
                             return (
-                                <div key={patient.id} className="flex items-center justify-between gap-3 p-4">
-                                    <div>
-                                        <p className="font-semibold text-sm text-saivie-plum">{patient.name}</p>
-                                        <p className="text-xs text-saivie-plum mt-0.5">ID: {patient.id}{patient.phone ? ` · ${patient.phone}` : ""}</p>
-                                        <p className="text-xs text-saivie-teal mt-1">{!allDocumentsQuery.isSuccess ? "Open the record to see prescriptions" : prescriptionCount > 0 ? `${prescriptionCount} prescription${prescriptionCount === 1 ? "" : "s"}` : "No prescription recorded"}</p>
+                                <div key={patient.id} className="p-4 space-y-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div>
+                                            <p className="font-semibold text-sm text-saivie-plum">{patient.name}</p>
+                                            <p className="text-xs text-saivie-plum mt-0.5">ID: {patient.id}{patient.phone ? ` · ${patient.phone}` : ""}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button size="sm" variant="outline" onClick={() => openManualPrescription(patient)}>Add prescription</Button>
+                                            <Button size="sm" variant="outline" onClick={() => openViewLog(patient)}>Open record</Button>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        {prescriptionCount > 0 && (
-                                            <Button size="sm" variant="outline" data-testid={`btn-edit-patient-prescription-${patient.id}`} onClick={() => openEditPrescription(patient, { document: latestPrescription, visit: latestVisit })}>
-                                                <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
-                                            </Button>
-                                        )}
-                                        <Button size="sm" variant="outline" onClick={() => openViewLog(patient)}>Open record</Button>
-                                    </div>
+                                    {records.length === 0 ? (
+                                        <p className="text-xs text-saivie-teal">No prescription recorded</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {records.map((record: any) => (
+                                                <div key={record.key} className="flex items-center justify-between gap-3 rounded-md border border-saivie-border bg-saivie-surface-muted px-3 py-2">
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm text-saivie-plum truncate">{record.label}</p>
+                                                        <p className="text-[10px] text-saivie-plum">{record.date || "Date not recorded"}</p>
+                                                    </div>
+                                                    <Button size="sm" variant="outline" className="h-7 shrink-0 text-xs" data-testid={`btn-edit-record-${patient.id}-${record.key}`} onClick={() => openEditPrescription(patient, record)}>
+                                                        <Pencil className="w-3 h-3 mr-1" /> Edit
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
@@ -5696,11 +5728,9 @@ export default function StaffPortal() {
                                                         <span className="font-semibold text-sm text-saivie-plum">{v.visitType || 'Visit'}</span>
                                                         <div className="flex items-center gap-2 shrink-0">
                                                             <span className="text-[10px] text-saivie-plum">{v.date || v.visitDate || v.createdAt || ''}</span>
-                                                            {(/prescription/i.test(`${v.outcome || ""} ${v.prescriptions?.source || ""}`) || (Array.isArray(v.prescriptions) ? v.prescriptions.length : v.prescriptions?.medicines?.length)) && (
-                                                                <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" data-testid={`btn-edit-visit-prescription-${v.id || i}`} onClick={() => openEditPrescription(selectedPatientForLog, { visit: v })}>
-                                                                    <Pencil className="w-3 h-3 mr-1" /> Edit
-                                                                </Button>
-                                                            )}
+                                                            <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" data-testid={`btn-edit-visit-prescription-${v.id || i}`} onClick={() => openEditPrescription(selectedPatientForLog, { visit: v })}>
+                                                                <Pencil className="w-3 h-3 mr-1" /> Edit
+                                                            </Button>
                                                         </div>
                                                     </div>
                                                     {v.outcome && <p className="text-xs text-saivie-teal font-medium">{v.outcome}</p>}
@@ -5792,8 +5822,12 @@ export default function StaffPortal() {
                                         <div className="space-y-2">
                                             {logData.appointments.map((a: any, i: number) => (
                                                 <div key={i} className="bg-saivie-surface-muted/50 rounded-lg p-3 border border-saivie-border" data-testid={`log-appt-${i}`}>
-                                                    <div className="flex items-center justify-between mb-1">
+                                                    <div className="flex items-center justify-between gap-2 mb-1">
                                                         <span className="font-semibold text-sm text-saivie-plum">{a.type || a.service || 'Appointment'}</span>
+                                                        <div className="flex items-center gap-2">
+                                                        <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" data-testid={`btn-edit-appointment-${a.id || i}`} onClick={() => openEditPrescription(selectedPatientForLog, { appointment: a, visit: logData.visits.find((visit: any) => visit.appointmentId === a.id), document: logData.documents.find((doc: any) => doc.metadata?.appointmentId === a.id) })}>
+                                                            <Pencil className="w-3 h-3 mr-1" /> Edit
+                                                        </Button>
                                                         <Badge className={`text-[10px] border-none ${
                                                             a.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
                                                             a.status === 'cancelled' ? 'bg-red-100 text-red-700' :
@@ -5801,6 +5835,7 @@ export default function StaffPortal() {
                                                         }`}>
                                                             {a.status || 'scheduled'}
                                                         </Badge>
+                                                        </div>
                                                     </div>
                                                     <p className="text-xs text-saivie-plum">{a.date} at {a.time}</p>
                                                     {a.provider && <p className="text-[10px] text-saivie-plum mt-1">With: {a.provider}</p>}
