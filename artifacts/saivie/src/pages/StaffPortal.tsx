@@ -3074,6 +3074,8 @@ export default function StaffPortal() {
                             const uploads = allDocuments.filter((doc: any) => doc.patientId === patient.id && /prescription/i.test(`${doc.type || ""} ${doc.category || ""} ${doc.name || ""}`));
                             const manualVisits = allVisitHistory.filter((visit: any) => visit.patientId === patient.id && (visit.prescriptions || /prescription/i.test(visit.outcome || "")));
                             const prescriptionCount = uploads.length || manualVisits.length;
+                            const latestPrescription = [...uploads].sort((a: any, b: any) => String(b.date || "").localeCompare(String(a.date || "")))[0];
+                            const latestVisit = [...manualVisits].sort((a: any, b: any) => String(b.date || "").localeCompare(String(a.date || "")))[0];
                             return (
                                 <div key={patient.id} className="flex items-center justify-between gap-3 p-4">
                                     <div>
@@ -3081,7 +3083,14 @@ export default function StaffPortal() {
                                         <p className="text-xs text-saivie-plum mt-0.5">ID: {patient.id}{patient.phone ? ` · ${patient.phone}` : ""}</p>
                                         <p className="text-xs text-saivie-teal mt-1">{!allDocumentsQuery.isSuccess ? "Open the record to see prescriptions" : prescriptionCount > 0 ? `${prescriptionCount} prescription${prescriptionCount === 1 ? "" : "s"}` : "No prescription recorded"}</p>
                                     </div>
-                                    <Button size="sm" variant="outline" onClick={() => openViewLog(patient)}>Open record</Button>
+                                    <div className="flex items-center gap-2">
+                                        {prescriptionCount > 0 && (
+                                            <Button size="sm" variant="outline" data-testid={`btn-edit-patient-prescription-${patient.id}`} onClick={() => openEditPrescription(patient, { document: latestPrescription, visit: latestVisit })}>
+                                                <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                                            </Button>
+                                        )}
+                                        <Button size="sm" variant="outline" onClick={() => openViewLog(patient)}>Open record</Button>
+                                    </div>
                                 </div>
                             );
                         })}
