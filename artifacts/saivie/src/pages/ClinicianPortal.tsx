@@ -6,6 +6,8 @@ import { MedicineAutocomplete } from "@/components/MedicineAutocomplete";
 import { useToast } from "@/hooks/use-toast";
 import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSettings";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
+import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
+import { ActiveMedicationCards } from "@/components/ActiveMedicationCards";
 import { 
   LayoutDashboard, 
   Users, 
@@ -518,6 +520,7 @@ export default function ClinicianPortal() {
   const [queueDateFrom, setQueueDateFrom] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
   const [queueDateTo, setQueueDateTo] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
   const [queueTriageSort, setQueueTriageSort] = useState(true);
+  const [queueStatusFilter, setQueueStatusFilter] = useState<'all' | 'waiting' | 'in-consultation' | 'scheduled' | 'completed'>('waiting');
   const [patientSearch, setPatientSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -571,6 +574,88 @@ export default function ClinicianPortal() {
       await queryClient.invalidateQueries({ queryKey: ["/api/vaccination-reminders"] });
     },
   });
+
+  const updateAppointmentMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Record<string, unknown> }) => {
+      const res = await fetch(`/api/appointments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to update appointment');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Update failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const formatWaitTime = (checkedInAt?: string) => {
+    if (!checkedInAt) return null;
+    const diffMs = Date.now() - new Date(checkedInAt).getTime();
+    if (diffMs < 0 || isNaN(diffMs)) return null;
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "< 1m wait";
+    if (mins < 60) return `${mins}m wait`;
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `${hrs}h ${remMins}m wait`;
+  };
+
+  const handleStartConsultation = async (patient: any) => {
+    const aptId = patient.appointmentId;
+    if (aptId) {
+      try {
+        await updateAppointmentMutation.mutateAsync({
+          id: aptId,
+          data: {
+            status: 'in-consultation',
+            seenAt: new Date().toISOString(),
+          },
+        });
+      } catch (e) {
+        console.error("Failed to set appointment in-consultation", e);
+      }
+    }
+    navigateToPatient(patient);
+  };
+
+  const handleCompleteConsultation = async (patient: any) => {
+    const aptId = patient?.appointmentId || activeAppointment?.id;
+    if (aptId) {
+      try {
+        await updateAppointmentMutation.mutateAsync({
+          id: aptId,
+          data: {
+            status: 'completed',
+            completedAt: new Date().toISOString(),
+          },
+        });
+        toast({
+          title: "Consultation Completed",
+          description: "Visit marked completed. Post-visit summary generated.",
+        });
+      } catch (e: any) {
+        toast({
+          title: "Completion error",
+          description: e?.message || "Failed to complete appointment",
+          variant: "destructive"
+        });
+      }
+    } else {
+      toast({
+        title: "Visit Completed",
+        description: "Patient consultation finalized.",
+      });
+    }
+  };
 
   const autoExtractTriggeredRef = React.useRef<Set<number>>(new Set());
 
@@ -1274,6 +1359,16 @@ export default function ClinicianPortal() {
   });
   const appointments = appointmentsQuery.data || [];
 
+  const activeAppointment = useMemo(() => {
+    if (!selectedPatient) return null;
+    if ((selectedPatient as any).appointmentId) {
+      const found = appointments.find((a: any) => a.id === (selectedPatient as any).appointmentId);
+      if (found) return found;
+    }
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return appointments.find((a: any) => a.patientId === selectedPatient.id && a.date === todayStr && a.status !== 'cancelled' && a.status !== 'Cancelled') || null;
+  }, [selectedPatient, appointments]);
+
   const invoicesQuery = useQuery({
     queryKey: ['/api/invoices'],
     queryFn: async () => {
@@ -1361,6 +1456,12 @@ export default function ClinicianPortal() {
         appointmentStatus: apt.status,
         appointmentVisitMode: apt.visitMode,
         appointmentTelemedicineLink: apt.telemedicineLink,
+        appointmentCheckedInAt: apt.checkedInAt,
+        appointmentSeenAt: apt.seenAt,
+        appointmentCompletedAt: apt.completedAt,
+        appointmentVitals: apt.vitals,
+        appointmentChiefComplaint: apt.chiefComplaint || apt.reason,
+        appointmentNotes: apt.notes,
         triageScore,
         triageReason: triageReasons.slice(0, 2).join(', ') || 'Routine visit',
       };
@@ -1370,6 +1471,50 @@ export default function ClinicianPortal() {
     }
     return mapped;
   }, [appointments, patients, queueDateFrom, queueDateTo, queueTriageSort]);
+
+  const waitingPatientsCount = useMemo(() => {
+    return queuePatients.filter((p: any) => (p.appointmentStatus || '').toLowerCase() === 'checked-in').length;
+  }, [queuePatients]);
+
+  const inConsultPatientsCount = useMemo(() => {
+    return queuePatients.filter((p: any) => {
+      const s = (p.appointmentStatus || '').toLowerCase();
+      return s === 'in-consultation' || s === 'with-doctor';
+    }).length;
+  }, [queuePatients]);
+
+  const scheduledPatientsCount = useMemo(() => {
+    return queuePatients.filter((p: any) => {
+      const s = (p.appointmentStatus || '').toLowerCase();
+      return !s || s === 'scheduled' || s === 'confirmed';
+    }).length;
+  }, [queuePatients]);
+
+  const completedPatientsCount = useMemo(() => {
+    return queuePatients.filter((p: any) => (p.appointmentStatus || '').toLowerCase() === 'completed').length;
+  }, [queuePatients]);
+
+  const filteredQueuePatients = useMemo(() => {
+    if (queueStatusFilter === 'waiting') {
+      return queuePatients.filter((p: any) => (p.appointmentStatus || '').toLowerCase() === 'checked-in');
+    }
+    if (queueStatusFilter === 'in-consultation') {
+      return queuePatients.filter((p: any) => {
+        const s = (p.appointmentStatus || '').toLowerCase();
+        return s === 'in-consultation' || s === 'with-doctor';
+      });
+    }
+    if (queueStatusFilter === 'scheduled') {
+      return queuePatients.filter((p: any) => {
+        const s = (p.appointmentStatus || '').toLowerCase();
+        return !s || s === 'scheduled' || s === 'confirmed';
+      });
+    }
+    if (queueStatusFilter === 'completed') {
+      return queuePatients.filter((p: any) => (p.appointmentStatus || '').toLowerCase() === 'completed');
+    }
+    return queuePatients;
+  }, [queuePatients, queueStatusFilter]);
 
   const searchResults = useMemo(() => {
     if (!patientSearch.trim()) return [];
@@ -1712,23 +1857,110 @@ export default function ClinicianPortal() {
                 </div>
                </div>
 
-               <section className="rounded-xl bg-saivie-surface-muted px-5 py-5 md:px-7 md:py-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 overflow-hidden" aria-label="Clinic at a glance">
-                <div className="max-w-xl">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-saivie-teal">Today's clinic</p>
-                  <h3 className="mt-2 text-2xl md:text-3xl font-semibold text-saivie-plum">{queuePatients.length} visits in flow</h3>
-                  <p className="mt-1 text-sm text-saivie-plum">Your selected date range, with triage priorities ready to review.</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                   { label: 'Fertility', count: queuePatients.filter((p: any) => ['fertility', 'ttc', 'iui', 'ivf', 'iui cycle', 'pcos'].some(t => (p.type || '').toLowerCase().includes(t))), className: 'bg-saivie-ivory/80 text-saivie-teal' },
-                   { label: 'Pregnancy', count: queuePatients.filter((p: any) => ['pregnancy', 'pregnant', 'antenatal'].some(t => (p.type || '').toLowerCase().includes(t))), className: 'bg-saivie-surface-blush text-saivie-rose' },
-                   { label: 'Postpartum', count: queuePatients.filter((p: any) => (p.type || '').toLowerCase().includes('postpartum')), className: 'bg-saivie-sage text-saivie-plum' },
-                  ].map((item) => (
-                   <div key={item.label} className={`min-w-[112px] rounded-lg px-3 py-2 ${item.className}`}>
-                    <p className="text-xs font-medium">{item.label}</p>
-                    <p className="mt-0.5 text-lg font-semibold">{item.count.length}<span className="ml-1 text-xs font-medium">visits</span></p>
-                   </div>
-                  ))}
+               <section className="rounded-xl bg-saivie-ivory border border-saivie-border p-4 md:p-5 shadow-sm" aria-label="Clinic at a glance">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="relative flex h-2.5 w-2.5">
+                        {waitingPatientsCount > 0 && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${waitingPatientsCount > 0 ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                      </span>
+                      <p className="text-xs font-bold uppercase tracking-wider text-saivie-teal">Live Clinic Pulse</p>
+                    </div>
+                    <h3 className="mt-1 text-xl md:text-2xl font-semibold text-saivie-plum flex items-center gap-2">
+                      {waitingPatientsCount > 0 ? (
+                        <>
+                          <span>{waitingPatientsCount} {waitingPatientsCount === 1 ? 'patient' : 'patients'} waiting</span>
+                          <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-none font-medium text-xs">Ready for consult</Badge>
+                        </>
+                      ) : (
+                        <span>Waiting room clear</span>
+                      )}
+                    </h3>
+                    <p className="mt-0.5 text-xs text-saivie-plum">
+                      {inConsultPatientsCount > 0 ? `${inConsultPatientsCount} in consultation · ` : ''}
+                      {scheduledPatientsCount} upcoming today · {completedPatientsCount} seen
+                    </p>
+                  </div>
+
+                  {/* 4-State Quick Action Pills */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setQueueStatusFilter('waiting')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${
+                        queueStatusFilter === 'waiting'
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800 ring-2 ring-emerald-200'
+                          : 'bg-saivie-surface-muted border-saivie-border text-saivie-plum hover:bg-emerald-50/50'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${waitingPatientsCount > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                      Waiting Room
+                      <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px] bg-emerald-100 text-emerald-800 border-none">
+                        {waitingPatientsCount}
+                      </Badge>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setQueueStatusFilter('in-consultation')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${
+                        queueStatusFilter === 'in-consultation'
+                          ? 'bg-amber-50 border-amber-300 text-amber-800 ring-2 ring-amber-200'
+                          : 'bg-saivie-surface-muted border-saivie-border text-saivie-plum hover:bg-amber-50/50'
+                      }`}
+                    >
+                      <Stethoscope className="w-3.5 h-3.5 text-amber-600" />
+                      In Consultation
+                      <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px] bg-amber-100 text-amber-800 border-none">
+                        {inConsultPatientsCount}
+                      </Badge>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setQueueStatusFilter('scheduled')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${
+                        queueStatusFilter === 'scheduled'
+                          ? 'bg-blue-50 border-blue-300 text-blue-800 ring-2 ring-blue-200'
+                          : 'bg-saivie-surface-muted border-saivie-border text-saivie-plum hover:bg-blue-50/50'
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5 text-blue-600" />
+                      Upcoming
+                      <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px] bg-blue-100 text-blue-800 border-none">
+                        {scheduledPatientsCount}
+                      </Badge>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setQueueStatusFilter('completed')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${
+                        queueStatusFilter === 'completed'
+                           ? 'bg-purple-50 border-purple-300 text-purple-800 ring-2 ring-purple-200'
+                          : 'bg-saivie-surface-muted border-saivie-border text-saivie-plum hover:bg-purple-50/50'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-purple-600" />
+                      Completed
+                      <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px] bg-purple-100 text-purple-800 border-none">
+                        {completedPatientsCount}
+                      </Badge>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setQueueStatusFilter('all')}
+                      className={`px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${
+                        queueStatusFilter === 'all'
+                          ? 'bg-slate-100 border-slate-300 text-slate-800 ring-2 ring-slate-200'
+                          : 'bg-saivie-surface-muted border-saivie-border text-saivie-plum hover:bg-slate-100'
+                      }`}
+                    >
+                      All ({queuePatients.length})
+                    </button>
+                  </div>
                 </div>
                </section>
                 
@@ -1826,10 +2058,19 @@ export default function ClinicianPortal() {
 
                      {/* SECTION 2 - TODAY'S PATIENT FLOW */}
                      <Card className="shadow-none border-saivie-border rounded-lg overflow-hidden">
-                        <CardHeader className="py-4 border-b border-saivie-border flex flex-row items-center justify-between">
-                           <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
-                              <CalendarCheck className="w-4 h-4 text-blue-600" /> Patient Flow
-                           </CardTitle>
+                        <CardHeader className="py-4 border-b border-saivie-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                           <div>
+                              <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
+                                 <CalendarCheck className="w-4 h-4 text-saivie-teal" /> Patient Flow
+                                 <Badge variant="outline" className="text-[10px] ml-1 uppercase font-semibold">
+                                   {queueStatusFilter === "waiting" ? "Waiting Room" : queueStatusFilter === "in-consultation" ? "In Consultation" : queueStatusFilter === "scheduled" ? "Upcoming" : queueStatusFilter === "completed" ? "Completed" : "All"}
+                                 </Badge>
+                              </CardTitle>
+                              <p className="text-xs text-saivie-plum mt-0.5">
+                                Showing {filteredQueuePatients.length} {filteredQueuePatients.length === 1 ? "patient" : "patients"}
+                                {queueStatusFilter === "waiting" ? " currently waiting outside" : ""}
+                              </p>
+                           </div>
                            <div className="flex flex-wrap items-center justify-end gap-1.5">
                               <Input
                                 type="date"
@@ -1849,59 +2090,87 @@ export default function ClinicianPortal() {
                               <button
                                 onClick={() => setQueueTriageSort(v => !v)}
                                 data-testid="btn-triage-sort"
-                                className={`flex items-center gap-1 h-7 px-2 rounded text-[10px] font-bold border transition-colors ${queueTriageSort ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-saivie-ivory border-saivie-border text-saivie-plum hover:border-orange-200 hover:text-orange-600'}`}
+                                className={`flex items-center gap-1 h-7 px-2 rounded text-[10px] font-bold border transition-colors ${queueTriageSort ? "bg-orange-100 border-orange-300 text-orange-700" : "bg-saivie-ivory border-saivie-border text-saivie-plum hover:border-orange-200 hover:text-orange-600"}`}
                                 title="Sort by AI triage priority"
                               >
                                 <Sparkles className="w-3 h-3" />
-                                {queueTriageSort ? 'Triage ON' : 'Triage'}
+                                {queueTriageSort ? "Triage ON" : "Triage"}
                               </button>
-                              <span className="text-xs text-saivie-plum font-medium">{queuePatients.length}</span>
+                              <span className="text-xs text-saivie-plum font-medium">{filteredQueuePatients.length}/{queuePatients.length}</span>
                            </div>
                         </CardHeader>
                         <CardContent className="p-0">
-                           {queuePatients.length === 0 ? (
-                              <div className="py-12 text-center text-saivie-plum text-sm">
-                                 No patients scheduled {queueDateFrom !== queueDateTo ? 'for this date range' : 'for this date'}
+                           {filteredQueuePatients.length === 0 ? (
+                              <div className="py-12 px-4 text-center space-y-3">
+                                 <p className="text-saivie-plum text-sm">
+                                   {queueStatusFilter === "waiting"
+                                     ? "🎉 Waiting room is clear! No patients currently waiting."
+                                     : queueStatusFilter === "in-consultation"
+                                     ? "No active consultation currently in progress."
+                                     : queueStatusFilter === "completed"
+                                     ? "No consultations completed yet today."
+                                     : "No patients found for this view."}
+                                 </p>
+                                 {queueStatusFilter === "waiting" && scheduledPatientsCount > 0 && (
+                                   <Button
+                                     variant="outline"
+                                     size="sm"
+                                     className="h-7 text-xs text-saivie-teal border-saivie-teal"
+                                     onClick={() => setQueueStatusFilter("scheduled")}
+                                   >
+                                     View {scheduledPatientsCount} upcoming scheduled appointments
+                                   </Button>
+                                 )}
                               </div>
                            ) : (
                            <div className="overflow-x-auto">
-                           <table className="min-w-[720px] w-full text-sm text-left">
+                           <table className="min-w-[840px] w-full text-sm text-left">
                               <thead className="text-xs text-saivie-plum bg-saivie-surface-muted uppercase border-b border-saivie-border">
                                  <tr>
                                     {queueDateFrom !== queueDateTo && <th className="px-3 py-3 font-medium w-20">Date</th>}
                                     <th className="px-3 py-3 font-medium w-16">Time</th>
                                     <th className="px-3 py-3 font-medium">Patient</th>
-                                    <th className="px-3 py-3 font-medium">Type</th>
-                                    <th className="px-3 py-3 font-medium w-20">Risk</th>
-                                    {queueTriageSort && <th className="px-3 py-3 font-medium">Priority Reason</th>}
-                                    <th className="px-3 py-3 font-medium">Status</th>
-                                    <th className="px-3 py-3 font-medium w-10"></th>
+                                    <th className="px-3 py-3 font-medium">Focus / Type</th>
+                                    <th className="px-3 py-3 font-medium w-16">Risk</th>
+                                    <th className="px-3 py-3 font-medium">Check-In / Vitals</th>
+                                    <th className="px-3 py-3 font-medium">Status & Action</th>
+                                    <th className="px-3 py-3 font-medium w-8"></th>
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
-                                 {queuePatients.map((p: any) => {
+                                 {filteredQueuePatients.map((p: any) => {
                                     const typeColors: Record<string, string> = {
-                                       'Fertility': 'border-saivie-border text-saivie-teal bg-saivie-surface-muted',
-                                       'Pregnant': 'border-saivie-blush text-saivie-rose bg-saivie-surface-blush',
-                                       'Pregnancy': 'border-saivie-blush text-saivie-rose bg-saivie-surface-blush',
-                                       'Postpartum': 'border-saivie-border text-saivie-plum bg-saivie-surface-muted',
-                                       'IUI Cycle': 'border-saivie-border text-saivie-teal bg-saivie-surface-muted',
-                                       'PCOS': 'border-emerald-200 text-emerald-700 bg-emerald-50',
-                                       'Others': 'border-saivie-border text-saivie-plum bg-saivie-surface-muted',
+                                       "Fertility": "border-saivie-border text-saivie-teal bg-saivie-surface-muted",
+                                       "Pregnant": "border-saivie-blush text-saivie-rose bg-saivie-surface-blush",
+                                       "Pregnancy": "border-saivie-blush text-saivie-rose bg-saivie-surface-blush",
+                                       "Postpartum": "border-saivie-border text-saivie-plum bg-saivie-surface-muted",
+                                       "IUI Cycle": "border-saivie-border text-saivie-teal bg-saivie-surface-muted",
+                                       "PCOS": "border-emerald-200 text-emerald-700 bg-emerald-50",
+                                       "Others": "border-saivie-border text-saivie-plum bg-saivie-surface-muted",
                                     };
+                                    const rawStatus = (p.appointmentStatus || "").toLowerCase();
+                                    const isWaiting = rawStatus === "checked-in";
+                                    const isInConsult = rawStatus === "in-consultation" || rawStatus === "with-doctor";
+                                    const isDone = rawStatus === "completed";
+                                    const waitDuration = p.appointmentCheckedInAt ? formatWaitTime(p.appointmentCheckedInAt) : null;
+                                    const waitMins = p.appointmentCheckedInAt ? Math.floor((Date.now() - new Date(p.appointmentCheckedInAt).getTime()) / 60000) : 0;
+
                                     return (
-                                       <tr key={`${p.appointmentId}-${p.id}`} data-testid={`row-patient-${p.id}`} className="hover:bg-saivie-surface-muted cursor-pointer" onClick={() => navigateToPatient(p)}>
-                                          {queueDateFrom !== queueDateTo && <td className="px-3 py-3 text-saivie-plum text-xs font-medium">{p.appointmentDate ? new Date(p.appointmentDate + 'T00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}</td>}
-                                          <td className="px-3 py-3 text-saivie-plum font-medium">{p.appointmentTime || '--:--'}</td>
+                                       <tr key={`${p.appointmentId}-${p.id}`} data-testid={`row-patient-${p.id}`} className="hover:bg-saivie-surface-muted cursor-pointer transition-colors" onClick={() => navigateToPatient(p)}>
+                                          {queueDateFrom !== queueDateTo && <td className="px-3 py-3 text-saivie-plum text-xs font-medium">{p.appointmentDate ? new Date(p.appointmentDate + "T00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—"}</td>}
+                                          <td className="px-3 py-3 text-saivie-plum font-medium whitespace-nowrap">{p.appointmentTime || "--:--"}</td>
                                           <td className="px-3 py-3" data-testid={`text-patient-name-${p.id}`}>
-                                             <div className="font-semibold text-saivie-plum">{p.name}</div>
-                                             {p.appointmentVisitMode === 'home-visit' && p.address && (
+                                             <div className="font-semibold text-saivie-plum flex items-center gap-1.5">
+                                               {p.name}
+                                               {p.age && <span className="text-[11px] font-normal text-saivie-plum">({p.age}y)</span>}
+                                             </div>
+                                             {p.appointmentVisitMode === "home-visit" && p.address && (
                                                <div className="text-xs text-amber-600 flex items-center gap-1 mt-0.5">
                                                  <span>🏠</span>
                                                  <span className="truncate max-w-[160px]" title={p.address}>{p.address}</span>
                                                </div>
                                              )}
-                                             {p.appointmentVisitMode === 'telemedicine' && (
+                                             {p.appointmentVisitMode === "telemedicine" && (
                                                <div className="text-xs text-blue-600 flex items-center gap-1 mt-0.5">
                                                  <span>📹</span>
                                                  {p.appointmentTelemedicineLink
@@ -1911,16 +2180,16 @@ export default function ClinicianPortal() {
                                                </div>
                                              )}
                                           </td>
-                                          <td className="px-3 py-3"><Badge variant="outline" className={typeColors[p.type] || 'border-saivie-border text-saivie-plum bg-saivie-surface-muted'}>{p.type || 'General'}</Badge></td>
+                                          <td className="px-3 py-3"><Badge variant="outline" className={typeColors[p.type] || "border-saivie-border text-saivie-plum bg-saivie-surface-muted"}>{p.type || "General"}</Badge></td>
                                           <td className="px-3 py-3">
                                             {p.riskScore ? (
                                               <Badge
                                                 data-testid={`risk-badge-${p.id}`}
                                                 className={`cursor-pointer text-[10px] border-none ${
-                                                  p.riskScore.level === 'Critical' ? 'bg-red-100 text-red-700 hover:bg-red-200' :
-                                                  p.riskScore.level === 'High' ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' :
-                                                  p.riskScore.level === 'Medium' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' :
-                                                  'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                                  p.riskScore.level === "Critical" ? "bg-red-100 text-red-700 hover:bg-red-200" :
+                                                  p.riskScore.level === "High" ? "bg-orange-100 text-orange-700 hover:bg-orange-200" :
+                                                  p.riskScore.level === "Medium" ? "bg-amber-100 text-amber-700 hover:bg-amber-200" :
+                                                  "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
                                                 }`}
                                                 onClick={e => { e.stopPropagation(); setRiskDialogPatient(p); }}
                                               >
@@ -1932,24 +2201,92 @@ export default function ClinicianPortal() {
                                                 onClick={async (e) => {
                                                   e.stopPropagation();
                                                   setScoringPatientId(p.id);
-                                                  await fetch(`/api/patients/${p.id}/risk-score`, { method: 'POST' });
-                                                  queryClient.invalidateQueries({ queryKey: ['/api/patients', clinicianProvider?.id] });
+                                                  await fetch(`/api/patients/${p.id}/risk-score`, { method: "POST" });
+                                                  queryClient.invalidateQueries({ queryKey: ["/api/patients", clinicianProvider?.id] });
                                                   setScoringPatientId(null);
                                                 }}
                                               >
-                                                {scoringPatientId === p.id ? 'Scoring…' : 'Score'}
+                                                {scoringPatientId === p.id ? "Scoring…" : "Score"}
                                               </span>
                                             )}
                                           </td>
-                                          {queueTriageSort && (
-                                            <td className="px-3 py-3 text-xs text-saivie-plum max-w-[180px]">
-                                              <span className="flex items-center gap-1">
-                                                <Sparkles className="w-3 h-3 text-orange-400 shrink-0" />
-                                                <span className="truncate" title={p.triageReason}>{p.triageReason}</span>
-                                              </span>
-                                            </td>
-                                          )}
-                                          <td className="px-3 py-3 text-saivie-plum text-xs capitalize">{p.appointmentStatus || 'Scheduled'}</td>
+                                          <td className="px-3 py-3 max-w-[260px]">
+                                            <div className="space-y-1">
+                                              {isWaiting && waitDuration && (
+                                                <div className="flex items-center gap-1.5">
+                                                  <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                                                    waitMins >= 30 ? "bg-rose-100 text-rose-800" :
+                                                    waitMins >= 15 ? "bg-amber-100 text-amber-800" :
+                                                    "bg-emerald-100 text-emerald-800"
+                                                  }`}>
+                                                    <Clock className="w-3 h-3" />
+                                                    {waitDuration}
+                                                  </span>
+                                                  {waitMins >= 20 && <span className="text-[10px] text-rose-600 font-medium">Priority</span>}
+                                                </div>
+                                              )}
+                                              {p.appointmentVitals ? (
+                                                <div className="flex flex-wrap gap-1">
+                                                  {p.appointmentVitals.bp && (
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-medium ${
+                                                      (parseInt(String(p.appointmentVitals.bp)) >= 140) ? "bg-rose-100 text-rose-800" : "bg-slate-100 text-slate-700"
+                                                    }`}>
+                                                      BP {p.appointmentVitals.bp}
+                                                    </span>
+                                                  )}
+                                                  {p.appointmentVitals.pulse && (
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-slate-100 text-slate-700">
+                                                      HR {p.appointmentVitals.pulse}
+                                                    </span>
+                                                  )}
+                                                  {p.appointmentVitals.weight && (
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-slate-100 text-slate-700">
+                                                      {p.appointmentVitals.weight}kg
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              ) : null}
+                                              {p.appointmentChiefComplaint && (
+                                                <p className="text-[11px] text-slate-600 italic truncate" title={p.appointmentChiefComplaint}>
+                                                  "{p.appointmentChiefComplaint}"
+                                                </p>
+                                              )}
+                                              {!p.appointmentVitals && !p.appointmentChiefComplaint && !isWaiting && (
+                                                <span className="text-xs text-slate-400">Scheduled</span>
+                                              )}
+                                            </div>
+                                          </td>
+                                          <td className="px-3 py-3 whitespace-nowrap">
+                                            {isWaiting ? (
+                                              <Button
+                                                size="sm"
+                                                className="h-8 text-xs bg-saivie-teal hover:bg-saivie-teal/90 text-white gap-1.5 font-semibold shadow-sm"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleStartConsultation(p);
+                                                }}
+                                                data-testid={`btn-start-consult-${p.id}`}
+                                              >
+                                                <Stethoscope className="w-3.5 h-3.5" /> Start Consult
+                                              </Button>
+                                            ) : isInConsult ? (
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8 text-xs border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 gap-1.5 font-semibold"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  navigateToPatient(p);
+                                                }}
+                                              >
+                                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" /> Resume
+                                              </Button>
+                                            ) : isDone ? (
+                                              <Badge className="bg-purple-100 text-purple-800 border-none text-xs">Seen</Badge>
+                                            ) : (
+                                              <Badge variant="outline" className="text-slate-600 border-slate-300 text-xs">Scheduled</Badge>
+                                            )}
+                                          </td>
                                           <td className="px-3 py-3"><ChevronRight className="w-4 h-4 text-slate-300" /></td>
                                        </tr>
                                     );
@@ -4353,8 +4690,60 @@ export default function ClinicianPortal() {
 
             {patientDetailTab === 'consultation' && (
               <div className="flex-1 overflow-y-auto bg-saivie-surface-muted p-3 sm:p-5">
-                <div className="max-w-[1440px] mx-auto grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_240px] gap-3 lg:gap-5">
-                  <section className="min-w-0">
+                <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_300px] gap-4">
+                  {/* COLUMN 1: CHECK-IN INTAKE & VITALS (Reference Image 2) */}
+                  <aside className="space-y-4">
+                    {/* Check-in Vitals 2x2 Sparkline Card */}
+                    <Card className="border border-saivie-border bg-saivie-ivory rounded-lg p-3 shadow-sm">
+                      <VitalsSparklineGrid
+                        vitals={activeAppointment?.vitals || (selectedPatient as any).appointmentVitals || null}
+                        bpLogs={bpLogsData}
+                        weightLogs={weightLogs}
+                        onAdoptVitals={(summaryText) => {
+                          setSoapObjectiveDraft((prev) => prev ? `${prev}\n${summaryText}` : summaryText);
+                          toast({
+                            title: "Vitals Adopted",
+                            description: "Check-in vitals added to today's SOAP Objective note.",
+                          });
+                        }}
+                      />
+                    </Card>
+
+                    {/* Check-In Chief Complaint Card */}
+                    {(activeAppointment?.chiefComplaint || (selectedPatient as any).appointmentChiefComplaint || activeAppointment?.reason) && (
+                      <Card className="border border-saivie-border bg-saivie-ivory rounded-lg p-3 shadow-sm">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <MessageSquare className="w-3.5 h-3.5 text-saivie-teal" />
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-saivie-plum">Check-In Complaint</span>
+                        </div>
+                        <p className="text-xs text-saivie-plum italic bg-saivie-surface-muted p-2 rounded border border-saivie-border">
+                          "{activeAppointment?.chiefComplaint || (selectedPatient as any).appointmentChiefComplaint || activeAppointment?.reason}"
+                        </p>
+                      </Card>
+                    )}
+
+                    {/* Patient Clinical Summary */}
+                    <Card className="border border-saivie-border bg-saivie-ivory rounded-lg p-3 shadow-sm space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-saivie-plum">Clinical Intake</span>
+                        <IntakeSummaryActions patient={selectedPatient} weightLogs={weightLogs} bpLogs={bpLogsData} />
+                      </div>
+                      <div className="text-[11px] text-saivie-plum space-y-1">
+                        <p><span className="font-semibold text-slate-500">History:</span> {selectedPatient.history?.medical?.join(', ') || 'None recorded'}</p>
+                        <p><span className="font-semibold text-slate-500">Allergies:</span> <span className={selectedPatient.history?.allergies?.length ? 'text-rose-600 font-semibold' : ''}>{selectedPatient.history?.allergies?.join(', ') || 'No known allergies'}</span></p>
+                      </div>
+                    </Card>
+                  </aside>
+
+                  {/* COLUMN 2: CLINICAL WORKSPACE & SPECIALTY CANVAS */}
+                  <section className="min-w-0 space-y-4">
+                    {/* Active Medications Strip (Reference Image 2) */}
+                    <Card className="border border-saivie-border bg-saivie-ivory rounded-lg p-3 shadow-sm">
+                      <ActiveMedicationCards
+                        medications={medications}
+                        onAddPrescription={() => setConsultationStep('plan')}
+                      />
+                    </Card>
                     <nav className="grid grid-cols-5 gap-1 mb-4" aria-label="Consultation journey">
                       {consultationSteps.map((step, index) => (
                         <button
@@ -4664,7 +5053,50 @@ export default function ClinicianPortal() {
                     </div>
                   </section>
 
+                  {/* COLUMN 3: ORDERS & ACTION RAIL (Reference Image 1) */}
                   <aside className="space-y-3">
+                    {/* Action Header Card */}
+                    <Card className="border border-saivie-border bg-saivie-ivory rounded-lg p-3.5 shadow-sm space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-saivie-plum">Consultation Status</span>
+                        {activeAppointment?.status === 'in-consultation' ? (
+                          <Badge className="bg-amber-100 text-amber-800 border-none text-[10px] animate-pulse">In Progress</Badge>
+                        ) : activeAppointment?.status === 'checked-in' ? (
+                          <Badge className="bg-emerald-100 text-emerald-800 border-none text-[10px]">Checked In</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px]">{activeAppointment?.status || 'Scheduled'}</Badge>
+                        )}
+                      </div>
+
+                      {activeAppointment?.status === 'in-consultation' ? (
+                        <Button
+                          type="button"
+                          className="w-full h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-sm text-xs"
+                          onClick={() => handleCompleteConsultation(selectedPatient)}
+                          data-testid="button-complete-consultation"
+                        >
+                          <CheckCircle2 className="w-4 h-4" /> Complete Consultation & Bill
+                        </Button>
+                      ) : activeAppointment?.status === 'checked-in' ? (
+                        <Button
+                          type="button"
+                          className="w-full h-10 bg-saivie-teal hover:bg-saivie-teal/90 text-white font-bold gap-2 shadow-sm text-xs"
+                          onClick={() => handleStartConsultation(selectedPatient)}
+                          data-testid="button-start-consultation"
+                        >
+                          <Stethoscope className="w-4 h-4" /> Call Patient In
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          className="w-full h-10 bg-saivie-teal hover:bg-saivie-teal/90 text-white font-bold gap-2 shadow-sm text-xs"
+                          onClick={() => handleCompleteConsultation(selectedPatient)}
+                        >
+                          <CheckCircle2 className="w-4 h-4" /> Complete Visit
+                        </Button>
+                      )}
+                    </Card>
+
                     <Card className="shadow-none border-saivie-border rounded-lg overflow-hidden">
                       <CardHeader className="py-3 px-4 border-b border-saivie-border flex flex-row items-center gap-2">
                         <span className="flex h-7 w-7 items-center justify-center rounded-md bg-saivie-surface-muted text-saivie-teal"><Sparkles className="h-3.5 w-3.5" /></span>
