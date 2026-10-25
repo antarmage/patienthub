@@ -5317,10 +5317,6 @@ export default function StaffPortal() {
               appointment={prescriptionAppointment}
               patient={patients.find((p: any) => p.id === prescriptionAppointment?.patientId) || null}
               onClose={() => setPrescriptionAppointment(null)}
-              onSaved={(patientId) => {
-                const savedPatient = patients.find((p: any) => p.id === patientId) || selectedPatientForLog;
-                if (savedPatient) openViewLog(savedPatient);
-              }}
             />
             <AfterVisitDialog
               appointment={afterVisitAppointment}

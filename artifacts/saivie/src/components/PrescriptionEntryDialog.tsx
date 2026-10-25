@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Camera, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -236,6 +235,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
+  const [entered, setEntered] = useState(false);
+  const closing = useRef(false);
   const [prescriptionDate, setPrescriptionDate] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -565,6 +566,26 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     })));
   };
 
+  const closePage = () => {
+    if (closing.current) return;
+    closing.current = true;
+    setEntered(false);
+    window.setTimeout(() => {
+      closing.current = false;
+      onClose();
+    }, 280);
+  };
+
+  useEffect(() => {
+    if (!appointment) {
+      setEntered(false);
+      return;
+    }
+    setEntered(false);
+    const frame = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(frame);
+  }, [appointment]);
+
   const save = async () => {
     if (!patientId || (!appointment?.id && !appointment?.historical && !patient)) return;
     if (needsDate && !/^\d{4}-\d{2}-\d{2}$/.test(prescriptionDate)) {
@@ -616,7 +637,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] });
       toast({ title: editing ? "Prescription updated" : appointment?.id ? "Prescription recorded" : "Prescription recorded and visit created" });
       onSaved?.(patientId);
-      onClose();
+      closePage();
     } catch (err: any) {
       toast({ title: "Could not save prescription", description: err.message, variant: "destructive" });
     } finally {
@@ -624,19 +645,28 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     }
   };
 
+  if (!appointment) return null;
+
   return (
-    <Dialog open={!!appointment} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{editing ? "Edit prescription" : "Record prescription"}{patient?.name ? ` — ${patient.name}` : ""}</DialogTitle>
-          <DialogDescription>
+    <div className={`fixed inset-0 z-[60] flex flex-col bg-background transition-transform duration-300 ease-out ${entered ? "translate-x-0" : "translate-x-full"}`}>
+      <header className="flex items-center gap-3 border-b px-4 py-3 sm:px-6">
+        <Button type="button" variant="outline" onClick={closePage} disabled={saving} data-testid="btn-rx-close">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Close
+        </Button>
+        <div className="min-w-0">
+          <h1 className="truncate text-lg font-semibold">{editing ? "Edit prescription" : "Record prescription"}{patient?.name ? ` — ${patient.name}` : ""}</h1>
+          <p className="text-sm text-muted-foreground">
             {editing
-              ? "Update the date, patient details, or medicines. Saving replaces this prescription record."
+              ? "Update this record, then close to return to the list."
               : needsDate
-              ? "Enter the date on the paper prescription. A completed visit is created for that date, so you do not need to book an appointment first."
-              : `Transcribed from the paper prescription for the visit on ${String(appointment.date).slice(0, 10)}. You can save a partial entry and finish later.`}
-          </DialogDescription>
-        </DialogHeader>
+              ? "Enter the paper prescription. Close returns to the patient list."
+              : `Visit on ${String(appointment.date).slice(0, 10)}. Close returns to the list.`}
+          </p>
+        </div>
+      </header>
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+        <div className="mx-auto max-w-3xl">
 
         <div className="space-y-5">
           {needsDate && (
@@ -926,14 +956,15 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={save} disabled={saving || (needsDate && !prescriptionDate)} data-testid="btn-rx-save">
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {editing ? "Update prescription" : "Save prescription"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+      <footer className="flex justify-end gap-2 border-t px-4 py-3 sm:px-6">
+        <Button variant="outline" onClick={closePage} disabled={saving}>Close</Button>
+        <Button onClick={save} disabled={saving || (needsDate && !prescriptionDate)} data-testid="btn-rx-save">
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {editing ? "Update prescription" : "Save prescription"}
+        </Button>
+      </footer>
+    </div>
   );
 }
