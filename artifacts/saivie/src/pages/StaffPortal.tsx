@@ -1994,17 +1994,9 @@ export default function StaffPortal() {
   const [prescriptionAppointment, setPrescriptionAppointment] = useState<any | null>(null);
   const { toast } = useToast();
   const openManualPrescription = (patient: any) => {
-    if (!patient) return;
-    const mine = (appointmentsRaw as any[])
-      .filter((a: any) => a.patientId === patient.id)
-      .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
-    const target = mine.find((a: any) => getArrivalState(a) === "completed") || mine[0];
-    if (!target) {
-      toast({ title: "No appointment found", description: "Book an appointment for this patient first.", variant: "destructive" });
-      return;
-    }
+    if (!patient?.id) return;
     setIsViewLogOpen(false);
-    setPrescriptionAppointment(target);
+    setPrescriptionAppointment({ patientId: patient.id, historical: true });
   };
   const { data: allVisitHistory = [] } = useQuery<any[]>({
     queryKey: ["/api/visit-history"],

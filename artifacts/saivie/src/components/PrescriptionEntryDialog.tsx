@@ -44,9 +44,11 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
+  const [prescriptionDate, setPrescriptionDate] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const patientId = appointment?.patientId;
+  const patientId = appointment?.patientId ?? patient?.id;
+  const needsDate = !appointment?.id;
 
   const { data: visits = [], isFetched } = useQuery<any[]>({
     queryKey: ["/api/patients", patientId, "visit-history"],
@@ -90,6 +92,17 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointment?.id, isFetched, existing?.id]);
 
+  useEffect(() => {
+    if (!appointment?.historical) return;
+    setMedicines([emptyMedicine()]);
+    setTests([]);
+    setDiagnosis("");
+    setAdvice("");
+    setFollowUp("");
+    setPrescriptionDate("");
+    setScanned(false);
+  }, [appointment]);
+
   const scanFile = async (file: File) => {
     if (!patientId) return;
     setScanning(true);
@@ -114,6 +127,9 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
       if (data.diagnosis) setDiagnosis(data.diagnosis);
       if (data.advice) setAdvice(data.advice);
       if (data.followUp) setFollowUp(data.followUp);
+      if (needsDate && data.prescriptionDate && /^\d{4}-\d{2}-\d{2}$/.test(data.prescriptionDate)) {
+        setPrescriptionDate(data.prescriptionDate);
+      }
       setScanned(true);
       toast({ title: "Prescription read", description: "Please check every field against the paper copy before saving." });
     } catch (err: any) {
@@ -134,15 +150,57 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
 
   const missingBilled = billedTests.filter((b) => !tests.some((t) => t.name.toLowerCase() === b.name.toLowerCase()));
 
+  const ensureAppointment = async () => {
+    if (appointment?.id) return appointment;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(prescriptionDate)) {
+      throw new Error("Enter the prescription date");
+    }
+    const listed = await fetch("/api/appointments");
+    const all = listed.ok ? await listed.json() : [];
+    const sameDay = (Array.isArray(all) ? all : []).find((item: any) =>
+      item.patientId === patientId && String(item.date).slice(0, 10) === prescriptionDate,
+    );
+    if (sameDay) return sameDay;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const created = await fetch("/api/appointments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        patientId,
+        date: prescriptionDate,
+        time: "09:00",
+        duration: 15,
+        type: "Consultation",
+        visitType: "Consultation",
+        visitMode: "in-clinic",
+        status: prescriptionDate <= today ? "completed" : "scheduled",
+        reason: diagnosis.trim() || "Historical prescription",
+        notes: "Created automatically from a manually entered prescription",
+        completedAt: prescriptionDate <= today ? `${prescriptionDate}T09:00:00.000Z` : null,
+        suppressNotification: true,
+      }),
+    });
+    const body = await created.json().catch(() => ({}));
+    if (!created.ok) throw new Error(body.error || "Could not create the visit for this prescription date");
+    return body;
+  };
+
   const save = async () => {
-    if (!appointment || !patientId) return;
+    if (!patientId || (!appointment?.id && !appointment?.historical && !patient)) return;
     setSaving(true);
     try {
+      const visitAppointment = await ensureAppointment();
+      const visitDate = String(visitAppointment.date || prescriptionDate).slice(0, 10);
+      const namedMedicines = medicines.filter((m) => m.name.trim());
+      const listedVisits = await fetch(`/api/patients/${patientId}/visit-history`);
+      const allVisits = listedVisits.ok ? await listedVisits.json() : [];
+      const matchedVisit = existing || (Array.isArray(allVisits) ? allVisits.find((visit: any) => visit.appointmentId === visitAppointment.id) : null);
       const payload = {
-        appointmentId: appointment.id,
-        providerId: appointment.providerId ?? null,
-        date: String(appointment.date).slice(0, 10),
-        visitType: appointment.type || appointment.visitType || null,
+        appointmentId: visitAppointment.id,
+        providerId: visitAppointment.providerId ?? null,
+        date: visitDate,
+        visitType: visitAppointment.type || visitAppointment.visitType || "Consultation",
         diagnosis,
         planNotes: advice,
         followUpPlan: followUp,
@@ -150,22 +208,36 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
           source: scanned ? "paper-scanned-reviewed" : "paper-transcribed",
           enteredAt: existing?.prescriptions?.enteredAt || new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          medicines: medicines.filter((m) => m.name.trim()),
+          medicines: namedMedicines,
         },
         labsOrdered: tests,
       };
-      const res = await fetch(existing ? `/api/visit-history/${existing.id}` : `/api/patients/${patientId}/visit-history`, {
-        method: existing ? "PATCH" : "POST",
+      const res = await fetch(matchedVisit ? `/api/visit-history/${matchedVisit.id}` : `/api/patients/${patientId}/visit-history`, {
+        method: matchedVisit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Failed to save");
+      if (!matchedVisit) await Promise.all(namedMedicines.map((med) => fetch(`/api/patients/${patientId}/medications`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: med.name.trim(),
+          dose: med.dose || null,
+          frequency: med.frequency || null,
+          startDate: visitDate,
+          status: "active",
+          notes: [med.duration ? `Duration: ${med.duration}` : "", med.instructions || ""].filter(Boolean).join(". ") || null,
+        }),
+      })));
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "visit-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visit-history"] });
-      toast({ title: "Prescription recorded" });
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/medications`] });
+      toast({ title: appointment?.id ? "Prescription recorded" : "Prescription recorded and visit created" });
       onClose();
-    } catch {
-      toast({ title: "Could not save prescription", variant: "destructive" });
+    } catch (err: any) {
+      toast({ title: "Could not save prescription", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -177,11 +249,19 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
         <DialogHeader>
           <DialogTitle>Record prescription{patient?.name ? ` — ${patient.name}` : ""}</DialogTitle>
           <DialogDescription>
-            Transcribed from the paper prescription for the visit on {appointment ? String(appointment.date).slice(0, 10) : ""}. You can save a partial entry and finish later.
+            {needsDate
+              ? "Enter the date on the paper prescription. A completed visit is created for that date, so you do not need to book an appointment first."
+              : `Transcribed from the paper prescription for the visit on ${String(appointment.date).slice(0, 10)}. You can save a partial entry and finish later.`}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
+          {needsDate && (
+            <div className="space-y-1">
+              <Label>Prescription date</Label>
+              <Input type="date" value={prescriptionDate} onChange={(e) => setPrescriptionDate(e.target.value)} data-testid="input-rx-date" />
+            </div>
+          )}
           <div className="rounded-lg border border-dashed border-saivie-border bg-saivie-surface-muted/50 p-3">
             <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" data-testid="input-rx-file"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) scanFile(f); }} />
@@ -268,7 +348,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={save} disabled={saving} data-testid="btn-rx-save">
+          <Button onClick={save} disabled={saving || (needsDate && !prescriptionDate)} data-testid="btn-rx-save">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save prescription
           </Button>
         </DialogFooter>

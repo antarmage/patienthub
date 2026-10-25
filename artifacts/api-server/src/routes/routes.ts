@@ -1156,7 +1156,7 @@ export async function registerRoutes(
   });
 
   app.post("/api/appointments", async (req, res) => {
-    const body = req.body;
+    const { suppressNotification, ...body } = req.body ?? {};
 
     // Auto-generate Jitsi telemedicine link if visit mode is telemedicine
     if (body.visitMode === "telemedicine" && !body.telemedicineLink) {
@@ -1166,8 +1166,8 @@ export async function registerRoutes(
 
     const appt = await storage.createAppointment(body);
 
-    // Send WhatsApp confirmation
-    if (appt.patientId) {
+    // Historical prescription entry should not text the patient about a visit that already happened.
+    if (!suppressNotification && appt.patientId) {
       const patient = await storage.getPatient(appt.patientId);
       if (patient?.phone) {
         try {
