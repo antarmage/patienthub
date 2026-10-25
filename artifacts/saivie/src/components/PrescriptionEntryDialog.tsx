@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { pregnancyWeeks, prescriptionTestOptions } from "@/lib/prescriptionTests";
 import { estimatePregnancyDating } from "@/lib/pregnancyDating";
+import { MedicineAutocomplete } from "@/components/MedicineAutocomplete";
 
 interface Medicine {
   name: string;
@@ -887,6 +888,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/medications`] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/medicine-suggestions"] });
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] });
       toast({ title: editing ? "Prescription updated" : appointment?.id ? "Prescription recorded" : "Prescription recorded and visit created" });
       onSaved?.(patientId);
@@ -1136,9 +1138,17 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
                 <Plus className="mr-1 h-3 w-3" /> Add medicine
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">Type a name and select saved medicine details to prefill. Review dose, frequency, duration and instructions for this patient.</p>
             {medicines.map((m, i) => (
               <div key={i} className="grid grid-cols-12 gap-2 rounded-lg border p-2">
-                <Input className="col-span-12 sm:col-span-4" placeholder="Medicine" value={m.name} onChange={(e) => updateMedicine(i, "name", e.target.value)} data-testid={`input-rx-med-name-${i}`} />
+                <div className="col-span-12 sm:col-span-4">
+                  <MedicineAutocomplete value={m.name} onChange={(value) => updateMedicine(i, "name", value)} onSelect={(medicine) =>
+                    setMedicines((current) => current.map((item, index) => index === i ? {
+                      name: medicine.name, dose: medicine.dose, frequency: medicine.frequency,
+                      duration: medicine.duration, instructions: medicine.instructions,
+                    } : item))
+                  } testId={`input-rx-med-name-${i}`} />
+                </div>
                 <Input className="col-span-4 sm:col-span-2" placeholder="Dose" value={m.dose} onChange={(e) => updateMedicine(i, "dose", e.target.value)} />
                 <Input className="col-span-4 sm:col-span-2" placeholder="Frequency" value={m.frequency} onChange={(e) => updateMedicine(i, "frequency", e.target.value)} />
                 <Input className="col-span-3 sm:col-span-2" placeholder="Duration" value={m.duration} onChange={(e) => updateMedicine(i, "duration", e.target.value)} />

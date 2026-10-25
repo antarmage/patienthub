@@ -128,6 +128,7 @@ export interface IStorage {
   updateVisitHistory(id: number, data: Partial<InsertVisitHistory>): Promise<VisitHistory | undefined>;
 
   getMedications(patientId: number): Promise<Medication[]>;
+  getMedicineSuggestionSources(): Promise<{ catalog: MedicineCatalog[]; prescriptions: unknown[]; medications: unknown[] }>;
   createMedication(med: InsertMedication): Promise<Medication>;
   updateMedication(id: number, data: Partial<InsertMedication>): Promise<Medication | undefined>;
   deleteMedication(id: number): Promise<boolean>;
@@ -470,6 +471,18 @@ export class DatabaseStorage implements IStorage {
 
   async getMedications(patientId: number): Promise<Medication[]> {
     return db.select().from(medications).where(eq(medications.patientId, patientId));
+  }
+
+  async getMedicineSuggestionSources() {
+    const [catalog, visits, savedMedications] = await Promise.all([
+      this.getMedicineCatalog(),
+      db.select({ prescriptions: visitHistory.prescriptions }).from(visitHistory).orderBy(desc(visitHistory.date)),
+      db.select({
+        name: medications.name, dose: medications.dose, frequency: medications.frequency,
+        duration: medications.duration, instructions: medications.instructions, route: medications.route,
+      }).from(medications).orderBy(desc(medications.id)),
+    ]);
+    return { catalog, prescriptions: visits.map((visit) => visit.prescriptions), medications: savedMedications };
   }
 
   async createMedication(med: InsertMedication): Promise<Medication> {

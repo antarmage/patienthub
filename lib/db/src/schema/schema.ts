@@ -284,6 +284,8 @@ export const medications = pgTable("medications", {
   name: text("name").notNull(),
   dose: text("dose"),
   frequency: text("frequency"),
+  duration: text("duration"),
+  instructions: text("instructions"),
   route: text("route"),
   startDate: date("start_date"),
   endDate: date("end_date"),

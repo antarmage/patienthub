@@ -5,6 +5,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { storage } from "../storage";
+import { buildMedicineSuggestions } from "../medicine-suggestions";
 import { synchronizeFollowUpCalls } from "../follow-up-calls";
 import { insertPatientSchema } from "@workspace/db";
 import { calculateInvoiceQuote } from "../prime-pricing";
@@ -2027,6 +2028,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         name: String(med.name).trim(),
         dose: med.dose || null,
         frequency: med.frequency || null,
+        duration: med.duration || null,
+        instructions: med.instructions || null,
         startDate: prescriptionDate,
         status: "active",
         notes: [med.duration ? `Duration: ${med.duration}` : "", med.instructions || ""].filter(Boolean).join(". ") || null,
@@ -4199,6 +4202,11 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     if (!assertPatientSession(req, res, doc.patientId)) return;
     await storage.deletePatientDocument(id);
     res.status(204).send();
+  });
+
+  app.get("/api/medicine-suggestions", async (_req, res) => {
+    const sources = await storage.getMedicineSuggestionSources();
+    res.json(buildMedicineSuggestions(sources.catalog, sources.prescriptions, sources.medications));
   });
 
   app.get("/api/medicine-catalog", async (_req, res) => {

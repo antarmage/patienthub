@@ -23,6 +23,8 @@ export async function ensureSchema(): Promise<void> {
   try {
     await client.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email text;
+      ALTER TABLE medications ADD COLUMN IF NOT EXISTS duration text;
+      ALTER TABLE medications ADD COLUMN IF NOT EXISTS instructions text;
 
       ALTER TABLE follow_up_calls ADD COLUMN IF NOT EXISTS source_key text;
       ALTER TABLE follow_up_calls ADD COLUMN IF NOT EXISTS trigger_type text;

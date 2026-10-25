@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { openPrescription } from "@/lib/prescriptionTemplate";
+import { MedicineAutocomplete } from "@/components/MedicineAutocomplete";
+import { useToast } from "@/hooks/use-toast";
 import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSettings";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
 import { 
@@ -470,6 +472,7 @@ function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; pa
 }
 
 export default function ClinicianPortal() {
+  const { toast } = useToast();
   const [, navigate] = useLocation();
   const [activeView, setActiveView] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 640);
@@ -697,6 +700,9 @@ export default function ClinicianPortal() {
         name: med.name,
         dose: med.dose || '',
         frequency: med.frequency || '',
+        duration: med.duration || '',
+        instructions: med.instructions || '',
+        route: med.route || '',
         notes: med.notes || '',
       })),
       investigations: allInv,
@@ -1017,6 +1023,7 @@ export default function ClinicianPortal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/medicine-catalog'] });
       setNewMedName(''); setNewMedGeneric(''); setNewMedDose(''); setNewMedFrequency(''); setNewMedRoute('Oral'); setNewMedCategory('');
+      queryClient.invalidateQueries({ queryKey: ['/api/medicine-suggestions'] });
     },
   });
 
@@ -1027,6 +1034,7 @@ export default function ClinicianPortal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/medicine-catalog'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/medicine-suggestions'] });
     },
   });
 
@@ -1049,6 +1057,7 @@ export default function ClinicianPortal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/medicine-catalog'] });
       setEditingCatalogId(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/medicine-suggestions'] });
     },
   });
 
@@ -1067,8 +1076,10 @@ export default function ClinicianPortal() {
     },
     onSuccess: () => {
       if (selectedPatient) queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/medications`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/medicine-suggestions'] });
       setEditingMedId(null);
     },
+    onError: (error: Error) => toast({ title: "Could not update medication", description: error.message, variant: "destructive" }),
   });
 
   const deleteMedMutation = useMutation({
@@ -1078,6 +1089,7 @@ export default function ClinicianPortal() {
     },
     onSuccess: () => {
       if (selectedPatient) queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/medications`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/medicine-suggestions'] });
     },
   });
 
@@ -1198,19 +1210,7 @@ export default function ClinicianPortal() {
   };
 
   const [showAddMedRow, setShowAddMedRow] = useState(false);
-  const [newMed, setNewMed] = useState({ name: '', dose: '', frequency: '', startDate: '', status: 'Active', notes: '' });
-  const [medSuggestions, setMedSuggestions] = useState<any[]>([]);
-  const [showMedSuggestions, setShowMedSuggestions] = useState(false);
-  const [editMedSuggestions, setEditMedSuggestions] = useState<any[]>([]);
-  const [showEditMedSuggestions, setShowEditMedSuggestions] = useState(false);
-
-  const filterCatalogSuggestions = (query: string) => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
-    return medicineCatalog.filter((m: any) =>
-      (m.name || '').toLowerCase().includes(q) || (m.genericName || '').toLowerCase().includes(q)
-    ).slice(0, 6);
-  };
+  const [newMed, setNewMed] = useState({ name: '', dose: '', frequency: '', duration: '', instructions: '', route: '', startDate: '', status: 'Active', notes: '' });
 
   const addMedMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -1224,9 +1224,11 @@ export default function ClinicianPortal() {
     },
     onSuccess: () => {
       if (selectedPatient) queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/medications`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/medicine-suggestions'] });
       setShowAddMedRow(false);
-      setNewMed({ name: '', dose: '', frequency: '', startDate: '', status: 'Active', notes: '' });
+      setNewMed({ name: '', dose: '', frequency: '', duration: '', instructions: '', route: '', startDate: '', status: 'Active', notes: '' });
     },
+    onError: (error: Error) => toast({ title: "Could not add medication", description: error.message, variant: "destructive" }),
   });
 
   const dashboardStatsQuery = useQuery({
@@ -5677,17 +5679,9 @@ export default function ClinicianPortal() {
                                                     {editingMedId === med.id ? (
                                                       <>
                                                         <td className="px-1 py-1 relative">
-                                                          <Input value={editMedData.name || ''} onChange={e => { setEditMedData({...editMedData, name: e.target.value}); const s = filterCatalogSuggestions(e.target.value); setEditMedSuggestions(s); setShowEditMedSuggestions(s.length > 0); }} onFocus={() => { const s = filterCatalogSuggestions(editMedData.name || ''); setEditMedSuggestions(s); setShowEditMedSuggestions(s.length > 0); }} onBlur={() => setTimeout(() => setShowEditMedSuggestions(false), 200)} className="h-7 text-xs" autoComplete="off" />
-                                                          {showEditMedSuggestions && editMedSuggestions.length > 0 && (
-                                                            <div className="absolute z-50 top-full left-1 right-1 mt-0.5 bg-saivie-ivory border border-saivie-border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                                                              {editMedSuggestions.map((s: any) => (
-                                                                <div key={s.id} className="px-3 py-1.5 text-xs hover:bg-blue-50 cursor-pointer flex justify-between items-center" onMouseDown={() => { setEditMedData({...editMedData, name: s.name, dose: s.defaultDose || editMedData.dose, frequency: s.defaultFrequency || editMedData.frequency}); setShowEditMedSuggestions(false); }}>
-                                                                  <span className="font-medium text-saivie-plum">{s.name}</span>
-                                                                  <span className="text-saivie-plum text-[10px]">{s.genericName || s.category || ''}</span>
-                                                                </div>
-                                                              ))}
-                                                            </div>
-                                                          )}
+                                                          <MedicineAutocomplete value={editMedData.name || ''} onChange={(name) => setEditMedData({...editMedData, name})}
+                                                            onSelect={(medicine) => setEditMedData({...editMedData, name: medicine.name, dose: medicine.dose, frequency: medicine.frequency, duration: medicine.duration, instructions: medicine.instructions, route: medicine.route})}
+                                                            className="h-7 text-xs" />
                                                         </td>
                                                         <td className="px-1 py-1"><Input value={editMedData.dose || ''} onChange={e => setEditMedData({...editMedData, dose: e.target.value})} className="h-7 text-xs" /></td>
                                                         <td className="px-1 py-1"><Input value={editMedData.frequency || ''} onChange={e => setEditMedData({...editMedData, frequency: e.target.value})} className="h-7 text-xs" /></td>
@@ -5702,7 +5696,12 @@ export default function ClinicianPortal() {
                                                             </SelectContent>
                                                           </Select>
                                                         </td>
-                                                        <td className="px-1 py-1"><Input value={editMedData.notes || ''} onChange={e => setEditMedData({...editMedData, notes: e.target.value})} className="h-7 text-xs" /></td>
+                                                        <td className="px-1 py-1 space-y-1">
+                                                          <Input aria-label="Duration" placeholder="Duration" value={editMedData.duration || ''} onChange={e => setEditMedData({...editMedData, duration: e.target.value})} className="h-7 text-xs" />
+                                                          <Input aria-label="Medicine instructions" placeholder="Instructions (shared for reuse)" value={editMedData.instructions || ''} onChange={e => setEditMedData({...editMedData, instructions: e.target.value})} className="h-7 text-xs" />
+                                                          <Input aria-label="Route" placeholder="Route" value={editMedData.route || ''} onChange={e => setEditMedData({...editMedData, route: e.target.value})} className="h-7 text-xs" />
+                                                          <Input aria-label="Patient-specific notes" placeholder="Patient-specific notes (not shared)" value={editMedData.notes || ''} onChange={e => setEditMedData({...editMedData, notes: e.target.value})} className="h-7 text-xs" />
+                                                        </td>
                                                         <td className="px-1 py-1">
                                                           <div className="flex gap-1">
                                                             <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" onClick={() => updateMedMutation.mutate({ id: med.id, data: editMedData })}>
@@ -5725,10 +5724,10 @@ export default function ClinicianPortal() {
                                                             {med.status || 'Active'}
                                                           </Badge>
                                                         </td>
-                                                        <td className="px-3 py-2 text-saivie-plum">{med.notes || '—'}</td>
+                                                        <td className="px-3 py-2 text-saivie-plum">{[med.duration, med.instructions, med.route, med.notes].filter(Boolean).join(' · ') || '—'}</td>
                                                         <td className="px-1 py-2">
                                                           <div className="flex gap-1">
-                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-blue-600" onClick={() => { setEditingMedId(med.id); setEditMedData({ name: med.name, dose: med.dose || '', frequency: med.frequency || '', startDate: med.startDate || '', status: med.status || 'Active', notes: med.notes || '' }); }} data-testid={`button-edit-med-${med.id}`}>
+                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-blue-600" onClick={() => { setEditingMedId(med.id); setEditMedData({ name: med.name, dose: med.dose || '', frequency: med.frequency || '', duration: med.duration || '', instructions: med.instructions || '', route: med.route || '', startDate: med.startDate || '', status: med.status || 'Active', notes: med.notes || '' }); }} data-testid={`button-edit-med-${med.id}`}>
                                                               <Pencil className="w-3 h-3" />
                                                             </Button>
                                                             <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-rose-600" onClick={() => deleteMedMutation.mutate(med.id)} data-testid={`button-delete-med-${med.id}`}>
@@ -5743,17 +5742,9 @@ export default function ClinicianPortal() {
                                                 {showAddMedRow && (
                                                   <tr className="bg-blue-50/30">
                                                     <td className="px-1 py-1 relative">
-                                                      <Input placeholder="Drug name" value={newMed.name} onChange={e => { setNewMed({...newMed, name: e.target.value}); const s = filterCatalogSuggestions(e.target.value); setMedSuggestions(s); setShowMedSuggestions(s.length > 0); }} onFocus={() => { const s = filterCatalogSuggestions(newMed.name); setMedSuggestions(s); setShowMedSuggestions(s.length > 0); }} onBlur={() => setTimeout(() => setShowMedSuggestions(false), 200)} className="h-7 text-xs" autoComplete="off" data-testid="input-new-med-name" />
-                                                      {showMedSuggestions && medSuggestions.length > 0 && (
-                                                        <div className="absolute z-50 top-full left-1 right-1 mt-0.5 bg-saivie-ivory border border-saivie-border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                                                          {medSuggestions.map((s: any) => (
-                                                            <div key={s.id} className="px-3 py-1.5 text-xs hover:bg-blue-50 cursor-pointer flex justify-between items-center" onMouseDown={() => { setNewMed({...newMed, name: s.name, dose: s.defaultDose || newMed.dose, frequency: s.defaultFrequency || newMed.frequency}); setShowMedSuggestions(false); }}>
-                                                              <span className="font-medium text-saivie-plum">{s.name}</span>
-                                                              <span className="text-saivie-plum text-[10px]">{s.genericName || s.category || ''}</span>
-                                                            </div>
-                                                          ))}
-                                                        </div>
-                                                      )}
+                                                      <MedicineAutocomplete value={newMed.name} onChange={(name) => setNewMed({...newMed, name})}
+                                                        onSelect={(medicine) => setNewMed({...newMed, name: medicine.name, dose: medicine.dose, frequency: medicine.frequency, duration: medicine.duration, instructions: medicine.instructions, route: medicine.route})}
+                                                        className="h-7 text-xs" testId="input-new-med-name" />
                                                     </td>
                                                     <td className="px-1 py-1"><Input placeholder="Dose" value={newMed.dose} onChange={e => setNewMed({...newMed, dose: e.target.value})} className="h-7 text-xs" /></td>
                                                     <td className="px-1 py-1"><Input placeholder="Frequency" value={newMed.frequency} onChange={e => setNewMed({...newMed, frequency: e.target.value})} className="h-7 text-xs" /></td>
@@ -5768,13 +5759,18 @@ export default function ClinicianPortal() {
                                                         </SelectContent>
                                                       </Select>
                                                     </td>
-                                                    <td className="px-1 py-1"><Input placeholder="Notes" value={newMed.notes} onChange={e => setNewMed({...newMed, notes: e.target.value})} className="h-7 text-xs" /></td>
+                                                    <td className="px-1 py-1 space-y-1">
+                                                      <Input aria-label="Duration" placeholder="Duration" value={newMed.duration} onChange={e => setNewMed({...newMed, duration: e.target.value})} className="h-7 text-xs" />
+                                                      <Input aria-label="Medicine instructions" placeholder="Instructions (shared for reuse)" value={newMed.instructions} onChange={e => setNewMed({...newMed, instructions: e.target.value})} className="h-7 text-xs" />
+                                                      <Input aria-label="Route" placeholder="Route" value={newMed.route} onChange={e => setNewMed({...newMed, route: e.target.value})} className="h-7 text-xs" />
+                                                      <Input aria-label="Patient-specific notes" placeholder="Patient-specific notes (not shared)" value={newMed.notes} onChange={e => setNewMed({...newMed, notes: e.target.value})} className="h-7 text-xs" />
+                                                    </td>
                                                     <td className="px-1 py-1">
                                                       <div className="flex gap-1">
                                                         <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" disabled={!newMed.name.trim() || addMedMutation.isPending} onClick={() => addMedMutation.mutate(newMed)} data-testid="button-save-new-med">
                                                           <Check className="w-3 h-3" />
                                                         </Button>
-                                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-saivie-plum" onClick={() => { setShowAddMedRow(false); setNewMed({ name: '', dose: '', frequency: '', startDate: '', status: 'Active', notes: '' }); }}>
+                                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-saivie-plum" onClick={() => { setShowAddMedRow(false); setNewMed({ name: '', dose: '', frequency: '', duration: '', instructions: '', route: '', startDate: '', status: 'Active', notes: '' }); }}>
                                                           <X className="w-3 h-3" />
                                                         </Button>
                                                       </div>
@@ -7376,13 +7372,13 @@ export default function ClinicianPortal() {
                                    <div key={med.id} className={`p-3 flex justify-between items-center ${i < medications.length - 1 ? 'border-b border-saivie-border' : ''}`} data-testid={`active-med-card-${med.id}`}>
                                      <div className="min-w-0 flex-1">
                                        <div className="font-medium text-sm text-saivie-plum truncate">{med.name}</div>
-                                       <div className="text-xs text-saivie-plum">{[med.dose, med.frequency].filter(Boolean).join(' • ') || '—'}{med.notes ? ` • ${med.notes}` : ''}</div>
+                                       <div className="text-xs text-saivie-plum">{[med.dose, med.frequency, med.duration, med.instructions, med.route, med.notes].filter(Boolean).join(' • ') || '—'}</div>
                                      </div>
                                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
                                        <Badge variant="secondary" className={`text-[10px] ${med.status === 'Active' || med.status === 'active' ? 'bg-emerald-50 text-emerald-700' : med.status === 'Completed' ? 'bg-blue-50 text-blue-600' : 'bg-saivie-surface-muted text-saivie-plum'}`}>
                                          {med.status || 'Active'}
                                        </Badge>
-                                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-300 hover:text-blue-600" onClick={() => { setShowDocumentation(true); setEditingMedId(med.id); setEditMedData({ name: med.name, dose: med.dose || '', frequency: med.frequency || '', startDate: med.startDate || '', status: med.status || 'Active', notes: med.notes || '' }); }} data-testid={`button-edit-med-card-${med.id}`}>
+                                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-300 hover:text-blue-600" onClick={() => { setShowDocumentation(true); setEditingMedId(med.id); setEditMedData({ name: med.name, dose: med.dose || '', frequency: med.frequency || '', duration: med.duration || '', instructions: med.instructions || '', route: med.route || '', startDate: med.startDate || '', status: med.status || 'Active', notes: med.notes || '' }); }} data-testid={`button-edit-med-card-${med.id}`}>
                                          <Pencil className="w-3 h-3" />
                                        </Button>
                                      </div>

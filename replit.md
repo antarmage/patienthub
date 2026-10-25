@@ -53,6 +53,15 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Migration: `pnpm --filter @workspace/db run push`
 - `genome_analyses` table: added via `ensureSchema()` in `db.ts` — stores SNP count, health risks, predispositions, pharmacogenomics, traits as JSONB
 
+## Shared medicine autocomplete
+
+- Manual prescription entry and clinician medication Add/Edit use the same saved medicine suggestions, matching medicine and generic names.
+- Selecting a suggestion fills its saved dose, frequency, duration, instructions and route where supported. All details remain editable and must be reviewed for the current patient; typing alone does not select a regimen.
+- Suggestions come from the existing medicine catalog, saved visit prescriptions and saved patient medications. Different regimens remain separate options; identical details are deduplicated. New entries become reusable only after saving, without replacing catalog defaults.
+- Patient identifiers, dates, status and patient-specific notes are excluded from suggestions. Keep reusable administration directions in Instructions and private clinical context in Notes.
+- Doctor medication duration and instructions use dedicated columns added by the idempotent API startup migration. Deploy/restart the API together with the frontend.
+- Automatic trimester medication templates are not enabled.
+
 ## Receptionist follow-up queue
 
 - Staff Portal -> Follow-Up Cold Calls automatically creates persisted pending tasks at API startup, hourly, and when the queue is refreshed. The UI refreshes every minute.

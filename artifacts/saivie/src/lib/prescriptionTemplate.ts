@@ -31,6 +31,9 @@ export interface PrescriptionData {
     name: string;
     dose: string;
     frequency: string;
+    duration?: string;
+    instructions?: string;
+    route?: string;
     notes: string;
   }[];
   investigations: string[];
@@ -81,6 +84,12 @@ function formatAdvice(advice: string): string {
     .join("\n");
 }
 
+function escapeMedicineText(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[character]!);
+}
+
 function buildMedicationsTable(
   medications: PrescriptionData["medications"],
 ): string {
@@ -93,11 +102,13 @@ function buildMedicationsTable(
       <tr>
         <td class="med-num">${i + 1})</td>
         <td class="med-name-col">
-          <div class="med-drug-name">${med.name}</div>
-          ${med.notes ? `<div class="med-generic">${med.notes}</div>` : ""}
+          <div class="med-drug-name">${escapeMedicineText(med.name)}</div>
+          ${med.notes ? `<div class="med-generic">${escapeMedicineText(med.notes)}</div>` : ""}
+          ${med.instructions ? `<div class="med-generic">${escapeMedicineText(med.instructions)}</div>` : ""}
+          ${med.route ? `<div class="med-generic">${escapeMedicineText(med.route)}</div>` : ""}
         </td>
-        <td class="med-dosage">${med.frequency || "\u2014"}</td>
-        <td class="med-duration">${med.dose || "\u2014"}</td>
+        <td class="med-dosage">${escapeMedicineText([med.dose, med.frequency].filter(Boolean).join(" / ")) || "\u2014"}</td>
+        <td class="med-duration">${escapeMedicineText(med.duration || "") || "\u2014"}</td>
       </tr>`,
     )
     .join("");

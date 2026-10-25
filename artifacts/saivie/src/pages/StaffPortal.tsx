@@ -5909,6 +5909,7 @@ export default function StaffPortal() {
                                                         </Badge>
                                                     </div>
                                                     <p className="text-xs text-saivie-plum mt-1">{m.dose || m.dosage || ''} — {m.frequency || ''}</p>
+                                                    {(m.duration || m.instructions || m.route) && <p className="text-xs text-saivie-plum mt-1">{[m.duration, m.instructions, m.route].filter(Boolean).join(' · ')}</p>}
                                                     {m.prescribedBy && <p className="text-[10px] text-saivie-plum mt-1">Prescribed by: {m.prescribedBy}</p>}
                                                 </div>
                                             ))}
