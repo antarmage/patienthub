@@ -1886,6 +1886,11 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.json(notes);
   });
 
+  app.get("/api/documents", async (req, res) => {
+    const docs = await storage.getAllDocuments();
+    res.json(docs);
+  });
+
   app.get("/api/patients/:id/clinical-notes", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });

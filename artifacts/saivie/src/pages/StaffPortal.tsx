@@ -454,6 +454,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
     queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/medications`] });
     queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/clinical-notes`] });
     queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/documents`] });
+    queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
     queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/visit-history`] });
     queryClient.invalidateQueries({ queryKey: ["/api/patient-history", patient.id] });
 
@@ -1238,6 +1239,16 @@ export default function StaffPortal() {
   });
   const allClinicalNotes = allClinicalNotesQuery.data || [];
 
+  const allDocumentsQuery = useQuery({
+    queryKey: ['/api/documents'],
+    queryFn: async () => {
+      const res = await fetch('/api/documents');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  });
+  const allDocuments = allDocumentsQuery.data || [];
+
   const documentationItems = useMemo(() => {
     const items: any[] = [];
     allVisits.forEach((v: any) => {
@@ -1249,7 +1260,7 @@ export default function StaffPortal() {
         patientId: v.patientId,
         patientName: patient?.name || `Patient #${v.patientId}`,
         providerName: provider?.name || 'Unknown',
-        title: v.chiefComplaint || v.visitType || 'Visit Note',
+        title: /uploaded/i.test(v.outcome || '') ? v.outcome : (v.chiefComplaint || v.visitType || 'Visit Note'),
         type: v.visitType || 'Visit',
         date: v.date,
         diagnosis: v.diagnosis,
@@ -1263,6 +1274,22 @@ export default function StaffPortal() {
         followUpPlan: v.followUpPlan,
         outcome: v.outcome,
         vitals: v.vitals,
+      });
+    });
+    allDocuments.forEach((doc: any) => {
+      const patient = patients.find((p: any) => p.id === doc.patientId);
+      const savedMedications = Array.isArray(doc.metadata?.savedMedications) ? doc.metadata.savedMedications : [];
+      items.push({
+        id: `document-${doc.id}`,
+        source: 'document',
+        patientId: doc.patientId,
+        patientName: patient?.name || `Patient #${doc.patientId}`,
+        providerName: doc.metadata?.ocrSummary?.doctorName || 'Uploaded document',
+        title: doc.name || 'Uploaded document',
+        type: doc.type || 'Upload',
+        date: doc.date,
+        content: [doc.description, savedMedications.length ? `Medications: ${savedMedications.join(', ')}` : ''].filter(Boolean).join('\n'),
+        prescriptions: savedMedications.map((name: string) => ({ name })),
       });
     });
     allClinicalNotes.forEach((n: any) => {
@@ -1283,7 +1310,7 @@ export default function StaffPortal() {
     });
     items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return items;
-  }, [allVisits, allClinicalNotes, patients, providers]);
+  }, [allVisits, allClinicalNotes, allDocuments, patients, providers]);
 
   const appointmentsQuery = useQuery({
     queryKey: ['/api/appointments'],
@@ -1454,6 +1481,7 @@ export default function StaffPortal() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPatientForCheckout, setSelectedPatientForCheckout] = useState<any>(null);
   const [selectedDocItem, setSelectedDocItem] = useState<any>(null);
+  const [docSearch, setDocSearch] = useState("");
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
   const [selectedFollowUp, setSelectedFollowUp] = useState<any>(null);
   const [vitalsData, setVitalsData] = useState({
@@ -1467,7 +1495,7 @@ export default function StaffPortal() {
   const [selectedPatientForCreate, setSelectedPatientForCreate] = useState<any>(null);
   const [isViewLogOpen, setIsViewLogOpen] = useState(false);
   const [selectedPatientForLog, setSelectedPatientForLog] = useState<any>(null);
-  const [logData, setLogData] = useState<{ visits: any[], medications: any[], notes: any[], appointments: any[], protocols: any[] }>({ visits: [], medications: [], notes: [], appointments: [], protocols: [] });
+  const [logData, setLogData] = useState<{ visits: any[], medications: any[], notes: any[], appointments: any[], protocols: any[], documents: any[] }>({ visits: [], medications: [], notes: [], appointments: [], protocols: [], documents: [] });
   const [logLoading, setLogLoading] = useState(false);
   const [logTab, setLogTab] = useState("all");
 
@@ -1996,19 +2024,21 @@ export default function StaffPortal() {
     setLogLoading(true);
     setLogTab("all");
     try {
-      const [visitsRes, medsRes, notesRes, apptsRes, protocolsRes] = await Promise.all([
+      const [visitsRes, medsRes, notesRes, apptsRes, protocolsRes, docsRes] = await Promise.all([
         fetch(`/api/patients/${patient.id}/visit-history`),
         fetch(`/api/patients/${patient.id}/medications`),
         fetch(`/api/patients/${patient.id}/clinical-notes`),
         fetch(`/api/appointments`, { headers: { "X-Patient-Id": String(patient.id) } }),
         fetch(`/api/patient-protocols`, { headers: { "X-Patient-Id": String(patient.id) } }),
+        fetch(`/api/patients/${patient.id}/documents`),
       ]);
-      const [visits, medications, notes, appts, protocol] = await Promise.all([
+      const [visits, medications, notes, appts, protocol, documents] = await Promise.all([
         visitsRes.ok ? visitsRes.json() : [],
         medsRes.ok ? medsRes.json() : [],
         notesRes.ok ? notesRes.json() : [],
         apptsRes.ok ? apptsRes.json() : [],
         protocolsRes.ok ? protocolsRes.json() : null,
+        docsRes.ok ? docsRes.json() : [],
       ]);
       setLogData({
         visits: Array.isArray(visits) ? visits : [],
@@ -2016,9 +2046,10 @@ export default function StaffPortal() {
         notes: Array.isArray(notes) ? notes : [],
         appointments: Array.isArray(appts) ? appts : [],
         protocols: protocol ? [protocol] : [],
+        documents: Array.isArray(documents) ? documents : [],
       });
     } catch {
-      setLogData({ visits: [], medications: [], notes: [], appointments: [], protocols: [] });
+      setLogData({ visits: [], medications: [], notes: [], appointments: [], protocols: [], documents: [] });
     }
     setLogLoading(false);
   };
@@ -2579,7 +2610,7 @@ export default function StaffPortal() {
                             <CardHeader className="py-4 border-b border-saivie-border">
                                 <div className="relative">
                                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-saivie-plum" />
-                                    <Input placeholder="Filter by patient or type..." className="pl-9 bg-saivie-surface-muted border-saivie-border" data-testid="input-filter-docs" />
+                                    <Input placeholder="Filter by patient or type..." className="pl-9 bg-saivie-surface-muted border-saivie-border" value={docSearch} onChange={(e) => setDocSearch(e.target.value)} data-testid="input-filter-docs" />
                                 </div>
                             </CardHeader>
                             <CardContent className="p-0 flex-1 overflow-y-auto">
@@ -2587,7 +2618,11 @@ export default function StaffPortal() {
                                     {documentationItems.length === 0 && (
                                         <div className="p-6 text-center text-saivie-plum text-sm">No clinical documentation found.</div>
                                     )}
-                                    {documentationItems.map((item: any) => {
+                                    {documentationItems.filter((item: any) => {
+                                        const query = docSearch.trim().toLowerCase();
+                                        if (!query) return true;
+                                        return [item.patientName, item.title, item.type, item.outcome, item.content].filter(Boolean).join(" ").toLowerCase().includes(query);
+                                    }).map((item: any) => {
                                         const initials = item.patientName?.split(' ').map((n: string) => n[0]).join('') || '?';
                                         const isSelected = selectedDocItem?.id === item.id;
                                         const badgeConfig = item.source === 'visit' 
@@ -2773,6 +2808,21 @@ export default function StaffPortal() {
                                                 </div>
                                             )}
 
+                                            {selectedDocItem.source === 'document' && (
+                                                <div className="space-y-4">
+                                                    <div className="p-4 bg-saivie-surface-muted rounded-lg border border-saivie-border">
+                                                        <p className="text-sm text-saivie-plum whitespace-pre-wrap">{selectedDocItem.content || "Uploaded prescription saved to this patient."}</p>
+                                                    </div>
+                                                    {selectedDocItem.prescriptions?.length > 0 && (
+                                                        <div className="space-y-2">
+                                                            {selectedDocItem.prescriptions.map((rx: any, i: number) => (
+                                                                <div key={i} className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg text-sm font-medium text-saivie-plum">{rx.name}</div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
                                             {selectedDocItem.source === 'note' && (
                                                 <div className="space-y-4">
                                                     <div className="p-4 bg-saivie-surface-muted rounded-lg border border-saivie-border">
@@ -2938,6 +2988,35 @@ export default function StaffPortal() {
             )}
 
             {/* 1. NUTRITIONIST - MY PATIENTS VIEW (Functional & Genomics) */}
+            {activeRole === 'receptionist' && activeView === 'patients' && (
+                <div className="max-w-5xl mx-auto space-y-4">
+                    <div>
+                        <h2 className="text-2xl font-bold text-saivie-plum font-serif">Patients</h2>
+                        <p className="text-sm text-saivie-plum mt-1">Search a patient to open the record and see uploaded prescriptions.</p>
+                    </div>
+                    <Input placeholder="Search by name, phone, or ID" value={docSearch} onChange={(e) => setDocSearch(e.target.value)} className="max-w-md bg-saivie-ivory" />
+                    <div className="divide-y divide-saivie-border rounded-lg border border-saivie-border bg-saivie-ivory">
+                        {patients.filter((patient: any) => {
+                            const query = docSearch.trim().toLowerCase();
+                            if (!query) return true;
+                            return [patient.name, patient.phone, patient.id].filter(Boolean).join(" ").toLowerCase().includes(query);
+                        }).map((patient: any) => {
+                            const uploads = allDocuments.filter((doc: any) => doc.patientId === patient.id);
+                            return (
+                                <div key={patient.id} className="flex items-center justify-between gap-3 p-4">
+                                    <div>
+                                        <p className="font-semibold text-sm text-saivie-plum">{patient.name}</p>
+                                        <p className="text-xs text-saivie-plum mt-0.5">ID: {patient.id}{patient.phone ? ` · ${patient.phone}` : ""}</p>
+                                        <p className="text-xs text-saivie-teal mt-1">{!allDocumentsQuery.isSuccess ? "Open the record to see uploads" : uploads.length > 0 ? `${uploads.length} uploaded prescription${uploads.length === 1 ? "" : "s"}` : "No uploaded prescription"}</p>
+                                    </div>
+                                    <Button size="sm" variant="outline" onClick={() => openViewLog(patient)}>Open record</Button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             {activeRole === 'nutritionist' && activeView === 'patients' && (
                 <div className="max-w-7xl mx-auto space-y-6">
                     <div className="flex items-center justify-between">
@@ -5461,6 +5540,7 @@ export default function StaffPortal() {
                     <div className="flex gap-1 border-b border-saivie-border pb-2">
                         {[
                             { key: "all", label: "All" },
+                            { key: "uploads", label: "Uploads" },
                             { key: "visits", label: "Visits" },
                             { key: "medications", label: "Medications" },
                             { key: "notes", label: "Notes" },
@@ -5488,6 +5568,30 @@ export default function StaffPortal() {
                             </div>
                         ) : (
                             <div className="space-y-3 py-2">
+                                {(logTab === "all" || logTab === "uploads") && logData.documents.length > 0 && (
+                                    <div>
+                                        <h4 className="text-xs font-bold text-saivie-plum uppercase tracking-wide mb-2 flex items-center gap-2">
+                                            <FileText className="w-3.5 h-3.5" /> Uploaded prescriptions
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {logData.documents.map((doc: any) => {
+                                                const savedMedications = Array.isArray(doc.metadata?.savedMedications) ? doc.metadata.savedMedications : [];
+                                                return (
+                                                    <div key={doc.id} className="bg-saivie-surface-muted rounded-lg p-3 border border-saivie-border">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="font-semibold text-sm text-saivie-plum">{doc.name || "Uploaded document"}</span>
+                                                            <span className="text-[10px] text-saivie-plum">{doc.date || ""}</span>
+                                                        </div>
+                                                        <p className="text-xs text-saivie-teal">{doc.type || "Upload"}</p>
+                                                        {savedMedications.length > 0 && <p className="text-xs text-saivie-plum mt-1">Medications: {savedMedications.join(", ")}</p>}
+                                                        {doc.description && <p className="text-xs text-saivie-plum mt-1">{doc.description}</p>}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {(logTab === "all" || logTab === "visits") && logData.visits.length > 0 && (
                                     <div>
                                         <h4 className="text-xs font-bold text-saivie-plum uppercase tracking-wide mb-2 flex items-center gap-2">
@@ -5631,7 +5735,8 @@ export default function StaffPortal() {
 
                                 {!logLoading && (
                                     (() => {
-                                        const hasData = (logTab === "all" && (logData.visits.length + logData.medications.length + logData.notes.length + logData.appointments.length + logData.protocols.length) > 0) ||
+                                        const hasData = (logTab === "all" && (logData.visits.length + logData.medications.length + logData.notes.length + logData.appointments.length + logData.protocols.length + logData.documents.length) > 0) ||
+                                            (logTab === "uploads" && logData.documents.length > 0) ||
                                             (logTab === "visits" && logData.visits.length > 0) ||
                                             (logTab === "medications" && logData.medications.length > 0) ||
                                             (logTab === "notes" && logData.notes.length > 0) ||
