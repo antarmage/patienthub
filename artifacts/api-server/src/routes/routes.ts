@@ -2305,7 +2305,31 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.post("/api/patients/:id/documents", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
-    const doc = await storage.createDocument({ ...req.body, patientId: id });
+    const { fileData, mimeType, ...docBody } = req.body ?? {};
+    let metadata = { ...(docBody.metadata ?? {}) };
+    if (fileData) {
+      const base64 = String(fileData).replace(/^data:[^;]+;base64,/, "");
+      const resolvedType = mimeType || "image/jpeg";
+      let s3Key: string | null = null;
+      let storedFileData: string | null = base64;
+      if (isS3Configured()) {
+        const extension = resolvedType.includes("pdf") ? "pdf" : resolvedType.includes("png") ? "png" : "jpg";
+        s3Key = await uploadBufferToS3(`documents/${id}/${Date.now()}.${extension}`, Buffer.from(base64, "base64"), resolvedType);
+        storedFileData = null;
+      }
+      const stored = await storage.createPatientDocument({
+        patientId: id,
+        fileName: metadata.fileName || docBody.name || "prescription",
+        fileData: storedFileData,
+        s3Key,
+        mimeType: resolvedType,
+        docType: docBody.category || "prescription",
+        label: docBody.name || null,
+        uploadedAt: new Date().toISOString(),
+      });
+      metadata = { ...metadata, patientDocumentId: stored.id, s3Key };
+    }
+    const doc = await storage.createDocument({ ...docBody, metadata, patientId: id });
     res.status(201).json(doc);
   });
 

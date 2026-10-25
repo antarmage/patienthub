@@ -105,6 +105,25 @@ interface BillingQuote {
   isPrimeMember: boolean;
 }
 
+function normalizeOcrPayload(body: any) {
+  const candidate = body?.data ?? body;
+  if (!candidate) return null;
+  if (typeof candidate === "string") {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      return null;
+    }
+  }
+  return typeof candidate === "object" ? candidate : null;
+}
+
+function extractedMedications(result: any) {
+  const source = result?.medications ?? result?.medicines ?? result?.meds ?? result?.drugs;
+  if (!Array.isArray(source)) return [];
+  return source.filter((med) => med && String(med.name || med.drug || "").trim());
+}
+
 function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isOpen: boolean; onClose: () => void; patient: any; onSaveComplete?: () => void }) {
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string; preview: string; type: string } | null>(null);
   const [ocrResult, setOcrResult] = useState<any>(null);
@@ -124,16 +143,26 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(imageData),
       });
-      if (!res.ok) throw new Error('OCR processing failed');
-      return res.json();
+      if (!res.ok) {
+        const failed = await res.json().catch(() => ({}));
+        throw new Error(failed.details || failed.error || 'OCR processing failed');
+      }
+      const parsed = normalizeOcrPayload(await res.json());
+      if (!parsed) throw new Error('The scan did not return a readable prescription.');
+      return parsed;
     },
     onSuccess: (data) => {
-      setOcrResult(data.data);
+      setOcrResult(data);
     },
   });
 
   const handleSaveToPatient = async () => {
     if (!patient?.id || !uploadedFile) return;
+    const scannedMedications = extractedMedications(ocrResult);
+    if (activeDocTab === 'prescription' && scannedMedications.length === 0) {
+      alert('This prescription was not read, so it was not saved. Retry the scan and wait until the medicine names appear before saving.');
+      return;
+    }
     setIsSaving(true);
     const today = new Date().toISOString().split('T')[0];
     const savedMeds: string[] = [];
@@ -174,14 +203,15 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
     }
 
     try {
-      if (activeDocTab === 'prescription' && ocrResult?.medications?.length > 0) {
-        for (const med of ocrResult.medications) {
+      if (activeDocTab === 'prescription' && scannedMedications.length > 0) {
+        for (const med of scannedMedications) {
+          const medName = String(med.name || med.drug).trim();
           try {
             const medRes = await fetch(`/api/patients/${patient.id}/medications`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                name: med.name,
+                name: medName,
                 dose: med.dosage || med.dose || null,
                 frequency: med.frequency || null,
                 route: med.route || null,
@@ -190,7 +220,8 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                 notes: [med.duration ? `Duration: ${med.duration}` : '', med.instructions || '', dateTag ? dateTag.trim() : ''].filter(Boolean).join('. ') || null,
               }),
             });
-            if (medRes.ok) savedMeds.push(med.name);
+            if (medRes.ok) savedMeds.push(medName);
+            else console.error('Medication save failed:', medName, await medRes.text());
           } catch (e) {
             console.error(`Failed to save medication: ${med.name}`, e);
           }
@@ -292,7 +323,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
         date: ocrResult.date || null,
         diagnosis: ocrResult.diagnosis || null,
         confidence: ocrResult.confidence || null,
-        medicationCount: ocrResult.medications?.length || 0,
+        medicationCount: scannedMedications.length,
       } : null;
 
       const docRes = await fetch(`/api/patients/${patient.id}/documents`, {
@@ -312,6 +343,8 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
             contentFingerprint,
             dateConfirmed: hasValidDate,
           },
+          fileData: uploadedFile.preview,
+          mimeType: uploadedFile.type,
         }),
       });
       if (docRes.ok) savedDoc = true;
@@ -431,8 +464,8 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
             chiefComplaint: ocrResult?.chiefComplaint || ocrResult?.diagnosis || ocrResult?.impression || null,
             diagnosis: ocrResult?.diagnosis || ocrResult?.impression || null,
             examination: usgData ? usgData : ocrResult?.examination ? { findings: ocrResult.examination } : null,
-            prescriptions: savedMeds.length > 0 ? ocrResult?.medications?.map((m: any) => ({
-              name: m.name, dosage: m.dosage, frequency: m.frequency, duration: m.duration, instructions: m.instructions
+            prescriptions: scannedMedications.length > 0 ? scannedMedications.map((m: any) => ({
+              name: m.name || m.drug, dosage: m.dosage || m.dose, frequency: m.frequency, duration: m.duration, instructions: m.instructions
             })) : null,
             labsOrdered: labResults,
             followUpPlan: ocrResult?.followUp || null,
@@ -465,6 +498,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
         savedNote ? "Clinical note saved" : "",
         savedVisit ? "Visit history updated" : "",
         savedMeds.length > 0 ? `Medications added: ${savedMeds.join(", ")}` : "",
+        scannedMedications.length > savedMeds.length ? `${scannedMedications.length - savedMeds.length} medicine(s) were read but not added to the medication list. They are stored on the visit.` : "",
         ocrResult?.investigations?.length ? `Investigations: ${ocrResult.investigations.map((inv: any) => inv.name).filter(Boolean).join(", ")}` : "",
         ocrResult?.followUp ? `Follow-up: ${ocrResult.followUp}` : "",
         ocrResult?.advice ? `Advice: ${ocrResult.advice}` : "",
@@ -632,9 +666,19 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
 
                 {ocrMutation.isError && (
                   <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg">
-                    <p className="text-sm font-medium text-rose-700">Could not read the document. Please try a clearer image.</p>
+                    <p className="text-sm font-medium text-rose-700">Could not read the document. Save is blocked until the scan succeeds.</p>
+                    <p className="text-xs text-rose-600 mt-1">{ocrMutation.error instanceof Error ? ocrMutation.error.message : "OCR processing failed"}</p>
                     <Button size="sm" variant="outline" className="mt-2 text-xs border-rose-200 text-rose-600" onClick={() => ocrMutation.mutate({ image: uploadedFile.preview, mimeType: uploadedFile.type, docType: activeDocTab })} data-testid="btn-retry-ocr">
                       Try Again
+                    </Button>
+                  </div>
+                )}
+
+                {ocrMutation.isSuccess && activeDocTab === 'prescription' && extractedMedications(ocrResult).length === 0 && (
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm font-medium text-amber-800">No medicines were read from this file. It will not be saved until medicine names appear.</p>
+                    <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => ocrMutation.mutate({ image: uploadedFile.preview, mimeType: uploadedFile.type, docType: activeDocTab })}>
+                      Read again
                     </Button>
                   </div>
                 )}
@@ -921,7 +965,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
           <Button variant="outline" onClick={resetDialog} data-testid="btn-cancel-upload">Cancel</Button>
           <Button
             className="bg-saivie-teal hover:bg-saivie-teal text-white"
-            disabled={!uploadedFile || ocrMutation.isPending || isSaving || saveSuccess}
+            disabled={!uploadedFile || ocrMutation.isPending || ocrMutation.isError || isSaving || saveSuccess || (activeDocTab === 'prescription' && extractedMedications(ocrResult).length === 0)}
             onClick={handleSaveToPatient}
             data-testid="btn-confirm-upload"
           >

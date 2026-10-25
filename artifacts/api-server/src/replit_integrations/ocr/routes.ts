@@ -191,6 +191,65 @@ USG (Ultrasound), TSH, FT3, FT4, AMH (Anti-Mullerian Hormone), FSH, LH, Prolacti
 - If handwriting is ambiguous, provide your BEST GUESS for medication names rather than skipping them`;
 }
 
+function parseModelJson(text: string) {
+  const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+  const start = cleaned.search(/[\[{]/);
+  const end = Math.max(cleaned.lastIndexOf("}"), cleaned.lastIndexOf("]"));
+  const candidate = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
+  const parsed = JSON.parse(candidate);
+  if (Array.isArray(parsed)) return { medications: parsed, rawText: cleaned };
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("OCR response was not a JSON object");
+  }
+  const medications = parsed.medications ?? parsed.medicines ?? parsed.meds ?? parsed.drugs;
+  return Array.isArray(medications) ? { ...parsed, medications } : parsed;
+}
+
+export async function scanClinicalDocument(image: string, mimeType = "image/jpeg", docType = "prescription") {
+  if (!AI_AVAILABLE) {
+    const error = new Error("AI_INTEGRATIONS_GEMINI_API_KEY is not set");
+    (error as Error & { statusCode?: number }).statusCode = 503;
+    throw error;
+  }
+  const base64Data = String(image).replace(/^data:[^;]+;base64,/, "");
+  if (!base64Data) {
+    const error = new Error("Image data is required");
+    (error as Error & { statusCode?: number }).statusCode = 400;
+    throw error;
+  }
+  if (Buffer.byteLength(base64Data, "base64") > 10 * 1024 * 1024) {
+    const error = new Error("File is too large. Maximum size is 10MB.");
+    (error as Error & { statusCode?: number }).statusCode = 400;
+    throw error;
+  }
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { inlineData: { data: base64Data, mimeType: mimeType || "image/jpeg" } },
+          { text: getPromptForDocType(docType || "prescription") },
+        ],
+      },
+    ],
+    config: { responseMimeType: "application/json" },
+  });
+  const text = response.text || "";
+  if (!text.trim()) {
+    const error = new Error("The scan returned no text. Check the Gemini API key and try again.");
+    (error as Error & { statusCode?: number }).statusCode = 422;
+    throw error;
+  }
+  try {
+    return parseModelJson(text);
+  } catch {
+    const error = new Error("The scan response could not be read as prescription data.");
+    (error as Error & { statusCode?: number }).statusCode = 422;
+    throw error;
+  }
+}
+
 export function registerOcrRoutes(app: Express): void {
   app.post("/api/ocr/prescription", async (req: Request, res: Response) => {
     try {
@@ -200,53 +259,14 @@ export function registerOcrRoutes(app: Express): void {
         return res.status(400).json({ error: "Image data is required" });
       }
 
-      const base64Data = image.replace(/^data:[^;]+;base64,/, "");
-      const prompt = getPromptForDocType(docType || "prescription");
-
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                inlineData: {
-                  data: base64Data,
-                  mimeType: mimeType || "image/jpeg",
-                },
-              },
-              {
-                text: prompt,
-              },
-            ],
-          },
-        ],
-        config: {
-          responseMimeType: "application/json",
-        },
-      });
-
-      const text = response.text || "";
-
-      let parsed;
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        parsed = {
-          rawText: text,
-          medications: [],
-          confidence: "low",
-          notes: "Could not parse structured data from the document.",
-        };
-      }
-
+      const parsed = await scanClinicalDocument(image, mimeType, docType);
       res.json({
         success: true,
         data: parsed,
       });
     } catch (error: any) {
       console.error("OCR Error:", error);
-      res.status(500).json({
+      res.status(error.statusCode || 500).json({
         error: "Failed to process document image",
         details: error.message,
       });
