@@ -82,7 +82,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   const fileRef = useRef<HTMLInputElement>(null);
 
   const patientId = appointment?.patientId ?? patient?.id;
-  const needsDate = !appointment?.id;
+  const editing = !!appointment?.edit;
+  const needsDate = !appointment?.id || editing;
 
   const { data: visits = [], isFetched } = useQuery<any[]>({
     queryKey: ["/api/patients", patientId, "visit-history"],
@@ -116,9 +117,49 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     .filter((t: TestLine) => t.name);
 
   useEffect(() => {
-    if (!appointment || !isFetched) return;
+    if (!appointment) return;
+    const draft = appointment.draft;
+    if (draft) {
+      const rx = existing?.prescriptions;
+      const draftMedicines = Array.isArray(draft.medicines) ? draft.medicines : [];
+      const savedMedicines = Array.isArray(rx?.medicines) ? rx.medicines : Array.isArray(rx) ? rx : [];
+      setMedicines((savedMedicines.length ? savedMedicines : draftMedicines.length ? draftMedicines : [emptyMedicine()]));
+      setTests(Array.isArray(existing?.labsOrdered) && existing.labsOrdered.length ? existing.labsOrdered : Array.isArray(draft.tests) ? draft.tests : []);
+      const demo = demographicsFrom(patient, existing || { vitals: draft });
+      setLmp(String(existing?.vitals?.lmp || draft.lmp || demo.lmp || "").slice(0, 10));
+      setHeight(existing?.vitals?.height != null ? String(existing.vitals.height) : draft.height != null ? String(draft.height) : demo.height);
+      setWeight(existing?.vitals?.weight != null ? String(existing.vitals.weight) : draft.weight != null ? String(draft.weight) : demo.weight);
+      setAge(existing?.vitals?.age != null ? String(existing.vitals.age) : draft.age != null ? String(draft.age) : demo.age);
+      setPatientType(existing?.vitals?.patientType || draft.patientType || demo.patientType);
+      setChiefComplaint(existing?.chiefComplaint || draft.chiefComplaint || "");
+      setExamination(typeof existing?.examination === "string" ? existing.examination : existing?.examination?.findings || existing?.objective || draft.examination || "");
+      setDiagnosis(existing?.diagnosis || draft.diagnosis || "");
+      setAdvice(existing?.planNotes || draft.advice || "");
+      setFollowUp(existing?.followUpPlan || draft.followUp || "");
+      setPrescriptionDate(String(draft.prescriptionDate || existing?.date || appointment.date || "").slice(0, 10));
+      return;
+    }
+    if (appointment.historical) {
+      setMedicines([emptyMedicine()]);
+      setTests([]);
+      setChiefComplaint("");
+      setExamination("");
+      setDiagnosis("");
+      setAdvice("");
+      setFollowUp("");
+      setPrescriptionDate("");
+      setScanned(false);
+      const demo = demographicsFrom(patient);
+      setLmp(demo.lmp);
+      setHeight(demo.height);
+      setWeight(demo.weight);
+      setAge(demo.age);
+      setPatientType(demo.patientType);
+      return;
+    }
+    if (!isFetched) return;
     const rx: any = existing?.prescriptions || {};
-    setMedicines(Array.isArray(rx.medicines) && rx.medicines.length ? rx.medicines : [emptyMedicine()]);
+    setMedicines(Array.isArray(rx.medicines) && rx.medicines.length ? rx.medicines : Array.isArray(rx) && rx.length ? rx : [emptyMedicine()]);
     setTests(Array.isArray(existing?.labsOrdered) ? (existing!.labsOrdered as TestLine[]) : []);
     const demo = demographicsFrom(patient, existing);
     setLmp(demo.lmp);
@@ -131,27 +172,9 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     setDiagnosis(existing?.diagnosis || "");
     setAdvice(existing?.planNotes || "");
     setFollowUp(existing?.followUpPlan || "");
+    setPrescriptionDate(String(existing?.date || appointment.date || "").slice(0, 10));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appointment?.id, isFetched, existing?.id]);
-
-  useEffect(() => {
-    if (!appointment?.historical) return;
-    setMedicines([emptyMedicine()]);
-    setTests([]);
-    setChiefComplaint("");
-    setExamination("");
-    setDiagnosis("");
-    setAdvice("");
-    setFollowUp("");
-    setPrescriptionDate("");
-    setScanned(false);
-    const demo = demographicsFrom(patient);
-    setLmp(demo.lmp);
-    setHeight(demo.height);
-    setWeight(demo.weight);
-    setAge(demo.age);
-    setPatientType(demo.patientType);
-  }, [appointment, patient?.id]);
+  }, [appointment, isFetched, existing?.id, patient?.id]);
 
   const scanFile = async (file: File) => {
     if (!patientId) return;
@@ -233,6 +256,13 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       visitAppointment = await readApiJson(created);
       if (!created.ok) throw new Error(visitAppointment.error || "Could not create the visit for this prescription date");
     }
+    if (visitAppointment?.id && String(visitAppointment.date || "").slice(0, 10) !== visitDate) {
+      await fetch(`/api/appointments/${visitAppointment.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: visitDate, chiefComplaint: chiefComplaint.trim() || null, reason: chiefComplaint.trim() || diagnosis.trim() || "Historical prescription" }),
+      });
+    }
 
     const namedMedicines = medicines.filter((med) => med.name.trim());
     const listedVisits = await fetch(`/api/patients/${patientId}/visit-history`);
@@ -278,8 +308,11 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       examination.trim() ? `O/E: ${examination.trim()}` : null,
       namedMedicines.length ? `Medicines: ${namedMedicines.map((med) => med.name.trim()).join(", ")}` : "No medicines entered",
     ].filter(Boolean).join("\n");
-    const recorded = await fetch(`/api/patients/${patientId}/documents`, {
-      method: "POST",
+    const listedDocs = await fetch(`/api/patients/${patientId}/documents`);
+    const docs = await readApiJson(listedDocs);
+    const existingDoc = Array.isArray(docs) ? docs.find((doc: any) => doc.metadata?.source === "manual-entry" && doc.metadata?.appointmentId === visitAppointment.id) : null;
+    const recorded = await fetch(existingDoc ? `/api/documents/${existingDoc.id}` : `/api/patients/${patientId}/documents`, {
+      method: existingDoc ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: `Prescription - ${visitDate}`,
@@ -369,7 +402,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/medications`] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] });
-      toast({ title: appointment?.id ? "Prescription recorded" : "Prescription recorded and visit created" });
+      toast({ title: editing ? "Prescription updated" : appointment?.id ? "Prescription recorded" : "Prescription recorded and visit created" });
       onSaved?.(patientId);
       onClose();
     } catch (err: any) {
@@ -383,9 +416,11 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     <Dialog open={!!appointment} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Record prescription{patient?.name ? ` — ${patient.name}` : ""}</DialogTitle>
+          <DialogTitle>{editing ? "Edit prescription" : "Record prescription"}{patient?.name ? ` — ${patient.name}` : ""}</DialogTitle>
           <DialogDescription>
-            {needsDate
+            {editing
+              ? "Update the date, patient details, or medicines. Saving replaces this prescription record."
+              : needsDate
               ? "Enter the date on the paper prescription. A completed visit is created for that date, so you do not need to book an appointment first."
               : `Transcribed from the paper prescription for the visit on ${String(appointment.date).slice(0, 10)}. You can save a partial entry and finish later.`}
           </DialogDescription>
@@ -520,7 +555,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button onClick={save} disabled={saving || (needsDate && !prescriptionDate)} data-testid="btn-rx-save">
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save prescription
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {editing ? "Update prescription" : "Save prescription"}
           </Button>
         </DialogFooter>
       </DialogContent>

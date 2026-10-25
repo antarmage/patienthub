@@ -1998,6 +1998,40 @@ export default function StaffPortal() {
     setIsViewLogOpen(false);
     setPrescriptionAppointment({ patientId: patient.id, historical: true });
   };
+  const openEditPrescription = (patient: any, source: { document?: any; visit?: any }) => {
+    if (!patient?.id) return;
+    const doc = source.document;
+    const visit = source.visit || logData.visits.find((item: any) => item.appointmentId && item.appointmentId === doc?.metadata?.appointmentId);
+    const savedMedicines = Array.isArray(visit?.prescriptions)
+      ? visit.prescriptions
+      : Array.isArray(visit?.prescriptions?.medicines)
+        ? visit.prescriptions.medicines
+        : (Array.isArray(doc?.metadata?.savedMedications) ? doc.metadata.savedMedications : []).map((name: string) => ({ name, dose: "", frequency: "", duration: "", instructions: "" }));
+    const appointmentId = Number(doc?.metadata?.appointmentId || visit?.appointmentId);
+    const date = String(doc?.date || visit?.date || "").slice(0, 10);
+    setIsViewLogOpen(false);
+    setPrescriptionAppointment({
+      id: Number.isFinite(appointmentId) && appointmentId > 0 ? appointmentId : undefined,
+      patientId: patient.id,
+      date,
+      edit: true,
+      draft: {
+        prescriptionDate: date,
+        chiefComplaint: visit?.chiefComplaint || "",
+        examination: typeof visit?.examination === "string" ? visit.examination : visit?.examination?.findings || visit?.objective || "",
+        diagnosis: visit?.diagnosis || "",
+        advice: visit?.planNotes || "",
+        followUp: visit?.followUpPlan || "",
+        medicines: savedMedicines,
+        tests: Array.isArray(visit?.labsOrdered) ? visit.labsOrdered : [],
+        lmp: visit?.vitals?.lmp || patient.lmp || "",
+        height: visit?.vitals?.height ?? patient.height ?? "",
+        weight: visit?.vitals?.weight ?? patient.weight ?? "",
+        age: visit?.vitals?.age ?? patient.age ?? "",
+        patientType: visit?.vitals?.patientType || doc?.metadata?.patientType || patient.type || "General",
+      },
+    });
+  };
   const { data: allVisitHistory = [] } = useQuery<any[]>({
     queryKey: ["/api/visit-history"],
     queryFn: async () => {
@@ -5620,9 +5654,16 @@ export default function StaffPortal() {
                                                 const savedMedications = Array.isArray(doc.metadata?.savedMedications) ? doc.metadata.savedMedications : [];
                                                 return (
                                                     <div key={doc.id} className="bg-saivie-surface-muted rounded-lg p-3 border border-saivie-border">
-                                                        <div className="flex items-center justify-between mb-1">
+                                                        <div className="flex items-center justify-between gap-2 mb-1">
                                                             <span className="font-semibold text-sm text-saivie-plum">{doc.name || "Uploaded document"}</span>
-                                                            <span className="text-[10px] text-saivie-plum">{doc.date || ""}</span>
+                                                            <div className="flex items-center gap-2 shrink-0">
+                                                                <span className="text-[10px] text-saivie-plum">{doc.date || ""}</span>
+                                                                {/prescription/i.test(`${doc.type || ""} ${doc.category || ""} ${doc.name || ""}`) && (
+                                                                    <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" data-testid={`btn-edit-prescription-${doc.id}`} onClick={() => openEditPrescription(selectedPatientForLog, { document: doc })}>
+                                                                        <Pencil className="w-3 h-3 mr-1" /> Edit
+                                                                    </Button>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                         <p className="text-xs text-saivie-teal">{doc.type || "Upload"}</p>
                                                         {savedMedications.length > 0 && <p className="text-xs text-saivie-plum mt-1">Medications: {savedMedications.join(", ")}</p>}
@@ -5642,9 +5683,16 @@ export default function StaffPortal() {
                                         <div className="space-y-2">
                                             {logData.visits.map((v: any, i: number) => (
                                                 <div key={i} className="bg-saivie-surface-muted rounded-lg p-3 border border-saivie-border" data-testid={`log-visit-${i}`}>
-                                                    <div className="flex items-center justify-between mb-1">
+                                                    <div className="flex items-center justify-between gap-2 mb-1">
                                                         <span className="font-semibold text-sm text-saivie-plum">{v.visitType || 'Visit'}</span>
-                                                        <span className="text-[10px] text-saivie-plum">{v.date || v.visitDate || v.createdAt || ''}</span>
+                                                        <div className="flex items-center gap-2 shrink-0">
+                                                            <span className="text-[10px] text-saivie-plum">{v.date || v.visitDate || v.createdAt || ''}</span>
+                                                            {(/prescription/i.test(`${v.outcome || ""} ${v.prescriptions?.source || ""}`) || (Array.isArray(v.prescriptions) ? v.prescriptions.length : v.prescriptions?.medicines?.length)) && (
+                                                                <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" data-testid={`btn-edit-visit-prescription-${v.id || i}`} onClick={() => openEditPrescription(selectedPatientForLog, { visit: v })}>
+                                                                    <Pencil className="w-3 h-3 mr-1" /> Edit
+                                                                </Button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     {v.outcome && <p className="text-xs text-saivie-teal font-medium">{v.outcome}</p>}
                                                     {v.chiefComplaint && <p className="text-xs text-saivie-plum"><span className="font-medium">Chief complaint:</span> {v.chiefComplaint}</p>}

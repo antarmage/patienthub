@@ -1868,7 +1868,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         String(item.date).slice(0, 10) === requestedDate && item.status !== "cancelled",
       );
     }
-    const prescriptionDate = String(appointment?.date || requestedDate).slice(0, 10);
+    const prescriptionDate = String(requestedDate || appointment?.date || "").slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(prescriptionDate)) {
       return res.status(400).json({ error: "Enter the prescription date" });
     }
@@ -1891,10 +1891,12 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         notes: "Created automatically from a manually entered prescription",
         completedAt: historical ? `${prescriptionDate}T09:00:00.000Z` : null,
       });
-    } else if (chiefComplaint) {
+    } else {
       appointment = await storage.updateAppointment(appointment.id, {
-        chiefComplaint,
-        reason: chiefComplaint,
+        date: prescriptionDate,
+        status: historical ? "completed" : appointment.status,
+        completedAt: historical ? appointment.completedAt || `${prescriptionDate}T09:00:00.000Z` : appointment.completedAt,
+        ...(chiefComplaint ? { chiefComplaint, reason: chiefComplaint } : {}),
       }) ?? appointment;
     }
 
