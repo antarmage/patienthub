@@ -23,6 +23,18 @@ interface TestLine {
 }
 
 const emptyMedicine = (): Medicine => ({ name: "", dose: "", frequency: "", duration: "", instructions: "" });
+const PATIENT_TYPES = ["General", "PCOS", "Pregnant", "Fertility", "Postpartum", "Gynecology"];
+
+function demographicsFrom(sourcePatient: any, visit?: any) {
+  const vitals = visit?.vitals && typeof visit.vitals === "object" ? visit.vitals : {};
+  return {
+    lmp: String(vitals.lmp || sourcePatient?.lmp || "").slice(0, 10),
+    height: vitals.height != null ? String(vitals.height) : sourcePatient?.height != null ? String(sourcePatient.height) : "",
+    weight: vitals.weight != null ? String(vitals.weight) : sourcePatient?.weight != null ? String(sourcePatient.weight) : "",
+    age: vitals.age != null ? String(vitals.age) : sourcePatient?.age != null ? String(sourcePatient.age) : "",
+    patientType: String(vitals.patientType || sourcePatient?.type || "General"),
+  };
+}
 const TEST_CATEGORY = /lab|test|diagnos|usg|ultra|scan|sono/i;
 const USG_CATEGORY = /usg|ultra|scan|sono/i;
 
@@ -37,6 +49,13 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
   const queryClient = useQueryClient();
   const [medicines, setMedicines] = useState<Medicine[]>([emptyMedicine()]);
   const [tests, setTests] = useState<TestLine[]>([]);
+  const [lmp, setLmp] = useState("");
+  const [height, setHeight] = useState("");
+  const [weight, setWeight] = useState("");
+  const [age, setAge] = useState("");
+  const [patientType, setPatientType] = useState("General");
+  const [chiefComplaint, setChiefComplaint] = useState("");
+  const [examination, setExamination] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
   const [advice, setAdvice] = useState("");
   const [followUp, setFollowUp] = useState("");
@@ -86,6 +105,14 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
     const rx: any = existing?.prescriptions || {};
     setMedicines(Array.isArray(rx.medicines) && rx.medicines.length ? rx.medicines : [emptyMedicine()]);
     setTests(Array.isArray(existing?.labsOrdered) ? (existing!.labsOrdered as TestLine[]) : []);
+    const demo = demographicsFrom(patient, existing);
+    setLmp(demo.lmp);
+    setHeight(demo.height);
+    setWeight(demo.weight);
+    setAge(demo.age);
+    setPatientType(demo.patientType);
+    setChiefComplaint(existing?.chiefComplaint || "");
+    setExamination(typeof existing?.examination === "string" ? existing.examination : existing?.examination?.findings || existing?.objective || "");
     setDiagnosis(existing?.diagnosis || "");
     setAdvice(existing?.planNotes || "");
     setFollowUp(existing?.followUpPlan || "");
@@ -96,12 +123,20 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
     if (!appointment?.historical) return;
     setMedicines([emptyMedicine()]);
     setTests([]);
+    setChiefComplaint("");
+    setExamination("");
     setDiagnosis("");
     setAdvice("");
     setFollowUp("");
     setPrescriptionDate("");
     setScanned(false);
-  }, [appointment]);
+    const demo = demographicsFrom(patient);
+    setLmp(demo.lmp);
+    setHeight(demo.height);
+    setWeight(demo.weight);
+    setAge(demo.age);
+    setPatientType(demo.patientType);
+  }, [appointment, patient?.id]);
 
   const scanFile = async (file: File) => {
     if (!patientId) return;
@@ -175,7 +210,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
         visitType: "Consultation",
         visitMode: "in-clinic",
         status: prescriptionDate <= today ? "completed" : "scheduled",
-        reason: diagnosis.trim() || "Historical prescription",
+        chiefComplaint: chiefComplaint.trim() || null,
+        reason: chiefComplaint.trim() || diagnosis.trim() || "Historical prescription",
         notes: "Created automatically from a manually entered prescription",
         completedAt: prescriptionDate <= today ? `${prescriptionDate}T09:00:00.000Z` : null,
         suppressNotification: true,
@@ -201,6 +237,17 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
         providerId: visitAppointment.providerId ?? null,
         date: visitDate,
         visitType: visitAppointment.type || visitAppointment.visitType || "Consultation",
+        chiefComplaint: chiefComplaint.trim() || null,
+        subjective: chiefComplaint.trim() || null,
+        examination: examination.trim() ? { findings: examination.trim() } : null,
+        objective: examination.trim() || null,
+        vitals: {
+          lmp: lmp || null,
+          height: height.trim() || null,
+          weight: weight.trim() ? Number(weight) : null,
+          age: age.trim() ? Number(age) : null,
+          patientType: patientType || null,
+        },
         diagnosis,
         planNotes: advice,
         followUpPlan: followUp,
@@ -218,6 +265,27 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Failed to save");
+      const patientPatch: Record<string, unknown> = {};
+      if (lmp) patientPatch.lmp = lmp;
+      if (height.trim()) patientPatch.height = height.trim();
+      if (weight.trim() && !Number.isNaN(Number(weight))) patientPatch.weight = Number(weight);
+      if (age.trim() && !Number.isNaN(Number(age))) patientPatch.age = Number(age);
+      if (patientType.trim()) patientPatch.type = patientType.trim();
+      if (Object.keys(patientPatch).length > 0) {
+        const patientRes = await fetch(`/api/patients/${patientId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patientPatch),
+        });
+        if (!patientRes.ok) throw new Error("Prescription was saved, but the patient details could not be updated");
+      }
+      if (needsDate && chiefComplaint.trim() && visitAppointment.id) {
+        await fetch(`/api/appointments/${visitAppointment.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chiefComplaint: chiefComplaint.trim(), reason: chiefComplaint.trim() }),
+        });
+      }
       if (!matchedVisit) await Promise.all(namedMedicines.map((med) => fetch(`/api/patients/${patientId}/medications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -233,6 +301,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "visit-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visit-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/medications`] });
       toast({ title: appointment?.id ? "Prescription recorded" : "Prescription recorded and visit created" });
       onClose();
@@ -262,6 +331,31 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
               <Input type="date" value={prescriptionDate} onChange={(e) => setPrescriptionDate(e.target.value)} data-testid="input-rx-date" />
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="space-y-1">
+              <Label>LMP</Label>
+              <Input type="date" value={lmp} onChange={(e) => setLmp(e.target.value)} data-testid="input-rx-lmp" />
+            </div>
+            <div className="space-y-1">
+              <Label>Age</Label>
+              <Input type="number" min="0" value={age} onChange={(e) => setAge(e.target.value)} data-testid="input-rx-age" />
+            </div>
+            <div className="space-y-1">
+              <Label>Patient type</Label>
+              <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={patientType} onChange={(e) => setPatientType(e.target.value)} data-testid="input-rx-patient-type">
+                {[...new Set([patientType, ...PATIENT_TYPES])].filter(Boolean).map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label>Height (cm)</Label>
+              <Input type="number" min="0" value={height} onChange={(e) => setHeight(e.target.value)} data-testid="input-rx-height" />
+            </div>
+            <div className="space-y-1">
+              <Label>Weight (kg)</Label>
+              <Input type="number" min="0" step="0.1" value={weight} onChange={(e) => setWeight(e.target.value)} data-testid="input-rx-weight" />
+            </div>
+          </div>
           <div className="rounded-lg border border-dashed border-saivie-border bg-saivie-surface-muted/50 p-3">
             <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" data-testid="input-rx-file"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) scanFile(f); }} />
@@ -274,6 +368,16 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose }: Props
                 {scanning ? "Reading..." : "Upload photo"}
               </Button>
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Chief complaint</Label>
+            <Textarea rows={2} placeholder="Why the patient came in" value={chiefComplaint} onChange={(e) => setChiefComplaint(e.target.value)} data-testid="input-rx-chief-complaint" />
+          </div>
+
+          <div className="space-y-1">
+            <Label>O/E</Label>
+            <Textarea rows={2} placeholder="On examination" value={examination} onChange={(e) => setExamination(e.target.value)} data-testid="input-rx-examination" />
           </div>
 
           <div className="space-y-1">
