@@ -2030,6 +2030,10 @@ export default function StaffPortal() {
         weight: visit?.vitals?.weight ?? patient.weight ?? "",
         age: visit?.vitals?.age ?? patient.age ?? "",
         patientType: visit?.vitals?.patientType || doc?.metadata?.patientType || source.appointment?.patientType || patient.type || "General",
+        eod: visit?.vitals?.eod || patient.history?.obstetric?.eod || "",
+        pog: visit?.vitals?.pog || patient.history?.obstetric?.pog || "",
+        gravida: visit?.vitals?.gravida || patient.history?.obstetric?.gravida || "",
+        surgicalHistory: visit?.vitals?.surgicalHistory || patient.history?.obstetric?.surgicalHistory || "",
       },
     });
   };
@@ -5736,6 +5740,10 @@ export default function StaffPortal() {
                                                     {v.outcome && <p className="text-xs text-saivie-teal font-medium">{v.outcome}</p>}
                                                     {v.chiefComplaint && <p className="text-xs text-saivie-plum"><span className="font-medium">Chief complaint:</span> {v.chiefComplaint}</p>}
                                                     {v.vitals?.patientType && <p className="text-xs text-saivie-plum"><span className="font-medium">Patient type:</span> {v.vitals.patientType}</p>}
+                                                    {v.vitals?.eod && <p className="text-xs text-saivie-plum"><span className="font-medium">EOD:</span> {String(v.vitals.eod).slice(0, 10)}</p>}
+                                                    {v.vitals?.pog && <p className="text-xs text-saivie-plum"><span className="font-medium">POG:</span> {v.vitals.pog}</p>}
+                                                    {v.vitals?.gravida && <p className="text-xs text-saivie-plum"><span className="font-medium">Gravida:</span> {v.vitals.gravida}</p>}
+                                                    {v.vitals?.surgicalHistory && <p className="text-xs text-saivie-plum"><span className="font-medium">Past surgery:</span> {v.vitals.surgicalHistory}</p>}
                                                     {v.subjective && v.subjective !== v.chiefComplaint && <p className="text-xs text-saivie-plum"><span className="font-medium">S:</span> {v.subjective}</p>}
                                                     {v.objective && <p className="text-xs text-saivie-plum"><span className="font-medium">O/E:</span> {typeof v.objective === "string" ? v.objective : v.examination?.findings || ""}</p>}
                                                     {v.assessment && <p className="text-xs text-saivie-plum"><span className="font-medium">A:</span> {v.assessment}</p>}

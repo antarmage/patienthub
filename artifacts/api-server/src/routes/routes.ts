@@ -1920,6 +1920,10 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         weight: body.weight !== "" && body.weight != null && !Number.isNaN(Number(body.weight)) ? Number(body.weight) : null,
         age: body.age !== "" && body.age != null && !Number.isNaN(Number(body.age)) ? Number(body.age) : null,
         patientType: body.patientType ? String(body.patientType).trim() : null,
+        eod: /pregnant/i.test(String(body.patientType || "")) ? String(body.eod || "").slice(0, 10) || null : null,
+        pog: /pregnant/i.test(String(body.patientType || "")) ? String(body.pog || "").trim() || null : null,
+        gravida: /pregnant/i.test(String(body.patientType || "")) ? String(body.gravida || "").trim() || null : null,
+        surgicalHistory: /pregnant/i.test(String(body.patientType || "")) ? String(body.surgicalHistory || "").trim() || null : null,
       },
       diagnosis: body.diagnosis || null,
       planNotes: body.advice || null,
@@ -1945,6 +1949,21 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     if (body.weight !== "" && body.weight != null && !Number.isNaN(Number(body.weight))) patientPatch.weight = Number(body.weight);
     if (body.age !== "" && body.age != null && !Number.isNaN(Number(body.age))) patientPatch.age = Number(body.age);
     if (String(body.patientType || "").trim()) patientPatch.type = String(body.patientType).trim();
+    if (/pregnant/i.test(String(body.patientType || ""))) {
+      patientPatch.pregnancyStatus = "pregnant";
+      const existingHistory = patient.history && typeof patient.history === "object" && !Array.isArray(patient.history) ? patient.history as Record<string, unknown> : {};
+      const existingObstetric = existingHistory.obstetric && typeof existingHistory.obstetric === "object" ? existingHistory.obstetric as Record<string, unknown> : {};
+      patientPatch.history = {
+        ...existingHistory,
+        obstetric: {
+          ...existingObstetric,
+          eod: String(body.eod || "").slice(0, 10) || null,
+          pog: String(body.pog || "").trim() || null,
+          gravida: String(body.gravida || "").trim() || null,
+          surgicalHistory: String(body.surgicalHistory || "").trim() || null,
+        },
+      };
+    }
     if (Object.keys(patientPatch).length > 0) await storage.updatePatient(id, patientPatch);
 
     if (!matchedVisit) {
@@ -1962,6 +1981,10 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const summary = [
       `Prescription date: ${prescriptionDate}`,
       body.patientType ? `Patient type: ${String(body.patientType).trim()}` : null,
+      body.eod ? `EOD: ${String(body.eod).slice(0, 10)}` : null,
+      body.pog ? `POG: ${String(body.pog).trim()}` : null,
+      body.gravida ? `Gravida: ${String(body.gravida).trim()}` : null,
+      body.surgicalHistory ? `Past surgery: ${String(body.surgicalHistory).trim()}` : null,
       chiefComplaint ? `Chief complaint: ${chiefComplaint}` : null,
       String(body.examination || "").trim() ? `O/E: ${String(body.examination).trim()}` : null,
       medicines.length ? `Medicines: ${medicines.map((med: any) => String(med.name).trim()).join(", ")}` : "No medicines entered",

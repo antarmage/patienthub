@@ -49,6 +49,27 @@ function demographicsFrom(sourcePatient: any, visit?: any) {
     patientType: String(vitals.patientType || sourcePatient?.type || "General"),
   };
 }
+
+function obstetricFrom(vitals: any, sourcePatient: any, draft?: any) {
+  const history = sourcePatient?.history && typeof sourcePatient.history === "object" ? sourcePatient.history.obstetric || {} : {};
+  return {
+    eod: String(vitals?.eod || draft?.eod || history.eod || "").slice(0, 10),
+    pog: String(vitals?.pog || draft?.pog || history.pog || ""),
+    gravida: String(vitals?.gravida || draft?.gravida || history.gravida || ""),
+    surgicalHistory: String(vitals?.surgicalHistory || draft?.surgicalHistory || history.surgicalHistory || ""),
+  };
+}
+
+function calculateObstetric(lmp: string, asOf: string) {
+  const start = new Date(`${lmp}T00:00:00`);
+  if (Number.isNaN(start.getTime())) return { eod: "", pog: "" };
+  const eodDate = new Date(start);
+  eodDate.setDate(eodDate.getDate() + 280);
+  const end = new Date(`${asOf || new Date().toISOString().slice(0, 10)}T00:00:00`);
+  const days = Math.floor((end.getTime() - start.getTime()) / 86400000);
+  const pog = days >= 0 ? `${Math.floor(days / 7)} weeks ${days % 7} days` : "";
+  return { eod: eodDate.toISOString().slice(0, 10), pog };
+}
 const TEST_CATEGORY = /lab|test|diagnos|usg|ultra|scan|sono/i;
 const USG_CATEGORY = /usg|ultra|scan|sono/i;
 
@@ -69,6 +90,11 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   const [weight, setWeight] = useState("");
   const [age, setAge] = useState("");
   const [patientType, setPatientType] = useState("General");
+  const [eod, setEod] = useState("");
+  const [pog, setPog] = useState("");
+  const [gravida, setGravida] = useState("");
+  const [surgicalHistory, setSurgicalHistory] = useState("");
+  const pregnant = /pregnant/i.test(patientType);
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [examination, setExamination] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
@@ -131,6 +157,11 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       setWeight(existing?.vitals?.weight != null ? String(existing.vitals.weight) : draft.weight != null ? String(draft.weight) : demo.weight);
       setAge(existing?.vitals?.age != null ? String(existing.vitals.age) : draft.age != null ? String(draft.age) : demo.age);
       setPatientType(existing?.vitals?.patientType || draft.patientType || demo.patientType);
+      const obstetric = obstetricFrom(existing?.vitals, patient, draft);
+      setEod(obstetric.eod);
+      setPog(obstetric.pog);
+      setGravida(obstetric.gravida);
+      setSurgicalHistory(obstetric.surgicalHistory);
       setChiefComplaint(existing?.chiefComplaint || draft.chiefComplaint || "");
       setExamination(typeof existing?.examination === "string" ? existing.examination : existing?.examination?.findings || existing?.objective || draft.examination || "");
       setDiagnosis(existing?.diagnosis || draft.diagnosis || "");
@@ -155,6 +186,11 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       setWeight(demo.weight);
       setAge(demo.age);
       setPatientType(demo.patientType);
+      const obstetric = obstetricFrom(null, patient);
+      setEod(obstetric.eod);
+      setPog(obstetric.pog);
+      setGravida(obstetric.gravida);
+      setSurgicalHistory(obstetric.surgicalHistory);
       return;
     }
     if (!isFetched) return;
@@ -167,6 +203,11 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     setWeight(demo.weight);
     setAge(demo.age);
     setPatientType(demo.patientType);
+    const obstetric = obstetricFrom(existing?.vitals, patient);
+    setEod(obstetric.eod);
+    setPog(obstetric.pog);
+    setGravida(obstetric.gravida);
+    setSurgicalHistory(obstetric.surgicalHistory);
     setChiefComplaint(existing?.chiefComplaint || "");
     setExamination(typeof existing?.examination === "string" ? existing.examination : existing?.examination?.findings || existing?.objective || "");
     setDiagnosis(existing?.diagnosis || "");
@@ -286,6 +327,10 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           weight: weight.trim() ? Number(weight) : null,
           age: age.trim() ? Number(age) : null,
           patientType: patientType || null,
+          eod: pregnant ? eod || null : null,
+          pog: pregnant ? pog.trim() || null : null,
+          gravida: pregnant ? gravida.trim() || null : null,
+          surgicalHistory: pregnant ? surgicalHistory.trim() || null : null,
         },
         diagnosis,
         planNotes: advice,
@@ -304,6 +349,10 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     const summary = [
       `Prescription date: ${visitDate}`,
       patientType.trim() ? `Patient type: ${patientType.trim()}` : null,
+      pregnant && eod ? `EOD: ${eod}` : null,
+      pregnant && pog.trim() ? `POG: ${pog.trim()}` : null,
+      pregnant && gravida.trim() ? `Gravida: ${gravida.trim()}` : null,
+      pregnant && surgicalHistory.trim() ? `Past surgery: ${surgicalHistory.trim()}` : null,
       chiefComplaint.trim() ? `Chief complaint: ${chiefComplaint.trim()}` : null,
       examination.trim() ? `O/E: ${examination.trim()}` : null,
       namedMedicines.length ? `Medicines: ${namedMedicines.map((med) => med.name.trim()).join(", ")}` : "No medicines entered",
@@ -325,6 +374,10 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           appointmentId: visitAppointment.id,
           savedMedications: namedMedicines.map((med) => med.name.trim()),
           patientType: patientType.trim() || null,
+          eod: pregnant ? eod || null : null,
+          pog: pregnant ? pog.trim() || null : null,
+          gravida: pregnant ? gravida.trim() || null : null,
+          surgicalHistory: pregnant ? surgicalHistory.trim() || null : null,
         },
       }),
     });
@@ -336,6 +389,20 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     if (weight.trim() && !Number.isNaN(Number(weight))) patientPatch.weight = Number(weight);
     if (age.trim() && !Number.isNaN(Number(age))) patientPatch.age = Number(age);
     if (patientType.trim()) patientPatch.type = patientType.trim();
+    if (pregnant) {
+      patientPatch.pregnancyStatus = "pregnant";
+      const existingHistory = patient?.history && typeof patient.history === "object" ? patient.history : {};
+      patientPatch.history = {
+        ...existingHistory,
+        obstetric: {
+          ...(existingHistory.obstetric || {}),
+          eod: eod || null,
+          pog: pog.trim() || null,
+          gravida: gravida.trim() || null,
+          surgicalHistory: surgicalHistory.trim() || null,
+        },
+      };
+    }
     if (Object.keys(patientPatch).length > 0) {
       const patientRes = await fetch(`/api/patients/${patientId}`, {
         method: "PATCH",
@@ -379,6 +446,10 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           weight: weight.trim(),
           age: age.trim(),
           patientType,
+          eod: pregnant ? eod : "",
+          pog: pregnant ? pog : "",
+          gravida: pregnant ? gravida : "",
+          surgicalHistory: pregnant ? surgicalHistory : "",
           diagnosis,
           advice,
           followUp,
@@ -445,7 +516,17 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
             </div>
             <div className="space-y-1">
               <Label>Patient type</Label>
-              <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={patientType} onChange={(e) => setPatientType(e.target.value)} data-testid="input-rx-patient-type">
+              <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={patientType} onChange={(e) => {
+                const next = e.target.value;
+                setPatientType(next);
+                if (/pregnant/i.test(next)) {
+                  const obstetric = obstetricFrom(null, patient);
+                  setEod((current) => current || obstetric.eod);
+                  setPog((current) => current || obstetric.pog);
+                  setGravida((current) => current || obstetric.gravida);
+                  setSurgicalHistory((current) => current || obstetric.surgicalHistory);
+                }
+              }} data-testid="input-rx-patient-type">
                 {[...new Set([patientType, ...PATIENT_TYPES])].filter(Boolean).map((type) => <option key={type} value={type}>{type}</option>)}
               </select>
             </div>
@@ -458,6 +539,34 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
               <Input type="number" min="0" step="0.1" value={weight} onChange={(e) => setWeight(e.target.value)} data-testid="input-rx-weight" />
             </div>
           </div>
+          {pregnant && (
+            <div className="grid grid-cols-2 gap-3 rounded-lg border border-saivie-border p-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>EOD</Label>
+                <Input type="date" value={eod} onChange={(e) => setEod(e.target.value)} data-testid="input-rx-eod" />
+                <p className="text-[11px] text-muted-foreground">Expected date of delivery</p>
+              </div>
+              <div className="space-y-1">
+                <Label>POG</Label>
+                <Input value={pog} onChange={(e) => setPog(e.target.value)} placeholder="28 weeks 3 days" data-testid="input-rx-pog" />
+              </div>
+              <div className="space-y-1">
+                <Label>Gravida</Label>
+                <Input value={gravida} onChange={(e) => setGravida(e.target.value)} placeholder="G2 P1" data-testid="input-rx-gravida" />
+              </div>
+              <div className="space-y-1">
+                <Label>Past surgery</Label>
+                <Input value={surgicalHistory} onChange={(e) => setSurgicalHistory(e.target.value)} placeholder="CS / LSCS" data-testid="input-rx-surgery" />
+              </div>
+              <div className="col-span-2">
+                <Button type="button" size="sm" variant="outline" disabled={!lmp} onClick={() => {
+                  const calculated = calculateObstetric(lmp, prescriptionDate);
+                  if (calculated.eod) setEod(calculated.eod);
+                  if (calculated.pog) setPog(calculated.pog);
+                }}>Calculate EOD and POG from LMP</Button>
+              </div>
+            </div>
+          )}
           <div className="rounded-lg border border-dashed border-saivie-border bg-saivie-surface-muted/50 p-3">
             <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" data-testid="input-rx-file"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) scanFile(f); }} />
