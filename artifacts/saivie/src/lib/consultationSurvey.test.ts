@@ -55,3 +55,36 @@ it("prefills only the matching appointment and does not leak another visit's ans
     assert.deepEqual(consultationSurveyForVisit({ onboarding: { consultation } }, 42), { directions: [], answers: {} });
     assert.deepEqual(consultationSurveyForVisit(null, 42), { directions: [], answers: {} });
 });
+
+it("preselects survey concern/directions and lets the doctor change or fill them", async () => {
+    const { effectiveConsultationSurvey, toggleConsultationPath, toggleConsultationDirection, surveyQuestions } = await import("./consultationSurvey.ts");
+    const question = surveyQuestions(["Cycle pattern and timing"])[0];
+    const survey = { directions: ["Cycle pattern and timing"], answers: { [question]: "35 days" } };
+    let edits: any = { answers: {} };
+    let current = effectiveConsultationSurvey(survey, edits);
+    assert.deepEqual(current.paths, ["Menstrual concern"]);
+    assert.deepEqual(current.directions, ["Cycle pattern and timing"]);
+    assert.equal(current.fromPatient(question), true);
+
+    edits = toggleConsultationPath(current, edits, "Pelvic pain");
+    current = effectiveConsultationSurvey(survey, edits);
+    edits = toggleConsultationDirection(current, edits, "Pain timing and pattern");
+    edits = { ...edits, answers: { ...edits.answers, [question]: "40 days" } };
+    current = effectiveConsultationSurvey(survey, edits);
+    assert.deepEqual(current.paths, ["Menstrual concern", "Pelvic pain"]);
+    assert.deepEqual(current.directions, ["Cycle pattern and timing", "Pain timing and pattern"]);
+    assert.equal(current.answers[question], "40 days");
+    assert.equal(current.fromPatient(question), false);
+
+    edits = toggleConsultationPath(current, edits, "Menstrual concern");
+    current = effectiveConsultationSurvey(survey, edits);
+    assert.deepEqual(current.directions, ["Pain timing and pattern"]);
+
+    const empty = effectiveConsultationSurvey({ directions: [], answers: {} }, { answers: {} });
+    assert.deepEqual([empty.paths, empty.directions], [[], []]);
+    let full: any = { answers: {} };
+    for (const direction of ["Pain timing and pattern", "Pregnancy or infection safety screen", "Relevant pelvic history", "Symptom timeline"]) {
+        full = toggleConsultationDirection(effectiveConsultationSurvey({ directions: [], answers: {} }, full), full, direction);
+    }
+    assert.equal(full.directions.length, 3);
+});

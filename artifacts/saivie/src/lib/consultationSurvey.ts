@@ -126,3 +126,53 @@ export function consultationSurveyForVisit(history: unknown, appointmentId: unkn
         || !("consultation" in history.onboarding)) return { directions: [], answers: {} };
     return readConsultationSurvey(history.onboarding.consultation);
 }
+
+export const consultationPaths = Object.keys(consultationDirectionsByPath);
+export const MAX_CONSULTATION_DIRECTIONS = 3;
+
+export function pathsForDirections(directions: string[]): string[] {
+    return consultationPaths.filter((path) => consultationDirectionsByPath[path].some((direction) => directions.includes(direction)));
+}
+
+/** Doctor edits layered over the patient survey; undefined lists mean "use the survey selection". */
+export interface ConsultationSurveyEdits {
+    paths?: string[];
+    directions?: string[];
+    answers: Record<string, string>;
+}
+
+export interface EffectiveConsultationSurvey {
+    paths: string[];
+    directions: string[];
+    answers: Record<string, string>;
+    fromPatient: (question: string) => boolean;
+}
+
+export function effectiveConsultationSurvey(survey: ConsultationSurvey, edits: ConsultationSurveyEdits): EffectiveConsultationSurvey {
+    const directions = edits.directions ?? survey.directions;
+    const paths = edits.paths ?? pathsForDirections(survey.directions);
+    const answers = { ...survey.answers, ...edits.answers };
+    return {
+        paths,
+        directions,
+        answers,
+        fromPatient: (question) => Boolean(survey.answers[question]?.trim()) && answers[question] === survey.answers[question],
+    };
+}
+
+export function toggleConsultationPath(current: EffectiveConsultationSurvey, edits: ConsultationSurveyEdits, path: string): ConsultationSurveyEdits {
+    if (!current.paths.includes(path)) return { ...edits, paths: [...current.paths, path], directions: current.directions };
+    const paths = current.paths.filter((item) => item !== path);
+    const kept = new Set(paths.flatMap((item) => consultationDirectionsByPath[item] || []));
+    return { ...edits, paths, directions: current.directions.filter((direction) => kept.has(direction)) };
+}
+
+export function toggleConsultationDirection(current: EffectiveConsultationSurvey, edits: ConsultationSurveyEdits, direction: string): ConsultationSurveyEdits {
+    const selected = current.directions.includes(direction);
+    if (!selected && current.directions.length >= MAX_CONSULTATION_DIRECTIONS) return edits;
+    return {
+        ...edits,
+        paths: current.paths,
+        directions: selected ? current.directions.filter((item) => item !== direction) : [...current.directions, direction],
+    };
+}

@@ -8,7 +8,7 @@ import { MedicineFrequencyInput } from "@/components/MedicineFrequencyInput";
 import { useToast } from "@/hooks/use-toast";
 import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSettings";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
-import { consultationSurveyForVisit, surveyQuestions } from "@/lib/consultationSurvey";
+import { consultationDirectionsByPath, consultationPaths, consultationSurveyForVisit, effectiveConsultationSurvey, MAX_CONSULTATION_DIRECTIONS, surveyQuestions, toggleConsultationDirection, toggleConsultationPath, type ConsultationSurveyEdits } from "@/lib/consultationSurvey";
 import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
 import { ConsultationVitalsTrends } from "@/components/ConsultationVitalsTrends";
 import { PatientSummaryDashboard } from "@/components/PatientSummaryDashboard";
@@ -411,6 +411,7 @@ export default function ClinicianPortal() {
   const [patientDetailTab, setPatientDetailTab] = useState<'summary' | 'consultation' | 'record' | 'details' | 'postop' | 'genome'>('summary');
   const isPatientOverview = patientDetailTab === 'summary' || patientDetailTab === 'consultation' || patientDetailTab === 'record';
   const [consultationStep, setConsultationStep] = useState<ConsultationStep>('reason');
+  const [consultationEdits, setConsultationEdits] = useState<ConsultationSurveyEdits>({ answers: {} });
   const [consultationEvidence, setConsultationEvidence] = useState<string[]>([]);
   const [directionEvidence, setDirectionEvidence] = useState<Record<string, { supporting: string; missing: string }>>({});
   const [consultationContextAdded, setConsultationContextAdded] = useState(false);
@@ -1299,8 +1300,13 @@ export default function ClinicianPortal() {
   const consultationSurvey = consultationSurveyForVisit(
     surveyPatient?.history, activeAppointment?.id || (selectedPatient as any)?.appointmentId,
   );
-  const selectedDirections = consultationSurvey.directions;
-  const guidedAnswers = consultationSurvey.answers;
+  const effectiveSurvey = effectiveConsultationSurvey(consultationSurvey, consultationEdits);
+  const selectedPaths = effectiveSurvey.paths;
+  const selectedDirections = effectiveSurvey.directions;
+  const guidedAnswers = effectiveSurvey.answers;
+  const visibleDirections = [...new Set(selectedPaths.flatMap((path) => consultationDirectionsByPath[path] || []))];
+  const consultationSurveyKey = `${selectedPatient?.id ?? ''}:${activeAppointment?.id || (selectedPatient as any)?.appointmentId || ''}`;
+  useEffect(() => { setConsultationEdits({ answers: {} }); }, [consultationSurveyKey]);
 
   const invoicesQuery = useQuery({
     queryKey: ['/api/invoices'],
@@ -1518,6 +1524,7 @@ export default function ClinicianPortal() {
     setActiveView("patient_detail");
     setPatientDetailTab('summary');
     setConsultationStep('reason');
+    setConsultationEdits({ answers: {} });
     setConsultationEvidence([]);
     setDirectionEvidence({});
     setConsultationContextAdded(false);
@@ -1592,7 +1599,7 @@ export default function ClinicianPortal() {
       .filter((question) => guidedAnswers[question]?.trim())
       .map((question) => `${question} ${guidedAnswers[question].trim()}`);
     if (reviewedAnswers.length === 0) return;
-    const reviewedSection = `Patient survey (clinician-reviewed):\n${reviewedAnswers.map((answer) => `- ${answer}`).join('\n')}`;
+    const reviewedSection = `History (survey answers reviewed by clinician):\n${reviewedAnswers.map((answer) => `- ${answer}`).join('\n')}`;
     setSoapSubjectiveDraft((current) => [current.trim(), reviewedSection].filter(Boolean).join('\n\n'));
     setConsultationStep('reason');
   };
@@ -1606,7 +1613,7 @@ export default function ClinicianPortal() {
 
   const addReviewedContextToPlan = () => {
     const contextLines = [
-      selectedDirections.length ? `Patient-selected topics: ${selectedDirections.join(', ')}` : '',
+      selectedDirections.length ? `Topics explored: ${selectedDirections.join(', ')}` : '',
       consultationEvidence.length ? `Evidence reviewed: ${consultationEvidence.join(', ')}` : '',
       ...selectedDirections.flatMap((direction) => {
         const evidence = directionEvidence[direction];
@@ -4488,7 +4495,7 @@ export default function ClinicianPortal() {
                   <CardHeader className="px-3 py-3"><CardTitle className="text-xs text-saivie-teal">Key Clinical Context</CardTitle></CardHeader>
                   <CardContent className="space-y-1 px-2 pb-3">
                     <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setPatientDetailTab('record')}><History className="h-4 w-4" /><span>Previous visits<span className="mt-0.5 block text-[10px] text-saivie-plum">{previousVisit?.date ? String(previousVisit.date).slice(0, 10) : 'None recorded'}</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
-                    <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setPatientDetailTab('consultation'); setConsultationStep('explore'); }}><ClipboardList className="h-4 w-4" /><span>Patient survey<span className="mt-0.5 block text-[10px] text-saivie-plum">{selectedDirections.length} topics selected</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
+                    <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setPatientDetailTab('consultation'); setConsultationStep('explore'); }}><ClipboardList className="h-4 w-4" /><span>Patient survey<span className="mt-0.5 block text-[10px] text-saivie-plum">{consultationSurvey.directions.length ? `${consultationSurvey.directions.length} topics selected` : 'Not filled'}</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
                     <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => openRecordSection('patient-medications')}><Pill className="h-4 w-4" /><span>Current medications<span className="mt-0.5 block text-[10px] text-saivie-plum">{medications.filter((med: any) => String(med.status).toLowerCase() === 'active').length} active</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
                     <div className="border-t border-saivie-border px-1 pt-2"><IntakeSummaryActions patient={surveyPatient} weightLogs={weightLogs} bpLogs={bpLogsData} /></div>
                   </CardContent>
@@ -4731,7 +4738,7 @@ export default function ClinicianPortal() {
                           <h3 className="flex items-center gap-2 text-sm font-semibold text-saivie-teal">
                             <ClipboardList className="h-4 w-4" />
                             {consultationStep === 'reason' ? (isFollowUpVisit ? 'Follow-up' : 'Presenting concern') :
-                             consultationStep === 'explore' ? 'Patient survey' :
+                             consultationStep === 'explore' ? 'History' :
                              consultationStep === 'examine' ? 'Examination' :
                              consultationStep === 'evidence' ? 'Assessment & evidence' : 'Plan'}
                           </h3>
@@ -4773,11 +4780,23 @@ export default function ClinicianPortal() {
                               />
                               {soapTranscript && <p className="mt-2 text-xs text-emerald-700">Dictation draft</p>}
                             </div>
+                            <div data-testid="consultation-concern-options">
+                              <p className="mb-2 text-xs font-semibold text-saivie-plum">Concern {consultationEdits.paths === undefined && consultationSurvey.directions.length > 0 && <span className="ml-1 font-normal text-saivie-teal">· from survey</span>}</p>
+                              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                                {consultationPaths.map((path) => {
+                                  const selected = selectedPaths.includes(path);
+                                  return <button key={path} type="button" aria-pressed={selected} onClick={() => setConsultationEdits((edits) => toggleConsultationPath(effectiveSurvey, edits, path))}
+                                    className={`flex min-h-[40px] items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-left text-[11px] font-medium ${selected ? 'border-saivie-teal bg-saivie-teal text-white' : 'border-saivie-border bg-saivie-ivory text-saivie-plum hover:bg-saivie-surface-muted'}`}
+                                    data-testid={`consultation-path-${path.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+                                    <span className="flex-1">{path}</span>{selected && <Check className="h-3.5 w-3.5 shrink-0" />}
+                                  </button>;
+                                })}
+                              </div>
+                            </div>
                             {(activeAppointment?.chiefComplaint || selectedPatient.appointmentChiefComplaint || activeAppointment?.reason) && (
                               <div className="rounded-lg border border-saivie-border bg-saivie-surface-muted/50 p-3">
                                 <p className="flex items-center gap-1.5 text-xs font-semibold text-saivie-teal"><MessageSquare className="h-3.5 w-3.5" />Patient-reported concern</p>
                                 <p className="mt-2 text-xs leading-relaxed text-saivie-plum">{activeAppointment?.chiefComplaint || selectedPatient.appointmentChiefComplaint || activeAppointment?.reason}</p>
-                                {selectedDirections.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{selectedDirections.map((direction) => <button type="button" key={direction} onClick={() => setConsultationStep('explore')} className="rounded-md border border-saivie-teal/30 bg-saivie-sage/40 px-2.5 py-1.5 text-[11px] font-medium text-saivie-teal">{direction}<Check className="ml-1 inline h-3 w-3" /></button>)}</div>}
                               </div>
                             )}
                           </div>
@@ -4786,22 +4805,38 @@ export default function ClinicianPortal() {
                         {consultationStep === 'explore' && (
                           <div className="space-y-3" data-testid="consultation-survey-review">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs text-saivie-teal">Patient-reported</span>
+                              <span className="text-xs font-semibold text-saivie-plum">Possible directions <span className="font-normal text-saivie-plum/70">· max {MAX_CONSULTATION_DIRECTIONS}</span></span>
                               <span className="text-xs text-saivie-plum">{answeredGuidedQuestionCount}/{guidedQuestions.length} answered</span>
                             </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {selectedDirections.map((direction) => <span key={direction} className="rounded-full border border-saivie-teal bg-saivie-sage px-2.5 py-1 text-xs text-saivie-teal" data-testid="survey-selected-direction">{direction}</span>)}
-                            </div>
+                            {visibleDirections.length ? (
+                              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+                                {visibleDirections.map((direction) => {
+                                  const selected = selectedDirections.includes(direction);
+                                  const fromSurvey = consultationSurvey.directions.includes(direction);
+                                  return <button key={direction} type="button" aria-pressed={selected} disabled={!selected && selectedDirections.length >= MAX_CONSULTATION_DIRECTIONS}
+                                    onClick={() => setConsultationEdits((edits) => toggleConsultationDirection(effectiveSurvey, edits, direction))}
+                                    className={`flex min-h-[40px] items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-left text-[11px] font-medium disabled:opacity-40 ${selected ? 'border-saivie-teal bg-saivie-teal text-white' : 'border-saivie-border bg-saivie-ivory text-saivie-plum hover:bg-saivie-surface-muted'}`}
+                                    data-testid={`direction-${direction.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+                                    <span className="flex-1">{direction}</span>
+                                    {fromSurvey && <span className={`rounded px-1 text-[9px] ${selected ? 'bg-white/20' : 'bg-saivie-sage text-saivie-teal'}`}>Patient</span>}
+                                    {selected && <Check className="h-3.5 w-3.5 shrink-0" />}
+                                  </button>;
+                                })}
+                              </div>
+                            ) : <button type="button" className="text-xs text-saivie-teal underline" onClick={() => setConsultationStep('reason')}>Choose a concern first</button>}
 
-                            {selectedDirections.length ? (
-                              <dl className="divide-y divide-saivie-border">
-                                {guidedQuestions.map((question) => <div key={question} className="grid gap-1 py-2 sm:grid-cols-2">
-                                  <dt className="text-xs text-saivie-plum">{question}</dt>
-                                  <dd className={`whitespace-pre-wrap text-xs ${guidedAnswers[question]?.trim() ? 'font-medium text-saivie-plum' : 'text-saivie-plum/60'}`}>{guidedAnswers[question]?.trim() || 'Not answered'}</dd>
-                                </div>)}
-                              </dl>
-                            ) : <p className="text-xs text-saivie-plum">No pre-visit topics selected for this visit.</p>}
-                            <Button type="button" size="sm" variant="outline" disabled={!answeredGuidedQuestionCount} onClick={addReviewedAnswersToNote}>Add reviewed answers to note</Button>
+                            {selectedDirections.length > 0 && (
+                              <div className="divide-y divide-saivie-border">
+                                {guidedQuestions.map((question) => <label key={question} className="grid items-center gap-1 py-1.5 sm:grid-cols-2">
+                                  <span className="text-xs text-saivie-plum">{question}</span>
+                                  <span className="flex items-center gap-1.5">
+                                    <Input value={guidedAnswers[question] || ''} onChange={(event) => { const value = event.target.value; setConsultationEdits((edits) => ({ ...edits, answers: { ...edits.answers, [question]: value } })); }} placeholder="Not answered" className="h-8 text-xs" data-testid="input-guided-answer" />
+                                    {effectiveSurvey.fromPatient(question) && <span className="shrink-0 rounded bg-saivie-sage px-1 text-[9px] text-saivie-teal">Patient</span>}
+                                  </span>
+                                </label>)}
+                              </div>
+                            )}
+                            <Button type="button" size="sm" variant="outline" disabled={!answeredGuidedQuestionCount} onClick={addReviewedAnswersToNote}>Add answers to note</Button>
                           </div>
                         )}
 
@@ -4858,7 +4893,7 @@ export default function ClinicianPortal() {
                             <div className="rounded-md border border-saivie-border bg-saivie-ivory p-3">
                               <p className="text-xs font-semibold text-saivie-plum">Clinical summary</p>
                               <p className="mt-1 text-xs text-saivie-plum">{soapSubjectiveDraft || 'No first impression entered yet.'}</p>
-                              {selectedDirections.length > 0 && <p className="mt-2 text-xs text-saivie-teal">Patient topics: {selectedDirections.join(' · ')}</p>}
+                              {selectedDirections.length > 0 && <p className="mt-2 text-xs text-saivie-teal">Topics: {selectedDirections.join(' · ')}</p>}
                               {consultationEvidence.length > 0 && <p className="mt-1 text-xs text-saivie-plum">Evidence reviewed: {consultationEvidence.join(', ')}</p>}
                             </div>
                             {(selectedDirections.length > 0 || consultationEvidence.length > 0) && (
@@ -4941,12 +4976,12 @@ export default function ClinicianPortal() {
                       {copilotExpanded && <CardContent className="p-3 space-y-3">
                         <div className="space-y-1">
                           <p className="mb-2 text-[10px] font-semibold text-saivie-teal">Next steps</p>
-                          <button type="button" className="flex w-full items-center gap-2 border-b border-saivie-border py-2 text-left text-xs text-saivie-teal" onClick={() => setConsultationStep('explore')}><User className="h-4 w-4 shrink-0" /><span>Review patient survey<span className="mt-1 block text-[10px] text-saivie-plum">{answeredGuidedQuestionCount} answers · {selectedDirections.length} topics</span></span><ChevronRight className="ml-auto h-3 w-3 shrink-0" /></button>
+                          <button type="button" className="flex w-full items-center gap-2 border-b border-saivie-border py-2 text-left text-xs text-saivie-teal" onClick={() => setConsultationStep('explore')}><User className="h-4 w-4 shrink-0" /><span>History<span className="mt-1 block text-[10px] text-saivie-plum">{answeredGuidedQuestionCount} answers · {selectedDirections.length} topics</span></span><ChevronRight className="ml-auto h-3 w-3 shrink-0" /></button>
                           <button type="button" className="flex w-full items-center gap-2 border-b border-saivie-border py-2 text-left text-xs text-saivie-teal" onClick={() => openRecordSection('patient-investigations')}><ClipboardList className="h-4 w-4 shrink-0" /><span>Review investigations<span className="mt-1 block text-[10px] text-saivie-plum">{labResults.length} reports on file</span></span><ChevronRight className="ml-auto h-3 w-3 shrink-0" /></button>
                           <button type="button" className="flex w-full items-center gap-2 py-2 text-left text-xs text-saivie-teal" onClick={() => setConsultationStep('plan')}><FileText className="h-4 w-4 shrink-0" /><span>Review visit plan</span><ChevronRight className="ml-auto h-3 w-3 shrink-0" /></button>
                         </div>
                         <div className="border-t border-saivie-border pt-2">
-                          <p className="text-[9px] font-semibold uppercase tracking-wide text-saivie-plum">Patient-selected topics</p>
+                          <p className="text-[9px] font-semibold uppercase tracking-wide text-saivie-plum">Topics</p>
                           <div className="mt-1.5 flex flex-wrap gap-1">
                             {selectedDirections.length ? selectedDirections.map((direction) => <span key={direction} className="rounded bg-saivie-ivory px-2 py-1 text-[9px] text-saivie-teal border border-saivie-border">{direction}</span>) : <span className="text-[10px] text-saivie-plum">None selected</span>}
                           </div>
