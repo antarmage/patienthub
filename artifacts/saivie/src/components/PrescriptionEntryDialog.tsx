@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { pregnancyWeeks, prescriptionTestOptions } from "@/lib/prescriptionTests";
 import { estimatePregnancyDating, pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
 import { MedicineDoseInput } from "@/components/MedicineDoseInput";
+import { MedicineFrequencyInput } from "@/components/MedicineFrequencyInput";
 import { parseCallDate, prescriptionDueDate } from "../../../../lib/db/src/follow-up";
 import { MedicineAutocomplete } from "@/components/MedicineAutocomplete";
 
@@ -1180,12 +1181,12 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
                     } : item))
                   } testId={`input-rx-med-name-${i}`} />
                 </div>
-                <MedicineDoseInput className="col-span-12 sm:col-span-2" label={`Medicine ${i + 1} dose`} value={m.dose || ""} onChange={(value) => updateMedicine(i, "dose", value)} testId={`input-rx-med-dose-${i}`} />
-                <Input className="col-span-4 sm:col-span-2" placeholder="Frequency" value={m.frequency} onChange={(e) => updateMedicine(i, "frequency", e.target.value)} />
-                <Input className="col-span-3 sm:col-span-2" placeholder="Duration" value={m.duration} onChange={(e) => updateMedicine(i, "duration", e.target.value)} />
-                <Button type="button" size="icon" variant="ghost" className="col-span-1 sm:col-span-2 justify-self-end" onClick={() => setMedicines(medicines.length > 1 ? medicines.filter((_, idx) => idx !== i) : [emptyMedicine()])}>
+                <MedicineDoseInput className="col-span-12 sm:col-span-4" label={`Medicine ${i + 1} dose`} value={m.dose || ""} onChange={(value) => updateMedicine(i, "dose", value)} testId={`input-rx-med-dose-${i}`} />
+                <Input className="col-span-10 sm:col-span-2" placeholder="Duration" value={m.duration} onChange={(e) => updateMedicine(i, "duration", e.target.value)} />
+                <Button type="button" size="icon" variant="ghost" className="col-span-2 justify-self-end" onClick={() => setMedicines(medicines.length > 1 ? medicines.filter((_, idx) => idx !== i) : [emptyMedicine()])}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
+                <MedicineFrequencyInput className="col-span-12" label={`Medicine ${i + 1} frequency`} value={m.frequency} onChange={(value) => updateMedicine(i, "frequency", value)} testId={`input-rx-med-frequency-${i}`} />
                 <Input className="col-span-12" placeholder="Instructions (e.g. after food)" value={m.instructions} onChange={(e) => updateMedicine(i, "instructions", e.target.value)} />
               </div>
             ))}

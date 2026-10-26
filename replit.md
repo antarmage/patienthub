@@ -68,6 +68,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Patient identifiers, dates, status and patient-specific notes are excluded from suggestions. Keep reusable administration directions in Instructions and private clinical context in Notes.
 - Doctor medication duration and instructions use dedicated columns added by the idempotent API startup migration. Deploy/restart the API together with the frontend.
 - Automatic trimester medication templates are not enabled.
+- Prescription entry, clinician medication Add/Edit and catalog Add/Edit share a frequency grid: OD, BD, TDS, HS, SOS, AC/PC and Weekly. Subtle teal gradients distinguish the shortcuts; the selected value has a dark background, border and check mark. Custom/legacy frequency text remains editable and is saved unchanged unless explicitly replaced.
+- AC/PC remains one combined shortcut; specify the intended before/after-food timing in Instructions. No frequency is automatically chosen.
 
 ## Receptionist follow-up queue
 
