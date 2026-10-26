@@ -11,6 +11,8 @@ import { IntakeSummaryActions } from "@/components/IntakeSummary";
 import { consultationSurveyForVisit, surveyQuestions } from "@/lib/consultationSurvey";
 import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
 import { ConsultationVitalsTrends } from "@/components/ConsultationVitalsTrends";
+import { PatientSummaryDashboard } from "@/components/PatientSummaryDashboard";
+import { pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
 import { 
   LayoutDashboard, 
   Users, 
@@ -404,7 +406,8 @@ export default function ClinicianPortal() {
   const [scheduleViewMode, setScheduleViewMode] = useState("appointments");
   const [calendarViewMode, setCalendarViewMode] = useState("month");
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
-  const [patientDetailTab, setPatientDetailTab] = useState<'consultation' | 'record' | 'postop' | 'genome'>('consultation');
+  const [patientDetailTab, setPatientDetailTab] = useState<'summary' | 'consultation' | 'record' | 'postop' | 'genome'>('summary');
+  const isPatientOverview = patientDetailTab === 'summary' || patientDetailTab === 'consultation';
   const [consultationStep, setConsultationStep] = useState<ConsultationStep>('reason');
   const [consultationEvidence, setConsultationEvidence] = useState<string[]>([]);
   const [directionEvidence, setDirectionEvidence] = useState<Record<string, { supporting: string; missing: string }>>({});
@@ -815,6 +818,8 @@ export default function ClinicianPortal() {
     const [, year, month, day] = match;
     const lmpUtc = Date.UTC(Number(year), Number(month) - 1, Number(day));
     const today = new Date();
+    const asOf = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    if (!pregnancyDatingFromLmp(`${year}-${month}-${day}`, asOf)) return null;
     const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
     const elapsedDays = Math.floor((todayUtc - lmpUtc) / 86_400_000);
     if (!Number.isFinite(elapsedDays) || elapsedDays < 0) return null;
@@ -1514,7 +1519,7 @@ export default function ClinicianPortal() {
     setSelectedPatient(patient);
     setSelectedTrailVisitId(null);
     setActiveView("patient_detail");
-    setPatientDetailTab('consultation');
+    setPatientDetailTab('summary');
     setConsultationStep('reason');
     setConsultationEvidence([]);
     setDirectionEvidence({});
@@ -1696,7 +1701,7 @@ export default function ClinicianPortal() {
     <div className="min-h-screen bg-saivie-surface-muted flex font-sans text-saivie-plum overflow-hidden">
       
       {/* Sidebar */}
-      <aside className={`bg-saivie-ivory text-saivie-plum ${activeView === 'patient_detail' && patientDetailTab === 'consultation' ? 'hidden' : 'flex'} flex-col shrink-0 border-r border-saivie-border z-20 transition-all duration-300 ${sidebarOpen ? "w-64 max-sm:w-16" : "w-20"}`}>
+      <aside className={`bg-saivie-ivory text-saivie-plum ${activeView === 'patient_detail' && isPatientOverview ? 'hidden' : 'flex'} flex-col shrink-0 border-r border-saivie-border z-20 transition-all duration-300 ${sidebarOpen ? "w-64 max-sm:w-16" : "w-20"}`}>
         <div className="p-3 max-sm:p-2 border-b border-saivie-border flex items-center justify-between gap-2 max-sm:justify-center">
           {sidebarOpen ? (
             <div className="flex items-center gap-2 min-w-0">
@@ -4450,8 +4455,8 @@ export default function ClinicianPortal() {
 
         {/* PATIENT DETAIL VIEW */}
         {activeView === 'patient_detail' && selectedPatient && (
-          <div className={`flex-1 flex flex-col overflow-hidden z-0 relative ${patientDetailTab === 'consultation' ? 'lg:pl-[240px]' : ''}`} data-testid="patient-workspace">
-            {patientDetailTab === 'consultation' && (
+          <div className={`flex-1 flex flex-col overflow-hidden z-0 relative ${isPatientOverview ? 'lg:pl-[240px]' : ''}`} data-testid="patient-workspace">
+            {isPatientOverview && (
               <aside className="absolute inset-y-0 left-0 z-20 hidden w-[240px] flex-col overflow-y-auto bg-saivie-teal p-3 text-white lg:flex" data-testid="consultation-patient-rail" aria-label="Patient context">
                 <div className="flex items-start justify-between gap-2 p-2">
                   <Avatar className="h-11 w-11"><AvatarFallback className="bg-saivie-ivory text-sm font-semibold text-saivie-teal">{getInitials(selectedPatient.name)}</AvatarFallback></Avatar>
@@ -4484,7 +4489,7 @@ export default function ClinicianPortal() {
                   <CardHeader className="px-3 py-3"><CardTitle className="text-xs text-saivie-teal">Key Clinical Context</CardTitle></CardHeader>
                   <CardContent className="space-y-1 px-2 pb-3">
                     <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => openRecordSection('patient-history')}><History className="h-4 w-4" /><span>Previous visits<span className="mt-0.5 block text-[10px] text-saivie-plum">{previousVisit?.date ? String(previousVisit.date).slice(0, 10) : 'None recorded'}</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
-                    <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setConsultationStep('explore')}><ClipboardList className="h-4 w-4" /><span>Patient survey<span className="mt-0.5 block text-[10px] text-saivie-plum">{selectedDirections.length} topics selected</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
+                    <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setPatientDetailTab('consultation'); setConsultationStep('explore'); }}><ClipboardList className="h-4 w-4" /><span>Patient survey<span className="mt-0.5 block text-[10px] text-saivie-plum">{selectedDirections.length} topics selected</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
                     <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => openRecordSection('patient-medications')}><Pill className="h-4 w-4" /><span>Current medications<span className="mt-0.5 block text-[10px] text-saivie-plum">{medications.filter((med: any) => String(med.status).toLowerCase() === 'active').length} active</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
                     <div className="border-t border-saivie-border px-1 pt-2"><IntakeSummaryActions patient={surveyPatient} weightLogs={weightLogs} bpLogs={bpLogsData} /></div>
                   </CardContent>
@@ -4505,7 +4510,7 @@ export default function ClinicianPortal() {
                         <ChevronRight className="w-4 h-4 text-saivie-plum rotate-180" />
                     </Button>
                     <div className="flex items-center gap-3">
-                       <Avatar className={`h-9 w-9 border border-saivie-border bg-saivie-sage text-saivie-plum text-sm ${patientDetailTab === 'consultation' ? 'lg:hidden' : ''}`}>
+                       <Avatar className={`h-9 w-9 border border-saivie-border bg-saivie-sage text-saivie-plum text-sm ${isPatientOverview ? 'lg:hidden' : ''}`}>
                           <AvatarFallback>{selectedPatient.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback>
                        </Avatar>
                        <div>
@@ -4586,7 +4591,7 @@ export default function ClinicianPortal() {
               </div>
 
               {/* Dynamic context strip */}
-              <div className={`${patientDetailTab === 'consultation' ? 'hidden' : 'flex'} items-center gap-3 px-5 py-1.5 bg-saivie-surface-muted/80 border-t border-saivie-border text-[11px] text-saivie-plum overflow-x-auto`}>
+              <div className={`${isPatientOverview ? 'hidden' : 'flex'} items-center gap-3 px-5 py-1.5 bg-saivie-surface-muted/80 border-t border-saivie-border text-[11px] text-saivie-plum overflow-x-auto`}>
                  {selectedPatient.lmp && (
                    <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">LMP</span> {new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                  )}
@@ -4631,7 +4636,7 @@ export default function ClinicianPortal() {
                    <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">Next</span> {selectedPatient.nextReview}</span>
                  )}
               </div>
-              <div className={`${patientDetailTab === 'consultation' ? 'hidden' : 'flex'} flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 border-t border-amber-100 bg-[#fffaf2] text-[10px]`}>
+              <div className={`${isPatientOverview ? 'hidden' : 'flex'} flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 border-t border-amber-100 bg-[#fffaf2] text-[10px]`}>
                 <span className="flex items-center gap-2 font-semibold text-saivie-plum"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700"><AlertCircle className="h-3 w-3" /></span>Clinical attention</span>
                 <span className={`${selectedPatient.riskScore?.level === 'Critical' || selectedPatient.riskScore?.level === 'High' || selectedPatient.status === 'High Risk' ? 'text-rose-700' : 'text-saivie-plum'}`}>
                   {selectedPatient.riskScore?.level ? `${selectedPatient.riskScore.level} risk score recorded` : selectedPatient.status === 'High Risk' ? 'High-risk status recorded' : selectedPatient.status === 'Monitor' ? 'Monitoring status recorded' : 'No risk flag recorded'}
@@ -4642,7 +4647,7 @@ export default function ClinicianPortal() {
                 <button type="button" onClick={() => setPatientDetailTab('record')} className="ml-auto text-saivie-teal font-semibold hover:text-saivie-teal">View history</button>
               </div>
               <nav className="flex gap-1 px-5 py-2 border-t border-saivie-border overflow-x-auto" aria-label="Patient workspace sections">
-                <button type="button" className="flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-xs font-medium text-saivie-teal" onClick={() => openRecordSection('patient-history')}><ClipboardList className="h-3.5 w-3.5" />Summary</button>
+                <button type="button" aria-current={patientDetailTab === 'summary' ? 'page' : undefined} className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium text-saivie-teal ${patientDetailTab === 'summary' ? 'border-saivie-teal' : 'border-transparent'}`} onClick={() => setPatientDetailTab('summary')}><ClipboardList className="h-3.5 w-3.5" />Summary</button>
                 <button type="button" onClick={() => setPatientDetailTab('consultation')} aria-current={patientDetailTab === 'consultation' ? 'page' : undefined} className={`shrink-0 border-b-2 px-3 py-2 text-xs font-semibold ${patientDetailTab === 'consultation' ? 'border-saivie-teal text-saivie-teal' : 'border-transparent text-saivie-plum'}`}>Consultation</button>
                 <button type="button" className="flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs text-saivie-teal" onClick={() => { setPatientDetailTab('consultation'); requestAnimationFrame(() => document.getElementById('consultation-vitals-trends')?.scrollIntoView({ block: 'center', behavior: 'smooth' })); }}><Activity className="h-3.5 w-3.5" />Vitals &amp; Trends</button>
                 <button type="button" className="flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs text-saivie-teal" onClick={() => { setPatientDetailTab('consultation'); setConsultationStep('plan'); }}><FileText className="h-3.5 w-3.5" />Care Plan</button>
@@ -4658,6 +4663,29 @@ export default function ClinicianPortal() {
                 ))}
               </nav>
             </header>
+
+            {patientDetailTab === 'summary' && <PatientSummaryDashboard
+              patient={surveyPatient}
+              appointmentId={activeAppointment?.id || selectedPatient.appointmentId}
+              complaint={activeAppointment?.chiefComplaint || selectedPatient.appointmentChiefComplaint || activeAppointment?.reason}
+              checkInVitals={activeAppointment?.vitals || selectedPatient.appointmentVitals}
+              visits={visitHistory}
+              labs={labResults}
+              bpLogs={bpLogsData}
+              weightLogs={weightLogs}
+              medications={medications}
+              pregnancy={showPregnancyContext}
+              pregnancyContext={pregnancyContext}
+              sources={[
+                { label: 'Visit history', query: visitHistoryQuery },
+                { label: 'Blood pressure', query: bpLogsQuery },
+                { label: 'Weight', query: weightLogsQuery },
+                { label: 'Lab results', query: labResultsQuery },
+                { label: 'Medications', query: medicationsQuery },
+                { label: 'Patient survey', query: patientsQuery },
+              ].map(({ label, query }) => ({ label, loading: query.isLoading, failed: query.isError, retry: () => { void query.refetch(); } }))}
+              onConsultation={() => setPatientDetailTab('consultation')}
+            />}
 
             {patientDetailTab === 'consultation' && (
               <>
@@ -4995,7 +5023,7 @@ export default function ClinicianPortal() {
               </>
             )}
 
-            <div className={patientDetailTab === 'consultation' ? 'hidden' : 'flex-1 flex overflow-hidden z-0'}>
+            <div className={isPatientOverview ? 'hidden' : 'flex-1 flex overflow-hidden z-0'}>
               
               {/* Patient List Column (Left) */}
               <div className="w-72 border-r border-saivie-border bg-saivie-ivory flex flex-col shrink-0">
