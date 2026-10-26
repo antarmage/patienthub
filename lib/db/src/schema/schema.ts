@@ -267,6 +267,7 @@ export const visitHistory = pgTable("visit_history", {
   subjective: text("subjective"),
   objective: text("objective"),
   assessment: text("assessment"),
+  assessmentDetails: jsonb("assessment_details"),
   planNotes: text("plan_notes"),
   prescriptions: jsonb("prescriptions"),
   procedures: jsonb("procedures"),

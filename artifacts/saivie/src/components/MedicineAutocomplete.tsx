@@ -70,6 +70,8 @@ export function MedicineAutocomplete({ value, onChange, onSelect, className, tes
                 {matches.map((medicine, index) => (
                   <button type="button" role="option" aria-selected={active === index} id={`${id}-${index}`} key={index}
                     className={`block w-full rounded px-2 py-2 text-left text-sm hover:bg-muted ${active === index ? "bg-muted" : ""}`}
+                    // Keep focus in the input so blur cannot dismiss the option before its click.
+                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => select(medicine)}>
                     <span className="block font-medium">{medicine.name}</span>
                     <span className="block text-xs text-muted-foreground">{[medicine.dose, medicine.frequency, medicine.duration, medicine.instructions, medicine.route].filter(Boolean).join(" · ") || "No saved dosing details"}</span>

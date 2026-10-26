@@ -111,6 +111,7 @@ export function PatientVisitTimeline({ visits, isLoading, isError, onRetry }: { 
           <Row label="Complaint" value={text(visit.chiefComplaint)} />
           <Row label="O/E" value={examination} />
           <Row label="Diagnosis" value={text(visit.diagnosis)} />
+          <Row label="Assessment" value={text(visit.assessment)} />
         </div>
         <section>
           <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-saivie-teal">Rx</h4>

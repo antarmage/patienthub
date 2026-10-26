@@ -26,6 +26,7 @@ export async function ensureSchema(): Promise<void> {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name text;
       ALTER TABLE medications ADD COLUMN IF NOT EXISTS duration text;
       ALTER TABLE medications ADD COLUMN IF NOT EXISTS instructions text;
+      ALTER TABLE visit_history ADD COLUMN IF NOT EXISTS assessment_details jsonb;
 
       ALTER TABLE follow_up_calls ADD COLUMN IF NOT EXISTS source_key text;
       ALTER TABLE follow_up_calls ADD COLUMN IF NOT EXISTS trigger_type text;

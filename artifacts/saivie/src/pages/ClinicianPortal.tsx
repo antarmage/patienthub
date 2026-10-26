@@ -13,10 +13,12 @@ import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
 import { ConsultationVitalsTrends } from "@/components/ConsultationVitalsTrends";
 import { PatientSummaryDashboard } from "@/components/PatientSummaryDashboard";
 import { PatientVisitTimeline, visitTests } from "@/components/PatientVisitTimeline";
-import { ConsultationOrderDialogs } from "@/components/ConsultationOrderDialogs";
-import { PatientReportsList, ReportViewButton } from "@/components/PatientReports";
+import { ConsultationAssessment } from "@/components/ConsultationAssessment";
+import { assembleEvidence, assessmentText, readAssessment, type AssessmentDraft } from "@/lib/consultationAssessment";
+import { PatientReportsList, ReportViewButton, reportFileLink } from "@/components/PatientReports";
 import { fetchDirectoryAppointments, directoryPatientIds, type DirectoryAppointment } from "@/lib/patientDirectory";
 import { pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
+import { prescriptionTestOptions } from "@/lib/prescriptionTests";
 import { 
   LayoutDashboard, 
   Users, 
@@ -138,7 +140,6 @@ const consultationSteps: { id: ConsultationStep; label: string }[] = [
   { id: 'plan', label: 'Plan' },
 ];
 
-const evidenceOptions = ['Examination', 'Ultrasound', 'Laboratory reports', 'Previous treatment response', 'Partner information'];
 
 import medicalDashboardBg from "../assets/images/medical-dashboard-bg.png";
 import pregnancyGrowthBg from "../assets/images/pregnancy-growth-bg.png";
@@ -406,19 +407,16 @@ export default function ClinicianPortal() {
   const [patientDirectoryDateFrom, setPatientDirectoryDateFrom] = useState('');
   const [patientDirectoryDateTo, setPatientDirectoryDateTo] = useState('');
   const [careMode, setCareMode] = useState("natural_conception"); 
-  const [showDocumentation, setShowDocumentation] = useState(false);
   const [showPastRecords, setShowPastRecords] = useState(true);
   const [selectedTrailVisitId, setSelectedTrailVisitId] = useState<number | string | null>(null);
   const [scheduleViewMode, setScheduleViewMode] = useState("appointments");
   const [calendarViewMode, setCalendarViewMode] = useState("month");
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
-  const [patientDetailTab, setPatientDetailTab] = useState<'summary' | 'consultation' | 'record' | 'details' | 'postop' | 'genome'>('summary');
-  const isPatientOverview = patientDetailTab === 'summary' || patientDetailTab === 'consultation' || patientDetailTab === 'record';
+  const [patientDetailTab, setPatientDetailTab] = useState<'summary' | 'consultation' | 'record' | 'medicine' | 'investigations' | 'postop' | 'genome'>('summary');
+  const isPatientOverview = patientDetailTab !== 'postop' && patientDetailTab !== 'genome';
   const [consultationStep, setConsultationStep] = useState<ConsultationStep>('reason');
   const [consultationEdits, setConsultationEdits] = useState<ConsultationSurveyEdits>({ answers: {} });
-  const [consultationEvidence, setConsultationEvidence] = useState<string[]>([]);
-  const [directionEvidence, setDirectionEvidence] = useState<Record<string, { supporting: string; missing: string }>>({});
-  const [consultationContextAdded, setConsultationContextAdded] = useState(false);
+  const [assessmentEdits, setAssessmentEdits] = useState<{ key: string; draft: AssessmentDraft } | null>(null);
   const [notePreviewOpen, setNotePreviewOpen] = useState(false);
   const [copilotExpanded, setCopilotExpanded] = useState(true);
   const [savedConsultationSnapshot, setSavedConsultationSnapshot] = useState<string[] | null>(null);
@@ -946,7 +944,7 @@ export default function ClinicianPortal() {
       if (!res.ok) throw new Error('Failed to fetch documents');
       return res.json();
     },
-    enabled: !!selectedPatient && patientDetailTab === 'record'
+    enabled: !!selectedPatient && (patientDetailTab === 'record' || patientDetailTab === 'consultation' || patientDetailTab === 'investigations')
   });
 
   const labDocumentsQuery = useQuery({
@@ -1088,7 +1086,7 @@ export default function ClinicianPortal() {
       const res = await fetch(`/api/medications/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, startDate: data.startDate || null }),
       });
       if (!res.ok) throw new Error('Failed to update medication');
       return res.json();
@@ -1110,6 +1108,7 @@ export default function ClinicianPortal() {
       if (selectedPatient) queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/medications`] });
       queryClient.invalidateQueries({ queryKey: ['/api/medicine-suggestions'] });
     },
+    onError: (error: Error) => toast({ title: "Could not delete medication", description: error.message, variant: "destructive" }),
   });
 
   const [editingHistory, setEditingHistory] = useState(false);
@@ -1132,16 +1131,14 @@ export default function ClinicianPortal() {
     },
   });
 
-  const [selectedInvestigations, setSelectedInvestigations] = useState<Set<string>>(new Set());
   const [customInvestigations, setCustomInvestigations] = useState<{ name: string; description: string }[]>([]);
   const [newInvestigationName, setNewInvestigationName] = useState('');
   const [showAddInvestigation, setShowAddInvestigation] = useState(false);
 
   const toggleInvestigation = (name: string) => {
-    setSelectedInvestigations(prev => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name); else next.add(name);
-      return next;
+    setConsultationTests((current) => {
+      const selected = current ?? visitTests(assessmentVisit);
+      return selected.includes(name) ? selected.filter((test) => test !== name) : [...selected, name];
     });
   };
 
@@ -1229,11 +1226,8 @@ export default function ClinicianPortal() {
   };
 
   const [showAddMedRow, setShowAddMedRow] = useState(false);
-  const [consultationOrderEditor, setConsultationOrderEditor] = useState<"tests" | "medicine" | null>(null);
   const savedEncounterId = React.useRef<number | null>(null);
   const [consultationTests, setConsultationTests] = useState<string[] | null>(null);
-  const [consultationCustomTest, setConsultationCustomTest] = useState("");
-  const orderedConsultationTests = consultationTests ?? visitTests(currentEncounterVisit);
   const [newMed, setNewMed] = useState({ name: '', dose: '', frequency: '', duration: '', instructions: '', route: '', startDate: '', status: 'Active', notes: '' });
 
   const addMedMutation = useMutation({
@@ -1241,7 +1235,7 @@ export default function ClinicianPortal() {
       const res = await fetch(`/api/patients/${selectedPatient!.id}/medications`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, startDate: data.startDate || null }),
       });
       if (!res.ok) throw new Error('Failed to add medication');
       return res.json();
@@ -1250,7 +1244,6 @@ export default function ClinicianPortal() {
       if (selectedPatient) queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/medications`] });
       queryClient.invalidateQueries({ queryKey: ['/api/medicine-suggestions'] });
       setShowAddMedRow(false);
-      setConsultationOrderEditor(null);
       setNewMed({ name: '', dose: '', frequency: '', duration: '', instructions: '', route: '', startDate: '', status: 'Active', notes: '' });
     },
     onError: (error: Error) => toast({ title: "Could not add medication", description: error.message, variant: "destructive" }),
@@ -1328,12 +1321,53 @@ export default function ClinicianPortal() {
   const guidedAnswers = effectiveSurvey.answers;
   const visibleDirections = [...new Set(selectedPaths.flatMap((path) => consultationDirectionsByPath[path] || []))];
   const consultationSurveyKey = `${selectedPatient?.id ?? ''}:${activeAppointment?.id || (selectedPatient as any)?.appointmentId || ''}`;
+  const assessmentVisit = currentEncounterVisit || visitHistory.find(
+    (visit: { id: number; appointmentId?: number }) => visit.id === savedEncounterId.current ||
+      (activeAppointment?.id && visit.appointmentId === activeAppointment.id),
+  );
+  const orderedConsultationTests = consultationTests ?? visitTests(assessmentVisit);
+  const selectedInvestigations = new Set(orderedConsultationTests);
+  const assessmentDraft = assessmentEdits?.key === consultationSurveyKey ? assessmentEdits.draft
+    : readAssessment(assessmentVisit?.assessmentDetails, soapAssessmentDraft || assessmentVisit?.assessment || assessmentVisit?.diagnosis || "");
+  const consultationAssessmentText = assessmentText(assessmentDraft);
+  const evidenceFacts = assembleEvidence({
+    answers: guidedAnswers, fromPatient: effectiveSurvey.fromPatient, questions: surveyQuestions(selectedDirections),
+    subjective: soapSubjectiveDraft || assessmentVisit?.subjective || "",
+    objective: soapObjectiveDraft || assessmentVisit?.objective || "",
+    appointmentDate: activeAppointment?.date || assessmentVisit?.date,
+    lmp: selectedPatient?.lmp, fertility: selectedPaths.includes('Fertility evaluation'),
+    visits: visitHistory.filter((visit: { id: number }) => visit.id !== assessmentVisit?.id),
+    labs: labResults, documents: patientDocumentsQuery.data || [],
+  }).map((fact) => {
+    if (!fact.id.startsWith('document:')) return fact;
+    const document = (patientDocumentsQuery.data || []).find((item: { id: number }) => `document:${item.id}` === fact.id);
+    const link = document && reportFileLink(selectedPatient.id, document);
+    return link ? { ...fact, href: link.url } : { ...fact, value: "Report record only; original file not available" };
+  });
+  const assessmentSources = [
+    { name: 'patient history', query: patientsQuery },
+    { name: 'appointment context', query: appointmentsQuery },
+    { name: 'laboratory results', query: labResultsQuery },
+    { name: 'reports', query: patientDocumentsQuery },
+    { name: 'previous visits', query: visitHistoryQuery },
+  ];
+  const assessmentMissing = [
+    patientsQuery.isSuccess && !evidenceFacts.some((fact) => fact.id.startsWith('history:')) ? 'No survey/history answers recorded for this appointment.' : '',
+    visitHistoryQuery.isSuccess && !(soapObjectiveDraft || assessmentVisit?.objective) ? 'Examination findings not recorded for this visit.' : '',
+    labResultsQuery.isSuccess && !labResults.length ? 'No laboratory results in the available record (not a normal result).' : '',
+    patientDocumentsQuery.isSuccess && !evidenceFacts.some((fact) => fact.id.startsWith('document:')) ? 'No uploaded lab/USG reports available.' : '',
+    visitTests(assessmentVisit).length ? `Tests ordered: ${visitTests(assessmentVisit).join(', ')}. Completion is not linked here; check reports for results.` : '',
+  ].filter(Boolean);
   useEffect(() => {
     setConsultationEdits({ answers: {} });
-    setConsultationOrderEditor(null);
     setConsultationTests(null);
     savedEncounterId.current = null;
-    setConsultationCustomTest("");
+    setShowAddMedRow(false);
+    setEditingMedId(null);
+    setEditMedData({});
+    setCustomInvestigations([]);
+    setNewInvestigationName('');
+    setShowAddInvestigation(false);
     setNewMed({ name: '', dose: '', frequency: '', duration: '', instructions: '', route: '', startDate: '', status: 'Active', notes: '' });
   }, [consultationSurveyKey]);
 
@@ -1554,9 +1588,7 @@ export default function ClinicianPortal() {
     setPatientDetailTab('summary');
     setConsultationStep('reason');
     setConsultationEdits({ answers: {} });
-    setConsultationEvidence([]);
-    setDirectionEvidence({});
-    setConsultationContextAdded(false);
+    setAssessmentEdits(null);
     setSavedConsultationSnapshot(null);
     setSoapSavedMsg(null);
     setNotePreviewOpen(false);
@@ -1634,6 +1666,7 @@ export default function ClinicianPortal() {
               setSoapSubjectiveDraft(data.soap.subjective || '');
               setSoapObjectiveDraft(data.soap.objective || '');
               setSoapAssessmentDraft(data.soap.assessment || '');
+              setAssessmentEdits({ key: consultationSurveyKey, draft: { ...assessmentDraft, impression: data.soap.assessment || '' } });
               setSoapPlanDraft(data.soap.plan || '');
             }
           } finally {
@@ -1666,30 +1699,8 @@ export default function ClinicianPortal() {
     setTreatmentResponseDraft('');
   };
 
-  const addReviewedContextToPlan = () => {
-    const contextLines = [
-      selectedDirections.length ? `Topics explored: ${selectedDirections.join(', ')}` : '',
-      consultationEvidence.length ? `Evidence reviewed: ${consultationEvidence.join(', ')}` : '',
-      ...selectedDirections.flatMap((direction) => {
-        const evidence = directionEvidence[direction];
-        return [
-          evidence?.supporting ? `${direction} — supporting evidence: ${evidence.supporting}` : '',
-          evidence?.missing ? `${direction} — missing or conflicting evidence: ${evidence.missing}` : '',
-        ];
-      }),
-    ].filter(Boolean);
-    if (contextLines.length === 0) return;
-    setSoapPlanDraft((current) => {
-      const marker = 'Consultation context:';
-      const markerIndex = current.indexOf(marker);
-      const existingPlan = markerIndex >= 0 ? current.slice(0, markerIndex).trim() : current.trim();
-      return [existingPlan, `${marker}\n${contextLines.map((line) => `- ${line}`).join('\n')}`].filter(Boolean).join('\n\n');
-    });
-    setConsultationContextAdded(true);
-  };
-
   const saveConsultationNote = async () => {
-    const snapshot = [soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft, JSON.stringify(orderedConsultationTests)];
+    const snapshot = [soapSubjectiveDraft, soapObjectiveDraft, consultationAssessmentText, soapPlanDraft, JSON.stringify(orderedConsultationTests), JSON.stringify(assessmentDraft)];
     setSoapSaving(true);
     setSoapSavedMsg(null);
     try {
@@ -1703,7 +1714,9 @@ export default function ClinicianPortal() {
           body: JSON.stringify({
             ...(soapSubjectiveDraft || savedConsultationSnapshot?.[0] ? { subjective: soapSubjectiveDraft } : {}),
             ...(soapObjectiveDraft || savedConsultationSnapshot?.[1] ? { objective: soapObjectiveDraft } : {}),
-            ...(soapAssessmentDraft || savedConsultationSnapshot?.[2] ? { assessment: soapAssessmentDraft } : {}),
+            ...(consultationAssessmentText || savedConsultationSnapshot?.[2] || assessmentEdits?.key === consultationSurveyKey ? {
+              assessment: consultationAssessmentText, assessmentDetails: assessmentDraft,
+            } : {}),
             ...(soapPlanDraft || savedConsultationSnapshot?.[3] ? { planNotes: soapPlanDraft } : {}),
             ...(consultationTests !== null ? { labsOrdered: consultationTests } : {}),
           }),
@@ -1718,7 +1731,8 @@ export default function ClinicianPortal() {
             ...((activeAppointment?.id || selectedPatient.appointmentId) ? { appointmentId: activeAppointment?.id || selectedPatient.appointmentId } : {}),
             subjective: soapSubjectiveDraft,
             objective: soapObjectiveDraft,
-              assessment: soapAssessmentDraft,
+            assessment: consultationAssessmentText,
+            assessmentDetails: assessmentDraft,
             planNotes: soapPlanDraft,
             labsOrdered: orderedConsultationTests,
           }),
@@ -1742,21 +1756,521 @@ export default function ClinicianPortal() {
     }
   };
 
-  const consultationHasContent = consultationTests !== null || [soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft].some((value) => value.trim());
+  const consultationHasContent = consultationTests !== null || assessmentEdits?.key === consultationSurveyKey || [soapSubjectiveDraft, soapObjectiveDraft, consultationAssessmentText, soapPlanDraft].some((value) => value.trim());
   const consultationCanSave = consultationHasContent || Boolean(savedConsultationSnapshot?.some((value) => value.trim()));
-  const consultationNoteSaved = JSON.stringify(savedConsultationSnapshot) === JSON.stringify([soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft, JSON.stringify(orderedConsultationTests)]);
+  const consultationNoteSaved = JSON.stringify(savedConsultationSnapshot) === JSON.stringify([soapSubjectiveDraft, soapObjectiveDraft, consultationAssessmentText, soapPlanDraft, JSON.stringify(orderedConsultationTests), JSON.stringify(assessmentDraft)]) ||
+    (!savedConsultationSnapshot && assessmentEdits?.key !== consultationSurveyKey && Boolean(assessmentVisit) &&
+      consultationTests === null && ![soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft].some((value) => value.trim()));
   const consultationChecklist = [
     { label: 'Reason', done: Boolean(soapSubjectiveDraft.trim()) },
     { label: 'History', done: selectedDirections.length > 0 },
     { label: 'Examination', done: Boolean(soapObjectiveDraft.trim()) },
-    { label: 'Assessment', done: Boolean(soapAssessmentDraft.trim()) },
+    { label: 'Assessment', done: Boolean(assessmentDraft.impression.trim()) },
     { label: 'Plan', done: Boolean(soapPlanDraft.trim()) },
   ];
-  const openRecordSection = (id: string) => {
-    setPatientDetailTab('details');
-    setShowDocumentation(true);
-    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+  const openMedicine = () => { setPatientDetailTab('medicine'); setShowAddMedRow(true); };
+  const addCustomInvestigation = () => {
+    const name = newInvestigationName.trim();
+    if (!name) return;
+    setCustomInvestigations((current) => current.some((test) => test.name.toLowerCase() === name.toLowerCase())
+      ? current : [...current, { name, description: 'Custom investigation' }]);
+    setConsultationTests((current) => {
+      const selected = current ?? visitTests(assessmentVisit);
+      return selected.some((test) => test.toLowerCase() === name.toLowerCase()) ? selected : [...selected, name];
+    });
+    setNewInvestigationName('');
   };
+
+  const renderMedicineTab = () => (
+    <div id="patient-medications" className="scroll-mt-3 rounded-xl border bg-card p-3">
+    {/* Dynamic medications table */}
+    {(medications.length > 0 || showAddMedRow) && (
+      <div className="mb-3">
+         <div className="flex items-center justify-between mb-2">
+           <span className="text-[10px] text-saivie-plum uppercase font-bold">Active Medications</span>
+           <Badge className="text-[9px] bg-saivie-sage text-saivie-teal border-saivie-border">{medications.filter((m: any) => m.status === 'Active' || m.status === 'active').length} active</Badge>
+         </div>
+         <div className={`border border-saivie-border rounded-md overflow-x-auto ${showAddMedRow || editingMedId !== null ? 'min-h-[420px]' : ''}`}>
+            <table className="w-full min-w-[900px] text-xs text-left">
+               <thead className="bg-saivie-surface-muted text-saivie-plum border-b border-saivie-border">
+                  <tr>
+                     <th className="px-3 py-1.5 font-medium">Drug</th>
+                     <th className="px-3 py-1.5 font-medium">Dose</th>
+                     <th className="px-3 py-1.5 font-medium">Frequency</th>
+                     <th className="px-3 py-1.5 font-medium">Date</th>
+                     <th className="px-3 py-1.5 font-medium">Status</th>
+                     <th className="px-3 py-1.5 font-medium">Notes</th>
+                     <th className="px-2 py-1.5 font-medium w-16"></th>
+                  </tr>
+               </thead>
+               <tbody className="divide-y divide-slate-100">
+                  {medications.map((med: any) => (
+                    <tr key={med.id}>
+                      {editingMedId === med.id ? (
+                        <>
+                          <td className="px-1 py-1 relative">
+                            <MedicineAutocomplete value={editMedData.name || ''} onChange={(name) => setEditMedData({...editMedData, name})}
+                              onSelect={(medicine) => setEditMedData({...editMedData, name: medicine.name, dose: medicine.dose, frequency: medicine.frequency, duration: medicine.duration, instructions: medicine.instructions, route: medicine.route})}
+                              className="h-7 text-xs" />
+                          </td>
+                          <td className="px-1 py-1"><MedicineDoseInput value={editMedData.dose || ''} onChange={dose => setEditMedData({...editMedData, dose})} /></td>
+                          <td className="px-1 py-1"><MedicineFrequencyInput value={editMedData.frequency || ''} onChange={frequency => setEditMedData({...editMedData, frequency})} label="Edit medicine frequency" /></td>
+                          <td className="px-1 py-1"><Input type="date" value={editMedData.startDate || ''} onChange={e => setEditMedData({...editMedData, startDate: e.target.value})} className="h-7 text-xs" /></td>
+                          <td className="px-1 py-1">
+                            <Select value={editMedData.status || 'Active'} onValueChange={v => setEditMedData({...editMedData, status: v})}>
+                              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Active">Active</SelectItem>
+                                <SelectItem value="Completed">Completed</SelectItem>
+                                <SelectItem value="Discontinued">Discontinued</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="px-1 py-1 space-y-1">
+                            <Input aria-label="Duration" placeholder="Duration" value={editMedData.duration || ''} onChange={e => setEditMedData({...editMedData, duration: e.target.value})} className="h-7 text-xs" />
+                            <Input aria-label="Medicine instructions" placeholder="Instructions (shared for reuse)" value={editMedData.instructions || ''} onChange={e => setEditMedData({...editMedData, instructions: e.target.value})} className="h-7 text-xs" />
+                            <Input aria-label="Route" placeholder="Route" value={editMedData.route || ''} onChange={e => setEditMedData({...editMedData, route: e.target.value})} className="h-7 text-xs" />
+                            <Input aria-label="Patient-specific notes" placeholder="Patient-specific notes (not shared)" value={editMedData.notes || ''} onChange={e => setEditMedData({...editMedData, notes: e.target.value})} className="h-7 text-xs" />
+                          </td>
+                          <td className="px-1 py-1">
+                            <div className="flex gap-1">
+                              <Button aria-label={`Save ${med.name}`} variant="ghost" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" disabled={!editMedData.name?.trim() || updateMedMutation.isPending} onClick={() => updateMedMutation.mutate({ id: med.id, data: editMedData })}>
+                                <Check className="w-3 h-3" />
+                              </Button>
+                              <Button aria-label="Cancel medicine edit" variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-saivie-plum" onClick={() => setEditingMedId(null)}>
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-3 py-2 font-medium text-saivie-plum">{med.name}</td>
+                          <td className="px-3 py-2 text-saivie-plum">{med.dose || '—'}</td>
+                          <td className="px-3 py-2 text-saivie-plum">{med.frequency || '—'}</td>
+                          <td className="px-3 py-2 text-saivie-plum">{med.startDate ? new Date(med.startDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                          <td className="px-3 py-2">
+                            <Badge variant="outline" className={`text-[10px] ${med.status === 'active' || med.status === 'Active' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-saivie-plum bg-saivie-surface-muted border-saivie-border'}`}>
+                              {med.status || 'Active'}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 text-saivie-plum">{[med.duration, med.instructions, med.route, med.notes].filter(Boolean).join(' · ') || '—'}</td>
+                          <td className="px-1 py-2">
+                            <div className="flex gap-1">
+                              <Button aria-label={`Edit ${med.name}`} variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-blue-600" onClick={() => { setEditingMedId(med.id); setEditMedData({ name: med.name, dose: med.dose || '', frequency: med.frequency || '', duration: med.duration || '', instructions: med.instructions || '', route: med.route || '', startDate: med.startDate || '', status: med.status || 'Active', notes: med.notes || '' }); }} data-testid={`button-edit-med-${med.id}`}>
+                                <Pencil className="w-3 h-3" />
+                              </Button>
+                              <Button aria-label={`Delete ${med.name}`} disabled={deleteMedMutation.isPending} variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-rose-600" onClick={() => deleteMedMutation.mutate(med.id)} data-testid={`button-delete-med-${med.id}`}>
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                  {showAddMedRow && (
+                    <tr className="bg-blue-50/30">
+                      <td className="px-1 py-1 relative">
+                        <MedicineAutocomplete value={newMed.name} onChange={(name) => setNewMed({...newMed, name})}
+                          onSelect={(medicine) => setNewMed({...newMed, name: medicine.name, dose: medicine.dose, frequency: medicine.frequency, duration: medicine.duration, instructions: medicine.instructions, route: medicine.route})}
+                          className="h-7 text-xs" testId="input-new-med-name" />
+                      </td>
+                      <td className="px-1 py-1"><MedicineDoseInput value={newMed.dose} onChange={dose => setNewMed({...newMed, dose})} /></td>
+                      <td className="px-1 py-1"><MedicineFrequencyInput value={newMed.frequency} onChange={frequency => setNewMed({...newMed, frequency})} label="New medicine frequency" testId="input-new-med-frequency" /></td>
+                      <td className="px-1 py-1"><Input type="date" value={newMed.startDate} onChange={e => setNewMed({...newMed, startDate: e.target.value})} className="h-7 text-xs" /></td>
+                      <td className="px-1 py-1">
+                        <Select value={newMed.status} onValueChange={v => setNewMed({...newMed, status: v})}>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Active">Active</SelectItem>
+                            <SelectItem value="Completed">Completed</SelectItem>
+                            <SelectItem value="Discontinued">Discontinued</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="px-1 py-1 space-y-1">
+                        <Input aria-label="Duration" placeholder="Duration" value={newMed.duration} onChange={e => setNewMed({...newMed, duration: e.target.value})} className="h-7 text-xs" />
+                        <Input aria-label="Medicine instructions" placeholder="Instructions (shared for reuse)" value={newMed.instructions} onChange={e => setNewMed({...newMed, instructions: e.target.value})} className="h-7 text-xs" />
+                        <Input aria-label="Route" placeholder="Route" value={newMed.route} onChange={e => setNewMed({...newMed, route: e.target.value})} className="h-7 text-xs" />
+                        <Input aria-label="Patient-specific notes" placeholder="Patient-specific notes (not shared)" value={newMed.notes} onChange={e => setNewMed({...newMed, notes: e.target.value})} className="h-7 text-xs" />
+                      </td>
+                      <td className="px-1 py-1">
+                        <div className="flex gap-1">
+                          <Button aria-label="Save medication" variant="ghost" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" disabled={!newMed.name.trim() || addMedMutation.isPending} onClick={() => addMedMutation.mutate(newMed)} data-testid="button-save-new-med">
+                            <Check className="w-3 h-3" />
+                          </Button>
+                          <Button aria-label="Cancel new medication" variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-saivie-plum" onClick={() => { setShowAddMedRow(false); setNewMed({ name: '', dose: '', frequency: '', duration: '', instructions: '', route: '', startDate: '', status: 'Active', notes: '' }); }}>
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+               </tbody>
+            </table>
+         </div>
+         {!showAddMedRow && (
+           <Button variant="ghost" size="sm" className="mt-1.5 h-7 text-xs text-blue-600 hover:text-blue-700 gap-1" onClick={() => setShowAddMedRow(true)} data-testid="button-add-med-manual">
+             <Plus className="w-3 h-3" /> Add Medication
+           </Button>
+         )}
+      </div>
+    )}
+
+    {!medications.length && !showAddMedRow && (
+      <div className="mb-3">
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-dashed border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted w-full" onClick={() => setShowAddMedRow(true)} data-testid="button-add-first-med">
+          <Plus className="w-3.5 h-3.5" /> Add Medication
+        </Button>
+      </div>
+    )}
+    </div>
+  );
+
+  const renderInvestigationsTab = () => {
+   const pregnancyWeek = pregnancyContext?.weeks ?? 0;
+
+   const investigationsByWeek: Record<string, { tests: { name: string; description: string }[]; weekRange: string }> = {
+     'booking': {
+       weekRange: '6-10 weeks (Booking Visit)',
+       tests: [
+         { name: 'CBC (Complete Blood Count)', description: 'Hemoglobin, WBC, platelets' },
+         { name: 'Blood Group & Rh Typing', description: 'ABO and Rh factor' },
+         { name: 'Random Blood Sugar (RBS)', description: 'Screen for diabetes' },
+         { name: 'TSH (Thyroid Stimulating Hormone)', description: 'Thyroid function' },
+         { name: 'Urine Routine & Microscopy', description: 'UTI screening, proteinuria' },
+         { name: 'HIV, HBsAg, VDRL', description: 'Infectious disease screening' },
+         { name: 'Rubella IgG', description: 'Immunity check' },
+         { name: 'Blood Pressure', description: 'Baseline BP recording' },
+         { name: 'USG - Dating Scan', description: 'Confirm gestational age, viability, location' },
+       ]
+     },
+     'first_trimester': {
+       weekRange: '11-14 weeks (First Trimester Screening)',
+       tests: [
+         { name: 'NT Scan (Nuchal Translucency)', description: 'Down syndrome screening with nuchal translucency measurement & CRL' },
+         { name: 'Dual Marker (PAPP-A + Free β-hCG)', description: 'Combined first trimester screening' },
+         { name: 'Urine Culture', description: 'Asymptomatic bacteriuria' },
+         { name: 'TSH (repeat if abnormal)', description: 'Thyroid recheck' },
+       ]
+     },
+     'second_trimester_early': {
+       weekRange: '16-20 weeks',
+       tests: [
+         { name: 'Quadruple Marker', description: 'AFP, hCG, uE3, Inhibin A (if dual marker not done)' },
+         { name: 'USG - Anomaly Scan (TIFFA)', description: 'Detailed anatomy scan at 18-20 weeks' },
+         { name: 'CBC (repeat)', description: 'Check for anemia' },
+       ]
+     },
+     'second_trimester_mid': {
+       weekRange: '24-28 weeks',
+       tests: [
+         { name: 'OGTT (75g Glucose Tolerance Test)', description: 'Gestational diabetes screening' },
+         { name: 'CBC (repeat)', description: 'Hemoglobin check' },
+         { name: 'Anti-D Injection', description: 'For Rh-negative mothers at 28 weeks' },
+         { name: 'USG - Fetal Echocardiography', description: 'Detailed cardiac assessment if indicated' },
+       ]
+     },
+     'third_trimester_early': {
+       weekRange: '28-32 weeks',
+       tests: [
+         { name: 'USG - Growth Scan', description: 'Fetal growth assessment, EFW, AFI' },
+         { name: 'CBC (repeat)', description: 'Anemia screening' },
+         { name: 'TSH (repeat)', description: 'Thyroid function check' },
+         { name: 'Urine Routine', description: 'Proteinuria screening for preeclampsia' },
+         { name: 'USG - Doppler Study', description: 'Umbilical artery, MCA Doppler if IUGR suspected' },
+       ]
+     },
+     'third_trimester_late': {
+       weekRange: '34-36 weeks',
+       tests: [
+         { name: 'USG - Growth Scan (repeat)', description: 'Fetal weight estimation, AFI, placental grading' },
+         { name: 'GBS Screening (Vaginal Swab)', description: 'Group B Streptococcus at 35-37 weeks' },
+         { name: 'CBC + Coagulation Profile', description: 'Pre-delivery workup' },
+         { name: 'LFT, KFT', description: 'Liver and kidney function' },
+         { name: 'NST (Non-Stress Test)', description: 'Fetal wellbeing' },
+         { name: 'USG - Presentation & Lie', description: 'Fetal presentation, cord position, placental location' },
+       ]
+     },
+     'term': {
+       weekRange: '37-40 weeks (Term)',
+       tests: [
+         { name: 'NST (weekly)', description: 'Fetal heart rate monitoring' },
+         { name: 'BPP (Biophysical Profile)', description: 'If indicated' },
+         { name: 'USG - AFI (Amniotic Fluid Index)', description: 'Fluid assessment' },
+         { name: 'Bishop Score Assessment', description: 'Cervical readiness evaluation' },
+         { name: 'USG - EFW & Doppler', description: 'Estimated fetal weight and blood flow assessment' },
+       ]
+     },
+   };
+
+   const fertilityInvestigations = [
+     { name: 'Day 2/3 Hormonal Panel', description: 'FSH, LH, E2, Prolactin, TSH, AMH' },
+     { name: 'USG - Pelvic Ultrasound', description: 'Antral follicle count, uterine assessment' },
+     { name: 'HSG (Hysterosalpingography)', description: 'Tubal patency test' },
+     { name: 'Semen Analysis', description: 'Partner sperm evaluation' },
+     { name: 'Day 21 Progesterone', description: 'Confirm ovulation' },
+     { name: 'Karyotype', description: 'Chromosomal analysis if indicated' },
+     { name: 'Vitamin D, B12, Ferritin', description: 'Nutritional status' },
+     { name: 'Glucose Tolerance Test', description: 'PCOS/metabolic screening' },
+     { name: 'USG - Follicular Monitoring', description: 'Serial follicle tracking for ovulation' },
+     { name: 'USG - Saline Infusion Sonography', description: 'Uterine cavity evaluation' },
+   ];
+
+   const cycleInvestigations = [
+     { name: 'Hormonal Panel', description: 'FSH, LH, E2, Progesterone, Testosterone, DHEAS' },
+     { name: 'TSH, Free T3, Free T4', description: 'Thyroid function' },
+     { name: 'USG - Pelvic Ultrasound', description: 'Ovarian morphology, endometrial thickness' },
+     { name: 'Prolactin', description: 'Rule out hyperprolactinemia' },
+     { name: 'Fasting Insulin + Glucose', description: 'Insulin resistance check' },
+     { name: 'Lipid Profile', description: 'Metabolic health' },
+     { name: 'Vitamin D, B12', description: 'Nutritional assessment' },
+     { name: 'CBC', description: 'Anemia screening' },
+     { name: 'USG - Transvaginal Scan', description: 'Detailed ovarian & uterine assessment' },
+   ];
+
+   let currentTests: { name: string; description: string }[] = [];
+   let sectionTitle = '';
+
+   if (careMode === 'pregnancy' && pregnancyWeek > 0) {
+     if (pregnancyWeek <= 10) { currentTests = investigationsByWeek.booking.tests; sectionTitle = investigationsByWeek.booking.weekRange; }
+     else if (pregnancyWeek <= 14) { currentTests = investigationsByWeek.first_trimester.tests; sectionTitle = investigationsByWeek.first_trimester.weekRange; }
+     else if (pregnancyWeek <= 20) { currentTests = investigationsByWeek.second_trimester_early.tests; sectionTitle = investigationsByWeek.second_trimester_early.weekRange; }
+     else if (pregnancyWeek <= 28) { currentTests = investigationsByWeek.second_trimester_mid.tests; sectionTitle = investigationsByWeek.second_trimester_mid.weekRange; }
+     else if (pregnancyWeek <= 32) { currentTests = investigationsByWeek.third_trimester_early.tests; sectionTitle = investigationsByWeek.third_trimester_early.weekRange; }
+     else if (pregnancyWeek <= 36) { currentTests = investigationsByWeek.third_trimester_late.tests; sectionTitle = investigationsByWeek.third_trimester_late.weekRange; }
+     else { currentTests = investigationsByWeek.term.tests; sectionTitle = investigationsByWeek.term.weekRange; }
+   } else if (careMode === 'natural_conception' || careMode === 'iui' || careMode === 'ivf' || /fertility/i.test(selectedPatient.type || '')) {
+     currentTests = fertilityInvestigations;
+     sectionTitle = 'Fertility Workup';
+   } else {
+     currentTests = cycleInvestigations;
+     sectionTitle = 'Cycle & Hormonal Workup';
+   }
+   if (/mtp|irregular period/i.test(selectedPatient.type || '') || (showPregnancyContext && !pregnancyContext)) {
+     const suggestions = prescriptionTestOptions(showPregnancyContext ? 'Pregnant' : selectedPatient.type || '', pregnancyContext?.weeks ?? null);
+     currentTests = suggestions.tests.map((test) => ({ name: test.name, description: '' }));
+     sectionTitle = suggestions.context;
+   }
+
+   const testMap = new Map([...currentTests, ...customInvestigations].map((test) => [test.name, test]));
+   orderedConsultationTests.forEach((name) => {
+     if (!testMap.has(name)) testMap.set(name, { name, description: 'Selected for this visit' });
+   });
+   const allTests = [...testMap.values()];
+   const completedMap = getCompletedInvestigations();
+
+   const completedTests = allTests.filter(t => isInvestigationCompleted(t.name, completedMap));
+   const pendingTests = allTests.filter(t => !isInvestigationCompleted(t.name, completedMap));
+
+   const weekOrder = ['booking', 'first_trimester', 'second_trimester_early', 'second_trimester_mid', 'third_trimester_early', 'third_trimester_late', 'term'];
+
+   const getCurrentWeekKey = () => {
+     if (pregnancyWeek <= 10) return 'booking';
+     if (pregnancyWeek <= 14) return 'first_trimester';
+     if (pregnancyWeek <= 20) return 'second_trimester_early';
+     if (pregnancyWeek <= 28) return 'second_trimester_mid';
+     if (pregnancyWeek <= 32) return 'third_trimester_early';
+     if (pregnancyWeek <= 36) return 'third_trimester_late';
+     return 'term';
+   };
+   const currentWeekKey = getCurrentWeekKey();
+
+   const pastWeekKeys = careMode === 'pregnancy' && pregnancyWeek > 0
+     ? weekOrder.filter(k => weekOrder.indexOf(k) < weekOrder.indexOf(currentWeekKey))
+     : [];
+
+   return (
+     <div id="patient-investigations" className="scroll-mt-3 p-4 bg-saivie-surface-muted/30" data-testid="card-investigations">
+       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+         <div className="flex flex-wrap items-center gap-2">
+           <Badge className="bg-saivie-sage text-saivie-plum border-saivie-border text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">I</Badge>
+           <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Investigations</span>
+           {careMode === 'pregnancy' && pregnancyWeek > 0 && (
+             <Badge className="text-[10px] bg-saivie-sage text-saivie-teal border-saivie-border">Week {pregnancyWeek}</Badge>
+           )}
+           {labDocuments.length > 0 && (
+             <Badge className="text-[10px] bg-blue-100 text-blue-700 border-blue-200">{labDocuments.length} Report{labDocuments.length !== 1 ? 's' : ''}</Badge>
+           )}
+         </div>
+         <div className="flex items-center gap-1.5">
+           {labDocuments.length > 0 && (
+             <Button
+               variant="outline"
+               size="sm"
+               className="h-7 text-[11px] gap-1 border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted"
+               disabled={extractLabMutation.isPending}
+               onClick={() => selectedPatient && extractLabMutation.mutate(selectedPatient.id)}
+               data-testid="button-read-reports-investigation"
+             >
+               {extractLabMutation.isPending ? (
+                 <><Loader2 className="w-3 h-3 animate-spin" /> Reading...</>
+               ) : (
+                 <><Sparkle className="w-3 h-3" /> Read Reports</>
+               )}
+             </Button>
+           )}
+           <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setShowAddInvestigation(!showAddInvestigation)} data-testid="button-add-investigation">
+             <Plus className="w-3 h-3" /> Add
+           </Button>
+         </div>
+       </div>
+
+       {extractionStatus && (
+         <div className={`mb-3 px-3 py-2 rounded-md text-xs flex items-center gap-2 ${extractionStatus.startsWith('Error') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+           {extractionStatus.startsWith('Error') ? <AlertCircle className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
+           {extractionStatus}
+         </div>
+       )}
+
+       {extractLabMutation.isPending && (
+         <div className="mb-3 px-3 py-2 rounded-md text-xs bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-2">
+           <Loader2 className="w-3.5 h-3.5 animate-spin" />
+           Reading lab reports and matching to investigations...
+         </div>
+       )}
+
+       {showAddInvestigation && (
+         <div className="flex gap-2 mb-3 bg-saivie-ivory border border-saivie-border rounded-md p-2">
+           <Input aria-label="Custom investigation" placeholder="Investigation name..." value={newInvestigationName} onChange={e => setNewInvestigationName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomInvestigation(); } }} className="h-7 text-xs flex-1" data-testid="input-new-investigation" />
+           <Button size="sm" className="h-7 text-xs bg-saivie-teal hover:bg-saivie-teal" disabled={!newInvestigationName.trim()} onClick={addCustomInvestigation} data-testid="button-save-investigation">Add</Button>
+         </div>
+       )}
+
+       <div className="mb-3 p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border">
+         <div className="flex flex-wrap items-center gap-2 mb-2">
+           <span className="text-[10px] text-saivie-teal uppercase font-bold tracking-wider">Current: {sectionTitle}</span>
+           <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">{pendingTests.length} No matching record</Badge>
+           <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border-emerald-200">{completedTests.length} On file</Badge>
+         </div>
+         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+           {pendingTests.map((test, i) => {
+             const isCustom = customInvestigations.some(c => c.name === test.name);
+             const isUsg = test.name.startsWith('USG');
+             return (
+               <label key={`pending-${i}`} className={`flex items-start gap-2 py-1 px-2 rounded cursor-pointer group transition-colors ${selectedInvestigations.has(test.name) ? 'bg-saivie-ivory border border-saivie-border' : 'hover:bg-saivie-ivory/60 border border-transparent'}`} data-testid={`checkbox-investigation-${i}`}>
+                 <Checkbox checked={selectedInvestigations.has(test.name)} onCheckedChange={() => toggleInvestigation(test.name)} className="mt-0.5 border-saivie-border data-[state=checked]:bg-saivie-teal data-[state=checked]:border-saivie-teal" />
+                 <div className="flex-1 min-w-0">
+                   <span className={`text-xs font-medium block ${selectedInvestigations.has(test.name) ? 'text-saivie-plum' : 'text-saivie-plum'}`}>
+                     {isUsg && <span className="inline-block bg-saivie-sage text-saivie-teal text-[9px] font-bold px-1 rounded mr-1">USG</span>}
+                     {test.name.replace(/^USG - /, '')}
+                   </span>
+                   <span className="text-[10px] text-saivie-plum block">{test.description}</span>
+                 </div>
+                 {isCustom && (
+                   <button aria-label={`Remove ${test.name}`} onClick={(e) => {
+                     e.preventDefault();
+                     setCustomInvestigations(customInvestigations.filter(c => c.name !== test.name));
+                     setConsultationTests(orderedConsultationTests.filter((name) => name !== test.name));
+                   }} className="text-rose-400 hover:text-rose-600" data-testid={`button-remove-custom-investigation-${i}`}><X className="w-3 h-3" /></button>
+                 )}
+               </label>
+             );
+           })}
+           {completedTests.map((test, i) => {
+             const match = isInvestigationCompleted(test.name, completedMap);
+             return (
+               <label key={`done-${i}`} className="flex items-start gap-2 py-1 px-2 rounded bg-emerald-50/50 border border-emerald-100" data-testid={`completed-investigation-${i}`}>
+                 <Checkbox checked={selectedInvestigations.has(test.name)} onCheckedChange={() => toggleInvestigation(test.name)} className="mt-0.5" />
+                 <div className="flex-1 min-w-0">
+                   <span className="text-xs font-medium text-emerald-800 block">{test.name}</span>
+                   <span className="text-[10px] text-emerald-500 block">
+                     {match?.source}{match?.date ? ` • ${new Date(match.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : ''}
+                   </span>
+                 </div>
+               </label>
+             );
+           })}
+         </div>
+       </div>
+
+       {selectedInvestigations.size > 0 && (
+         <div className="mb-3 p-2 border border-saivie-border rounded-md bg-saivie-ivory flex items-center justify-between">
+           <div className="flex flex-wrap gap-1.5">
+             {Array.from(selectedInvestigations).map(name => (
+               <Badge key={name} className="text-[10px] bg-saivie-sage text-saivie-teal border-saivie-border gap-1">
+                 {name}
+                 <button onClick={() => toggleInvestigation(name)} className="ml-0.5 hover:text-saivie-plum" data-testid={`button-remove-investigation-${name}`}><X className="w-2.5 h-2.5" /></button>
+               </Badge>
+             ))}
+           </div>
+           <span className="text-[10px] text-saivie-teal font-medium whitespace-nowrap ml-2">{selectedInvestigations.size} selected</span>
+         </div>
+       )}
+
+       {careMode === 'pregnancy' && pregnancyWeek > 0 && pastWeekKeys.length > 0 && (
+         <div className="border-t border-saivie-border pt-3">
+           <span className="text-[10px] text-saivie-plum uppercase font-bold block mb-2 tracking-wider">Previous Weeks Investigation History</span>
+           <div className="space-y-2">
+             {pastWeekKeys.map(weekKey => {
+               const group = investigationsByWeek[weekKey];
+               const groupCompleted = group.tests.filter(t => isInvestigationCompleted(t.name, completedMap));
+               const groupPending = group.tests.filter(t => !isInvestigationCompleted(t.name, completedMap));
+               const allDone = groupPending.length === 0;
+               return (
+                 <div key={weekKey} className={`rounded-lg border p-2.5 ${allDone ? 'bg-emerald-50/40 border-emerald-200' : 'bg-amber-50/30 border-amber-200'}`} data-testid={`past-week-${weekKey}`}>
+                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                     <div className="flex items-center gap-2">
+                       {allDone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-500" />}
+                       <span className="text-[11px] font-semibold text-saivie-plum">{group.weekRange}</span>
+                     </div>
+                     <div className="flex items-center gap-1.5">
+                       <Badge className={`text-[9px] ${allDone ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-saivie-sage text-saivie-plum border-saivie-border'}`}>
+                         {groupCompleted.length}/{group.tests.length} On file
+                       </Badge>
+                       {groupPending.length > 0 && (
+                         <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">
+                           {groupPending.length} No matching record
+                         </Badge>
+                       )}
+                     </div>
+                   </div>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
+                     {group.tests.map((test, ti) => {
+                       const match = isInvestigationCompleted(test.name, completedMap);
+                       const done = !!match;
+                       const isUsg = test.name.startsWith('USG');
+                       return (
+                         <div key={ti} className={`flex items-center gap-1.5 py-0.5 px-1.5 rounded text-[11px] ${done ? 'text-emerald-700' : 'text-amber-700'}`} data-testid={`past-investigation-${weekKey}-${ti}`}>
+                           {done ? <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" /> : <Clock className="w-3 h-3 text-amber-400 flex-shrink-0" />}
+                           <span className="font-medium">
+                             {isUsg && <span className="inline-block bg-saivie-sage text-saivie-teal text-[8px] font-bold px-0.5 rounded mr-0.5">USG</span>}
+                             {test.name.replace(/^USG - /, '')}
+                           </span>
+                           {done && match?.date && (
+                             <span className="text-[9px] text-emerald-500 flex-shrink-0">{new Date(match.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
+                           )}
+                         </div>
+                       );
+                     })}
+                   </div>
+                 </div>
+               );
+             })}
+           </div>
+         </div>
+       )}
+
+       {careMode === 'pregnancy' && pregnancyWeek > 0 && (() => {
+         const futureKeys = weekOrder.filter(k => weekOrder.indexOf(k) > weekOrder.indexOf(currentWeekKey));
+         if (futureKeys.length === 0) return null;
+         return (
+           <div className="border-t border-saivie-border pt-3 mt-3">
+             <span className="text-[10px] text-saivie-plum uppercase font-bold block mb-2 tracking-wider">Upcoming Weeks</span>
+             <div className="flex flex-wrap gap-1.5">
+               {futureKeys.map(key => (
+                 <Badge key={key} variant="outline" className="text-[10px] text-saivie-plum border-saivie-border cursor-default">
+                   {investigationsByWeek[key].weekRange.split('(')[0].trim()} ({investigationsByWeek[key].tests.length} tests)
+                 </Badge>
+               ))}
+             </div>
+           </div>
+         );
+       })()}
+     </div>
+   );
+ };
 
   const chronologicalQueue = [...queuePatients].sort((a: any, b: any) =>
     `${a.appointmentDate || ''} ${a.appointmentTime || ''}`.localeCompare(`${b.appointmentDate || ''} ${b.appointmentTime || ''}`)
@@ -4541,7 +5055,7 @@ export default function ClinicianPortal() {
                   <div className="flex gap-2.5"><Heart className="h-4 w-4 shrink-0 text-saivie-sage" /><div><dt className="text-white/70">Blood group</dt><dd className="mt-1 font-medium">{selectedPatient.bloodGroup || selectedPatient.history?.obstetric?.bloodGroup || 'Not recorded'}</dd></div></div>
                   <div className="flex gap-2.5"><Shield className="h-4 w-4 shrink-0 text-saivie-sage" /><div><dt className="text-white/70">Allergies</dt><dd className="mt-1 font-medium">{selectedPatient.history?.allergies?.join(', ') || 'Not recorded'}</dd></div></div>
                 </dl>
-                <button type="button" className="mb-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-left text-rose-800" onClick={() => selectedPatient.riskScore ? setRiskDialogPatient(selectedPatient) : openRecordSection('patient-history')}>
+                <button type="button" className="mb-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-left text-rose-800" onClick={() => selectedPatient.riskScore ? setRiskDialogPatient(selectedPatient) : setPatientDetailTab('summary')}>
                   <span className="flex items-center gap-2 text-[11px] font-semibold"><AlertTriangle className="h-4 w-4" />Clinical risk <ChevronRight className="ml-auto h-3 w-3" /></span>
                   <span className="mt-1.5 block text-xs">{selectedPatient.riskScore?.level || (selectedPatient.status === 'High Risk' ? 'High' : 'Not recorded')}</span>
                   {(selectedPatient.riskScore?.summary || selectedPatient.riskScore?.factors?.[0]?.factor) && <span className="mt-1 block text-[10px] line-clamp-3">{selectedPatient.riskScore.summary || selectedPatient.riskScore.factors[0].factor}</span>}
@@ -4557,7 +5071,7 @@ export default function ClinicianPortal() {
                   <CardContent className="space-y-1 px-2 pb-3">
                     <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setPatientDetailTab('record')}><History className="h-4 w-4" /><span>Previous visits<span className="mt-0.5 block text-[10px] text-saivie-plum">{previousVisit?.date ? String(previousVisit.date).slice(0, 10) : 'None recorded'}</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
                     <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setPatientDetailTab('consultation'); setConsultationStep('explore'); }}><ClipboardList className="h-4 w-4" /><span>Patient survey<span className="mt-0.5 block text-[10px] text-saivie-plum">{consultationSurvey.directions.length ? `${consultationSurvey.directions.length} topics selected` : 'Not filled'}</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
-                    <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => openRecordSection('patient-medications')}><Pill className="h-4 w-4" /><span>Current medications<span className="mt-0.5 block text-[10px] text-saivie-plum">{medications.filter((med: any) => String(med.status).toLowerCase() === 'active').length} active</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
+                    <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setPatientDetailTab('medicine')}><Pill className="h-4 w-4" /><span>Current medications<span className="mt-0.5 block text-[10px] text-saivie-plum">{medications.filter((med: any) => String(med.status).toLowerCase() === 'active').length} active</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
                     <div className="border-t border-saivie-border px-1 pt-2"><IntakeSummaryActions patient={surveyPatient} weightLogs={weightLogs} bpLogs={bpLogsData} /></div>
                   </CardContent>
                 </Card>
@@ -4718,6 +5232,8 @@ export default function ClinicianPortal() {
                 <button type="button" onClick={() => setPatientDetailTab('consultation')} aria-current={patientDetailTab === 'consultation' ? 'page' : undefined} className={`shrink-0 border-b-2 px-3 py-2 text-xs font-semibold ${patientDetailTab === 'consultation' ? 'border-saivie-teal text-saivie-teal' : 'border-transparent text-saivie-plum'}`}>Consultation</button>
                 {[
                   { id: 'record' as const, label: 'Record' },
+                  { id: 'medicine' as const, label: 'Medicine' },
+                  { id: 'investigations' as const, label: 'Investigations' },
                   { id: 'postop' as const, label: 'Post-Op' },
                   { id: 'genome' as const, label: 'Genome' },
                 ].map((tab) => (
@@ -4921,35 +5437,15 @@ export default function ClinicianPortal() {
                         )}
 
                         {consultationStep === 'evidence' && (
-                          <div className="space-y-5">
-                            <label className="block text-xs font-semibold text-saivie-plum">Working assessment
-                              <Textarea id="input-consultation-assessment" value={soapAssessmentDraft} onChange={(event) => setSoapAssessmentDraft(event.target.value)} placeholder="Working assessment and clinical reasoning…" className="mt-1.5 min-h-[92px] text-sm font-normal" data-testid="input-consultation-assessment" />
-                            </label>
-                            <div>
-                              <p className="text-sm font-semibold text-saivie-plum">Available evidence</p>
-                              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {evidenceOptions.map((item) => (
-                                  <label key={item} className="flex items-center gap-2 rounded-md border border-saivie-border p-3 text-xs text-saivie-plum hover:bg-saivie-surface-muted cursor-pointer">
-                                    <Checkbox checked={consultationEvidence.includes(item)} onCheckedChange={(checked) => setConsultationEvidence((current) => checked ? [...current, item] : current.filter((value) => value !== item))} />
-                                    {item}
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                            {selectedDirections.length > 0 ? selectedDirections.map((direction) => (
-                              <div key={direction} className="rounded-md border border-saivie-border p-3">
-                                <h4 className="text-xs font-semibold text-saivie-plum">{direction}</h4>
-                                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  <label className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Supporting evidence
-                                    <Textarea value={directionEvidence[direction]?.supporting || ''} onChange={(event) => setDirectionEvidence((current) => ({ ...current, [direction]: { supporting: event.target.value, missing: current[direction]?.missing || '' } }))} placeholder="What supports this direction?" className="mt-1 min-h-[76px] text-xs font-normal normal-case tracking-normal" />
-                                  </label>
-                                  <label className="text-[10px] font-semibold uppercase tracking-wide text-amber-700">Missing or conflicting
-                                    <Textarea value={directionEvidence[direction]?.missing || ''} onChange={(event) => setDirectionEvidence((current) => ({ ...current, [direction]: { supporting: current[direction]?.supporting || '', missing: event.target.value } }))} placeholder="What is missing or does not fit?" className="mt-1 min-h-[76px] text-xs font-normal normal-case tracking-normal" />
-                                  </label>
-                                </div>
-                              </div>
-                            )) : <p className="text-xs text-saivie-plum">No patient-selected topics.</p>}
-                          </div>
+                          <ConsultationAssessment key={consultationSurveyKey} draft={assessmentDraft}
+                            onChange={(draft) => setAssessmentEdits({ key: consultationSurveyKey, draft })}
+                            facts={evidenceFacts}
+                            diagnoses={[...new Set<string>(visitHistory.map((visit: { diagnosis?: string; assessmentDetails?: unknown }) =>
+                              visit.diagnosis || readAssessment(visit.assessmentDetails).impression).filter(Boolean))]}
+                            loading={assessmentSources.some((source) => source.query.isLoading)}
+                            errors={assessmentSources.filter((source) => source.query.isError).map((source) => source.name)}
+                            onRetry={() => { assessmentSources.filter((source) => source.query.isError).forEach((source) => source.query.refetch()); }}
+                            missing={assessmentMissing} />
                         )}
 
                         {consultationStep === 'plan' && (
@@ -4958,8 +5454,8 @@ export default function ClinicianPortal() {
                               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                                 <h3 className="text-xs font-semibold">Tests &amp; medication</h3>
                                 <div className="flex gap-2">
-                                  <Button type="button" size="sm" variant="outline" onClick={() => setConsultationOrderEditor('tests')}>Order tests</Button>
-                                  <Button type="button" size="sm" variant="outline" onClick={() => setConsultationOrderEditor('medicine')}>Add medication</Button>
+                                  <Button type="button" size="sm" variant="outline" onClick={() => setPatientDetailTab('investigations')}>Order tests</Button>
+                                  <Button type="button" size="sm" variant="outline" onClick={openMedicine}>Add medication</Button>
                                 </div>
                               </div>
                               <p className="text-xs text-saivie-plum">Tests: {orderedConsultationTests.join(' · ') || 'None selected'}</p>
@@ -4975,14 +5471,9 @@ export default function ClinicianPortal() {
                               <p className="text-xs font-semibold text-saivie-plum">Clinical summary</p>
                               <p className="mt-1 text-xs text-saivie-plum">{soapSubjectiveDraft || 'No first impression entered yet.'}</p>
                               {selectedDirections.length > 0 && <p className="mt-2 text-xs text-saivie-teal">Topics: {selectedDirections.join(' · ')}</p>}
-                              {consultationEvidence.length > 0 && <p className="mt-1 text-xs text-saivie-plum">Evidence reviewed: {consultationEvidence.join(', ')}</p>}
+                              {assessmentDraft.evidence.length > 0 && <p className="mt-1 text-xs text-saivie-plum">Evidence: {assessmentDraft.evidence.filter((fact) => fact.reviewed).length} marked reviewed</p>}
                             </div>
-                            {(selectedDirections.length > 0 || consultationEvidence.length > 0) && (
-                              <Button type="button" variant="outline" size="sm" onClick={addReviewedContextToPlan} data-testid="button-add-consultation-context">
-                                <FileText className="mr-1.5 h-3.5 w-3.5" />{consultationContextAdded ? 'Refresh reviewed context in plan' : 'Add reviewed context to plan'}
-                              </Button>
-                            )}
-                            {soapAssessmentDraft && <p className="text-xs text-saivie-plum"><span className="font-semibold">Assessment:</span> {soapAssessmentDraft}</p>}
+                            {consultationAssessmentText && <p className="whitespace-pre-wrap text-xs text-saivie-plum"><span className="font-semibold">Assessment:</span> {consultationAssessmentText}</p>}
                             <label className="block text-xs font-semibold text-saivie-plum">Plan, advice, follow-up, and safety-net
                               <Textarea value={soapPlanDraft} onChange={(event) => setSoapPlanDraft(event.target.value)} placeholder="Medication, investigations, advice, follow-up, and when to seek urgent care..." className="mt-1.5 min-h-[120px] text-sm font-normal" data-testid="input-consultation-plan" />
                             </label>
@@ -5012,9 +5503,9 @@ export default function ClinicianPortal() {
                       </CardHeader>
                       <CardContent className="p-3">
                         <div className="grid grid-cols-3 gap-1.5">
-                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setConsultationOrderEditor('tests')} data-testid="quick-action-tests"><FlaskConical className="h-4 w-4" />Order tests</button>
+                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setPatientDetailTab('investigations')} data-testid="quick-action-tests"><FlaskConical className="h-4 w-4" />Order tests</button>
                           <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setConsultationStep('evidence'); requestAnimationFrame(() => document.getElementById('input-consultation-assessment')?.focus()); }} data-testid="quick-action-diagnosis"><Stethoscope className="h-4 w-4" />Add diagnosis</button>
-                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setConsultationOrderEditor('medicine')} data-testid="quick-action-medication"><Pill className="h-4 w-4" />Add medication</button>
+                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={openMedicine} data-testid="quick-action-medication"><Pill className="h-4 w-4" />Add medication</button>
                         </div>
                         <div className="mt-4 flex justify-between text-[10px] font-semibold text-saivie-teal"><span>Documentation progress</span><span>{consultationChecklist.filter((item) => item.done).length}/5</span></div>
                         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-saivie-sage" role="progressbar" aria-label="Documentation progress" aria-valuemin={0} aria-valuemax={5} aria-valuenow={consultationChecklist.filter((item) => item.done).length}><div className="h-full rounded-full bg-saivie-teal transition-all" style={{ width: `${consultationChecklist.filter((item) => item.done).length * 20}%` }} /></div>
@@ -5075,7 +5566,7 @@ export default function ClinicianPortal() {
                         <div className="space-y-1">
                           <p className="mb-2 text-[10px] font-semibold text-saivie-teal">Next steps</p>
                           <button type="button" className="flex w-full items-center gap-2 border-b border-saivie-border py-2 text-left text-xs text-saivie-teal" onClick={() => setConsultationStep('explore')}><User className="h-4 w-4 shrink-0" /><span>History<span className="mt-1 block text-[10px] text-saivie-plum">{answeredGuidedQuestionCount} answers · {selectedDirections.length} topics</span></span><ChevronRight className="ml-auto h-3 w-3 shrink-0" /></button>
-                          <button type="button" className="flex w-full items-center gap-2 border-b border-saivie-border py-2 text-left text-xs text-saivie-teal" onClick={() => openRecordSection('patient-investigations')}><ClipboardList className="h-4 w-4 shrink-0" /><span>Review investigations<span className="mt-1 block text-[10px] text-saivie-plum">{labResults.length} reports on file</span></span><ChevronRight className="ml-auto h-3 w-3 shrink-0" /></button>
+                          <button type="button" className="flex w-full items-center gap-2 border-b border-saivie-border py-2 text-left text-xs text-saivie-teal" onClick={() => setPatientDetailTab('investigations')}><ClipboardList className="h-4 w-4 shrink-0" /><span>Review investigations<span className="mt-1 block text-[10px] text-saivie-plum">{labResults.length} reports on file</span></span><ChevronRight className="ml-auto h-3 w-3 shrink-0" /></button>
                           <button type="button" className="flex w-full items-center gap-2 py-2 text-left text-xs text-saivie-teal" onClick={() => setConsultationStep('plan')}><FileText className="h-4 w-4 shrink-0" /><span>Review visit plan</span><ChevronRight className="ml-auto h-3 w-3 shrink-0" /></button>
                         </div>
                         <div className="border-t border-saivie-border pt-2">
@@ -5130,133 +5621,49 @@ export default function ClinicianPortal() {
                     {[
                       { label: 'Subjective', value: soapSubjectiveDraft },
                       { label: 'Objective', value: soapObjectiveDraft },
-                      { label: 'Assessment', value: soapAssessmentDraft },
+                      { label: 'Assessment', value: consultationAssessmentText },
                       { label: 'Plan', value: soapPlanDraft },
                       { label: 'Tests ordered', value: orderedConsultationTests.join(' · ') },
                     ].map((section) => <section key={section.label}><h4 className="text-xs font-semibold text-saivie-teal">{section.label}</h4><p className="mt-1 whitespace-pre-wrap break-words text-sm text-saivie-plum">{section.value || 'Not entered'}</p></section>)}
                   </div>
                 </DialogContent>
               </Dialog>
-              <ConsultationOrderDialogs
-                editor={consultationOrderEditor}
-                onClose={() => setConsultationOrderEditor(null)}
-                patientType={showPregnancyContext ? 'Pregnant' : selectedPatient.type || ''}
-                weeks={showPregnancyContext ? pregnancyContext?.weeks ?? null : null}
-                tests={orderedConsultationTests}
-                onTestsChange={setConsultationTests}
-                customTest={consultationCustomTest}
-                onCustomTestChange={setConsultationCustomTest}
-                medicine={newMed}
-                onMedicineChange={setNewMed}
-                onSaveMedicine={() => addMedMutation.mutate({ ...newMed, name: newMed.name.trim(), startDate: newMed.startDate || null })}
-                savingMedicine={addMedMutation.isPending}
-              />
               </>
+            )}
+
+            {patientDetailTab === 'medicine' && (
+              <section className="flex-1 min-h-0 overflow-auto p-4 space-y-4" aria-label="Patient medicine" data-testid="patient-medicine-tab">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold">Medicine</h2>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setPatientDetailTab('consultation')}>Back to consultation</Button>
+                </div>
+                {medicationsQuery.isLoading && <p role="status" className="text-xs">Loading medicines...</p>}
+                {medicationsQuery.isError && <p role="alert" className="text-xs text-destructive">Could not load medicines. <button type="button" className="underline" onClick={() => medicationsQuery.refetch()}>Retry</button></p>}
+                {renderMedicineTab()}
+              </section>
+            )}
+            {patientDetailTab === 'investigations' && (
+              <section className="flex-1 min-h-0 overflow-auto p-4 space-y-4" aria-label="Patient investigations" data-testid="patient-investigations-tab">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold">Investigations</h2>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setPatientDetailTab('consultation')}>Back to consultation</Button>
+                    <Button type="button" size="sm" onClick={saveConsultationNote} disabled={soapSaving || !consultationCanSave} data-testid="save-investigation-orders">{soapSaving ? 'Saving...' : 'Save orders'}</Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Select tests, then Save orders. Consultation drafts are saved with them.</p>
+                {soapSavedMsg && <p role={soapSavedMsg.startsWith('Failed') ? 'alert' : 'status'} className="text-xs">{soapSavedMsg}</p>}
+                {labResultsQuery.isLoading && <p role="status" className="text-xs">Loading investigation results...</p>}
+                {labResultsQuery.isError && <p role="alert" className="text-xs text-destructive">Could not load investigation results. <button type="button" className="underline" onClick={() => labResultsQuery.refetch()}>Retry</button></p>}
+                {renderInvestigationsTab()}
+                <PatientReportsList patientId={selectedPatient.id} documents={patientDocumentsQuery.data || []}
+                  isLoading={patientDocumentsQuery.isLoading} isError={patientDocumentsQuery.isError}
+                  onRetry={() => patientDocumentsQuery.refetch()} />
+              </section>
             )}
 
             <div className={isPatientOverview ? 'hidden' : 'flex-1 flex overflow-hidden z-0'}>
               
-              {/* Patient List Column (Left) */}
-              <div className="hidden w-72 border-r border-saivie-border bg-saivie-ivory flex flex-col shrink-0">
-                 <div className="p-3 border-b border-saivie-border bg-saivie-surface-muted/50 space-y-2 overflow-hidden">
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-saivie-plum" />
-                      <Input
-                        placeholder="Search patient by name..."
-                        value={patientSearch}
-                        onChange={(e) => { setPatientSearch(e.target.value); setIsSearching(!!e.target.value); }}
-                        className="h-8 text-xs border-saivie-border pl-8 pr-8"
-                        data-testid="input-patient-search"
-                      />
-                      {patientSearch && (
-                        <button onClick={() => { setPatientSearch(""); setIsSearching(false); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-saivie-plum hover:text-saivie-plum">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="date"
-                          value={queueDateFrom}
-                          onChange={(e) => { setQueueDateFrom(e.target.value); if (e.target.value > queueDateTo) setQueueDateTo(e.target.value); }}
-                          className="h-8 text-xs border border-saivie-border rounded-md flex-1 min-w-[120px] px-2 bg-saivie-ivory focus:outline-none focus:ring-1 focus:ring-blue-400"
-                          data-testid="input-queue-date-from-sidebar"
-                        />
-                        <span className="text-[10px] text-saivie-plum shrink-0">to</span>
-                        <input
-                          type="date"
-                          value={queueDateTo}
-                          onChange={(e) => { setQueueDateTo(e.target.value); if (e.target.value < queueDateFrom) setQueueDateFrom(e.target.value); }}
-                          className="h-8 text-xs border border-saivie-border rounded-md flex-1 min-w-[120px] px-2 bg-saivie-ivory focus:outline-none focus:ring-1 focus:ring-blue-400"
-                          data-testid="input-queue-date-to-sidebar"
-                        />
-                        <span className="text-[10px] bg-saivie-sage px-1.5 py-0.5 rounded text-saivie-plum font-medium shrink-0">{queuePatients.length}</span>
-                      </div>
-                    </div>
-                    {isSearching && searchResults.length > 0 && (
-                      <div className="text-[10px] text-saivie-plum">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</div>
-                    )}
-                 </div>
-                 <ScrollArea className="flex-1">
-                    {isSearching ? (
-                      <>
-                        {searchResults.length === 0 && patientSearch.trim() && (
-                          <div className="py-8 text-center text-saivie-plum text-xs">No patients found</div>
-                        )}
-                        {searchResults.map((patient: any) => (
-                          <div 
-                            key={patient.id}
-                            onClick={() => { setSelectedPatient(patient); setSelectedTrailVisitId(null); setPatientSearch(""); setIsSearching(false); }}
-                            className={`p-4 border-b border-saivie-border cursor-pointer transition-all hover:bg-blue-50/40 group relative`}
-                            data-testid={`search-result-${patient.id}`}
-                          >
-                             <div className="flex justify-between items-start mb-1">
-                                <span className="font-semibold text-sm text-saivie-plum">{patient.name}</span>
-                                <span className="text-[10px] text-saivie-plum">{patient.phone || ''}</span>
-                             </div>
-                             <p className="text-xs text-saivie-plum mb-1 truncate">{patient.type || 'General'}</p>
-                             <div className="flex items-center gap-2">
-                                {patient.status === 'High Risk' && <div className="w-2 h-2 rounded-full bg-rose-500"></div>}
-                                {patient.status === 'Monitor' && <div className="w-2 h-2 rounded-full bg-amber-500"></div>}
-                                {patient.status === 'Active Cycle' && <div className="w-2 h-2 rounded-full bg-emerald-500"></div>}
-                                <span className="text-[10px] font-medium text-saivie-plum">{patient.status || 'active'}</span>
-                             </div>
-                          </div>
-                        ))}
-                      </>
-                    ) : (
-                      <>
-                        {queuePatients.length === 0 && (
-                          <div className="py-8 text-center text-saivie-plum text-xs">No patients for this date</div>
-                        )}
-                        {queuePatients.map((patient: any) => (
-                          <div 
-                            key={patient.id}
-                            onClick={() => { setSelectedPatient(patient); setSelectedTrailVisitId(null); }}
-                            className={`p-4 border-b border-saivie-border cursor-pointer transition-all hover:bg-saivie-surface-muted group relative ${selectedPatient?.id === patient.id ? 'bg-blue-50/60' : ''}`}
-                          >
-                             {selectedPatient?.id === patient.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>}
-                             
-                             <div className="flex justify-between items-start mb-1">
-                                <span className={`font-semibold text-sm ${selectedPatient?.id === patient.id ? 'text-blue-900' : 'text-saivie-plum'}`}>{patient.name}</span>
-                                <span className="text-[10px] text-saivie-plum">{patient.appointmentTime || patient.lastVisit}</span>
-                             </div>
-                             <p className="text-xs text-saivie-plum mb-2 truncate">{patient.type || 'General'}</p>
-                             
-                             <div className="flex items-center gap-2">
-                                {patient.status === 'High Risk' && <div className="w-2 h-2 rounded-full bg-rose-500"></div>}
-                                {patient.status === 'Monitor' && <div className="w-2 h-2 rounded-full bg-amber-500"></div>}
-                                {patient.status === 'Active Cycle' && <div className="w-2 h-2 rounded-full bg-emerald-500"></div>}
-                                <span className="text-[10px] font-medium text-saivie-plum">{patient.status}</span>
-                             </div>
-                          </div>
-                        ))}
-                      </>
-                    )}
-                 </ScrollArea>
-              </div>
-
               {/* Detailed View (Right) - Intelligent Dashboard */}
               <div className="flex-1 overflow-y-auto bg-saivie-surface-muted/50 p-6">
                 {patientDetailTab === 'postop' && (
@@ -5265,2561 +5672,6 @@ export default function ClinicianPortal() {
                 {patientDetailTab === 'genome' && (
                   <GenomeInsightsPanel patientId={selectedPatient.id} patientName={selectedPatient.name} />
                 )}
-                <div className={patientDetailTab !== 'details' ? 'hidden' : ''}>
-                <div className="max-w-7xl mx-auto space-y-6">
-                   
-                   {/* PATIENT HISTORY SUMMARY */}
-                   <Card className="shadow-sm border-saivie-border scroll-mt-3" id="patient-history">
-                      <CardHeader className="py-3 px-4 border-b border-saivie-border bg-saivie-surface-muted/50">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <History className="w-4 h-4 text-saivie-plum" />
-                              <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wide">Patient History</CardTitle>
-                            </div>
-                            {!editingHistory ? (
-                              <div className="flex gap-1.5">
-                              <IntakeSummaryActions patient={selectedPatient} weightLogs={weightLogs} bpLogs={bpLogsData} />
-                              <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => { setEditingHistory(true); setEditHistoryData({ medical: [...(selectedPatient.history?.medical || [])], surgical: [...(selectedPatient.history?.surgical || [])], drug: [...(selectedPatient.history?.drug || [])], allergies: [...(selectedPatient.history?.allergies || [])] }); setNewHistoryItem({ medical: '', surgical: '', drug: '', allergies: '' }); }} data-testid="button-edit-history">
-                                <Pencil className="w-3 h-3" /> Edit
-                              </Button>
-                              </div>
-                            ) : (
-                              <div className="flex gap-1.5">
-                                <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => updateHistoryMutation.mutate(editHistoryData)} disabled={updateHistoryMutation.isPending} data-testid="button-save-history">
-                                  <Check className="w-3 h-3" /> Save
-                                </Button>
-                                <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-saivie-plum border-saivie-border" onClick={() => setEditingHistory(false)}>
-                                  <X className="w-3 h-3" /> Cancel
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                      </CardHeader>
-                      <CardContent className="p-4">
-                          <div className="grid grid-cols-4 gap-6">
-                              <div>
-                                  <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2 border-b border-saivie-border pb-1">Past Medical History</h4>
-                                  {editingHistory ? (
-                                    <div className="space-y-1">
-                                      {editHistoryData.medical.map((item, i) => (
-                                        <div key={i} className="flex items-center gap-1 group">
-                                          <span className="text-xs text-saivie-plum flex-1">{item}</span>
-                                          <button className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity" onClick={() => setEditHistoryData({...editHistoryData, medical: editHistoryData.medical.filter((_, idx) => idx !== i)})} data-testid={`button-remove-medical-${i}`}><X className="w-3 h-3" /></button>
-                                        </div>
-                                      ))}
-                                      <div className="flex gap-1 mt-1">
-                                        <Input placeholder="Add item..." value={newHistoryItem.medical} onChange={e => setNewHistoryItem({...newHistoryItem, medical: e.target.value})} onKeyDown={e => { if (e.key === 'Enter' && newHistoryItem.medical.trim()) { setEditHistoryData({...editHistoryData, medical: [...editHistoryData.medical, newHistoryItem.medical.trim()]}); setNewHistoryItem({...newHistoryItem, medical: ''}); }}} className="h-6 text-xs flex-1" data-testid="input-add-medical" />
-                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-blue-500" disabled={!newHistoryItem.medical.trim()} onClick={() => { setEditHistoryData({...editHistoryData, medical: [...editHistoryData.medical, newHistoryItem.medical.trim()]}); setNewHistoryItem({...newHistoryItem, medical: ''}); }} data-testid="button-add-medical"><Plus className="w-3 h-3" /></Button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <ul className="list-disc list-inside text-xs text-saivie-plum space-y-1">
-                                      {selectedPatient.history?.medical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-saivie-plum italic">None recorded</li>}
-                                    </ul>
-                                  )}
-                              </div>
-                              <div>
-                                  <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2 border-b border-saivie-border pb-1">Past Surgical History</h4>
-                                  {editingHistory ? (
-                                    <div className="space-y-1">
-                                      {editHistoryData.surgical.map((item, i) => (
-                                        <div key={i} className="flex items-center gap-1 group">
-                                          <span className="text-xs text-saivie-plum flex-1">{item}</span>
-                                          <button className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity" onClick={() => setEditHistoryData({...editHistoryData, surgical: editHistoryData.surgical.filter((_, idx) => idx !== i)})} data-testid={`button-remove-surgical-${i}`}><X className="w-3 h-3" /></button>
-                                        </div>
-                                      ))}
-                                      <div className="flex gap-1 mt-1">
-                                        <Input placeholder="Add item..." value={newHistoryItem.surgical} onChange={e => setNewHistoryItem({...newHistoryItem, surgical: e.target.value})} onKeyDown={e => { if (e.key === 'Enter' && newHistoryItem.surgical.trim()) { setEditHistoryData({...editHistoryData, surgical: [...editHistoryData.surgical, newHistoryItem.surgical.trim()]}); setNewHistoryItem({...newHistoryItem, surgical: ''}); }}} className="h-6 text-xs flex-1" data-testid="input-add-surgical" />
-                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-blue-500" disabled={!newHistoryItem.surgical.trim()} onClick={() => { setEditHistoryData({...editHistoryData, surgical: [...editHistoryData.surgical, newHistoryItem.surgical.trim()]}); setNewHistoryItem({...newHistoryItem, surgical: ''}); }} data-testid="button-add-surgical"><Plus className="w-3 h-3" /></Button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <ul className="list-disc list-inside text-xs text-saivie-plum space-y-1">
-                                      {selectedPatient.history?.surgical?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-saivie-plum italic">None recorded</li>}
-                                    </ul>
-                                  )}
-                              </div>
-                              <div>
-                                   <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2 border-b border-saivie-border pb-1">Drug History</h4>
-                                   {editingHistory ? (
-                                    <div className="space-y-1">
-                                      {editHistoryData.drug.map((item, i) => (
-                                        <div key={i} className="flex items-center gap-1 group">
-                                          <span className="text-xs text-saivie-plum flex-1">{item}</span>
-                                          <button className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity" onClick={() => setEditHistoryData({...editHistoryData, drug: editHistoryData.drug.filter((_, idx) => idx !== i)})} data-testid={`button-remove-drug-${i}`}><X className="w-3 h-3" /></button>
-                                        </div>
-                                      ))}
-                                      <div className="flex gap-1 mt-1">
-                                        <Input placeholder="Add item..." value={newHistoryItem.drug} onChange={e => setNewHistoryItem({...newHistoryItem, drug: e.target.value})} onKeyDown={e => { if (e.key === 'Enter' && newHistoryItem.drug.trim()) { setEditHistoryData({...editHistoryData, drug: [...editHistoryData.drug, newHistoryItem.drug.trim()]}); setNewHistoryItem({...newHistoryItem, drug: ''}); }}} className="h-6 text-xs flex-1" data-testid="input-add-drug" />
-                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-blue-500" disabled={!newHistoryItem.drug.trim()} onClick={() => { setEditHistoryData({...editHistoryData, drug: [...editHistoryData.drug, newHistoryItem.drug.trim()]}); setNewHistoryItem({...newHistoryItem, drug: ''}); }} data-testid="button-add-drug"><Plus className="w-3 h-3" /></Button>
-                                      </div>
-                                    </div>
-                                   ) : (
-                                    <ul className="list-disc list-inside text-xs text-saivie-plum space-y-1">
-                                      {selectedPatient.history?.drug?.map((item: string, i: number) => <li key={i}>{item}</li>) || <li className="text-saivie-plum italic">None recorded</li>}
-                                    </ul>
-                                   )}
-                              </div>
-                               <div>
-                                   <h4 id="patient-allergies" className="scroll-mt-3 text-xs font-bold text-saivie-plum uppercase mb-2 text-rose-600 border-b border-rose-100 pb-1">Allergies</h4>
-                                   {editingHistory ? (
-                                    <div className="space-y-1">
-                                      {editHistoryData.allergies.map((item, i) => (
-                                        <div key={i} className="flex items-center gap-1 group">
-                                          <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-[10px]">{item}</Badge>
-                                          <button className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity" onClick={() => setEditHistoryData({...editHistoryData, allergies: editHistoryData.allergies.filter((_, idx) => idx !== i)})} data-testid={`button-remove-allergy-${i}`}><X className="w-3 h-3" /></button>
-                                        </div>
-                                      ))}
-                                      <div className="flex gap-1 mt-1">
-                                        <Input placeholder="Add allergy..." value={newHistoryItem.allergies} onChange={e => setNewHistoryItem({...newHistoryItem, allergies: e.target.value})} onKeyDown={e => { if (e.key === 'Enter' && newHistoryItem.allergies.trim()) { setEditHistoryData({...editHistoryData, allergies: [...editHistoryData.allergies, newHistoryItem.allergies.trim()]}); setNewHistoryItem({...newHistoryItem, allergies: ''}); }}} className="h-6 text-xs flex-1" data-testid="input-add-allergy" />
-                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-blue-500" disabled={!newHistoryItem.allergies.trim()} onClick={() => { setEditHistoryData({...editHistoryData, allergies: [...editHistoryData.allergies, newHistoryItem.allergies.trim()]}); setNewHistoryItem({...newHistoryItem, allergies: ''}); }} data-testid="button-add-allergy"><Plus className="w-3 h-3" /></Button>
-                                      </div>
-                                    </div>
-                                   ) : (
-                                    <div className="flex flex-wrap gap-2 pt-1">
-                                      {selectedPatient.history?.allergies?.map((item: string, i: number) => (
-                                          <Badge key={i} variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-[10px]">{item}</Badge>
-                                      )) || <span className="text-xs text-saivie-plum italic">No known allergies</span>}
-                                    </div>
-                                   )}
-                              </div>
-                          </div>
-                      </CardContent>
-                   </Card>
-
-                   {/* LAST VISIT RECAP / PATIENT SNAPSHOT */}
-                   {(() => {
-                     const hasVisit = !!latestVisit;
-                     const activeMeds = medications.filter((m: any) => m.status === 'Active');
-                     const hasData = hasVisit || activeMeds.length > 0 || labResults.length > 0;
-                     if (!hasData) return null;
-                     return (
-                     <Card className="shadow-sm border-amber-200 bg-gradient-to-br from-amber-50/60 to-orange-50/40 overflow-hidden" data-testid="last-visit-recap">
-                       <div className="px-4 py-2.5 border-b border-amber-100 flex items-center justify-between">
-                         <h3 className="font-bold text-sm text-amber-800 flex items-center gap-2">
-                           <FileText className="w-4 h-4 text-amber-600" />
-                           {hasVisit ? 'Last Visit Recap' : 'Patient Snapshot'}
-                           {hasVisit && (
-                             <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200 font-normal">
-                               {new Date(latestVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                             </Badge>
-                           )}
-                         </h3>
-                       </div>
-                       <CardContent className="p-3">
-                         <div className="space-y-2">
-                           {hasVisit && latestVisit.chiefComplaint && (
-                             <div className="flex gap-2">
-                               <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">CC</span>
-                               <p className="text-xs text-saivie-plum">{latestVisit.chiefComplaint}</p>
-                             </div>
-                           )}
-                           {hasVisit && (() => {
-                             const v = (latestVisit.vitals as any) || {};
-                             const items = [
-                               v.bp && `BP: ${v.bp}`,
-                               v.weight && `Wt: ${v.weight}kg`,
-                               v.pulse && `Pulse: ${v.pulse}`,
-                               v.hb && `Hb: ${v.hb}`,
-                               v.fundalHeight && `FH: ${v.fundalHeight}`,
-                               v.fetalHeartRate && `FHR: ${v.fetalHeartRate}`,
-                               v.spo2 && `SpO2: ${v.spo2}%`,
-                             ].filter(Boolean);
-                             return items.length > 0 ? (
-                               <div className="flex gap-2 items-start">
-                                 <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">O/E</span>
-                                 <div className="flex flex-wrap gap-1">
-                                   {items.map((item, i) => (
-                                     <span key={i} className="text-[10px] bg-saivie-ivory/80 border border-amber-200 text-saivie-plum px-1.5 py-0.5 rounded font-medium">{item}</span>
-                                   ))}
-                                 </div>
-                               </div>
-                             ) : null;
-                           })()}
-                           {hasVisit && (latestVisit.objective || ((latestVisit.vitals as any)?.pvExam) || ((latestVisit.vitals as any)?.psExam)) && (
-                             <div className="flex gap-2">
-                               <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Obs</span>
-                               <div className="text-xs text-saivie-plum space-y-0.5">
-                                 {latestVisit.objective && <p>{latestVisit.objective}</p>}
-                                 {(latestVisit.vitals as any)?.pvExam && <p><span className="font-semibold">P/V:</span> {(latestVisit.vitals as any).pvExam}</p>}
-                                 {(latestVisit.vitals as any)?.psExam && <p><span className="font-semibold">P/S:</span> {(latestVisit.vitals as any).psExam}</p>}
-                               </div>
-                             </div>
-                           )}
-                           {hasVisit && (latestVisit.diagnosis || latestVisit.assessment) && (
-                             <div className="flex gap-2">
-                               <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Dx</span>
-                               <p className="text-xs font-medium text-saivie-plum">{latestVisit.diagnosis || latestVisit.assessment}</p>
-                             </div>
-                           )}
-
-                           {activeMeds.length > 0 && (
-                             <div className="flex gap-2 items-start">
-                               <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Rx</span>
-                               <div className="flex flex-wrap gap-1">
-                                 {activeMeds.map((m: any, i: number) => (
-                                   <span key={i} className="text-[10px] bg-blue-50 border border-blue-200 text-blue-700 px-1.5 py-0.5 rounded">{m.name} {m.dose}{m.frequency ? ` (${m.frequency})` : ''}</span>
-                                 ))}
-                               </div>
-                             </div>
-                           )}
-
-                           {hasVisit && (() => {
-                             const v = (latestVisit.vitals as any) || {};
-                             const invTests: string[] = v.nextInvestigationTests || [];
-                             const invCustom: string = v.nextInvestigationCustom || '';
-                             const allInv = [...invTests, ...(invCustom ? [invCustom] : [])];
-                             return allInv.length > 0 ? (
-                               <div className="flex gap-2 items-start">
-                                 <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Inv</span>
-                                 <div className="flex flex-wrap gap-1">
-                                   {allInv.map((inv, i) => (
-                                     <span key={i} className="text-[10px] bg-saivie-surface-muted border border-saivie-border text-saivie-teal px-1.5 py-0.5 rounded">{inv}</span>
-                                   ))}
-                                 </div>
-                               </div>
-                             ) : null;
-                           })()}
-
-                           {labResults.length > 0 && (
-                             <div className="flex gap-2 items-start">
-                               <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Labs</span>
-                               <div className="flex flex-wrap gap-1">
-                                 {labResults.slice(-8).map((lr: any, i: number) => (
-                                   <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded border ${
-                                     lr.status === 'High' || lr.status === 'Low' ? 'bg-red-50 border-red-200 text-red-700' :
-                                     lr.status === 'Borderline' ? 'bg-amber-50 border-amber-200 text-amber-700' :
-                                     'bg-emerald-50 border-emerald-200 text-emerald-700'
-                                   }`}>{lr.testName}: {lr.value}{lr.unit ? ` ${lr.unit}` : ''} {lr.status && `(${lr.status})`}</span>
-                                 ))}
-                                 {labResults.length > 8 && <span className="text-[10px] text-amber-500">+{labResults.length - 8} more</span>}
-                               </div>
-                             </div>
-                           )}
-
-                           {hasVisit && latestVisit.planNotes && (
-                             <div className="flex gap-2">
-                               <span className="text-[10px] font-bold text-amber-600 uppercase min-w-[28px]">Plan</span>
-                               <p className="text-xs text-saivie-plum">{latestVisit.planNotes}</p>
-                             </div>
-                           )}
-                         </div>
-                       </CardContent>
-                     </Card>
-                     );
-                   })()}
-
-                   {/* SELF-TRACKED VITALS FROM SAIVIEMOM */}
-                   {(latestWeight || latestBP) && (
-                     <Card className="shadow-sm border-saivie-border bg-gradient-to-br from-saivie-surface-muted/60 to-saivie-surface-muted/40 overflow-hidden">
-                       <div className="px-4 py-2.5 border-b border-saivie-border flex items-center gap-2">
-                         <Activity className="w-4 h-4 text-saivie-teal" />
-                         <h3 className="font-bold text-sm text-saivie-plum">Self-Tracked Vitals</h3>
-                         <span className="text-[10px] text-saivie-teal font-medium ml-1">from SaivieMom app</span>
-                       </div>
-                       <CardContent className="p-3">
-                         <div className="grid grid-cols-2 gap-3">
-                           {latestWeight && (
-                             <div className="bg-saivie-ivory/80 rounded-lg border border-saivie-border px-3 py-2.5">
-                               <div className="flex items-center gap-1.5 mb-1">
-                                 <Scale className="w-3.5 h-3.5 text-saivie-teal" />
-                                 <span className="text-[10px] font-bold text-saivie-teal uppercase tracking-wide">Weight</span>
-                               </div>
-                               <div className="flex items-baseline gap-1">
-                                 <span className="text-xl font-bold text-saivie-plum">{latestWeight.weight}</span>
-                                 <span className="text-xs text-saivie-plum font-medium">{latestWeight.unit}</span>
-                               </div>
-                               <div className="mt-0.5 flex items-center gap-2">
-                                 {latestWeight.week && <span className="text-[10px] text-saivie-teal">Wk {latestWeight.week}</span>}
-                                 <span className="text-[10px] text-saivie-plum">{latestWeight.date}</span>
-                               </div>
-                               {weightLogs.length > 1 && (() => {
-                                 const prev = weightLogs[1];
-                                 const diff = (latestWeight.weight - prev.weight).toFixed(1);
-                                 const isUp = latestWeight.weight > prev.weight;
-                                 return (
-                                   <div className={`mt-1 text-[10px] font-medium ${isUp ? 'text-rose-500' : 'text-emerald-600'}`}>
-                                     {isUp ? '▲' : '▼'} {Math.abs(parseFloat(diff))} {latestWeight.unit} vs last
-                                   </div>
-                                 );
-                               })()}
-                             </div>
-                           )}
-                           {latestBP && (
-                             <div className="bg-saivie-ivory/80 rounded-lg border border-saivie-border px-3 py-2.5">
-                               <div className="flex items-center gap-1.5 mb-1">
-                                 <Heart className="w-3.5 h-3.5 text-rose-500" />
-                                 <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wide">Blood Pressure</span>
-                               </div>
-                               <div className="flex items-baseline gap-1">
-                                 <span className="text-xl font-bold text-saivie-plum">{latestBP.systolic}/{latestBP.diastolic}</span>
-                                 <span className="text-xs text-saivie-plum font-medium">mmHg</span>
-                               </div>
-                               <div className="mt-0.5 flex items-center gap-2">
-                                 {latestBP.pulse && <span className="text-[10px] text-rose-500">♥ {latestBP.pulse} bpm</span>}
-                                 <span className="text-[10px] text-saivie-plum">{latestBP.date}</span>
-                               </div>
-                               <div className={`mt-1 text-[10px] font-semibold ${
-                                 latestBP.systolic >= 140 || latestBP.diastolic >= 90 ? 'text-rose-600' :
-                                 latestBP.systolic >= 130 || latestBP.diastolic >= 80 ? 'text-amber-600' :
-                                 'text-emerald-600'
-                               }`}>
-                                 {latestBP.systolic >= 140 || latestBP.diastolic >= 90 ? '⚠ High — review needed' :
-                                  latestBP.systolic >= 130 || latestBP.diastolic >= 80 ? 'Elevated' :
-                                  'Normal range'}
-                               </div>
-                             </div>
-                           )}
-                         </div>
-                         {(weightLogs.length > 0 || bpLogsData.length > 0) && (
-                           <div className="mt-2 text-[10px] text-saivie-plum text-right">
-                             {weightLogs.length} weight {weightLogs.length === 1 ? 'entry' : 'entries'} · {bpLogsData.length} BP {bpLogsData.length === 1 ? 'entry' : 'entries'} recorded
-                           </div>
-                         )}
-                       </CardContent>
-                     </Card>
-                   )}
-
-                   {/* TRIMESTER CHECKLIST — shown when pregnancy care mode and checklist data exists */}
-                   {careMode === 'pregnancy' && selectedPatient.lmp && (
-                     <Card className="shadow-sm border-saivie-blush overflow-hidden" data-testid="card-trimester-checklist">
-                       <div
-                         className="px-4 py-2.5 border-b border-saivie-blush bg-saivie-surface-blush/40 flex items-center justify-between cursor-pointer"
-                         onClick={() => {
-                           const el = document.getElementById(`trimester-checklist-body-${selectedPatient.id}`);
-                           if (el) el.classList.toggle('hidden');
-                         }}
-                       >
-                         <h3 className="font-bold text-sm text-saivie-plum flex items-center gap-2">
-                           <Baby className="w-4 h-4 text-saivie-rose" />
-                           ANC Trimester Checklist
-                           {(() => {
-                             const cl = selectedPatient.trimesterChecklist as any;
-                             if (cl?.currentWeek) return <Badge className="text-[10px] bg-saivie-blush text-saivie-plum border-saivie-blush font-normal">Week {cl.currentWeek}</Badge>;
-                             return null;
-                           })()}
-                         </h3>
-                         <div className="flex items-center gap-2">
-                           <Button
-                             size="sm"
-                             variant="ghost"
-                             className="h-6 text-[10px] text-saivie-teal hover:text-saivie-plum hover:bg-saivie-surface-muted px-2"
-                             data-testid="btn-generate-checklist"
-                             onClick={async (e) => {
-                               e.stopPropagation();
-                               await fetch(`/api/patients/${selectedPatient.id}/trimester-checklist`, { method: 'POST' });
-                               queryClient.invalidateQueries({ queryKey: ['/api/patients', clinicianProvider?.id] });
-                             }}
-                           >
-                             <Sparkles className="w-3 h-3 mr-1 text-saivie-teal" />
-                             {(selectedPatient.trimesterChecklist as any) ? 'Refresh' : 'Generate'}
-                           </Button>
-                           <ChevronDown className="w-4 h-4 text-saivie-rose" />
-                         </div>
-                       </div>
-                       <div id={`trimester-checklist-body-${selectedPatient.id}`}>
-                         {(() => {
-                           const cl = selectedPatient.trimesterChecklist as any;
-                           if (!cl?.items?.length) {
-                             return (
-                               <div className="px-4 py-6 text-center text-sm text-saivie-plum">
-                                 <Baby className="w-6 h-6 text-slate-200 mx-auto mb-2" />
-                                 <p>Click <span className="font-medium text-saivie-teal">Generate</span> to create an AI-powered ANC checklist for this patient</p>
-                               </div>
-                             );
-                           }
-                           const categories = ['Scan', 'Lab Test', 'Vaccine', 'Vitals', 'Consultation', 'Lifestyle'] as const;
-                           return (
-                             <CardContent className="p-3">
-                               <div className="space-y-3">
-                                 {categories.map(cat => {
-                                   const items = cl.items.filter((it: any) => it.category === cat);
-                                   if (!items.length) return null;
-                                   const catColors: Record<string, string> = {
-                                     'Scan': 'text-blue-700 bg-blue-50',
-                                     'Lab Test': 'text-saivie-teal bg-saivie-surface-muted',
-                                     'Vaccine': 'text-emerald-700 bg-emerald-50',
-                                     'Vitals': 'text-saivie-plum bg-saivie-surface-muted',
-                                     'Consultation': 'text-amber-700 bg-amber-50',
-                                     'Lifestyle': 'text-rose-700 bg-rose-50',
-                                   };
-                                   return (
-                                     <div key={cat}>
-                                       <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${catColors[cat]}`}>{cat}</span>
-                                       <div className="mt-1.5 space-y-1">
-                                         {items.map((item: any, i: number) => (
-                                           <div key={i} className={`flex items-start gap-2 p-2 rounded text-xs ${item.urgent ? 'bg-red-50 border border-red-100' : 'bg-saivie-ivory border border-saivie-border'}`}>
-                                             <span className={`mt-0.5 shrink-0 w-1.5 h-1.5 rounded-full ${item.urgent ? 'bg-red-500' : item.done ? 'bg-emerald-400' : 'bg-slate-300'}`} />
-                                             <span className={`flex-1 ${item.done ? 'line-through text-saivie-plum' : 'text-saivie-plum'}`}>{item.task}</span>
-                                             {item.dueWeek && <span className={`shrink-0 text-[10px] ${item.urgent ? 'text-red-600 font-semibold' : 'text-saivie-plum'}`}>Wk {item.dueWeek}</span>}
-                                             {item.urgent && <Badge className="shrink-0 text-[10px] bg-red-100 text-red-700 border-none h-4">Urgent</Badge>}
-                                           </div>
-                                         ))}
-                                       </div>
-                                     </div>
-                                   );
-                                 })}
-                               </div>
-                               <p className="text-[10px] text-slate-300 mt-3">Generated {new Date(cl.generatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                             </CardContent>
-                           );
-                         })()}
-                       </div>
-                     </Card>
-                   )}
-
-                   {/* 1. CURRENT VISIT CLINICAL WORKSPACE (SOAP) - DYNAMIC */}
-                   <Card className="shadow-md border-blue-100 bg-saivie-ivory overflow-hidden">
-                      <div className="bg-saivie-surface-muted px-4 py-2 border-b border-saivie-border flex justify-between items-center cursor-pointer" onClick={() => setShowDocumentation(!showDocumentation)}>
-                         <h3 className="font-bold text-sm text-saivie-plum flex items-center gap-2">
-                            <ClipboardList className="w-4 h-4 text-blue-600" /> 
-                            Current Visit Workspace
-                            {latestVisit && <Badge variant="outline" className="text-[10px] font-normal text-saivie-plum ml-2">{new Date(latestVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</Badge>}
-                            {!latestVisit && !showDocumentation && <span className="text-xs font-normal text-saivie-plum ml-2">(No visit records yet)</span>}
-                         </h3>
-                         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                            {/* Voice-to-SOAP button */}
-                            <button
-                              data-testid="btn-voice-soap"
-                              onClick={(event) => { event.stopPropagation(); void toggleVoiceCapture(); }}
-                              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border transition-colors ${isRecording ? 'bg-red-100 border-red-300 text-red-700 animate-pulse' : 'bg-saivie-ivory border-saivie-border text-saivie-plum hover:border-blue-200 hover:text-blue-600'}`}
-                              title="Voice-to-SOAP documentation"
-                            >
-                              <Mic className="w-3 h-3" />
-                              {isRecording ? 'Stop' : isTranscribing ? 'Transcribing…' : 'Voice'}
-                            </button>
-                            {/* Post-visit WhatsApp summary */}
-                            {selectedPatient?.appointmentId && (
-                              <button
-                                data-testid="btn-post-visit-summary"
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  setPostVisitSummarySending(true);
-                                  setPostVisitSummaryResult(null);
-                                  try {
-                                    const resp = await fetch(`/api/appointments/${selectedPatient.appointmentId}/post-visit-summary`, { method: 'POST' });
-                                    const data = await resp.json();
-                                    setPostVisitSummaryResult(data.sent ? `Summary sent to ${selectedPatient.phone}` : 'Generated (no phone on file)');
-                                    queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/clinical-notes`] });
-                                  } catch { setPostVisitSummaryResult('Failed to generate summary'); }
-                                  finally { setPostVisitSummarySending(false); }
-                                }}
-                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border bg-saivie-ivory border-saivie-border text-saivie-plum hover:border-green-300 hover:text-green-600 transition-colors"
-                                title="Send post-visit WhatsApp summary"
-                              >
-                                <MessageCircle className="w-3 h-3" />
-                                {postVisitSummarySending ? 'Sending…' : 'Post-Visit'}
-                              </button>
-                            )}
-                            {visitHistory.length > 1 && <Badge variant="outline" className="text-[10px] font-normal text-saivie-plum">{visitHistory.length} visits</Badge>}
-                            <ChevronRight className={`w-4 h-4 text-saivie-plum transition-transform ${showDocumentation ? 'rotate-90' : ''}`} />
-                         </div>
-                      </div>
-                      {/* Voice transcript result banner */}
-                      {soapTranscript && (
-                        <div className="bg-blue-50 border-b border-blue-100 px-4 py-2 flex items-center gap-2">
-                          <Sparkles className="w-3 h-3 text-blue-500 shrink-0" />
-                          <span className="text-xs text-blue-700 font-medium">AI transcript ready — SOAP fields pre-filled below.</span>
-                          <button onClick={() => setSoapTranscript(null)} className="ml-auto text-blue-400 hover:text-blue-600 text-xs">Dismiss</button>
-                        </div>
-                      )}
-                      {postVisitSummaryResult && (
-                        <div className="bg-green-50 border-b border-green-100 px-4 py-2 flex items-center gap-2">
-                          <MessageCircle className="w-3 h-3 text-green-500 shrink-0" />
-                          <span className="text-xs text-green-700 font-medium">{postVisitSummaryResult}</span>
-                          <button onClick={() => setPostVisitSummaryResult(null)} className="ml-auto text-green-400 hover:text-green-600 text-xs">✕</button>
-                        </div>
-                      )}
-                      
-                      {showDocumentation && (
-                         <CardContent className="p-0">
-                            <div className="flex flex-col divide-y divide-slate-100">
-                               
-                               {/* S — Subjective (Symptoms) */}
-                               <div className="p-4 bg-amber-50/30">
-                                  <div className="flex items-center gap-2 mb-2">
-                                     <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">S</Badge>
-                                     <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Subjective (Symptoms)</span>
-                                  </div>
-                                  {latestVisit?.chiefComplaint && (
-                                    <div className="mb-2">
-                                       <span className="text-[10px] text-saivie-plum uppercase font-bold">Chief Complaint</span>
-                                       <p className="text-sm text-saivie-plum mt-0.5">{latestVisit.chiefComplaint}</p>
-                                    </div>
-                                  )}
-                                  {latestVisit?.subjective && !soapSubjectiveDraft ? (
-                                    <p className="text-sm text-saivie-plum leading-relaxed">{latestVisit.subjective}</p>
-                                  ) : (
-                                    <Textarea
-                                      value={soapSubjectiveDraft || (latestVisit?.subjective || "")}
-                                      onChange={e => setSoapSubjectiveDraft(e.target.value)}
-                                      placeholder="Patient's symptoms, complaints, history of present illness..."
-                                      className={`min-h-[60px] text-sm border-amber-200 focus-visible:ring-amber-300 ${soapSubjectiveDraft ? 'bg-amber-50/50 border-amber-300' : ''}`}
-                                    />
-                                  )}
-                               </div>
-
-                               {/* O — Objective (Observations) */}
-                               <div className="p-4 bg-blue-50/30">
-                                  <div className="flex items-center gap-2 mb-2">
-                                     <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">O</Badge>
-                                     <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Objective (Observations)</span>
-                                  </div>
-                                  
-                                  {/* Dynamic vitals from visit or patient */}
-                                  <div className="grid grid-cols-6 gap-2 mb-3">
-                                     {(() => {
-                                       const vitals = latestVisit?.vitals as any || {};
-                                       const vitalItems = [
-                                         { label: 'BP', value: vitals.bp || selectedPatient.bp, unit: 'mmHg' },
-                                         { label: 'Pulse', value: vitals.pulse, unit: 'bpm' },
-                                         { label: 'Weight', value: vitals.weight || selectedPatient.weight, unit: 'kg' },
-                                         { label: 'BMI', value: selectedPatient.height && (vitals.weight || selectedPatient.weight) ? ((vitals.weight || selectedPatient.weight) / Math.pow(parseFloat(selectedPatient.height || '0') / 100, 2)).toFixed(1) : null },
-                                         { label: 'Hb', value: vitals.hb || selectedPatient.hb, unit: 'g/dL' },
-                                         { label: 'SpO2', value: vitals.spo2, unit: '%' },
-                                       ];
-                                       return vitalItems.map((v, i) => (
-                                         <div key={i} className="bg-saivie-ivory p-2 rounded border border-saivie-border text-center">
-                                           <div className="text-[10px] text-saivie-plum uppercase font-bold">{v.label}</div>
-                                           <div className="text-sm font-bold text-saivie-plum">{v.value || '—'}{v.value && v.unit ? <span className="text-[10px] font-normal text-saivie-plum ml-0.5">{v.unit}</span> : ''}</div>
-                                         </div>
-                                       ));
-                                     })()}
-                                  </div>
-
-                                  {/* Dynamic cycle info */}
-                                  <div className={`grid ${careMode === 'pregnancy' ? 'grid-cols-3' : 'grid-cols-3'} gap-3 mb-3`}>
-                                     <div className="bg-saivie-ivory p-2 rounded border border-saivie-border">
-                                        <span className="text-[10px] text-saivie-plum uppercase font-bold block">Cycle Phase</span>
-                                        <span className="text-xs font-semibold text-saivie-plum">
-                                          {careMode === 'pregnancy' ? (() => {
-                                            if (selectedPatient.lmp) {
-                                              const weeks = Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7)));
-                                              return weeks < 13 ? 'Trimester 1' : weeks < 27 ? 'Trimester 2' : 'Trimester 3';
-                                            }
-                                            return '—';
-                                          })() : (() => {
-                                            const cd = selectedPatient.cycleDay || 0;
-                                            if (cd <= 5) return 'Menstrual';
-                                            if (cd <= 13) return 'Follicular';
-                                            if (cd <= 16) return 'Ovulatory';
-                                            return 'Luteal';
-                                          })()}
-                                        </span>
-                                     </div>
-                                     <div className="bg-saivie-ivory p-2 rounded border border-saivie-border">
-                                        <span className="text-[10px] text-saivie-plum uppercase font-bold block">
-                                          {careMode === 'pregnancy' ? 'Gestational Age' : 'Cycle Day'}
-                                        </span>
-                                        <span className="text-xs font-semibold text-saivie-plum">
-                                          {careMode === 'pregnancy' ? (() => {
-                                            if (selectedPatient.lmp) {
-                                              const diffDays = Math.max(0, Math.floor((new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24)));
-                                              return `${Math.floor(diffDays/7)}w ${diffDays%7}d`;
-                                            }
-                                            return '—';
-                                          })() : `Day ${selectedPatient.cycleDay || '—'}`}
-                                        </span>
-                                     </div>
-                                     <div className="bg-saivie-ivory p-2 rounded border border-saivie-border">
-                                        <span className="text-[10px] text-saivie-plum uppercase font-bold block">Genomic Risk</span>
-                                        <span className="text-xs font-semibold text-saivie-plum">{selectedPatient.condition || '—'}</span>
-                                     </div>
-                                  </div>
-
-                                  {careMode === 'pregnancy' && (
-                                    <div className="grid grid-cols-2 gap-3 mb-3">
-                                      <div className="bg-gradient-to-br from-saivie-surface-blush to-saivie-ivory p-2.5 rounded border border-saivie-blush">
-                                        <span className="text-[10px] text-saivie-rose uppercase font-bold block mb-1">Fundal Height</span>
-                                        <div className="flex items-center gap-1.5">
-                                          <Input
-                                            type="text"
-                                            placeholder="e.g. 24 cm / corresponds to dates"
-                                            value={fundalHeightVal}
-                                            onChange={(e) => setFundalHeightVal(e.target.value)}
-                                            className="h-7 text-sm font-bold text-saivie-plum border-saivie-blush focus-visible:ring-saivie-blush flex-1 px-2"
-                                            data-testid="input-fundal-height"
-                                            onBlur={(e) => {
-                                              const val = e.target.value;
-                                              if (latestVisit?.id) {
-                                                const currentVitals = (latestVisit.vitals as any) || {};
-                                                fetch(`/api/visit-history/${latestVisit.id}`, {
-                                                  method: 'PATCH',
-                                                  headers: { 'Content-Type': 'application/json' },
-                                                  body: JSON.stringify({
-                                                    vitals: { ...currentVitals, fundalHeight: val }
-                                                  })
-                                                }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
-                                              }
-                                            }}
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="bg-gradient-to-br from-rose-50 to-saivie-ivory p-2.5 rounded border border-rose-100">
-                                        <span className="text-[10px] text-rose-500 uppercase font-bold block mb-1">Fetal Heart Rate</span>
-                                        <div className="flex items-center gap-1.5">
-                                          <Input
-                                            type="text"
-                                            placeholder="e.g. 140 bpm / regular"
-                                            value={fetalHeartRateVal}
-                                            onChange={(e) => setFetalHeartRateVal(e.target.value)}
-                                            className="h-7 text-sm font-bold text-saivie-plum border-rose-200 focus-visible:ring-rose-300 flex-1 px-2"
-                                            data-testid="input-fetal-heart-rate"
-                                            onBlur={(e) => {
-                                              const val = e.target.value;
-                                              if (latestVisit?.id) {
-                                                const currentVitals = (latestVisit.vitals as any) || {};
-                                                fetch(`/api/visit-history/${latestVisit.id}`, {
-                                                  method: 'PATCH',
-                                                  headers: { 'Content-Type': 'application/json' },
-                                                  body: JSON.stringify({
-                                                    vitals: { ...currentVitals, fetalHeartRate: val }
-                                                  })
-                                                }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
-                                              }
-                                            }}
-                                          />
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {latestVisit?.objective && !soapObjectiveDraft ? (
-                                    <p className="text-sm text-saivie-plum leading-relaxed">{latestVisit.objective}</p>
-                                  ) : (
-                                    <Textarea
-                                      value={soapObjectiveDraft || ""}
-                                      onChange={e => setSoapObjectiveDraft(e.target.value)}
-                                      placeholder="Clinical findings, examination notes, test results..."
-                                      className={`min-h-[50px] text-sm border-blue-200 focus-visible:ring-blue-300 ${soapObjectiveDraft ? 'bg-blue-50/50 border-blue-300' : ''}`}
-                                    />
-                                  )}
-                               </div>
-
-                               {/* A — Assessment */}
-                               <div className="p-4 bg-emerald-50/30">
-                                  <div className="flex items-center gap-2 mb-2">
-                                     <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">A</Badge>
-                                     <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Assessment</span>
-                                  </div>
-
-                                  {careMode === 'pregnancy' && (
-                                    <div className="grid grid-cols-2 gap-3 mb-3">
-                                      <div className="bg-saivie-ivory p-2.5 rounded border border-emerald-100">
-                                        <span className="text-[10px] text-emerald-600 uppercase font-bold block mb-1.5">P/V (Per Vaginum)</span>
-                                        <Textarea
-                                          placeholder="Cervix: position, consistency, dilation, effacement. Membranes, presenting part, station..."
-                                          defaultValue={(latestVisit?.vitals as any)?.pvExam || ''}
-                                          className="min-h-[60px] text-xs border-emerald-200 focus-visible:ring-emerald-300 resize-none"
-                                          data-testid="input-pv-exam"
-                                          onBlur={(e) => {
-                                            const val = e.target.value;
-                                            if (latestVisit?.id) {
-                                              const currentVitals = (latestVisit.vitals as any) || {};
-                                              fetch(`/api/visit-history/${latestVisit.id}`, {
-                                                method: 'PATCH',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ vitals: { ...currentVitals, pvExam: val } })
-                                              }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
-                                            }
-                                          }}
-                                        />
-                                      </div>
-                                      <div className="bg-saivie-ivory p-2.5 rounded border border-emerald-100">
-                                        <span className="text-[10px] text-emerald-600 uppercase font-bold block mb-1.5">P/S (Per Speculum)</span>
-                                        <Textarea
-                                          placeholder="Cervix appearance, os, discharge, bleeding, lesions..."
-                                          defaultValue={(latestVisit?.vitals as any)?.psExam || ''}
-                                          className="min-h-[60px] text-xs border-emerald-200 focus-visible:ring-emerald-300 resize-none"
-                                          data-testid="input-ps-exam"
-                                          onBlur={(e) => {
-                                            const val = e.target.value;
-                                            if (latestVisit?.id) {
-                                              const currentVitals = (latestVisit.vitals as any) || {};
-                                              fetch(`/api/visit-history/${latestVisit.id}`, {
-                                                method: 'PATCH',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ vitals: { ...currentVitals, psExam: val } })
-                                              }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
-                                            }
-                                          }}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {(latestVisit?.assessment || latestVisit?.diagnosis) && !soapAssessmentDraft ? (
-                                    <div className="bg-saivie-ivory border border-emerald-100 rounded p-3">
-                                       {latestVisit.assessment
-                                         ? <p className="text-sm text-saivie-plum leading-relaxed italic">"{latestVisit.assessment}"</p>
-                                         : <><span className="text-[10px] text-saivie-plum uppercase font-bold block mb-1">Diagnosis</span><p className="text-sm text-saivie-plum">{latestVisit.diagnosis}</p></>
-                                       }
-                                    </div>
-                                  ) : (
-                                    <Textarea
-                                      value={soapAssessmentDraft || ""}
-                                      onChange={e => setSoapAssessmentDraft(e.target.value)}
-                                      placeholder="Clinical assessment, differential diagnosis..."
-                                      className={`min-h-[50px] text-sm border-emerald-200 focus-visible:ring-emerald-300 ${soapAssessmentDraft ? 'bg-emerald-50/50 border-emerald-300' : ''}`}
-                                    />
-                                  )}
-                               </div>
-
-                               {/* P — Plan */}
-                               <div className="p-4 bg-saivie-surface-muted/30">
-                                  <div className="flex items-center gap-2 mb-2">
-                                     <Badge className="bg-saivie-sage text-saivie-plum border-saivie-border text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">P</Badge>
-                                     <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Plan</span>
-                                  </div>
-                                  
-                                  {/* Plan notes */}
-                                  {latestVisit?.planNotes && !soapPlanDraft ? (
-                                    <div className="bg-saivie-ivory border border-saivie-border rounded p-3 mb-3">
-                                       <p className="text-sm text-saivie-plum leading-relaxed">{latestVisit.planNotes}</p>
-                                    </div>
-                                  ) : (
-                                    <Textarea
-                                      value={soapPlanDraft || ""}
-                                      onChange={e => setSoapPlanDraft(e.target.value)}
-                                      placeholder="Treatment plan, prescriptions, follow-up..."
-                                      className={`min-h-[50px] text-sm border-saivie-border focus-visible:ring-saivie-border mb-3 ${soapPlanDraft ? 'bg-saivie-surface-muted/50 border-saivie-border' : ''}`}
-                                    />
-                                  )}
-
-                                  {/* Save SOAP to Visit action bar — visible when any draft field is populated */}
-                                  {(soapSubjectiveDraft || soapObjectiveDraft || soapAssessmentDraft || soapPlanDraft) && (
-                                    <div className="mb-3 flex items-center gap-2">
-                                      <button
-                                        data-testid="btn-save-soap-to-visit"
-                                        disabled={soapSaving}
-                                        onClick={async () => {
-                                          setSoapSaving(true);
-                                          setSoapSavedMsg(null);
-                                          try {
-                                            let saveRes: Response;
-                                            if (latestVisit?.id) {
-                                              saveRes = await fetch(`/api/visit-history/${latestVisit.id}`, {
-                                                method: 'PATCH',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({
-                                                  ...(soapSubjectiveDraft ? { subjective: soapSubjectiveDraft } : {}),
-                                                  ...(soapObjectiveDraft ? { objective: soapObjectiveDraft } : {}),
-                                                  ...(soapAssessmentDraft ? { assessment: soapAssessmentDraft } : {}),
-                                                  ...(soapPlanDraft ? { planNotes: soapPlanDraft } : {}),
-                                                }),
-                                              });
-                                            } else {
-                                              saveRes = await fetch(`/api/patients/${selectedPatient.id}/visit-history`, {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({
-                                                  date: new Date().toISOString().split('T')[0],
-                                                  visitType: 'consultation',
-                                                  ...(selectedPatient.appointmentId ? { appointmentId: selectedPatient.appointmentId } : {}),
-                                                  subjective: soapSubjectiveDraft,
-                                                  objective: soapObjectiveDraft,
-                                                  assessment: soapAssessmentDraft,
-                                                  planNotes: soapPlanDraft,
-                                                }),
-                                              });
-                                            }
-                                            if (!saveRes.ok) {
-                                              const errBody = await saveRes.json().catch(() => ({}));
-                                              throw new Error(errBody.error || `Server error ${saveRes.status}`);
-                                            }
-                                            setSoapSubjectiveDraft('');
-                                            setSoapObjectiveDraft('');
-                                            setSoapAssessmentDraft('');
-                                            setSoapPlanDraft('');
-                                            setSoapTranscript(null);
-                                            setSoapSavedMsg('SOAP notes saved to visit record.');
-                                            queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] });
-                                            setTimeout(() => setSoapSavedMsg(null), 4000);
-                                          } catch (err: any) {
-                                            setSoapSavedMsg(`Failed to save: ${err.message || 'Please try again.'}`);
-                                          } finally {
-                                            setSoapSaving(false);
-                                          }
-                                        }}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold bg-saivie-teal text-white hover:bg-saivie-teal disabled:opacity-60 transition-colors"
-                                      >
-                                        {soapSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                                        {soapSaving ? 'Saving…' : 'Save SOAP to Visit Record'}
-                                      </button>
-                                      <button
-                                        onClick={() => { setSoapSubjectiveDraft(''); setSoapObjectiveDraft(''); setSoapAssessmentDraft(''); setSoapPlanDraft(''); setSoapTranscript(null); }}
-                                        className="text-xs text-saivie-plum hover:text-saivie-plum"
-                                        data-testid="btn-discard-soap-draft"
-                                      >
-                                        Discard draft
-                                      </button>
-                                    </div>
-                                  )}
-                                  {soapSavedMsg && (
-                                    <div className={`flex items-center gap-2 mb-3 px-3 py-2 rounded text-xs font-medium ${soapSavedMsg.startsWith('Failed') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
-                                      {soapSavedMsg.startsWith('Failed') ? <AlertCircle className="w-3 h-3" /> : <Check className="w-3 h-3" />}
-                                      {soapSavedMsg}
-                                    </div>
-                                  )}
-
-                                  <div id="patient-medications" className="scroll-mt-3">
-                                  {/* Dynamic medications table */}
-                                  {(medications.length > 0 || showAddMedRow) && (
-                                    <div className="mb-3">
-                                       <div className="flex items-center justify-between mb-2">
-                                         <span className="text-[10px] text-saivie-plum uppercase font-bold">Active Medications</span>
-                                         <Badge className="text-[9px] bg-saivie-sage text-saivie-teal border-saivie-border">{medications.filter((m: any) => m.status === 'Active' || m.status === 'active').length} active</Badge>
-                                       </div>
-                                       <div className="border border-saivie-border rounded-md overflow-visible">
-                                          <table className="w-full text-xs text-left">
-                                             <thead className="bg-saivie-surface-muted text-saivie-plum border-b border-saivie-border">
-                                                <tr>
-                                                   <th className="px-3 py-1.5 font-medium">Drug</th>
-                                                   <th className="px-3 py-1.5 font-medium">Dose</th>
-                                                   <th className="px-3 py-1.5 font-medium">Frequency</th>
-                                                   <th className="px-3 py-1.5 font-medium">Date</th>
-                                                   <th className="px-3 py-1.5 font-medium">Status</th>
-                                                   <th className="px-3 py-1.5 font-medium">Notes</th>
-                                                   <th className="px-2 py-1.5 font-medium w-16"></th>
-                                                </tr>
-                                             </thead>
-                                             <tbody className="divide-y divide-slate-100">
-                                                {medications.map((med: any) => (
-                                                  <tr key={med.id}>
-                                                    {editingMedId === med.id ? (
-                                                      <>
-                                                        <td className="px-1 py-1 relative">
-                                                          <MedicineAutocomplete value={editMedData.name || ''} onChange={(name) => setEditMedData({...editMedData, name})}
-                                                            onSelect={(medicine) => setEditMedData({...editMedData, name: medicine.name, dose: medicine.dose, frequency: medicine.frequency, duration: medicine.duration, instructions: medicine.instructions, route: medicine.route})}
-                                                            className="h-7 text-xs" />
-                                                        </td>
-                                                        <td className="px-1 py-1"><MedicineDoseInput value={editMedData.dose || ''} onChange={dose => setEditMedData({...editMedData, dose})} /></td>
-                                                        <td className="px-1 py-1"><MedicineFrequencyInput value={editMedData.frequency || ''} onChange={frequency => setEditMedData({...editMedData, frequency})} label="Edit medicine frequency" /></td>
-                                                        <td className="px-1 py-1"><Input type="date" value={editMedData.startDate || ''} onChange={e => setEditMedData({...editMedData, startDate: e.target.value})} className="h-7 text-xs" /></td>
-                                                        <td className="px-1 py-1">
-                                                          <Select value={editMedData.status || 'Active'} onValueChange={v => setEditMedData({...editMedData, status: v})}>
-                                                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                                                            <SelectContent>
-                                                              <SelectItem value="Active">Active</SelectItem>
-                                                              <SelectItem value="Completed">Completed</SelectItem>
-                                                              <SelectItem value="Discontinued">Discontinued</SelectItem>
-                                                            </SelectContent>
-                                                          </Select>
-                                                        </td>
-                                                        <td className="px-1 py-1 space-y-1">
-                                                          <Input aria-label="Duration" placeholder="Duration" value={editMedData.duration || ''} onChange={e => setEditMedData({...editMedData, duration: e.target.value})} className="h-7 text-xs" />
-                                                          <Input aria-label="Medicine instructions" placeholder="Instructions (shared for reuse)" value={editMedData.instructions || ''} onChange={e => setEditMedData({...editMedData, instructions: e.target.value})} className="h-7 text-xs" />
-                                                          <Input aria-label="Route" placeholder="Route" value={editMedData.route || ''} onChange={e => setEditMedData({...editMedData, route: e.target.value})} className="h-7 text-xs" />
-                                                          <Input aria-label="Patient-specific notes" placeholder="Patient-specific notes (not shared)" value={editMedData.notes || ''} onChange={e => setEditMedData({...editMedData, notes: e.target.value})} className="h-7 text-xs" />
-                                                        </td>
-                                                        <td className="px-1 py-1">
-                                                          <div className="flex gap-1">
-                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" onClick={() => updateMedMutation.mutate({ id: med.id, data: editMedData })}>
-                                                              <Check className="w-3 h-3" />
-                                                            </Button>
-                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-saivie-plum" onClick={() => setEditingMedId(null)}>
-                                                              <X className="w-3 h-3" />
-                                                            </Button>
-                                                          </div>
-                                                        </td>
-                                                      </>
-                                                    ) : (
-                                                      <>
-                                                        <td className="px-3 py-2 font-medium text-saivie-plum">{med.name}</td>
-                                                        <td className="px-3 py-2 text-saivie-plum">{med.dose || '—'}</td>
-                                                        <td className="px-3 py-2 text-saivie-plum">{med.frequency || '—'}</td>
-                                                        <td className="px-3 py-2 text-saivie-plum">{med.startDate ? new Date(med.startDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
-                                                        <td className="px-3 py-2">
-                                                          <Badge variant="outline" className={`text-[10px] ${med.status === 'active' || med.status === 'Active' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-saivie-plum bg-saivie-surface-muted border-saivie-border'}`}>
-                                                            {med.status || 'Active'}
-                                                          </Badge>
-                                                        </td>
-                                                        <td className="px-3 py-2 text-saivie-plum">{[med.duration, med.instructions, med.route, med.notes].filter(Boolean).join(' · ') || '—'}</td>
-                                                        <td className="px-1 py-2">
-                                                          <div className="flex gap-1">
-                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-blue-600" onClick={() => { setEditingMedId(med.id); setEditMedData({ name: med.name, dose: med.dose || '', frequency: med.frequency || '', duration: med.duration || '', instructions: med.instructions || '', route: med.route || '', startDate: med.startDate || '', status: med.status || 'Active', notes: med.notes || '' }); }} data-testid={`button-edit-med-${med.id}`}>
-                                                              <Pencil className="w-3 h-3" />
-                                                            </Button>
-                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-rose-600" onClick={() => deleteMedMutation.mutate(med.id)} data-testid={`button-delete-med-${med.id}`}>
-                                                              <Trash2 className="w-3 h-3" />
-                                                            </Button>
-                                                          </div>
-                                                        </td>
-                                                      </>
-                                                    )}
-                                                  </tr>
-                                                ))}
-                                                {showAddMedRow && (
-                                                  <tr className="bg-blue-50/30">
-                                                    <td className="px-1 py-1 relative">
-                                                      <MedicineAutocomplete value={newMed.name} onChange={(name) => setNewMed({...newMed, name})}
-                                                        onSelect={(medicine) => setNewMed({...newMed, name: medicine.name, dose: medicine.dose, frequency: medicine.frequency, duration: medicine.duration, instructions: medicine.instructions, route: medicine.route})}
-                                                        className="h-7 text-xs" testId="input-new-med-name" />
-                                                    </td>
-                                                    <td className="px-1 py-1"><MedicineDoseInput value={newMed.dose} onChange={dose => setNewMed({...newMed, dose})} /></td>
-                                                    <td className="px-1 py-1"><MedicineFrequencyInput value={newMed.frequency} onChange={frequency => setNewMed({...newMed, frequency})} label="New medicine frequency" testId="input-new-med-frequency" /></td>
-                                                    <td className="px-1 py-1"><Input type="date" value={newMed.startDate} onChange={e => setNewMed({...newMed, startDate: e.target.value})} className="h-7 text-xs" /></td>
-                                                    <td className="px-1 py-1">
-                                                      <Select value={newMed.status} onValueChange={v => setNewMed({...newMed, status: v})}>
-                                                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                                                        <SelectContent>
-                                                          <SelectItem value="Active">Active</SelectItem>
-                                                          <SelectItem value="Completed">Completed</SelectItem>
-                                                          <SelectItem value="Discontinued">Discontinued</SelectItem>
-                                                        </SelectContent>
-                                                      </Select>
-                                                    </td>
-                                                    <td className="px-1 py-1 space-y-1">
-                                                      <Input aria-label="Duration" placeholder="Duration" value={newMed.duration} onChange={e => setNewMed({...newMed, duration: e.target.value})} className="h-7 text-xs" />
-                                                      <Input aria-label="Medicine instructions" placeholder="Instructions (shared for reuse)" value={newMed.instructions} onChange={e => setNewMed({...newMed, instructions: e.target.value})} className="h-7 text-xs" />
-                                                      <Input aria-label="Route" placeholder="Route" value={newMed.route} onChange={e => setNewMed({...newMed, route: e.target.value})} className="h-7 text-xs" />
-                                                      <Input aria-label="Patient-specific notes" placeholder="Patient-specific notes (not shared)" value={newMed.notes} onChange={e => setNewMed({...newMed, notes: e.target.value})} className="h-7 text-xs" />
-                                                    </td>
-                                                    <td className="px-1 py-1">
-                                                      <div className="flex gap-1">
-                                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" disabled={!newMed.name.trim() || addMedMutation.isPending} onClick={() => addMedMutation.mutate(newMed)} data-testid="button-save-new-med">
-                                                          <Check className="w-3 h-3" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-saivie-plum hover:text-saivie-plum" onClick={() => { setShowAddMedRow(false); setNewMed({ name: '', dose: '', frequency: '', duration: '', instructions: '', route: '', startDate: '', status: 'Active', notes: '' }); }}>
-                                                          <X className="w-3 h-3" />
-                                                        </Button>
-                                                      </div>
-                                                    </td>
-                                                  </tr>
-                                                )}
-                                             </tbody>
-                                          </table>
-                                       </div>
-                                       {!showAddMedRow && (
-                                         <Button variant="ghost" size="sm" className="mt-1.5 h-7 text-xs text-blue-600 hover:text-blue-700 gap-1" onClick={() => setShowAddMedRow(true)} data-testid="button-add-med-manual">
-                                           <Plus className="w-3 h-3" /> Add Medication
-                                         </Button>
-                                       )}
-                                    </div>
-                                  )}
-
-                                  {!medications.length && !showAddMedRow && (
-                                    <div className="mb-3">
-                                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-dashed border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted w-full" onClick={() => setShowAddMedRow(true)} data-testid="button-add-first-med">
-                                        <Plus className="w-3.5 h-3.5" /> Add Medication
-                                      </Button>
-                                    </div>
-                                  )}
-                                  </div>
-
-                                  {/* Dynamic prescriptions from visit */}
-                                  {latestVisit?.prescriptions && Array.isArray(latestVisit.prescriptions) && (latestVisit.prescriptions as any[]).length > 0 && (
-                                    <div className="mb-3">
-                                       <span className="text-[10px] text-saivie-plum uppercase font-bold block mb-2">Visit Prescriptions</span>
-                                       <div className="flex flex-wrap gap-2">
-                                          {(latestVisit.prescriptions as any[]).map((rx: any, i: number) => (
-                                            <Badge key={i} variant="outline" className="text-[10px] bg-saivie-surface-muted text-saivie-teal border-saivie-border">
-                                              {typeof rx === 'string' ? rx : `${rx.name || rx.drug} ${rx.dose || ''}`}
-                                            </Badge>
-                                          ))}
-                                       </div>
-                                    </div>
-                                  )}
-
-                                  {/* Dynamic labs ordered */}
-                                  {latestVisit?.labsOrdered && Array.isArray(latestVisit.labsOrdered) && (latestVisit.labsOrdered as any[]).length > 0 && (
-                                    <div className="mb-3">
-                                       <span className="text-[10px] text-saivie-plum uppercase font-bold block mb-2">Labs Ordered</span>
-                                       <div className="flex flex-wrap gap-2">
-                                          {(latestVisit.labsOrdered as any[]).map((lab: any, i: number) => (
-                                            <Badge key={i} variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
-                                              {typeof lab === 'string' ? lab : lab.name || lab.test}
-                                            </Badge>
-                                          ))}
-                                       </div>
-                                    </div>
-                                  )}
-
-                                  {/* Follow-up */}
-                                  {latestVisit?.followUpPlan && (
-                                    <div className="bg-saivie-ivory border border-saivie-border rounded p-2 mt-2">
-                                       <span className="text-[10px] text-saivie-plum uppercase font-bold block">Follow-up Notes</span>
-                                       <p className="text-xs text-saivie-plum mt-0.5">{latestVisit.followUpPlan}</p>
-                                    </div>
-                                  )}
-
-                                  {/* Scheduling Section — Next Visit / Immunisation / Investigations */}
-                                  {(() => {
-                                    const schedVitals = (latestVisit?.vitals as any) || {};
-                                    const nextImmDate = schedVitals.nextImmunisationDate || '';
-                                    const nextInvDate = schedVitals.nextInvestigationDate || '';
-                                    const nextInvNotes = schedVitals.nextInvestigationNotes || '';
-
-                                    const formatCountdown = (dateStr: string) => {
-                                      if (!dateStr) return null;
-                                      const d = new Date(dateStr);
-                                      const today = new Date();
-                                      today.setHours(0,0,0,0);
-                                      d.setHours(0,0,0,0);
-                                      const diff = Math.ceil((d.getTime() - today.getTime()) / (1000*60*60*24));
-                                      if (diff === 0) return { text: 'Today', color: 'bg-blue-100 text-blue-700' };
-                                      if (diff === 1) return { text: 'Tomorrow', color: 'bg-blue-100 text-blue-700' };
-                                      if (diff < 0) return { text: `${Math.abs(diff)}d overdue`, color: 'bg-rose-100 text-rose-700' };
-                                      if (diff <= 7) return { text: `In ${diff} days`, color: 'bg-emerald-100 text-emerald-700' };
-                                      return { text: `In ${Math.ceil(diff/7)} weeks`, color: 'bg-saivie-sage text-saivie-plum' };
-                                    };
-
-                                    const saveScheduleVitals = (field: string, val: string) => {
-                                      if (latestVisit?.id) {
-                                        const currentVitals = (latestVisit.vitals as any) || {};
-                                        let parsedVal: any = val;
-                                        try { parsedVal = JSON.parse(val); } catch {}
-                                        fetch(`/api/visit-history/${latestVisit.id}`, {
-                                          method: 'PATCH',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({ vitals: { ...currentVitals, [field]: parsedVal } })
-                                        }).then(() => queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] }));
-                                      }
-                                    };
-
-                                    const visitCountdown = selectedPatient.nextReview ? formatCountdown(selectedPatient.nextReview) : null;
-                                    const immCountdown = nextImmDate ? formatCountdown(nextImmDate) : null;
-                                    const invCountdown = nextInvDate ? formatCountdown(nextInvDate) : null;
-
-                                    return (
-                                      <div className="bg-gradient-to-r from-blue-50 to-saivie-surface-muted border border-blue-200 rounded-lg p-3 mt-3" data-testid="card-scheduling">
-                                        <div className="flex items-center gap-2 mb-3">
-                                          <CalendarCheck className="w-4 h-4 text-blue-600" />
-                                          <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">Upcoming Schedule</span>
-                                        </div>
-
-                                        <div className="space-y-2.5">
-                                          {/* Next Visit */}
-                                          <div className="bg-saivie-ivory rounded-lg border border-blue-100 p-2.5">
-                                            <div className="flex items-center justify-between mb-1.5">
-                                              <span className="text-[11px] font-bold text-blue-700 flex items-center gap-1.5"><Stethoscope className="w-3 h-3" /> Next Visit / Follow-up</span>
-                                              {visitCountdown && <Badge className={`text-[9px] ${visitCountdown.color} border-0`}>{visitCountdown.text}</Badge>}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <Input
-                                                type="date"
-                                                key={`visit-${selectedPatient.id}-${selectedPatient.nextReview}`}
-                                                defaultValue={selectedPatient.nextReview || ''}
-                                                min={new Date().toISOString().split('T')[0]}
-                                                className="h-7 text-xs border-blue-200 focus-visible:ring-blue-300 flex-1"
-                                                data-testid="input-next-visit-date"
-                                                onChange={(e) => {
-                                                  const val = e.target.value;
-                                                  if (val) {
-                                                    fetch(`/api/patients/${selectedPatient.id}`, {
-                                                      method: 'PATCH',
-                                                      headers: { 'Content-Type': 'application/json' },
-                                                      body: JSON.stringify({ nextReview: val })
-                                                    }).then(() => {
-                                                      queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
-                                                      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
-                                                    });
-                                                  }
-                                                }}
-                                              />
-                                              {selectedPatient.nextReview && (
-                                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-rose-400 hover:text-rose-600 hover:bg-rose-50" onClick={() => { fetch(`/api/patients/${selectedPatient.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nextReview: null }) }).then(() => queryClient.invalidateQueries({ queryKey: ['/api/patients'] })); }} data-testid="button-clear-next-visit"><X className="w-3 h-3" /></Button>
-                                              )}
-                                            </div>
-                                            {selectedPatient.nextReview && (
-                                              <p className="text-[10px] text-blue-500 mt-1">{new Date(selectedPatient.nextReview).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                                            )}
-                                          </div>
-
-                                          {/* Next Immunisation */}
-                                          {careMode === 'pregnancy' && (
-                                            <div className="bg-saivie-ivory rounded-lg border border-saivie-border p-2.5">
-                                              <div className="flex items-center justify-between mb-1.5">
-                                                <span className="text-[11px] font-bold text-saivie-teal flex items-center gap-1.5"><Shield className="w-3 h-3" /> Next Immunisation</span>
-                                                {immCountdown && <Badge className={`text-[9px] ${immCountdown.color} border-0`}>{immCountdown.text}</Badge>}
-                                              </div>
-                                              <div className="flex items-center gap-2">
-                                                <Input
-                                                  type="date"
-                                                  key={`imm-${selectedPatient.id}-${nextImmDate}`}
-                                                  defaultValue={nextImmDate}
-                                                  min={new Date().toISOString().split('T')[0]}
-                                                  className="h-7 text-xs border-saivie-border focus-visible:ring-saivie-border flex-1"
-                                                  data-testid="input-next-immunisation-date"
-                                                  onBlur={(e) => { if (e.target.value) saveScheduleVitals('nextImmunisationDate', e.target.value); }}
-                                                />
-                                                {nextImmDate && (
-                                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-rose-400 hover:text-rose-600 hover:bg-rose-50" onClick={() => saveScheduleVitals('nextImmunisationDate', '')} data-testid="button-clear-next-imm"><X className="w-3 h-3" /></Button>
-                                                )}
-                                              </div>
-                                              {nextImmDate && (
-                                                <p className="text-[10px] text-saivie-teal mt-1">{new Date(nextImmDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                                              )}
-                                            </div>
-                                          )}
-
-                                          {/* Next Blood Test / USG */}
-                                          {(() => {
-                                            let invPregnancyWeek = 0;
-                                            if (selectedPatient.lmp) {
-                                              invPregnancyWeek = Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7)));
-                                            }
-
-                                            const invMilestones: Record<string, { weekRange: string; tests: string[] }> = {
-                                              'booking': { weekRange: '6-10 wks', tests: ['CBC', 'Blood Group & Rh', 'RBS', 'TSH', 'Urine R/M', 'HIV/HBsAg/VDRL', 'Rubella IgG', 'USG Dating Scan'] },
-                                              'first_trimester': { weekRange: '11-14 wks', tests: ['NT Scan (Nuchal Translucency)', 'Dual Marker', 'Urine Culture', 'TSH (repeat)'] },
-                                              'second_trimester_early': { weekRange: '16-20 wks', tests: ['Quadruple Marker', 'USG Anomaly Scan (TIFFA)', 'CBC (repeat)'] },
-                                              'second_trimester_mid': { weekRange: '24-28 wks', tests: ['OGTT (75g)', 'CBC (repeat)', 'Anti-D (if Rh-)', 'USG Fetal Echo'] },
-                                              'third_trimester_early': { weekRange: '28-32 wks', tests: ['USG Growth Scan', 'CBC (repeat)', 'TSH (repeat)', 'Urine Routine', 'USG Doppler'] },
-                                              'third_trimester_late': { weekRange: '34-36 wks', tests: ['USG Growth Scan', 'GBS Screening', 'CBC + Coagulation', 'LFT/KFT', 'NST', 'USG Presentation'] },
-                                              'term': { weekRange: '37-40 wks', tests: ['NST (weekly)', 'BPP', 'USG AFI', 'Bishop Score', 'USG EFW & Doppler'] },
-                                            };
-
-                                            const fertilityTests = ['Day 2/3 Hormones', 'USG Pelvic', 'HSG', 'Semen Analysis', 'Day 21 Progesterone', 'Vit D/B12/Ferritin', 'OGTT', 'USG Follicular Monitoring'];
-                                            const cycleTests = ['Hormonal Panel', 'TSH/T3/T4', 'USG Pelvic', 'Prolactin', 'Fasting Insulin', 'Lipid Profile', 'Vit D/B12', 'CBC'];
-
-                                            let suggestedTests: string[] = [];
-                                            let milestoneLabel = '';
-
-                                            if (careMode === 'pregnancy' && invPregnancyWeek > 0) {
-                                              const getKey = () => {
-                                                if (invPregnancyWeek <= 10) return 'booking';
-                                                if (invPregnancyWeek <= 14) return 'first_trimester';
-                                                if (invPregnancyWeek <= 20) return 'second_trimester_early';
-                                                if (invPregnancyWeek <= 28) return 'second_trimester_mid';
-                                                if (invPregnancyWeek <= 32) return 'third_trimester_early';
-                                                if (invPregnancyWeek <= 36) return 'third_trimester_late';
-                                                return 'term';
-                                              };
-                                              const key = getKey();
-                                              suggestedTests = invMilestones[key].tests;
-                                              milestoneLabel = invMilestones[key].weekRange;
-                                            } else if (careMode === 'natural_conception' || careMode === 'iui' || careMode === 'ivf') {
-                                              suggestedTests = fertilityTests;
-                                              milestoneLabel = 'Fertility';
-                                            } else {
-                                              suggestedTests = cycleTests;
-                                              milestoneLabel = 'Cycle';
-                                            }
-
-                                            const savedTests: string[] = schedVitals.nextInvestigationTests || [];
-                                            const customInvText = schedVitals.nextInvestigationCustom || '';
-
-                                            const toggleTest = (testName: string) => {
-                                              const current: string[] = schedVitals.nextInvestigationTests || [];
-                                              const updated = current.includes(testName)
-                                                ? current.filter((t: string) => t !== testName)
-                                                : [...current, testName];
-                                              saveScheduleVitals('nextInvestigationTests', JSON.stringify(updated));
-                                            };
-
-                                            return (
-                                              <div className="bg-saivie-ivory rounded-lg border border-saivie-border p-2.5">
-                                                <div className="flex items-center justify-between mb-1.5">
-                                                  <span className="text-[11px] font-bold text-saivie-teal flex items-center gap-1.5"><FlaskConical className="w-3 h-3" /> Next Investigations</span>
-                                                  <div className="flex items-center gap-1.5">
-                                                    {milestoneLabel && <Badge className="text-[9px] bg-saivie-sage text-saivie-teal border-saivie-border">{milestoneLabel}</Badge>}
-                                                    {invCountdown && <Badge className={`text-[9px] ${invCountdown.color} border-0`}>{invCountdown.text}</Badge>}
-                                                  </div>
-                                                </div>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                  <Input
-                                                    type="date"
-                                                    key={`inv-${selectedPatient.id}-${nextInvDate}`}
-                                                    defaultValue={nextInvDate}
-                                                    min={new Date().toISOString().split('T')[0]}
-                                                    className="h-7 text-xs border-saivie-border focus-visible:ring-saivie-border flex-1"
-                                                    data-testid="input-next-investigation-date"
-                                                    onBlur={(e) => { if (e.target.value) saveScheduleVitals('nextInvestigationDate', e.target.value); }}
-                                                  />
-                                                  {nextInvDate && (
-                                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-rose-400 hover:text-rose-600 hover:bg-rose-50" onClick={() => saveScheduleVitals('nextInvestigationDate', '')} data-testid="button-clear-next-inv"><X className="w-3 h-3" /></Button>
-                                                  )}
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-1" data-testid="investigation-checkboxes">
-                                                  {suggestedTests.map((test) => (
-                                                    <label key={test} className={`flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer text-[11px] transition-colors ${savedTests.includes(test) ? 'bg-saivie-sage text-saivie-plum font-medium' : 'bg-saivie-surface-muted text-saivie-plum hover:bg-saivie-sage'}`} data-testid={`checkbox-inv-${test.replace(/[^a-zA-Z0-9]/g, '-')}`}>
-                                                      <input
-                                                        type="checkbox"
-                                                        checked={savedTests.includes(test)}
-                                                        onChange={() => toggleTest(test)}
-                                                        className="w-3 h-3 rounded border-saivie-border text-saivie-teal focus:ring-saivie-teal"
-                                                      />
-                                                      <span className="truncate">{test}</span>
-                                                    </label>
-                                                  ))}
-                                                </div>
-                                                <Input
-                                                  type="text"
-                                                  placeholder="+ Custom / Repeat test..."
-                                                  key={`inv-custom-${selectedPatient.id}-${customInvText}`}
-                                                  defaultValue={customInvText}
-                                                  className="h-7 text-xs border-saivie-border focus-visible:ring-saivie-border mt-2"
-                                                  data-testid="input-next-investigation-custom"
-                                                  onBlur={(e) => saveScheduleVitals('nextInvestigationCustom', e.target.value)}
-                                                />
-                                                {(nextInvDate || savedTests.length > 0) && (
-                                                  <div className="mt-1.5">
-                                                    {nextInvDate && <p className="text-[10px] text-saivie-teal">{new Date(nextInvDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })}</p>}
-                                                    {savedTests.length > 0 && <p className="text-[10px] text-saivie-teal font-medium mt-0.5">{savedTests.join(', ')}{customInvText ? `, ${customInvText}` : ''}</p>}
-                                                  </div>
-                                                )}
-                                              </div>
-                                            );
-                                          })()}
-                                        </div>
-                                      </div>
-                                    );
-                                  })()}
-                               </div>
-
-                               {/* INVESTIGATIONS SECTION */}
-                               {(() => {
-                                 let pregnancyWeek = 0;
-                                 if (selectedPatient.lmp) {
-                                   pregnancyWeek = Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7)));
-                                 }
-
-                                 const investigationsByWeek: Record<string, { tests: { name: string; description: string }[]; weekRange: string }> = {
-                                   'booking': {
-                                     weekRange: '6-10 weeks (Booking Visit)',
-                                     tests: [
-                                       { name: 'CBC (Complete Blood Count)', description: 'Hemoglobin, WBC, platelets' },
-                                       { name: 'Blood Group & Rh Typing', description: 'ABO and Rh factor' },
-                                       { name: 'Random Blood Sugar (RBS)', description: 'Screen for diabetes' },
-                                       { name: 'TSH (Thyroid Stimulating Hormone)', description: 'Thyroid function' },
-                                       { name: 'Urine Routine & Microscopy', description: 'UTI screening, proteinuria' },
-                                       { name: 'HIV, HBsAg, VDRL', description: 'Infectious disease screening' },
-                                       { name: 'Rubella IgG', description: 'Immunity check' },
-                                       { name: 'Blood Pressure', description: 'Baseline BP recording' },
-                                       { name: 'USG - Dating Scan', description: 'Confirm gestational age, viability, location' },
-                                     ]
-                                   },
-                                   'first_trimester': {
-                                     weekRange: '11-14 weeks (First Trimester Screening)',
-                                     tests: [
-                                       { name: 'NT Scan (Nuchal Translucency)', description: 'Down syndrome screening with nuchal translucency measurement & CRL' },
-                                       { name: 'Dual Marker (PAPP-A + Free β-hCG)', description: 'Combined first trimester screening' },
-                                       { name: 'Urine Culture', description: 'Asymptomatic bacteriuria' },
-                                       { name: 'TSH (repeat if abnormal)', description: 'Thyroid recheck' },
-                                     ]
-                                   },
-                                   'second_trimester_early': {
-                                     weekRange: '16-20 weeks',
-                                     tests: [
-                                       { name: 'Quadruple Marker', description: 'AFP, hCG, uE3, Inhibin A (if dual marker not done)' },
-                                       { name: 'USG - Anomaly Scan (TIFFA)', description: 'Detailed anatomy scan at 18-20 weeks' },
-                                       { name: 'CBC (repeat)', description: 'Check for anemia' },
-                                     ]
-                                   },
-                                   'second_trimester_mid': {
-                                     weekRange: '24-28 weeks',
-                                     tests: [
-                                       { name: 'OGTT (75g Glucose Tolerance Test)', description: 'Gestational diabetes screening' },
-                                       { name: 'CBC (repeat)', description: 'Hemoglobin check' },
-                                       { name: 'Anti-D Injection', description: 'For Rh-negative mothers at 28 weeks' },
-                                       { name: 'USG - Fetal Echocardiography', description: 'Detailed cardiac assessment if indicated' },
-                                     ]
-                                   },
-                                   'third_trimester_early': {
-                                     weekRange: '28-32 weeks',
-                                     tests: [
-                                       { name: 'USG - Growth Scan', description: 'Fetal growth assessment, EFW, AFI' },
-                                       { name: 'CBC (repeat)', description: 'Anemia screening' },
-                                       { name: 'TSH (repeat)', description: 'Thyroid function check' },
-                                       { name: 'Urine Routine', description: 'Proteinuria screening for preeclampsia' },
-                                       { name: 'USG - Doppler Study', description: 'Umbilical artery, MCA Doppler if IUGR suspected' },
-                                     ]
-                                   },
-                                   'third_trimester_late': {
-                                     weekRange: '34-36 weeks',
-                                     tests: [
-                                       { name: 'USG - Growth Scan (repeat)', description: 'Fetal weight estimation, AFI, placental grading' },
-                                       { name: 'GBS Screening (Vaginal Swab)', description: 'Group B Streptococcus at 35-37 weeks' },
-                                       { name: 'CBC + Coagulation Profile', description: 'Pre-delivery workup' },
-                                       { name: 'LFT, KFT', description: 'Liver and kidney function' },
-                                       { name: 'NST (Non-Stress Test)', description: 'Fetal wellbeing' },
-                                       { name: 'USG - Presentation & Lie', description: 'Fetal presentation, cord position, placental location' },
-                                     ]
-                                   },
-                                   'term': {
-                                     weekRange: '37-40 weeks (Term)',
-                                     tests: [
-                                       { name: 'NST (weekly)', description: 'Fetal heart rate monitoring' },
-                                       { name: 'BPP (Biophysical Profile)', description: 'If indicated' },
-                                       { name: 'USG - AFI (Amniotic Fluid Index)', description: 'Fluid assessment' },
-                                       { name: 'Bishop Score Assessment', description: 'Cervical readiness evaluation' },
-                                       { name: 'USG - EFW & Doppler', description: 'Estimated fetal weight and blood flow assessment' },
-                                     ]
-                                   },
-                                 };
-
-                                 const fertilityInvestigations = [
-                                   { name: 'Day 2/3 Hormonal Panel', description: 'FSH, LH, E2, Prolactin, TSH, AMH' },
-                                   { name: 'USG - Pelvic Ultrasound', description: 'Antral follicle count, uterine assessment' },
-                                   { name: 'HSG (Hysterosalpingography)', description: 'Tubal patency test' },
-                                   { name: 'Semen Analysis', description: 'Partner sperm evaluation' },
-                                   { name: 'Day 21 Progesterone', description: 'Confirm ovulation' },
-                                   { name: 'Karyotype', description: 'Chromosomal analysis if indicated' },
-                                   { name: 'Vitamin D, B12, Ferritin', description: 'Nutritional status' },
-                                   { name: 'Glucose Tolerance Test', description: 'PCOS/metabolic screening' },
-                                   { name: 'USG - Follicular Monitoring', description: 'Serial follicle tracking for ovulation' },
-                                   { name: 'USG - Saline Infusion Sonography', description: 'Uterine cavity evaluation' },
-                                 ];
-
-                                 const cycleInvestigations = [
-                                   { name: 'Hormonal Panel', description: 'FSH, LH, E2, Progesterone, Testosterone, DHEAS' },
-                                   { name: 'TSH, Free T3, Free T4', description: 'Thyroid function' },
-                                   { name: 'USG - Pelvic Ultrasound', description: 'Ovarian morphology, endometrial thickness' },
-                                   { name: 'Prolactin', description: 'Rule out hyperprolactinemia' },
-                                   { name: 'Fasting Insulin + Glucose', description: 'Insulin resistance check' },
-                                   { name: 'Lipid Profile', description: 'Metabolic health' },
-                                   { name: 'Vitamin D, B12', description: 'Nutritional assessment' },
-                                   { name: 'CBC', description: 'Anemia screening' },
-                                   { name: 'USG - Transvaginal Scan', description: 'Detailed ovarian & uterine assessment' },
-                                 ];
-
-                                 let currentTests: { name: string; description: string }[] = [];
-                                 let sectionTitle = '';
-
-                                 if (careMode === 'pregnancy' && pregnancyWeek > 0) {
-                                   if (pregnancyWeek <= 10) { currentTests = investigationsByWeek.booking.tests; sectionTitle = investigationsByWeek.booking.weekRange; }
-                                   else if (pregnancyWeek <= 14) { currentTests = investigationsByWeek.first_trimester.tests; sectionTitle = investigationsByWeek.first_trimester.weekRange; }
-                                   else if (pregnancyWeek <= 20) { currentTests = investigationsByWeek.second_trimester_early.tests; sectionTitle = investigationsByWeek.second_trimester_early.weekRange; }
-                                   else if (pregnancyWeek <= 28) { currentTests = investigationsByWeek.second_trimester_mid.tests; sectionTitle = investigationsByWeek.second_trimester_mid.weekRange; }
-                                   else if (pregnancyWeek <= 32) { currentTests = investigationsByWeek.third_trimester_early.tests; sectionTitle = investigationsByWeek.third_trimester_early.weekRange; }
-                                   else if (pregnancyWeek <= 36) { currentTests = investigationsByWeek.third_trimester_late.tests; sectionTitle = investigationsByWeek.third_trimester_late.weekRange; }
-                                   else { currentTests = investigationsByWeek.term.tests; sectionTitle = investigationsByWeek.term.weekRange; }
-                                 } else if (careMode === 'natural_conception' || careMode === 'iui' || careMode === 'ivf') {
-                                   currentTests = fertilityInvestigations;
-                                   sectionTitle = 'Fertility Workup';
-                                 } else {
-                                   currentTests = cycleInvestigations;
-                                   sectionTitle = 'Cycle & Hormonal Workup';
-                                 }
-
-                                 const allTests = [...currentTests, ...customInvestigations];
-                                 const completedMap = getCompletedInvestigations();
-
-                                 const completedTests = allTests.filter(t => isInvestigationCompleted(t.name, completedMap));
-                                 const pendingTests = allTests.filter(t => !isInvestigationCompleted(t.name, completedMap));
-
-                                 const weekOrder = ['booking', 'first_trimester', 'second_trimester_early', 'second_trimester_mid', 'third_trimester_early', 'third_trimester_late', 'term'];
-
-                                 const getCurrentWeekKey = () => {
-                                   if (pregnancyWeek <= 10) return 'booking';
-                                   if (pregnancyWeek <= 14) return 'first_trimester';
-                                   if (pregnancyWeek <= 20) return 'second_trimester_early';
-                                   if (pregnancyWeek <= 28) return 'second_trimester_mid';
-                                   if (pregnancyWeek <= 32) return 'third_trimester_early';
-                                   if (pregnancyWeek <= 36) return 'third_trimester_late';
-                                   return 'term';
-                                 };
-                                 const currentWeekKey = getCurrentWeekKey();
-
-                                 const pastWeekKeys = careMode === 'pregnancy' && pregnancyWeek > 0
-                                   ? weekOrder.filter(k => weekOrder.indexOf(k) < weekOrder.indexOf(currentWeekKey))
-                                   : [];
-
-                                 return (
-                                   <div id="patient-investigations" className="scroll-mt-3 p-4 bg-saivie-surface-muted/30" data-testid="card-investigations">
-                                     <div className="flex items-center justify-between mb-3">
-                                       <div className="flex items-center gap-2">
-                                         <Badge className="bg-saivie-sage text-saivie-plum border-saivie-border text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">I</Badge>
-                                         <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Investigations</span>
-                                         {careMode === 'pregnancy' && pregnancyWeek > 0 && (
-                                           <Badge className="text-[10px] bg-saivie-sage text-saivie-teal border-saivie-border">Week {pregnancyWeek}</Badge>
-                                         )}
-                                         {labDocuments.length > 0 && (
-                                           <Badge className="text-[10px] bg-blue-100 text-blue-700 border-blue-200">{labDocuments.length} Report{labDocuments.length !== 1 ? 's' : ''}</Badge>
-                                         )}
-                                       </div>
-                                       <div className="flex items-center gap-1.5">
-                                         {labDocuments.length > 0 && (
-                                           <Button
-                                             variant="outline"
-                                             size="sm"
-                                             className="h-7 text-[11px] gap-1 border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted"
-                                             disabled={extractLabMutation.isPending}
-                                             onClick={() => selectedPatient && extractLabMutation.mutate(selectedPatient.id)}
-                                             data-testid="button-read-reports-investigation"
-                                           >
-                                             {extractLabMutation.isPending ? (
-                                               <><Loader2 className="w-3 h-3 animate-spin" /> Reading...</>
-                                             ) : (
-                                               <><Sparkle className="w-3 h-3" /> Read Reports</>
-                                             )}
-                                           </Button>
-                                         )}
-                                         <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setShowAddInvestigation(!showAddInvestigation)} data-testid="button-add-investigation">
-                                           <Plus className="w-3 h-3" /> Add
-                                         </Button>
-                                       </div>
-                                     </div>
-
-                                     {extractionStatus && (
-                                       <div className={`mb-3 px-3 py-2 rounded-md text-xs flex items-center gap-2 ${extractionStatus.startsWith('Error') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
-                                         {extractionStatus.startsWith('Error') ? <AlertCircle className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
-                                         {extractionStatus}
-                                       </div>
-                                     )}
-
-                                     {extractLabMutation.isPending && (
-                                       <div className="mb-3 px-3 py-2 rounded-md text-xs bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-2">
-                                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                         Reading lab reports and matching to investigations...
-                                       </div>
-                                     )}
-
-                                     {showAddInvestigation && (
-                                       <div className="flex gap-2 mb-3 bg-saivie-ivory border border-saivie-border rounded-md p-2">
-                                         <Input placeholder="Investigation name..." value={newInvestigationName} onChange={e => setNewInvestigationName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && newInvestigationName.trim()) { setCustomInvestigations([...customInvestigations, { name: newInvestigationName.trim(), description: 'Custom investigation' }]); setNewInvestigationName(''); }}} className="h-7 text-xs flex-1" data-testid="input-new-investigation" />
-                                         <Button size="sm" className="h-7 text-xs bg-saivie-teal hover:bg-saivie-teal" disabled={!newInvestigationName.trim()} onClick={() => { setCustomInvestigations([...customInvestigations, { name: newInvestigationName.trim(), description: 'Custom investigation' }]); setNewInvestigationName(''); }} data-testid="button-save-investigation">Add</Button>
-                                       </div>
-                                     )}
-
-                                     <div className="mb-3 p-3 bg-saivie-surface-muted rounded-lg border border-saivie-border">
-                                       <div className="flex items-center gap-2 mb-2">
-                                         <span className="text-[10px] text-saivie-teal uppercase font-bold tracking-wider">Current: {sectionTitle}</span>
-                                         <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">{pendingTests.length} Pending</Badge>
-                                         <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border-emerald-200">{completedTests.length} Done</Badge>
-                                       </div>
-                                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                                         {pendingTests.map((test, i) => {
-                                           const isCustom = customInvestigations.some(c => c.name === test.name);
-                                           const isUsg = test.name.startsWith('USG');
-                                           return (
-                                             <label key={`pending-${i}`} className={`flex items-start gap-2 py-1 px-2 rounded cursor-pointer group transition-colors ${selectedInvestigations.has(test.name) ? 'bg-saivie-ivory border border-saivie-border' : 'hover:bg-saivie-ivory/60 border border-transparent'}`} data-testid={`checkbox-investigation-${i}`}>
-                                               <Checkbox checked={selectedInvestigations.has(test.name)} onCheckedChange={() => toggleInvestigation(test.name)} className="mt-0.5 border-saivie-border data-[state=checked]:bg-saivie-teal data-[state=checked]:border-saivie-teal" />
-                                               <div className="flex-1 min-w-0">
-                                                 <span className={`text-xs font-medium block ${selectedInvestigations.has(test.name) ? 'text-saivie-plum' : 'text-saivie-plum'}`}>
-                                                   {isUsg && <span className="inline-block bg-saivie-sage text-saivie-teal text-[9px] font-bold px-1 rounded mr-1">USG</span>}
-                                                   {test.name.replace(/^USG - /, '')}
-                                                 </span>
-                                                 <span className="text-[10px] text-saivie-plum block">{test.description}</span>
-                                               </div>
-                                               {isCustom && (
-                                                 <button onClick={(e) => { e.preventDefault(); setCustomInvestigations(customInvestigations.filter(c => c.name !== test.name)); }} className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600" data-testid={`button-remove-custom-investigation-${i}`}><X className="w-3 h-3" /></button>
-                                               )}
-                                             </label>
-                                           );
-                                         })}
-                                         {completedTests.map((test, i) => {
-                                           const match = isInvestigationCompleted(test.name, completedMap);
-                                           return (
-                                             <div key={`done-${i}`} className="flex items-start gap-2 py-1 px-2 rounded bg-emerald-50/50 border border-emerald-100" data-testid={`completed-investigation-${i}`}>
-                                               <Check className="w-3.5 h-3.5 text-emerald-600 mt-0.5 flex-shrink-0" />
-                                               <div className="flex-1 min-w-0">
-                                                 <span className="text-xs font-medium text-emerald-800 block line-through opacity-80">{test.name}</span>
-                                                 <span className="text-[10px] text-emerald-500 block">
-                                                   {match?.source}{match?.date ? ` • ${new Date(match.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : ''}
-                                                 </span>
-                                               </div>
-                                             </div>
-                                           );
-                                         })}
-                                       </div>
-                                     </div>
-
-                                     {selectedInvestigations.size > 0 && (
-                                       <div className="mb-3 p-2 border border-saivie-border rounded-md bg-saivie-ivory flex items-center justify-between">
-                                         <div className="flex flex-wrap gap-1.5">
-                                           {Array.from(selectedInvestigations).map(name => (
-                                             <Badge key={name} className="text-[10px] bg-saivie-sage text-saivie-teal border-saivie-border gap-1">
-                                               {name}
-                                               <button onClick={() => toggleInvestigation(name)} className="ml-0.5 hover:text-saivie-plum" data-testid={`button-remove-investigation-${name}`}><X className="w-2.5 h-2.5" /></button>
-                                             </Badge>
-                                           ))}
-                                         </div>
-                                         <span className="text-[10px] text-saivie-teal font-medium whitespace-nowrap ml-2">{selectedInvestigations.size} selected</span>
-                                       </div>
-                                     )}
-
-                                     {careMode === 'pregnancy' && pregnancyWeek > 0 && pastWeekKeys.length > 0 && (
-                                       <div className="border-t border-saivie-border pt-3">
-                                         <span className="text-[10px] text-saivie-plum uppercase font-bold block mb-2 tracking-wider">Previous Weeks Investigation History</span>
-                                         <div className="space-y-2">
-                                           {pastWeekKeys.map(weekKey => {
-                                             const group = investigationsByWeek[weekKey];
-                                             const groupCompleted = group.tests.filter(t => isInvestigationCompleted(t.name, completedMap));
-                                             const groupPending = group.tests.filter(t => !isInvestigationCompleted(t.name, completedMap));
-                                             const allDone = groupPending.length === 0;
-                                             return (
-                                               <div key={weekKey} className={`rounded-lg border p-2.5 ${allDone ? 'bg-emerald-50/40 border-emerald-200' : 'bg-amber-50/30 border-amber-200'}`} data-testid={`past-week-${weekKey}`}>
-                                                 <div className="flex items-center justify-between mb-1.5">
-                                                   <div className="flex items-center gap-2">
-                                                     {allDone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-500" />}
-                                                     <span className="text-[11px] font-semibold text-saivie-plum">{group.weekRange}</span>
-                                                   </div>
-                                                   <div className="flex items-center gap-1.5">
-                                                     <Badge className={`text-[9px] ${allDone ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-saivie-sage text-saivie-plum border-saivie-border'}`}>
-                                                       {groupCompleted.length}/{group.tests.length} Done
-                                                     </Badge>
-                                                     {groupPending.length > 0 && (
-                                                       <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">
-                                                         {groupPending.length} Pending
-                                                       </Badge>
-                                                     )}
-                                                   </div>
-                                                 </div>
-                                                 <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                                                   {group.tests.map((test, ti) => {
-                                                     const match = isInvestigationCompleted(test.name, completedMap);
-                                                     const done = !!match;
-                                                     const isUsg = test.name.startsWith('USG');
-                                                     return (
-                                                       <div key={ti} className={`flex items-center gap-1.5 py-0.5 px-1.5 rounded text-[11px] ${done ? 'text-emerald-700' : 'text-amber-700'}`} data-testid={`past-investigation-${weekKey}-${ti}`}>
-                                                         {done ? <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" /> : <Clock className="w-3 h-3 text-amber-400 flex-shrink-0" />}
-                                                         <span className={`truncate ${done ? 'line-through opacity-70' : 'font-medium'}`}>
-                                                           {isUsg && <span className="inline-block bg-saivie-sage text-saivie-teal text-[8px] font-bold px-0.5 rounded mr-0.5">USG</span>}
-                                                           {test.name.replace(/^USG - /, '')}
-                                                         </span>
-                                                         {done && match?.date && (
-                                                           <span className="text-[9px] text-emerald-500 flex-shrink-0">{new Date(match.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
-                                                         )}
-                                                       </div>
-                                                     );
-                                                   })}
-                                                 </div>
-                                               </div>
-                                             );
-                                           })}
-                                         </div>
-                                       </div>
-                                     )}
-
-                                     {careMode === 'pregnancy' && pregnancyWeek > 0 && (() => {
-                                       const futureKeys = weekOrder.filter(k => weekOrder.indexOf(k) > weekOrder.indexOf(currentWeekKey));
-                                       if (futureKeys.length === 0) return null;
-                                       return (
-                                         <div className="border-t border-saivie-border pt-3 mt-3">
-                                           <span className="text-[10px] text-saivie-plum uppercase font-bold block mb-2 tracking-wider">Upcoming Weeks</span>
-                                           <div className="flex flex-wrap gap-1.5">
-                                             {futureKeys.map(key => (
-                                               <Badge key={key} variant="outline" className="text-[10px] text-saivie-plum border-saivie-border cursor-default">
-                                                 {investigationsByWeek[key].weekRange.split('(')[0].trim()} ({investigationsByWeek[key].tests.length} tests)
-                                               </Badge>
-                                             ))}
-                                           </div>
-                                         </div>
-                                       );
-                                     })()}
-                                   </div>
-                                 );
-                               })()}
-
-                               {/* IMMUNISATION SECTION - Pregnancy */}
-                               {careMode === 'pregnancy' && (() => {
-                                 const schedules = (vaccinationSchedulesQuery.data || []).filter((schedule) => schedule.isActive && schedule.eligibility === 'pregnancy');
-                                 const records = patientVaccinationRecordsQuery.data || [];
-                                 const doseCount = schedules.reduce((total, schedule) => total + schedule.doseGestationalWeeks.length, 0);
-                                 const givenCount = records.filter((record) => schedules.some((schedule) => schedule.id === record.scheduleId)).length;
-                                 const todayDate = new Date();
-                                 todayDate.setHours(0, 0, 0, 0);
-
-                                 return (
-                                   <div className="p-4 bg-saivie-surface-muted/30" data-testid="card-immunisation">
-                                     <div className="flex items-center justify-between mb-3">
-                                       <div className="flex items-center gap-2">
-                                         <Badge className="bg-saivie-sage text-saivie-teal border-saivie-border text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded"><Shield className="w-3 h-3" /></Badge>
-                                         <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Immunisation</span>
-                                         <Badge className="text-[10px] bg-saivie-sage text-saivie-teal border-saivie-border">{givenCount}/{doseCount}</Badge>
-                                       </div>
-                                     </div>
-                                     {vaccinationSchedulesQuery.isLoading || patientVaccinationRecordsQuery.isLoading ? (
-                                       <p className="py-3 text-xs text-saivie-plum">Loading configured vaccine doses...</p>
-                                     ) : vaccinationSchedulesQuery.isError || patientVaccinationRecordsQuery.isError ? (
-                                       <p role="alert" className="py-3 text-xs text-rose-600">Could not load vaccination schedule or records.</p>
-                                     ) : schedules.length === 0 ? (
-                                       <p className="py-3 text-xs text-saivie-plum">No pregnancy vaccine rules are configured. Add them in Settings → Vaccination Rules.</p>
-                                     ) : <div className="space-y-1.5">
-                                       {schedules.flatMap((schedule) => schedule.doseGestationalWeeks.map((week: number, index: number) => {
-                                         const doseNumber = index + 1;
-                                         const record = records.find((entry) => entry.scheduleId === schedule.id && entry.doseNumber === doseNumber);
-                                         const dueDate = selectedPatient.lmp ? new Date(new Date(selectedPatient.lmp).getTime() + week * 7 * 24 * 60 * 60 * 1000) : null;
-                                         const daysUntilDue = dueDate ? Math.floor((dueDate.getTime() - todayDate.getTime()) / 86400000) : null;
-                                         const isDue = !record && daysUntilDue !== null && daysUntilDue <= 0;
-                                         const isSoon = !record && daysUntilDue !== null && daysUntilDue > 0 && daysUntilDue <= schedule.reminderLeadDays;
-                                         const isPast = !record && daysUntilDue !== null && daysUntilDue < 0;
-                                         return (
-                                           <div key={`${schedule.id}-${doseNumber}`} className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all ${record ? 'bg-emerald-50 border-emerald-200' : isDue ? 'bg-amber-50 border-amber-300 shadow-sm' : isPast ? 'bg-rose-50 border-rose-200' : 'bg-saivie-ivory border-saivie-border'}`} data-testid={`immunisation-${schedule.id}-${doseNumber}`}>
-                                             <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                                               <span className="text-sm">💉</span>
-                                               <div className="min-w-0">
-                                                 <div className={`text-xs font-semibold truncate ${record ? 'text-emerald-700 line-through opacity-70' : isDue ? 'text-amber-800' : isPast ? 'text-rose-700' : 'text-saivie-plum'}`}>{schedule.vaccineName} · Dose {doseNumber}</div>
-                                                 <div className="text-[10px] text-saivie-plum">Week {week}{dueDate ? ` · ${dueDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : ''}</div>
-                                               </div>
-                                             </div>
-                                             <div className="flex items-center gap-2 shrink-0">
-                                               {record ? (
-                                                 <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border-emerald-200 gap-1"><Check className="w-2.5 h-2.5" /> {record.administeredDate ? new Date(`${record.administeredDate}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Done'}</Badge>
-                                               ) : isPast ? (
-                                                 <Badge className="text-[9px] bg-rose-100 text-rose-700 border-rose-200">OVERDUE</Badge>
-                                               ) : isDue ? (
-                                                 <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-300 animate-pulse">DUE NOW</Badge>
-                                               ) : isSoon ? (
-                                                 <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">DUE SOON</Badge>
-                                               ) : (
-                                                 <Badge variant="outline" className="text-[9px] text-saivie-plum border-saivie-border">Upcoming</Badge>
-                                               )}
-                                               {!record && (
-                                                 <Button
-                                                   variant="ghost"
-                                                   size="sm"
-                                                   className={`h-6 px-2 text-[10px] ${isDue || isPast ? 'text-emerald-600 hover:bg-emerald-100' : 'text-saivie-plum hover:bg-saivie-sage'}`}
-                                                   data-testid={`button-mark-vaccine-${schedule.id}-${doseNumber}`}
-                                                   onClick={() => recordPatientVaccinationMutation.mutate({ scheduleId: schedule.id, doseNumber })}
-                                                   disabled={recordPatientVaccinationMutation.isPending}
-                                                 >
-                                                   <Check className="w-3 h-3 mr-0.5" /> Mark Given
-                                                 </Button>
-                                               )}
-                                             </div>
-                                           </div>
-                                         );
-                                       }))}
-                                     </div>}
-                                     {recordPatientVaccinationMutation.isError && <p role="alert" className="mt-2 text-xs text-rose-600">{recordPatientVaccinationMutation.error.message}</p>}
-                                   </div>
-                                 );
-                               })()}
-
-                               {/* PREGNANCY PROGRESS TRAIL */}
-                               {careMode === 'pregnancy' && selectedPatient.lmp && (() => {
-                                 const lmpDate = new Date(selectedPatient.lmp);
-                                 const today = new Date();
-                                 const totalDays = Math.max(0, Math.floor((today.getTime() - lmpDate.getTime()) / (1000*60*60*24)));
-                                 const currentWeekPT = Math.floor(totalDays / 7);
-                                 const eddDate = new Date(lmpDate.getTime() + 280 * 24*60*60*1000);
-                                 const daysRemaining = Math.max(0, Math.ceil((eddDate.getTime() - today.getTime()) / (1000*60*60*24)));
-                                 const progressPct = Math.min(100, (totalDays / 280) * 100);
-
-                                 const vitals = (latestVisit?.vitals as any) || {};
-                                 const completedMap = getCompletedInvestigations();
-
-                                 const investigationsByWeekPT: Record<string, string[]> = {
-                                   'booking': ['CBC (Complete Blood Count)', 'Blood Group & Rh Typing', 'Random Blood Sugar (RBS)', 'TSH (Thyroid Stimulating Hormone)', 'Urine Routine & Microscopy', 'HIV, HBsAg, VDRL', 'Rubella IgG', 'Blood Pressure', 'USG - Dating Scan'],
-                                   'first_trimester': ['NT Scan (Nuchal Translucency)', 'Dual Marker (PAPP-A + Free β-hCG)', 'Urine Culture', 'TSH (repeat if abnormal)'],
-                                   'second_trimester_early': ['Quadruple Marker', 'USG - Anomaly Scan (TIFFA)', 'CBC (repeat)'],
-                                   'second_trimester_mid': ['OGTT (75g Glucose Tolerance Test)', 'CBC (repeat)', 'Anti-D Injection', 'USG - Fetal Echocardiography'],
-                                   'third_trimester_early': ['USG - Growth Scan', 'CBC (repeat)', 'TSH (repeat)', 'Urine Routine', 'USG - Doppler Study'],
-                                   'third_trimester_late': ['USG - Growth Scan (repeat)', 'GBS Screening (Vaginal Swab)', 'CBC + Coagulation Profile', 'LFT, KFT', 'NST (Non-Stress Test)', 'USG - Presentation & Lie'],
-                                   'term': ['NST (weekly)', 'BPP (Biophysical Profile)', 'USG - AFI (Amniotic Fluid Index)', 'Bishop Score Assessment', 'USG - EFW & Doppler'],
-                                 };
-
-                                 const milestones = [
-                                   { week: 0, label: 'LMP', color: 'bg-saivie-rose', detail: lmpDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) },
-                                   { week: 8, label: 'Booking Visit', color: 'bg-blue-500', detail: 'First prenatal visit' },
-                                   { week: 12, label: 'End T1', color: 'bg-saivie-teal', detail: 'NT scan, screening' },
-                                   { week: 20, label: 'Anomaly Scan', color: 'bg-saivie-teal', detail: 'TIFFA scan' },
-                                   { week: 28, label: 'T3 Begins', color: 'bg-saivie-teal', detail: 'OGTT, Anti-D' },
-                                   { week: 32, label: 'Growth Scan', color: 'bg-fuchsia-500', detail: 'Fetal growth' },
-                                   { week: 36, label: 'Pre-delivery', color: 'bg-rose-500', detail: 'GBS, workup' },
-                                   { week: 40, label: 'EDD', color: 'bg-red-500', detail: eddDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) },
-                                 ];
-
-                                 const allTests = Object.values(investigationsByWeekPT).flat();
-                                 const completedTests = allTests.filter(t => isInvestigationCompleted(t, completedMap));
-                                 const pregnancySchedules = (vaccinationSchedulesQuery.data || []).filter((schedule) => schedule.isActive && schedule.eligibility === 'pregnancy');
-                                 const totalVaccines = pregnancySchedules.reduce((total, schedule) => total + schedule.doseGestationalWeeks.length, 0);
-                                 const givenVaccineCount = (patientVaccinationRecordsQuery.data || []).filter((record) => pregnancySchedules.some((schedule) => schedule.id === record.scheduleId)).length;
-
-                                 const hasVitals = !!(vitals.bp || vitals.weight || vitals.fundalHeight || vitals.fetalHeartRate);
-                                 const hasPVPS = !!(vitals.pvExam || vitals.psExam);
-
-                                 const overallItems = [
-                                   { label: 'Investigations', done: completedTests.length, total: allTests.length, color: 'text-saivie-teal bg-saivie-sage' },
-                                   { label: 'Immunisations', done: givenVaccineCount, total: totalVaccines, color: 'text-saivie-teal bg-saivie-sage' },
-                                   { label: 'Vitals Recorded', done: hasVitals ? 1 : 0, total: 1, color: 'text-blue-600 bg-blue-100' },
-                                   { label: 'Clinical Exam (PV/PS)', done: hasPVPS ? 1 : 0, total: 1, color: 'text-emerald-600 bg-emerald-100' },
-                                 ];
-
-                                 const overallDone = overallItems.reduce((s, i) => s + i.done, 0);
-                                 const overallTotal = overallItems.reduce((s, i) => s + i.total, 0);
-                                 const overallPct = overallTotal > 0 ? Math.round((overallDone / overallTotal) * 100) : 0;
-
-                                 return (
-                                   <div className="p-4 bg-gradient-to-br from-slate-50 to-saivie-surface-muted/30" data-testid="card-pregnancy-progress">
-                                     <div className="flex items-center gap-2 mb-3">
-                                       <Badge className="bg-saivie-sage text-saivie-plum border-saivie-border text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded"><Milestone className="w-3 h-3" /></Badge>
-                                       <span className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Pregnancy Progress Trail</span>
-                                       <Badge className="text-[10px] bg-saivie-sage text-saivie-teal border-saivie-border">Week {currentWeekPT} / 40</Badge>
-                                     </div>
-
-                                     <div className="relative mb-4">
-                                       <div className="h-3 bg-saivie-sage rounded-full overflow-hidden">
-                                         <div className="h-full rounded-full bg-gradient-to-r from-saivie-rose via-saivie-teal to-saivie-teal transition-all duration-700" style={{ width: `${progressPct}%` }} />
-                                       </div>
-                                       <div className="absolute top-0 left-0 w-full h-3 flex items-center">
-                                         {milestones.map((m, i) => {
-                                           const pos = (m.week / 40) * 100;
-                                           const passed = currentWeekPT >= m.week;
-                                           return (
-                                             <div key={i} className="absolute group" style={{ left: `${pos}%`, transform: 'translateX(-50%)' }}>
-                                               <div className={`w-3 h-3 rounded-full border-2 border-white ${passed ? m.color : 'bg-slate-300'} shadow-sm`} />
-                                               <div className="absolute top-4 left-1/2 -translate-x-1/2 hidden group-hover:block bg-saivie-plum text-white px-2 py-1 rounded text-[9px] whitespace-nowrap z-10 shadow-lg">
-                                                 <div className="font-bold">{m.label}</div>
-                                                 <div className="text-slate-300">{m.detail}</div>
-                                               </div>
-                                             </div>
-                                           );
-                                         })}
-                                       </div>
-                                       <div className="flex justify-between mt-1.5 text-[9px] text-saivie-plum">
-                                         <span>LMP</span>
-                                         <span>T1</span>
-                                         <span>T2</span>
-                                         <span>T3</span>
-                                         <span>EDD</span>
-                                       </div>
-                                     </div>
-
-                                     <div className="grid grid-cols-2 gap-2 mb-3">
-                                       <div className="bg-saivie-ivory rounded-lg border border-saivie-border p-2.5 text-center">
-                                         <div className="text-lg font-bold text-saivie-teal">{daysRemaining}</div>
-                                         <div className="text-[10px] text-saivie-plum uppercase font-bold">Days to EDD</div>
-                                       </div>
-                                       <div className="bg-saivie-ivory rounded-lg border border-saivie-border p-2.5 text-center">
-                                         <div className="text-lg font-bold text-saivie-teal">{overallPct}%</div>
-                                         <div className="text-[10px] text-saivie-plum uppercase font-bold">Care Completion</div>
-                                       </div>
-                                     </div>
-
-                                     <div className="space-y-2">
-                                       {overallItems.map((item, i) => {
-                                         const pct = item.total > 0 ? Math.round((item.done / item.total) * 100) : 0;
-                                         return (
-                                           <div key={i} className="flex items-center gap-3">
-                                             <span className="text-[11px] text-saivie-plum w-32 shrink-0 font-medium">{item.label}</span>
-                                             <div className="flex-1 h-2 bg-saivie-sage rounded-full overflow-hidden">
-                                               <div className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? 'bg-emerald-400' : pct > 50 ? 'bg-saivie-teal' : pct > 0 ? 'bg-amber-400' : 'bg-saivie-sage'}`} style={{ width: `${pct}%` }} />
-                                             </div>
-                                             <span className={`text-[10px] font-bold w-12 text-right ${pct === 100 ? 'text-emerald-600' : 'text-saivie-plum'}`}>{item.done}/{item.total}</span>
-                                           </div>
-                                         );
-                                       })}
-                                     </div>
-
-                                     {overallPct < 50 && (
-                                       <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center gap-2">
-                                         <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                                         <span>Several care items pending. Please review investigations, immunisations, and clinical exams to ensure completeness.</span>
-                                       </div>
-                                     )}
-                                     {overallPct >= 80 && (
-                                       <div className="mt-3 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-center gap-2">
-                                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                                         <span>Care plan is well on track. Continue monitoring vitals and scheduled tests.</span>
-                                       </div>
-                                     )}
-                                   </div>
-                                 );
-                               })()}
-
-                               {/* Footer actions */}
-                               <div className="p-4 bg-saivie-sage flex items-center justify-between">
-                                  <div className="text-xs text-saivie-plum">
-                                     <span className="font-semibold text-saivie-plum">{providerName}</span> • {providerSpecialty}
-                                  </div>
-                                  <div className="flex gap-2">
-                                     <input type="file" ref={prescriptionInputRef} onChange={handlePrescriptionUpload} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" />
-                                     <Button variant="outline" size="sm" className="h-8 gap-2 bg-saivie-ivory text-xs border-saivie-border" onClick={() => prescriptionInputRef.current?.click()} disabled={uploadPrescriptionMutation.isPending}>
-                                        {uploadPrescriptionMutation.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Reading Prescription...</> : <><Upload className="w-3.5 h-3.5" /> Upload Prescription</>}
-                                     </Button>
-                                     <Button variant="outline" size="sm" className="h-8 gap-2 bg-saivie-ivory text-xs border-saivie-border">
-                                        <Printer className="w-3.5 h-3.5" /> Print
-                                     </Button>
-                                     <Button size="sm" className="h-8 gap-2 bg-saivie-teal hover:bg-saivie-teal text-xs shadow-sm" onClick={generatePrescription} data-testid="button-generate-prescription">
-                                        <FileText className="w-3.5 h-3.5" /> Generate Prescription
-                                     </Button>
-                                  </div>
-                               </div>
-
-                            </div>
-                         </CardContent>
-                      )}
-                      
-                      {/* Collapsed Summary View */}
-                      {!showDocumentation && (
-                         <CardContent className="p-0">
-                            <div className="grid grid-cols-4 divide-x divide-slate-100">
-                               {/* Subjective */}
-                               <div className="p-4 space-y-3">
-                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-saivie-plum">S (Symptoms)</span> <Button variant="ghost" size="icon" className="h-5 w-5"><Sparkles className="w-3 h-3 text-blue-400" /></Button></div>
-                                  <div className="space-y-2">
-                                     {latestVisit?.chiefComplaint ? (
-                                       <div className="bg-saivie-surface-muted p-2 rounded text-xs border border-saivie-border">{latestVisit.chiefComplaint}</div>
-                                     ) : latestVisit?.subjective ? (
-                                       <div className="bg-saivie-surface-muted p-2 rounded text-xs border border-saivie-border line-clamp-3">{latestVisit.subjective}</div>
-                                     ) : (
-                                       <>
-                                         <div className="bg-saivie-surface-muted p-2 rounded text-xs border border-saivie-border text-saivie-plum italic">No symptoms recorded</div>
-                                       </>
-                                     )}
-                                  </div>
-                               </div>
-                               {/* Objective */}
-                               <div className="p-4 space-y-3">
-                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-saivie-plum">O (Observations)</span></div>
-                                  <div className="space-y-2 text-xs text-saivie-plum">
-                                     <div className="flex justify-between"><span>Cycle Phase:</span> <span className="font-medium">{(() => {
-                                       if (careMode === 'pregnancy') {
-                                         if (selectedPatient.lmp) {
-                                           const weeks = Math.floor(Math.max(0, (new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7)));
-                                           return weeks < 13 ? 'T1' : weeks < 27 ? 'T2' : 'T3';
-                                         }
-                                         return 'Pregnancy';
-                                       }
-                                       const cd = selectedPatient.cycleDay || 0;
-                                       if (cd <= 5) return 'Menstrual';
-                                       if (cd <= 13) return 'Follicular';
-                                       if (cd <= 16) return 'Ovulatory';
-                                       return 'Luteal';
-                                     })()}</span></div>
-                                     <div className="flex justify-between"><span>{careMode === 'pregnancy' ? 'Gest. Age:' : 'Cycle Day:'}</span> <span className="font-medium">{careMode === 'pregnancy' ? (() => {
-                                       if (selectedPatient.lmp) {
-                                         const diffDays = Math.max(0, Math.floor((new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24)));
-                                         return `${Math.floor(diffDays/7)}w ${diffDays%7}d`;
-                                       }
-                                       return '—';
-                                     })() : `${selectedPatient.cycleDay || '—'}`}</span></div>
-                                     <div className="flex justify-between"><span>Genomic Risk:</span> <span className={`font-medium ${selectedPatient.condition ? 'text-amber-600' : ''}`}>{selectedPatient.condition || '—'}</span></div>
-                                     {careMode === 'pregnancy' && (
-                                       <>
-                                         <div className="flex justify-between"><span>Fundal Height:</span> <span className="font-medium">{(latestVisit?.vitals as any)?.fundalHeight ? `${(latestVisit?.vitals as any).fundalHeight} cm` : '—'}</span></div>
-                                         <div className="flex justify-between"><span>Fetal HR:</span> <span className={`font-medium ${(latestVisit?.vitals as any)?.fetalHeartRate ? (Number((latestVisit?.vitals as any).fetalHeartRate) >= 110 && Number((latestVisit?.vitals as any).fetalHeartRate) <= 160 ? 'text-emerald-600' : 'text-rose-600') : ''}`}>{(latestVisit?.vitals as any)?.fetalHeartRate ? `${(latestVisit?.vitals as any).fetalHeartRate} bpm` : '—'}</span></div>
-                                       </>
-                                     )}
-                                  </div>
-                               </div>
-                               {/* Assessment */}
-                               <div className="p-4 space-y-3 bg-blue-50/30">
-                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-blue-600">A (Assessment)</span> <Sparkles className="w-3 h-3 text-blue-500" /></div>
-                                  {careMode === 'pregnancy' && (
-                                    <div className="space-y-1 text-xs text-saivie-plum mb-2">
-                                      <div className="flex justify-between"><span>P/V:</span> <span className="font-medium text-right max-w-[120px] truncate">{(latestVisit?.vitals as any)?.pvExam || <span className="text-saivie-plum italic">—</span>}</span></div>
-                                      <div className="flex justify-between"><span>P/S:</span> <span className="font-medium text-right max-w-[120px] truncate">{(latestVisit?.vitals as any)?.psExam || <span className="text-saivie-plum italic">—</span>}</span></div>
-                                    </div>
-                                  )}
-                                  {latestVisit?.assessment ? (
-                                    <p className="text-xs leading-relaxed text-saivie-plum">"{latestVisit.assessment}"</p>
-                                  ) : latestVisit?.diagnosis ? (
-                                    <p className="text-xs leading-relaxed text-saivie-plum">{latestVisit.diagnosis}</p>
-                                  ) : (
-                                    <p className="text-xs text-saivie-plum italic">No assessment recorded</p>
-                                  )}
-                               </div>
-                               {/* Plan */}
-                               <div className="p-4 space-y-3">
-                                  <div className="flex justify-between items-center"><span className="text-xs font-bold text-saivie-plum">P (Plan)</span></div>
-                                  <div className="space-y-2">
-                                     {medications.length > 0 ? (
-                                       medications.slice(0, 3).map((med: any) => (
-                                         <div key={med.id} className="flex items-center gap-2"><Checkbox id={`p-${med.id}`} defaultChecked={med.status === 'active'} /> <label htmlFor={`p-${med.id}`} className="text-xs text-saivie-plum">{med.name} {med.dose || ''}</label></div>
-                                       ))
-                                     ) : latestVisit?.planNotes ? (
-                                       <p className="text-xs text-saivie-plum line-clamp-3">{latestVisit.planNotes}</p>
-                                     ) : (
-                                       <p className="text-xs text-saivie-plum italic">No plan recorded</p>
-                                     )}
-                                  </div>
-                                  <Button size="sm" className="w-full h-7 text-xs bg-saivie-teal hover:bg-saivie-teal mt-2" onClick={() => setShowDocumentation(true)}>Full Note & Rx</Button>
-                               </div>
-                            </div>
-                         </CardContent>
-                      )}
-                   </Card>
-
-                   {/* TREATMENT TRAIL - Horizontal Progress Bar */}
-                   {(() => {
-                     const patientAppts = selectedPatient ? appointments.filter((a: any) => a.patientId === selectedPatient.id && a.status === 'Completed') : [];
-                     const visitDates = new Set(visitHistory.map((v: any) => new Date(v.date).toDateString()));
-                     const apptAsVisits = patientAppts
-                       .filter((a: any) => !visitDates.has(new Date(a.date).toDateString()))
-                       .map((a: any) => ({
-                         id: `appt-${a.id}`,
-                         date: a.date,
-                         visitType: a.visitType || a.type,
-                         chiefComplaint: a.chiefComplaint || null,
-                         subjective: a.notes || null,
-                         objective: null,
-                         diagnosis: null,
-                         assessment: null,
-                         planNotes: null,
-                         vitals: a.vitals || {},
-                         _isAppointment: true,
-                       }));
-                     const allTrailVisits = [...visitHistory, ...apptAsVisits];
-                     if (allTrailVisits.length === 0) return null;
-                     const sortedVisits = allTrailVisits.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                     const selectedVisit = selectedTrailVisitId ? sortedVisits.find((v: any) => v.id === selectedTrailVisitId) : null;
-                     const selectedVitals = selectedVisit ? ((selectedVisit as any).vitals as any) || {} : {};
-                     const selectedVitalsList = selectedVisit ? [
-                       selectedVitals.weight && `Wt: ${selectedVitals.weight}kg`,
-                       selectedVitals.bp && `BP: ${selectedVitals.bp}`,
-                       selectedVitals.pulse && `Pulse: ${selectedVitals.pulse}`,
-                       selectedVitals.hb && `Hb: ${selectedVitals.hb}`,
-                       selectedVitals.spo2 && `SpO2: ${selectedVitals.spo2}%`,
-                       selectedVitals.fetalHeartRate && `FHR: ${selectedVitals.fetalHeartRate}`,
-                       selectedVitals.fundalHeight && `FH: ${selectedVitals.fundalHeight}`,
-                       selectedVitals.temperature && `Temp: ${selectedVitals.temperature}°F`,
-                     ].filter(Boolean) : [];
-                     const selectedInvTests: string[] = selectedVitals.nextInvestigationTests || [];
-                     const selectedInvCustom: string = selectedVitals.nextInvestigationCustom || '';
-                     const allSelectedInv = [...selectedInvTests, ...(selectedInvCustom ? [selectedInvCustom] : [])];
-                     const selectedVisitMeds = selectedVisit ? medications.filter((m: any) => m.startDate && new Date(m.startDate).toDateString() === new Date((selectedVisit as any).date).toDateString()) : [];
-
-                     return (
-                     <Card className="shadow-sm border-saivie-border bg-saivie-ivory overflow-hidden" data-testid="treatment-trail-card">
-                       <div className="bg-gradient-to-r from-saivie-surface-muted via-saivie-surface-muted to-saivie-surface-blush px-4 py-3 border-b border-saivie-border">
-                         <h3 className="font-bold text-sm text-saivie-plum flex items-center gap-2">
-                           <History className="w-4 h-4 text-saivie-teal" />
-                           Treatment Trail
-                           <Badge className="text-[10px] bg-saivie-sage text-saivie-teal border-saivie-border">{visitHistory.length} visit{visitHistory.length !== 1 ? 's' : ''}</Badge>
-                           <span className="text-[10px] text-saivie-plum font-normal ml-auto">Click a date to view details</span>
-                         </h3>
-                       </div>
-
-                       <div className="px-4 py-4">
-                         <div className="relative">
-                           <div className="absolute top-[14px] left-0 right-0 h-[2px] bg-saivie-sage" />
-                           <div className="flex justify-between items-start relative overflow-x-auto" style={{ minWidth: sortedVisits.length > 8 ? `${sortedVisits.length * 80}px` : 'auto' }}>
-                             {sortedVisits.map((visit: any, idx: number) => {
-                               const isSelected = selectedTrailVisitId === visit.id;
-                               const isToday = new Date(visit.date).toDateString() === new Date().toDateString();
-                               const isLatest = idx === sortedVisits.length - 1;
-                               return (
-                                 <div key={visit.id} className="flex flex-col items-center cursor-pointer group" style={{ minWidth: '60px' }}
-                                   onClick={() => setSelectedTrailVisitId(isSelected ? null : visit.id)}
-                                   data-testid={`trail-dot-${visit.id}`}>
-                                   <div className={`w-7 h-7 rounded-full flex items-center justify-center z-10 transition-all duration-200 border-2 ${
-                                     isSelected ? 'bg-saivie-teal border-saivie-teal text-white scale-110 shadow-lg shadow-saivie-teal' :
-                                     isToday ? 'bg-blue-500 border-blue-500 text-white' :
-                                     isLatest ? 'bg-saivie-teal border-saivie-teal text-white' :
-                                     'bg-saivie-ivory border-saivie-border text-saivie-teal group-hover:border-saivie-teal group-hover:bg-saivie-surface-muted'
-                                   }`}>
-                                     <span className="text-[8px] font-bold">{idx + 1}</span>
-                                   </div>
-                                   <span className={`text-[9px] mt-1.5 font-medium text-center leading-tight ${isSelected ? 'text-saivie-teal font-bold' : 'text-saivie-plum'}`}>
-                                     {new Date(visit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                                   </span>
-                                   {isToday && <span className="text-[7px] text-blue-500 font-bold">TODAY</span>}
-                                 </div>
-                               );
-                             })}
-                           </div>
-                         </div>
-                       </div>
-
-                       {selectedVisit && (
-                         <div className="border-t border-saivie-border bg-gradient-to-b from-saivie-surface-muted/30 to-saivie-ivory">
-                           <div className="px-4 py-3">
-                             <div className="flex items-center justify-between mb-3">
-                               <div className="flex items-center gap-2">
-                                 <span className="text-sm font-bold text-saivie-plum">
-                                   {new Date((selectedVisit as any).date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                 </span>
-                                 {(selectedVisit as any).visitType && <Badge variant="outline" className="text-[9px] text-saivie-plum">{(selectedVisit as any).visitType}</Badge>}
-                               </div>
-                               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setSelectedTrailVisitId(null)}>
-                                 <X className="w-3.5 h-3.5 text-saivie-plum" />
-                               </Button>
-                             </div>
-
-                             <div className="space-y-2">
-                               {(selectedVisit as any).chiefComplaint && (
-                                 <div className="flex gap-2">
-                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px]">CC</span>
-                                   <p className="text-xs text-saivie-plum">{(selectedVisit as any).chiefComplaint}</p>
-                                 </div>
-                               )}
-                               {(selectedVisit as any).subjective && !(selectedVisit as any).chiefComplaint && (
-                                 <div className="flex gap-2">
-                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px]">Subj</span>
-                                   <p className="text-xs text-saivie-plum">{(selectedVisit as any).subjective}</p>
-                                 </div>
-                               )}
-
-                               {selectedVitalsList.length > 0 && (
-                                 <div className="flex gap-2 items-start">
-                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px]">O/E</span>
-                                   <div className="flex flex-wrap gap-1">
-                                     {selectedVitalsList.map((v, i) => (
-                                       <span key={i} className="text-[10px] bg-saivie-ivory border border-saivie-border text-saivie-plum px-1.5 py-0.5 rounded font-medium">{v}</span>
-                                     ))}
-                                   </div>
-                                 </div>
-                               )}
-
-                               {((selectedVisit as any).objective || selectedVitals.pvExam || selectedVitals.psExam) && (
-                                 <div className="flex gap-2">
-                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px]">Obs</span>
-                                   <div className="text-xs text-saivie-plum space-y-0.5">
-                                     {(selectedVisit as any).objective && <p>{(selectedVisit as any).objective}</p>}
-                                     {selectedVitals.pvExam && <p><span className="font-semibold">P/V:</span> {selectedVitals.pvExam}</p>}
-                                     {selectedVitals.psExam && <p><span className="font-semibold">P/S:</span> {selectedVitals.psExam}</p>}
-                                   </div>
-                                 </div>
-                               )}
-
-                               {((selectedVisit as any).diagnosis || (selectedVisit as any).assessment) && (
-                                 <div className="flex gap-2">
-                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px]">Dx</span>
-                                   <p className="text-xs font-medium text-saivie-plum">{(selectedVisit as any).diagnosis || (selectedVisit as any).assessment}</p>
-                                 </div>
-                               )}
-
-                               {selectedVisitMeds.length > 0 && (
-                                 <div className="flex gap-2 items-start">
-                                   <span className="text-[10px] font-bold text-blue-600 uppercase min-w-[32px] flex items-center gap-1"><Pill className="w-3 h-3" />Rx</span>
-                                   <div className="flex flex-wrap gap-1">
-                                     {selectedVisitMeds.map((m: any) => (
-                                       <span key={m.id} className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-100">
-                                         {m.name} {m.dose ? `(${m.dose})` : ''}{m.frequency ? ` - ${m.frequency}` : ''}
-                                       </span>
-                                     ))}
-                                   </div>
-                                 </div>
-                               )}
-
-                               {allSelectedInv.length > 0 && (
-                                 <div className="flex gap-2 items-start">
-                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px] flex items-center gap-1"><FlaskConical className="w-3 h-3" />Inv</span>
-                                   <div className="flex flex-wrap gap-1">
-                                     {allSelectedInv.map((inv, i) => (
-                                       <span key={i} className="text-[10px] bg-saivie-surface-muted text-saivie-teal px-2 py-0.5 rounded-full border border-saivie-border">
-                                         {inv}
-                                       </span>
-                                     ))}
-                                   </div>
-                                 </div>
-                               )}
-
-                               {(selectedVisit as any).planNotes && (
-                                 <div className="flex gap-2">
-                                   <span className="text-[10px] font-bold text-saivie-teal uppercase min-w-[32px]">Plan</span>
-                                   <p className="text-xs text-saivie-plum">{(selectedVisit as any).planNotes}</p>
-                                 </div>
-                               )}
-
-                               {/* Post-visit WhatsApp summaries — match by appointmentId when available, fall back to date */}
-                               {(() => {
-                                 const visitApptId = (selectedVisit as any).appointmentId;
-                                 const visitDate = (selectedVisit as any).date;
-                                 const matchingNotes = postVisitSummaryNotes.filter((n: any) =>
-                                   visitApptId ? n.appointmentId === visitApptId : n.date === visitDate
-                                 );
-                                 if (matchingNotes.length === 0) return null;
-                                 const sortedMatchingNotes = [...matchingNotes].sort((a: any, b: any) =>
-                                   new Date(a.date).getTime() - new Date(b.date).getTime() || a.id - b.id
-                                 );
-                                 return (
-                                   <div className="mt-2 space-y-1.5">
-                                     {sortedMatchingNotes.map((note: any) => {
-                                       const wasSent = Array.isArray(note.tags) ? note.tags.includes("whatsapp") : false;
-                                       return (
-                                         <div key={note.id} className="rounded border px-3 py-2 bg-green-50 border-green-200">
-                                           <div className="flex items-center gap-1.5 mb-1">
-                                             <MessageCircle className="w-3 h-3 text-green-600" />
-                                             <span className="text-[10px] font-bold uppercase text-green-700">
-                                               {wasSent ? "Post-Visit Summary Sent" : "Post-Visit Summary Generated"}
-                                             </span>
-                                           </div>
-                                           <p className="text-xs text-saivie-plum whitespace-pre-wrap leading-relaxed">{note.content}</p>
-                                         </div>
-                                       );
-                                     })}
-                                   </div>
-                                 );
-                               })()}
-
-                               {!((selectedVisit as any).chiefComplaint || (selectedVisit as any).subjective || selectedVitalsList.length > 0 || (selectedVisit as any).diagnosis || selectedVisitMeds.length > 0 || allSelectedInv.length > 0 || (selectedVisit as any).planNotes) && (
-                                 <p className="text-xs text-saivie-plum italic">No clinical details recorded for this visit.</p>
-                               )}
-                             </div>
-                           </div>
-                         </div>
-                       )}
-                     </Card>
-                     );
-                   })()}
-
-                   {/* 1. DYNAMIC SUMMARY BAR BASED ON PATHWAY */}
-                   {careMode === 'natural_conception' && (
-                      <div className="grid grid-cols-4 gap-4 bg-saivie-ivory border border-saivie-border rounded-xl p-4 shadow-sm">
-                         <div className="border-r border-saivie-border px-4">
-                            <p className="text-[10px] uppercase tracking-wider text-saivie-plum font-medium mb-1">Trying Duration</p>
-                            <p className="text-sm font-bold text-saivie-plum">6 Months</p>
-                         </div>
-                         <div className="border-r border-saivie-border px-4">
-                            <p className="text-[10px] uppercase tracking-wider text-saivie-plum font-medium mb-1">Ovulatory Status</p>
-                            <p className="text-sm font-bold text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Confirmed</p>
-                         </div>
-                         <div className="border-r border-saivie-border px-4">
-                            <p className="text-[10px] uppercase tracking-wider text-saivie-plum font-medium mb-1">Luteal Adequacy</p>
-                            <p className="text-sm font-bold text-amber-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Borderline (9d)</p>
-                         </div>
-                         <div className="px-4">
-                            <p className="text-[10px] uppercase tracking-wider text-saivie-plum font-medium mb-1">Partner Status</p>
-                            <p className="text-sm font-bold text-saivie-plum">Normal</p>
-                         </div>
-                      </div>
-                   )}
-
-                   {careMode === 'pregnancy' && (
-                       <Alert variant="destructive" className="bg-rose-50 border-rose-200 text-rose-900 py-3 flex items-center shadow-sm">
-                         <AlertCircle className="h-4 w-4 stroke-rose-600 mr-3" />
-                         <div className="flex-1 flex justify-between items-center">
-                            <div className="flex flex-col">
-                               <span className="font-semibold text-sm">High Risk: PIH (Pregnancy Induced Hypertension)</span>
-                               <span className="text-xs text-rose-700">BP elevated at 122/82. Monitoring closely.</span>
-                            </div>
-                            <div className="flex gap-2">
-                               <Badge className="bg-saivie-ivory text-rose-700 border-rose-200 hover:bg-rose-100">GDM Diet Controlled</Badge>
-                               <Button size="sm" variant="outline" className="h-7 text-xs border-rose-200 text-rose-700 hover:bg-rose-100 bg-saivie-ivory/50">
-                                  Protocol
-                               </Button>
-                            </div>
-                         </div>
-                      </Alert>
-                   )}
-
-                   {/* MAIN DASHBOARD CONTENT GRID */}
-                   <div className="grid grid-cols-3 gap-6">
-                      
-                      {/* LEFT COLUMN: Clinical Intelligence (Dynamic based on Mode) */}
-                      <div className="col-span-2 space-y-6">
-                         
-                         {/* 1. HORMONE CARE / NATURAL CONCEPTION DASHBOARD */}
-                         {(careMode === 'hormone_care' || careMode === 'natural_conception') && (
-                            <Card className="shadow-sm border-saivie-border">
-                               <CardHeader className="py-4 border-b border-saivie-border flex flex-row items-center justify-between">
-                                  <CardTitle className="text-base font-bold text-saivie-plum">Ovulation Intelligence</CardTitle>
-                                  <div className="flex gap-2">
-                                     <Badge variant="outline" className="font-normal text-xs text-saivie-plum">BBT Confirmed</Badge>
-                                     <Badge variant="outline" className="font-normal text-xs text-saivie-plum">LH Surge Detected</Badge>
-                                  </div>
-                               </CardHeader>
-                               <CardContent className="pt-6">
-                                  <div className="h-[280px] w-full">
-                                     <ResponsiveContainer width="100%" height="100%">
-                                       <AreaChart data={hormoneData}>
-                                         <defs>
-                                           <linearGradient id="colorEstrogen" x1="0" y1="0" x2="0" y2="1">
-                                             <stop offset="5%" stopColor="#818cf8" stopOpacity={0.1}/>
-                                             <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
-                                           </linearGradient>
-                                         </defs>
-                                         <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
-                                         <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
-                                         <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
-                                         <Tooltip contentStyle={{ borderRadius: '8px' }} />
-                                         <ReferenceLine yAxisId="left" x={14} stroke="#cbd5e1" strokeDasharray="3 3" label={{ position: 'top', value: 'Ovulation', fontSize: 10, fill: '#64748b' }} />
-                                         <Area yAxisId="left" type="monotone" dataKey="estrogen" stroke="#818cf8" strokeWidth={2} fillOpacity={1} fill="url(#colorEstrogen)" />
-                                         <Line yAxisId="right" type="monotone" dataKey="symptoms" stroke="#f59e0b" strokeWidth={2} dot={{r: 4, fill: '#f59e0b'}} />
-                                       </AreaChart>
-                                     </ResponsiveContainer>
-                                  </div>
-                               </CardContent>
-                            </Card>
-                         )}
-
-                         {/* 2. IUI / INDUCTION WORKSPACE */}
-                         {(careMode === 'iui' || careMode === 'induction') && (
-                            <Card className="shadow-sm border-saivie-border overflow-hidden">
-                               <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `url(${follicleTrackingBg})`, backgroundSize: 'cover' }}></div>
-                               <CardHeader className="py-4 border-b border-saivie-border flex flex-row items-center justify-between relative z-10">
-                                  <CardTitle className="text-base font-bold text-saivie-plum flex items-center gap-2">
-                                     <Microscope className="w-4 h-4 text-saivie-teal" /> Follicle Monitoring
-                                  </CardTitle>
-                                  <Button size="sm" variant="outline" className="h-7 text-xs">Add Scan Data</Button>
-                               </CardHeader>
-                               <CardContent className="pt-6 relative z-10">
-                                  <div className="h-[280px] w-full">
-                                     <ResponsiveContainer width="100%" height="100%">
-                                       <BarChart data={follicleData}>
-                                         <XAxis dataKey="day" tickFormatter={(val) => `CD ${val}`} axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
-                                         <YAxis yAxisId="left" label={{ value: 'Size (mm)', angle: -90, position: 'insideLeft', fontSize: 10 }} axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
-                                         <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px' }} />
-                                         <ReferenceLine yAxisId="left" y={18} stroke="#10b981" strokeDasharray="3 3" label={{ position: 'right', value: 'Trigger Size', fontSize: 10, fill: '#10b981' }} />
-                                         <Bar yAxisId="left" dataKey="left" fill="#818cf8" radius={[4, 4, 0, 0]} name="Left Ovary" barSize={20} />
-                                         <Bar yAxisId="left" dataKey="right" fill="#cbd5e1" radius={[4, 4, 0, 0]} name="Right Ovary" barSize={20} />
-                                         <Line yAxisId="left" type="monotone" dataKey="endometrium" stroke="#f43f5e" strokeWidth={2} dot={{r: 4, fill: '#f43f5e'}} name="Endo Thickness" />
-                                       </BarChart>
-                                     </ResponsiveContainer>
-                                  </div>
-                               </CardContent>
-                            </Card>
-                         )}
-
-                         {/* 3. PREGNANCY WORKSPACE */}
-                         {careMode === 'pregnancy' && (
-                            <>
-                               {/* Fetal Biometry (USG) */}
-                               <Card className="shadow-sm border-saivie-border">
-                                  <CardHeader className="py-3 border-b border-saivie-border flex flex-row items-center justify-between">
-                                     <CardTitle className="text-base font-bold text-saivie-plum flex items-center gap-2">
-                                        <Activity className="w-4 h-4 text-emerald-600" /> Fetal Biometry (USG)
-                                     </CardTitle>
-                                     {usgData.length > 0 && (
-                                       <Badge variant="outline" className="text-[10px] font-normal text-saivie-plum">
-                                         {usgData.length} scan{usgData.length > 1 ? 's' : ''} recorded
-                                       </Badge>
-                                     )}
-                                  </CardHeader>
-                                  <CardContent className="pt-4">
-                                     {/* Dynamic stat cards from latest USG */}
-                                     {usgData.length > 0 && (() => {
-                                       const latest = usgData[usgData.length - 1];
-                                       return (
-                                         <div className="grid grid-cols-4 gap-3 mb-4">
-                                           <div className="bg-saivie-surface-muted p-2.5 rounded border border-saivie-border text-center">
-                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">BPD</div>
-                                             <div className="text-base font-bold text-saivie-plum">{latest.bpd || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">mm</span></div>
-                                           </div>
-                                           <div className="bg-saivie-surface-muted p-2.5 rounded border border-saivie-border text-center">
-                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">HC</div>
-                                             <div className="text-base font-bold text-saivie-plum">{latest.hc || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">mm</span></div>
-                                           </div>
-                                           <div className="bg-saivie-surface-muted p-2.5 rounded border border-saivie-border text-center">
-                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">AC</div>
-                                             <div className="text-base font-bold text-saivie-plum">{latest.ac || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">mm</span></div>
-                                           </div>
-                                           <div className="bg-saivie-surface-muted p-2.5 rounded border border-saivie-border text-center">
-                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">FL</div>
-                                             <div className="text-base font-bold text-saivie-plum">{latest.fl || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">mm</span></div>
-                                           </div>
-                                         </div>
-                                       );
-                                     })()}
-
-                                     <div className="h-[250px] w-full">
-                                       {usgData.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                           <LineChart data={usgData}>
-                                              <XAxis dataKey="week" tickFormatter={(v) => `Wk ${v}`} axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} />
-                                              <YAxis axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} />
-                                              <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} labelFormatter={(v) => `Week ${v}`} />
-                                              <Line type="monotone" dataKey="hc" stroke="#3b82f6" strokeWidth={2} name="Head Circ (mm)" dot={{r: 3, fill: '#3b82f6'}} />
-                                              <Line type="monotone" dataKey="ac" stroke="#10b981" strokeWidth={2} name="Abd Circ (mm)" dot={{r: 3, fill: '#10b981'}} />
-                                              <Line type="monotone" dataKey="fl" stroke="#f59e0b" strokeWidth={2} name="Femur Len (mm)" dot={{r: 3, fill: '#f59e0b'}} />
-                                              {usgData[0]?.bpd !== undefined && (
-                                                <Line type="monotone" dataKey="bpd" stroke="#8b5cf6" strokeWidth={2} name="BPD (mm)" dot={{r: 3, fill: '#8b5cf6'}} />
-                                              )}
-                                           </LineChart>
-                                        </ResponsiveContainer>
-                                       ) : (
-                                         <div className="flex items-center justify-center h-full text-sm text-saivie-plum">No USG data recorded yet</div>
-                                       )}
-                                     </div>
-                                  </CardContent>
-                               </Card>
-
-                               {/* Maternal Vitals & Trends */}
-                               <Card className="shadow-sm border-saivie-border">
-                                  <CardHeader className="py-3 border-b border-saivie-border flex flex-row items-center justify-between">
-                                     <CardTitle className="text-base font-bold text-saivie-plum flex items-center gap-2">
-                                        <Heart className="w-4 h-4 text-saivie-rose" /> Maternal Vitals & Trends
-                                     </CardTitle>
-                                     {pregnancyData.length > 0 && (
-                                       <Badge variant="outline" className="text-[10px] font-normal text-saivie-plum">
-                                         {pregnancyData.length} record{pregnancyData.length > 1 ? 's' : ''}
-                                       </Badge>
-                                     )}
-                                  </CardHeader>
-                                  <CardContent className="pt-4">
-                                     {/* Dynamic latest vitals */}
-                                     {pregnancyData.length > 0 && (() => {
-                                       const latest = pregnancyData[pregnancyData.length - 1];
-                                       return (
-                                         <div className="grid grid-cols-4 gap-3 mb-4">
-                                           <div className="bg-saivie-surface-blush/50 p-2.5 rounded border border-saivie-blush text-center">
-                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">Weight</div>
-                                             <div className="text-base font-bold text-saivie-plum">{latest.weight || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">kg</span></div>
-                                           </div>
-                                           <div className="bg-rose-50/50 p-2.5 rounded border border-rose-100 text-center">
-                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">BP</div>
-                                             <div className="text-base font-bold text-saivie-plum">{latest.systolic || '—'}/{latest.diastolic || '—'}</div>
-                                           </div>
-                                           <div className="bg-blue-50/50 p-2.5 rounded border border-blue-100 text-center">
-                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">Fundal Ht</div>
-                                             <div className="text-base font-bold text-saivie-plum">{latest.fundalHeight || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">cm</span></div>
-                                           </div>
-                                           <div className="bg-emerald-50/50 p-2.5 rounded border border-emerald-100 text-center">
-                                             <div className="text-[10px] text-saivie-plum uppercase font-bold">FHR</div>
-                                             <div className="text-base font-bold text-saivie-plum">{latest.fetalHr || '—'}<span className="text-[10px] font-normal text-saivie-plum ml-0.5">bpm</span></div>
-                                           </div>
-                                         </div>
-                                       );
-                                     })()}
-
-                                     <div className="h-[250px] w-full">
-                                       {pregnancyData.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                          <ComposedChart data={pregnancyData}>
-                                            <XAxis dataKey="week" tickFormatter={(v) => `Wk ${v}`} axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} />
-                                            <YAxis yAxisId="left" domain={['auto', 'auto']} label={{ value: 'Weight (kg)', angle: -90, position: 'insideLeft', fontSize: 10 }} axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} />
-                                            <YAxis yAxisId="right" orientation="right" domain={['auto', 'auto']} label={{ value: 'BP (mmHg)', angle: 90, position: 'insideRight', fontSize: 10 }} axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#94a3b8'}} />
-                                            <Tooltip contentStyle={{ borderRadius: '8px' }} labelFormatter={(v) => `Week ${v}`} />
-                                            <Area yAxisId="left" type="monotone" dataKey="weight" stroke="#ec4899" strokeWidth={2} fill="#fbcfe8" fillOpacity={0.2} name="Maternal Weight" />
-                                            <Line yAxisId="right" type="monotone" dataKey="systolic" stroke="#f43f5e" strokeWidth={2} dot={{r: 3, fill: '#f43f5e'}} name="Systolic BP" />
-                                            <Line yAxisId="right" type="monotone" dataKey="diastolic" stroke="#f43f5e" strokeDasharray="3 3" strokeWidth={2} dot={{r: 3, fill: '#f43f5e'}} name="Diastolic BP" />
-                                          </ComposedChart>
-                                        </ResponsiveContainer>
-                                       ) : (
-                                         <div className="flex items-center justify-center h-full text-sm text-saivie-plum">No pregnancy vitals recorded yet</div>
-                                       )}
-                                     </div>
-                                  </CardContent>
-                               </Card>
-                            </>
-                         )}
-
-                         {/* 4. POSTPARTUM WORKSPACE */}
-                         {careMode === 'postpartum' && (
-                            <Card className="shadow-sm border-saivie-border overflow-hidden">
-                               <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `url(${postpartumRecoveryBg})`, backgroundSize: 'cover' }}></div>
-                               <CardHeader className="py-4 border-b border-saivie-border relative z-10">
-                                  <CardTitle className="text-base font-bold text-saivie-plum">Postpartum Recovery Tracker</CardTitle>
-                               </CardHeader>
-                               <CardContent className="pt-6 relative z-10 space-y-6">
-                                  <div>
-                                     <div className="flex justify-between text-sm mb-2 font-medium"><span>Physical Recovery</span> <span>85%</span></div>
-                                     <div className="h-2 bg-saivie-sage rounded-full overflow-hidden"><div className="h-full w-[85%] bg-emerald-500 rounded-full"></div></div>
-                                  </div>
-                                  <div>
-                                     <div className="flex justify-between text-sm mb-2 font-medium"><span>Hormone Reset</span> <span>60%</span></div>
-                                     <div className="h-2 bg-saivie-sage rounded-full overflow-hidden"><div className="h-full w-[60%] bg-blue-500 rounded-full"></div></div>
-                                  </div>
-                               </CardContent>
-                            </Card>
-                         )}
-
-                         {/* SHARED: LAB INTELLIGENCE PANEL */}
-                         <Card className="shadow-sm border-saivie-border">
-                            <CardHeader className="py-3 border-b border-saivie-border flex flex-row items-center justify-between">
-                               <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
-                                  <FlaskConical className="w-4 h-4 text-saivie-teal" /> Lab Intelligence
-                                  {labResults.length > 0 && (
-                                    <span className="text-[10px] bg-saivie-sage text-saivie-teal px-1.5 py-0.5 rounded-full font-medium">
-                                      {labResults.length}
-                                    </span>
-                                  )}
-                               </CardTitle>
-                               {labDocuments.length > 0 && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-[11px] gap-1.5 border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted"
-                                    disabled={extractLabMutation.isPending}
-                                    onClick={() => selectedPatient && extractLabMutation.mutate(selectedPatient.id)}
-                                    data-testid="button-extract-lab"
-                                  >
-                                    {extractLabMutation.isPending ? (
-                                      <><Loader2 className="w-3 h-3 animate-spin" /> Reading Reports...</>
-                                    ) : (
-                                      <><Sparkle className="w-3 h-3" /> Extract from Reports</>
-                                    )}
-                                  </Button>
-                               )}
-                            </CardHeader>
-                            {extractionStatus && (
-                              <div className={`px-4 py-2 text-xs ${extractionStatus.startsWith('Error') ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                                {extractionStatus}
-                              </div>
-                            )}
-                            <CardContent className="p-0">
-                               {labResults.length > 0 ? (
-                                  <table className="w-full text-sm text-left">
-                                     <thead className="text-xs text-saivie-plum bg-saivie-surface-muted uppercase">
-                                        <tr>
-                                           <th className="px-4 py-2 font-medium">Test</th>
-                                           <th className="px-4 py-2 font-medium">Value</th>
-                                           <th className="px-4 py-2 font-medium">Date</th>
-                                           <th className="px-4 py-2 font-medium">Status</th>
-                                        </tr>
-                                     </thead>
-                                     <tbody className="divide-y divide-slate-100">
-                                        {labResults.map((lr: any) => {
-                                           const s = (lr.status || '').toLowerCase();
-                                           const badgeClass = s === 'normal' ? 'border-emerald-200 text-emerald-700 bg-emerald-50'
-                                              : s === 'high' || s === 'critical' ? 'border-rose-200 text-rose-700 bg-rose-50'
-                                              : s === 'low' || s === 'monitor' || s === 'borderline' ? 'border-amber-200 text-amber-700 bg-amber-50'
-                                              : 'border-saivie-border text-saivie-plum bg-saivie-surface-muted';
-                                           return (
-                                              <tr key={lr.id} data-testid={`lab-result-row-${lr.id}`}>
-                                                 <td className="px-4 py-3 font-medium text-saivie-plum">{lr.testName}</td>
-                                                 <td className="px-4 py-3">{lr.value != null ? `${lr.value} ${lr.unit || ''}` : '-'}</td>
-                                                 <td className="px-4 py-3 text-xs text-saivie-plum">{lr.date ? new Date(lr.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '-'}</td>
-                                                 <td className="px-4 py-3">
-                                                    <Badge variant="outline" className={badgeClass}>
-                                                       {lr.status || 'N/A'}
-                                                    </Badge>
-                                                 </td>
-                                              </tr>
-                                           );
-                                        })}
-                                     </tbody>
-                                  </table>
-                               ) : (
-                                  <div className="p-6 text-center">
-                                     <FlaskConical className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                                     <p className="text-sm text-saivie-plum">No lab results yet</p>
-                                     <p className="text-xs text-saivie-plum mt-1">Upload blood reports from Staff Portal or extract from imported lab reports</p>
-                                  </div>
-                               )}
-                            </CardContent>
-                         </Card>
-
-                         {/* LAB REPORTS (from Google Drive) */}
-                         {labDocuments.length > 0 && (
-                            <Card className="shadow-sm border-saivie-border">
-                               <CardHeader className="py-3 border-b border-saivie-border">
-                                  <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
-                                     <FileText className="w-4 h-4 text-saivie-teal" /> Lab Reports
-                                     <span className="text-[10px] bg-saivie-sage text-saivie-teal px-1.5 py-0.5 rounded-full font-medium ml-auto">
-                                        {labDocuments.length}
-                                     </span>
-                                  </CardTitle>
-                               </CardHeader>
-                               <CardContent className="p-0">
-                                  <div className="divide-y divide-slate-100">
-                                     {labDocuments.map((doc: any) => (
-                                        <div key={doc.id} className="px-4 py-3 flex items-center justify-between hover:bg-saivie-surface-muted/50 transition-colors" data-testid={`lab-doc-${doc.id}`}>
-                                           <div className="flex items-center gap-3 min-w-0 flex-1">
-                                              <div className="w-8 h-8 rounded-lg bg-saivie-surface-muted flex items-center justify-center shrink-0">
-                                                 <FileText className="w-4 h-4 text-saivie-teal" />
-                                              </div>
-                                              <div className="min-w-0">
-                                                 <p className="text-sm font-medium text-saivie-plum truncate">
-                                                    {doc.metadata?.extractedPatientName || doc.name?.replace(/TestReport_/g, '').replace(/_[^_]+\.pdf$/, '') || 'Lab Report'}
-                                                 </p>
-                                                 <p className="text-[10px] text-saivie-plum">
-                                                    {doc.date ? new Date(doc.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Imported'}
-                                                    {doc.metadata?.fileSize && ` · ${(parseInt(doc.metadata.fileSize) / 1024 / 1024).toFixed(1)} MB`}
-                                                 </p>
-                                              </div>
-                                           </div>
-                                           <ReportViewButton patientId={selectedPatient?.id} doc={doc} className="ml-2 shrink-0" />
-                                        </div>
-                                     ))}
-                                  </div>
-                               </CardContent>
-                            </Card>
-                         )}
-
-                      </div>
-
-                      {/* RIGHT COLUMN: Protocols & Meds (Dynamic) */}
-                      <div className="space-y-6">
-                         
-                         {/* PROTOCOL PLANNER */}
-                         <Card className="shadow-sm border-saivie-border bg-saivie-surface-muted/50">
-                            <CardHeader className="py-3 border-b border-saivie-border">
-                               <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
-                                  <ClipboardList className="w-4 h-4 text-saivie-teal" /> Care Protocols
-                               </CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-4 space-y-3">
-                               {/* DYNAMIC PROTOCOL SUGGESTIONS */}
-                               {careMode === 'pregnancy' && (
-                                  <div className="bg-saivie-ivory border border-rose-100 rounded-lg p-3 shadow-sm">
-                                     <div className="flex justify-between items-center mb-2">
-                                        <h4 className="text-xs font-bold text-rose-900">HIGH RISK PROTOCOL</h4>
-                                        <Badge className="text-[10px] bg-rose-100 text-rose-700 border-none">PIH + GDM</Badge>
-                                     </div>
-                                     <ul className="space-y-2">
-                                        <li className="text-xs text-saivie-plum flex items-center gap-2"><Scale className="w-3 h-3 text-rose-500" /> Weekly BP Log</li>
-                                        <li className="text-xs text-saivie-plum flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> GDM Diet (1800 cal)</li>
-                                        <li className="text-xs text-saivie-plum flex items-center gap-2"><Activity className="w-3 h-3 text-emerald-500" /> Daily Fetal Count</li>
-                                     </ul>
-                                  </div>
-                               )}
-
-                               {careMode === 'natural_conception' && (
-                                  <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-3 shadow-sm">
-                                     <div className="flex justify-between items-center mb-2">
-                                        <h4 className="text-xs font-bold text-saivie-plum">TIMED INTERCOURSE</h4>
-                                        <Badge className="text-[10px] bg-saivie-sage text-saivie-teal border-none">Active</Badge>
-                                     </div>
-                                     <ul className="space-y-2">
-                                        <li className="text-xs text-saivie-plum flex items-center gap-2"><CalendarCheck className="w-3 h-3 text-emerald-500" /> Fertile Window: CD 12-16</li>
-                                        <li className="text-xs text-saivie-plum flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> LH Surge Monitored</li>
-                                     </ul>
-                                  </div>
-                               )}
-                               
-                               {/* Default Fallback */}
-                               {careMode !== 'pregnancy' && careMode !== 'natural_conception' && (
-                                  <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-3 shadow-sm opacity-70">
-                                     <div className="flex justify-between items-center mb-2">
-                                        <h4 className="text-xs font-bold text-saivie-plum">LUTEAL SUPPORT</h4>
-                                        <Button size="sm" variant="ghost" className="h-5 text-[10px] text-saivie-plum">Add</Button>
-                                     </div>
-                                     <p className="text-[10px] text-saivie-plum">Standard luteal phase support protocol.</p>
-                                  </div>
-                               )}
-                            </CardContent>
-                         </Card>
-                         
-                         {/* MEDICATION MANAGEMENT */}
-                         <Card className="shadow-sm border-saivie-border">
-                            <CardHeader className="py-3 border-b border-saivie-border flex justify-between items-center flex-row">
-                               <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
-                                  <Pill className="w-4 h-4 text-blue-600" /> Active Meds
-                                  {medications.length > 0 && <Badge className="text-[9px] bg-blue-100 text-blue-700 border-blue-200">{medications.filter((m: any) => m.status === 'Active' || m.status === 'active').length}</Badge>}
-                               </CardTitle>
-                               <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setShowDocumentation(true)}><ChevronRight className="w-4 h-4" /></Button>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                               {medications.length > 0 ? (
-                                 medications.map((med: any, i: number) => (
-                                   <div key={med.id} className={`p-3 flex justify-between items-center ${i < medications.length - 1 ? 'border-b border-saivie-border' : ''}`} data-testid={`active-med-card-${med.id}`}>
-                                     <div className="min-w-0 flex-1">
-                                       <div className="font-medium text-sm text-saivie-plum truncate">{med.name}</div>
-                                       <div className="text-xs text-saivie-plum">{[med.dose, med.frequency, med.duration, med.instructions, med.route, med.notes].filter(Boolean).join(' • ') || '—'}</div>
-                                     </div>
-                                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                                       <Badge variant="secondary" className={`text-[10px] ${med.status === 'Active' || med.status === 'active' ? 'bg-emerald-50 text-emerald-700' : med.status === 'Completed' ? 'bg-blue-50 text-blue-600' : 'bg-saivie-surface-muted text-saivie-plum'}`}>
-                                         {med.status || 'Active'}
-                                       </Badge>
-                                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-300 hover:text-blue-600" onClick={() => { setShowDocumentation(true); setEditingMedId(med.id); setEditMedData({ name: med.name, dose: med.dose || '', frequency: med.frequency || '', duration: med.duration || '', instructions: med.instructions || '', route: med.route || '', startDate: med.startDate || '', status: med.status || 'Active', notes: med.notes || '' }); }} data-testid={`button-edit-med-card-${med.id}`}>
-                                         <Pencil className="w-3 h-3" />
-                                       </Button>
-                                     </div>
-                                   </div>
-                                 ))
-                               ) : (
-                                 <div className="p-4 text-center">
-                                   <p className="text-xs text-saivie-plum mb-2">No medications prescribed</p>
-                                   <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-dashed border-blue-300 text-blue-600" onClick={() => { setShowDocumentation(true); setShowAddMedRow(true); }} data-testid="button-add-med-from-card">
-                                     <Plus className="w-3 h-3" /> Add Medication
-                                   </Button>
-                                 </div>
-                               )}
-                            </CardContent>
-                         </Card>
-
-                         {/* PATIENT COMMUNICATION LOG */}
-                         <Card className="shadow-sm border-saivie-border">
-                            <CardHeader className="py-3 border-b border-saivie-border">
-                               <CardTitle className="text-sm font-bold text-saivie-plum flex items-center gap-2">
-                                  <MessageSquare className="w-4 h-4 text-saivie-plum" /> Recent Comms
-                               </CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                               <div className="p-3 border-b border-saivie-border">
-                                  <div className="flex justify-between text-xs mb-1">
-                                     <span className="font-semibold text-saivie-plum">Plan Updated</span>
-                                     <span className="text-saivie-plum">Today</span>
-                                  </div>
-                                  <p className="text-xs text-saivie-plum truncate">
-                                     {careMode === 'pregnancy' ? "Added BP monitoring log to patient portal." : "Cycle plan updated."}
-                                  </p>
-                               </div>
-                            </CardContent>
-                         </Card>
-
-                      </div>
-
-                   </div>
-                </div>
-                </div>
               </div>
             </div>
           </div>

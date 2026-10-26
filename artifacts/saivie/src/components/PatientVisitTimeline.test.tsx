@@ -33,3 +33,13 @@ it("shows empty, loading and error states without inventing data", () => {
   assert.match(renderToStaticMarkup(<PatientVisitTimeline visits={[]} isError onRetry={() => {}} />), /Retry/);
   assert.match(renderToStaticMarkup(<PatientVisitTimeline visits={[{ id: 9, date: "2026-01-02" }]} />), /No prescription saved for this visit/);
 });
+
+it("shows saved assessment certainty and evidence in the visit record", () => {
+  const html = renderToStaticMarkup(<PatientVisitTimeline visits={[{
+    id: 10, date: "2026-10-26",
+    assessment: "Fertility evaluation\nStatus: Working impression\nContextual: Cycle length: 51 days (Patient-reported survey; date not recorded)",
+  }]} />);
+  assert.match(html, /Status: Working impression/);
+  assert.match(html, /Cycle length: 51 days/);
+  assert.match(html, /Patient-reported survey/);
+});
