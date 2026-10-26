@@ -4925,6 +4925,23 @@ export default function ClinicianPortal() {
 
                   {/* COLUMN 3: ORDERS & ACTION RAIL (Reference Image 1) */}
                   <aside className="min-w-0 space-y-3" aria-label="Clinical copilot">
+                    <Card className="shadow-none border-saivie-border rounded-lg" data-testid="consultation-quick-actions">
+                      <CardHeader className="px-3 pb-2 pt-3">
+                        <CardTitle className="flex items-center gap-2 text-xs text-saivie-teal"><Users className="h-3.5 w-3.5" />Quick actions</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-3">
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setShowAddInvestigation(true); openRecordSection('patient-investigations'); }} data-testid="quick-action-tests"><FlaskConical className="h-4 w-4" />Order tests</button>
+                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setConsultationStep('evidence'); requestAnimationFrame(() => document.getElementById('input-consultation-assessment')?.focus()); }} data-testid="quick-action-diagnosis"><Stethoscope className="h-4 w-4" />Add diagnosis</button>
+                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setShowAddMedRow(true); openRecordSection('patient-medications'); }} data-testid="quick-action-medication"><Pill className="h-4 w-4" />Add medication</button>
+                        </div>
+                        <div className="mt-4 flex justify-between text-[10px] font-semibold text-saivie-teal"><span>Documentation progress</span><span>{consultationChecklist.filter((item) => item.done).length}/5</span></div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-saivie-sage" role="progressbar" aria-label="Documentation progress" aria-valuemin={0} aria-valuemax={5} aria-valuenow={consultationChecklist.filter((item) => item.done).length}><div className="h-full rounded-full bg-saivie-teal transition-all" style={{ width: `${consultationChecklist.filter((item) => item.done).length * 20}%` }} /></div>
+                        <div className="mt-3 space-y-1">
+                          {consultationChecklist.map((item, index) => <button type="button" key={item.label} className="flex w-full items-center gap-2 py-1 text-left text-[10px] text-saivie-plum" onClick={() => setConsultationStep(consultationSteps[index].id)}>{item.done ? <CheckCircle2 className="h-3 w-3 text-saivie-teal" /> : <Circle className="h-3 w-3 text-saivie-plum/40" />}{item.label === 'History' ? 'Patient survey submitted' : item.label}</button>)}
+                        </div>
+                      </CardContent>
+                    </Card>
                     {/* Action Header Card */}
                     <Card className="border border-saivie-border bg-saivie-ivory rounded-lg p-3.5 shadow-sm space-y-2.5">
                       <div className="flex items-center justify-between">
@@ -5008,23 +5025,6 @@ export default function ClinicianPortal() {
                       </CardContent>
                     </Card>
 
-                    <Card className="shadow-none border-saivie-border rounded-lg" data-testid="consultation-quick-actions">
-                      <CardHeader className="px-3 pb-2 pt-3">
-                        <CardTitle className="flex items-center gap-2 text-xs text-saivie-teal"><Users className="h-3.5 w-3.5" />Quick actions</CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-3">
-                        <div className="grid grid-cols-3 gap-1.5">
-                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setShowAddInvestigation(true); openRecordSection('patient-investigations'); }} data-testid="quick-action-tests"><FlaskConical className="h-4 w-4" />Order tests</button>
-                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setConsultationStep('evidence'); requestAnimationFrame(() => document.getElementById('input-consultation-assessment')?.focus()); }} data-testid="quick-action-diagnosis"><Stethoscope className="h-4 w-4" />Add diagnosis</button>
-                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setShowAddMedRow(true); openRecordSection('patient-medications'); }} data-testid="quick-action-medication"><Pill className="h-4 w-4" />Add medication</button>
-                        </div>
-                        <div className="mt-4 flex justify-between text-[10px] font-semibold text-saivie-teal"><span>Documentation progress</span><span>{consultationChecklist.filter((item) => item.done).length}/5</span></div>
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-saivie-sage" role="progressbar" aria-label="Documentation progress" aria-valuemin={0} aria-valuemax={5} aria-valuenow={consultationChecklist.filter((item) => item.done).length}><div className="h-full rounded-full bg-saivie-teal transition-all" style={{ width: `${consultationChecklist.filter((item) => item.done).length * 20}%` }} /></div>
-                        <div className="mt-3 space-y-1">
-                          {consultationChecklist.map((item, index) => <button type="button" key={item.label} className="flex w-full items-center gap-2 py-1 text-left text-[10px] text-saivie-plum" onClick={() => setConsultationStep(consultationSteps[index].id)}>{item.done ? <CheckCircle2 className="h-3 w-3 text-saivie-teal" /> : <Circle className="h-3 w-3 text-saivie-plum/40" />}{item.label === 'History' ? 'Patient survey submitted' : item.label}</button>)}
-                        </div>
-                      </CardContent>
-                    </Card>
                   </aside>
                 </div>
               </div>

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { PatientSearchInput } from "@/components/PatientSearchInput";
 
 export interface ReferralRequest { patientId?: number; appointmentId?: number }
 
@@ -148,10 +149,7 @@ export function ReferralsCard({ patients, request, onRequestHandled }: {
           <div className="space-y-3">
             <div className="space-y-1">
               <Label>Patient</Label>
-              <Select value={patientId} onValueChange={setPatientId}>
-                <SelectTrigger data-testid="select-referral-patient"><SelectValue placeholder="Select patient" /></SelectTrigger>
-                <SelectContent>{patients.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}</SelectContent>
-              </Select>
+              <PatientSearchInput patients={patients} value={patientId} onChange={setPatientId} testId="select-referral-patient" />
             </div>
             <div className="space-y-1">
               <Label>Diagnostic centre</Label>
