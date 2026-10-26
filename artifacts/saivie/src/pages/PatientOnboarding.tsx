@@ -8,6 +8,7 @@ import { getOnboardingQuestions, getRelevantIntake, initialForm, type IntakeForm
 import { getPrintBrandStyles } from "@/lib/brand";
 import { estimatePregnancyDating } from "@/lib/pregnancyDating";
 import { patientSurveyPrompt, surveyDirectionLabels, surveyDirectionsForConcerns, surveyQuestions } from "@/lib/consultationSurvey";
+import { conceptionMethods } from "@/lib/conceptionHistory";
 
 const sections = [
     { key: "about", title: "About you", eyebrow: "First things first" },
@@ -88,6 +89,8 @@ function printOnboardingSummary(form: IntakeForm) {
             ["Currently pregnant", form.pregnancies.currentStatus],
             ["Weeks pregnant", form.pregnancies.weeksPregnant],
             ["Estimated due date", form.pregnancies.dueDate],
+            ["How conceived", form.pregnancies.conceptionMethod],
+            ["Conception details", form.pregnancies.conceptionDetails],
             ["Total pregnancies", form.pregnancies.total],
             ["Vaginal deliveries", form.pregnancies.vaginal],
             ["C-sections", form.pregnancies.cesarean],
@@ -677,6 +680,8 @@ export default function PatientOnboarding() {
         cycleDetails: <TextArea label="Anything else about your periods?" value={form.cycle.details} onChange={(value) => updateGroup("cycle", "details", value)} />,
         pregnancyTest: <ChoiceGroup label="Have you taken a pregnancy test?" options={["Positive", "Negative", "Not yet", "Not sure"]} value={form.cycle.pregnancyTest} onChange={(value) => updateGroup("cycle", "pregnancyTest", value)} />,
         currentStatus: <ChoiceGroup label="Are you currently pregnant?" options={["Yes", "No", "Not sure"]} value={form.pregnancies.currentStatus} onChange={(value) => updateGroup("pregnancies", "currentStatus", value)} />,
+        conceptionMethod: <ChoiceGroup label="How was this pregnancy conceived?" options={[...conceptionMethods]} value={form.pregnancies.conceptionMethod} onChange={(value) => updateGroup("pregnancies", "conceptionMethod", value)} />,
+        conceptionDetails: <TextInput label="Any conception or treatment details to share? (optional)" value={form.pregnancies.conceptionDetails} onChange={(value) => updateGroup("pregnancies", "conceptionDetails", value)} />,
         weeksPregnant: <div><RulerSlider label="About how many weeks pregnant today?" value={form.pregnancies.weeksPregnant} onChange={(value) => updateGroup("pregnancies", "weeksPregnant", value)} min={1} max={42} unit="weeks" />{datingNote}</div>,
         dueDate: <div><TextInput label="What is your estimated due date, if known?" value={form.pregnancies.dueDate} onChange={(value) => updateGroup("pregnancies", "dueDate", value)} type="date" />{datingNote}</div>,
         totalPregnancies: <CountTile label="Total pregnancies" hint="Include your current pregnancy, if any" icon={Heart} tint="bg-saivie-surface-muted text-saivie-teal" value={form.pregnancies.total} onChange={(value) => setPregnancyCount("total", value)} />,
@@ -788,6 +793,8 @@ export default function PatientOnboarding() {
         { key: "gyn", title: "GYN history", items: [answers.gyn.sexuallyActive && `Sexually active: ${answers.gyn.sexuallyActive}`, answers.gyn.firstEncounterAge && `First sexual encounter at ${answers.gyn.firstEncounterAge}`, answers.gyn.partnerCount && `Partners: ${answers.gyn.partnerCount}`, answers.gyn.lastPap && `Last Pap: ${answers.gyn.lastPap}`, answers.gyn.hpvVaccine && `HPV vaccine: ${answers.gyn.hpvVaccine}`, ...answers.gyn.birthControl, ...answers.gyn.concerns, answers.gyn.details] },
         { key: "pregnancy", title: "Pregnancies", items: [
             answers.pregnancies.currentStatus && `Currently pregnant: ${answers.pregnancies.currentStatus}`,
+            answers.pregnancies.conceptionMethod && `How conceived: ${answers.pregnancies.conceptionMethod}`,
+            answers.pregnancies.conceptionDetails,
             answers.pregnancies.weeksPregnant && `${answers.pregnancies.weeksPregnant} weeks pregnant`,
             answers.pregnancies.dueDate && `Due date: ${answers.pregnancies.dueDate}`,
             datingEstimate ? `Estimated LMP equivalent: ${datingEstimate.estimatedLmp} (not patient-reported; care team to confirm)` : "",

@@ -1105,6 +1105,30 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  const conceptionMethods = ["", "Spontaneous / natural conception", "Ovulation induction / timed intercourse", "IUI", "IVF / ICSI", "Other", "Not known / not recorded"];
+  app.patch("/api/patients/:id/conception", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid patient ID" });
+    const { conceptionMethod, conceptionDetails, lmp, appointmentId } = req.body;
+    if (!conceptionMethods.includes(conceptionMethod) || typeof conceptionDetails !== "string" || conceptionDetails.length > 2000 ||
+      !(lmp === null || typeof lmp === "string") || !(appointmentId === null || Number.isInteger(appointmentId) && appointmentId > 0)) {
+      return res.status(400).json({ error: "Invalid conception history" });
+    }
+    const patient = await storage.getPatient(id);
+    if (!patient) return res.status(404).json({ error: "Patient not found" });
+    if ((patient.lmp || null) !== lmp) return res.status(409).json({ error: "Pregnancy dates changed. Reload before saving conception history." });
+    if (appointmentId !== null) {
+      const appointment = await storage.getAppointments().then((all) => all.find((item) => item.id === appointmentId));
+      if (!appointment || appointment.patientId !== id) return res.status(400).json({ error: "Appointment does not belong to this patient" });
+    }
+    const history = patient.history && typeof patient.history === "object" && !Array.isArray(patient.history) ? patient.history : {};
+    const updated = await storage.updatePatient(id, { history: {
+      ...history,
+      conception: { conceptionMethod, conceptionDetails: conceptionDetails.trim(), lmp, appointmentId, source: "Clinician", recordedAt: new Date().toISOString() },
+    } });
+    res.json(updated);
+  });
+
   app.get("/api/providers", async (_req, res) => {
     const providers = await storage.getProviders();
     res.json(providers);
@@ -1675,7 +1699,16 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     // Merge submitted history so empty sections do not erase existing records.
     if (history && typeof history === "object" && !Array.isArray(history)) {
       const existingHistory = patient.history && typeof patient.history === "object" && !Array.isArray(patient.history) ? patient.history : {};
-      await storage.updatePatient(patient.id, { history: { ...existingHistory, ...history, onboardingAppointmentId: appointmentId } });
+      const pregnancy = history.onboarding?.pregnancies;
+      const method = pregnancy?.conceptionMethod;
+      const retainedConception = pregnancy?.currentStatus === "Yes" && typeof method === "string" && method && conceptionMethods.includes(method)
+        ? { patientConception: {
+          conceptionMethod: method,
+          conceptionDetails: typeof pregnancy.conceptionDetails === "string" ? pregnancy.conceptionDetails.slice(0, 2000) : "",
+          lmp: history.onboarding?.cycle?.lastPeriod || patient.lmp || null,
+          appointmentId,
+        } } : {};
+      await storage.updatePatient(patient.id, { history: { ...existingHistory, ...history, ...retainedConception, onboardingAppointmentId: appointmentId } });
     }
 
     res.json({ success: true });

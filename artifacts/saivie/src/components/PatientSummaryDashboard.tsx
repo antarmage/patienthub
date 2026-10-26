@@ -27,7 +27,7 @@ function Trend({ title, unit, points, paired = false }: { title: string; unit: s
   </section>;
 }
 
-export function PatientSummaryDashboard({ patient, appointmentId, complaint, checkInVitals, visits, labs, bpLogs, weightLogs, medications, pregnancy, pregnancyContext, sources, onConsultation }: {
+export function PatientSummaryDashboard({ patient, appointmentId, complaint, checkInVitals, visits, labs, bpLogs, weightLogs, medications, pregnancy, pregnancyContext, conceptionSection, sources, onConsultation }: {
   patient: { name: string; history?: unknown; lmp?: string; cycleLength?: number | string; riskScore?: { level?: string; factors?: { factor: string }[] } };
   appointmentId?: number;
   complaint?: string;
@@ -39,6 +39,7 @@ export function PatientSummaryDashboard({ patient, appointmentId, complaint, che
   medications: { id: number; name: string; dose?: string; frequency?: string; status?: string }[];
   pregnancy: boolean;
   pregnancyContext: { weeks: number; days: number; dueDate: string; trimester: string } | null;
+  conceptionSection?: React.ReactNode;
   sources: { label: string; loading: boolean; failed: boolean; retry: () => void }[];
   onConsultation: () => void;
 }) {
@@ -67,6 +68,7 @@ export function PatientSummaryDashboard({ patient, appointmentId, complaint, che
         </>}
         <div><p className="text-[10px] text-saivie-plum">Recorded risk</p><p className="mt-1 text-sm font-semibold text-saivie-teal">{patient.riskScore?.level || "Not recorded"}</p>{patient.riskScore?.factors?.map((factor, i) => <p key={i} className="mt-1 text-xs">{factor.factor}</p>)}</div>
       </section>
+      {pregnancy && conceptionSection}
       <section className="rounded-lg border border-saivie-border bg-saivie-ivory p-4"><h3 className="text-xs font-semibold text-saivie-teal">Today’s check-in</h3><div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">{[["BP", checkIn.bp, "mmHg"], ["Pulse", checkIn.pulse, "bpm"], ["Weight", checkIn.weight, "kg"], ["SpO₂", checkIn.spo2, "%"]].map(([label, value, unit]) => <div key={String(label)}><p className="text-[10px]">{String(label)}</p><p className="mt-1 text-sm font-semibold">{typeof value === "number" || typeof value === "string" && value.trim() ? `${value} ${unit}` : "Not recorded"}</p></div>)}</div></section>
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-lg border border-saivie-border bg-saivie-ivory p-4"><h3 className="text-xs font-semibold text-saivie-teal">Today’s concern</h3><p className="mt-2 whitespace-pre-wrap text-sm">{complaint || (currentSurvey ? text(intake.chiefComplaint) : "Not recorded for this visit")}</p>

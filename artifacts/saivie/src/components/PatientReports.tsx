@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ExternalLink, Eye, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { NoRecordsIllustration } from "./NoRecordsIllustration";
 
 type AnyRecord = Record<string, any>;
 
@@ -73,26 +74,43 @@ export function PatientReportsList({ patientId, documents, isLoading, isError, o
         <FileText className="h-3.5 w-3.5 text-saivie-teal" /> Reports
         {reports.length > 0 && <span className="ml-auto rounded-full bg-saivie-sage px-1.5 text-[10px] text-saivie-teal">{reports.length}</span>}
       </h3>
+      <div className="overflow-x-auto">
+      <table className="w-full text-left text-xs" aria-label="Lab and USG reports">
+        <thead className="border-b border-saivie-border bg-saivie-surface-muted text-saivie-plum">
+          <tr>
+            <th scope="col" className="px-3 py-2 font-medium">Type</th>
+            <th scope="col" className="px-3 py-2 font-medium">Report</th>
+            <th scope="col" className="px-3 py-2 font-medium">Date</th>
+            <th scope="col" className="px-3 py-2 font-medium">File</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
       {isLoading ? (
-        <p className="px-3 py-2 text-xs text-saivie-plum">Loading…</p>
+        <tr><td colSpan={4}><p role="status" className="px-3 py-2 text-xs text-saivie-plum">Loading…</p></td></tr>
       ) : isError ? (
-        <p className="px-3 py-2 text-xs text-rose-700">
+        <tr><td colSpan={4}><p role="alert" className="px-3 py-2 text-xs text-rose-700">
           Couldn't load reports. {onRetry && <button type="button" className="font-semibold underline" onClick={onRetry}>Retry</button>}
-        </p>
+        </p></td></tr>
       ) : reports.length === 0 ? (
-        <p className="px-3 py-2 text-xs text-saivie-plum">No lab or USG reports uploaded.</p>
+        <tr><td colSpan={4} className="px-4 py-6 text-center" data-testid="reports-empty-state">
+          <NoRecordsIllustration decorative />
+          <p className="mt-2 text-xs text-saivie-plum">No lab or USG reports uploaded.</p>
+        </td></tr>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <>
           {reports.map((doc) => (
-            <li key={doc.id} className="flex items-center gap-2 px-3 py-1.5" data-testid={`report-row-${doc.id}`}>
-              <span className={`w-9 shrink-0 rounded px-1 text-center text-[10px] font-bold ${reportKind(doc) === "USG" ? "bg-violet-100 text-violet-700" : "bg-blue-100 text-blue-700"}`}>{reportKind(doc)}</span>
-              <span className="min-w-0 flex-1 truncate text-xs font-medium text-saivie-plum" title={doc.name}>{doc.name || "Report"}</span>
-              <span className="shrink-0 text-[10px] text-saivie-plum">{formatDate(doc.date)}</span>
-              {reportFileLink(patientId, doc) ? <ReportViewButton patientId={patientId} doc={doc} /> : <span className="w-12 shrink-0 text-right text-[10px] text-slate-400">No file</span>}
-            </li>
+            <tr key={doc.id} data-testid={`report-row-${doc.id}`}>
+              <td className="px-3 py-2"><span className={`rounded px-1 text-center text-[10px] font-bold ${reportKind(doc) === "USG" ? "bg-violet-100 text-violet-700" : "bg-blue-100 text-blue-700"}`}>{reportKind(doc)}</span></td>
+              <td className="max-w-48 break-words px-3 py-2 font-medium text-saivie-plum">{doc.name || "Report"}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-[10px] text-saivie-plum">{formatDate(doc.date)}</td>
+              <td className="px-3 py-2">{reportFileLink(patientId, doc) ? <ReportViewButton patientId={patientId} doc={doc} /> : <span className="text-[10px] text-slate-400">No file</span>}</td>
+            </tr>
           ))}
-        </ul>
+        </>
       )}
+        </tbody>
+      </table>
+      </div>
     </section>
   );
 }

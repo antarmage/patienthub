@@ -11,7 +11,7 @@ export type IntakeForm = {
     pain: { location: string[]; duration: string; severity: string; relatedSymptoms: string[] };
     cycle: { lastPeriod: string; regularity: string; lateBy: string; pregnancyTest: string; menarcheAge: string; cycleLength: string; flow: string; symptoms: string[]; details: string };
     gyn: { firstEncounterAge: string; partnerCount: string; lastPap: string; sexuallyActive: string; hpvVaccine: string; birthControl: string[]; concerns: string[]; details: string };
-    pregnancies: { currentStatus: string; weeksPregnant: string; dueDate: string; total: string; vaginal: string; cesarean: string; miscarriages: string; terminations: string; premature: string; details: string };
+    pregnancies: { currentStatus: string; weeksPregnant: string; dueDate: string; conceptionMethod: string; conceptionDetails: string; total: string; vaginal: string; cesarean: string; miscarriages: string; terminations: string; premature: string; details: string };
     lifestyle: { smoking: string; relationship: string; alcohol: string; exercise: string; mammogram: string; colonoscopy: string; other: string };
     health: { conditions: string[]; medicalDetails: string; surgeries: string; medications: string; allergies: string; familyHistory: string };
 };
@@ -22,7 +22,7 @@ export const initialForm: IntakeForm = {
     pain: { location: [], duration: "", severity: "", relatedSymptoms: [] },
     cycle: { lastPeriod: "", regularity: "", lateBy: "", pregnancyTest: "", menarcheAge: "", cycleLength: "", flow: "", symptoms: [], details: "" },
     gyn: { firstEncounterAge: "", partnerCount: "", lastPap: "", sexuallyActive: "", hpvVaccine: "", birthControl: [], concerns: [], details: "" },
-    pregnancies: { currentStatus: "", weeksPregnant: "", dueDate: "", total: "", vaginal: "", cesarean: "", miscarriages: "", terminations: "", premature: "", details: "" },
+    pregnancies: { currentStatus: "", weeksPregnant: "", dueDate: "", conceptionMethod: "", conceptionDetails: "", total: "", vaginal: "", cesarean: "", miscarriages: "", terminations: "", premature: "", details: "" },
     lifestyle: { smoking: "", relationship: "", alcohol: "", exercise: "", mammogram: "", colonoscopy: "", other: "" },
     health: { conditions: [], medicalDetails: "", surgeries: "", medications: "", allergies: "", familyHistory: "" },
 };
@@ -46,7 +46,10 @@ export function getOnboardingQuestions(form: IntakeForm, extra: OptionalHistory)
     if (cycle && extra.cycle) add("cycle", "menarcheAge", "cycleDetails");
     if (pregnancy || has("Missed or late period")) add("cycle", "pregnancyTest");
     if (pregnancy) add("pregnancy", "currentStatus");
-    if (pregnancy && form.pregnancies.currentStatus === "Yes") add("pregnancy", "weeksPregnant", "dueDate");
+    if (pregnancy && form.pregnancies.currentStatus === "Yes") {
+        add("pregnancy", "weeksPregnant", "dueDate", "conceptionMethod");
+        if (form.pregnancies.conceptionMethod && form.pregnancies.conceptionMethod !== "Not known / not recorded") add("pregnancy", "conceptionDetails");
+    }
     if (pregnancy || has("Fertility")) {
         add("pregnancy", "totalPregnancies");
         if (Number(form.pregnancies.total) > 0) {
@@ -110,6 +113,8 @@ export function getRelevantIntake(form: IntakeForm, extra: OptionalHistory): Int
             concerns: keepList("gynConcerns", form.gyn.concerns), details: keep("gynDetails", form.gyn.details),
         },
         pregnancies: {
+            conceptionMethod: keep("conceptionMethod", form.pregnancies.conceptionMethod),
+            conceptionDetails: keep("conceptionDetails", form.pregnancies.conceptionDetails),
             currentStatus: keep("currentStatus", form.pregnancies.currentStatus), weeksPregnant: keep("weeksPregnant", form.pregnancies.weeksPregnant),
             dueDate: keep("dueDate", form.pregnancies.dueDate), total: keep("totalPregnancies", form.pregnancies.total),
             vaginal: keep("vaginal", form.pregnancies.vaginal), cesarean: keep("cesarean", form.pregnancies.cesarean),

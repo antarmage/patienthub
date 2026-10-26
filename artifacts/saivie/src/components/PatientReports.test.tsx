@@ -36,5 +36,22 @@ test("PatientReportsList shows lab/USG reports newest first and skips prescripti
 });
 
 test("PatientReportsList empty state", () => {
-  assert.ok(renderToStaticMarkup(<PatientReportsList patientId={7} documents={[]} />).includes("No lab or USG reports uploaded."));
+  const html = renderToStaticMarkup(<PatientReportsList patientId={7} documents={[]} />);
+  assert.ok(html.includes("No lab or USG reports uploaded."));
+  assert.match(html, /<tbody[^>]*><tr><td colSpan="4"[^>]*data-testid="reports-empty-state"><svg/);
+  assert.match(html, /data-illustration-part="woman"/);
+  assert.match(html, /aria-hidden="true"/);
+  assert.match(html, /<th scope="col"[^>]*>Report<\/th>/);
+});
+
+test("report artwork appears only for empty results, not loading, failures or populated records", () => {
+  for (const props of [
+    { isLoading: true },
+    { isError: true },
+    { documents: [{ id: 1, name: "CBC", type: "Lab Report" }] },
+  ]) {
+    const html = renderToStaticMarkup(<PatientReportsList patientId={7} documents={[]} {...props} />);
+    assert.ok(!html.includes('data-testid="reports-empty-state"'));
+    assert.ok(!html.includes('data-illustration-part="woman"'));
+  }
 });

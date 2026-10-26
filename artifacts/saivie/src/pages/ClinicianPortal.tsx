@@ -14,6 +14,8 @@ import { ConsultationVitalsTrends } from "@/components/ConsultationVitalsTrends"
 import { PatientSummaryDashboard } from "@/components/PatientSummaryDashboard";
 import { PatientVisitTimeline, visitTests } from "@/components/PatientVisitTimeline";
 import { ConsultationAssessment } from "@/components/ConsultationAssessment";
+import { ConceptionHistory } from "@/components/ConceptionHistory";
+import { conceptionHistory } from "@/lib/conceptionHistory";
 import { assembleEvidence, assessmentText, readAssessment, type AssessmentDraft } from "@/lib/consultationAssessment";
 import { PatientReportsList, ReportViewButton, reportFileLink } from "@/components/PatientReports";
 import { fetchDirectoryAppointments, directoryPatientIds, type DirectoryAppointment } from "@/lib/patientDirectory";
@@ -1330,7 +1332,11 @@ export default function ClinicianPortal() {
   const assessmentDraft = assessmentEdits?.key === consultationSurveyKey ? assessmentEdits.draft
     : readAssessment(assessmentVisit?.assessmentDetails, soapAssessmentDraft || assessmentVisit?.assessment || assessmentVisit?.diagnosis || "");
   const consultationAssessmentText = assessmentText(assessmentDraft);
-  const evidenceFacts = assembleEvidence({
+  const conception = conceptionHistory(surveyPatient?.history, selectedPatient?.lmp, activeAppointment?.id || selectedPatient?.appointmentId);
+  const evidenceFacts = [...(showPregnancyContext && conception.method ? [{
+    id: 'conception', label: 'How conceived', value: [conception.method, conception.details].filter(Boolean).join(' · '),
+    source: conception.source, date: null, relevant: true,
+  }] : []), ...assembleEvidence({
     answers: guidedAnswers, fromPatient: effectiveSurvey.fromPatient, questions: surveyQuestions(selectedDirections),
     subjective: soapSubjectiveDraft || assessmentVisit?.subjective || "",
     objective: soapObjectiveDraft || assessmentVisit?.objective || "",
@@ -1338,7 +1344,7 @@ export default function ClinicianPortal() {
     lmp: selectedPatient?.lmp, fertility: selectedPaths.includes('Fertility evaluation'),
     visits: visitHistory.filter((visit: { id: number }) => visit.id !== assessmentVisit?.id),
     labs: labResults, documents: patientDocumentsQuery.data || [],
-  }).map((fact) => {
+  })].map((fact) => {
     if (!fact.id.startsWith('document:')) return fact;
     const document = (patientDocumentsQuery.data || []).find((item: { id: number }) => `document:${item.id}` === fact.id);
     const link = document && reportFileLink(selectedPatient.id, document);
@@ -5254,6 +5260,8 @@ export default function ClinicianPortal() {
               medications={medications}
               pregnancy={showPregnancyContext}
               pregnancyContext={pregnancyContext}
+              conceptionSection={<ConceptionHistory key={consultationSurveyKey} patientId={selectedPatient.id}
+                history={surveyPatient?.history} lmp={selectedPatient.lmp} appointmentId={activeAppointment?.id || selectedPatient.appointmentId} />}
               sources={[
                 { label: 'Visit history', query: visitHistoryQuery },
                 { label: 'Blood pressure', query: bpLogsQuery },
@@ -5384,6 +5392,8 @@ export default function ClinicianPortal() {
 
                         {consultationStep === 'explore' && (
                           <div className="space-y-3" data-testid="consultation-survey-review">
+                            {showPregnancyContext && <ConceptionHistory key={consultationSurveyKey} patientId={selectedPatient.id}
+                              history={surveyPatient?.history} lmp={selectedPatient.lmp} appointmentId={activeAppointment?.id || selectedPatient.appointmentId} />}
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-xs font-semibold text-saivie-plum">Possible directions <span className="font-normal text-saivie-plum/70">· max {MAX_CONSULTATION_DIRECTIONS}</span></span>
                               <span className="text-xs text-saivie-plum">{answeredGuidedQuestionCount}/{guidedQuestions.length} answered</span>
