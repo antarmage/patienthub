@@ -43,7 +43,8 @@ export function ReferralsCard({ patients, request, onRequestHandled }: {
   const [patientId, setPatientId] = useState("");
   const [appointmentId, setAppointmentId] = useState<number | null>(null);
   const [partnerId, setPartnerId] = useState("");
-  const [catalogId, setCatalogId] = useState("");
+  const [scanKey, setScanKey] = useState("");
+  const [catalogId, setCatalogId] = useState<number | null>(null);
   const [serviceName, setServiceName] = useState("");
   const [price, setPrice] = useState("");
   const [notes, setNotes] = useState("");
@@ -51,13 +52,27 @@ export function ReferralsCard({ patients, request, onRequestHandled }: {
   const partners = useQuery<{ id: number; name: string }[]>({ queryKey: ["/api/referral-partners"] });
   const catalog = useQuery<any[]>({ queryKey: ["/api/billing-catalog"] });
   const referrals = useQuery<Referral[]>({ queryKey: ["/api/diagnostic-referrals"] });
+  const partnerScans = useQuery<{ id: number; name: string; price: number }[]>({
+    queryKey: ["/api/referral-partners", Number(partnerId), "services"],
+    queryFn: async () => {
+      const res = await fetch(`/api/referral-partners/${partnerId}/services`);
+      if (!res.ok) throw new Error("Failed to load scan prices");
+      return res.json();
+    },
+    enabled: !!partnerId,
+  });
 
-  const scans = useMemo(
+  const catalogScans = useMemo(
     () => (catalog.data || []).filter((c) => c.isActive !== false && (SCAN_PATTERN.test(c.category || "") || SCAN_PATTERN.test(c.name || ""))),
     [catalog.data],
   );
+  // A centre's own rate card wins; centres without one fall back to the clinic catalog.
+  const usePartnerPrices = (partnerScans.data?.length || 0) > 0;
+  const scans: { key: string; name: string; price: number; catalogId: number | null }[] = usePartnerPrices
+    ? partnerScans.data!.map((s) => ({ key: `p${s.id}`, name: s.name, price: s.price, catalogId: null }))
+    : catalogScans.map((c) => ({ key: `c${c.id}`, name: c.name, price: Number(c.price) || 0, catalogId: c.id }));
 
-  const reset = () => { setPatientId(""); setAppointmentId(null); setPartnerId(""); setCatalogId(""); setServiceName(""); setPrice(""); setNotes(""); };
+  const reset = () => { setPatientId(""); setAppointmentId(null); setPartnerId(""); setScanKey(""); setCatalogId(null); setServiceName(""); setPrice(""); setNotes(""); };
 
   useEffect(() => {
     if (!request) return;
@@ -78,7 +93,7 @@ export function ReferralsCard({ patients, request, onRequestHandled }: {
         body: JSON.stringify({
           partnerId: Number(partnerId),
           serviceName,
-          catalogItemId: catalogId ? Number(catalogId) : null,
+          catalogItemId: catalogId,
           basePrice: Number(price) || 0,
           appointmentId,
           notes: notes || null,
@@ -153,7 +168,7 @@ export function ReferralsCard({ patients, request, onRequestHandled }: {
             </div>
             <div className="space-y-1">
               <Label>Diagnostic centre</Label>
-              <Select value={partnerId} onValueChange={setPartnerId}>
+              <Select value={partnerId} onValueChange={(v) => { setPartnerId(v); setScanKey(""); setCatalogId(null); setServiceName(""); setPrice(""); }}>
                 <SelectTrigger data-testid="select-referral-partner"><SelectValue placeholder={partners.data?.length ? "Select centre" : "No centres added by owner yet"} /></SelectTrigger>
                 <SelectContent>{(partners.data || []).map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}</SelectContent>
               </Select>
@@ -161,15 +176,16 @@ export function ReferralsCard({ patients, request, onRequestHandled }: {
             <div className="space-y-1">
               <Label>Scan</Label>
               <Select
-                value={catalogId}
+                value={scanKey}
+                disabled={!partnerId || partnerScans.isLoading}
                 onValueChange={(v) => {
-                  setCatalogId(v);
-                  const item = scans.find((c) => String(c.id) === v);
-                  if (item) { setServiceName(item.name); setPrice(String(item.price)); }
+                  setScanKey(v);
+                  const item = scans.find((s) => s.key === v);
+                  if (item) { setServiceName(item.name); setPrice(String(item.price)); setCatalogId(item.catalogId); }
                 }}
               >
-                <SelectTrigger data-testid="select-referral-scan"><SelectValue placeholder="Choose from catalog" /></SelectTrigger>
-                <SelectContent>{scans.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name} · ₹{c.price}</SelectItem>)}</SelectContent>
+                <SelectTrigger data-testid="select-referral-scan"><SelectValue placeholder={!partnerId ? "Choose centre first" : partnerScans.isLoading ? "Loading…" : usePartnerPrices ? "Choose scan" : "Choose from clinic catalog"} /></SelectTrigger>
+                <SelectContent>{scans.map((s) => <SelectItem key={s.key} value={s.key}>{s.name} · ₹{s.price}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-3 gap-3">

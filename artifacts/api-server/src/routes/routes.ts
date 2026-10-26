@@ -7,6 +7,7 @@ import path from "path";
 import { storage } from "../storage";
 import { readAppointmentRange } from "../appointment-range";
 import { buildMedicineSuggestions } from "../medicine-suggestions";
+import { knownRateCard, parseRateCardText } from "../referral-rate-cards";
 import { synchronizeFollowUpCalls } from "../follow-up-calls";
 import { insertPatientSchema, parseCallDate, prescriptionDueDate } from "@workspace/db";
 import { calculateInvoiceQuote } from "../prime-pricing";
@@ -2603,6 +2604,36 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.status(201).json(doc);
   });
 
+  app.get("/api/patients/:id/documents/:docId/file", async (req, res) => {
+    const id = parseId(req.params.id);
+    const docId = parseId(req.params.docId);
+    if (!id || !docId) return res.status(400).json({ error: "Invalid ID" });
+    const sid = (req as any).session?.patientId;
+    if (sid != null && sid !== id) return res.status(403).json({ error: "Forbidden" });
+    const doc = (await storage.getDocuments(id)).find((d) => d.id === docId);
+    if (!doc) return res.status(404).json({ error: "Document not found" });
+    const fileId = Number((doc.metadata as { patientDocumentId?: unknown } | null)?.patientDocumentId);
+    const file = Number.isInteger(fileId) && fileId > 0 ? await storage.getPatientDocument(fileId) : undefined;
+    if (!file || file.patientId !== id) return res.status(404).json({ error: "No stored file for this document" });
+    res.setHeader("Cache-Control", "private, no-store");
+    if (file.s3Key) {
+      try {
+        return res.redirect(302, await getPresignedDownloadUrl(file.s3Key));
+      } catch {
+        return res.status(502).json({ error: "Failed to generate download URL" });
+      }
+    }
+    if (!file.fileData) return res.status(404).json({ error: "No stored file for this document" });
+    // Only render known-safe types inline; anything else downloads so it can't run as HTML on our origin.
+    const inlineTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+    const mime = file.mimeType && inlineTypes.includes(file.mimeType) ? file.mimeType : "application/octet-stream";
+    const safeName = String(file.fileName || "report").replace(/[^\w.\- ]+/g, "_");
+    res.setHeader("Content-Type", mime);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Disposition", `${mime === "application/octet-stream" ? "attachment" : "inline"}; filename="${safeName}"`);
+    res.send(Buffer.from(String(file.fileData).replace(/^data:[^;]+;base64,/, ""), "base64"));
+  });
+
   app.patch("/api/documents/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
@@ -3721,6 +3752,90 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.json(partners.filter((p) => p.isActive).map(({ id, name }) => ({ id, name })));
   });
 
+  // Loads a known centre rate card (e.g. SP Diagnostic USG) once; afterwards the owner's edits are left alone.
+  const seedKnownRateCard = async (partner: { id: number; name: string; priceListSeeded?: boolean | null }) => {
+    if (partner.priceListSeeded) return;
+    const card = knownRateCard(partner.name);
+    if (!card) return;
+    const existing = new Set((await storage.getReferralPartnerServices(partner.id)).map((s) => s.name.toLowerCase()));
+    await storage.upsertReferralPartnerServices(partner.id, card.filter((r) => !existing.has(r.name.toLowerCase())));
+    await storage.updateReferralPartner(partner.id, { priceListSeeded: true });
+  };
+  try {
+    for (const partner of await storage.getReferralPartners()) await seedKnownRateCard(partner);
+  } catch (err) {
+    console.error("Referral rate card seed failed:", err);
+  }
+
+  app.get("/api/referral-partners/:id/services", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const services = await storage.getReferralPartnerServices(id);
+    res.json(services.filter((s) => s.isActive).map(({ id: sid, name, price }) => ({ id: sid, name, price })));
+  });
+
+  app.get("/api/owner/referral-partners/:id/services", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    res.json(await storage.getReferralPartnerServices(id));
+  });
+
+  // Body: { rows: [{ name, price }] } or { text } (pasted "Name 1200" lines). Existing names get the new price.
+  app.post("/api/owner/referral-partners/:id/services", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!(await storage.getReferralPartners()).some((p) => p.id === id)) return res.status(404).json({ error: "Partner not found" });
+    const input: unknown[] = Array.isArray(req.body?.rows) ? req.body.rows : parseRateCardText(String(req.body?.text || ""));
+    const rows = new Map<string, { name: string; price: number }>();
+    for (const r of input as { name?: unknown; price?: unknown }[]) {
+      const name = String(r?.name ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+      const price = Number(r?.price);
+      if (!name || !Number.isFinite(price) || price < 0) return res.status(400).json({ error: `Invalid row: ${name || "(no name)"}` });
+      rows.set(name.toLowerCase(), { name, price });
+    }
+    if (!rows.size) return res.status(400).json({ error: "Add at least one scan with a price" });
+    const existing = await storage.getReferralPartnerServices(id);
+    const byLower = new Map(existing.map((s) => [s.name.toLowerCase(), s.name]));
+    const normalized = Array.from(rows.values()).map((r) => ({ name: byLower.get(r.name.toLowerCase()) ?? r.name, price: r.price }));
+    res.status(201).json(await storage.upsertReferralPartnerServices(id, normalized));
+  });
+
+  app.patch("/api/owner/referral-partner-services/:id", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    const data: Record<string, unknown> = {};
+    if (req.body?.name !== undefined) {
+      const name = String(req.body.name).replace(/\s+/g, " ").trim().slice(0, 120);
+      if (!name) return res.status(400).json({ error: "Name is required" });
+      data.name = name;
+    }
+    if (req.body?.price !== undefined) {
+      const price = Number(req.body.price);
+      if (!Number.isFinite(price) || price < 0) return res.status(400).json({ error: "Price must be 0 or more" });
+      data.price = price;
+    }
+    if (req.body?.isActive !== undefined) data.isActive = !!req.body.isActive;
+    try {
+      const updated = await storage.updateReferralPartnerService(id, data);
+      if (!updated) return res.status(404).json({ error: "Scan not found" });
+      res.json(updated);
+    } catch (err: any) {
+      if (err?.code === "23505") return res.status(409).json({ error: "This centre already has a scan with that name" });
+      throw err;
+    }
+  });
+
+  app.delete("/api/owner/referral-partner-services/:id", async (req, res) => {
+    if (!(await requireInvoiceTemplateOwner(req, res))) return;
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!(await storage.deleteReferralPartnerService(id))) return res.status(404).json({ error: "Scan not found" });
+    res.status(204).send();
+  });
+
   app.get("/api/owner/referral-partners", async (req, res) => {
     if (!(await requireInvoiceTemplateOwner(req, res))) return;
     res.json(await storage.getReferralPartners());
@@ -3732,7 +3847,9 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const pct = Number(req.body?.commissionPercent);
     if (!name) return res.status(400).json({ error: "Name is required" });
     if (!Number.isFinite(pct) || pct < 0 || pct > 100) return res.status(400).json({ error: "Commission must be between 0 and 100" });
-    res.status(201).json(await storage.createReferralPartner({ name, commissionPercent: pct, isActive: true }));
+    const created = await storage.createReferralPartner({ name, commissionPercent: pct, isActive: true });
+    await seedKnownRateCard(created);
+    res.status(201).json(created);
   });
 
   app.patch("/api/owner/referral-partners/:id", async (req, res) => {
@@ -3749,6 +3866,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     }
     const updated = await storage.updateReferralPartner(id, data);
     if (!updated) return res.status(404).json({ error: "Partner not found" });
+    if (data.name !== undefined) await seedKnownRateCard(updated);
     res.json(updated);
   });
 

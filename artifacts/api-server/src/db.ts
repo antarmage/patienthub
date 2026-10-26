@@ -142,6 +142,16 @@ export async function ensureSchema(): Promise<void> {
         commission_percent real NOT NULL DEFAULT 0,
         is_active boolean NOT NULL DEFAULT true
       );
+      ALTER TABLE referral_partners ADD COLUMN IF NOT EXISTS price_list_seeded boolean NOT NULL DEFAULT false;
+
+      CREATE TABLE IF NOT EXISTS referral_partner_services (
+        id serial PRIMARY KEY,
+        partner_id integer NOT NULL,
+        name text NOT NULL,
+        price real NOT NULL DEFAULT 0,
+        is_active boolean NOT NULL DEFAULT true
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS referral_partner_services_partner_name_idx ON referral_partner_services (partner_id, name);
 
       CREATE TABLE IF NOT EXISTS diagnostic_referrals (
         id serial PRIMARY KEY,

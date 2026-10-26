@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
 interface Partner { id: number; name: string; commissionPercent: number; isActive: boolean }
@@ -25,6 +26,89 @@ interface Summary { months: { month: string; count: number; billed: number; comm
 const inr = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 const monthLabel = (m: string) => new Date(`${m}-01T00:00:00`).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 
+interface PartnerService { id: number; partnerId: number; name: string; price: number; isActive: boolean }
+
+// Each centre's own scan rate card (patient price). "Refer for scan" uses these when the centre is chosen.
+function PartnerPriceList({ partnerId, request }: { partnerId: number; request: (url: string, init?: RequestInit) => Promise<any> }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const key = ["owner-partner-services", partnerId];
+  const services = useQuery<PartnerService[]>({ queryKey: key, queryFn: () => request(`/api/owner/referral-partners/${partnerId}/services`) });
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [paste, setPaste] = useState("");
+  const [showPaste, setShowPaste] = useState(false);
+  const [priceDrafts, setPriceDrafts] = useState<Record<number, string>>({});
+
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: key });
+    queryClient.invalidateQueries({ queryKey: ["/api/referral-partners", partnerId, "services"] });
+  };
+  const onError = (err: Error) => toast({ title: "Could not save", description: err.message, variant: "destructive" });
+
+  const add = useMutation({
+    mutationFn: (body: object) => request(`/api/owner/referral-partners/${partnerId}/services`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: (rows: PartnerService[]) => { setName(""); setPrice(""); setPaste(""); setShowPaste(false); refresh(); toast({ title: `${rows.length} scan price${rows.length === 1 ? "" : "s"} saved` }); },
+    onError,
+  });
+  const update = useMutation({
+    mutationFn: ({ id, ...data }: { id: number; price?: number; isActive?: boolean }) =>
+      request(`/api/owner/referral-partner-services/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    onSuccess: (_d, vars) => { setPriceDrafts((d) => { const { [vars.id]: _x, ...rest } = d; return rest; }); refresh(); },
+    onError,
+  });
+  const remove = useMutation({
+    mutationFn: (id: number) => request(`/api/owner/referral-partner-services/${id}`, { method: "DELETE" }),
+    onSuccess: refresh,
+    onError,
+  });
+
+  const rows = services.data || [];
+  return (
+    <div className="space-y-2 border-t border-saivie-border bg-saivie-surface-muted/40 px-4 py-3" data-testid={`partner-prices-${partnerId}`}>
+      {services.isLoading && <p className="text-xs text-saivie-plum">Loading…</p>}
+      {services.isError && <p className="text-xs text-rose-700">Couldn't load prices.</p>}
+      {services.isSuccess && rows.length === 0 && <p className="text-xs text-saivie-plum">No scan prices yet.</p>}
+      {rows.length > 0 && (
+        <table className="w-full text-sm">
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((s) => {
+              const draft = priceDrafts[s.id] ?? String(s.price);
+              return (
+                <tr key={s.id} className={s.isActive ? "" : "opacity-50"}>
+                  <td className="py-1.5 pr-2 text-saivie-plum">{s.name}</td>
+                  <td className="w-52 py-1.5">
+                    <div className="flex items-center justify-end gap-1">
+                      <span className="text-xs text-saivie-plum">₹</span>
+                      <Input type="number" min={0} className="h-7 w-24" value={draft} onChange={(e) => setPriceDrafts({ ...priceDrafts, [s.id]: e.target.value })} aria-label={`${s.name} price`} />
+                      {draft !== String(s.price) && draft !== "" && <Button size="sm" className="h-7 px-2" onClick={() => update.mutate({ id: s.id, price: Number(draft) })}>Save</Button>}
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-rose-500" aria-label={`Remove ${s.name}`} onClick={() => { if (window.confirm(`Remove ${s.name}?`)) remove.mutate(s.id); }}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Input className="h-8 w-56" placeholder="Scan name" value={name} onChange={(e) => setName(e.target.value)} data-testid={`input-service-name-${partnerId}`} />
+        <Input className="h-8 w-24" type="number" min={0} placeholder="₹ Price" value={price} onChange={(e) => setPrice(e.target.value)} data-testid={`input-service-price-${partnerId}`} />
+        <Button size="sm" disabled={!name.trim() || price === "" || add.isPending} onClick={() => add.mutate({ rows: [{ name, price: Number(price) }] })} data-testid={`btn-add-service-${partnerId}`}><Plus className="mr-1 h-3.5 w-3.5" /> Add</Button>
+        <Button size="sm" variant="ghost" onClick={() => setShowPaste(!showPaste)}>Paste list</Button>
+      </div>
+      {showPaste && (
+        <div className="space-y-2">
+          <Textarea rows={5} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"One per line, e.g.\nAnomaly Scan 2600\nGrowth Scan 1500"} data-testid={`input-service-paste-${partnerId}`} />
+          <Button size="sm" disabled={!paste.trim() || add.isPending} onClick={() => add.mutate({ text: paste })}>Save list</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ReferralsManager({ token, onSignOut }: { token: string; onSignOut: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -32,6 +116,7 @@ export function ReferralsManager({ token, onSignOut }: { token: string; onSignOu
   const [name, setName] = useState("");
   const [percent, setPercent] = useState("");
   const [drafts, setDrafts] = useState<Record<number, string>>({});
+  const [openPrices, setOpenPrices] = useState<number | null>(null);
 
   const request = async (url: string, init?: RequestInit) => {
     const res = await fetch(url, { ...init, headers });
@@ -97,9 +182,13 @@ export function ReferralsManager({ token, onSignOut }: { token: string; onSignOu
           {(partners.data || []).map((p) => {
             const draft = drafts[p.id] ?? String(p.commissionPercent);
             return (
-              <div key={p.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-saivie-border px-4 py-3">
+              <div key={p.id} className="rounded-lg border border-saivie-border">
+              <div className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <p className="min-w-40 flex-1 font-semibold text-saivie-plum">{p.name}{!p.isActive && <Badge className="ml-2 border-0 bg-saivie-sage text-saivie-plum">Inactive</Badge>}</p>
                 <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setOpenPrices(openPrices === p.id ? null : p.id)} aria-expanded={openPrices === p.id} data-testid={`btn-partner-prices-${p.id}`}>
+                    Scan prices {openPrices === p.id ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />}
+                  </Button>
                   <Input type="number" min={0} max={100} step="0.1" className="h-8 w-24" value={draft} onChange={(e) => setDrafts({ ...drafts, [p.id]: e.target.value })} data-testid={`input-commission-${p.id}`} />
                   <span className="text-sm text-saivie-plum">%</span>
                   <Button size="sm" disabled={draft === String(p.commissionPercent) || draft === ""} onClick={() => updatePartner.mutate({ id: p.id, commissionPercent: Number(draft) })}>Save</Button>
@@ -109,6 +198,8 @@ export function ReferralsManager({ token, onSignOut }: { token: string; onSignOu
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
+              </div>
+              {openPrices === p.id && <PartnerPriceList partnerId={p.id} request={request} />}
               </div>
             );
           })}

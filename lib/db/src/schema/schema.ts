@@ -564,10 +564,23 @@ export const referralPartners = pgTable("referral_partners", {
   name: text("name").notNull(),
   commissionPercent: real("commission_percent").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
+  priceListSeeded: boolean("price_list_seeded").notNull().default(false),
 });
 
 export type ReferralPartner = typeof referralPartners.$inferSelect;
 export type InsertReferralPartner = typeof referralPartners.$inferInsert;
+
+// Each diagnostic centre's own scan rate card (patient price), independent of the clinic billing catalog.
+export const referralPartnerServices = pgTable("referral_partner_services", {
+  id: serial("id").primaryKey(),
+  partnerId: integer("partner_id").notNull(),
+  name: text("name").notNull(),
+  price: real("price").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+}, (t) => [uniqueIndex("referral_partner_services_partner_name_idx").on(t.partnerId, t.name)]);
+
+export type ReferralPartnerService = typeof referralPartnerServices.$inferSelect;
+export type InsertReferralPartnerService = typeof referralPartnerServices.$inferInsert;
 
 export const diagnosticReferrals = pgTable("diagnostic_referrals", {
   id: serial("id").primaryKey(),

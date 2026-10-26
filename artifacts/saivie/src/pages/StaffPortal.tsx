@@ -90,6 +90,7 @@ import { ReceptionDashboard, getArrivalState, type ReceptionFollowUp } from "@/c
 import { useToast } from "@/hooks/use-toast";
 import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialogs";
 import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
+import { ReportViewButton } from "@/components/PatientReports";
 
 
 
@@ -5793,7 +5794,7 @@ export default function StaffPortal() {
                                 {(logTab === "all" || logTab === "uploads") && logData.documents.length > 0 && (
                                     <div>
                                         <h4 className="text-xs font-bold text-saivie-plum uppercase tracking-wide mb-2 flex items-center gap-2">
-                                            <FileText className="w-3.5 h-3.5" /> Prescriptions
+                                            <FileText className="w-3.5 h-3.5" /> Uploads
                                         </h4>
                                         <div className="space-y-2">
                                             {logData.documents.map((doc: any) => {
@@ -5804,6 +5805,7 @@ export default function StaffPortal() {
                                                             <span className="font-semibold text-sm text-saivie-plum">{doc.name || "Uploaded document"}</span>
                                                             <div className="flex items-center gap-2 shrink-0">
                                                                 <span className="text-[10px] text-saivie-plum">{doc.date || ""}</span>
+                                                                <ReportViewButton patientId={selectedPatientForLog?.id} doc={doc} />
                                                                 {/prescription/i.test(`${doc.type || ""} ${doc.category || ""} ${doc.name || ""}`) && (
                                                                     <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" data-testid={`btn-edit-prescription-${doc.id}`} onClick={() => openEditPrescription(selectedPatientForLog, { document: doc })}>
                                                                         <Pencil className="w-3 h-3 mr-1" /> Edit

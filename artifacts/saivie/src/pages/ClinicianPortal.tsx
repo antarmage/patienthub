@@ -13,6 +13,7 @@ import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
 import { ConsultationVitalsTrends } from "@/components/ConsultationVitalsTrends";
 import { PatientSummaryDashboard } from "@/components/PatientSummaryDashboard";
 import { PatientVisitTimeline } from "@/components/PatientVisitTimeline";
+import { PatientReportsList, ReportViewButton } from "@/components/PatientReports";
 import { fetchDirectoryAppointments, directoryPatientIds, type DirectoryAppointment } from "@/lib/patientDirectory";
 import { pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
 import { 
@@ -934,6 +935,16 @@ export default function ClinicianPortal() {
   });
   const bpLogsData: ClinicianBpLog[] = bpLogsQuery.data || [];
   const latestBP: ClinicianBpLog | null = bpLogsData[0] ?? null;
+
+  const patientDocumentsQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/documents`, 'all'],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${selectedPatient?.id}/documents`);
+      if (!res.ok) throw new Error('Failed to fetch documents');
+      return res.json();
+    },
+    enabled: !!selectedPatient && patientDetailTab === 'record'
+  });
 
   const labDocumentsQuery = useQuery({
     queryKey: [`/api/patients/${selectedPatient?.id}/documents`, 'lab'],
@@ -4690,6 +4701,9 @@ export default function ClinicianPortal() {
 
             {patientDetailTab === 'record' && (
               <div className="min-h-0 flex-1 overflow-y-auto bg-saivie-surface-muted">
+                <div className="px-3 pt-3">
+                  <PatientReportsList patientId={selectedPatient.id} documents={Array.isArray(patientDocumentsQuery.data) ? patientDocumentsQuery.data : []} isLoading={patientDocumentsQuery.isLoading} isError={patientDocumentsQuery.isError} onRetry={() => { void patientDocumentsQuery.refetch(); }} />
+                </div>
                 <PatientVisitTimeline visits={visitHistory} isLoading={visitHistoryQuery.isLoading} isError={visitHistoryQuery.isError} onRetry={() => { void visitHistoryQuery.refetch(); }} />
               </div>
             )}
@@ -7599,18 +7613,7 @@ export default function ClinicianPortal() {
                                                  </p>
                                               </div>
                                            </div>
-                                           {doc.metadata?.driveViewUrl && (
-                                              <a
-                                                href={doc.metadata.driveViewUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="shrink-0 ml-2 text-saivie-teal hover:text-saivie-teal transition-colors"
-                                                title="View in Google Drive"
-                                                data-testid={`lab-doc-link-${doc.id}`}
-                                              >
-                                                 <ExternalLink className="w-4 h-4" />
-                                              </a>
-                                           )}
+                                           <ReportViewButton patientId={selectedPatient?.id} doc={doc} className="ml-2 shrink-0" />
                                         </div>
                                      ))}
                                   </div>

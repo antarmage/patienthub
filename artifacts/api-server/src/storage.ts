@@ -38,8 +38,9 @@ import {
   inventoryItems, inventoryMovements,
   vaccinationSchedules, vaccinationRecords,
   type VaccinationSchedule, type InsertVaccinationSchedule, type VaccinationRecord, type InsertVaccinationRecord,
-  referralPartners, diagnosticReferrals,
+  referralPartners, diagnosticReferrals, referralPartnerServices,
   type ReferralPartner, type InsertReferralPartner, type DiagnosticReferral, type InsertDiagnosticReferral,
+  type ReferralPartnerService, type InsertReferralPartnerService,
   type InventoryItem, type InsertInventoryItem, type InventoryMovement,
   scheduleOptimisations,
   type ScheduleOptimisation, type InsertScheduleOptimisation,
@@ -209,6 +210,10 @@ export interface IStorage {
   createReferralPartner(data: InsertReferralPartner): Promise<ReferralPartner>;
   updateReferralPartner(id: number, data: Partial<InsertReferralPartner>): Promise<ReferralPartner | undefined>;
   deleteReferralPartner(id: number): Promise<boolean>;
+  getReferralPartnerServices(partnerId: number): Promise<ReferralPartnerService[]>;
+  upsertReferralPartnerServices(partnerId: number, rows: { name: string; price: number }[]): Promise<ReferralPartnerService[]>;
+  updateReferralPartnerService(id: number, data: Partial<InsertReferralPartnerService>): Promise<ReferralPartnerService | undefined>;
+  deleteReferralPartnerService(id: number): Promise<boolean>;
   getDiagnosticReferrals(): Promise<DiagnosticReferral[]>;
   getDiagnosticReferral(id: number): Promise<DiagnosticReferral | undefined>;
   createDiagnosticReferral(data: InsertDiagnosticReferral): Promise<DiagnosticReferral>;
@@ -886,6 +891,31 @@ export class DatabaseStorage implements IStorage {
       return true;
     }
     const result = await db.delete(referralPartners).where(eq(referralPartners.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getReferralPartnerServices(partnerId: number): Promise<ReferralPartnerService[]> {
+    return db.select().from(referralPartnerServices).where(eq(referralPartnerServices.partnerId, partnerId)).orderBy(referralPartnerServices.name);
+  }
+
+  async upsertReferralPartnerServices(partnerId: number, rows: { name: string; price: number }[]): Promise<ReferralPartnerService[]> {
+    if (!rows.length) return [];
+    return db.insert(referralPartnerServices)
+      .values(rows.map((r) => ({ partnerId, name: r.name, price: r.price, isActive: true })))
+      .onConflictDoUpdate({
+        target: [referralPartnerServices.partnerId, referralPartnerServices.name],
+        set: { price: sql`excluded.price`, isActive: true },
+      })
+      .returning();
+  }
+
+  async updateReferralPartnerService(id: number, data: Partial<InsertReferralPartnerService>): Promise<ReferralPartnerService | undefined> {
+    const [updated] = await db.update(referralPartnerServices).set(data).where(eq(referralPartnerServices.id, id)).returning();
+    return updated;
+  }
+
+  async deleteReferralPartnerService(id: number): Promise<boolean> {
+    const result = await db.delete(referralPartnerServices).where(eq(referralPartnerServices.id, id)).returning();
     return result.length > 0;
   }
 
