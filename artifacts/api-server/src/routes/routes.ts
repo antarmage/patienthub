@@ -1668,7 +1668,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     // Merge submitted history so empty sections do not erase existing records.
     if (history && typeof history === "object" && !Array.isArray(history)) {
       const existingHistory = patient.history && typeof patient.history === "object" && !Array.isArray(patient.history) ? patient.history : {};
-      await storage.updatePatient(patient.id, { history: { ...existingHistory, ...history } });
+      await storage.updatePatient(patient.id, { history: { ...existingHistory, ...history, onboardingAppointmentId: appointmentId } });
     }
 
     res.json({ success: true });

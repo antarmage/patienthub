@@ -47,6 +47,16 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
         assert.ok(html.includes("<td>C-sections</td><td>0</td>"));
         assert.ok(html.includes("No known allergies"));
         assert.ok(html.includes("Not taking any"));
+
+        form.consultation = {
+            directions: ["Ovulatory timing"],
+            answers: { "Are cycles regular?": "Usually regular <patient-reported>" },
+        };
+        printPatientSummary(patient);
+        assert.ok(html.includes("Pre-visit survey (patient-reported)"));
+        assert.ok(html.includes("Ovulatory timing"));
+        assert.ok(html.includes("Usually regular &lt;patient-reported&gt;"));
+        assert.ok(!html.includes("<patient-reported>"));
     } finally {
         if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
         else Reflect.deleteProperty(globalThis, "window");

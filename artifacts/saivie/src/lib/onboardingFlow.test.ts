@@ -140,4 +140,32 @@ describe("one-question onboarding", () => {
         form.health.conditions = ["None of these"];
         assert.ok(!ids(form).includes("medicalDetails"));
     });
+
+    it("asks direction questions in the patient survey and preserves submitted answers", () => {
+        const form = formFor("Fertility");
+        form.consultation = {
+            directions: ["Ovulatory timing"],
+            answers: { "Are cycles regular?": "Usually regular", "Has ovulation been confirmed previously?": "Not sure" },
+        };
+        const questions = getOnboardingQuestions(form, short);
+        assert.ok(questions.some((question) => question.id === "surveyDirections" && question.section === "survey"));
+        assert.ok(questions.some((question) => question.id === "survey:Are cycles regular?" && question.section === "survey"));
+        assert.equal(questions.at(-1)?.id, "review");
+        assert.deepEqual(getRelevantIntake(form, short).consultation, form.consultation);
+    });
+
+    it("removes unrelated topics and answers after a concern or selection changes", () => {
+        const form = formFor("Fertility");
+        form.consultation = {
+            directions: ["Ovulatory timing", "Partner evaluation"],
+            answers: { "Are cycles regular?": "No", "Has partner evaluation been discussed?": "Yes" },
+        };
+        form.consultation.directions = ["Partner evaluation"];
+        assert.deepEqual(getRelevantIntake(form, short).consultation.answers, { "Has partner evaluation been discussed?": "Yes" });
+        form.concerns = ["Pregnancy care"];
+        const result = getRelevantIntake(form, short);
+        assert.deepEqual(result.consultation, { directions: [], answers: {} });
+        assert.ok(!ids(form).includes("survey:Are cycles regular?"));
+        assert.equal(form.consultation.answers["Are cycles regular?"], "No");
+    });
 });

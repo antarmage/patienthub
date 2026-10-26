@@ -7,10 +7,12 @@ import { useToast } from "@/hooks/use-toast";
 import { getOnboardingQuestions, getRelevantIntake, initialForm, type IntakeForm, type OptionalHistory } from "@/lib/onboardingFlow";
 import { getPrintBrandStyles } from "@/lib/brand";
 import { estimatePregnancyDating } from "@/lib/pregnancyDating";
+import { patientSurveyPrompt, surveyDirectionLabels, surveyDirectionsForConcerns, surveyQuestions } from "@/lib/consultationSurvey";
 
 const sections = [
     { key: "about", title: "About you", eyebrow: "First things first" },
     { key: "concern", title: "Your concern", eyebrow: "What brings you in?" },
+    { key: "survey", title: "Before your visit", eyebrow: "For your doctor" },
     { key: "cycle", title: "Cycle", eyebrow: "Your cycle story" },
     { key: "gyn", title: "GYN history", eyebrow: "A little more context" },
     { key: "pregnancy", title: "Pregnancies", eyebrow: "Your pregnancy history" },
@@ -54,6 +56,12 @@ function printOnboardingSummary(form: IntakeForm) {
             ["Pain duration", form.pain.duration],
             ["Pain severity", form.pain.severity],
             ["Other symptoms with pain", form.pain.relatedSymptoms],
+        ])],
+        ["Pre-visit survey", rows([
+            ["Topics to discuss", form.consultation.directions.map((direction) => surveyDirectionLabels[direction])],
+            ...surveyQuestions(form.consultation.directions).map((question): [string, string] => [
+                patientSurveyPrompt(question), form.consultation.answers[question] || "",
+            ]),
         ])],
         ["Menstrual history", rows([
             ["Last period began", form.cycle.lastPeriod],
@@ -146,6 +154,8 @@ const concernOptions = [
     "I am pregnant",
     "Pregnancy care",
     "Abdominal or pelvic pain",
+    "Vaginal discharge or infection",
+    "Menopause",
     "Breast problem",
     "Gut / bowel problems",
     "Irregular or heavy bleeding",
@@ -621,6 +631,37 @@ export default function PatientOnboarding() {
         dob: <TextInput label="What is your date of birth?" value={form.dob} onChange={(value) => update("dob", value)} type="date" />,
         concerns: <CheckGrid label="What brings you in today?" options={concernOptions} value={form.concerns} onChange={(value) => update("concerns", value)} />,
         chiefComplaint: <TextArea label="Anything you would like your doctor to know about your concern?" value={form.chiefComplaint} onChange={(value) => update("chiefComplaint", value)} placeholder="A few words are enough. You may skip this." />,
+        surveyDirections: (
+            <fieldset>
+                <legend className={labelClass}>What would you like to discuss? Choose up to 3.</legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                    {surveyDirectionsForConcerns(form.concerns).map((direction) => {
+                        const selected = answers.consultation.directions.includes(direction);
+                        return <label key={direction} className="flex items-center gap-2 rounded-lg border border-saivie-border px-3 py-2 text-xs text-saivie-teal">
+                            <input type="checkbox" className="accent-saivie-teal" checked={selected} disabled={!selected && answers.consultation.directions.length >= 3} onChange={() => update("consultation", {
+                                ...form.consultation,
+                                directions: selected ? answers.consultation.directions.filter((item) => item !== direction) : [...answers.consultation.directions, direction],
+                            })} />
+                            {surveyDirectionLabels[direction]}
+                        </label>;
+                    })}
+                </div>
+                <p className="mt-2 text-xs text-saivie-teal">Optional. You can also discuss anything privately with your doctor.</p>
+            </fieldset>
+        ),
+        ...Object.fromEntries(surveyQuestions(answers.consultation.directions).map((question) => [
+            `survey:${question}`,
+            <div key={question}>
+                <TextArea label={patientSurveyPrompt(question)} value={form.consultation.answers[question] || ""} onChange={(value) => update("consultation", {
+                    ...form.consultation, answers: { ...form.consultation.answers, [question]: value },
+                })} placeholder="Answer in a few words, or leave blank to discuss privately." />
+                <div className="mt-3 flex gap-2">
+                    {["Not sure", "Prefer to discuss privately"].map((answer) => <button key={answer} type="button" className="rounded-lg border border-saivie-border px-3 py-2 text-xs text-saivie-teal" onClick={() => update("consultation", {
+                        ...form.consultation, answers: { ...form.consultation.answers, [question]: answer },
+                    })}>{answer}</button>)}
+                </div>
+            </div>,
+        ])),
         painLocation: <CheckGrid label="Where do you feel the pain?" options={["Lower abdomen", "One side", "Pelvis", "Back", "Not sure"]} value={form.pain.location} onChange={(value) => updateGroup("pain", "location", value)} />,
         painDuration: <ChoiceGroup label="How long have you had the pain?" options={["Today", "2–3 days", "About a week", "A few weeks", "Months or longer"]} value={form.pain.duration} onChange={(value) => updateGroup("pain", "duration", value)} />,
         painSeverity: <ChoiceGroup label="How would you describe the pain?" options={["Mild", "Moderate", "Severe", "Comes and goes"]} value={form.pain.severity} onChange={(value) => updateGroup("pain", "severity", value)} />,
@@ -738,6 +779,11 @@ export default function PatientOnboarding() {
     const reviewSections: { key: string; title: string; items: string[] }[] = [
         { key: "about", title: "About you", items: [answers.name, answers.dob] },
         { key: "concern", title: "Your concern", items: [...answers.concerns, answers.chiefComplaint, ...answers.pain.location, answers.pain.duration, answers.pain.severity, ...answers.pain.relatedSymptoms] },
+        { key: "survey", title: "Pre-visit survey", items: [
+            ...answers.consultation.directions.map((direction) => surveyDirectionLabels[direction]),
+            ...surveyQuestions(answers.consultation.directions).filter((question) => answers.consultation.answers[question]?.trim())
+                .map((question) => `${patientSurveyPrompt(question)} ${answers.consultation.answers[question]}`),
+        ] },
         { key: "cycle", title: "Cycle", items: [answers.cycle.lastPeriod && `Last period began ${answers.cycle.lastPeriod}`, answers.cycle.lateBy && `Period late: ${answers.cycle.lateBy}`, answers.cycle.regularity, answers.cycle.pregnancyTest && `Pregnancy test: ${answers.cycle.pregnancyTest}`, answers.cycle.menarcheAge && `Periods started at ${answers.cycle.menarcheAge}`, answers.cycle.cycleLength && `${answers.cycle.cycleLength}-day cycle`, answers.cycle.flow, ...answers.cycle.symptoms, answers.cycle.details] },
         { key: "gyn", title: "GYN history", items: [answers.gyn.sexuallyActive && `Sexually active: ${answers.gyn.sexuallyActive}`, answers.gyn.firstEncounterAge && `First sexual encounter at ${answers.gyn.firstEncounterAge}`, answers.gyn.partnerCount && `Partners: ${answers.gyn.partnerCount}`, answers.gyn.lastPap && `Last Pap: ${answers.gyn.lastPap}`, answers.gyn.hpvVaccine && `HPV vaccine: ${answers.gyn.hpvVaccine}`, ...answers.gyn.birthControl, ...answers.gyn.concerns, answers.gyn.details] },
         { key: "pregnancy", title: "Pregnancies", items: [

@@ -7,6 +7,7 @@ import { MedicineDoseInput } from "@/components/MedicineDoseInput";
 import { useToast } from "@/hooks/use-toast";
 import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSettings";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
+import { consultationSurveyForVisit, surveyQuestions } from "@/lib/consultationSurvey";
 import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
 import { ActiveMedicationCards } from "@/components/ActiveMedicationCards";
 import { 
@@ -120,103 +121,11 @@ type ConsultationStep = 'reason' | 'explore' | 'examine' | 'evidence' | 'plan';
 
 const consultationSteps: { id: ConsultationStep; label: string }[] = [
   { id: 'reason', label: 'Reason' },
-  { id: 'explore', label: 'Explore' },
+  { id: 'explore', label: 'Survey' },
   { id: 'examine', label: 'Examine' },
   { id: 'evidence', label: 'Evidence' },
   { id: 'plan', label: 'Plan' },
 ];
-
-const consultationPaths = [
-  'Fertility evaluation',
-  'Menstrual concern',
-  'Pelvic pain',
-  'Vaginal discharge or infection',
-  'Pregnancy-related concern',
-  'Menopause',
-  'Routine gynecology',
-  'Other',
-];
-
-const consultationPathIcons = [Heart, CalendarIcon, Activity, FlaskConical, Baby, Sparkles, Users, Plus];
-
-const consultationDirectionsByPath: Record<string, string[]> = {
-  'Fertility evaluation': ['Ovulatory timing', 'Tubal or uterine factors', 'Partner evaluation'],
-  'Menstrual concern': ['Cycle pattern and timing', 'Bleeding impact', 'Hormonal or structural context'],
-  'Pelvic pain': ['Pain timing and pattern', 'Pregnancy or infection safety screen', 'Relevant pelvic history'],
-  'Vaginal discharge or infection': ['Discharge pattern and duration', 'Exposure and infection risk', 'Previous treatment response'],
-  'Pregnancy-related concern': ['Gestational timing', 'Maternal symptoms', 'Fetal wellbeing'],
-  'Menopause': ['Vasomotor or genitourinary symptoms', 'Bleeding after menopause', 'Bone and cardiometabolic context'],
-  'Routine gynecology': ['Preventive care due', 'Current symptoms', 'Screening and contraception'],
-  Other: ['Symptom timeline', 'Related symptoms', 'Relevant medical history'],
-};
-
-const guidedQuestionsByDirection: Record<string, string[]> = {
-  'Ovulatory timing': ['What is the average cycle length?', 'Has ovulation been confirmed previously?', 'Are cycles regular?', 'Have follicular scans or ovulation medicines been used?'],
-  'Tubal or uterine factors': ['Any history of pelvic infection or surgery?', 'Has an ultrasound or tubal assessment been done?', 'Any prior pregnancy or procedure?', 'What findings need review?'],
-  'Partner evaluation': ['Has partner evaluation been discussed?', 'Any relevant partner history?', 'Are semen analysis results available?', 'What would the patient like help understanding?'],
-  'Cycle pattern and timing': ['When was the last menstrual period?', 'How long are cycles typically?', 'How many days does bleeding last?', 'Has the pattern changed recently?'],
-  'Bleeding impact': ['How heavy is the bleeding?', 'Is there bleeding between periods?', 'Any dizziness, fatigue, or impact on daily activities?', 'What treatments have been tried?'],
-  'Hormonal or structural context': ['Any known thyroid or hormonal condition?', 'Any relevant medication changes?', 'Has pelvic imaging been done?', 'Any previous related diagnosis?'],
-  'Pain timing and pattern': ['When did the pain begin?', 'Where is it located and how severe is it?', 'Is it related to the cycle or activity?', 'What makes it better or worse?'],
-  'Pregnancy or infection safety screen': ['Could the patient be pregnant?', 'Any fever, fainting, or sudden severe pain?', 'Any urinary or bowel symptoms?', 'Any new discharge or bleeding?'],
-  'Relevant pelvic history': ['Any prior pelvic surgery or infection?', 'Any history of endometriosis or cysts?', 'What investigations are available?', 'What previous treatments were tried?'],
-  'Discharge pattern and duration': ['When did the discharge start?', 'What are the color, consistency, and odor?', 'Any itching, irritation, or pain?', 'Any associated bleeding or urinary symptoms?'],
-  'Exposure and infection risk': ['Any recent new sexual partner?', 'Any known exposure or partner symptoms?', 'Any recent antibiotics or treatment?', 'Are there relevant test results to review?'],
-  'Previous treatment response': ['What treatment was used?', 'When was it started and completed?', 'Did symptoms improve or return?', 'Were there side effects?'],
-  'Gestational timing': ['What is the last menstrual period or estimated gestational age?', 'Has antenatal care started?', 'Any recent scan or laboratory results?', 'What is the main concern today?'],
-  'Maternal symptoms': ['Any pain, bleeding, fluid loss, or fever?', 'Any headache, vision change, or swelling?', 'Any change in fetal movement when applicable?', 'When did symptoms begin?'],
-  'Fetal wellbeing': ['Are fetal movements as expected for gestation?', 'What were the latest growth or wellbeing findings?', 'Any prior pregnancy complications?', 'What follow-up has already been arranged?'],
-  'Vasomotor or genitourinary symptoms': ['Which symptoms are most bothersome?', 'How often do they occur?', 'How are sleep or daily activities affected?', 'What treatments have been tried?'],
-  'Bleeding after menopause': ['When was the last menstrual period?', 'Has there been any bleeding since?', 'How much and for how long?', 'What evaluation has already been completed?'],
-  'Bone and cardiometabolic context': ['Any history of fracture or low bone density?', 'Any cardiovascular risk factors?', 'What screening is current?', 'Any relevant medicines or supplements?'],
-  'Preventive care due': ['When was the last cervical screening?', 'Are vaccines or routine screenings due?', 'Any family history relevant to screening?', 'What preventive care does the patient want to discuss?'],
-  'Current symptoms': ['What symptoms, if any, are present today?', 'When did they start?', 'What affects them?', 'What is the patient most concerned about?'],
-  'Screening and contraception': ['Is contraception or preconception planning relevant?', 'What screening history is available?', 'Any preferences or concerns?', 'What follow-up is desired?'],
-  'Symptom timeline': ['When did the concern begin?', 'Is it constant or intermittent?', 'Has it changed over time?', 'What prompted the visit now?'],
-  'Related symptoms': ['What other symptoms occur with it?', 'Any urgent or severe symptoms?', 'What makes it better or worse?', 'What has already been tried?'],
-  'Relevant medical history': ['What past conditions may be relevant?', 'Any prior procedures or treatment?', 'Any medication or allergy concerns?', 'What records should be reviewed?'],
-};
-
-const guidedQuestionHints: Record<string, string> = {
-  'What is the average cycle length?': 'Helps estimate likely ovulatory timing.',
-  'Has ovulation been confirmed previously?': 'Ask about scan, LH kit, BBT, or progesterone evidence.',
-  'Are cycles regular?': 'Record the patient’s usual pattern.',
-  'Have follicular scans or ovulation medicines been used?': 'Capture prior monitoring or treatment response.',
-};
-
-const guidedQuestionOptions: Record<string, string[]> = {
-  'What is the average cycle length?': ['26–30 days', 'Variable', 'Unsure'],
-  'Has ovulation been confirmed previously?': ['Yes', 'No', 'Not confirmed'],
-  'Are cycles regular?': ['Regular', 'Irregular', 'Unsure'],
-  'Have follicular scans or ovulation medicines been used?': ['Scans', 'Medication', 'Neither', 'Unsure'],
-};
-
-const directionRationales: Record<string, string> = {
-  'Ovulatory timing': 'Cycle pattern, ovulation signs, and prior monitoring help clarify timing without assuming a cause.',
-  'Tubal or uterine factors': 'Prior procedures, infections, and imaging can identify which structural questions remain open.',
-  'Partner evaluation': 'Fertility evaluation may involve both partners; existing results can prevent unnecessary repetition.',
-  'Cycle pattern and timing': 'Timing and pattern help distinguish a change from the patient’s usual cycle.',
-  'Bleeding impact': 'Amount, duration, and associated symptoms help assess impact and urgency.',
-  'Hormonal or structural context': 'Relevant conditions, medicines, and imaging can guide what information is still needed.',
-  'Pain timing and pattern': 'Onset, location, severity, and triggers help characterize the symptom before conclusions are drawn.',
-  'Pregnancy or infection safety screen': 'These questions check for time-sensitive symptoms that may need prompt assessment.',
-  'Relevant pelvic history': 'Prior procedures, diagnoses, and treatments can change what should be reviewed next.',
-  'Discharge pattern and duration': 'Description and associated symptoms help decide which examination or tests are relevant.',
-  'Exposure and infection risk': 'Exposure history can inform appropriate testing and partner considerations.',
-  'Previous treatment response': 'Response and side effects help avoid repeating ineffective or poorly tolerated treatment.',
-  'Gestational timing': 'Gestational age and existing care establish which findings and follow-up are relevant.',
-  'Maternal symptoms': 'Associated symptoms help identify whether the concern needs urgent assessment.',
-  'Fetal wellbeing': 'Movement, growth findings, and prior complications clarify what evidence is available.',
-  'Vasomotor or genitourinary symptoms': 'Symptom pattern and daily impact help focus management on the patient’s priorities.',
-  'Bleeding after menopause': 'Any postmenopausal bleeding warrants clear characterization and review of completed evaluation.',
-  'Bone and cardiometabolic context': 'Relevant history and screening can inform preventive-care discussion.',
-  'Preventive care due': 'Screening history helps identify what is current and what the patient wants to address.',
-  'Current symptoms': 'Clarifying timing, impact, and priorities keeps the consultation grounded in the patient’s concern.',
-  'Screening and contraception': 'Preferences and prior screening help tailor preventive and reproductive-health discussion.',
-  'Symptom timeline': 'A clear timeline helps characterize change and identify relevant next questions.',
-  'Related symptoms': 'Associated symptoms can change which examination or evidence is relevant.',
-  'Relevant medical history': 'Past conditions, procedures, medicines, and allergies can affect the next steps.',
-};
 
 const evidenceOptions = ['Examination', 'Ultrasound', 'Laboratory reports', 'Previous treatment response', 'Partner information'];
 
@@ -492,13 +401,6 @@ export default function ClinicianPortal() {
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
   const [patientDetailTab, setPatientDetailTab] = useState<'consultation' | 'record' | 'postop' | 'genome'>('consultation');
   const [consultationStep, setConsultationStep] = useState<ConsultationStep>('reason');
-  const [consultationPath, setConsultationPath] = useState('');
-  const [customDirectionDraft, setCustomDirectionDraft] = useState('');
-  const [showCustomDirectionInput, setShowCustomDirectionInput] = useState(false);
-  const [selectedDirections, setSelectedDirections] = useState<string[]>([]);
-  const [guidedQuestionPage, setGuidedQuestionPage] = useState(0);
-  const [guidedAnswers, setGuidedAnswers] = useState<Record<string, string>>({});
-  const [showGuidedReview, setShowGuidedReview] = useState(false);
   const [consultationEvidence, setConsultationEvidence] = useState<string[]>([]);
   const [directionEvidence, setDirectionEvidence] = useState<Record<string, { supporting: string; missing: string }>>({});
   const [consultationContextAdded, setConsultationContextAdded] = useState(false);
@@ -824,7 +726,8 @@ export default function ClinicianPortal() {
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch patients');
       return res.json();
-    }
+    },
+    refetchInterval: 30000,
   });
   const patients = patientsQuery.data || [];
 
@@ -919,7 +822,7 @@ export default function ClinicianPortal() {
     };
   }, [selectedPatient?.lmp]);
 
-  const showPregnancyContext = careMode === 'pregnancy' || consultationPath === 'Pregnancy-related concern' ||
+  const showPregnancyContext = careMode === 'pregnancy' ||
     String(selectedPatient?.pregnancyStatus || '').toLowerCase() === 'pregnant' ||
     String(selectedPatient?.type || '').toLowerCase().includes('pregnan');
 
@@ -1370,6 +1273,13 @@ export default function ClinicianPortal() {
     return appointments.find((a: any) => a.patientId === selectedPatient.id && a.date === todayStr && a.status !== 'cancelled' && a.status !== 'Cancelled') || null;
   }, [selectedPatient, appointments]);
 
+  const surveyPatient = patients.find((patient: any) => patient.id === selectedPatient?.id) || selectedPatient;
+  const consultationSurvey = consultationSurveyForVisit(
+    surveyPatient?.history, activeAppointment?.id || (selectedPatient as any)?.appointmentId,
+  );
+  const selectedDirections = consultationSurvey.directions;
+  const guidedAnswers = consultationSurvey.answers;
+
   const invoicesQuery = useQuery({
     queryKey: ['/api/invoices'],
     queryFn: async () => {
@@ -1530,10 +1440,8 @@ export default function ClinicianPortal() {
       .slice(0, 20);
   }, [patients, patientSearch, queueDateFrom, queueDateTo, queuePatients]);
 
-  const guidedQuestions = [...new Set(selectedDirections.flatMap((direction) => guidedQuestionsByDirection[direction] || []))];
-  const questionsPerPage = 2;
-  const currentGuidedQuestions = guidedQuestions.slice(guidedQuestionPage * questionsPerPage, guidedQuestionPage * questionsPerPage + questionsPerPage);
-  const answeredGuidedQuestionCount = guidedQuestions.filter((question) => guidedAnswers[question] && guidedAnswers[question] !== '__SKIPPED__').length;
+  const guidedQuestions = surveyQuestions(selectedDirections);
+  const answeredGuidedQuestionCount = guidedQuestions.filter((question) => guidedAnswers[question]?.trim()).length;
 
   const filteredDirectoryPatients = useMemo(() => {
     const query = patientDirectorySearch.trim().toLowerCase();
@@ -1594,18 +1502,12 @@ export default function ClinicianPortal() {
   }, []);
 
   const navigateToPatient = (patient: typeof patients[0]) => {
+    queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
     setSelectedPatient(patient);
     setSelectedTrailVisitId(null);
     setActiveView("patient_detail");
     setPatientDetailTab('consultation');
     setConsultationStep('reason');
-    setConsultationPath('');
-    setCustomDirectionDraft('');
-    setShowCustomDirectionInput(false);
-    setSelectedDirections([]);
-    setGuidedQuestionPage(0);
-    setGuidedAnswers({});
-    setShowGuidedReview(false);
     setConsultationEvidence([]);
     setDirectionEvidence({});
     setConsultationContextAdded(false);
@@ -1674,12 +1576,11 @@ export default function ClinicianPortal() {
 
   const addReviewedAnswersToNote = () => {
     const reviewedAnswers = guidedQuestions
-      .filter((question) => guidedAnswers[question]?.trim() && guidedAnswers[question] !== '__SKIPPED__')
+      .filter((question) => guidedAnswers[question]?.trim())
       .map((question) => `${question} ${guidedAnswers[question].trim()}`);
     if (reviewedAnswers.length === 0) return;
-    const reviewedSection = `Clinician-reviewed history:\n${reviewedAnswers.map((answer) => `- ${answer}`).join('\n')}`;
+    const reviewedSection = `Patient survey (clinician-reviewed):\n${reviewedAnswers.map((answer) => `- ${answer}`).join('\n')}`;
     setSoapSubjectiveDraft((current) => [current.trim(), reviewedSection].filter(Boolean).join('\n\n'));
-    setShowGuidedReview(false);
     setConsultationStep('reason');
   };
 
@@ -1692,7 +1593,7 @@ export default function ClinicianPortal() {
 
   const addReviewedContextToPlan = () => {
     const contextLines = [
-      selectedDirections.length ? `Working directions explored (not diagnoses): ${selectedDirections.join(', ')}` : '',
+      selectedDirections.length ? `Patient-selected topics: ${selectedDirections.join(', ')}` : '',
       consultationEvidence.length ? `Evidence reviewed: ${consultationEvidence.join(', ')}` : '',
       ...selectedDirections.flatMap((direction) => {
         const evidence = directionEvidence[direction];
@@ -4766,10 +4667,10 @@ export default function ClinicianPortal() {
                         <div>
                           <p className="text-[10px] font-semibold uppercase tracking-wider text-saivie-teal">Step {consultationSteps.findIndex((step) => step.id === consultationStep) + 1} of 5 · Current visit</p>
                           <h3 className="mt-1 text-base sm:text-lg font-semibold text-saivie-plum">
-                            {consultationStep === 'reason' ? (isFollowUpVisit ? 'Review progress since the last visit' : 'Start with your first impression') :
-                             consultationStep === 'explore' ? 'Choose what to explore' :
-                             consultationStep === 'examine' ? 'Record examination findings' :
-                             consultationStep === 'evidence' ? 'Review supporting evidence' : 'Conclude and plan'}
+                            {consultationStep === 'reason' ? (isFollowUpVisit ? 'Follow-up' : 'Presenting concern') :
+                             consultationStep === 'explore' ? 'Patient survey' :
+                             consultationStep === 'examine' ? 'Examination' :
+                             consultationStep === 'evidence' ? 'Evidence' : 'Assessment & plan'}
                           </h3>
                         </div>
                         {consultationStep === 'reason' && (
@@ -4792,185 +4693,52 @@ export default function ClinicianPortal() {
                                 {(previousVisit.assessment || previousVisit.diagnosis) && <p className="mt-1 text-xs text-saivie-plum"><span className="font-semibold">Previous assessment:</span> {previousVisit.assessment || previousVisit.diagnosis}</p>}
                                 {previousVisit.planNotes && <p className="mt-1 text-xs text-saivie-plum"><span className="font-semibold">Previous plan:</span> {previousVisit.planNotes}</p>}
                                 <label className="mt-3 block text-xs font-semibold text-saivie-plum">Since the last visit, how has the patient responded?
-                                  <Textarea value={treatmentResponseDraft} onChange={(event) => setTreatmentResponseDraft(event.target.value)} placeholder="Ask whether the plan was started, what changed, and any benefit or side effects." className="mt-1.5 min-h-[72px] border-saivie-border bg-saivie-ivory text-xs font-normal" data-testid="input-treatment-response" />
+                                  <Textarea value={treatmentResponseDraft} onChange={(event) => setTreatmentResponseDraft(event.target.value)} placeholder="Response, adherence, side effects" className="mt-1.5 min-h-[72px] border-saivie-border bg-saivie-ivory text-xs font-normal" data-testid="input-treatment-response" />
                                 </label>
                                 <Button type="button" variant="outline" size="sm" className="mt-2 h-8 text-[10px]" disabled={!treatmentResponseDraft.trim()} onClick={addFollowUpResponseToNote} data-testid="button-add-treatment-response">Add reviewed response to today’s note</Button>
                               </div>
                             )}
                             <div>
-                              <label htmlFor="consultation-first-impression" className="text-sm font-semibold text-saivie-plum">What brings the patient in today?</label>
-                              <p className="text-xs text-saivie-plum mt-1">Describe what you’re noticing, or choose a common consultation path.</p>
+                              <label htmlFor="consultation-first-impression" className="text-sm font-semibold text-saivie-plum">Chief complaint</label>
                               <Textarea
                                 id="consultation-first-impression"
                                 value={soapSubjectiveDraft}
                                 onChange={(event) => setSoapSubjectiveDraft(event.target.value)}
-                                placeholder="e.g. Trying to conceive for six months; cycles are regular, but she is unsure if ovulation is occurring."
+                                placeholder="Concern and history"
                                 className="mt-3 min-h-[112px] border-saivie-border text-sm"
                                 data-testid="input-consultation-first-impression"
                               />
-                              {soapTranscript && <p className="mt-2 text-xs text-emerald-700">Dictation is a draft. Review and edit it before adding it to the record.</p>}
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-semibold uppercase tracking-wider text-saivie-plum mb-2">Or choose a common starting point</p>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                                {consultationPaths.map((path, index) => {
-                                  const PathIcon = consultationPathIcons[index];
-                                  return (
-                                  <button
-                                    key={path}
-                                    type="button"
-                                    onClick={() => { setConsultationPath(path); setSelectedDirections([]); setGuidedQuestionPage(0); setGuidedAnswers({}); setShowGuidedReview(false); setCustomDirectionDraft(''); setShowCustomDirectionInput(false); }}
-                                    aria-pressed={consultationPath === path}
-                                    className={`flex min-h-[52px] items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-medium transition-colors ${consultationPath === path ? 'border-saivie-border bg-saivie-ivory text-saivie-teal' : 'border-saivie-border text-saivie-plum hover:border-saivie-border hover:bg-saivie-ivory'}`}
-                                    data-testid={`consultation-path-${path.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-                                  >
-                                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${consultationPath === path ? 'bg-saivie-ivory text-saivie-teal' : 'bg-saivie-surface-muted text-saivie-teal'}`}><PathIcon className="h-4 w-4" /></span>
-                                    {path}
-                                    {consultationPath === path && <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-saivie-teal" />}
-                                  </button>
-                                  );
-                                })}
-                              </div>
+                              {soapTranscript && <p className="mt-2 text-xs text-emerald-700">Dictation draft</p>}
                             </div>
                           </div>
                         )}
 
                         {consultationStep === 'explore' && (
-                          <div className="space-y-5">
-                            <div>
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div>
-                                  <p className="text-sm font-semibold text-saivie-plum">What would you like to explore first?</p>
-                                  <p className="mt-1 text-xs text-saivie-plum">These are lines of inquiry based on the first impression, not diagnoses.</p>
-                                </div>
-                                {selectedDirections.length > 0 && <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-medium text-emerald-700">Clinician controlled</span>}
-                              </div>
-                              {!consultationPath && <p className="mt-3 text-xs text-amber-700">Choose a starting direction in Reason to see tailored prompts.</p>}
-                              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
-                                {(consultationDirectionsByPath[consultationPath] || []).map((direction, index) => {
-                                  const selected = selectedDirections.includes(direction);
-                                  const DirectionIcon = [CalendarIcon, Activity, Users][index % 3];
-                                  return (
-                                    <button
-                                      key={direction}
-                                      type="button"
-                                      aria-pressed={selected}
-                                      onClick={() => {
-                                        setSelectedDirections((current) => {
-                                          if (selected) return current.filter((item) => item !== direction);
-                                          return current.length < 3 ? [...current, direction] : current;
-                                        });
-                                        setGuidedQuestionPage(0);
-                                        setShowGuidedReview(false);
-                                      }}
-                                      className={`min-h-[116px] rounded-lg border p-3 text-left transition-colors ${selected ? 'border-saivie-border bg-saivie-ivory shadow-[0_0_0_1px_rgba(114,85,217,0.16)]' : 'border-saivie-border bg-saivie-ivory hover:border-saivie-border'}`}
-                                      data-testid={`direction-${direction.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-                                    >
-                                      <span className="flex items-start justify-between">
-                                        <span className={`flex h-8 w-8 items-center justify-center rounded-md ${selected ? 'bg-saivie-ivory text-saivie-teal' : 'bg-saivie-surface-muted text-saivie-teal'}`}><DirectionIcon className="h-4 w-4" /></span>
-                                        <span className="text-lg font-semibold text-slate-100">0{index + 1}</span>
-                                      </span>
-                                      <span className="mt-3 block text-xs font-semibold text-saivie-plum">{direction}</span>
-                                      <span className="mt-1 block text-[10px] leading-relaxed text-saivie-plum line-clamp-2">{directionRationales[direction] || 'A clinician-added direction for this consultation.'}</span>
-                                      <span className={`mt-2 block text-[10px] font-semibold ${selected ? 'text-saivie-teal' : 'text-saivie-plum'}`}>{selected ? '✓ Exploring' : 'Explore'}</span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                              <div className="mt-3 flex flex-wrap items-center gap-3">
-                                {selectedDirections.length < 3 && (
-                                  <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-saivie-teal hover:text-saivie-teal" onClick={() => setShowCustomDirectionInput((shown) => !shown)}>
-                                    <Plus className="h-3.5 w-3.5" /> Add another clinical direction
-                                  </button>
-                                )}
-                                {selectedDirections.length > 0 && <button type="button" className="text-xs text-saivie-plum hover:text-saivie-plum" onClick={() => { setSelectedDirections([]); setGuidedQuestionPage(0); setShowGuidedReview(false); }}>Dismiss all</button>}
-                              </div>
-                              {showCustomDirectionInput && (
-                                <div className="mt-2 flex gap-2">
-                                  <Input value={customDirectionDraft} onChange={(event) => setCustomDirectionDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && customDirectionDraft.trim() && selectedDirections.length < 3) { setSelectedDirections((current) => [...current, customDirectionDraft.trim()]); setCustomDirectionDraft(''); setShowCustomDirectionInput(false); } }} placeholder="Add a direction to explore" className="h-9 text-xs" aria-label="Custom clinical direction" />
-                                  <Button type="button" size="sm" disabled={!customDirectionDraft.trim() || selectedDirections.length >= 3} onClick={() => { if (customDirectionDraft.trim()) { setSelectedDirections((current) => [...current, customDirectionDraft.trim()]); setCustomDirectionDraft(''); setShowCustomDirectionInput(false); } }}>Add</Button>
-                                </div>
-                              )}
+                          <div className="space-y-3" data-testid="consultation-survey-review">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs text-saivie-teal">Patient-reported</span>
+                              <span className="text-xs text-saivie-plum">{answeredGuidedQuestionCount}/{guidedQuestions.length} answered</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {selectedDirections.map((direction) => <span key={direction} className="rounded-full border border-saivie-teal bg-saivie-sage px-2.5 py-1 text-xs text-saivie-teal" data-testid="survey-selected-direction">{direction}</span>)}
                             </div>
 
-                            {selectedDirections.length > 0 && (
-                              <div className="border-t border-saivie-border pt-4">
-                                <div className="mb-3 rounded-md bg-saivie-surface-muted p-3">
-                                  <p className="text-[10px] font-semibold uppercase tracking-wide text-saivie-teal">Why these questions?</p>
-                                  <div className="mt-2 space-y-1.5 text-xs text-saivie-plum">
-                                    {selectedDirections.map((direction) => <p key={direction}><span className="font-medium text-saivie-plum">{direction}:</span> {directionRationales[direction]}</p>)}
-                                  </div>
-                                </div>
-                                <div className="flex items-center justify-between gap-3 mb-3">
-                                  <div>
-                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-saivie-teal">Guided questions · {selectedDirections[0]}</p>
-                                    <h4 className="mt-1 text-sm font-semibold text-saivie-plum">Questions that may clarify this direction</h4>
-                                  </div>
-                                  <span className="text-[10px] text-saivie-plum">{answeredGuidedQuestionCount} of {guidedQuestions.length} answered</span>
-                                </div>
-                                <div className="divide-y divide-slate-100 border-y border-saivie-border">
-                                  {currentGuidedQuestions.map((question, questionOffset) => {
-                                    const questionId = `guided-${question.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-                                    const answerOptions = guidedQuestionOptions[question];
-                                    const answer = guidedAnswers[question];
-                                    return (
-                                      <div key={question} className="py-3">
-                                        <div className="flex items-start gap-2">
-                                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-saivie-sage text-[10px] text-saivie-plum">{guidedQuestionPage * questionsPerPage + questionOffset + 1}</span>
-                                          <div className="min-w-0 flex-1">
-                                            <label className="block text-xs font-semibold text-saivie-plum" htmlFor={questionId}>{question}</label>
-                                            {guidedQuestionHints[question] && <p className="mt-0.5 text-[10px] text-saivie-plum">{guidedQuestionHints[question]}</p>}
-                                          </div>
-                                          {answer && answer !== '__SKIPPED__' && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
-                                        </div>
-                                        <div className="mt-2 ml-7 flex flex-wrap gap-1.5">
-                                          {answerOptions ? answerOptions.map((option) => (
-                                            <button key={option} type="button" aria-pressed={answer === option} onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: option }))} className={`rounded-md border px-2.5 py-1.5 text-[10px] font-medium transition-colors ${answer === option ? 'border-saivie-border bg-saivie-surface-muted text-saivie-teal' : 'border-saivie-border text-saivie-plum hover:border-saivie-border'}`}>
-                                              {option}
-                                            </button>
-                                          )) : (
-                                            <>
-                                              <Input id={questionId} value={answer === '__SKIPPED__' ? '' : answer || ''} onChange={(event) => setGuidedAnswers((current) => ({ ...current, [question]: event.target.value }))} placeholder="Record answer" className="h-8 max-w-sm text-xs" />
-                                              <Button type="button" variant="outline" size="sm" className="h-8 text-[10px]" onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: 'Patient unsure' }))}>Unsure</Button>
-                                            </>
-                                          )}
-                                          <button type="button" className={`px-2 py-1 text-[10px] ${answer === '__SKIPPED__' ? 'font-semibold text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`} onClick={() => setGuidedAnswers((current) => ({ ...current, [question]: '__SKIPPED__' }))}>{answer === '__SKIPPED__' ? 'Skipped' : 'Skip'}</button>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                                  <div className="flex gap-2">
-                                    {guidedQuestionPage > 0 && <Button type="button" variant="ghost" size="sm" onClick={() => setGuidedQuestionPage((page) => page - 1)}>Previous questions</Button>}
-                                    {(guidedQuestionPage + 1) * questionsPerPage < guidedQuestions.length && <Button type="button" variant="ghost" size="sm" className="text-saivie-teal" onClick={() => setGuidedQuestionPage((page) => page + 1)}>Ask next question <ChevronRight className="ml-1 h-3 w-3" /></Button>}
-                                  </div>
-                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowGuidedReview((current) => !current)} disabled={!Object.values(guidedAnswers).some((answer) => answer && answer !== '__SKIPPED__')}>
-                                    {showGuidedReview ? 'Hide review' : 'Review answers'}
-                                  </Button>
-                                </div>
-                                {showGuidedReview && (
-                                  <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50/50 p-4">
-                                    <p className="text-xs font-semibold text-emerald-900">Review before adding to the note</p>
-                                    <ul className="mt-2 space-y-2 text-xs text-saivie-plum">
-                                      {guidedQuestions.filter((question) => guidedAnswers[question] && guidedAnswers[question] !== '__SKIPPED__').map((question) => <li key={question}><strong>{question}</strong> {guidedAnswers[question]}</li>)}
-                                    </ul>
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                      <Button type="button" size="sm" onClick={addReviewedAnswersToNote}>Add reviewed answers to note</Button>
-                                      <Button type="button" variant="ghost" size="sm" onClick={() => setShowGuidedReview(false)}>Keep editing</Button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                            {selectedDirections.length ? (
+                              <dl className="divide-y divide-saivie-border">
+                                {guidedQuestions.map((question) => <div key={question} className="grid gap-1 py-2 sm:grid-cols-2">
+                                  <dt className="text-xs text-saivie-plum">{question}</dt>
+                                  <dd className={`whitespace-pre-wrap text-xs ${guidedAnswers[question]?.trim() ? 'font-medium text-saivie-plum' : 'text-saivie-plum/60'}`}>{guidedAnswers[question]?.trim() || 'Not answered'}</dd>
+                                </div>)}
+                              </dl>
+                            ) : <p className="text-xs text-saivie-plum">No pre-visit topics selected for this visit.</p>}
+                            <Button type="button" size="sm" variant="outline" disabled={!answeredGuidedQuestionCount} onClick={addReviewedAnswersToNote}>Add reviewed answers to note</Button>
                           </div>
                         )}
 
                         {consultationStep === 'examine' && (
                           <div className="space-y-4">
                             <div>
-                              <p className="text-sm font-semibold text-saivie-plum">What did you observe?</p>
-                              <p className="text-xs text-saivie-plum mt-1">Existing values below are from the latest chart entry{latestVisit?.date ? ` (${new Date(latestVisit.date).toLocaleDateString('en-IN')})` : ''}. Enter today’s findings in the note.</p>
+                              <p className="text-xs text-saivie-plum">Last recorded{latestVisit?.date ? ` · ${new Date(latestVisit.date).toLocaleDateString('en-IN')}` : ''}</p>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                               {[
@@ -4986,8 +4754,7 @@ export default function ClinicianPortal() {
                         {consultationStep === 'evidence' && (
                           <div className="space-y-5">
                             <div>
-                              <p className="text-sm font-semibold text-saivie-plum">What would you like to review?</p>
-                              <p className="mt-1 text-xs text-saivie-plum">Select available evidence. The summary below is clinician-entered; no evidence is inferred from missing data.</p>
+                              <p className="text-sm font-semibold text-saivie-plum">Available evidence</p>
                               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 {evidenceOptions.map((item) => (
                                   <label key={item} className="flex items-center gap-2 rounded-md border border-saivie-border p-3 text-xs text-saivie-plum hover:bg-saivie-surface-muted cursor-pointer">
@@ -5009,7 +4776,7 @@ export default function ClinicianPortal() {
                                   </label>
                                 </div>
                               </div>
-                            )) : <p className="rounded-md bg-saivie-surface-muted p-3 text-xs text-saivie-plum">No working directions selected. You can still record evidence to review.</p>}
+                            )) : <p className="text-xs text-saivie-plum">No patient-selected topics.</p>}
                           </div>
                         )}
 
@@ -5018,7 +4785,7 @@ export default function ClinicianPortal() {
                             <div className="rounded-md border border-saivie-border bg-saivie-ivory p-3">
                               <p className="text-xs font-semibold text-saivie-plum">Clinical summary</p>
                               <p className="mt-1 text-xs text-saivie-plum">{soapSubjectiveDraft || 'No first impression entered yet.'}</p>
-                              {selectedDirections.length > 0 && <p className="mt-2 text-xs text-saivie-teal">Directions explored: {selectedDirections.join(' · ')}</p>}
+                              {selectedDirections.length > 0 && <p className="mt-2 text-xs text-saivie-teal">Patient topics: {selectedDirections.join(' · ')}</p>}
                               {consultationEvidence.length > 0 && <p className="mt-1 text-xs text-saivie-plum">Evidence reviewed: {consultationEvidence.join(', ')}</p>}
                             </div>
                             {(selectedDirections.length > 0 || consultationEvidence.length > 0) && (
@@ -5032,7 +4799,7 @@ export default function ClinicianPortal() {
                             <label className="block text-xs font-semibold text-saivie-plum">Plan, advice, follow-up, and safety-net
                               <Textarea value={soapPlanDraft} onChange={(event) => setSoapPlanDraft(event.target.value)} placeholder="Medication, investigations, advice, follow-up, and when to seek urgent care..." className="mt-1.5 min-h-[120px] text-sm font-normal" data-testid="input-consultation-plan" />
                             </label>
-                            <p className="text-[10px] text-saivie-plum">Nothing is saved until you choose “Save clinician-reviewed note.” Review every draft before saving.</p>
+                            <p className="text-[10px] text-saivie-plum">Unsaved draft</p>
                             <div className="flex flex-wrap items-center gap-2">
                               <Button type="button" onClick={saveConsultationNote} disabled={soapSaving || ![soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft].some((value) => value.trim())} data-testid="button-save-consultation-note">
                                 <Save className="mr-1.5 h-3.5 w-3.5" />{soapSaving ? 'Saving…' : 'Save clinician-reviewed note'}
@@ -5046,9 +4813,9 @@ export default function ClinicianPortal() {
                       <div className="px-4 sm:px-6 py-3 border-t border-saivie-border flex items-center justify-between gap-2">
                         <Button type="button" variant="ghost" size="sm" onClick={() => setConsultationStep(consultationSteps[Math.max(0, consultationSteps.findIndex((step) => step.id === consultationStep) - 1)].id)} disabled={consultationStep === 'reason'}>Back</Button>
                         <Button type="button" size="sm" onClick={() => setConsultationStep(consultationSteps[Math.min(consultationSteps.length - 1, consultationSteps.findIndex((step) => step.id === consultationStep) + 1)].id)} disabled={consultationStep === 'plan'}>
-                          {consultationStep === 'reason' ? 'Explore possible directions' :
-                           consultationStep === 'explore' ? 'Continue to examination' :
-                           consultationStep === 'examine' ? 'Continue to evidence' : 'Review plan'} <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                          {consultationStep === 'reason' ? 'Survey' :
+                           consultationStep === 'explore' ? 'Examination' :
+                           consultationStep === 'examine' ? 'Evidence' : 'Plan'} <ChevronRight className="ml-1 h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
@@ -5104,17 +4871,14 @@ export default function ClinicianPortal() {
                         <div className="min-w-0"><p className="text-[9px] font-semibold uppercase tracking-wider text-saivie-teal">Clinical copilot</p><CardTitle className="text-xs font-semibold text-saivie-plum">Visit support</CardTitle></div>
                       </CardHeader>
                       <CardContent className="p-3 space-y-3">
-                        <div className="rounded-md bg-saivie-surface-muted p-3">
-                          <p className="text-[10px] leading-relaxed text-saivie-plum">Curated prompts for clinician review. These are not AI-generated diagnoses or recommendations.</p>
-                        </div>
                         <div>
                           <p className="text-[9px] font-semibold uppercase tracking-wide text-saivie-plum">First impression</p>
                           <p className="mt-1 text-[10px] leading-relaxed text-saivie-plum line-clamp-3">{soapSubjectiveDraft || 'Add the patient’s concern to begin.'}</p>
                         </div>
                         <div className="border-t border-saivie-border pt-2">
-                          <p className="text-[9px] font-semibold uppercase tracking-wide text-saivie-plum">Possible directions</p>
+                          <p className="text-[9px] font-semibold uppercase tracking-wide text-saivie-plum">Patient-selected topics</p>
                           <div className="mt-1.5 flex flex-wrap gap-1">
-                            {selectedDirections.length ? selectedDirections.map((direction) => <span key={direction} className="rounded bg-saivie-ivory px-2 py-1 text-[9px] text-saivie-teal border border-saivie-border">{direction}</span>) : <span className="text-[10px] text-saivie-plum">Choose a direction in Explore.</span>}
+                            {selectedDirections.length ? selectedDirections.map((direction) => <span key={direction} className="rounded bg-saivie-ivory px-2 py-1 text-[9px] text-saivie-teal border border-saivie-border">{direction}</span>) : <span className="text-[10px] text-saivie-plum">None selected</span>}
                           </div>
                         </div>
                         {isFollowUpVisit && previousVisit && (
@@ -5122,7 +4886,7 @@ export default function ClinicianPortal() {
                             <p className="text-[9px] font-semibold uppercase tracking-wide text-saivie-plum">Follow-up from {new Date(previousVisit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
                             <p className="mt-1 text-[10px] text-saivie-plum">{lastPrescriptionLabel}{lastPrescriptionDate ? ` · ${lastPrescriptionDate}` : ''}</p>
                             {lastPrescriptionItems.length > 0 ? <ul className="mt-1 space-y-1">{lastPrescriptionItems.map((item: string, index: number) => <li key={`${item}-${index}`} className="text-[10px] leading-relaxed text-saivie-plum">{item}</li>)}</ul> : <p className="mt-1 text-[10px] text-saivie-plum">No prescription recorded for the previous visit.</p>}
-                            <p className="mt-2 text-[10px] leading-relaxed text-saivie-plum">Ask whether it was started, what changed, and whether there were benefits or side effects. These are prompts, not recorded responses.</p>
+                            <p className="mt-2 text-[10px] text-saivie-plum">Review adherence, response and side effects.</p>
                           </div>
                         )}
                         <Button type="button" variant="ghost" size="sm" className="h-7 w-full justify-between px-1 text-[10px] text-saivie-teal" onClick={() => setConsultationStep('evidence')}>Review evidence <ChevronRight className="h-3 w-3" /></Button>

@@ -1,3 +1,5 @@
+import { readConsultationSurvey, surveyDirectionsForConcerns, surveyQuestions, type ConsultationSurvey } from "./consultationSurvey.ts";
+
 export type IntakeForm = {
     name: string;
     dob: string;
@@ -5,6 +7,7 @@ export type IntakeForm = {
     occupation: string;
     chiefComplaint: string;
     concerns: string[];
+    consultation: ConsultationSurvey;
     pain: { location: string[]; duration: string; severity: string; relatedSymptoms: string[] };
     cycle: { lastPeriod: string; regularity: string; lateBy: string; pregnancyTest: string; menarcheAge: string; cycleLength: string; flow: string; symptoms: string[]; details: string };
     gyn: { firstEncounterAge: string; partnerCount: string; lastPap: string; sexuallyActive: string; hpvVaccine: string; birthControl: string[]; concerns: string[]; details: string };
@@ -15,6 +18,7 @@ export type IntakeForm = {
 
 export const initialForm: IntakeForm = {
     name: "", dob: "", referredBy: "", occupation: "", chiefComplaint: "", concerns: [],
+    consultation: { directions: [], answers: {} },
     pain: { location: [], duration: "", severity: "", relatedSymptoms: [] },
     cycle: { lastPeriod: "", regularity: "", lateBy: "", pregnancyTest: "", menarcheAge: "", cycleLength: "", flow: "", symptoms: [], details: "" },
     gyn: { firstEncounterAge: "", partnerCount: "", lastPap: "", sexuallyActive: "", hpvVaccine: "", birthControl: [], concerns: [], details: "" },
@@ -67,8 +71,17 @@ export function getOnboardingQuestions(form: IntakeForm, extra: OptionalHistory)
     add("health", "medications", "allergies", "surgeries", "familyHistory");
     add("lifestyle", "extraBackground");
     if (extra.background) add("lifestyle", "referredBy", "occupation", "smoking", "relationship", "alcohol", "exercise", "lifestyleOther");
+    if (form.concerns.length) add("survey", "surveyDirections");
+    const consultation = relevantConsultation(form);
+    add("survey", ...surveyQuestions(consultation.directions).map((question) => `survey:${question}`));
     add("review", "review");
     return questions;
+}
+
+function relevantConsultation(form: IntakeForm): ConsultationSurvey {
+    const consultation = readConsultationSurvey(form.consultation);
+    const options = new Set(surveyDirectionsForConcerns(form.concerns));
+    return readConsultationSurvey({ ...consultation, directions: consultation.directions.filter((direction) => options.has(direction)) });
 }
 
 // Keep back-navigation drafts in the UI, but do not submit answers to hidden follow-ups.
@@ -78,6 +91,7 @@ export function getRelevantIntake(form: IntakeForm, extra: OptionalHistory): Int
     const keepList = (id: string, value: string[]) => ids.has(id) ? value : [];
     return {
         ...form,
+        consultation: relevantConsultation(form),
         referredBy: keep("referredBy", form.referredBy), occupation: keep("occupation", form.occupation),
         pain: {
             location: keepList("painLocation", form.pain.location), duration: keep("painDuration", form.pain.duration),

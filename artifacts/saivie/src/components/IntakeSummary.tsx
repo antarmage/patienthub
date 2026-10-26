@@ -3,6 +3,7 @@ import { AlertTriangle, Eye, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getPrintBrandStyles } from "@/lib/brand";
+import { readConsultationSurvey } from "@/lib/consultationSurvey";
 
 type WeightLog = { weight: number; unit: string; date: string; week: number | null };
 type BpLog = { systolic: number; diastolic: number; pulse: number | null; date: string };
@@ -52,6 +53,7 @@ type CheckInVitals = { bp?: unknown; pulse?: unknown; temp?: unknown; spo2?: unk
 function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], checkInVitals?: CheckInVitals | null): Summary {
     const history = patient?.history || {};
     const form = history.onboarding || {};
+    const consultation = readConsultationSurvey(form.consultation);
     const cycle = form.cycle || {};
     const gyn = form.gyn || {};
     const preg = form.pregnancies || {};
@@ -200,6 +202,10 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], ch
         section("Presenting complaint", [
             row("Pain location", pain.location), row("Duration", pain.duration), row("Associated", related.filter((s) => !["None of these", "Prefer not to say"].includes(s))),
             row("How late", cycle.lateBy), row("Pregnancy test", cycle.pregnancyTest), row("Regularity", cycle.regularity),
+        ]),
+        section("Pre-visit survey (patient-reported)", [
+            row("Topics", consultation.directions),
+            ...Object.entries(consultation.answers).map(([question, answer]) => row(question, answer)),
         ]),
         section("Menstrual history", [
             row("LMP", lmp && fmtDate(lmp)), row("Menarche age", cycle.menarcheAge), row("Cycle length (days)", cycle.cycleLength),

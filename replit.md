@@ -89,6 +89,15 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Frontend Structure
 
+### Pre-visit survey and clinician review
+
+- Patient onboarding includes optional discussion topics (up to three) with the former Explore questions. Patients answer before the visit; unanswered questions are not interpreted as negative findings.
+- Shared topic/question definitions live in `artifacts/saivie/src/lib/consultationSurvey.ts`. Changing concerns removes unrelated topics and answers from submission, while preserving back-navigation drafts.
+- Submission saves the survey in `history.onboarding.consultation` and stamps `history.onboardingAppointmentId` on the server. The clinician's Survey step displays only the matching visit's patient-reported topics and answers, already selected, without a second questionnaire.
+- Opening a patient refreshes their data; the clinician patient list also refreshes every 30 seconds so newly submitted surveys appear without reopening the portal.
+- Clinical assessment and evidence remain doctor-entered. Survey answers enter the SOAP note only through "Add reviewed answers to note". The intake summary and patient printout also include the submitted answers.
+- Consultation headings and actions are compact; instructional paragraphs and direction rationales have been removed.
+
 - `artifacts/saivie/src/App.tsx` — root component with wouter Router (base=BASE_URL)
 - `artifacts/saivie/src/lib/queryClient.ts` — custom QueryClient with fetch helpers
 - `artifacts/saivie/src/pages/` — all page components
