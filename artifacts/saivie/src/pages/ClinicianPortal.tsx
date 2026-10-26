@@ -12,7 +12,8 @@ import { consultationDirectionsByPath, consultationPaths, consultationSurveyForV
 import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
 import { ConsultationVitalsTrends } from "@/components/ConsultationVitalsTrends";
 import { PatientSummaryDashboard } from "@/components/PatientSummaryDashboard";
-import { PatientVisitTimeline } from "@/components/PatientVisitTimeline";
+import { PatientVisitTimeline, visitTests } from "@/components/PatientVisitTimeline";
+import { ConsultationOrderDialogs } from "@/components/ConsultationOrderDialogs";
 import { PatientReportsList, ReportViewButton } from "@/components/PatientReports";
 import { fetchDirectoryAppointments, directoryPatientIds, type DirectoryAppointment } from "@/lib/patientDirectory";
 import { pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
@@ -656,7 +657,7 @@ export default function ClinicianPortal() {
     };
     const nextTests: string[] = vitals.nextInvestigationTests || [];
     const customInv = vitals.nextInvestigationCustom || '';
-    const allInv = [...nextTests, ...(customInv ? [customInv] : [])];
+    const allInv = [...new Set([...visitTests(latestVisit), ...nextTests, ...(customInv ? [customInv] : [])])];
 
     const age = selectedPatient.age || selectedPatient.dateOfBirth ? (() => {
       if (selectedPatient.age) return selectedPatient.age;
@@ -1228,6 +1229,11 @@ export default function ClinicianPortal() {
   };
 
   const [showAddMedRow, setShowAddMedRow] = useState(false);
+  const [consultationOrderEditor, setConsultationOrderEditor] = useState<"tests" | "medicine" | null>(null);
+  const savedEncounterId = React.useRef<number | null>(null);
+  const [consultationTests, setConsultationTests] = useState<string[] | null>(null);
+  const [consultationCustomTest, setConsultationCustomTest] = useState("");
+  const orderedConsultationTests = consultationTests ?? visitTests(currentEncounterVisit);
   const [newMed, setNewMed] = useState({ name: '', dose: '', frequency: '', duration: '', instructions: '', route: '', startDate: '', status: 'Active', notes: '' });
 
   const addMedMutation = useMutation({
@@ -1244,6 +1250,7 @@ export default function ClinicianPortal() {
       if (selectedPatient) queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/medications`] });
       queryClient.invalidateQueries({ queryKey: ['/api/medicine-suggestions'] });
       setShowAddMedRow(false);
+      setConsultationOrderEditor(null);
       setNewMed({ name: '', dose: '', frequency: '', duration: '', instructions: '', route: '', startDate: '', status: 'Active', notes: '' });
     },
     onError: (error: Error) => toast({ title: "Could not add medication", description: error.message, variant: "destructive" }),
@@ -1321,7 +1328,14 @@ export default function ClinicianPortal() {
   const guidedAnswers = effectiveSurvey.answers;
   const visibleDirections = [...new Set(selectedPaths.flatMap((path) => consultationDirectionsByPath[path] || []))];
   const consultationSurveyKey = `${selectedPatient?.id ?? ''}:${activeAppointment?.id || (selectedPatient as any)?.appointmentId || ''}`;
-  useEffect(() => { setConsultationEdits({ answers: {} }); }, [consultationSurveyKey]);
+  useEffect(() => {
+    setConsultationEdits({ answers: {} });
+    setConsultationOrderEditor(null);
+    setConsultationTests(null);
+    savedEncounterId.current = null;
+    setConsultationCustomTest("");
+    setNewMed({ name: '', dose: '', frequency: '', duration: '', instructions: '', route: '', startDate: '', status: 'Active', notes: '' });
+  }, [consultationSurveyKey]);
 
   const invoicesQuery = useQuery({
     queryKey: ['/api/invoices'],
@@ -1675,13 +1689,15 @@ export default function ClinicianPortal() {
   };
 
   const saveConsultationNote = async () => {
-    const snapshot = [soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft];
+    const snapshot = [soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft, JSON.stringify(orderedConsultationTests)];
     setSoapSaving(true);
     setSoapSavedMsg(null);
     try {
       let response: Response;
-      if (currentEncounterVisit?.id) {
-        response = await fetch(`/api/visit-history/${currentEncounterVisit.id}`, {
+      const encounterId = currentEncounterVisit?.id || savedEncounterId.current ||
+        visitHistory.find((visit: { appointmentId?: number }) => activeAppointment?.id && visit.appointmentId === activeAppointment.id)?.id;
+      if (encounterId) {
+        response = await fetch(`/api/visit-history/${encounterId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1689,6 +1705,7 @@ export default function ClinicianPortal() {
             ...(soapObjectiveDraft || savedConsultationSnapshot?.[1] ? { objective: soapObjectiveDraft } : {}),
             ...(soapAssessmentDraft || savedConsultationSnapshot?.[2] ? { assessment: soapAssessmentDraft } : {}),
             ...(soapPlanDraft || savedConsultationSnapshot?.[3] ? { planNotes: soapPlanDraft } : {}),
+            ...(consultationTests !== null ? { labsOrdered: consultationTests } : {}),
           }),
         });
       } else {
@@ -1698,11 +1715,12 @@ export default function ClinicianPortal() {
           body: JSON.stringify({
             date: new Date().toISOString().split('T')[0],
             visitType: 'consultation',
-            ...(selectedPatient.appointmentId ? { appointmentId: selectedPatient.appointmentId } : {}),
+            ...((activeAppointment?.id || selectedPatient.appointmentId) ? { appointmentId: activeAppointment?.id || selectedPatient.appointmentId } : {}),
             subjective: soapSubjectiveDraft,
             objective: soapObjectiveDraft,
               assessment: soapAssessmentDraft,
             planNotes: soapPlanDraft,
+            labsOrdered: orderedConsultationTests,
           }),
         });
       }
@@ -1710,6 +1728,8 @@ export default function ClinicianPortal() {
         const errorBody = await response.json().catch(() => ({}));
         throw new Error(errorBody.error || `Server error ${response.status}`);
       }
+      const savedVisit = await response.json();
+      savedEncounterId.current = savedVisit.id;
       setSoapSavedMsg('Clinician-reviewed note saved to visit record.');
       setSavedConsultationSnapshot(snapshot);
       await queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] });
@@ -1722,9 +1742,9 @@ export default function ClinicianPortal() {
     }
   };
 
-  const consultationHasContent = [soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft].some((value) => value.trim());
+  const consultationHasContent = consultationTests !== null || [soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft].some((value) => value.trim());
   const consultationCanSave = consultationHasContent || Boolean(savedConsultationSnapshot?.some((value) => value.trim()));
-  const consultationNoteSaved = JSON.stringify(savedConsultationSnapshot) === JSON.stringify([soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft]);
+  const consultationNoteSaved = JSON.stringify(savedConsultationSnapshot) === JSON.stringify([soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft, JSON.stringify(orderedConsultationTests)]);
   const consultationChecklist = [
     { label: 'Reason', done: Boolean(soapSubjectiveDraft.trim()) },
     { label: 'History', done: selectedDirections.length > 0 },
@@ -4934,6 +4954,23 @@ export default function ClinicianPortal() {
 
                         {consultationStep === 'plan' && (
                           <div className="space-y-4">
+                            <section className="rounded-xl border border-saivie-border p-3" data-testid="consultation-plan-orders">
+                              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                <h3 className="text-xs font-semibold">Tests &amp; medication</h3>
+                                <div className="flex gap-2">
+                                  <Button type="button" size="sm" variant="outline" onClick={() => setConsultationOrderEditor('tests')}>Order tests</Button>
+                                  <Button type="button" size="sm" variant="outline" onClick={() => setConsultationOrderEditor('medicine')}>Add medication</Button>
+                                </div>
+                              </div>
+                              <p className="text-xs text-saivie-plum">Tests: {orderedConsultationTests.join(' · ') || 'None selected'}</p>
+                              {consultationTests !== null && !consultationNoteSaved && <p className="mt-1 text-xs text-saivie-teal">Save note to save test orders.</p>}
+                              <h4 className="mt-3 text-xs font-semibold">Active medications</h4>
+                              <ul className="mt-1 space-y-1 text-xs text-saivie-plum">
+                                {medications.filter((med: { status?: string }) => med.status?.toLowerCase() === 'active').map((med: { id: number; name: string; dose?: string; frequency?: string; duration?: string }) =>
+                                  <li key={med.id}>{[med.name, med.dose, med.frequency, med.duration].filter(Boolean).join(' · ')}</li>,
+                                )}
+                              </ul>
+                            </section>
                             <div className="rounded-md border border-saivie-border bg-saivie-ivory p-3">
                               <p className="text-xs font-semibold text-saivie-plum">Clinical summary</p>
                               <p className="mt-1 text-xs text-saivie-plum">{soapSubjectiveDraft || 'No first impression entered yet.'}</p>
@@ -4975,9 +5012,9 @@ export default function ClinicianPortal() {
                       </CardHeader>
                       <CardContent className="p-3">
                         <div className="grid grid-cols-3 gap-1.5">
-                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setShowAddInvestigation(true); openRecordSection('patient-investigations'); }} data-testid="quick-action-tests"><FlaskConical className="h-4 w-4" />Order tests</button>
+                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setConsultationOrderEditor('tests')} data-testid="quick-action-tests"><FlaskConical className="h-4 w-4" />Order tests</button>
                           <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setConsultationStep('evidence'); requestAnimationFrame(() => document.getElementById('input-consultation-assessment')?.focus()); }} data-testid="quick-action-diagnosis"><Stethoscope className="h-4 w-4" />Add diagnosis</button>
-                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setShowAddMedRow(true); openRecordSection('patient-medications'); }} data-testid="quick-action-medication"><Pill className="h-4 w-4" />Add medication</button>
+                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setConsultationOrderEditor('medicine')} data-testid="quick-action-medication"><Pill className="h-4 w-4" />Add medication</button>
                         </div>
                         <div className="mt-4 flex justify-between text-[10px] font-semibold text-saivie-teal"><span>Documentation progress</span><span>{consultationChecklist.filter((item) => item.done).length}/5</span></div>
                         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-saivie-sage" role="progressbar" aria-label="Documentation progress" aria-valuemin={0} aria-valuemax={5} aria-valuenow={consultationChecklist.filter((item) => item.done).length}><div className="h-full rounded-full bg-saivie-teal transition-all" style={{ width: `${consultationChecklist.filter((item) => item.done).length * 20}%` }} /></div>
@@ -5095,10 +5132,25 @@ export default function ClinicianPortal() {
                       { label: 'Objective', value: soapObjectiveDraft },
                       { label: 'Assessment', value: soapAssessmentDraft },
                       { label: 'Plan', value: soapPlanDraft },
+                      { label: 'Tests ordered', value: orderedConsultationTests.join(' · ') },
                     ].map((section) => <section key={section.label}><h4 className="text-xs font-semibold text-saivie-teal">{section.label}</h4><p className="mt-1 whitespace-pre-wrap break-words text-sm text-saivie-plum">{section.value || 'Not entered'}</p></section>)}
                   </div>
                 </DialogContent>
               </Dialog>
+              <ConsultationOrderDialogs
+                editor={consultationOrderEditor}
+                onClose={() => setConsultationOrderEditor(null)}
+                patientType={showPregnancyContext ? 'Pregnant' : selectedPatient.type || ''}
+                weeks={showPregnancyContext ? pregnancyContext?.weeks ?? null : null}
+                tests={orderedConsultationTests}
+                onTestsChange={setConsultationTests}
+                customTest={consultationCustomTest}
+                onCustomTestChange={setConsultationCustomTest}
+                medicine={newMed}
+                onMedicineChange={setNewMed}
+                onSaveMedicine={() => addMedMutation.mutate({ ...newMed, name: newMed.name.trim(), startDate: newMed.startDate || null })}
+                savingMedicine={addMedMutation.isPending}
+              />
               </>
             )}
 
