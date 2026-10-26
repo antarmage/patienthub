@@ -162,7 +162,7 @@ export const VitalsSparklineGrid: React.FC<VitalsSparklineGridProps> = ({
             ) : (
               <div className="h-full flex items-center justify-center">
                 <span className="text-[9px] text-slate-400">
-                  {isBpHypertensive ? '⚠️ Elevated' : '• Normal range'}
+                  {!systolic || !diastolic ? 'Not recorded' : isBpHypertensive || isBpElevated ? 'Elevated' : '• Normal range'}
                 </span>
               </div>
             )}
@@ -190,7 +190,7 @@ export const VitalsSparklineGrid: React.FC<VitalsSparklineGridProps> = ({
           <div className="mt-1.5 h-7 w-full">
             <div className="h-full flex items-center justify-center">
               <span className={`text-[9px] font-medium ${isTachycardia ? 'text-amber-700' : 'text-slate-500'}`}>
-                {isTachycardia ? '⚠️ High pulse' : isBradycardia ? '⚠️ Low pulse' : '60-100 normal'}
+                {!pulseNum ? 'Not recorded' : isTachycardia ? '⚠️ High pulse' : isBradycardia ? '⚠️ Low pulse' : '60-100 normal'}
               </span>
             </div>
           </div>
@@ -221,7 +221,7 @@ export const VitalsSparklineGrid: React.FC<VitalsSparklineGridProps> = ({
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center">
-                <span className="text-[9px] text-slate-400">Recorded intake</span>
+                <span className="text-[9px] text-slate-400">{weightVal ? 'Recorded intake' : 'Not recorded'}</span>
               </div>
             )}
           </div>
@@ -239,14 +239,14 @@ export const VitalsSparklineGrid: React.FC<VitalsSparklineGridProps> = ({
           </div>
           <div className="mt-1 flex items-baseline gap-1">
             <span className="text-base font-bold font-mono text-saivie-plum">
-              {tempVal ? `${tempVal}°F` : spo2Val ? `${spo2Val}%` : '98.4°F'}
+              {tempVal ? `${tempVal}°F` : spo2Val ? `${spo2Val}%` : '—'}
             </span>
             {spo2Val && tempVal && <span className="text-[9px] text-slate-400">· {spo2Val}%</span>}
           </div>
 
           <div className="mt-1.5 h-7 w-full flex items-center justify-center">
             <span className={`text-[9px] font-medium ${isFever ? 'text-rose-700' : 'text-slate-400'}`}>
-              {isFever ? '🔥 Fever detected' : isLowSpo2 ? '⚠️ Low SpO₂' : 'Afebril'}
+              {!tempVal && !spo2Val ? 'Not recorded' : isFever ? '🔥 Fever detected' : isLowSpo2 ? '⚠️ Low SpO₂' : tempVal ? 'Afebrile' : 'SpO₂ recorded'}
             </span>
           </div>
         </Card>
@@ -259,6 +259,7 @@ export const VitalsSparklineGrid: React.FC<VitalsSparklineGridProps> = ({
           variant="outline"
           size="sm"
           onClick={handleAdopt}
+          disabled={!systolic && !diastolic && !pulseNum && !tempVal && !spo2Val && !weightVal}
           className="w-full h-7 text-[11px] gap-1 text-saivie-teal border-saivie-border bg-saivie-surface-muted hover:bg-saivie-ivory"
           data-testid="button-adopt-vitals"
         >

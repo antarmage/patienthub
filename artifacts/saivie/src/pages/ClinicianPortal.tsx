@@ -9,12 +9,16 @@ import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSet
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
 import { consultationSurveyForVisit, surveyQuestions } from "@/lib/consultationSurvey";
 import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
-import { ActiveMedicationCards } from "@/components/ActiveMedicationCards";
+import { ConsultationVitalsTrends } from "@/components/ConsultationVitalsTrends";
 import { 
   LayoutDashboard, 
   Users, 
+  User,
   Calendar as CalendarIcon, 
   Activity, 
+  ArrowRight,
+  Circle,
+  Eye,
   Search, 
   Bell, 
   Menu,
@@ -121,9 +125,9 @@ type ConsultationStep = 'reason' | 'explore' | 'examine' | 'evidence' | 'plan';
 
 const consultationSteps: { id: ConsultationStep; label: string }[] = [
   { id: 'reason', label: 'Reason' },
-  { id: 'explore', label: 'Survey' },
-  { id: 'examine', label: 'Examine' },
-  { id: 'evidence', label: 'Evidence' },
+  { id: 'explore', label: 'History' },
+  { id: 'examine', label: 'Examination' },
+  { id: 'evidence', label: 'Assessment' },
   { id: 'plan', label: 'Plan' },
 ];
 
@@ -404,6 +408,9 @@ export default function ClinicianPortal() {
   const [consultationEvidence, setConsultationEvidence] = useState<string[]>([]);
   const [directionEvidence, setDirectionEvidence] = useState<Record<string, { supporting: string; missing: string }>>({});
   const [consultationContextAdded, setConsultationContextAdded] = useState(false);
+  const [notePreviewOpen, setNotePreviewOpen] = useState(false);
+  const [copilotExpanded, setCopilotExpanded] = useState(true);
+  const [savedConsultationSnapshot, setSavedConsultationSnapshot] = useState<string[] | null>(null);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingType, setBookingType] = useState("surgery");
@@ -1511,6 +1518,9 @@ export default function ClinicianPortal() {
     setConsultationEvidence([]);
     setDirectionEvidence({});
     setConsultationContextAdded(false);
+    setSavedConsultationSnapshot(null);
+    setSoapSavedMsg(null);
+    setNotePreviewOpen(false);
     // Reset voice SOAP drafts when switching patients
     setSoapTranscript(null);
     setSoapSubjectiveDraft("");
@@ -1614,6 +1624,7 @@ export default function ClinicianPortal() {
   };
 
   const saveConsultationNote = async () => {
+    const snapshot = [soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft];
     setSoapSaving(true);
     setSoapSavedMsg(null);
     try {
@@ -1623,10 +1634,10 @@ export default function ClinicianPortal() {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...(soapSubjectiveDraft ? { subjective: soapSubjectiveDraft } : {}),
-            ...(soapObjectiveDraft ? { objective: soapObjectiveDraft } : {}),
-            ...(soapAssessmentDraft ? { assessment: soapAssessmentDraft } : {}),
-            ...(soapPlanDraft ? { planNotes: soapPlanDraft } : {}),
+            ...(soapSubjectiveDraft || savedConsultationSnapshot?.[0] ? { subjective: soapSubjectiveDraft } : {}),
+            ...(soapObjectiveDraft || savedConsultationSnapshot?.[1] ? { objective: soapObjectiveDraft } : {}),
+            ...(soapAssessmentDraft || savedConsultationSnapshot?.[2] ? { assessment: soapAssessmentDraft } : {}),
+            ...(soapPlanDraft || savedConsultationSnapshot?.[3] ? { planNotes: soapPlanDraft } : {}),
           }),
         });
       } else {
@@ -1649,12 +1660,31 @@ export default function ClinicianPortal() {
         throw new Error(errorBody.error || `Server error ${response.status}`);
       }
       setSoapSavedMsg('Clinician-reviewed note saved to visit record.');
-      queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] });
+      setSavedConsultationSnapshot(snapshot);
+      await queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] });
+      return true;
     } catch (error: any) {
       setSoapSavedMsg(`Failed to save: ${error.message || 'Please try again.'}`);
+      return false;
     } finally {
       setSoapSaving(false);
     }
+  };
+
+  const consultationHasContent = [soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft].some((value) => value.trim());
+  const consultationCanSave = consultationHasContent || Boolean(savedConsultationSnapshot?.some((value) => value.trim()));
+  const consultationNoteSaved = JSON.stringify(savedConsultationSnapshot) === JSON.stringify([soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft]);
+  const consultationChecklist = [
+    { label: 'Reason', done: Boolean(soapSubjectiveDraft.trim()) },
+    { label: 'History', done: selectedDirections.length > 0 },
+    { label: 'Examination', done: Boolean(soapObjectiveDraft.trim()) },
+    { label: 'Assessment', done: Boolean(soapAssessmentDraft.trim()) },
+    { label: 'Plan', done: Boolean(soapPlanDraft.trim()) },
+  ];
+  const openRecordSection = (id: string) => {
+    setPatientDetailTab('record');
+    setShowDocumentation(true);
+    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   };
 
   const chronologicalQueue = [...queuePatients].sort((a: any, b: any) =>
@@ -1665,7 +1695,7 @@ export default function ClinicianPortal() {
     <div className="min-h-screen bg-saivie-surface-muted flex font-sans text-saivie-plum overflow-hidden">
       
       {/* Sidebar */}
-      <aside className={`bg-saivie-ivory text-saivie-plum flex flex-col shrink-0 border-r border-saivie-border z-20 transition-all duration-300 ${sidebarOpen ? "w-64 max-sm:w-16" : "w-20"}`}>
+      <aside className={`bg-saivie-ivory text-saivie-plum ${activeView === 'patient_detail' && patientDetailTab === 'consultation' ? 'hidden' : 'flex'} flex-col shrink-0 border-r border-saivie-border z-20 transition-all duration-300 ${sidebarOpen ? "w-64 max-sm:w-16" : "w-20"}`}>
         <div className="p-3 max-sm:p-2 border-b border-saivie-border flex items-center justify-between gap-2 max-sm:justify-center">
           {sidebarOpen ? (
             <div className="flex items-center gap-2 min-w-0">
@@ -1741,7 +1771,7 @@ export default function ClinicianPortal() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-saivie-surface-muted">
+      <main className="min-w-0 flex-1 flex flex-col h-screen overflow-hidden relative bg-saivie-surface-muted">
         
         {/* NEW DASHBOARD VIEW */}
         {activeView === 'dashboard' && (
@@ -4419,7 +4449,47 @@ export default function ClinicianPortal() {
 
         {/* PATIENT DETAIL VIEW */}
         {activeView === 'patient_detail' && selectedPatient && (
-          <div className="flex-1 flex flex-col overflow-hidden z-0 relative">
+          <div className={`flex-1 flex flex-col overflow-hidden z-0 relative ${patientDetailTab === 'consultation' ? 'lg:pl-[240px]' : ''}`} data-testid="patient-workspace">
+            {patientDetailTab === 'consultation' && (
+              <aside className="absolute inset-y-0 left-0 z-20 hidden w-[240px] flex-col overflow-y-auto bg-saivie-teal p-3 text-white lg:flex" data-testid="consultation-patient-rail" aria-label="Patient context">
+                <div className="flex items-start justify-between gap-2 p-2">
+                  <Avatar className="h-11 w-11"><AvatarFallback className="bg-saivie-ivory text-sm font-semibold text-saivie-teal">{getInitials(selectedPatient.name)}</AvatarFallback></Avatar>
+                  <button type="button" onClick={() => setActiveView('patient_list')} className="text-[11px] font-medium text-white">View all <ArrowUpRight className="inline h-3 w-3" /></button>
+                </div>
+                <div className="border-b border-white/20 px-2 pb-4 pt-1">
+                  <h2 className="text-base font-semibold">{selectedPatient.name}</h2>
+                  <p className="mt-1 text-xs text-white/80">{selectedPatient.age ? `${selectedPatient.age}y` : 'Age not recorded'}{selectedPatient.type ? ` · ${selectedPatient.type}` : ''}</p>
+                  {selectedPatient.phone && <p className="mt-2 text-xs">{selectedPatient.phone}</p>}
+                </div>
+                <dl className="space-y-4 px-2 py-4 text-xs">
+                  <div className="flex gap-2.5"><CalendarIcon className="h-4 w-4 shrink-0 text-saivie-sage" /><div><dt className="text-white/70">LMP</dt><dd className="mt-1 font-medium">{selectedPatient.lmp ? new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Not recorded'}</dd></div></div>
+                  <div className="flex gap-2.5"><Timer className="h-4 w-4 shrink-0 text-saivie-sage" /><div><dt className="text-white/70">Cycle length</dt><dd className="mt-1 font-medium">{selectedPatient.cycleLength ? `${selectedPatient.cycleLength} days` : 'Not recorded'}</dd></div></div>
+                  {showPregnancyContext && <div className="flex gap-2.5"><Baby className="h-4 w-4 shrink-0 text-saivie-sage" /><div><dt className="text-white/70">Pregnancy · LMP estimate</dt><dd className="mt-1 font-medium">{pregnancyContext ? `${pregnancyContext.weeks}w ${pregnancyContext.days}d · EDD ${pregnancyContext.dueDate}` : 'Valid LMP required'}</dd></div></div>}
+                  <div className="flex gap-2.5"><Heart className="h-4 w-4 shrink-0 text-saivie-sage" /><div><dt className="text-white/70">Blood group</dt><dd className="mt-1 font-medium">{selectedPatient.bloodGroup || selectedPatient.history?.obstetric?.bloodGroup || 'Not recorded'}</dd></div></div>
+                  <div className="flex gap-2.5"><Shield className="h-4 w-4 shrink-0 text-saivie-sage" /><div><dt className="text-white/70">Allergies</dt><dd className="mt-1 font-medium">{selectedPatient.history?.allergies?.join(', ') || 'Not recorded'}</dd></div></div>
+                </dl>
+                <button type="button" className="mb-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-left text-rose-800" onClick={() => selectedPatient.riskScore ? setRiskDialogPatient(selectedPatient) : openRecordSection('patient-history')}>
+                  <span className="flex items-center gap-2 text-[11px] font-semibold"><AlertTriangle className="h-4 w-4" />Clinical risk <ChevronRight className="ml-auto h-3 w-3" /></span>
+                  <span className="mt-1.5 block text-xs">{selectedPatient.riskScore?.level || (selectedPatient.status === 'High Risk' ? 'High' : 'Not recorded')}</span>
+                  {(selectedPatient.riskScore?.summary || selectedPatient.riskScore?.factors?.[0]?.factor) && <span className="mt-1 block text-[10px] line-clamp-3">{selectedPatient.riskScore.summary || selectedPatient.riskScore.factors[0].factor}</span>}
+                </button>
+                <Card className="mb-3 rounded-lg border-saivie-border bg-saivie-ivory p-3 shadow-none">
+                  <VitalsSparklineGrid vitals={activeAppointment?.vitals || selectedPatient.appointmentVitals || null} bpLogs={bpLogsData} weightLogs={weightLogs} onAdoptVitals={(summary) => {
+                    setSoapObjectiveDraft((current) => [current, summary].filter(Boolean).join('\n'));
+                    toast({ title: 'Vitals added to examination' });
+                  }} />
+                </Card>
+                <Card className="rounded-lg border-saivie-border bg-saivie-ivory shadow-none">
+                  <CardHeader className="px-3 py-3"><CardTitle className="text-xs text-saivie-teal">Key Clinical Context</CardTitle></CardHeader>
+                  <CardContent className="space-y-1 px-2 pb-3">
+                    <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => openRecordSection('patient-history')}><History className="h-4 w-4" /><span>Previous visits<span className="mt-0.5 block text-[10px] text-saivie-plum">{previousVisit?.date ? String(previousVisit.date).slice(0, 10) : 'None recorded'}</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
+                    <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setConsultationStep('explore')}><ClipboardList className="h-4 w-4" /><span>Patient survey<span className="mt-0.5 block text-[10px] text-saivie-plum">{selectedDirections.length} topics selected</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
+                    <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => openRecordSection('patient-medications')}><Pill className="h-4 w-4" /><span>Current medications<span className="mt-0.5 block text-[10px] text-saivie-plum">{medications.filter((med: any) => String(med.status).toLowerCase() === 'active').length} active</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
+                    <div className="border-t border-saivie-border px-1 pt-2"><IntakeSummaryActions patient={surveyPatient} weightLogs={weightLogs} bpLogs={bpLogsData} /></div>
+                  </CardContent>
+                </Card>
+              </aside>
+            )}
             {/* Background for Detail View */}
             <div 
               className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none"
@@ -4428,13 +4498,13 @@ export default function ClinicianPortal() {
           
             {/* 1. STICKY PATIENT CONTEXT HEADER */}
             <header className="bg-saivie-ivory border-b border-saivie-border shrink-0 z-10 shadow-sm relative w-full">
-              <div className="flex items-center justify-between px-5 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
                  <div className="flex items-center gap-4">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setActiveView('patient_list')} aria-label="Back to patients">
                         <ChevronRight className="w-4 h-4 text-saivie-plum rotate-180" />
                     </Button>
                     <div className="flex items-center gap-3">
-                       <Avatar className="h-9 w-9 border border-saivie-border bg-saivie-sage text-saivie-plum text-sm">
+                       <Avatar className={`h-9 w-9 border border-saivie-border bg-saivie-sage text-saivie-plum text-sm ${patientDetailTab === 'consultation' ? 'lg:hidden' : ''}`}>
                           <AvatarFallback>{selectedPatient.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback>
                        </Avatar>
                        <div>
@@ -4466,7 +4536,7 @@ export default function ClinicianPortal() {
 
                  <div className="flex items-center gap-3">
                     <Select value={careMode} onValueChange={setCareMode}>
-                      <SelectTrigger className="h-7 text-[11px] bg-blue-50/80 border-blue-200 w-[170px] font-semibold text-blue-700">
+                      <SelectTrigger className="h-8 text-[11px] bg-saivie-ivory border-saivie-border w-[170px] font-semibold text-saivie-teal">
                         <SelectValue placeholder="Select Pathway" />
                       </SelectTrigger>
                       <SelectContent>
@@ -4515,7 +4585,7 @@ export default function ClinicianPortal() {
               </div>
 
               {/* Dynamic context strip */}
-              <div className="flex items-center gap-3 px-5 py-1.5 bg-saivie-surface-muted/80 border-t border-saivie-border text-[11px] text-saivie-plum overflow-x-auto">
+              <div className={`${patientDetailTab === 'consultation' ? 'hidden' : 'flex'} items-center gap-3 px-5 py-1.5 bg-saivie-surface-muted/80 border-t border-saivie-border text-[11px] text-saivie-plum overflow-x-auto`}>
                  {selectedPatient.lmp && (
                    <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">LMP</span> {new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                  )}
@@ -4560,7 +4630,7 @@ export default function ClinicianPortal() {
                    <span className="whitespace-nowrap"><span className="font-semibold text-saivie-plum">Next</span> {selectedPatient.nextReview}</span>
                  )}
               </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 border-t border-amber-100 bg-[#fffaf2] text-[10px]">
+              <div className={`${patientDetailTab === 'consultation' ? 'hidden' : 'flex'} flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 border-t border-amber-100 bg-[#fffaf2] text-[10px]`}>
                 <span className="flex items-center gap-2 font-semibold text-saivie-plum"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700"><AlertCircle className="h-3 w-3" /></span>Clinical attention</span>
                 <span className={`${selectedPatient.riskScore?.level === 'Critical' || selectedPatient.riskScore?.level === 'High' || selectedPatient.status === 'High Risk' ? 'text-rose-700' : 'text-saivie-plum'}`}>
                   {selectedPatient.riskScore?.level ? `${selectedPatient.riskScore.level} risk score recorded` : selectedPatient.status === 'High Risk' ? 'High-risk status recorded' : selectedPatient.status === 'Monitor' ? 'Monitoring status recorded' : 'No risk flag recorded'}
@@ -4571,89 +4641,53 @@ export default function ClinicianPortal() {
                 <button type="button" onClick={() => setPatientDetailTab('record')} className="ml-auto text-saivie-teal font-semibold hover:text-saivie-teal">View history</button>
               </div>
               <nav className="flex gap-1 px-5 py-2 border-t border-saivie-border overflow-x-auto" aria-label="Patient workspace sections">
+                <button type="button" className="flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-xs font-medium text-saivie-teal" onClick={() => openRecordSection('patient-history')}><ClipboardList className="h-3.5 w-3.5" />Summary</button>
+                <button type="button" onClick={() => setPatientDetailTab('consultation')} aria-current={patientDetailTab === 'consultation' ? 'page' : undefined} className={`shrink-0 border-b-2 px-3 py-2 text-xs font-semibold ${patientDetailTab === 'consultation' ? 'border-saivie-teal text-saivie-teal' : 'border-transparent text-saivie-plum'}`}>Consultation</button>
+                <button type="button" className="flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs text-saivie-teal" onClick={() => { setPatientDetailTab('consultation'); requestAnimationFrame(() => document.getElementById('consultation-vitals-trends')?.scrollIntoView({ block: 'center', behavior: 'smooth' })); }}><Activity className="h-3.5 w-3.5" />Vitals &amp; Trends</button>
+                <button type="button" className="flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs text-saivie-teal" onClick={() => { setPatientDetailTab('consultation'); setConsultationStep('plan'); }}><FileText className="h-3.5 w-3.5" />Care Plan</button>
+                <button type="button" className="flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs text-saivie-teal" onClick={() => openRecordSection('patient-history')}><History className="h-3.5 w-3.5" />Medical History</button>
+                <button type="button" className="flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs text-saivie-teal" onClick={() => openRecordSection('patient-medications')}><Pill className="h-3.5 w-3.5" />Medications</button>
+                <button type="button" className="flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs text-saivie-teal" onClick={() => openRecordSection('patient-allergies')}><Shield className="h-3.5 w-3.5" />Allergies</button>
                 {[
-                  { id: 'consultation' as const, label: 'Consultation' },
                   { id: 'record' as const, label: 'Record' },
                   { id: 'postop' as const, label: 'Post-Op' },
                   { id: 'genome' as const, label: 'Genome' },
                 ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setPatientDetailTab(tab.id)}
-                    aria-current={patientDetailTab === tab.id ? 'page' : undefined}
-                    className={`shrink-0 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${patientDetailTab === tab.id ? 'bg-saivie-surface-muted text-saivie-teal' : 'text-saivie-plum hover:bg-saivie-surface-muted hover:text-saivie-plum'}`}
-                  >
-                    {tab.label}
-                  </button>
+                  <button key={tab.id} type="button" onClick={() => setPatientDetailTab(tab.id)} aria-current={patientDetailTab === tab.id ? 'page' : undefined} className={`shrink-0 border-b-2 px-3 py-2 text-xs font-semibold ${patientDetailTab === tab.id ? 'border-saivie-teal text-saivie-teal' : 'border-transparent text-saivie-plum'}`}>{tab.label}</button>
                 ))}
               </nav>
             </header>
 
             {patientDetailTab === 'consultation' && (
-              <div className="flex-1 overflow-y-auto bg-saivie-surface-muted p-3 sm:p-5">
-                <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_300px] gap-4">
-                  {/* COLUMN 1: CHECK-IN INTAKE & VITALS (Reference Image 2) */}
-                  <aside className="space-y-4">
-                    {/* Check-in Vitals 2x2 Sparkline Card */}
-                    <Card className="border border-saivie-border bg-saivie-ivory rounded-lg p-3 shadow-sm">
-                      <VitalsSparklineGrid
-                        vitals={activeAppointment?.vitals || (selectedPatient as any).appointmentVitals || null}
-                        bpLogs={bpLogsData}
-                        weightLogs={weightLogs}
-                        onAdoptVitals={(summaryText) => {
-                          setSoapObjectiveDraft((prev) => prev ? `${prev}\n${summaryText}` : summaryText);
-                          toast({
-                            title: "Vitals Adopted",
-                            description: "Check-in vitals added to today's SOAP Objective note.",
-                          });
-                        }}
-                      />
-                    </Card>
-
-                    {/* Check-In Chief Complaint Card */}
-                    {(activeAppointment?.chiefComplaint || (selectedPatient as any).appointmentChiefComplaint || activeAppointment?.reason) && (
-                      <Card className="border border-saivie-border bg-saivie-ivory rounded-lg p-3 shadow-sm">
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <MessageSquare className="w-3.5 h-3.5 text-saivie-teal" />
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-saivie-plum">Check-In Complaint</span>
-                        </div>
-                        <p className="text-xs text-saivie-plum italic bg-saivie-surface-muted p-2 rounded border border-saivie-border">
-                          "{activeAppointment?.chiefComplaint || (selectedPatient as any).appointmentChiefComplaint || activeAppointment?.reason}"
-                        </p>
-                      </Card>
-                    )}
-
-                    {/* Patient Clinical Summary */}
-                    <Card className="border border-saivie-border bg-saivie-ivory rounded-lg p-3 shadow-sm space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-saivie-plum">Clinical Intake</span>
-                        <IntakeSummaryActions patient={selectedPatient} weightLogs={weightLogs} bpLogs={bpLogsData} />
-                      </div>
-                      <div className="text-[11px] text-saivie-plum space-y-1">
-                        <p><span className="font-semibold text-slate-500">History:</span> {selectedPatient.history?.medical?.join(', ') || 'None recorded'}</p>
-                        <p><span className="font-semibold text-slate-500">Allergies:</span> <span className={selectedPatient.history?.allergies?.length ? 'text-rose-600 font-semibold' : ''}>{selectedPatient.history?.allergies?.join(', ') || 'No known allergies'}</span></p>
-                      </div>
-                    </Card>
-                  </aside>
+              <>
+              <div className="min-h-0 flex-1 overflow-y-auto bg-saivie-surface-muted p-3">
+                <div className="mx-auto grid max-w-[1600px] grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+                  <details className="rounded-lg border border-saivie-border bg-saivie-ivory p-3 lg:hidden">
+                    <summary className="cursor-pointer text-xs font-semibold text-saivie-teal">Patient context &amp; vitals</summary>
+                    <div className="mt-3 space-y-3">
+                      <dl className="grid grid-cols-2 gap-3 text-xs text-saivie-plum">
+                        <div><dt className="font-semibold">LMP</dt><dd className="mt-1">{selectedPatient.lmp ? String(selectedPatient.lmp).slice(0, 10) : 'Not recorded'}</dd></div>
+                        <div><dt className="font-semibold">Cycle length</dt><dd className="mt-1">{selectedPatient.cycleLength ? `${selectedPatient.cycleLength} days` : 'Not recorded'}</dd></div>
+                        <div><dt className="font-semibold">Blood group</dt><dd className="mt-1">{selectedPatient.bloodGroup || selectedPatient.history?.obstetric?.bloodGroup || 'Not recorded'}</dd></div>
+                      </dl>
+                      <p className="text-xs text-saivie-plum">Allergies: {selectedPatient.history?.allergies?.join(', ') || 'Not recorded'}</p>
+                      <p className="text-xs text-saivie-plum">Risk: {selectedPatient.riskScore?.level || (selectedPatient.status === 'High Risk' ? 'High' : 'Not recorded')}</p>
+                      {showPregnancyContext && <p className="text-xs text-saivie-plum">{pregnancyContext ? `${pregnancyContext.weeks}w ${pregnancyContext.days}d · EDD ${pregnancyContext.dueDate} (LMP estimate)` : 'Valid LMP required for pregnancy dating'}</p>}
+                      <VitalsSparklineGrid vitals={activeAppointment?.vitals || selectedPatient.appointmentVitals || null} bpLogs={bpLogsData} weightLogs={weightLogs} onAdoptVitals={(summary) => setSoapObjectiveDraft((current) => [current, summary].filter(Boolean).join('\n'))} />
+                      <IntakeSummaryActions patient={surveyPatient} weightLogs={weightLogs} bpLogs={bpLogsData} />
+                    </div>
+                  </details>
 
                   {/* COLUMN 2: CLINICAL WORKSPACE & SPECIALTY CANVAS */}
-                  <section className="min-w-0 space-y-4">
-                    {/* Active Medications Strip (Reference Image 2) */}
-                    <Card className="border border-saivie-border bg-saivie-ivory rounded-lg p-3 shadow-sm">
-                      <ActiveMedicationCards
-                        medications={medications}
-                        onAddPrescription={() => setConsultationStep('plan')}
-                      />
-                    </Card>
-                    <nav className="grid grid-cols-5 gap-1 mb-4" aria-label="Consultation journey">
+                  <section className="min-w-0 rounded-lg border border-saivie-border bg-saivie-ivory shadow-sm">
+                    <nav className="grid grid-cols-5 gap-1 border-b border-saivie-border px-3 pt-2" aria-label="Consultation journey">
                       {consultationSteps.map((step, index) => (
                         <button
                           key={step.id}
                           type="button"
                           onClick={() => setConsultationStep(step.id)}
                           aria-current={consultationStep === step.id ? 'step' : undefined}
-                          className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 border-b-2 px-1 sm:px-3 py-2 text-[10px] sm:text-xs font-semibold transition-colors ${consultationStep === step.id ? 'border-saivie-teal text-saivie-teal' : 'border-transparent text-saivie-plum hover:text-saivie-plum'}`}
+                          className={`flex flex-col items-center justify-center gap-1 border-b-2 px-1 py-2 text-[9px] font-semibold transition-colors sm:flex-row sm:justify-start sm:text-[10px] xl:gap-2 xl:px-2 ${consultationStep === step.id ? 'border-saivie-teal text-saivie-teal' : 'border-transparent text-saivie-plum hover:text-saivie-plum'}`}
                           data-testid={`consultation-step-${step.id}`}
                         >
                           <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] ${consultationStep === step.id ? 'bg-saivie-teal text-white' : 'bg-saivie-sage text-saivie-plum'}`}>{index + 1}</span>
@@ -4662,15 +4696,15 @@ export default function ClinicianPortal() {
                       ))}
                     </nav>
 
-                    <div className="bg-saivie-ivory border border-saivie-border rounded-lg overflow-hidden shadow-sm">
-                      <div className="px-4 sm:px-6 py-4 border-b border-saivie-border flex items-center justify-between gap-3">
+                    <div className="overflow-hidden">
+                      <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-5 sm:px-5">
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-saivie-teal">Step {consultationSteps.findIndex((step) => step.id === consultationStep) + 1} of 5 · Current visit</p>
-                          <h3 className="mt-1 text-base sm:text-lg font-semibold text-saivie-plum">
+                          <h3 className="flex items-center gap-2 text-sm font-semibold text-saivie-teal">
+                            <ClipboardList className="h-4 w-4" />
                             {consultationStep === 'reason' ? (isFollowUpVisit ? 'Follow-up' : 'Presenting concern') :
                              consultationStep === 'explore' ? 'Patient survey' :
                              consultationStep === 'examine' ? 'Examination' :
-                             consultationStep === 'evidence' ? 'Evidence' : 'Assessment & plan'}
+                             consultationStep === 'evidence' ? 'Assessment & evidence' : 'Plan'}
                           </h3>
                         </div>
                         {consultationStep === 'reason' && (
@@ -4680,7 +4714,7 @@ export default function ClinicianPortal() {
                         )}
                       </div>
 
-                      <div className="p-4 sm:p-6 min-h-[360px]">
+                      <div className="min-h-[280px] p-4 sm:px-5">
                         {consultationStep === 'reason' && (
                           <div className="space-y-5">
                             {isFollowUpVisit && previousVisit && (
@@ -4705,11 +4739,18 @@ export default function ClinicianPortal() {
                                 value={soapSubjectiveDraft}
                                 onChange={(event) => setSoapSubjectiveDraft(event.target.value)}
                                 placeholder="Concern and history"
-                                className="mt-3 min-h-[112px] border-saivie-border text-sm"
+                                className="mt-2 min-h-[96px] border-saivie-border text-sm"
                                 data-testid="input-consultation-first-impression"
                               />
                               {soapTranscript && <p className="mt-2 text-xs text-emerald-700">Dictation draft</p>}
                             </div>
+                            {(activeAppointment?.chiefComplaint || selectedPatient.appointmentChiefComplaint || activeAppointment?.reason) && (
+                              <div className="rounded-lg border border-saivie-border bg-saivie-surface-muted/50 p-3">
+                                <p className="flex items-center gap-1.5 text-xs font-semibold text-saivie-teal"><MessageSquare className="h-3.5 w-3.5" />Patient-reported concern</p>
+                                <p className="mt-2 text-xs leading-relaxed text-saivie-plum">{activeAppointment?.chiefComplaint || selectedPatient.appointmentChiefComplaint || activeAppointment?.reason}</p>
+                                {selectedDirections.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{selectedDirections.map((direction) => <button type="button" key={direction} onClick={() => setConsultationStep('explore')} className="rounded-md border border-saivie-teal/30 bg-saivie-sage/40 px-2.5 py-1.5 text-[11px] font-medium text-saivie-teal">{direction}<Check className="ml-1 inline h-3 w-3" /></button>)}</div>}
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -4753,6 +4794,9 @@ export default function ClinicianPortal() {
 
                         {consultationStep === 'evidence' && (
                           <div className="space-y-5">
+                            <label className="block text-xs font-semibold text-saivie-plum">Working assessment
+                              <Textarea id="input-consultation-assessment" value={soapAssessmentDraft} onChange={(event) => setSoapAssessmentDraft(event.target.value)} placeholder="Working assessment and clinical reasoning…" className="mt-1.5 min-h-[92px] text-sm font-normal" data-testid="input-consultation-assessment" />
+                            </label>
                             <div>
                               <p className="text-sm font-semibold text-saivie-plum">Available evidence</p>
                               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -4793,24 +4837,15 @@ export default function ClinicianPortal() {
                                 <FileText className="mr-1.5 h-3.5 w-3.5" />{consultationContextAdded ? 'Refresh reviewed context in plan' : 'Add reviewed context to plan'}
                               </Button>
                             )}
-                            <label className="block text-xs font-semibold text-saivie-plum">Working assessment
-                              <Textarea value={soapAssessmentDraft} onChange={(event) => setSoapAssessmentDraft(event.target.value)} placeholder="Your working assessment, uncertainty, and clinical reasoning..." className="mt-1.5 min-h-[92px] text-sm font-normal" data-testid="input-consultation-assessment" />
-                            </label>
+                            {soapAssessmentDraft && <p className="text-xs text-saivie-plum"><span className="font-semibold">Assessment:</span> {soapAssessmentDraft}</p>}
                             <label className="block text-xs font-semibold text-saivie-plum">Plan, advice, follow-up, and safety-net
                               <Textarea value={soapPlanDraft} onChange={(event) => setSoapPlanDraft(event.target.value)} placeholder="Medication, investigations, advice, follow-up, and when to seek urgent care..." className="mt-1.5 min-h-[120px] text-sm font-normal" data-testid="input-consultation-plan" />
                             </label>
-                            <p className="text-[10px] text-saivie-plum">Unsaved draft</p>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Button type="button" onClick={saveConsultationNote} disabled={soapSaving || ![soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft].some((value) => value.trim())} data-testid="button-save-consultation-note">
-                                <Save className="mr-1.5 h-3.5 w-3.5" />{soapSaving ? 'Saving…' : 'Save clinician-reviewed note'}
-                              </Button>
-                              {soapSavedMsg && <span className={`text-xs ${soapSavedMsg.startsWith('Failed') ? 'text-rose-700' : 'text-emerald-700'}`} role="status">{soapSavedMsg}</span>}
-                            </div>
                           </div>
                         )}
                       </div>
 
-                      <div className="px-4 sm:px-6 py-3 border-t border-saivie-border flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-between gap-2 border-t border-saivie-border px-4 py-2">
                         <Button type="button" variant="ghost" size="sm" onClick={() => setConsultationStep(consultationSteps[Math.max(0, consultationSteps.findIndex((step) => step.id === consultationStep) - 1)].id)} disabled={consultationStep === 'reason'}>Back</Button>
                         <Button type="button" size="sm" onClick={() => setConsultationStep(consultationSteps[Math.min(consultationSteps.length - 1, consultationSteps.findIndex((step) => step.id === consultationStep) + 1)].id)} disabled={consultationStep === 'plan'}>
                           {consultationStep === 'reason' ? 'Survey' :
@@ -4818,11 +4853,14 @@ export default function ClinicianPortal() {
                            consultationStep === 'examine' ? 'Evidence' : 'Plan'} <ChevronRight className="ml-1 h-3.5 w-3.5" />
                         </Button>
                       </div>
+                      <div id="consultation-vitals-trends" className="border-t border-saivie-border bg-saivie-surface-muted/30 p-3">
+                        {bpLogsQuery.isError ? <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800" role="alert">Unable to load blood pressure trends. <button type="button" className="ml-1 underline" onClick={() => void bpLogsQuery.refetch()}>Retry</button></div> : bpLogsQuery.isLoading ? <p role="status" className="p-4 text-xs text-saivie-plum">Loading blood pressure trends…</p> : <ConsultationVitalsTrends logs={bpLogsData} />}
+                      </div>
                     </div>
                   </section>
 
                   {/* COLUMN 3: ORDERS & ACTION RAIL (Reference Image 1) */}
-                  <aside className="space-y-3">
+                  <aside className="min-w-0 space-y-3" aria-label="Clinical copilot">
                     {/* Action Header Card */}
                     <Card className="border border-saivie-border bg-saivie-ivory rounded-lg p-3.5 shadow-sm space-y-2.5">
                       <div className="flex items-center justify-between">
@@ -4868,12 +4906,15 @@ export default function ClinicianPortal() {
                     <Card className="shadow-none border-saivie-border rounded-lg overflow-hidden">
                       <CardHeader className="py-3 px-4 border-b border-saivie-border flex flex-row items-center gap-2">
                         <span className="flex h-7 w-7 items-center justify-center rounded-md bg-saivie-surface-muted text-saivie-teal"><Sparkles className="h-3.5 w-3.5" /></span>
-                        <div className="min-w-0"><p className="text-[9px] font-semibold uppercase tracking-wider text-saivie-teal">Clinical copilot</p><CardTitle className="text-xs font-semibold text-saivie-plum">Visit support</CardTitle></div>
+                        <CardTitle className="text-xs font-semibold text-saivie-teal">Clinical Copilot</CardTitle>
+                        <button type="button" aria-label={copilotExpanded ? 'Collapse clinical copilot' : 'Expand clinical copilot'} aria-expanded={copilotExpanded} className="ml-auto p-1 text-saivie-teal" onClick={() => setCopilotExpanded((current) => !current)}><ChevronDown className={`h-3.5 w-3.5 ${copilotExpanded ? 'rotate-180' : ''}`} /></button>
                       </CardHeader>
-                      <CardContent className="p-3 space-y-3">
-                        <div>
-                          <p className="text-[9px] font-semibold uppercase tracking-wide text-saivie-plum">First impression</p>
-                          <p className="mt-1 text-[10px] leading-relaxed text-saivie-plum line-clamp-3">{soapSubjectiveDraft || 'Add the patient’s concern to begin.'}</p>
+                      {copilotExpanded && <CardContent className="p-3 space-y-3">
+                        <div className="space-y-1">
+                          <p className="mb-2 text-[10px] font-semibold text-saivie-teal">Next steps</p>
+                          <button type="button" className="flex w-full items-center gap-2 border-b border-saivie-border py-2 text-left text-xs text-saivie-teal" onClick={() => setConsultationStep('explore')}><User className="h-4 w-4 shrink-0" /><span>Review patient survey<span className="mt-1 block text-[10px] text-saivie-plum">{answeredGuidedQuestionCount} answers · {selectedDirections.length} topics</span></span><ChevronRight className="ml-auto h-3 w-3 shrink-0" /></button>
+                          <button type="button" className="flex w-full items-center gap-2 border-b border-saivie-border py-2 text-left text-xs text-saivie-teal" onClick={() => openRecordSection('patient-investigations')}><ClipboardList className="h-4 w-4 shrink-0" /><span>Review investigations<span className="mt-1 block text-[10px] text-saivie-plum">{labResults.length} reports on file</span></span><ChevronRight className="ml-auto h-3 w-3 shrink-0" /></button>
+                          <button type="button" className="flex w-full items-center gap-2 py-2 text-left text-xs text-saivie-teal" onClick={() => setConsultationStep('plan')}><FileText className="h-4 w-4 shrink-0" /><span>Review visit plan</span><ChevronRight className="ml-auto h-3 w-3 shrink-0" /></button>
                         </div>
                         <div className="border-t border-saivie-border pt-2">
                           <p className="text-[9px] font-semibold uppercase tracking-wide text-saivie-plum">Patient-selected topics</p>
@@ -4890,56 +4931,67 @@ export default function ClinicianPortal() {
                           </div>
                         )}
                         <Button type="button" variant="ghost" size="sm" className="h-7 w-full justify-between px-1 text-[10px] text-saivie-teal" onClick={() => setConsultationStep('evidence')}>Review evidence <ChevronRight className="h-3 w-3" /></Button>
-                      </CardContent>
+                      </CardContent>}
                     </Card>
 
                     <Card className="shadow-none border-saivie-border rounded-lg">
-                      <CardHeader className="py-3 px-4 border-b border-saivie-border flex flex-row items-center justify-between">
-                        <CardTitle className="text-xs font-semibold text-saivie-plum">Active medications</CardTitle>
-                        <Badge variant="outline" className="text-[10px]">{medications.filter((med: any) => String(med.status || '').toLowerCase() === 'active').length}</Badge>
+                      <CardHeader className="border-b border-saivie-border px-3 py-3">
+                        <CardTitle className="flex items-center gap-2 text-xs text-saivie-teal"><Clock className="h-3.5 w-3.5" />Recent patient activity</CardTitle>
                       </CardHeader>
-                      <CardContent className="p-0">
-                        {medications.filter((med: any) => String(med.status || '').toLowerCase() === 'active').slice(0, 5).map((med: any) => <div key={med.id} className="px-4 py-2.5 border-b border-saivie-border last:border-0"><p className="text-xs font-medium text-saivie-plum">{med.name} {med.dose}</p><p className="text-[10px] text-saivie-plum">{med.frequency || med.notes || 'Active'}</p></div>)}
-                        {medications.filter((med: any) => String(med.status || '').toLowerCase() === 'active').length === 0 && <p className="px-4 py-3 text-xs text-saivie-plum">No active medications recorded.</p>}
+                      <CardContent className="space-y-3 p-3 text-[11px] text-saivie-plum">
+                        <div className="flex gap-2"><CalendarIcon className="h-3.5 w-3.5 shrink-0 text-saivie-teal" /><div><p className="font-medium text-saivie-teal">LMP recorded</p><p className="mt-1">{selectedPatient.lmp ? String(selectedPatient.lmp).slice(0, 10) : 'Not recorded'}</p></div></div>
+                        <div className="flex gap-2"><History className="h-3.5 w-3.5 shrink-0 text-saivie-teal" /><div><p className="font-medium text-saivie-teal">Previous visit</p><p className="mt-1">{previousVisit?.date ? String(previousVisit.date).slice(0, 10) : 'None recorded'}</p></div></div>
                       </CardContent>
                     </Card>
 
-                    <Card className="shadow-none border-saivie-border rounded-lg">
-                      <CardHeader className="py-3 px-4 border-b border-saivie-border flex flex-row items-center justify-between">
-                        <CardTitle className="flex items-center gap-1.5 text-xs font-semibold text-saivie-plum"><CalendarIcon className="h-3.5 w-3.5 text-saivie-teal" />Cycle overview</CardTitle>
-                        <span className="text-[10px] text-saivie-plum">{selectedPatient.cycleDay ? `CD ${selectedPatient.cycleDay}` : 'Cycle day —'}</span>
+                    <Card className="shadow-none border-saivie-border rounded-lg" data-testid="consultation-quick-actions">
+                      <CardHeader className="px-3 pb-2 pt-3">
+                        <CardTitle className="flex items-center gap-2 text-xs text-saivie-teal"><Users className="h-3.5 w-3.5" />Quick actions</CardTitle>
                       </CardHeader>
                       <CardContent className="p-3">
-                        {showPregnancyContext ? (
-                          pregnancyContext ? (
-                            <>
-                              <div className="flex items-end justify-between gap-2"><div><p className="text-xl font-semibold text-saivie-plum">{pregnancyContext.weeks}w {pregnancyContext.days}d</p><p className="text-[10px] text-saivie-teal">{pregnancyContext.trimester}</p></div><span className="text-[9px] text-saivie-plum">LMP-derived estimate</span></div>
-                              <p className="mt-2 text-[10px] text-saivie-plum">Estimated due date: {pregnancyContext.dueDate}</p>
-                            </>
-                          ) : <p className="text-[10px] text-amber-700">A valid LMP is needed to estimate gestational age and trimester.</p>
-                        ) : (
-                          <>
-                            <p className="text-[10px] text-saivie-plum">{selectedPatient.lmp ? `LMP ${new Date(selectedPatient.lmp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : 'Last menstrual period not recorded'}</p>
-                            {selectedPatient.cycleLength && <p className="mt-1 text-[10px] text-saivie-plum">Recorded cycle length: {selectedPatient.cycleLength} days</p>}
-                            {selectedPatient.cycleDay && selectedPatient.cycleLength && <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-saivie-sage"><div className="h-full rounded-full bg-saivie-sage" style={{ width: `${Math.min(100, selectedPatient.cycleDay / selectedPatient.cycleLength * 100)}%` }} /></div>}
-                            <p className="mt-2 text-[9px] text-saivie-plum">No cycle length is assumed when it is not on file.</p>
-                          </>
-                        )}
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setShowAddInvestigation(true); openRecordSection('patient-investigations'); }} data-testid="quick-action-tests"><FlaskConical className="h-4 w-4" />Order tests</button>
+                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setConsultationStep('evidence'); requestAnimationFrame(() => document.getElementById('input-consultation-assessment')?.focus()); }} data-testid="quick-action-diagnosis"><Stethoscope className="h-4 w-4" />Add diagnosis</button>
+                          <button type="button" className="flex flex-col items-center gap-2 rounded-md border border-saivie-border px-1 py-2.5 text-[10px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setShowAddMedRow(true); openRecordSection('patient-medications'); }} data-testid="quick-action-medication"><Pill className="h-4 w-4" />Add medication</button>
+                        </div>
+                        <div className="mt-4 flex justify-between text-[10px] font-semibold text-saivie-teal"><span>Documentation progress</span><span>{consultationChecklist.filter((item) => item.done).length}/5</span></div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-saivie-sage" role="progressbar" aria-label="Documentation progress" aria-valuemin={0} aria-valuemax={5} aria-valuenow={consultationChecklist.filter((item) => item.done).length}><div className="h-full rounded-full bg-saivie-teal transition-all" style={{ width: `${consultationChecklist.filter((item) => item.done).length * 20}%` }} /></div>
+                        <div className="mt-3 space-y-1">
+                          {consultationChecklist.map((item, index) => <button type="button" key={item.label} className="flex w-full items-center gap-2 py-1 text-left text-[10px] text-saivie-plum" onClick={() => setConsultationStep(consultationSteps[index].id)}>{item.done ? <CheckCircle2 className="h-3 w-3 text-saivie-teal" /> : <Circle className="h-3 w-3 text-saivie-plum/40" />}{item.label === 'History' ? 'Patient survey submitted' : item.label}</button>)}
+                        </div>
                       </CardContent>
                     </Card>
-
-                    <Card className="shadow-none border-saivie-border rounded-lg">
-                      <CardHeader className="py-3 px-4 border-b border-saivie-border"><CardTitle className="text-xs font-semibold text-saivie-plum">Recent reports</CardTitle></CardHeader>
-                      <CardContent className="p-0">
-                        {labResults.slice(-4).reverse().map((result: any, index: number) => <div key={result.id || `${result.testName}-${index}`} className="px-4 py-2.5 border-b border-saivie-border last:border-0"><p className="text-xs font-medium text-saivie-plum">{result.testName}</p><p className="text-[10px] text-saivie-plum">{result.value}{result.unit ? ` ${result.unit}` : ''}{result.status ? ` · ${result.status}` : ''}</p></div>)}
-                        {labResults.length === 0 && <p className="px-4 py-3 text-xs text-saivie-plum">No laboratory reports recorded.</p>}
-                      </CardContent>
-                    </Card>
-
-                    <Button type="button" className="w-full bg-saivie-teal hover:bg-saivie-teal" onClick={() => setConsultationStep('plan')} data-testid="button-review-visit-plan"><FileText className="mr-1.5 h-3.5 w-3.5" />Review &amp; complete visit</Button>
                   </aside>
                 </div>
               </div>
+              <footer className="z-10 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-saivie-border bg-saivie-ivory px-3 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.03)]" data-testid="consultation-save-bar">
+                <p className={`min-w-0 text-[11px] ${soapSavedMsg?.startsWith('Failed') ? 'text-rose-700' : 'text-saivie-teal'}`} role="status" data-testid="consultation-save-status">{soapSaving ? 'Saving…' : soapSavedMsg?.startsWith('Failed') ? soapSavedMsg : consultationNoteSaved ? <><Check className="mr-1 inline h-3.5 w-3.5" />Saved to visit record</> : consultationCanSave ? 'Unsaved changes' : 'No note saved yet'}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="outline" size="sm" className="h-8 text-[11px] text-saivie-teal" onClick={saveConsultationNote} disabled={soapSaving || !consultationCanSave} data-testid="button-save-consultation-note"><Save className="mr-1.5 h-3.5 w-3.5" />Save note</Button>
+                  <Button type="button" variant="outline" size="sm" className="h-8 text-[11px] text-saivie-teal" onClick={() => setNotePreviewOpen(true)} data-testid="button-preview-consultation-note"><Eye className="mr-1.5 h-3.5 w-3.5" />Preview note</Button>
+                  <Button type="button" size="sm" className="h-8 bg-saivie-teal text-[11px] hover:bg-saivie-teal/90" disabled={soapSaving || !consultationCanSave} onClick={async () => {
+                    if (await saveConsultationNote()) {
+                      const next = consultationSteps.findIndex((step) => step.id === consultationStep) + 1;
+                      if (next < consultationSteps.length) setConsultationStep(consultationSteps[next].id);
+                      else setNotePreviewOpen(true);
+                    }
+                  }} data-testid="button-save-continue">Save &amp; Continue<ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button>
+                </div>
+              </footer>
+              <Dialog open={notePreviewOpen} onOpenChange={setNotePreviewOpen}>
+                <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+                  <DialogHeader><DialogTitle>Consultation note · {selectedPatient.name}</DialogTitle><DialogDescription>{consultationNoteSaved ? 'Saved to visit record' : 'Unsaved preview'}</DialogDescription></DialogHeader>
+                  <div className="space-y-4">
+                    {[
+                      { label: 'Subjective', value: soapSubjectiveDraft },
+                      { label: 'Objective', value: soapObjectiveDraft },
+                      { label: 'Assessment', value: soapAssessmentDraft },
+                      { label: 'Plan', value: soapPlanDraft },
+                    ].map((section) => <section key={section.label}><h4 className="text-xs font-semibold text-saivie-teal">{section.label}</h4><p className="mt-1 whitespace-pre-wrap break-words text-sm text-saivie-plum">{section.value || 'Not entered'}</p></section>)}
+                  </div>
+                </DialogContent>
+              </Dialog>
+              </>
             )}
 
             <div className={patientDetailTab === 'consultation' ? 'hidden' : 'flex-1 flex overflow-hidden z-0'}>
@@ -5057,7 +5109,7 @@ export default function ClinicianPortal() {
                 <div className="max-w-7xl mx-auto space-y-6">
                    
                    {/* PATIENT HISTORY SUMMARY */}
-                   <Card className="shadow-sm border-saivie-border">
+                   <Card className="shadow-sm border-saivie-border scroll-mt-3" id="patient-history">
                       <CardHeader className="py-3 px-4 border-b border-saivie-border bg-saivie-surface-muted/50">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -5149,7 +5201,7 @@ export default function ClinicianPortal() {
                                    )}
                               </div>
                                <div>
-                                   <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2 text-rose-600 border-b border-rose-100 pb-1">Allergies</h4>
+                                   <h4 id="patient-allergies" className="scroll-mt-3 text-xs font-bold text-saivie-plum uppercase mb-2 text-rose-600 border-b border-rose-100 pb-1">Allergies</h4>
                                    {editingHistory ? (
                                     <div className="space-y-1">
                                       {editHistoryData.allergies.map((item, i) => (
@@ -5850,6 +5902,7 @@ export default function ClinicianPortal() {
                                     </div>
                                   )}
 
+                                  <div id="patient-medications" className="scroll-mt-3">
                                   {/* Dynamic medications table */}
                                   {(medications.length > 0 || showAddMedRow) && (
                                     <div className="mb-3">
@@ -5992,6 +6045,7 @@ export default function ClinicianPortal() {
                                       </Button>
                                     </div>
                                   )}
+                                  </div>
 
                                   {/* Dynamic prescriptions from visit */}
                                   {latestVisit?.prescriptions && Array.isArray(latestVisit.prescriptions) && (latestVisit.prescriptions as any[]).length > 0 && (
@@ -6403,7 +6457,7 @@ export default function ClinicianPortal() {
                                    : [];
 
                                  return (
-                                   <div className="p-4 bg-saivie-surface-muted/30" data-testid="card-investigations">
+                                   <div id="patient-investigations" className="scroll-mt-3 p-4 bg-saivie-surface-muted/30" data-testid="card-investigations">
                                      <div className="flex items-center justify-between mb-3">
                                        <div className="flex items-center gap-2">
                                          <Badge className="bg-saivie-sage text-saivie-plum border-saivie-border text-[10px] font-bold h-5 w-5 flex items-center justify-center p-0 rounded">I</Badge>
