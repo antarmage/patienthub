@@ -4825,7 +4825,7 @@ Only include what is actually written. Do not invent anything.${catalogHint}`,
           const patientIds = todayAppts.map((a: any) => a.patientId);
           filtered = patients.filter((p: any) => patientIds.includes(p.id)).map((p: any) => {
             const appt = todayAppts.find((a: any) => a.patientId === p.id);
-            return { ...p, appointmentTime: appt?.time, appointmentType: appt?.type };
+            return { ...p, appointmentId: appt?.id, appointmentTime: appt?.time, appointmentType: appt?.type };
           });
           break;
         case 'referrals':
@@ -4874,6 +4874,7 @@ Only include what is actually written. Do not invent anything.${catalogHint}`,
           riskLevel: p.riskLevel || p.risk,
           appointmentTime: p.appointmentTime,
           appointmentType: p.appointmentType,
+          appointmentId: p.appointmentId,
           referralCount: p.referralCount,
         };
       });

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRoute, useLocation } from "wouter";
+import { Link, useRoute, useLocation } from "wouter";
 import { ArrowLeft, User, Phone, Mail, Heart, AlertTriangle, Clock, Baby, Dna, Activity, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
@@ -146,6 +146,7 @@ export default function PatientListByCategory() {
               <thead>
                 <tr className="border-b border-saivie-border bg-saivie-surface-muted/50">
                   <th className="text-left px-5 py-3 text-xs font-semibold text-saivie-plum uppercase tracking-wider">Patient</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-saivie-plum uppercase tracking-wider">Details</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-saivie-plum uppercase tracking-wider">Type</th>
                   {showPregnancyCols && (
                     <>
@@ -184,6 +185,16 @@ export default function PatientListByCategory() {
                           {p.age && <p className="text-xs text-saivie-plum">{p.age} years</p>}
                         </div>
                       </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <Link
+                        href={`/clinician?patientId=${encodeURIComponent(p.id)}${p.appointmentId ? `&appointmentId=${encodeURIComponent(p.appointmentId)}` : ''}`}
+                        className="inline-flex whitespace-nowrap rounded-full border border-saivie-teal px-3 py-1.5 text-xs font-semibold text-saivie-teal hover:bg-saivie-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saivie-teal"
+                        aria-label={`Open details for ${p.name}`}
+                        data-testid={`open-patient-${p.id}`}
+                      >
+                        Open details
+                      </Link>
                     </td>
                     <td className="px-5 py-4">
                       <Badge variant="outline" className="text-xs capitalize">{p.type || '—'}</Badge>

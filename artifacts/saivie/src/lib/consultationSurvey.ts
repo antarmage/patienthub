@@ -134,7 +134,7 @@ export function pathsForDirections(directions: string[]): string[] {
     return consultationPaths.filter((path) => consultationDirectionsByPath[path].some((direction) => directions.includes(direction)));
 }
 
-/** Doctor edits layered over the patient survey; undefined lists mean "use the survey selection". */
+/** Doctor edits layered over visit survey and recorded concern defaults. */
 export interface ConsultationSurveyEdits {
     paths?: string[];
     directions?: string[];
@@ -148,9 +148,9 @@ export interface EffectiveConsultationSurvey {
     fromPatient: (question: string) => boolean;
 }
 
-export function effectiveConsultationSurvey(survey: ConsultationSurvey, edits: ConsultationSurveyEdits): EffectiveConsultationSurvey {
+export function effectiveConsultationSurvey(survey: ConsultationSurvey, edits: ConsultationSurveyEdits, recordedPaths: string[] = []): EffectiveConsultationSurvey {
     const directions = edits.directions ?? survey.directions;
-    const paths = edits.paths ?? pathsForDirections(survey.directions);
+    const paths = edits.paths ?? [...new Set([...pathsForDirections(survey.directions), ...recordedPaths])];
     const answers = { ...survey.answers, ...edits.answers };
     return {
         paths,

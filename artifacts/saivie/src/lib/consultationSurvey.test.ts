@@ -88,3 +88,30 @@ it("preselects survey concern/directions and lets the doctor change or fill them
     }
     assert.equal(full.directions.length, 3);
 });
+
+it("preselects pregnancy on follow-up without carrying forward old survey answers", async () => {
+    const { effectiveConsultationSurvey, toggleConsultationPath } = await import("./consultationSurvey.ts");
+    const history = {
+        onboardingAppointmentId: 42,
+        onboarding: { consultation: { directions: ["Maternal symptoms"], answers: { "When did symptoms begin?": "Last week" } } },
+    };
+    const survey = consultationSurveyForVisit(history, 43);
+    const pregnancy = ["Pregnancy-related concern"];
+    const current = effectiveConsultationSurvey(survey, { answers: {} }, pregnancy);
+    assert.deepEqual(current.paths, pregnancy);
+    assert.deepEqual(current.directions, []);
+    assert.deepEqual(current.answers, {});
+    assert.equal(current.fromPatient("When did symptoms begin?"), false);
+    const edits = toggleConsultationPath(current, { answers: {} }, pregnancy[0]);
+    assert.deepEqual(effectiveConsultationSurvey(survey, edits, pregnancy).paths, []);
+    assert.deepEqual(effectiveConsultationSurvey(survey, { answers: {} }).paths, []);
+});
+
+it("keeps current survey concerns alongside pregnancy and avoids duplicate selection", async () => {
+    const { effectiveConsultationSurvey } = await import("./consultationSurvey.ts");
+    const pregnancy = ["Pregnancy-related concern"];
+    const survey = { directions: ["Pain timing and pattern", "Maternal symptoms"], answers: {} };
+    const current = effectiveConsultationSurvey(survey, { answers: {} }, pregnancy);
+    assert.deepEqual(current.paths, ["Pelvic pain", "Pregnancy-related concern"]);
+    assert.deepEqual(current.directions, survey.directions);
+});

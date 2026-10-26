@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { openPrescription } from "@/lib/prescriptionTemplate";
 import { MedicineAutocomplete } from "@/components/MedicineAutocomplete";
@@ -396,6 +396,8 @@ function GenomeInsightsPanel({ patientId, patientName }: { patientId: number; pa
 export default function ClinicianPortal() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const patientSearchParams = useSearch();
+  const openedPatientLink = React.useRef<string | null>(null);
   const [activeView, setActiveView] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 640);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
@@ -1311,7 +1313,9 @@ export default function ClinicianPortal() {
   const consultationSurvey = consultationSurveyForVisit(
     surveyPatient?.history, activeAppointment?.id || (selectedPatient as any)?.appointmentId,
   );
-  const effectiveSurvey = effectiveConsultationSurvey(consultationSurvey, consultationEdits);
+  const effectiveSurvey = effectiveConsultationSurvey(
+    consultationSurvey, consultationEdits, showPregnancyContext ? ['Pregnancy-related concern'] : [],
+  );
   const selectedPaths = effectiveSurvey.paths;
   const selectedDirections = effectiveSurvey.directions;
   const guidedAnswers = effectiveSurvey.answers;
@@ -1551,6 +1555,32 @@ export default function ClinicianPortal() {
     setSoapPlanDraft("");
     setPostVisitSummaryResult(null);
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(patientSearchParams);
+    const patientId = params.get('patientId');
+    const appointmentId = params.get('appointmentId');
+    if (!patientId || openedPatientLink.current === patientSearchParams || !patientsQuery.isSuccess) return;
+    if (appointmentId && !appointmentsQuery.isSuccess) return;
+    openedPatientLink.current = patientSearchParams;
+    const patient = patients.find((item: { id: number }) => String(item.id) === patientId);
+    const appointment = appointmentId ? appointments.find((item: { id: number; patientId: number }) =>
+      String(item.id) === appointmentId && String(item.patientId) === patientId,
+    ) : null;
+    if (!patient || (appointmentId && !appointment)) {
+      toast({ title: 'Unable to open details', description: !patient ? 'Patient not found in your directory.' : 'Appointment not found in the loaded schedule.', variant: 'destructive' });
+      return;
+    }
+    navigateToPatient(appointment ? {
+      ...patient,
+      appointmentId: appointment.id,
+      appointmentDate: appointment.date,
+      appointmentTime: appointment.time,
+      appointmentStatus: appointment.status,
+      appointmentVitals: appointment.vitals,
+      appointmentChiefComplaint: appointment.chiefComplaint,
+    } : patient);
+  }, [patientSearchParams, patientsQuery.isSuccess, appointmentsQuery.isSuccess, patients, appointments]);
 
   const toggleVoiceCapture = async () => {
     if (isRecording) {
@@ -4768,7 +4798,7 @@ export default function ClinicianPortal() {
                         {consultationStep === 'reason' && (
                           <div className="space-y-5">
                             <div data-testid="consultation-concern-options">
-                              <p className="mb-2 text-xs font-semibold text-saivie-plum">Concern {consultationEdits.paths === undefined && consultationSurvey.directions.length > 0 && <span className="ml-1 font-normal text-saivie-teal">· from survey</span>}</p>
+                              <p className="mb-2 text-xs font-semibold text-saivie-plum">Concern {consultationEdits.paths === undefined && <span className="ml-1 font-normal text-saivie-teal">{consultationSurvey.directions.length > 0 ? (showPregnancyContext ? '· survey + pregnancy context' : '· from survey') : showPregnancyContext ? '· pregnancy context' : ''}</span>}</p>
                               <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                                 {consultationPaths.map((path) => {
                                   const selected = selectedPaths.includes(path);
