@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ChevronRight, FileText } from "lucide-react";
+import { NoRecordsIllustration } from "./NoRecordsIllustration";
 
 type AnyRecord = Record<string, any>;
 
@@ -55,7 +56,12 @@ export function PatientVisitTimeline({ visits, isLoading, isError, onRetry }: { 
 
   if (isError) return <div role="alert" className="m-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800">Unable to load visits. {onRetry && <button type="button" className="ml-1 underline" onClick={onRetry}>Retry</button>}</div>;
   if (isLoading) return <p role="status" className="p-4 text-xs text-saivie-plum">Loading visits…</p>;
-  if (!sorted.length) return <p className="p-6 text-center text-xs text-saivie-plum" data-testid="visit-timeline-empty">No visits recorded</p>;
+  if (!sorted.length) return (
+    <div className="px-6 py-8 text-center text-xs text-saivie-plum" data-testid="visit-timeline-empty">
+      <NoRecordsIllustration decorative />
+      <p className="mt-2">No visits recorded</p>
+    </div>
+  );
 
   const visit = sorted.find((item) => item.id === selectedId) || sorted[0];
   const vitals: AnyRecord = visit.vitals && typeof visit.vitals === "object" ? visit.vitals : {};
