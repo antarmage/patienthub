@@ -4753,6 +4753,25 @@ export default function ClinicianPortal() {
                       <div className="min-h-[280px] p-4 sm:px-5">
                         {consultationStep === 'reason' && (
                           <div className="space-y-5">
+                            <div data-testid="consultation-concern-options">
+                              <p className="mb-2 text-xs font-semibold text-saivie-plum">Concern {consultationEdits.paths === undefined && consultationSurvey.directions.length > 0 && <span className="ml-1 font-normal text-saivie-teal">· from survey</span>}</p>
+                              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                                {consultationPaths.map((path) => {
+                                  const selected = selectedPaths.includes(path);
+                                  return <button key={path} type="button" aria-pressed={selected} onClick={() => setConsultationEdits((edits) => toggleConsultationPath(effectiveSurvey, edits, path))}
+                                    className={`flex min-h-[40px] items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-left text-[11px] font-medium ${selected ? 'border-saivie-teal bg-saivie-teal text-white' : 'border-saivie-border bg-saivie-ivory text-saivie-plum hover:bg-saivie-surface-muted'}`}
+                                    data-testid={`consultation-path-${path.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+                                    <span className="flex-1">{path}</span>{selected && <Check className="h-3.5 w-3.5 shrink-0" />}
+                                  </button>;
+                                })}
+                              </div>
+                            </div>
+                            {(activeAppointment?.chiefComplaint || selectedPatient.appointmentChiefComplaint || activeAppointment?.reason) && (
+                              <div className="rounded-lg border border-saivie-border bg-saivie-surface-muted/50 p-3">
+                                <p className="flex items-center gap-1.5 text-xs font-semibold text-saivie-teal"><MessageSquare className="h-3.5 w-3.5" />Patient-reported concern</p>
+                                <p className="mt-2 text-xs leading-relaxed text-saivie-plum">{activeAppointment?.chiefComplaint || selectedPatient.appointmentChiefComplaint || activeAppointment?.reason}</p>
+                              </div>
+                            )}
                             {isFollowUpVisit && previousVisit && (
                               <div className="rounded-md border border-saivie-border bg-saivie-ivory p-3" data-testid="follow-up-context">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -4780,25 +4799,6 @@ export default function ClinicianPortal() {
                               />
                               {soapTranscript && <p className="mt-2 text-xs text-emerald-700">Dictation draft</p>}
                             </div>
-                            <div data-testid="consultation-concern-options">
-                              <p className="mb-2 text-xs font-semibold text-saivie-plum">Concern {consultationEdits.paths === undefined && consultationSurvey.directions.length > 0 && <span className="ml-1 font-normal text-saivie-teal">· from survey</span>}</p>
-                              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-                                {consultationPaths.map((path) => {
-                                  const selected = selectedPaths.includes(path);
-                                  return <button key={path} type="button" aria-pressed={selected} onClick={() => setConsultationEdits((edits) => toggleConsultationPath(effectiveSurvey, edits, path))}
-                                    className={`flex min-h-[40px] items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-left text-[11px] font-medium ${selected ? 'border-saivie-teal bg-saivie-teal text-white' : 'border-saivie-border bg-saivie-ivory text-saivie-plum hover:bg-saivie-surface-muted'}`}
-                                    data-testid={`consultation-path-${path.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
-                                    <span className="flex-1">{path}</span>{selected && <Check className="h-3.5 w-3.5 shrink-0" />}
-                                  </button>;
-                                })}
-                              </div>
-                            </div>
-                            {(activeAppointment?.chiefComplaint || selectedPatient.appointmentChiefComplaint || activeAppointment?.reason) && (
-                              <div className="rounded-lg border border-saivie-border bg-saivie-surface-muted/50 p-3">
-                                <p className="flex items-center gap-1.5 text-xs font-semibold text-saivie-teal"><MessageSquare className="h-3.5 w-3.5" />Patient-reported concern</p>
-                                <p className="mt-2 text-xs leading-relaxed text-saivie-plum">{activeAppointment?.chiefComplaint || selectedPatient.appointmentChiefComplaint || activeAppointment?.reason}</p>
-                              </div>
-                            )}
                           </div>
                         )}
 
