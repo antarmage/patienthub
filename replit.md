@@ -84,7 +84,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Prescription entry dates and dosage units
 
-- Patient type includes Irregular period. Pregnancy-only fields remain limited to Pregnant patients.
+- Patient type includes Irregular period and MTP, each with its own suggested labs/scans (suggestions only, never auto-selected). Pregnancy-only fields (EDD, antenatal exam, pregnancy status) remain limited to Pregnant patients; record MTP gestation in the note.
 - EDD and POG populate from LMP and the prescription date, using calendar dates without timezone shifts. Changing either source recalculates both; clinicians can still edit the values. With unknown LMP, the existing POG/EDD/dated-scan estimate remains separate from patient-reported LMP.
 - Follow-up instructions such as "after 5 days", "after a week", or "2 weeks" populate an editable follow-up date relative to the prescription date. The date is saved on the appointment and visit for the receptionist queue, which starts reminders one day before it is due. Unclear timing is flagged for confirmation, not guessed.
 - Prescription medicines, clinician medication Add/Edit, and catalog default doses share selectable dosage units. Doses remain stored as existing combined strings (for example, "500 mg"), preserving saved suggestions and print output. Unrecognized legacy dose text remains editable without an assumed unit.
@@ -114,6 +114,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 - Patient-directory appointment dates use their own range query, independent of the dashboard/schedule dates. `GET /api/appointments?from=YYYY-MM-DD&to=YYYY-MM-DD` supports inclusive boundaries and either open end, without the dashboard's 31-day fetch limit. Deploy the API and frontend together.
 - A patient appears once if any non-cancelled appointment matches the selected range, including completed and missed visits. Search still narrows those matching patients; clearing filters restores the directory. Loading and fetch errors are displayed explicitly, with a retry action.
+- Directory fetch errors include the HTTP status and API error message. HTML responses (for example a frontend fallback when the API is not routed) and malformed appointment lists are reported explicitly, not interpreted as empty results.
 
 - `artifacts/saivie/src/App.tsx` — root component with wouter Router (base=BASE_URL)
 - `artifacts/saivie/src/lib/queryClient.ts` — custom QueryClient with fetch helpers

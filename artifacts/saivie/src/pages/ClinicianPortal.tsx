@@ -12,7 +12,7 @@ import { consultationSurveyForVisit, surveyQuestions } from "@/lib/consultationS
 import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
 import { ConsultationVitalsTrends } from "@/components/ConsultationVitalsTrends";
 import { PatientSummaryDashboard } from "@/components/PatientSummaryDashboard";
-import { directoryAppointmentUrl, directoryPatientIds, type DirectoryAppointment } from "@/lib/patientDirectory";
+import { fetchDirectoryAppointments, directoryPatientIds, type DirectoryAppointment } from "@/lib/patientDirectory";
 import { pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
 import { 
   LayoutDashboard, 
@@ -1280,11 +1280,7 @@ export default function ClinicianPortal() {
   const directoryAppointmentsQuery = useQuery<DirectoryAppointment[]>({
     queryKey: ['/api/appointments', 'directory', patientDirectoryDateFrom, patientDirectoryDateTo],
     enabled: Boolean(patientDirectoryDateFrom || patientDirectoryDateTo),
-    queryFn: async ({ signal }) => {
-      const response = await fetch(directoryAppointmentUrl(patientDirectoryDateFrom, patientDirectoryDateTo), { signal });
-      if (!response.ok) throw new Error('Unable to load appointments for the selected date range');
-      return response.json();
-    },
+    queryFn: ({ signal }) => fetchDirectoryAppointments(patientDirectoryDateFrom, patientDirectoryDateTo, signal),
     refetchInterval: 30000,
   });
 
@@ -4379,7 +4375,7 @@ export default function ClinicianPortal() {
                 </div>
 
                 {(patientDirectoryDateFrom || patientDirectoryDateTo) && directoryAppointmentsQuery.isLoading && <p role="status" className="px-4 py-3 text-xs text-saivie-plum">Loading appointments for the selected range…</p>}
-                {(patientDirectoryDateFrom || patientDirectoryDateTo) && directoryAppointmentsQuery.isError && <div role="alert" className="px-4 py-3 text-xs text-rose-700">Unable to load appointments for this range. <button type="button" className="underline" onClick={() => void directoryAppointmentsQuery.refetch()}>Retry</button></div>}
+                {(patientDirectoryDateFrom || patientDirectoryDateTo) && directoryAppointmentsQuery.isError && <div role="alert" className="px-4 py-3 text-xs text-rose-700">{directoryAppointmentsQuery.error.message} <button type="button" className="underline" onClick={() => void directoryAppointmentsQuery.refetch()}>Retry</button></div>}
                 <div className="overflow-x-auto">
                   <table className="min-w-[760px] w-full text-left text-sm">
                     <thead className="bg-saivie-surface-muted text-[10px] uppercase tracking-wide text-saivie-plum">

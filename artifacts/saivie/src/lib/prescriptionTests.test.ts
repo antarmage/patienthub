@@ -23,8 +23,9 @@ it("changes suggestions at trimester boundaries without selecting or ordering te
 });
 
 it("provides patient-type-specific lab and scan options", () => {
-  for (const type of ["General", "PCOS", "Pregnant", "Fertility", "Postpartum", "Gynecology"]) {
-    const { tests } = prescriptionTestOptions(type, 30);
+  for (const type of ["General", "PCOS", "Irregular period", "Pregnant", "MTP", "Fertility", "Postpartum", "Gynecology"]) {
+    const { context, tests } = prescriptionTestOptions(type, 30);
+    if (type === "MTP" || type === "Irregular period") assert.equal(context, type);
     assert.ok(tests.some((test) => test.type === "lab"));
     assert.ok(tests.some((test) => test.type === "usg"));
     assert.equal(new Set(tests.map((test) => test.name)).size, tests.length);

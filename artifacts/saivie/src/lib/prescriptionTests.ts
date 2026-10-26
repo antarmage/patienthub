@@ -44,6 +44,8 @@ export function prescriptionTestOptions(patientType: string, weeks: number | nul
     if (weeks >= 37) tests.push(usg("USG - AFI / Biophysical Profile (if indicated)"));
     return { context, tests };
   }
+  if (/^\s*mtp\b/i.test(patientType)) return { context: "MTP", tests: [cbc, lab("Blood Group & Rh Typing"), usg("USG - Confirm Intrauterine Pregnancy & Gestation"), usg("USG - Post-procedure (if indicated)")] };
+  if (/irregular\s+period/i.test(patientType)) return { context: "Irregular period", tests: [lab("Urine Pregnancy Test"), cbc, tsh, lab("Prolactin"), pelvic] };
   if (/pcos/i.test(patientType)) return { context: "PCOS", tests: [tsh, lab("Prolactin"), lab("HbA1c"), lab("Lipid Profile"), lab("Testosterone"), pelvic] };
   if (/fertility/i.test(patientType)) return { context: "Fertility", tests: [lab("Day 2/3 Hormonal Panel"), lab("AMH"), tsh, lab("Prolactin"), lab("Day 21 Progesterone"), pelvic, usg("USG - Follicular Monitoring")] };
   if (/postpartum/i.test(patientType)) return { context: "Postpartum", tests: [cbc, tsh, lab("OGTT (if prior gestational diabetes)"), pelvic] };

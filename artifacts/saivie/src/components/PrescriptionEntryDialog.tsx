@@ -42,7 +42,7 @@ async function readApiJson(res: Response) {
 }
 
 const emptyMedicine = (): Medicine => ({ name: "", dose: "", frequency: "", duration: "", instructions: "" });
-const PATIENT_TYPES = ["General", "PCOS", "Irregular period", "Pregnant", "Fertility", "Postpartum", "Gynecology"];
+const PATIENT_TYPES = ["General", "PCOS", "Irregular period", "Pregnant", "MTP", "Fertility", "Postpartum", "Gynecology"];
 const UTERUS_SIZES = Array.from({ length: 42 }, (_, index) => `${index + 1} weeks`);
 const FETAL_HEART_SOUNDS = Array.from({ length: 121 }, (_, index) => String(index + 60));
 const SCAN_WEIGHTS = Array.from({ length: 120 }, (_, index) => `${(index + 1) * 50} g`);
