@@ -5,6 +5,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { storage } from "../storage";
+import { readAppointmentRange } from "../appointment-range";
 import { buildMedicineSuggestions } from "../medicine-suggestions";
 import { synchronizeFollowUpCalls } from "../follow-up-calls";
 import { insertPatientSchema, parseCallDate, prescriptionDueDate } from "@workspace/db";
@@ -1132,7 +1133,7 @@ export async function registerRoutes(
   });
 
   app.get("/api/appointments", async (req, res) => {
-    const { date, providerId } = req.query;
+    const { date, providerId, from, to } = req.query;
     // patientId must NOT come from the URL query string (CodeQL js/sensitive-get-query).
     // Derive it from the authenticated session, or from the X-Patient-Id header for
     // staff requests. The URL query param is intentionally not supported.
@@ -1142,7 +1143,12 @@ export async function registerRoutes(
     const filterPatientId: number | null = sid ?? headerPid ?? null;
 
     let appts;
-    if (date) {
+    if (from !== undefined || to !== undefined) {
+      const range = readAppointmentRange(from, to);
+      if (!range || date !== undefined) return res.status(400).json({ error: "Use valid appointment dates (YYYY-MM-DD), with from on or before to." });
+      appts = await storage.getAppointmentsByRange(range.from, range.to);
+      if (filterPatientId) appts = appts.filter(a => a.patientId === filterPatientId);
+    } else if (date) {
       appts = await storage.getAppointmentsByDate(date as string);
     } else if (filterPatientId) {
       appts = await storage.getAppointmentsByPatient(filterPatientId);

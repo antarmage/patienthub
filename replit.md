@@ -110,6 +110,11 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Weekly, monthly and three-month trends show only recorded blood pressures in the selected calendar period, with an explicit empty state. Missing vitals are not replaced by sample temperatures or normal findings.
 - The persistent footer offers Save note, Preview note and Save & Continue. Notes save explicitly to the visit record, not via autosave; editing a saved note returns the status to unsaved. Save & Continue advances only on successful persistence and opens the preview after the last step, without automatically completing or billing the appointment.
 
+### Doctor patient-directory date filters
+
+- Patient-directory appointment dates use their own range query, independent of the dashboard/schedule dates. `GET /api/appointments?from=YYYY-MM-DD&to=YYYY-MM-DD` supports inclusive boundaries and either open end, without the dashboard's 31-day fetch limit. Deploy the API and frontend together.
+- A patient appears once if any non-cancelled appointment matches the selected range, including completed and missed visits. Search still narrows those matching patients; clearing filters restores the directory. Loading and fetch errors are displayed explicitly, with a retry action.
+
 - `artifacts/saivie/src/App.tsx` — root component with wouter Router (base=BASE_URL)
 - `artifacts/saivie/src/lib/queryClient.ts` — custom QueryClient with fetch helpers
 - `artifacts/saivie/src/pages/` — all page components

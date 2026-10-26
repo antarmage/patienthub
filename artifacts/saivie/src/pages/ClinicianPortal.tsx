@@ -12,6 +12,7 @@ import { consultationSurveyForVisit, surveyQuestions } from "@/lib/consultationS
 import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
 import { ConsultationVitalsTrends } from "@/components/ConsultationVitalsTrends";
 import { PatientSummaryDashboard } from "@/components/PatientSummaryDashboard";
+import { directoryAppointmentUrl, directoryPatientIds, type DirectoryAppointment } from "@/lib/patientDirectory";
 import { pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
 import { 
   LayoutDashboard, 
@@ -1276,6 +1277,17 @@ export default function ClinicianPortal() {
   });
   const appointments = appointmentsQuery.data || [];
 
+  const directoryAppointmentsQuery = useQuery<DirectoryAppointment[]>({
+    queryKey: ['/api/appointments', 'directory', patientDirectoryDateFrom, patientDirectoryDateTo],
+    enabled: Boolean(patientDirectoryDateFrom || patientDirectoryDateTo),
+    queryFn: async ({ signal }) => {
+      const response = await fetch(directoryAppointmentUrl(patientDirectoryDateFrom, patientDirectoryDateTo), { signal });
+      if (!response.ok) throw new Error('Unable to load appointments for the selected date range');
+      return response.json();
+    },
+    refetchInterval: 30000,
+  });
+
   const activeAppointment = useMemo(() => {
     if (!selectedPatient) return null;
     if ((selectedPatient as any).appointmentId) {
@@ -1458,29 +1470,17 @@ export default function ClinicianPortal() {
 
   const filteredDirectoryPatients = useMemo(() => {
     const query = patientDirectorySearch.trim().toLowerCase();
-    const normalizeDate = (value: unknown) => {
-      if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
-      const match = String(value || '').trim().match(/^(\d{4}-\d{2}-\d{2})/);
-      return match?.[1] || '';
-    };
-    const fromDate = normalizeDate(patientDirectoryDateFrom);
-    const toDate = normalizeDate(patientDirectoryDateTo);
+    const matchingIds = directoryPatientIds(directoryAppointmentsQuery.data || [], patientDirectoryDateFrom, patientDirectoryDateTo);
     return [...patients]
       .filter((patient: any) => {
         const matchesSearch = !query || [patient.name, patient.phone, patient.email, patient.type, patient.condition]
           .some((value) => String(value || '').toLowerCase().includes(query));
-        const hasDateFilter = Boolean(fromDate || toDate);
-        const matchesAppointmentDate = !hasDateFilter || appointments.some((appointment: any) => {
-          if (String(appointment.patientId ?? '') !== String(patient.id ?? '') || !appointment.date || ['cancelled', 'canceled'].includes(String(appointment.status || '').toLowerCase())) return false;
-          const appointmentDate = normalizeDate(appointment.date);
-          return Boolean(appointmentDate) &&
-            (!fromDate || appointmentDate >= fromDate) &&
-            (!toDate || appointmentDate <= toDate);
-        });
+        const hasDateFilter = Boolean(patientDirectoryDateFrom || patientDirectoryDateTo);
+        const matchesAppointmentDate = !hasDateFilter || matchingIds.has(String(patient.id));
         return matchesSearch && matchesAppointmentDate;
       })
       .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
-  }, [patients, appointments, patientDirectorySearch, patientDirectoryDateFrom, patientDirectoryDateTo]);
+  }, [patients, directoryAppointmentsQuery.data, patientDirectorySearch, patientDirectoryDateFrom, patientDirectoryDateTo]);
 
   const appointmentsByDay = useMemo(() => {
     const map: Record<number, any[]> = {};
@@ -4378,6 +4378,8 @@ export default function ClinicianPortal() {
                   </div>
                 </div>
 
+                {(patientDirectoryDateFrom || patientDirectoryDateTo) && directoryAppointmentsQuery.isLoading && <p role="status" className="px-4 py-3 text-xs text-saivie-plum">Loading appointments for the selected range…</p>}
+                {(patientDirectoryDateFrom || patientDirectoryDateTo) && directoryAppointmentsQuery.isError && <div role="alert" className="px-4 py-3 text-xs text-rose-700">Unable to load appointments for this range. <button type="button" className="underline" onClick={() => void directoryAppointmentsQuery.refetch()}>Retry</button></div>}
                 <div className="overflow-x-auto">
                   <table className="min-w-[760px] w-full text-left text-sm">
                     <thead className="bg-saivie-surface-muted text-[10px] uppercase tracking-wide text-saivie-plum">
@@ -4436,7 +4438,7 @@ export default function ClinicianPortal() {
                           </tr>
                         );
                       })}
-                      {filteredDirectoryPatients.length === 0 && (
+                      {filteredDirectoryPatients.length === 0 && (!(patientDirectoryDateFrom || patientDirectoryDateTo) || directoryAppointmentsQuery.isSuccess) && (
                         <tr>
                           <td colSpan={7} className="px-4 py-14 text-center">
                             <Users className="mx-auto h-6 w-6 text-slate-300" />

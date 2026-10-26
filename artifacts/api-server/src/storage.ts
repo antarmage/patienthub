@@ -90,6 +90,7 @@ export interface IStorage {
 
   getAppointments(): Promise<Appointment[]>;
   getAppointmentsByDate(date: string): Promise<Appointment[]>;
+  getAppointmentsByRange(from?: string, to?: string): Promise<Appointment[]>;
   getAppointmentsByPatient(patientId: number): Promise<Appointment[]>;
   createAppointment(appt: InsertAppointment): Promise<Appointment>;
   updateAppointment(id: number, data: Partial<InsertAppointment>): Promise<Appointment | undefined>;
@@ -358,6 +359,13 @@ export class DatabaseStorage implements IStorage {
 
   async getAppointmentsByDate(date: string): Promise<Appointment[]> {
     return db.select().from(appointments).where(eq(appointments.date, date));
+  }
+
+  async getAppointmentsByRange(from?: string, to?: string): Promise<Appointment[]> {
+    return db.select().from(appointments).where(and(
+      from ? gte(appointments.date, from) : undefined,
+      to ? lte(appointments.date, to) : undefined,
+    ));
   }
 
   async getAppointmentsByPatient(patientId: number): Promise<Appointment[]> {
