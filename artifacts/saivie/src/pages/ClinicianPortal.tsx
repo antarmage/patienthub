@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { openPrescription } from "@/lib/prescriptionTemplate";
 import { MedicineAutocomplete } from "@/components/MedicineAutocomplete";
+import { MedicineDoseInput } from "@/components/MedicineDoseInput";
 import { useToast } from "@/hooks/use-toast";
 import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSettings";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
@@ -1737,7 +1738,7 @@ export default function ClinicianPortal() {
             ...(selectedPatient.appointmentId ? { appointmentId: selectedPatient.appointmentId } : {}),
             subjective: soapSubjectiveDraft,
             objective: soapObjectiveDraft,
-            assessment: soapAssessmentDraft,
+              assessment: soapAssessmentDraft,
             planNotes: soapPlanDraft,
           }),
         });
@@ -4243,7 +4244,7 @@ export default function ClinicianPortal() {
                                       <div className="grid grid-cols-6 gap-2">
                                           <Input placeholder="Medicine name *" value={newMedName} onChange={e => setNewMedName(e.target.value)} className="h-8 text-xs col-span-2" data-testid="input-catalog-name" />
                                           <Input placeholder="Generic name" value={newMedGeneric} onChange={e => setNewMedGeneric(e.target.value)} className="h-8 text-xs" data-testid="input-catalog-generic" />
-                                          <Input placeholder="Default dose" value={newMedDose} onChange={e => setNewMedDose(e.target.value)} className="h-8 text-xs" data-testid="input-catalog-dose" />
+                                          <MedicineDoseInput label="Default dose" value={newMedDose} onChange={setNewMedDose} testId="input-catalog-dose" />
                                           <Input placeholder="Frequency" value={newMedFrequency} onChange={e => setNewMedFrequency(e.target.value)} className="h-8 text-xs" data-testid="input-catalog-frequency" />
                                           <Button
                                             size="sm"
@@ -4308,7 +4309,7 @@ export default function ClinicianPortal() {
                                                     <>
                                                       <td className="px-1 py-1"><Input value={editCatalogData.name || ''} onChange={e => setEditCatalogData({...editCatalogData, name: e.target.value})} className="h-7 text-xs" /></td>
                                                       <td className="px-1 py-1"><Input value={editCatalogData.genericName || ''} onChange={e => setEditCatalogData({...editCatalogData, genericName: e.target.value})} className="h-7 text-xs" /></td>
-                                                      <td className="px-1 py-1"><Input value={editCatalogData.defaultDose || ''} onChange={e => setEditCatalogData({...editCatalogData, defaultDose: e.target.value})} className="h-7 text-xs" /></td>
+                                                      <td className="px-1 py-1"><MedicineDoseInput label="Default dose" value={editCatalogData.defaultDose || ''} onChange={defaultDose => setEditCatalogData({...editCatalogData, defaultDose})} /></td>
                                                       <td className="px-1 py-1"><Input value={editCatalogData.defaultFrequency || ''} onChange={e => setEditCatalogData({...editCatalogData, defaultFrequency: e.target.value})} className="h-7 text-xs" /></td>
                                                       <td className="px-1 py-1"><Input value={editCatalogData.route || ''} onChange={e => setEditCatalogData({...editCatalogData, route: e.target.value})} className="h-7 text-xs" /></td>
                                                       <td className="px-1 py-1"><Input value={editCatalogData.category || ''} onChange={e => setEditCatalogData({...editCatalogData, category: e.target.value})} className="h-7 text-xs" /></td>
@@ -6115,7 +6116,7 @@ export default function ClinicianPortal() {
                                                             onSelect={(medicine) => setEditMedData({...editMedData, name: medicine.name, dose: medicine.dose, frequency: medicine.frequency, duration: medicine.duration, instructions: medicine.instructions, route: medicine.route})}
                                                             className="h-7 text-xs" />
                                                         </td>
-                                                        <td className="px-1 py-1"><Input value={editMedData.dose || ''} onChange={e => setEditMedData({...editMedData, dose: e.target.value})} className="h-7 text-xs" /></td>
+                                                        <td className="px-1 py-1"><MedicineDoseInput value={editMedData.dose || ''} onChange={dose => setEditMedData({...editMedData, dose})} /></td>
                                                         <td className="px-1 py-1"><Input value={editMedData.frequency || ''} onChange={e => setEditMedData({...editMedData, frequency: e.target.value})} className="h-7 text-xs" /></td>
                                                         <td className="px-1 py-1"><Input type="date" value={editMedData.startDate || ''} onChange={e => setEditMedData({...editMedData, startDate: e.target.value})} className="h-7 text-xs" /></td>
                                                         <td className="px-1 py-1">
@@ -6178,7 +6179,7 @@ export default function ClinicianPortal() {
                                                         onSelect={(medicine) => setNewMed({...newMed, name: medicine.name, dose: medicine.dose, frequency: medicine.frequency, duration: medicine.duration, instructions: medicine.instructions, route: medicine.route})}
                                                         className="h-7 text-xs" testId="input-new-med-name" />
                                                     </td>
-                                                    <td className="px-1 py-1"><Input placeholder="Dose" value={newMed.dose} onChange={e => setNewMed({...newMed, dose: e.target.value})} className="h-7 text-xs" /></td>
+                                                    <td className="px-1 py-1"><MedicineDoseInput value={newMed.dose} onChange={dose => setNewMed({...newMed, dose})} /></td>
                                                     <td className="px-1 py-1"><Input placeholder="Frequency" value={newMed.frequency} onChange={e => setNewMed({...newMed, frequency: e.target.value})} className="h-7 text-xs" /></td>
                                                     <td className="px-1 py-1"><Input type="date" value={newMed.startDate} onChange={e => setNewMed({...newMed, startDate: e.target.value})} className="h-7 text-xs" /></td>
                                                     <td className="px-1 py-1">

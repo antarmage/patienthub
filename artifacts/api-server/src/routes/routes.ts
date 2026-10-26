@@ -7,7 +7,7 @@ import path from "path";
 import { storage } from "../storage";
 import { buildMedicineSuggestions } from "../medicine-suggestions";
 import { synchronizeFollowUpCalls } from "../follow-up-calls";
-import { insertPatientSchema } from "@workspace/db";
+import { insertPatientSchema, parseCallDate, prescriptionDueDate } from "@workspace/db";
 import { calculateInvoiceQuote } from "../prime-pricing";
 import { registerOcrRoutes } from "../replit_integrations/ocr";
 import { getUncachableGoogleSheetClient } from "../google-sheets";
@@ -1919,6 +1919,13 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     if (!/^\d{4}-\d{2}-\d{2}$/.test(prescriptionDate)) {
       return res.status(400).json({ error: "Enter the prescription date" });
     }
+    const followUp = String(body.followUp || "").trim();
+    const followUpDate = body.followUpDate === ""
+      ? null
+      : body.followUpDate != null ? parseCallDate(body.followUpDate) : prescriptionDueDate(followUp, prescriptionDate);
+    if ((body.followUpDate && !followUpDate) || (followUpDate && followUpDate < prescriptionDate)) {
+      return res.status(400).json({ error: "Enter a valid follow-up date on or after the prescription date" });
+    }
 
     const today = new Date().toISOString().slice(0, 10);
     const historical = prescriptionDate <= today;
@@ -1937,10 +1944,14 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         reason: chiefComplaint || String(body.diagnosis || "").trim() || "Historical prescription",
         notes: "Created automatically from a manually entered prescription",
         completedAt: historical ? `${prescriptionDate}T09:00:00.000Z` : null,
+        followUpDate,
+        followUpNotes: followUp || null,
       });
     } else {
       appointment = await storage.updateAppointment(appointment.id, {
         date: prescriptionDate,
+        followUpDate,
+        followUpNotes: followUp || null,
         status: historical ? "completed" : appointment.status,
         completedAt: historical ? appointment.completedAt || `${prescriptionDate}T09:00:00.000Z` : appointment.completedAt,
         ...(chiefComplaint ? { chiefComplaint, reason: chiefComplaint } : {}),
@@ -1962,6 +1973,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       examination: String(body.examination || "").trim() ? { findings: String(body.examination).trim() } : null,
       objective: String(body.examination || "").trim() || null,
       vitals: {
+        followUpDate,
         datingEstimate: body.datingEstimate || null,
         pulse: String(body.vitals?.pulse ?? antenatal?.pulse ?? "").trim() || null,
         bp: String(body.vitals?.bp ?? antenatal?.bp ?? "").trim() || null,
@@ -1980,7 +1992,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       },
       diagnosis: body.diagnosis || null,
       planNotes: body.advice || null,
-      followUpPlan: body.followUp || null,
+      followUpPlan: followUp || null,
       outcome: "Prescription entered manually",
       prescriptions: {
         source: body.scanned ? "paper-scanned-reviewed" : "paper-transcribed",
@@ -2038,6 +2050,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
     const summary = [
       `Prescription date: ${prescriptionDate}`,
+      followUpDate ? `Follow-up date: ${followUpDate}` : null,
       body.datingEstimate?.estimatedLmp ? `Estimated LMP equivalent: ${body.datingEstimate.estimatedLmp} (not patient-reported; requires clinician confirmation)` : null,
       body.vitals?.pulse ? `PR: ${body.vitals.pulse}` : null,
       body.vitals?.bp ? `BP: ${body.vitals.bp}` : null,

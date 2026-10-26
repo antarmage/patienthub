@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { pregnancyWeeks, prescriptionTestOptions } from "@/lib/prescriptionTests";
-import { estimatePregnancyDating } from "@/lib/pregnancyDating";
+import { estimatePregnancyDating, pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
+import { MedicineDoseInput } from "@/components/MedicineDoseInput";
+import { parseCallDate, prescriptionDueDate } from "../../../../lib/db/src/follow-up";
 import { MedicineAutocomplete } from "@/components/MedicineAutocomplete";
 
 interface Medicine {
@@ -39,7 +41,7 @@ async function readApiJson(res: Response) {
 }
 
 const emptyMedicine = (): Medicine => ({ name: "", dose: "", frequency: "", duration: "", instructions: "" });
-const PATIENT_TYPES = ["General", "PCOS", "Pregnant", "Fertility", "Postpartum", "Gynecology"];
+const PATIENT_TYPES = ["General", "PCOS", "Irregular period", "Pregnant", "Fertility", "Postpartum", "Gynecology"];
 const UTERUS_SIZES = Array.from({ length: 42 }, (_, index) => `${index + 1} weeks`);
 const FETAL_HEART_SOUNDS = Array.from({ length: 121 }, (_, index) => String(index + 60));
 const SCAN_WEIGHTS = Array.from({ length: 120 }, (_, index) => `${(index + 1) * 50} g`);
@@ -324,16 +326,6 @@ function antenatalLines(exam: ReturnType<typeof antenatalPayload>) {
   ].filter(Boolean) as string[];
 }
 
-function calculateObstetric(lmp: string, asOf: string) {
-  const start = new Date(`${lmp}T00:00:00`);
-  if (Number.isNaN(start.getTime())) return { eod: "", pog: "" };
-  const eodDate = new Date(start);
-  eodDate.setDate(eodDate.getDate() + 280);
-  const end = new Date(`${asOf || new Date().toISOString().slice(0, 10)}T00:00:00`);
-  const days = Math.floor((end.getTime() - start.getTime()) / 86400000);
-  const pog = days >= 0 ? `${Math.floor(days / 7)} weeks ${days % 7} days` : "";
-  return { eod: eodDate.toISOString().slice(0, 10), pog };
-}
 const TEST_CATEGORY = /lab|test|diagnos|usg|ultra|scan|sono/i;
 const USG_CATEGORY = /usg|ultra|scan|sono/i;
 
@@ -354,8 +346,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   const [weight, setWeight] = useState("");
   const [age, setAge] = useState("");
   const [patientType, setPatientType] = useState("General");
-  const [eod, setEod] = useState("");
-  const [pog, setPog] = useState("");
+  const [eodDraft, setEod] = useState("");
+  const [pogDraft, setPog] = useState("");
   const [gravida, setGravida] = useState("");
   const [surgicalHistory, setSurgicalHistory] = useState("");
   const [antenatal, setAntenatal] = useState<AntenatalExam>(emptyAntenatal());
@@ -366,6 +358,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   const [diagnosis, setDiagnosis] = useState("");
   const [advice, setAdvice] = useState("");
   const [followUp, setFollowUp] = useState("");
+  const [followUpDateOverride, setFollowUpDateOverride] = useState<string | null>(null);
   const [newTest, setNewTest] = useState("");
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -387,12 +380,24 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     spo2: antenatal.spo2.trim() || null,
     rr: antenatal.rr.trim() || null,
   };
+  const visitDate = prescriptionDate || String(appointment?.date || "").slice(0, 10);
+  const lmpDating = pregnant ? pregnancyDatingFromLmp(lmp, visitDate) : null;
   const datingEstimate = pregnant && !lmp ? estimatePregnancyDating({
-    asOf: prescriptionDate || String(appointment?.date || "").slice(0, 10),
-    pog,
-    dueDate: eod,
+    asOf: visitDate,
+    pog: pogDraft,
+    dueDate: eodDraft,
     scans: antenatal.usg,
   }) : null;
+  const eod = eodDraft || lmpDating?.dueDate || datingEstimate?.dueDate || "";
+  const pog = pogDraft || lmpDating?.pog || datingEstimate?.pog || "";
+  const followUpDate = followUpDateOverride ?? prescriptionDueDate(followUp, visitDate) ?? "";
+  const changePrescriptionDate = (date: string) => {
+    setPrescriptionDate(date);
+    setFollowUpDateOverride(null);
+    const dating = pregnancyDatingFromLmp(lmp || datingEstimate?.estimatedLmp || "", date);
+    setEod(dating?.dueDate || "");
+    setPog(dating?.pog || "");
+  };
   const suggestedTests = prescriptionTestOptions(patientType, pregnancyWeeks(pog, lmp || datingEstimate?.estimatedLmp || "", prescriptionDate || String(appointment?.date || "").slice(0, 10)));
   const steps: { id: EntryStep; label: string; description: string }[] = [
     { id: "patient", label: "Patient & date", description: "Start with the prescription date and patient details." },
@@ -454,6 +459,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
 
   useEffect(() => {
     if (!appointment) return;
+    setFollowUpDateOverride(appointment.historical && !appointment.draft ? null
+      : existing?.vitals?.followUpDate ?? appointment.draft?.followUpDate ?? appointment.followUpDate ?? null);
     const draft = appointment.draft;
     if (draft) {
       const rx = existing?.prescriptions;
@@ -468,8 +475,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       setAge(existing?.vitals?.age != null ? String(existing.vitals.age) : draft.age != null ? String(draft.age) : demo.age);
       setPatientType(existing?.vitals?.patientType || draft.patientType || demo.patientType);
       const obstetric = obstetricFrom(existing?.vitals, patient, draft);
-      setEod(obstetric.eod);
-      setPog(obstetric.pog);
+      setEod(existing?.vitals?.eod || draft.eod || (demo.lmp ? "" : obstetric.eod));
+      setPog(existing?.vitals?.pog || draft.pog || (demo.lmp ? "" : obstetric.pog));
       setGravida(obstetric.gravida);
       setSurgicalHistory(obstetric.surgicalHistory);
       setAntenatal(antenatalFrom(existing?.vitals, patient, draft, existing?.examination));
@@ -498,8 +505,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       setAge(demo.age);
       setPatientType(demo.patientType);
       const obstetric = obstetricFrom(null, patient);
-      setEod(obstetric.eod);
-      setPog(obstetric.pog);
+      setEod(demo.lmp ? "" : obstetric.eod);
+      setPog(demo.lmp ? "" : obstetric.pog);
       setGravida(obstetric.gravida);
       setSurgicalHistory(obstetric.surgicalHistory);
       setAntenatal(antenatalFrom(null, patient));
@@ -516,8 +523,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     setAge(demo.age);
     setPatientType(demo.patientType);
     const obstetric = obstetricFrom(existing?.vitals, patient);
-    setEod(obstetric.eod);
-    setPog(obstetric.pog);
+    setEod(existing?.vitals?.eod || (demo.lmp ? "" : obstetric.eod));
+    setPog(existing?.vitals?.pog || (demo.lmp ? "" : obstetric.pog));
     setGravida(obstetric.gravida);
     setSurgicalHistory(obstetric.surgicalHistory);
     setAntenatal(antenatalFrom(existing?.vitals, patient, undefined, existing?.examination));
@@ -553,9 +560,12 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       }
       if (data.diagnosis) setDiagnosis(data.diagnosis);
       if (data.advice) setAdvice(data.advice);
-      if (data.followUp) setFollowUp(data.followUp);
+      if (data.followUp) {
+        setFollowUp(data.followUp);
+        setFollowUpDateOverride(null);
+      }
       if (needsDate && data.prescriptionDate && /^\d{4}-\d{2}-\d{2}$/.test(data.prescriptionDate)) {
-        setPrescriptionDate(data.prescriptionDate);
+        changePrescriptionDate(data.prescriptionDate);
       }
       setScanned(true);
       toast({ title: "Prescription read", description: "Please check every field against the paper copy before saving." });
@@ -615,6 +625,12 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
         body: JSON.stringify({ date: visitDate, chiefComplaint: chiefComplaint.trim() || null, reason: chiefComplaint.trim() || diagnosis.trim() || "Historical prescription" }),
       });
     }
+    const followUpRes = await fetch(`/api/appointments/${visitAppointment.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ followUpDate: followUpDate || null, followUpNotes: followUp.trim() || null }),
+    });
+    if (!followUpRes.ok) throw new Error("Could not save the follow-up date for receptionist reminders");
 
     const namedMedicines = medicines.filter((med) => med.name.trim());
     const listedVisits = await fetch(`/api/patients/${patientId}/visit-history`);
@@ -635,6 +651,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
         vitals: {
           ...recordedVitals,
           datingEstimate,
+          followUpDate: followUpDate || null,
           lmp: lmp || null,
           height: height.trim() || null,
           weight: weight.trim() ? Number(weight) : null,
@@ -664,7 +681,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       `Prescription date: ${visitDate}`,
       datingEstimate ? `Estimated LMP equivalent: ${datingEstimate.estimatedLmp} (from ${datingEstimate.source}; not patient-reported)` : null,
       patientType.trim() ? `Patient type: ${patientType.trim()}` : null,
-      pregnant && eod ? `EOD: ${eod}` : null,
+      pregnant && eod ? `EDD: ${eod}` : null,
       pregnant && pog.trim() ? `POG: ${pog.trim()}` : null,
       pregnant && gravida.trim() ? `Gravida: ${gravida.trim()}` : null,
       pregnant && surgicalHistory.trim() ? `Past surgery: ${surgicalHistory.trim()}` : null,
@@ -676,6 +693,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
         recordedVitals.rr ? `RR: ${recordedVitals.rr} breaths/min` : null,
       ] : []),
       chiefComplaint.trim() ? `Chief complaint: ${chiefComplaint.trim()}` : null,
+      followUpDate ? `Follow-up date: ${followUpDate}` : null,
       examination.trim() ? `O/E: ${examination.trim()}` : null,
       namedMedicines.length ? `Medicines: ${namedMedicines.map((med) => med.name.trim()).join(", ")}` : "No medicines entered",
     ].filter(Boolean).join("\n");
@@ -702,6 +720,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           surgicalHistory: pregnant ? surgicalHistory.trim() || null : null,
           antenatal: antenatalExam,
           datingEstimate,
+          followUpDate: followUpDate || null,
         },
       }),
     });
@@ -765,7 +784,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        vitals: { ...(visit.vitals || {}), ...recordedVitals, datingEstimate, patientType: patientType || visit.vitals?.patientType || null, antenatal: antenatalExam },
+        vitals: { ...(visit.vitals || {}), ...recordedVitals, datingEstimate, followUpDate: followUpDate || null, patientType: patientType || visit.vitals?.patientType || null, antenatal: antenatalExam },
         examination: {
           ...(visit.examination && typeof visit.examination === "object" ? visit.examination : {}),
           findings: examination.trim() || visit.examination?.findings || visit.objective || "",
@@ -835,6 +854,11 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       toast({ title: "Enter the prescription date", variant: "destructive" });
       return;
     }
+    if (followUpDate && (!parseCallDate(followUpDate) || followUpDate < visitDate)) {
+      toast({ title: "Check the follow-up date", description: "Enter a valid date on or after the prescription date.", variant: "destructive" });
+      setStep("plan");
+      return;
+    }
     if ((antenatal.spo2 && (!Number.isFinite(Number(antenatal.spo2)) || Number(antenatal.spo2) < 0 || Number(antenatal.spo2) > 100)) ||
         (antenatal.rr && (!Number.isInteger(Number(antenatal.rr)) || Number(antenatal.rr) < 0))) {
       toast({ title: "Check vitals", description: "SpO2 must be between 0 and 100%. RR must be a non-negative whole number.", variant: "destructive" });
@@ -866,6 +890,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           diagnosis,
           advice,
           followUp,
+          followUpDate,
           medicines: medicines.filter((med) => med.name.trim()),
           tests,
           scanned,
@@ -889,6 +914,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/medications`] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       queryClient.invalidateQueries({ queryKey: ["/api/medicine-suggestions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/follow-up-calls"] });
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] });
       toast({ title: editing ? "Prescription updated" : appointment?.id ? "Prescription recorded" : "Prescription recorded and visit created" });
       onSaved?.(patientId);
@@ -945,14 +971,18 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           {needsDate && (
             <div className="space-y-1">
               <Label>Prescription date</Label>
-              <Input type="date" value={prescriptionDate} onChange={(e) => setPrescriptionDate(e.target.value)} data-testid="input-rx-date" />
+              <Input type="date" value={prescriptionDate} onChange={(e) => changePrescriptionDate(e.target.value)} data-testid="input-rx-date" />
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="space-y-1">
               <Label>LMP</Label>
-              <Input type="date" value={lmp} onChange={(e) => setLmp(e.target.value)} data-testid="input-rx-lmp" />
+              <Input type="date" value={lmp} onChange={(e) => {
+                setLmp(e.target.value);
+                setEod("");
+                setPog("");
+              }} data-testid="input-rx-lmp" />
               <p className="text-xs text-muted-foreground">Leave blank if unknown. We can estimate dating from POG, due date or a dated scan.</p>
             </div>
             <div className="space-y-1">
@@ -966,8 +996,10 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
                 setPatientType(next);
                 if (/pregnant/i.test(next)) {
                   const obstetric = obstetricFrom(null, patient);
-                  setEod((current) => current || obstetric.eod);
-                  setPog((current) => current || obstetric.pog);
+                  if (!lmp) {
+                    setEod((current) => current || obstetric.eod);
+                    setPog((current) => current || obstetric.pog);
+                  }
                   setGravida((current) => current || obstetric.gravida);
                   setSurgicalHistory((current) => current || obstetric.surgicalHistory);
                 }
@@ -987,14 +1019,20 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           {pregnant && (
             <div className="grid grid-cols-2 gap-3 rounded-lg border border-saivie-border p-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label>EOD</Label>
-                <Input type="date" value={eod} onChange={(e) => setEod(e.target.value)} data-testid="input-rx-eod" />
-                <p className="text-[11px] text-muted-foreground">Expected date of delivery</p>
+                <Label>EDD</Label>
+                <Input type="date" value={eod} onChange={(e) => {
+                  setEod(e.target.value);
+                  if (!lmp) setPog("");
+                }} data-testid="input-rx-eod" />
+                <p className="text-[11px] text-muted-foreground">Expected date of delivery. Calculated automatically when dating is available; editable.</p>
               </div>
               <div className="space-y-1">
                 <Label>POG</Label>
-                <Input value={pog} onChange={(e) => setPog(e.target.value)} placeholder="28 weeks 3 days" data-testid="input-rx-pog" />
-                <p className="text-xs text-muted-foreground">Gestation on the prescription date, not the scan date.</p>
+                <Input value={pog} onChange={(e) => {
+                  setPog(e.target.value);
+                  if (!lmp) setEod("");
+                }} placeholder="28 weeks 3 days" data-testid="input-rx-pog" />
+                <p className="text-xs text-muted-foreground">Calculated automatically from LMP and the prescription date; editable. Not the scan date.</p>
               </div>
               <div className="space-y-1">
                 <Label>Gravida</Label>
@@ -1003,13 +1041,6 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
               <div className="space-y-1">
                 <Label>Past surgery</Label>
                 <Input value={surgicalHistory} onChange={(e) => setSurgicalHistory(e.target.value)} placeholder="CS / LSCS" data-testid="input-rx-surgery" />
-              </div>
-              <div className="col-span-2">
-                <Button type="button" size="sm" variant="outline" disabled={!lmp} onClick={() => {
-                  const calculated = calculateObstetric(lmp, prescriptionDate);
-                  if (calculated.eod) setEod(calculated.eod);
-                  if (calculated.pog) setPog(calculated.pog);
-                }}>Calculate EOD and POG from LMP</Button>
               </div>
               {!lmp && (
                 <div className="col-span-2 rounded-md bg-muted/30 p-3 text-sm" data-testid="rx-dating-estimate">
@@ -1149,7 +1180,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
                     } : item))
                   } testId={`input-rx-med-name-${i}`} />
                 </div>
-                <Input className="col-span-4 sm:col-span-2" placeholder="Dose" value={m.dose} onChange={(e) => updateMedicine(i, "dose", e.target.value)} />
+                <MedicineDoseInput className="col-span-12 sm:col-span-2" label={`Medicine ${i + 1} dose`} value={m.dose || ""} onChange={(value) => updateMedicine(i, "dose", value)} testId={`input-rx-med-dose-${i}`} />
                 <Input className="col-span-4 sm:col-span-2" placeholder="Frequency" value={m.frequency} onChange={(e) => updateMedicine(i, "frequency", e.target.value)} />
                 <Input className="col-span-3 sm:col-span-2" placeholder="Duration" value={m.duration} onChange={(e) => updateMedicine(i, "duration", e.target.value)} />
                 <Button type="button" size="icon" variant="ghost" className="col-span-1 sm:col-span-2 justify-self-end" onClick={() => setMedicines(medicines.length > 1 ? medicines.filter((_, idx) => idx !== i) : [emptyMedicine()])}>
@@ -1200,7 +1231,14 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           </div>
           <div className="space-y-1">
             <Label>Follow-up</Label>
-            <Input placeholder="e.g. Review after 2 weeks with reports" value={followUp} onChange={(e) => setFollowUp(e.target.value)} />
+            <Input placeholder="e.g. Review after 5 days or after 2 weeks" value={followUp} onChange={(e) => {
+              setFollowUp(e.target.value);
+              setFollowUpDateOverride(null);
+            }} data-testid="input-rx-followup" />
+            <Label htmlFor="input-rx-followup-date">Follow-up date</Label>
+            <Input id="input-rx-followup-date" type="date" min={visitDate} value={followUpDate} onChange={(e) => setFollowUpDateOverride(e.target.value)} data-testid="input-rx-followup-date" />
+            <p className="text-xs text-muted-foreground">Calculated from the prescription date and the doctor's interval. Confirm or change the date for receptionist reminders.</p>
+            {followUp.trim() && !followUpDate && <p className="text-xs text-amber-700">No follow-up date calculated. Enter a date or an interval such as "after 5 days".</p>}
           </div>
           <div className="rounded-lg border bg-muted/30 p-3 text-sm" data-testid="rx-save-summary">
             <p className="font-medium">Ready to save</p>

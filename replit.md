@@ -80,6 +80,13 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Generated tasks have unique source keys to prevent repeat creation across refreshes/restarts/server instances. Completed calls and manual/imported records are preserved; no-longer-applicable automatic tasks are shown as cancelled in All.
 - `ensureSchema()` adds the follow-up source/reason/due-date columns and unique index on restart. No external messaging or automatic phone calls are sent.
 
+## Prescription entry dates and dosage units
+
+- Patient type includes Irregular period. Pregnancy-only fields remain limited to Pregnant patients.
+- EDD and POG populate from LMP and the prescription date, using calendar dates without timezone shifts. Changing either source recalculates both; clinicians can still edit the values. With unknown LMP, the existing POG/EDD/dated-scan estimate remains separate from patient-reported LMP.
+- Follow-up instructions such as "after 5 days", "after a week", or "2 weeks" populate an editable follow-up date relative to the prescription date. The date is saved on the appointment and visit for the receptionist queue, which starts reminders one day before it is due. Unclear timing is flagged for confirmation, not guessed.
+- Prescription medicines, clinician medication Add/Edit, and catalog default doses share selectable dosage units. Doses remain stored as existing combined strings (for example, "500 mg"), preserving saved suggestions and print output. Unrecognized legacy dose text remains editable without an assumed unit.
+
 ## Frontend Structure
 
 - `artifacts/saivie/src/App.tsx` — root component with wouter Router (base=BASE_URL)

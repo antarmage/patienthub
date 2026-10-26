@@ -36,21 +36,25 @@ export function addCallDays(date: string, days: number): string {
 export function prescriptionDueDate(instructions: string, visitDate: string): string | null {
   const explicit = instructions.match(/\b\d{4}-\d{1,2}-\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}[/.-]\d{4}\b/);
   if (explicit) return parseCallDate(explicit[0]);
-  const relative = /\b(?:after|in|review|follow[\s-]?up)\s*(?:after|in)?\s*(\d+|one|two|three|four|a|an)\s*(days?|weeks?|months?)\b/i.exec(instructions);
+  const relative = /\b(?:after|in|review|follow[\s-]?up)\s*(?:after|in)?\s*(\d+|one|two|three|four|a|an)?\s*(days?|weeks?|months?)\b/i.exec(instructions)
+    || /^\s*(\d+|one|two|three|four|a|an)?\s*(days?|weeks?|months?)\b/i.exec(instructions);
   if (!relative) return null;
+  if (!relative[1] && /s$/i.test(relative[2])) return null;
   const words: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, a: 1, an: 1 };
-  const count = words[relative[1].toLowerCase()] ?? Number(relative[1]);
-  if (!Number.isInteger(count) || count <= 0) return null;
+  const count = relative[1] ? words[relative[1].toLowerCase()] ?? Number(relative[1]) : 1;
+  if (!Number.isSafeInteger(count) || count <= 0 || !parseCallDate(visitDate)) return null;
   if (!relative[2].toLowerCase().startsWith("month")) {
-    return addCallDays(visitDate, count * (relative[2].toLowerCase().startsWith("week") ? 7 : 1));
+    const due = new Date(Date.parse(`${visitDate}T00:00:00Z`) + count * (relative[2].toLowerCase().startsWith("week") ? 7 : 1) * 86400000);
+    return Number.isFinite(due.getTime()) ? parseCallDate(due.toISOString().slice(0, 10)) : null;
   }
   const date = new Date(`${visitDate}T00:00:00Z`);
   const day = date.getUTCDate();
   date.setUTCDate(1);
   date.setUTCMonth(date.getUTCMonth() + count);
+  if (!Number.isFinite(date.getTime())) return null;
   const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
   date.setUTCDate(Math.min(day, lastDay));
-  return date.toISOString().slice(0, 10);
+  return parseCallDate(date.toISOString().slice(0, 10));
 }
 
 export function callOutcome(form: { didntPickCallTime?: string; notes?: string; feeling?: string }): "pending" | "completed" {
@@ -124,14 +128,15 @@ export function buildFollowUpTasks(sources: FollowUpSources, today: string): Gen
 
   for (const visit of sources.visits) {
     const instructions = visit.followUpPlan?.trim();
-    if (instructions) {
-      const due = prescriptionDueDate(instructions, visit.date);
+    const vitals = record(visit.vitals);
+    const followUpDate = parseCallDate(vitals.followUpDate);
+    if (instructions || followUpDate) {
+      const due = followUpDate || prescriptionDueDate(instructions || "", visit.date);
       const source = visit.appointmentId ? `appointment:${visit.appointmentId}` : `visit:${visit.id}`;
       add(visit.patientId, `prescription:${source}:${due || "confirm"}`, "prescription",
-        due ? instructions : `Confirm follow-up timing with the clinician: ${instructions}`,
+        due ? instructions || `Follow-up scheduled for ${due}.` : `Confirm follow-up timing with the clinician: ${instructions}`,
         due || visit.date, due ? 1 : 0, visit.date);
     }
-    const vitals = record(visit.vitals);
     for (const [field, label] of [["nextImmunisationDate", "Immunisation"], ["nextInvestigationDate", "Investigation"]] as const) {
       const due = parseCallDate(vitals[field]);
       if (due) add(visit.patientId, `schedule:${visit.id}:${field}:${due}`, "milestone",

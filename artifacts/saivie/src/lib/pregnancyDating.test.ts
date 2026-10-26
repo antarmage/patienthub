@@ -1,6 +1,27 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { estimatePregnancyDating } from "./pregnancyDating.ts";
+import { estimatePregnancyDating, pregnancyDatingFromLmp } from "./pregnancyDating.ts";
+
+it("automatically calculates EDD and POG on the prescription date from LMP", () => {
+  assert.deepEqual(pregnancyDatingFromLmp("2026-01-01", "2026-07-16"), {
+    dueDate: "2026-10-08", pog: "28 weeks 0 days",
+  });
+  assert.equal(pregnancyDatingFromLmp("2026-01-01", "2026-07-17")?.pog, "28 weeks 1 days");
+  assert.equal(pregnancyDatingFromLmp("2026-01-02", "2026-07-16")?.dueDate, "2026-10-09");
+});
+
+it("calculates calendar days across leap years and daylight-saving changes", () => {
+  assert.deepEqual(pregnancyDatingFromLmp("2024-02-29", "2024-03-11"), {
+    dueDate: "2024-12-05", pog: "1 weeks 4 days",
+  });
+  assert.equal(pregnancyDatingFromLmp("2026-03-08", "2026-03-09")?.pog, "0 weeks 1 days");
+});
+
+it("does not calculate dating from missing, impossible or future LMP dates", () => {
+  for (const [lmp, asOf] of [["", "2026-07-16"], ["2026-02-30", "2026-07-16"], ["2026-07-17", "2026-07-16"], ["2026-01-01", ""]]) {
+    assert.equal(pregnancyDatingFromLmp(lmp, asOf), null);
+  }
+});
 
 it("reverse-calculates a clearly separate LMP equivalent from POG or due date", () => {
   const estimate = estimatePregnancyDating({ asOf: "2026-07-16", pog: "28 weeks 3 days" });
