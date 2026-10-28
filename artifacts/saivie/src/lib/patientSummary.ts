@@ -16,6 +16,7 @@ export interface SummaryLab {
   value?: number | null;
   unit?: string | null;
   status?: string | null;
+  results?: unknown;
 }
 
 export interface SummaryPoint {

@@ -22,6 +22,14 @@ export async function ensureSchema(): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query(`
+      CREATE TABLE IF NOT EXISTS local_report_imports (
+        import_id uuid PRIMARY KEY,
+        patient_id integer NOT NULL REFERENCES patients(id),
+        payload_sha256 text NOT NULL,
+        receipt jsonb NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email text;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name text;
       ALTER TABLE medications ADD COLUMN IF NOT EXISTS duration text;

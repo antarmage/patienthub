@@ -52,6 +52,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Staff prescription/lab/USG uploads and both prescription-reading endpoints share schema validation and never silently fall back to a hosted provider when local OCR fails.
 - Extraction is read-only. Staff and prescription-entry screens require review before save; clinician Read Reports is explicit and returns editable lab results instead of automatically saving on patient opening.
 - Self-hosted deployment, limits, secret configuration and clinical acceptance testing are documented in [aws/glm-ocr/README.md](aws/glm-ocr/README.md). A GPU deployment must be provisioned separately; the normal API/frontend deployment does not start the model servers.
+- The macOS [local lab-report importer](tools/local-reports/README.md) uses Apple Vision/PDFKit plus a local Ollama model, verifies the destination `patientId`, and produces reviewable JSON outside Git. Its authenticated API imports the original, reviewed results and idempotency receipt in one database transaction; only a matching committed receipt permits local working-file deletion. Originals are never deleted. This path does not require an AWS GPU or change the web OCR provider.
 
 ## Database
 

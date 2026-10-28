@@ -13,6 +13,9 @@ import { insertPatientSchema, parseCallDate, prescriptionDueDate } from "@worksp
 import { calculateInvoiceQuote } from "../prime-pricing";
 import { registerOcrRoutes, registerPrescriptionReadingRoutes, scanClinicalDocument } from "../replit_integrations/ocr";
 import { OcrError } from "../replit_integrations/ocr/document";
+import { registerLocalReportRoutes } from "../local-reports";
+import { createLocalReportStore } from "../local-report-store";
+import { pool } from "../db";
 import { getUncachableGoogleSheetClient } from "../google-sheets";
 import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../google-drive";
 import { ai, AI_AVAILABLE } from "../replit_integrations/image/client";
@@ -5567,6 +5570,22 @@ async function handleDeskAuth(req: Request, res: Response) {
 }
 
 export async function registerDeskRoutes(app: Express) {
+  registerLocalReportRoutes(app, async (req, res, next) => {
+    const id = getStaffUserId(req, res);
+    if (!id) return;
+    try {
+      const user = await storage.getUser(id);
+      if (!user || !["owner", "admin", "receptionist", "clinician"].includes(user.role || "")) {
+        res.status(403).json({ error: "Staff report-import access required." });
+        return;
+      }
+      res.locals.importActorId = id;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  }, createLocalReportStore(pool));
+
   // POST /api/desk/auth — receptionist / admin login (primary path)
   app.post("/api/desk/auth", handleDeskAuth);
 

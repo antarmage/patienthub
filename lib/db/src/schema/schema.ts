@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, serial, integer, real, date, jsonb, boolean, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, integer, real, date, jsonb, boolean, uniqueIndex, uuid, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -411,6 +411,14 @@ export const documents = pgTable("documents", {
   uploadedBy: integer("uploaded_by").references(() => providers.id),
   description: text("description"),
   metadata: jsonb("metadata"),
+});
+
+export const localReportImports = pgTable("local_report_imports", {
+  importId: uuid("import_id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  payloadSha256: text("payload_sha256").notNull(),
+  receipt: jsonb("receipt").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true });

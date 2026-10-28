@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { exactLabNumber } from "./labReading";
+import { exactLabNumber, recordedLabValue } from "./labReading";
 
 test("retains exact numeric values without changing qualifiers or qualitative results", () => {
   assert.equal(exactLabNumber("0.01"), 0.01);
@@ -20,4 +20,25 @@ test("retains exact numeric values without changing qualifiers or qualitative re
   ]) {
     assert.equal(exactLabNumber(value), null, value);
   }
+});
+
+test("shows exact imported qualifiers and qualitative values in summaries and evidence", () => {
+  assert.equal(
+    recordedLabValue({
+      value: null,
+      unit: "mIU/L",
+      results: { rawValue: "<0.01" },
+    }),
+    "<0.01 mIU/L",
+  );
+  assert.equal(
+    recordedLabValue({ value: null, results: { rawValue: "Negative" } }),
+    "Negative",
+  );
+  assert.equal(
+    recordedLabValue({ value: 0.01, results: { rawValue: "0.010" } }),
+    "0.010",
+  );
+  assert.equal(recordedLabValue({ value: 0, unit: "mg" }), "0 mg");
+  assert.equal(recordedLabValue({ results: [] }), null);
 });

@@ -1,3 +1,5 @@
+import { recordedLabValue } from "./labReading";
+
 export const assessmentStatuses = [
   "Working impression", "Confirmed diagnosis", "Symptom / problem", "Undetermined",
 ] as const;
@@ -89,8 +91,7 @@ export function assembleEvidence(input: EvidenceInput): EvidenceFact[] {
     add(`plan:${visit.id}`, "Previous treatment / plan", visit.planNotes, "Previous visit", visit.date, false);
   }
   for (const lab of [...input.labs].sort((a, b) => b.date.localeCompare(a.date))) {
-    const value = lab.value !== null && lab.value !== undefined ? `${lab.value}${lab.unit ? ` ${lab.unit}` : ""}`
-      : lab.results != null ? JSON.stringify(lab.results) : "Result value not recorded";
+    const value = recordedLabValue(lab) ?? (lab.results != null ? JSON.stringify(lab.results) : "Result value not recorded");
     add(`lab:${lab.id}`, lab.testName, `${value}${lab.status ? ` · recorded status: ${lab.status}` : ""}`,
       "Stored laboratory result (not independently verified)", lab.date,
       !input.fertility || /amh|fsh|lh|tsh|prolactin|progesterone|semen|estradiol|oestradiol/i.test(lab.testName));
