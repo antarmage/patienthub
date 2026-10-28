@@ -43,6 +43,9 @@ loadEnvFile(path.resolve(__dirname, "../../../.env"));
 
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
+if (apply && process.env.OCR_PROVIDER === "glm-ocr") {
+  throw new Error("GLM-OCR rescans are review-only. Use the upload/review UI to verify fields before saving.");
+}
 const force = args.includes("--force");
 
 function readFlag(name) {
@@ -177,7 +180,7 @@ try {
     }
 
     console.log(`SCAN ${label} using patient_documents ${file.id}`);
-    const result = await scanClinicalDocument(image, file.mime_type || "image/jpeg", row.category || "prescription");
+    const result = await scanClinicalDocument(image, file.mime_type || "image/jpeg", "prescription");
     const medications = namedMedications(result);
     console.log(`  read ${medications.length} medicine(s): ${medications.map((med) => med.name).join(", ") || "(none)"}`);
     if (!apply) continue;

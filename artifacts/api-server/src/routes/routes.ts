@@ -11,7 +11,8 @@ import { knownRateCard, parseRateCardText } from "../referral-rate-cards";
 import { synchronizeFollowUpCalls } from "../follow-up-calls";
 import { insertPatientSchema, parseCallDate, prescriptionDueDate } from "@workspace/db";
 import { calculateInvoiceQuote } from "../prime-pricing";
-import { registerOcrRoutes } from "../replit_integrations/ocr";
+import { registerOcrRoutes, registerPrescriptionReadingRoutes, scanClinicalDocument } from "../replit_integrations/ocr";
+import { OcrError } from "../replit_integrations/ocr/document";
 import { getUncachableGoogleSheetClient } from "../google-sheets";
 import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../google-drive";
 import { ai, AI_AVAILABLE } from "../replit_integrations/image/client";
@@ -1936,6 +1937,9 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     if (!patient) return res.status(404).json({ error: "Patient not found" });
 
     const body = req.body ?? {};
+    if (body.scanned === true && body.scanReviewed !== true) {
+      return res.status(422).json({ error: "Review the scanned prescription against the original before saving." });
+    }
     const antenatal = antenatalFromBody(body);
     const requestedDate = String(body.prescriptionDate || "").slice(0, 10);
     if (requestedDate && !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
@@ -2082,6 +2086,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         frequency: med.frequency || null,
         duration: med.duration || null,
         instructions: med.instructions || null,
+        route: med.route || null,
         startDate: prescriptionDate,
         status: "active",
         notes: [med.duration ? `Duration: ${med.duration}` : "", med.instructions || ""].filter(Boolean).join(". ") || null,
@@ -3335,14 +3340,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         return res.json({ extracted: 0, message: "No lab report PDFs found for this patient" });
       }
 
-      const existingResults = await storage.getLabResults(patientId);
-      const normalizeTestName = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const existingSet = new Set(
-        existingResults.map((lr: any) => `${normalizeTestName(lr.testName || '')}|${lr.date || ''}`)
-      );
-
-      let totalExtracted = 0;
-      let skippedDuplicates = 0;
+      const documents = [];
       const errors: string[] = [];
 
       for (const doc of labDocs) {
@@ -3358,103 +3356,25 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
             continue;
           }
 
-          if (!AI_AVAILABLE) { errors.push("AI features not available in this environment"); continue; }
-          const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    inlineData: {
-                      mimeType: "application/pdf",
-                      data: base64Pdf,
-                    },
-                  },
-                  {
-                    text: `Extract all lab test results from this medical lab report PDF. Return a JSON array of test results. Each element should have these fields:
-- "testName": the name of the test (e.g., "Hemoglobin", "TSH", "Fasting Glucose", "AMH", "Progesterone")
-- "value": the numeric value as a number (not string). If no numeric value, use null.
-- "unit": the unit of measurement (e.g., "g/dL", "mg/dL", "ng/mL", "mIU/L")
-- "status": one of "Normal", "High", "Low", "Critical", or "Borderline" based on the reference range
-- "category": the test category (e.g., "Hematology", "Hormone", "Biochemistry", "Thyroid", "Liver Function", "Kidney Function")
-- "referenceMin": minimum of reference range as number (or null)
-- "referenceMax": maximum of reference range as number (or null)
-- "collectedDate": the sample collection date or report date found on the PDF in YYYY-MM-DD format (e.g., "2025-01-15"). Look for fields like "Collected On", "Sample Collection Date", "Report Date", "Date" on the report. If not found, use null.`
-                  },
-                ],
-              },
-            ],
-            config: {
-              responseMimeType: "application/json",
-            },
+          const reading = await scanClinicalDocument(base64Pdf, "application/pdf", "blood");
+          documents.push({
+            id: doc.id, name: doc.name, date: reading.date,
+            sourceUrl: `https://drive.google.com/file/d/${encodeURIComponent(driveFileId)}/view`,
+            results: reading.results, rawText: reading.rawText, warnings: reading.warnings,
+            provider: reading.provider,
           });
-
-          const text = response.text || "";
-          let parsed: any[];
-          try {
-            const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            const result = JSON.parse(cleaned);
-            parsed = Array.isArray(result) ? result : [result];
-          } catch {
-            errors.push(`Could not parse AI response for ${doc.name}`);
-            continue;
-          }
-
-          const fallbackDate = doc.date || new Date().toISOString().split('T')[0];
-
-          for (const item of parsed) {
-            if (!item.testName) continue;
-            const resultDate = item.collectedDate || fallbackDate;
-            const dupKey = `${normalizeTestName(item.testName)}|${resultDate}`;
-            if (existingSet.has(dupKey)) {
-              skippedDuplicates++;
-              continue;
-            }
-            await storage.createLabResult({
-              patientId,
-              testName: item.testName,
-              value: item.value != null ? parseFloat(item.value) : null,
-              unit: item.unit || null,
-              status: item.status || null,
-              category: item.category || null,
-              date: resultDate,
-              referenceMin: item.referenceMin != null ? parseFloat(item.referenceMin) : null,
-              referenceMax: item.referenceMax != null ? parseFloat(item.referenceMax) : null,
-              notes: `Extracted from Drive file: ${driveFileId}`,
-              results: null,
-              labTaskId: null,
-            });
-            existingSet.add(dupKey);
-            totalExtracted++;
-          }
-        } catch (err: any) {
-          console.error(`Error extracting from ${doc.name}:`, err.message);
-          errors.push(`Error processing ${doc.name}: ${err.message}`);
+        } catch (error) {
+          console.error("Lab document reading failed:", { documentId: doc.id });
+          errors.push(`Could not read document ${doc.id}: ${error instanceof OcrError ? error.message : "Document processing failed."}`);
         }
       }
-
-      let message = '';
-      if (totalExtracted > 0) {
-        message = `Extracted ${totalExtracted} new lab result(s)`;
-      } else {
-        message = "No new results extracted";
-      }
-      if (skippedDuplicates > 0) {
-        message += ` (${skippedDuplicates} duplicate${skippedDuplicates > 1 ? 's' : ''} skipped)`;
-      }
-
       res.json({
-        extracted: totalExtracted,
-        skippedDuplicates,
+        documents,
+        requiresReview: true,
         documentsProcessed: labDocs.length,
         errors,
-        message,
+        message: "Reports read for review. No lab results have been saved.",
       });
-      // Auto-trigger risk re-score after lab extraction completes
-      if (totalExtracted > 0) {
-        scorePatient(patientId).catch(() => {});
-      }
     } catch (err: any) {
       console.error("Lab extraction error:", err);
       res.status(500).json({ error: "Failed to extract lab results: " + err.message });
@@ -4406,211 +4326,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.status(204).send();
   });
 
-  app.post("/api/patients/:id/extract-prescription", async (req, res) => {
-    try {
-      const patientId = parseId(req.params.id);
-      if (!patientId) return res.status(400).json({ error: "Invalid ID" });
-      const patient = await storage.getPatient(patientId);
-      if (!patient) return res.status(404).json({ error: "Patient not found" });
-
-      const { fileData, mimeType, fileName } = req.body;
-      if (!fileData || !mimeType) {
-        return res.status(400).json({ error: "Missing fileData or mimeType" });
-      }
-
-      const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
-      if (!allowedMimes.includes(mimeType)) {
-        return res.status(400).json({ error: "Unsupported file type. Please upload a PDF or image (JPEG, PNG)." });
-      }
-
-      const fileSizeBytes = Buffer.byteLength(fileData, 'base64');
-      if (fileSizeBytes > 10 * 1024 * 1024) {
-        return res.status(400).json({ error: "File too large. Maximum size is 10 MB." });
-      }
-
-      const catalogEntries = await storage.getMedicineCatalog();
-      let catalogHint = '';
-      if (catalogEntries.length > 0) {
-        const catalogList = catalogEntries.map(m =>
-          `${m.name}${m.genericName ? ` (${m.genericName})` : ''}${m.defaultDose ? ` — ${m.defaultDose}` : ''}${m.defaultFrequency ? `, ${m.defaultFrequency}` : ''}`
-        ).join('\n');
-        catalogHint = `\n\nIMPORTANT — This clinic commonly prescribes the following medicines. When the handwriting is ambiguous, prefer matching to one of these known medicines:\n${catalogList}\n\nUse the exact name from this list when there is a match. If a medicine is not in this list, still extract it with your best reading.`;
-      }
-
-      if (!AI_AVAILABLE) return res.status(503).json({ error: "AI features not available in this environment" });
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                inlineData: {
-                  mimeType,
-                  data: fileData,
-                },
-              },
-              {
-                text: `Extract all prescribed medications from this prescription document (image or PDF). Return a JSON array of medications. Each element should have these fields:
-- "name": the medication/drug name (e.g., "Folic Acid", "Progesterone", "Metformin", "Letrozole")
-- "dose": the dosage (e.g., "5 mg", "200 mg", "500 mg", "2.5 mg")
-- "frequency": how often to take it (e.g., "Once daily", "Twice daily", "Three times a day", "At bedtime")
-- "route": route of administration (e.g., "Oral", "Vaginal", "Subcutaneous", "Intramuscular", "Topical"). Default to "Oral" if not specified.
-- "startDate": the prescription date or start date found on the document in YYYY-MM-DD format. If not found, use null.
-- "duration": duration mentioned (e.g., "30 days", "2 weeks", "until next visit"). If not found, use null.
-- "notes": any additional instructions (e.g., "Take with food", "Empty stomach", "After meals"). If none, use null.
-
-Be thorough — extract every medication mentioned including supplements and vitamins. If the prescription is handwritten, do your best to read it.${catalogHint}`,
-              },
-            ],
-          },
-        ],
-        config: {
-          responseMimeType: "application/json",
-        },
-      });
-
-      const text = response.text || "";
-      let parsed: any[];
-      try {
-        const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        const result = JSON.parse(cleaned);
-        parsed = Array.isArray(result) ? result : [result];
-      } catch {
-        return res.status(422).json({ error: "Could not parse AI response", raw: text });
-      }
-
-      const existingMeds = await storage.getMedications(patientId);
-      const normalizeName = (n: string) => n.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const existingSet = new Set(
-        existingMeds.map((m: any) => `${normalizeName(m.name)}|${m.dose || ''}`)
-      );
-
-      let inserted = 0;
-      let skipped = 0;
-      const today = new Date().toISOString().split('T')[0];
-
-      for (const item of parsed) {
-        if (!item.name) continue;
-
-        const dupKey = `${normalizeName(item.name)}|${item.dose || ''}`;
-        if (existingSet.has(dupKey)) {
-          skipped++;
-          continue;
-        }
-
-        await storage.createMedication({
-          patientId,
-          name: item.name,
-          dose: item.dose || null,
-          frequency: item.frequency || null,
-          route: item.route || "Oral",
-          startDate: item.startDate || today,
-          endDate: null,
-          prescribedBy: null,
-          status: "Active",
-          notes: [item.notes, item.duration ? `Duration: ${item.duration}` : null].filter(Boolean).join('. ') || null,
-        });
-        existingSet.add(dupKey);
-        inserted++;
-      }
-
-      await storage.createDocument({
-        patientId,
-        name: fileName || 'Prescription',
-        type: 'prescription',
-        category: 'Prescription',
-        date: today,
-        description: `AI-extracted prescription: ${inserted} medication(s) found`,
-        metadata: { extractedMeds: inserted, skippedDuplicates: skipped, uploadedAt: new Date().toISOString() },
-      });
-
-      let message = '';
-      if (inserted > 0) {
-        message = `Extracted ${inserted} medication(s) from prescription`;
-      } else {
-        message = "No new medications extracted";
-      }
-      if (skipped > 0) {
-        message += ` (${skipped} duplicate${skipped > 1 ? 's' : ''} skipped)`;
-      }
-
-      res.json({ inserted, skipped, total: parsed.length, message });
-    } catch (err: any) {
-      console.error("Prescription extraction error:", err);
-      res.status(500).json({ error: "Failed to extract prescription: " + err.message });
-    }
-  });
-
-  // Reads a prescription photo/PDF and returns structured data for review; nothing is saved.
-  app.post("/api/patients/:id/parse-prescription", async (req, res) => {
-    try {
-      const patientId = parseId(req.params.id);
-      if (!patientId) return res.status(400).json({ error: "Invalid ID" });
-      const { fileData, mimeType } = req.body;
-      if (!fileData || !mimeType) return res.status(400).json({ error: "Missing fileData or mimeType" });
-      const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
-      if (!allowedMimes.includes(mimeType)) {
-        return res.status(400).json({ error: "Unsupported file type. Please upload a PDF or image (JPEG, PNG)." });
-      }
-      if (Buffer.byteLength(fileData, 'base64') > 10 * 1024 * 1024) {
-        return res.status(400).json({ error: "File too large. Maximum size is 10 MB." });
-      }
-      if (!AI_AVAILABLE) return res.status(503).json({ error: "AI features not available in this environment" });
-
-      const catalogEntries = await storage.getMedicineCatalog();
-      const catalogHint = catalogEntries.length > 0
-        ? `\n\nThis clinic commonly prescribes these medicines. When handwriting is ambiguous, prefer matching one of them (use the exact name):\n${catalogEntries.map(m => `${m.name}${m.genericName ? ` (${m.genericName})` : ''}`).join('\n')}`
-        : '';
-
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { inlineData: { mimeType, data: fileData } },
-              {
-                text: `Read this clinic prescription (image or PDF, possibly handwritten) and return a single JSON object with these fields:
-- "diagnosis": diagnosis / impression / complaints as a string, or "".
-- "medicines": array of { "name", "dose", "frequency", "duration", "instructions" } (strings, "" if unknown). Include supplements and vitamins.
-- "tests": array of { "name", "type" } for every lab test or investigation advised; "type" is "usg" for ultrasound/scan/sonography, otherwise "lab".
-- "advice": general advice / counselling notes as a string, or "".
-- "followUp": follow-up instruction (e.g. "Review after 2 weeks"), or "".
-- "prescriptionDate": date on the document as YYYY-MM-DD, or null.
-Only include what is actually written. Do not invent anything.${catalogHint}`,
-              },
-            ],
-          },
-        ],
-        config: { responseMimeType: "application/json" },
-      });
-
-      const cleaned = (response.text || "").replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      let parsed: any;
-      try {
-        parsed = JSON.parse(cleaned);
-      } catch {
-        return res.status(422).json({ error: "Could not read the prescription. Please enter it manually." });
-      }
-      const str = (v: any) => (typeof v === 'string' ? v.trim() : '');
-      res.json({
-        diagnosis: str(parsed.diagnosis),
-        medicines: (Array.isArray(parsed.medicines) ? parsed.medicines : []).filter((m: any) => str(m?.name)).map((m: any) => ({
-          name: str(m.name), dose: str(m.dose), frequency: str(m.frequency), duration: str(m.duration), instructions: str(m.instructions),
-        })),
-        tests: (Array.isArray(parsed.tests) ? parsed.tests : []).filter((t: any) => str(t?.name)).map((t: any) => ({
-          name: str(t.name), type: t.type === 'usg' ? 'usg' : 'lab',
-        })),
-        advice: str(parsed.advice),
-        followUp: str(parsed.followUp),
-        prescriptionDate: str(parsed.prescriptionDate) || null,
-      });
-    } catch (err: any) {
-      console.error("Prescription parse error:", err);
-      res.status(500).json({ error: "Failed to read prescription: " + err.message });
-    }
-  });
+  registerPrescriptionReadingRoutes(app, (id) => storage.getPatient(id));
 
   app.get("/api/google-drive/status", async (_req, res) => {
     try {

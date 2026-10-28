@@ -1,1 +1,5 @@
-export { registerOcrRoutes } from "./routes";
+export {
+  registerOcrRoutes,
+  registerPrescriptionReadingRoutes,
+  scanClinicalDocument,
+} from "./routes";

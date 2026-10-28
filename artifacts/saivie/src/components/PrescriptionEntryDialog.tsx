@@ -19,6 +19,7 @@ interface Medicine {
   frequency: string;
   duration: string;
   instructions: string;
+  route?: string;
 }
 
 interface TestLine {
@@ -41,7 +42,7 @@ async function readApiJson(res: Response) {
   }
 }
 
-const emptyMedicine = (): Medicine => ({ name: "", dose: "", frequency: "", duration: "", instructions: "" });
+const emptyMedicine = (): Medicine => ({ name: "", dose: "", frequency: "", duration: "", instructions: "", route: "" });
 const PATIENT_TYPES = ["General", "PCOS", "Irregular period", "Pregnant", "MTP", "Fertility", "Postpartum", "Gynecology"];
 const UTERUS_SIZES = Array.from({ length: 42 }, (_, index) => `${index + 1} weeks`);
 const FETAL_HEART_SOUNDS = Array.from({ length: 121 }, (_, index) => String(index + 60));
@@ -364,15 +365,35 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
+  const [scanReviewed, setScanReviewed] = useState(false);
+  const [scanWarnings, setScanWarnings] = useState<string[]>([]);
+  const [scanText, setScanText] = useState("");
+  const [scanSource, setScanSource] = useState<{ fileData: string; mimeType: string; name: string; provider: string; sourcePages: { pageNumber: number; text: string }[] } | null>(null);
+  const sourceSaved = useRef(false);
+  const scanRevision = useRef(0);
   const [entered, setEntered] = useState(false);
   const closing = useRef(false);
   const [prescriptionDate, setPrescriptionDate] = useState("");
   const [step, setStep] = useState<EntryStep>("patient");
+  useEffect(() => {
+    setScanReviewed(false);
+  }, [medicines, tests, diagnosis, advice, followUp, prescriptionDate, chiefComplaint, examination, lmp, height, weight, age, patientType, antenatal, followUpDateOverride]);
   const fileRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const patientId = appointment?.patientId ?? patient?.id;
+  useEffect(() => {
+    scanRevision.current++;
+    setScanSource(null);
+    setScanned(false);
+    setScanning(false);
+    setScanWarnings([]);
+    setScanText("");
+    setScanReviewed(false);
+    sourceSaved.current = false;
+    return () => { scanRevision.current++; };
+  }, [patientId, appointment?.id]);
   const editing = !!appointment?.edit;
   const needsDate = !appointment?.id || editing;
   const recordedVitals = {
@@ -499,6 +520,9 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       setFollowUp("");
       setPrescriptionDate("");
       setScanned(false);
+      setScanReviewed(false);
+      setScanWarnings([]);
+      setScanText("");
       const demo = demographicsFrom(patient);
       setLmp(demo.lmp);
       setHeight(demo.height);
@@ -540,7 +564,13 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
 
   const scanFile = async (file: File) => {
     if (!patientId) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Maximum upload size is 10MB.", variant: "destructive" });
+      return;
+    }
     setScanning(true);
+    setScanReviewed(false);
+    const revision = ++scanRevision.current;
     try {
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -554,8 +584,9 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
         body: JSON.stringify({ fileData: base64, mimeType: file.type || "application/pdf", fileName: file.name }),
       });
       const data = await res.json().catch(() => ({}));
+      if (revision !== scanRevision.current) return;
       if (!res.ok) throw new Error(data.error || "Could not read the prescription");
-      if (data.medicines?.length) setMedicines(data.medicines);
+      setMedicines(data.medicines?.length ? data.medicines : [emptyMedicine()]);
       if (data.tests?.length) {
         setTests((prev) => [...prev, ...data.tests.filter((t: TestLine) => !prev.some((x) => x.name.toLowerCase() === t.name.toLowerCase()))]);
       }
@@ -569,11 +600,15 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
         changePrescriptionDate(data.prescriptionDate);
       }
       setScanned(true);
+      setScanWarnings(Array.isArray(data.warnings) ? data.warnings : []);
+      setScanText(typeof data.rawText === "string" ? data.rawText : "");
+      setScanSource({ fileData: base64, mimeType: file.type || "application/pdf", name: file.name, provider: data.provider, sourcePages: data.sourcePages || [] });
+      sourceSaved.current = false;
       toast({ title: "Prescription read", description: "Please check every field against the paper copy before saving." });
     } catch (err: any) {
       toast({ title: "Could not read prescription", description: err.message, variant: "destructive" });
     } finally {
-      setScanning(false);
+      if (revision === scanRevision.current) setScanning(false);
       if (fileRef.current) fileRef.current.value = "";
     }
   };
@@ -765,6 +800,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
         name: med.name.trim(),
         dose: med.dose || null,
         frequency: med.frequency || null,
+        route: med.route || null,
         startDate: visitDate,
         status: "active",
         notes: [med.duration ? `Duration: ${med.duration}` : "", med.instructions || ""].filter(Boolean).join(". ") || null,
@@ -850,6 +886,10 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   }, [appointment]);
 
   const save = async () => {
+    if (scanned && !scanReviewed) {
+      toast({ title: "Review required", description: "Check the extracted fields against the original prescription before saving.", variant: "destructive" });
+      return;
+    }
     if (!patientId || (!appointment?.id && !appointment?.historical && !patient)) return;
     if (needsDate && !/^\d{4}-\d{2}-\d{2}$/.test(prescriptionDate)) {
       toast({ title: "Enter the prescription date", variant: "destructive" });
@@ -868,6 +908,20 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     }
     setSaving(true);
     try {
+      if (scanSource && !sourceSaved.current) {
+        const sourceResponse = await fetch(`/api/patients/${patientId}/documents`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: scanSource.name, type: "Prescription", category: "prescription",
+            date: prescriptionDate || String(appointment?.date || "").slice(0, 10),
+            fileData: scanSource.fileData, mimeType: scanSource.mimeType,
+            metadata: { provider: scanSource.provider, ocrRawText: scanText, sourcePages: scanSource.sourcePages, warnings: scanWarnings, reviewed: true },
+          }),
+        });
+        if (!sourceResponse.ok) throw new Error("Could not save the original prescription. No prescription changes were saved.");
+        sourceSaved.current = true;
+      }
       const res = await fetch(`/api/patients/${patientId}/manual-prescription`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -895,6 +949,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           medicines: medicines.filter((med) => med.name.trim()),
           tests,
           scanned,
+          scanReviewed,
         }),
       });
       const raw = await res.text();
@@ -1177,7 +1232,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
                   <MedicineAutocomplete value={m.name} onChange={(value) => updateMedicine(i, "name", value)} onSelect={(medicine) =>
                     setMedicines((current) => current.map((item, index) => index === i ? {
                       name: medicine.name, dose: medicine.dose, frequency: medicine.frequency,
-                      duration: medicine.duration, instructions: medicine.instructions,
+                      duration: medicine.duration, instructions: medicine.instructions, route: medicine.route,
                     } : item))
                   } testId={`input-rx-med-name-${i}`} />
                 </div>
@@ -1188,6 +1243,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
                 </Button>
                 <MedicineFrequencyInput className="col-span-12" label={`Medicine ${i + 1} frequency`} value={m.frequency} onChange={(value) => updateMedicine(i, "frequency", value)} testId={`input-rx-med-frequency-${i}`} />
                 <Input className="col-span-12" placeholder="Instructions (e.g. after food)" value={m.instructions} onChange={(e) => updateMedicine(i, "instructions", e.target.value)} />
+                <Input className="col-span-12" aria-label={`Medicine ${i + 1} route`} placeholder="Route (leave blank if not written)" value={m.route || ""} onChange={(e) => updateMedicine(i, "route", e.target.value)} />
               </div>
             ))}
           </div>
@@ -1260,15 +1316,24 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
 
         </div>
       </div>
-      <footer className="flex items-center justify-between gap-2 border-t px-4 py-3 sm:px-6">
+      {scanned && (
+        <div className="space-y-2 border-t px-4 py-3 text-sm sm:px-6">
+          {scanWarnings.length > 0 && <div role="alert" className="rounded border border-amber-300 bg-amber-50 p-2 text-amber-900"><p className="font-semibold">Verify unclear details:</p><ul className="list-disc pl-4">{scanWarnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></div>}
+          <details><summary className="cursor-pointer">View OCR transcription (unverified)</summary><pre className="max-h-48 overflow-auto whitespace-pre-wrap text-xs">{scanText}</pre></details>
+        </div>
+      )}
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3 sm:px-6">
         <Button type="button" variant="outline" onClick={() => goToStep(steps[stepIndex - 1].id)} disabled={stepIndex === 0 || saving || scanning} data-testid="btn-rx-back">Back</Button>
         {stepIndex < steps.length - 1 ? (
           <Button type="button" onClick={() => goToStep(steps[stepIndex + 1].id)} disabled={saving || scanning} data-testid="btn-rx-next">Next</Button>
         ) : (
-        <Button type="button" onClick={save} disabled={saving || scanning || (needsDate && !prescriptionDate)} data-testid="btn-rx-save">
+        <>
+        {scanned && <label className="flex items-start gap-2 text-xs"><input type="checkbox" className="mt-0.5" checked={scanReviewed} onChange={(event) => setScanReviewed(event.target.checked)} data-testid="checkbox-review-prescription" />I verified all extracted fields against the original prescription.</label>}
+        <Button type="button" onClick={save} disabled={saving || scanning || (scanned && !scanReviewed) || (needsDate && !prescriptionDate)} data-testid="btn-rx-save">
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {editing ? "Update prescription" : "Save prescription"}
         </Button>
+        </>
         )}
       </footer>
     </div>

@@ -5,6 +5,7 @@ import { openPrescription } from "@/lib/prescriptionTemplate";
 import { MedicineAutocomplete } from "@/components/MedicineAutocomplete";
 import { MedicineDoseInput } from "@/components/MedicineDoseInput";
 import { MedicineFrequencyInput } from "@/components/MedicineFrequencyInput";
+import { ReportReadingButton } from "@/components/ReportReadingButton";
 import { useToast } from "@/hooks/use-toast";
 import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSettings";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
@@ -70,7 +71,6 @@ import {
   X,
   ExternalLink,
   Loader2,
-  Sparkle,
   Upload,
   Pencil,
   Trash2,
@@ -458,7 +458,6 @@ export default function ClinicianPortal() {
   const [postVisitSummaryResult, setPostVisitSummaryResult] = useState<string | null>(null);
   const [soapSaving, setSoapSaving] = useState(false);
   const [soapSavedMsg, setSoapSavedMsg] = useState<string | null>(null);
-  const [extractionStatus, setExtractionStatus] = useState<string | null>(null);
   const [fundalHeightVal, setFundalHeightVal] = useState('');
   const [fetalHeartRateVal, setFetalHeartRateVal] = useState('');
 
@@ -578,7 +577,6 @@ export default function ClinicianPortal() {
     }
   };
 
-  const autoExtractTriggeredRef = React.useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (selectedPatient) {
@@ -591,58 +589,6 @@ export default function ClinicianPortal() {
       else setCareMode('natural_conception');
     }
   }, [selectedPatient]);
-
-  const prescriptionInputRef = React.useRef<HTMLInputElement>(null);
-
-  const uploadPrescriptionMutation = useMutation({
-    mutationFn: async ({ patientId, file }: { patientId: number; file: File }) => {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          const base64Data = result.split(',')[1];
-          resolve(base64Data);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      const res = await fetch(`/api/patients/${patientId}/extract-prescription`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileData: base64,
-          mimeType: file.type || 'application/pdf',
-          fileName: file.name,
-        }),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Failed to extract prescription');
-      }
-      return res.json();
-    },
-    onSuccess: (data) => {
-      if (selectedPatient) {
-        queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/medications`] });
-        queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/documents`] });
-      }
-      setExtractionStatus(data.message || 'Prescription processed successfully');
-      setTimeout(() => setExtractionStatus(null), 6000);
-    },
-    onError: (err: any) => {
-      setExtractionStatus(`Extraction failed: ${err.message}`);
-      setTimeout(() => setExtractionStatus(null), 6000);
-    },
-  });
-
-  const handlePrescriptionUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && selectedPatient) {
-      uploadPrescriptionMutation.mutate({ patientId: selectedPatient.id, file });
-    }
-    if (prescriptionInputRef.current) prescriptionInputRef.current.value = '';
-  };
 
   const generatePrescription = () => {
     if (!selectedPatient) return;
@@ -717,25 +663,6 @@ export default function ClinicianPortal() {
       nextVaccinationDate: ((latestVisit?.vitals as any) || {}).nextImmunisationDate || '',
     });
   };
-
-  const extractLabMutation = useMutation({
-    mutationFn: async (patientId: number) => {
-      const res = await fetch(`/api/patients/${patientId}/extract-lab-results`, { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to extract lab results');
-      return res.json();
-    },
-    onSuccess: (data) => {
-      setExtractionStatus(data.message || `Extracted ${data.extracted} results`);
-      if (selectedPatient) {
-        queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/lab-results`] });
-      }
-      setTimeout(() => setExtractionStatus(null), 5000);
-    },
-    onError: (err: any) => {
-      setExtractionStatus(`Error: ${err.message}`);
-      setTimeout(() => setExtractionStatus(null), 5000);
-    },
-  });
 
   const patientsQuery = useQuery({
     queryKey: ['/api/patients', clinicianProvider?.id],
@@ -913,7 +840,6 @@ export default function ClinicianPortal() {
     enabled: !!selectedPatient
   });
   const labResults = labResultsQuery.data || [];
-  const labResultsLoaded = labResultsQuery.isSuccess;
 
   const weightLogsQuery = useQuery<ClinicianWeightLog[]>({
     queryKey: [`/api/patients/${selectedPatient?.id}/weight-logs`],
@@ -960,17 +886,6 @@ export default function ClinicianPortal() {
     enabled: !!selectedPatient
   });
   const labDocuments = labDocumentsQuery.data || [];
-  const labDocumentsLoaded = labDocumentsQuery.isSuccess;
-
-  useEffect(() => {
-    if (selectedPatient && labDocumentsLoaded && labResultsLoaded && !extractLabMutation.isPending) {
-      const pid = selectedPatient.id;
-      if (labDocuments.length > 0 && labResults.length === 0 && !autoExtractTriggeredRef.current.has(pid)) {
-        autoExtractTriggeredRef.current.add(pid);
-        extractLabMutation.mutate(pid);
-      }
-    }
-  }, [selectedPatient?.id, labDocumentsLoaded, labResultsLoaded, labDocuments.length, labResults.length, extractLabMutation.isPending]);
 
   const fertilityAnalyticsQuery = useQuery({
     queryKey: ['/api/analytics/fertility'],
@@ -2101,41 +2016,12 @@ export default function ClinicianPortal() {
            )}
          </div>
          <div className="flex items-center gap-1.5">
-           {labDocuments.length > 0 && (
-             <Button
-               variant="outline"
-               size="sm"
-               className="h-7 text-[11px] gap-1 border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted"
-               disabled={extractLabMutation.isPending}
-               onClick={() => selectedPatient && extractLabMutation.mutate(selectedPatient.id)}
-               data-testid="button-read-reports-investigation"
-             >
-               {extractLabMutation.isPending ? (
-                 <><Loader2 className="w-3 h-3 animate-spin" /> Reading...</>
-               ) : (
-                 <><Sparkle className="w-3 h-3" /> Read Reports</>
-               )}
-             </Button>
-           )}
+           {labDocuments.length > 0 && selectedPatient && <ReportReadingButton key={selectedPatient.id} patientId={selectedPatient.id} />}
            <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setShowAddInvestigation(!showAddInvestigation)} data-testid="button-add-investigation">
              <Plus className="w-3 h-3" /> Add
            </Button>
          </div>
        </div>
-
-       {extractionStatus && (
-         <div className={`mb-3 px-3 py-2 rounded-md text-xs flex items-center gap-2 ${extractionStatus.startsWith('Error') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
-           {extractionStatus.startsWith('Error') ? <AlertCircle className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
-           {extractionStatus}
-         </div>
-       )}
-
-       {extractLabMutation.isPending && (
-         <div className="mb-3 px-3 py-2 rounded-md text-xs bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-2">
-           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-           Reading lab reports and matching to investigations...
-         </div>
-       )}
 
        {showAddInvestigation && (
          <div className="flex gap-2 mb-3 bg-saivie-ivory border border-saivie-border rounded-md p-2">

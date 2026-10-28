@@ -46,6 +46,13 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `artifacts/api-server/src/risk-engine.ts` — AI risk scoring engine
 - `artifacts/api-server/src/replit_integrations/` — OCR and AI image integrations
 
+## Clinical document reading
+
+- `OCR_PROVIDER=glm-ocr` enables an opt-in self-hosted GLM-OCR gateway plus a separate self-hosted text-structuring model. Without this setting, document reading uses the existing Gemini provider.
+- Staff prescription/lab/USG uploads and both prescription-reading endpoints share schema validation and never silently fall back to a hosted provider when local OCR fails.
+- Extraction is read-only. Staff and prescription-entry screens require review before save; clinician Read Reports is explicit and returns editable lab results instead of automatically saving on patient opening.
+- Self-hosted deployment, limits, secret configuration and clinical acceptance testing are documented in [aws/glm-ocr/README.md](aws/glm-ocr/README.md). A GPU deployment must be provisioned separately; the normal API/frontend deployment does not start the model servers.
+
 ## Database
 
 - Schema: `lib/db/src/schema/schema.ts` + `lib/db/src/schema/models/chat.ts`

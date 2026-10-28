@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { ClinicalReadingEditor } from "@/components/ClinicalReadingEditor";
+import { exactLabNumber } from "@/lib/labReading";
 import { CALL_TRIGGER_LABELS, callOutcome, clinicDate, type CallTrigger } from "../../../../lib/db/src/follow-up";
 import type { FollowUpCall } from "../../../../lib/db/src/schema/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -128,9 +130,12 @@ function extractedMedications(result: any) {
 function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isOpen: boolean; onClose: () => void; patient: any; onSaveComplete?: () => void }) {
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string; preview: string; type: string } | null>(null);
   const [ocrResult, setOcrResult] = useState<any>(null);
+  const [scanReviewed, setScanReviewed] = useState(false);
+  const scanRevision = useRef(0);
   const [activeDocTab, setActiveDocTab] = useState("prescription");
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveIssues, setSaveIssues] = useState<string[]>([]);
   const [savedMedCount, setSavedMedCount] = useState(0);
   const [savedSummary, setSavedSummary] = useState<string[]>([]);
   const [uploadNotes, setUploadNotes] = useState("");
@@ -138,7 +143,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
   const queryClient = useQueryClient();
 
   const ocrMutation = useMutation({
-    mutationFn: async (imageData: { image: string; mimeType: string; docType: string }) => {
+    mutationFn: async (imageData: { image: string; mimeType: string; docType: string; revision: number }) => {
       const res = await fetch('/api/ocr/prescription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -152,19 +157,44 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
       if (!parsed) throw new Error('The scan did not return a readable prescription.');
       return parsed;
     },
-    onSuccess: (data) => {
-      setOcrResult(data);
+    onSuccess: (data, request) => {
+      if (request.revision === scanRevision.current) setOcrResult(data);
     },
   });
 
+  const clearScan = () => {
+    scanRevision.current++;
+    setUploadedFile(null);
+    setOcrResult(null);
+    setScanReviewed(false);
+    ocrMutation.reset();
+  };
+
+  const retryScan = () => {
+    if (!uploadedFile) return;
+    setOcrResult(null);
+    setScanReviewed(false);
+    ocrMutation.mutate({ image: uploadedFile.preview, mimeType: uploadedFile.type, docType: activeDocTab, revision: ++scanRevision.current });
+  };
+
   const handleSaveToPatient = async () => {
     if (!patient?.id || !uploadedFile) return;
+    if (!ocrResult || !scanReviewed) {
+      alert("Check the extracted fields against the original document and confirm your review before saving.");
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(toIsoDate(ocrResult.date))) {
+      alert("Confirm the document date before saving. An unknown date must not be replaced with today's date.");
+      return;
+    }
     const scannedMedications = extractedMedications(ocrResult);
     if (activeDocTab === 'prescription' && scannedMedications.length === 0) {
       alert('This prescription was not read, so it was not saved. Retry the scan and wait until the medicine names appear before saving.');
       return;
     }
     setIsSaving(true);
+    setSaveIssues([]);
+    const issues: string[] = [];
     const today = new Date().toISOString().split('T')[0];
     const savedMeds: string[] = [];
     let savedDoc = false;
@@ -236,25 +266,27 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
       if (activeDocTab === 'blood' && ocrResult?.results?.length > 0) {
         for (const r of ocrResult.results) {
           try {
-            const numValue = parseFloat(String(r.value).replace(/[^0-9.\-]/g, ''));
+            const numValue = exactLabNumber(String(r.value));
             const refParts = r.referenceRange?.match(/([\d.]+)\s*[-–]\s*([\d.]+)/);
-            await fetch(`/api/patients/${patient.id}/lab-results`, {
+            const response = await fetch(`/api/patients/${patient.id}/lab-results`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 date: effectiveVisitDate,
                 testName: r.testName,
-                value: isNaN(numValue) ? null : numValue,
+                value: numValue,
                 unit: r.unit || null,
                 referenceMin: refParts ? parseFloat(refParts[1]) : null,
                 referenceMax: refParts ? parseFloat(refParts[2]) : null,
-                status: r.status || 'Normal',
+                status: r.status || null,
                 results: { rawValue: r.value, referenceRange: r.referenceRange, flag: r.flag, labName: ocrResult.labName },
                 notes: [r.flag ? `Flag: ${r.flag}` : '', r.referenceRange ? `Ref: ${r.referenceRange}` : '', ocrResult.labName ? `Lab: ${ocrResult.labName}` : ''].filter(Boolean).join('. ') || null,
               }),
             });
+            if (!response.ok) throw new Error("The lab result could not be saved.");
           } catch (e) {
             console.error(`Failed to save lab result: ${r.testName}`, e);
+            issues.push(`Lab result "${r.testName}" was not saved. Check the original report and add it manually.`);
           }
         }
       }
@@ -327,6 +359,9 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
         diagnosis: ocrResult.diagnosis || null,
         confidence: ocrResult.confidence || null,
         medicationCount: scannedMedications.length,
+        provider: ocrResult.provider,
+        warnings: ocrResult.warnings,
+        reviewed: scanReviewed,
       } : null;
 
       const docRes = await fetch(`/api/patients/${patient.id}/documents`, {
@@ -353,6 +388,8 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
             fileName: uploadedFile.name,
             fileSize: uploadedFile.size,
             ocrSummary,
+            ocrRawText: ocrResult?.rawText || null,
+            sourcePages: ocrResult?.sourcePages || null,
             savedMedications: savedMeds,
             contentFingerprint,
             dateConfirmed: hasValidDate,
@@ -371,47 +408,11 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
       else {
         const failure = await docRes.text();
         console.error('Document save failed:', failure);
-        const retry = await fetch(`/api/patients/${patient.id}/documents`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: docName,
-            type: activeDocTab === 'prescription' ? 'Prescription' : activeDocTab === 'blood' ? 'Lab Report' : 'USG Report',
-            category: activeDocTab,
-            date: effectiveVisitDate,
-            description: activeDocTab === 'usg'
-              ? [
-                  hasValidDate ? `Scan date: ${effectiveVisitDate}` : null,
-                  ocrResult?.reportType ? `Scan: ${ocrResult.reportType}` : null,
-                  ocrResult?.gestationalAge ? `POG: ${ocrResult.gestationalAge}` : null,
-                  ocrResult?.fetalParameters?.placenta ? `Placenta: ${ocrResult.fetalParameters.placenta}` : null,
-                  ocrResult?.fetalParameters?.afi ? `Liquor: ${ocrResult.fetalParameters.afi}` : null,
-                  ocrResult?.fetalParameters?.efw ? `EFW: ${ocrResult.fetalParameters.efw}` : null,
-                  ocrResult?.impression || null,
-                  uploadNotes || null,
-                ].filter(Boolean).join("\n") || null
-              : uploadNotes || null,
-            metadata: {
-              fileName: uploadedFile.name,
-              fileSize: uploadedFile.size,
-              ocrSummary,
-              savedMedications: savedMeds,
-              contentFingerprint,
-              dateConfirmed: hasValidDate,
-              scanDate: hasValidDate ? effectiveVisitDate : null,
-              fileStored: false,
-              gestationalAge: ocrResult?.gestationalAge || null,
-              placenta: ocrResult?.fetalParameters?.placenta || null,
-              liquor: ocrResult?.fetalParameters?.afi || null,
-              efw: ocrResult?.fetalParameters?.efw || null,
-            },
-          }),
-        });
-        if (retry.ok) savedDoc = true;
-        else console.error('Document retry failed:', await retry.text());
+        issues.push("The original document was not saved. Keep the file and contact support; some clinical records may already have been saved.");
       }
     } catch (e) {
       console.error('Error saving document:', e);
+      issues.push("The original document could not be saved. Keep the file and contact support; some clinical records may already have been saved.");
     }
 
     try {
@@ -566,6 +567,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
     queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/visit-history`] });
     queryClient.invalidateQueries({ queryKey: ["/api/patient-history", patient.id] });
 
+    setSaveIssues(issues);
     if (savedDoc || savedNote || savedMeds.length > 0 || savedVisit) {
       setSavedMedCount(savedMeds.length);
       setSavedSummary([
@@ -602,8 +604,13 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
     const sizeKB = (file.size / 1024).toFixed(1);
     const sizeStr = file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${sizeKB} KB`;
     
+    const revision = ++scanRevision.current;
+    setOcrResult(null);
+    setScanReviewed(false);
+    ocrMutation.reset();
     const reader = new FileReader();
     reader.onload = (e) => {
+      if (revision !== scanRevision.current) return;
       const base64 = e.target?.result as string;
       setUploadedFile({
         name: file.name,
@@ -613,7 +620,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
       });
       setOcrResult(null);
       
-      ocrMutation.mutate({ image: base64, mimeType: file.type, docType: activeDocTab });
+      ocrMutation.mutate({ image: base64, mimeType: file.type, docType: activeDocTab, revision });
     };
     reader.readAsDataURL(file);
   }, [activeDocTab]);
@@ -625,11 +632,11 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
   }, [handleFileSelect]);
 
   const resetDialog = () => {
-    setUploadedFile(null);
-    setOcrResult(null);
+    clearScan();
     setActiveDocTab("prescription");
     setIsSaving(false);
     setSaveSuccess(false);
+    setSaveIssues([]);
     setSavedMedCount(0);
     setSavedSummary([]);
     setUploadNotes("");
@@ -649,7 +656,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeDocTab} onValueChange={(v) => { setActiveDocTab(v); setUploadedFile(null); setOcrResult(null); }} className="w-full">
+        <Tabs value={activeDocTab} onValueChange={(v) => { setActiveDocTab(v); clearScan(); }} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="prescription" data-testid="tab-prescription">
               <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Prescriptions
@@ -709,7 +716,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                       <p className="text-[10px] text-saivie-plum">{uploadedFile.size}</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-saivie-plum hover:text-rose-500" onClick={() => { setUploadedFile(null); setOcrResult(null); }} data-testid="btn-remove-file">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-saivie-plum hover:text-rose-500" onClick={clearScan} data-testid="btn-remove-file">
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
@@ -718,6 +725,9 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                   <div className="p-3 bg-saivie-ivory flex justify-center">
                     <img src={uploadedFile.preview} alt="Preview" className="max-h-48 rounded border border-saivie-border object-contain" />
                   </div>
+                )}
+                {uploadedFile.type === "application/pdf" && (
+                  <iframe src={uploadedFile.preview} title="Original report for review" className="h-64 w-full bg-white" />
                 )}
               </div>
 
@@ -744,7 +754,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                   <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg">
                     <p className="text-sm font-medium text-rose-700">Could not read the document. Save is blocked until the scan succeeds.</p>
                     <p className="text-xs text-rose-600 mt-1">{ocrMutation.error instanceof Error ? ocrMutation.error.message : "OCR processing failed"}</p>
-                    <Button size="sm" variant="outline" className="mt-2 text-xs border-rose-200 text-rose-600" onClick={() => ocrMutation.mutate({ image: uploadedFile.preview, mimeType: uploadedFile.type, docType: activeDocTab })} data-testid="btn-retry-ocr">
+                    <Button size="sm" variant="outline" className="mt-2 text-xs border-rose-200 text-rose-600" onClick={retryScan} data-testid="btn-retry-ocr">
                       Try Again
                     </Button>
                   </div>
@@ -753,18 +763,25 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                 {ocrMutation.isSuccess && activeDocTab === 'prescription' && extractedMedications(ocrResult).length === 0 && (
                   <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                     <p className="text-sm font-medium text-amber-800">No medicines were read from this file. It will not be saved until medicine names appear.</p>
-                    <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => ocrMutation.mutate({ image: uploadedFile.preview, mimeType: uploadedFile.type, docType: activeDocTab })}>
+                    <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={retryScan}>
                       Read again
                     </Button>
                   </div>
                 )}
 
+                {ocrResult?.warnings?.length > 0 && (
+                  <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                    <p className="font-semibold">Uncertain or unreadable fields require manual verification</p>
+                    <ul className="mt-1 list-disc pl-4">{ocrResult.warnings.map((warning: string, index: number) => <li key={index}>{warning}</li>)}</ul>
+                  </div>
+                )}
+                {ocrResult && <ClinicalReadingEditor reading={ocrResult} onChange={(reading) => { setScanReviewed(false); setOcrResult(reading); }} />}
                 {ocrResult && (
                   <div className="bg-saivie-ivory border border-saivie-border rounded-lg overflow-hidden">
                     <div className="p-3 bg-saivie-surface-muted border-b border-saivie-border flex items-center justify-between">
                       <span className="text-xs font-bold text-saivie-teal uppercase tracking-wider">Extracted Information</span>
                       <Badge className={`text-[10px] ${ocrResult.confidence === 'high' ? 'bg-emerald-100 text-emerald-700' : ocrResult.confidence === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>
-                        {ocrResult.confidence === 'high' ? 'High Confidence' : ocrResult.confidence === 'medium' ? 'Medium Confidence' : 'Low Confidence'}
+                        Model confidence: {ocrResult.confidence} (not verified)
                       </Badge>
                     </div>
 
@@ -783,7 +800,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                       )}
                       <div className="flex gap-3 items-center">
                         <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0">{activeDocTab === "usg" ? "Scan date" : "Date"}</span>
-                        <Input type="date" className="h-8 max-w-[180px]" value={toIsoDate(ocrResult.date)} onChange={(e) => setOcrResult({ ...ocrResult, date: e.target.value })} data-testid="input-scan-date" />
+                        <Input type="date" className="h-8 max-w-[180px]" value={toIsoDate(ocrResult.date)} onChange={(e) => { setScanReviewed(false); setOcrResult({ ...ocrResult, date: e.target.value }); }} data-testid="input-scan-date" />
                       </div>
                       {(ocrResult.reportType) && (
                         <div className="flex gap-3">
@@ -1001,11 +1018,17 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
           </div>
         </Tabs>
 
+        {saveIssues.length > 0 && (
+          <div role="alert" className="space-y-1 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            <p className="font-medium">Some records were not saved</p>
+            {saveIssues.map((issue) => <p key={issue}>{issue}</p>)}
+          </div>
+        )}
         {saveSuccess && (
           <div className="space-y-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <p className="text-sm font-medium text-emerald-700">Saved to {patient?.name}'s records</p>
+              <p className="text-sm font-medium text-emerald-700">{saveIssues.length ? "Partially saved" : "Saved"} to {patient?.name}'s records</p>
             </div>
             <ul className="space-y-1 pl-7">
               {savedSummary.map((line) => (
@@ -1020,6 +1043,12 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
           </div>
         )}
 
+        {ocrResult && !saveSuccess && (
+          <label className="flex items-start gap-2 rounded-lg border border-saivie-border p-3 text-sm text-saivie-plum">
+            <input type="checkbox" className="mt-1 accent-saivie-teal" checked={scanReviewed} onChange={(event) => setScanReviewed(event.target.checked)} data-testid="checkbox-review-upload" />
+            I checked all extracted details against the original document, including medicine names, doses, lab values and units. Unclear details must be corrected before saving.
+          </label>
+        )}
         <DialogFooter>
           {saveSuccess ? (
             <>
@@ -1039,7 +1068,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
           <Button variant="outline" onClick={resetDialog} data-testid="btn-cancel-upload">Cancel</Button>
           <Button
             className="bg-saivie-teal hover:bg-saivie-teal text-white"
-            disabled={!uploadedFile || ocrMutation.isPending || ocrMutation.isError || isSaving || saveSuccess || (activeDocTab === 'prescription' && extractedMedications(ocrResult).length === 0)}
+            disabled={!uploadedFile || !ocrResult || !scanReviewed || ocrMutation.isPending || ocrMutation.isError || isSaving || saveSuccess || (activeDocTab === 'prescription' && extractedMedications(ocrResult).length === 0)}
             onClick={handleSaveToPatient}
             data-testid="btn-confirm-upload"
           >

@@ -1,0 +1,78 @@
+services:
+  ocr-model:
+    image: vllm/vllm-openai:v0.19.0-ubuntu2404
+    command:
+      - --model
+      - zai-org/GLM-OCR
+      - --served-model-name
+      - glm-ocr
+      - --max-model-len
+      - "16384"
+      - --gpu-memory-utilization
+      - "0.25"
+      - --disable-log-requests
+    gpus: all
+    ipc: host
+    volumes:
+      - model-cache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 30
+
+  structuring-model:
+    image: vllm/vllm-openai:v0.19.0-ubuntu2404
+    command:
+      - --model
+      - Qwen/Qwen3-4B-Instruct-2507
+      - --served-model-name
+      - clinical-extractor
+      - --max-model-len
+      - "49152"
+      - --gpu-memory-utilization
+      - "0.65"
+      - --api-key
+      - ${OCR_STRUCTURING_API_KEY:?Set OCR_STRUCTURING_API_KEY}
+      - --disable-log-requests
+    gpus: all
+    ipc: host
+    ports:
+      - "127.0.0.1:5003:8000"
+    volumes:
+      - model-cache:/root/.cache/huggingface
+    depends_on:
+      ocr-model:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 30
+
+  gateway:
+    build: .
+    environment:
+      GLM_OCR_API_KEY: ${GLM_OCR_API_KEY:?Set GLM_OCR_API_KEY}
+    ports:
+      - "127.0.0.1:5002:5002"
+    volumes:
+      - layout-cache:/models
+    depends_on:
+      ocr-model:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5002/health')",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  model-cache:
+  layout-cache:
