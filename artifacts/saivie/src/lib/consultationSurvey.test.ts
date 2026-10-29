@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
-    consultationDirectionsByPath, consultationSurveyForVisit, guidedQuestionsByDirection,
+    consultationDirectionsByPath, consultationSurveyForVisit, guidedQuestionsByDirection, hasVisitSurvey,
     patientSurveyPrompt, readConsultationSurvey, surveyDirectionLabels, surveyDirectionsForConcerns, surveyQuestions,
 } from "./consultationSurvey.ts";
 
@@ -114,4 +114,13 @@ it("keeps current survey concerns alongside pregnancy and avoids duplicate selec
     const current = effectiveConsultationSurvey(survey, { answers: {} }, pregnancy);
     assert.deepEqual(current.paths, ["Pelvic pain", "Pregnancy-related concern"]);
     assert.deepEqual(current.directions, survey.directions);
+});
+
+it("marks the survey filled only for the appointment it was submitted against", () => {
+    assert.equal(hasVisitSurvey({ onboardingAppointmentId: 42 }, 42), true);
+    assert.equal(hasVisitSurvey({ onboardingAppointmentId: "42" }, 42), true);
+    assert.equal(hasVisitSurvey({ onboardingAppointmentId: 41 }, 42), false);
+    assert.equal(hasVisitSurvey({}, 42), false);
+    assert.equal(hasVisitSurvey(null, 42), false);
+    assert.equal(hasVisitSurvey({ onboardingAppointmentId: 42 }, undefined), false);
 });

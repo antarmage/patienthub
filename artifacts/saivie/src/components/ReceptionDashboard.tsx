@@ -9,6 +9,7 @@ import {
   CalendarPlus,
   CheckCircle2,
   ChevronRight,
+  ClipboardCheck,
   ClipboardList,
   FileText,
   Hourglass,
@@ -31,6 +32,7 @@ import { getPregnancyReminders } from "@/lib/pregnancyMilestones";
 import { getInventoryAlerts, getStockStatus, getExpiryStatus, useInventory } from "@/components/InventoryManager";
 import { ReferralsCard, type ReferralRequest } from "@/components/ReferralsCard";
 import { printPatientSummary } from "@/components/IntakeSummary";
+import { hasVisitSurvey } from "@/lib/consultationSurvey";
 
 export type ArrivalState = "upcoming" | "late" | "waiting" | "in-consultation" | "completed" | "cancelled" | "no-show";
 type FlowFilter = "all" | "upcoming" | "arrived" | "waiting" | "completed" | "closed";
@@ -382,7 +384,6 @@ export function ReceptionDashboard({
                 <tr>
                   <th className="px-5 py-3 font-semibold">Time</th>
                   <th className="px-3 py-3 font-semibold">Patient</th>
-                  <th className="px-3 py-3 font-semibold">Phone</th>
                   <th className="hidden px-3 py-3 font-semibold md:table-cell">Visit type</th>
                   <th className="px-3 py-3 font-semibold">Arrival status</th>
                   <th className="px-3 py-3 font-semibold">Action</th>
@@ -399,17 +400,28 @@ export function ReceptionDashboard({
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-saivie-sage text-[11px] font-bold text-saivie-teal">{initials(apt.patient)}</div>
-                          <span className="font-semibold text-saivie-plum">{apt.patient}</span>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <p className="font-semibold text-saivie-plum">{apt.patient}</p>
+                              {hasVisitSurvey(patient?.history, apt.id) ? (
+                                <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700" title="Pre-visit survey submitted for this appointment" data-testid={`flow-survey-${apt.id}`}>
+                                  <ClipboardCheck className="h-3 w-3" />Survey filled
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-saivie-border bg-saivie-ivory px-2 py-0.5 text-[10px] font-medium text-saivie-plum/70" title="Pre-visit survey not submitted for this appointment" data-testid={`flow-survey-${apt.id}`}>
+                                  <ClipboardList className="h-3 w-3" />Survey pending
+                                </span>
+                              )}
+                            </div>
+                            {patient?.phone ? (
+                              <a href={`tel:${patient.phone.replace(/[^\d+]/g, "")}`} className="mt-0.5 inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-saivie-teal hover:underline" aria-label={`Call ${apt.patient} on ${patient.phone}`} data-testid={`flow-phone-${apt.id}`}>
+                                <Phone className="h-3 w-3" />{patient.phone}
+                              </a>
+                            ) : (
+                              <p className="mt-0.5 text-xs text-saivie-plum/60" data-testid={`flow-phone-${apt.id}`}>No phone</p>
+                            )}
+                          </div>
                         </div>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3" data-testid={`flow-phone-${apt.id}`}>
-                        {patient?.phone ? (
-                          <a href={`tel:${patient.phone.replace(/[^\d+]/g, "")}`} className="inline-flex items-center gap-1.5 font-medium text-saivie-teal hover:underline" aria-label={`Call ${apt.patient} on ${patient.phone}`}>
-                            <Phone className="h-3.5 w-3.5" />{patient.phone}
-                          </a>
-                        ) : (
-                          <span className="text-xs text-saivie-plum/60">No phone</span>
-                        )}
                       </td>
                       <td className="hidden px-3 py-3 text-saivie-plum md:table-cell">{apt.type || apt.visitType || "Appointment"}</td>
                       <td className="px-3 py-3">
@@ -437,7 +449,7 @@ export function ReceptionDashboard({
                 })}
                 {visibleRows.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-5 py-10 text-center text-sm text-saivie-plum">
+                    <td colSpan={6} className="px-5 py-10 text-center text-sm text-saivie-plum">
                       {rows.length === 0 ? "No appointments scheduled for today" : "No patients in this view"}
                     </td>
                   </tr>

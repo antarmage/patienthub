@@ -119,6 +119,12 @@ export function readConsultationSurvey(value: unknown): ConsultationSurvey {
     return { directions, answers };
 }
 
+export function hasVisitSurvey(history: unknown, appointmentId: unknown): boolean {
+    return !!history && typeof history === "object" && "onboardingAppointmentId" in history
+        && appointmentId != null && appointmentId !== ""
+        && String(history.onboardingAppointmentId) === String(appointmentId);
+}
+
 export function consultationSurveyForVisit(history: unknown, appointmentId: unknown): ConsultationSurvey {
     if (!history || typeof history !== "object" || !("onboardingAppointmentId" in history)
         || !appointmentId || String(history.onboardingAppointmentId) !== String(appointmentId)
