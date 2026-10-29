@@ -20,6 +20,7 @@ import {
     Video
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { bookingDateKey, emptyNewPatientDraft, formatAppointmentTime, missingBookingFields, newPatientPayload, type NewPatientDraft } from "@/lib/bookingDraft";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -116,13 +117,17 @@ export default function NewBooking() {
     const [isSuccess, setIsSuccess] = useState(false);
     const [createdAppointmentId, setCreatedAppointmentId] = useState<number | null>(null);
     const [createdTelemedicineLink, setCreatedTelemedicineLink] = useState<string | null>(null);
+    const [newPatient, setNewPatient] = useState<NewPatientDraft>(emptyNewPatientDraft);
+    // Reused on retry so a failed appointment save does not register the same new patient twice.
+    const [createdPatient, setCreatedPatient] = useState<{ id: number; key: string } | null>(null);
+    const [notes, setNotes] = useState("");
     const { toast } = useToast();
 
-    const formatAppointmentTime = (time: string) => {
-        const [hours, minutes] = time.split(":").map(Number);
-        const period = hours >= 12 ? "PM" : "AM";
-        return `${String(hours % 12 || 12).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${period}`;
-    };
+    const newPatientData = useMemo(() => newPatientPayload(newPatient), [newPatient]);
+    const newPatientKey = JSON.stringify(newPatientData);
+    const hasPatient = patientType === "existing" ? !!selectedPatientId : !!newPatientData;
+    const updateNewPatient = (field: keyof NewPatientDraft, value: string) =>
+        setNewPatient((current) => ({ ...current, [field]: value }));
 
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -210,6 +215,7 @@ export default function NewBooking() {
         if (!providersData) return [];
         return providersData.map((p: any) => ({
             id: p.name.toLowerCase().replace(/\s+/g, '-').replace(/\./g, ''),
+            providerId: p.id,
             name: p.name,
             role: p.role || p.specialty,
             photo: providerPhoto(p),
@@ -222,13 +228,32 @@ export default function NewBooking() {
 
     const mutation = useMutation({
         mutationFn: async (apptData: any) => {
+            let patientId = apptData.patientId as number | null;
+            if (patientType === "new") {
+                if (!newPatientData) throw new Error("Enter the new patient's name and age.");
+                if (createdPatient?.key === newPatientKey) {
+                    patientId = createdPatient.id;
+                } else {
+                    const patientRes = await fetch('/api/patients', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newPatientData),
+                    });
+                    const patient = await patientRes.json().catch(() => ({}));
+                    if (!patientRes.ok || !patient.id) throw new Error(patient.error || 'Failed to register patient');
+                    patientId = patient.id;
+                    setCreatedPatient({ id: patient.id, key: newPatientKey });
+                    queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+                }
+            }
             const res = await fetch('/api/appointments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(apptData),
+                body: JSON.stringify({ ...apptData, patientId }),
             });
-            if (!res.ok) throw new Error('Failed to create appointment');
-            return res.json();
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(body.error || 'Failed to create appointment');
+            return body;
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
@@ -246,22 +271,24 @@ export default function NewBooking() {
     });
 
     const handleConfirm = () => {
-        if (!selectedPatientId || !selectedTime || !date) {
+        const missing = missingBookingFields({ hasPatient, date, time: selectedTime });
+        if (missing.length > 0 || !date) {
             toast({
                 title: "Missing Information",
-                description: "Please ensure patient, date, and time are selected.",
+                description: `Please select the ${missing.join(", ")} before confirming.`,
                 variant: "destructive"
             });
             return;
         }
 
         mutation.mutate({
-            patientId: selectedPatientId,
-            providerId: providersData?.find((p: any) => p.name.toLowerCase().replace(/\s+/g, '-').replace(/\./g, '') === selectedProvider)?.id || 1,
+            patientId: patientType === "existing" ? selectedPatientId : null,
+            providerId: providers.find((p: any) => p.id === selectedProvider)?.providerId ?? null,
             type: services.find((s: any) => s.id === selectedService)?.name,
             visitType: services.find((s: any) => s.id === selectedService)?.name,
-            date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+            date: bookingDateKey(date),
             time: formatAppointmentTime(selectedTime),
+            reason: notes.trim() || null,
             status: "scheduled",
             visitMode,
         });
@@ -404,7 +431,7 @@ export default function NewBooking() {
                                 <p className="text-saivie-plum">Who is this appointment for?</p>
                             </div>
 
-                            <RadioGroup defaultValue="existing" value={patientType} onValueChange={setPatientType} className="grid grid-cols-2 gap-4">
+                            <RadioGroup defaultValue="existing" value={patientType} onValueChange={(value) => { setPatientType(value); if (value === "new") setSelectedPatientId(null); }} className="grid grid-cols-2 gap-4">
                                 <div>
                                     <RadioGroupItem value="existing" id="existing" className="peer sr-only" />
                                     <Label
@@ -460,21 +487,26 @@ export default function NewBooking() {
                             ) : (
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>First Name</Label>
-                                        <Input placeholder="Jane" />
+                                        <Label htmlFor="new-patient-first-name">First Name *</Label>
+                                        <Input id="new-patient-first-name" placeholder="Jane" value={newPatient.firstName} onChange={(e) => updateNewPatient("firstName", e.target.value)} data-testid="input-new-patient-first-name" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Last Name</Label>
-                                        <Input placeholder="Doe" />
+                                        <Label htmlFor="new-patient-last-name">Last Name</Label>
+                                        <Input id="new-patient-last-name" placeholder="Doe" value={newPatient.lastName} onChange={(e) => updateNewPatient("lastName", e.target.value)} data-testid="input-new-patient-last-name" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Phone</Label>
-                                        <Input placeholder="(555) 000-0000" />
+                                        <Label htmlFor="new-patient-age">Age *</Label>
+                                        <Input id="new-patient-age" type="number" min={0} max={120} placeholder="30" value={newPatient.age} onChange={(e) => updateNewPatient("age", e.target.value)} data-testid="input-new-patient-age" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Email</Label>
-                                        <Input placeholder="jane@example.com" />
+                                        <Label htmlFor="new-patient-phone">Phone</Label>
+                                        <Input id="new-patient-phone" type="tel" placeholder="98765 43210" value={newPatient.phone} onChange={(e) => updateNewPatient("phone", e.target.value)} data-testid="input-new-patient-phone" />
                                     </div>
+                                    <div className="col-span-2 space-y-2">
+                                        <Label htmlFor="new-patient-email">Email</Label>
+                                        <Input id="new-patient-email" type="email" placeholder="jane@example.com" value={newPatient.email} onChange={(e) => updateNewPatient("email", e.target.value)} data-testid="input-new-patient-email" />
+                                    </div>
+                                    <p className="col-span-2 text-xs text-saivie-plum">The patient record is created when you confirm the booking.</p>
                                 </div>
                             )}
                         </div>
@@ -609,7 +641,7 @@ export default function NewBooking() {
                                     <Calendar
                                         mode="single"
                                         selected={date}
-                                        onSelect={setDate}
+                                        onSelect={(nextDate) => { if (nextDate) setDate(nextDate); }}
                                         className="rounded-md border-0"
                                     />
                                 </div>
@@ -634,8 +666,8 @@ export default function NewBooking() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Notes</Label>
-                                <Textarea placeholder="Any specific requirements or symptoms..." className="min-h-[100px]" />
+                                <Label htmlFor="appointment-notes">Notes</Label>
+                                <Textarea id="appointment-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any specific requirements or symptoms..." className="min-h-[100px]" />
                             </div>
                         </div>
                     )}
@@ -652,7 +684,7 @@ export default function NewBooking() {
                                     <div className="flex justify-between items-start pb-4 border-b border-saivie-border">
                                         <div>
                                             <p className="text-xs text-saivie-teal uppercase font-bold tracking-wide">Patient</p>
-                                            <p className="text-lg font-serif font-bold text-saivie-plum">{matchedPatients[0]?.name || "New Patient"}</p>
+                                            <p className="text-lg font-serif font-bold text-saivie-plum">{patientType === 'existing' ? (selectedPatient?.name || "Not selected") : (newPatientData?.name || "Not entered")}</p>
                                         </div>
                                         <Badge className="bg-saivie-sage text-saivie-teal hover:bg-saivie-sage">{patientType === 'existing' ? 'Existing' : 'New'}</Badge>
                                     </div>
@@ -720,7 +752,7 @@ export default function NewBooking() {
                                 onClick={handleNext}
                                 className="ml-auto bg-saivie-teal hover:bg-saivie-teal text-white min-w-[140px]"
                                 size="lg"
-                                disabled={(step === 2 && !selectedService) || (step === 3 && !selectedProvider)}
+                                disabled={(step === 1 && !hasPatient) || (step === 2 && !selectedService) || (step === 3 && !selectedProvider) || (step === 5 && (!date || !selectedTime))}
                             >
                                 Next Step
                             </Button>
