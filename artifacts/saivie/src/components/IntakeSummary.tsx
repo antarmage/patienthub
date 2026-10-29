@@ -434,9 +434,9 @@ export function printPatientSummary(patient: any, checkInVitals?: CheckInVitals 
     if (!printSummary(buildSummary(patient, [], [], checkInVitals))) alert("Please allow pop-ups to print the patient summary.");
 }
 
-export function IntakeSummaryActions({ patient, weightLogs, bpLogs }: { patient: any; weightLogs: WeightLog[]; bpLogs: BpLog[] }) {
+export function IntakeSummaryActions({ patient, weightLogs, bpLogs, checkInVitals }: { patient: any; weightLogs: WeightLog[]; bpLogs: BpLog[]; checkInVitals?: CheckInVitals | null }) {
     const [open, setOpen] = useState(false);
-    const summary = buildSummary(patient, weightLogs, bpLogs);
+    const summary = buildSummary(patient, weightLogs, bpLogs, checkInVitals);
     const print = () => {
         if (!printSummary(summary)) alert("Please allow pop-ups to print the intake summary.");
     };

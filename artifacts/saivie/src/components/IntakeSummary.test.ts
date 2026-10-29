@@ -57,6 +57,11 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
         assert.ok(html.includes("Ovulatory timing"));
         assert.ok(html.includes("Usually regular &lt;patient-reported&gt;"));
         assert.ok(!html.includes("<patient-reported>"));
+
+        printPatientSummary(patient, { bp: "118/76", pulse: "82", weight: "61", recordedAt: "2025-01-01T09:30:00.000Z" });
+        assert.ok(html.includes("118/76"));
+        assert.ok(html.includes("Pulse"));
+        assert.ok(html.includes("61 kg"));
     } finally {
         if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
         else Reflect.deleteProperty(globalThis, "window");

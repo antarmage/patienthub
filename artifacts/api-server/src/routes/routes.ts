@@ -21,6 +21,7 @@ import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../g
 import { ai, AI_AVAILABLE } from "../replit_integrations/image/client";
 import { whatsapp } from "../whatsapp";
 import { isSmtpConfigured, maskEmail, sendEmail, sendOtpEmail, type OtpDeliveryMethod } from "../smtp";
+import { checkDeliverableEmail } from "../email-check";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
 import { analyseGenome, analyseGenomeFromKey } from "../genome-engine";
 import multer from "multer";
@@ -2503,6 +2504,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
     const email = String(req.body?.email || patient.email || "").trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return res.status(400).json({ error: "Enter a valid email address" });
+    const deliverable = await checkDeliverableEmail(email);
+    if (!deliverable.ok) return res.status(400).json({ error: deliverable.error });
 
     const t: any = inv.templateSnapshot || (await storage.getInvoiceTemplateSettings()) || defaultInvoiceTemplate;
     const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));

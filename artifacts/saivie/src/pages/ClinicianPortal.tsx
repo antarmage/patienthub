@@ -1226,6 +1226,14 @@ export default function ClinicianPortal() {
     return appointments.find((a: any) => a.patientId === selectedPatient.id && a.date === todayStr && a.status !== 'cancelled' && a.status !== 'Cancelled') || null;
   }, [selectedPatient, appointments]);
 
+  const surveyVitals = useMemo(() => {
+    if (activeAppointment?.vitals) return activeAppointment.vitals;
+    if (!selectedPatient) return null;
+    return [...appointments]
+      .filter((a: any) => a.patientId === selectedPatient.id && a?.vitals)
+      .sort((a: any, b: any) => String(b.vitals?.recordedAt || b.date || "").localeCompare(String(a.vitals?.recordedAt || a.date || "")))[0]?.vitals || null;
+  }, [activeAppointment, selectedPatient, appointments]);
+
   const surveyPatient = patients.find((patient: any) => patient.id === selectedPatient?.id) || selectedPatient;
   const consultationSurvey = consultationSurveyForVisit(
     surveyPatient?.history, activeAppointment?.id || (selectedPatient as any)?.appointmentId,
@@ -4964,7 +4972,7 @@ export default function ClinicianPortal() {
                     <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setPatientDetailTab('record')}><History className="h-4 w-4" /><span>Previous visits<span className="mt-0.5 block text-[10px] text-saivie-plum">{previousVisit?.date ? String(previousVisit.date).slice(0, 10) : 'None recorded'}</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
                     <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setPatientDetailTab('consultation'); setConsultationStep('explore'); }}><ClipboardList className="h-4 w-4" /><span>Patient survey<span className="mt-0.5 block text-[10px] text-saivie-plum">{consultationSurvey.directions.length ? `${consultationSurvey.directions.length} topics selected` : 'Not filled'}</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
                     <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setPatientDetailTab('medicine')}><Pill className="h-4 w-4" /><span>Current medications<span className="mt-0.5 block text-[10px] text-saivie-plum">{medications.filter((med: any) => String(med.status).toLowerCase() === 'active').length} active</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
-                    <div className="border-t border-saivie-border px-1 pt-2"><IntakeSummaryActions patient={surveyPatient} weightLogs={weightLogs} bpLogs={bpLogsData} /></div>
+                    <div className="border-t border-saivie-border px-1 pt-2"><IntakeSummaryActions patient={surveyPatient} weightLogs={weightLogs} bpLogs={bpLogsData} checkInVitals={activeAppointment?.vitals} /></div>
                   </CardContent>
                 </Card>
               </aside>
@@ -5184,7 +5192,7 @@ export default function ClinicianPortal() {
                       <p className="text-xs text-saivie-plum">Risk: {selectedPatient.riskScore?.level || (selectedPatient.status === 'High Risk' ? 'High' : 'Not recorded')}</p>
                       {showPregnancyContext && <p className="text-xs text-saivie-plum">{pregnancyContext ? `${pregnancyContext.weeks}w ${pregnancyContext.days}d · EDD ${pregnancyContext.dueDate} (LMP estimate)` : 'Valid LMP required for pregnancy dating'}</p>}
                       <VitalsSparklineGrid vitals={activeAppointment?.vitals || selectedPatient.appointmentVitals || null} bpLogs={bpLogsData} weightLogs={weightLogs} onAdoptVitals={(summary) => setSoapObjectiveDraft((current) => [current, summary].filter(Boolean).join('\n'))} />
-                      <IntakeSummaryActions patient={surveyPatient} weightLogs={weightLogs} bpLogs={bpLogsData} />
+                      <IntakeSummaryActions patient={surveyPatient} weightLogs={weightLogs} bpLogs={bpLogsData} checkInVitals={activeAppointment?.vitals} />
                     </div>
                   </details>
 
