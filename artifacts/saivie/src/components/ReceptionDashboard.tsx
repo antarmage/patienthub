@@ -382,6 +382,7 @@ export function ReceptionDashboard({
                 <tr>
                   <th className="px-5 py-3 font-semibold">Time</th>
                   <th className="px-3 py-3 font-semibold">Patient</th>
+                  <th className="px-3 py-3 font-semibold">Phone</th>
                   <th className="hidden px-3 py-3 font-semibold md:table-cell">Visit type</th>
                   <th className="px-3 py-3 font-semibold">Arrival status</th>
                   <th className="px-3 py-3 font-semibold">Action</th>
@@ -400,6 +401,15 @@ export function ReceptionDashboard({
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-saivie-sage text-[11px] font-bold text-saivie-teal">{initials(apt.patient)}</div>
                           <span className="font-semibold text-saivie-plum">{apt.patient}</span>
                         </div>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3" data-testid={`flow-phone-${apt.id}`}>
+                        {patient?.phone ? (
+                          <a href={`tel:${patient.phone.replace(/[^\d+]/g, "")}`} className="inline-flex items-center gap-1.5 font-medium text-saivie-teal hover:underline" aria-label={`Call ${apt.patient} on ${patient.phone}`}>
+                            <Phone className="h-3.5 w-3.5" />{patient.phone}
+                          </a>
+                        ) : (
+                          <span className="text-xs text-saivie-plum/60">No phone</span>
+                        )}
                       </td>
                       <td className="hidden px-3 py-3 text-saivie-plum md:table-cell">{apt.type || apt.visitType || "Appointment"}</td>
                       <td className="px-3 py-3">
@@ -427,7 +437,7 @@ export function ReceptionDashboard({
                 })}
                 {visibleRows.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-5 py-10 text-center text-sm text-saivie-plum">
+                    <td colSpan={7} className="px-5 py-10 text-center text-sm text-saivie-plum">
                       {rows.length === 0 ? "No appointments scheduled for today" : "No patients in this view"}
                     </td>
                   </tr>
