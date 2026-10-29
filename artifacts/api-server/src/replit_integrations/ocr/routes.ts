@@ -10,6 +10,7 @@ import {
   validateDocument,
 } from "./document";
 import { scanWithGlm } from "./glm-client";
+import { geminiConfig } from "../gemini-config";
 
 export async function scanClinicalDocument(
   image: unknown,
@@ -22,17 +23,10 @@ export async function scanClinicalDocument(
     return scanWithGlm(file.data, file.mimeType, file.docType);
   if (provider !== "gemini")
     throw new OcrError("OCR_PROVIDER must be gemini or glm-ocr.", 503);
-  const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
-  if (!apiKey) throw new OcrError("Gemini OCR is not configured.", 503);
+  const gemini = geminiConfig(process.env, 120_000);
+  if (!gemini) throw new OcrError("Gemini OCR is not configured.", 503);
 
-  const ai = new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      apiVersion: "",
-      baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL,
-      timeout: 120_000,
-    },
-  });
+  const ai = new GoogleGenAI(gemini);
   let response;
   try {
     response = await ai.models.generateContent({
