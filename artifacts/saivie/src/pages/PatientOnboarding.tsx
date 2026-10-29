@@ -4,7 +4,7 @@ import { useLocation, useParams } from "wouter";
 import { ArrowLeft, ArrowRight, Baby, Check, CheckCircle2, Flower2, Heart, Hospital, Leaf, LockKeyhole, Minus, Plus, Printer, ShieldCheck, Timer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { getOnboardingQuestions, getRelevantIntake, initialForm, type IntakeForm, type OptionalHistory } from "@/lib/onboardingFlow";
+import { getOnboardingQuestions, getRelevantIntake, initialForm, isOnboardingStep, type IntakeForm, type OptionalHistory } from "@/lib/onboardingFlow";
 import { getPrintBrandStyles } from "@/lib/brand";
 import { estimatePregnancyDating } from "@/lib/pregnancyDating";
 import { patientSurveyPrompt, surveyDirectionLabels, surveyDirectionsForConcerns, surveyQuestions } from "@/lib/consultationSurvey";
@@ -538,12 +538,12 @@ export default function PatientOnboarding() {
             <p className="mt-1 text-xs">Calculated from {datingEstimate.source === "due-date" ? "your due date" : `your weeks pregnant as of ${datingAsOf}`}. This is an estimate, not a remembered period date. Your care team will confirm pregnancy dating.</p>
         </div>
     ) : null;
-    const questionKeys = questions.map((question) => question.id).join(",");
+    const questionKeys = questions.map((question) => question.id).join("\n");
     const visibleSections = sections.filter((section) => questions.some((question) => question.section === section.key))
         .sort((a, b) => questions.findIndex((question) => question.section === a.key) - questions.findIndex((question) => question.section === b.key));
 
     useEffect(() => {
-        if (!questionKeys.split(",").includes(step)) setStep("concerns");
+        if (!isOnboardingStep(questions, step)) setStep("concerns");
     }, [step, questionKeys]);
 
     useEffect(() => {

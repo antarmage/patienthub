@@ -81,6 +81,11 @@ export function getOnboardingQuestions(form: IntakeForm, extra: OptionalHistory)
     return questions;
 }
 
+// Survey step ids embed question text (which can contain commas), so compare whole ids.
+export function isOnboardingStep(questions: { id: string }[], step: string) {
+    return questions.some((question) => question.id === step);
+}
+
 function relevantConsultation(form: IntakeForm): ConsultationSurvey {
     const consultation = readConsultationSurvey(form.consultation);
     const options = new Set(surveyDirectionsForConcerns(form.concerns));

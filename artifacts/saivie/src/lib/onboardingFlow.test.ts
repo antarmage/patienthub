@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { getOnboardingQuestions, getRelevantIntake, initialForm, type IntakeForm, type OptionalHistory } from "./onboardingFlow.ts";
+import { getOnboardingQuestions, getRelevantIntake, initialForm, isOnboardingStep, type IntakeForm, type OptionalHistory } from "./onboardingFlow.ts";
+import { guidedQuestionsByDirection, surveyDirectionsForConcerns } from "./consultationSurvey.ts";
 
 const short: OptionalHistory = { cycle: false, gyn: false, pregnancy: false, background: false };
 const all: OptionalHistory = { cycle: true, gyn: true, pregnancy: true, background: true };
@@ -168,4 +169,21 @@ describe("one-question onboarding", () => {
         assert.ok(!ids(form).includes("survey:Are cycles regular?"));
         assert.equal(form.consultation.answers["Are cycles regular?"], "No");
     });
+});
+
+it("treats every survey step as valid even when its question text contains commas", () => {
+    const allDirections = Object.keys(guidedQuestionsByDirection);
+    for (let start = 0; start < allDirections.length; start += 3) {
+        const directions = allDirections.slice(start, start + 3);
+        const concerns = ["Irregular or heavy bleeding", "Abdominal or pelvic pain", "Fertility", "I am pregnant", "Pregnancy care",
+            "Birth control", "Routine checkup", "Missed or late period", "Possible pregnancy"];
+        const form = { ...formFor(...concerns), consultation: { directions, answers: {} } };
+        const questions = getOnboardingQuestions(form, all);
+        for (const question of questions) assert.ok(isOnboardingStep(questions, question.id), question.id);
+    }
+    const bleeding = formFor("Irregular or heavy bleeding");
+    bleeding.consultation = { directions: surveyDirectionsForConcerns(bleeding.concerns).slice(0, 3), answers: {} };
+    const questions = getOnboardingQuestions(bleeding, short);
+    assert.ok(questions.some((question) => question.id.includes(",")), "fixture must include a comma question");
+    assert.equal(isOnboardingStep(questions, "survey:Any dizziness"), false);
 });
