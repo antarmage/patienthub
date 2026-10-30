@@ -9,6 +9,8 @@ import { getPrintBrandStyles } from "@/lib/brand";
 import { estimatePregnancyDating } from "@/lib/pregnancyDating";
 import { patientSurveyPrompt, surveyDirectionLabels, surveyDirectionsForConcerns, surveyQuestions } from "@/lib/consultationSurvey";
 import { conceptionMethods } from "@/lib/conceptionHistory";
+import { hpvProtection } from "@/lib/hpvProtection";
+import { HpvBadge } from "@/components/HpvBadge";
 
 const sections = [
     { key: "about", title: "About you", eyebrow: "First things first" },
@@ -724,6 +726,7 @@ export default function PatientOnboarding() {
     }
 
     if (submitted) {
+        const hpvStatus = hpvProtection(form.gyn.hpvVaccine, onboardingData?.patient?.hpvProtection);
         return (
             <main className="flex min-h-screen items-center justify-center bg-saivie-ivory p-6">
                 <section className={`${cardClass} w-full max-w-2xl text-center`}>
@@ -731,11 +734,14 @@ export default function PatientOnboarding() {
                     <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-saivie-teal">Thank you</p>
                     <h1 className="font-serif text-3xl font-semibold text-saivie-plum">Your care team is ready</h1>
                     <p className="mt-3 text-sm leading-6 text-saivie-teal">Thanks, {form.name || onboardingData?.patient?.name}. Your answers have been securely shared with the team.</p>
+                    <HpvBadge status={hpvStatus} variant="full" className="mt-6" />
                     <div className="mt-7 rounded-2xl border border-saivie-border bg-saivie-ivory p-4 text-left sm:p-5">
                         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-saivie-teal">While you wait</p>
                         <h2 className="mt-1 font-serif text-xl font-semibold text-saivie-plum">Cervical cancer is preventable</h2>
                         <p className="mt-1 text-xs leading-5 text-saivie-teal">
-                            {["No", "Not sure", "Yes, some doses"].includes(form.gyn.hpvVaccine)
+                            {hpvStatus === "protected"
+                                ? "Well done — your HPV vaccine is one of the strongest protections there is. Keep up regular cervical screening to stay fully protected."
+                                : ["No", "Not sure", "Yes, some doses"].includes(form.gyn.hpvVaccine) || hpvStatus === "in-progress"
                                 ? "Learn how the HPV vaccine and regular screening protect you. Ask your doctor about HPV vaccination at your visit."
                                 : "Learn how HPV vaccination and regular screening help prevent cervical cancer."}
                         </p>

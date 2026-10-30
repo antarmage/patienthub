@@ -9,6 +9,9 @@ import { ReportReadingButton } from "@/components/ReportReadingButton";
 import { useToast } from "@/hooks/use-toast";
 import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSettings";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
+import { HpvBadge } from "@/components/HpvBadge";
+import { hpvProtection, hpvSurveyAnswer } from "@/lib/hpvProtection";
+import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import { consultationDirectionsByPath, consultationPaths, consultationSurveyForVisit, effectiveConsultationSurvey, MAX_CONSULTATION_DIRECTIONS, surveyQuestions, toggleConsultationDirection, toggleConsultationPath, type ConsultationSurveyEdits } from "@/lib/consultationSurvey";
 import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
 import { ConsultationVitalsTrends } from "@/components/ConsultationVitalsTrends";
@@ -492,6 +495,7 @@ export default function ClinicianPortal() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/vaccination-records", selectedPatient?.id] });
       await queryClient.invalidateQueries({ queryKey: ["/api/vaccination-reminders"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/hpv-protection"] });
     },
   });
 
@@ -1235,6 +1239,9 @@ export default function ClinicianPortal() {
   }, [activeAppointment, selectedPatient, appointments]);
 
   const surveyPatient = patients.find((patient: any) => patient.id === selectedPatient?.id) || selectedPatient;
+  const hpvClinicStatus = useHpvClinicStatuses([selectedPatient?.id]);
+  const selectedHpvClinicStatus = hpvClinicStatus(selectedPatient?.id);
+  const selectedHpvStatus = hpvProtection(hpvSurveyAnswer(surveyPatient), selectedHpvClinicStatus);
   const consultationSurvey = consultationSurveyForVisit(
     surveyPatient?.history, activeAppointment?.id || (selectedPatient as any)?.appointmentId,
   );
@@ -4945,6 +4952,7 @@ export default function ClinicianPortal() {
                 </div>
                 <div className="border-b border-white/20 px-2 pb-4 pt-1">
                   <h2 className="text-base font-semibold">{selectedPatient.name}</h2>
+                  <HpvBadge status={selectedHpvStatus} className="mt-1.5" />
                   <p className="mt-1 text-xs text-white/80">{selectedPatient.age ? `${selectedPatient.age}y` : 'Age not recorded'}{selectedPatient.type ? ` · ${selectedPatient.type}` : ''}</p>
                   {selectedPatient.phone && <p className="mt-2 text-xs">{selectedPatient.phone}</p>}
                 </div>
@@ -4972,7 +4980,7 @@ export default function ClinicianPortal() {
                     <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setPatientDetailTab('record')}><History className="h-4 w-4" /><span>Previous visits<span className="mt-0.5 block text-[10px] text-saivie-plum">{previousVisit?.date ? String(previousVisit.date).slice(0, 10) : 'None recorded'}</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
                     <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => { setPatientDetailTab('consultation'); setConsultationStep('explore'); }}><ClipboardList className="h-4 w-4" /><span>Patient survey<span className="mt-0.5 block text-[10px] text-saivie-plum">{consultationSurvey.directions.length ? `${consultationSurvey.directions.length} topics selected` : 'Not filled'}</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
                     <button type="button" className="flex w-full items-center gap-2 rounded-md p-2 text-left text-[11px] text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setPatientDetailTab('medicine')}><Pill className="h-4 w-4" /><span>Current medications<span className="mt-0.5 block text-[10px] text-saivie-plum">{medications.filter((med: any) => String(med.status).toLowerCase() === 'active').length} active</span></span><ChevronRight className="ml-auto h-3 w-3" /></button>
-                    <div className="border-t border-saivie-border px-1 pt-2"><IntakeSummaryActions patient={surveyPatient} weightLogs={weightLogs} bpLogs={bpLogsData} checkInVitals={activeAppointment?.vitals} /></div>
+                    <div className="border-t border-saivie-border px-1 pt-2"><IntakeSummaryActions patient={surveyPatient} weightLogs={weightLogs} bpLogs={bpLogsData} checkInVitals={activeAppointment?.vitals} hpvClinicStatus={selectedHpvClinicStatus} /></div>
                   </CardContent>
                 </Card>
               </aside>
@@ -4998,6 +5006,7 @@ export default function ClinicianPortal() {
                           <div className="flex items-center gap-2">
                              <h2 className="text-sm font-bold text-saivie-plum">{selectedPatient.name}</h2>
                              <span className="text-[11px] text-saivie-plum font-medium">{selectedPatient.age}y{selectedPatient.phone ? ` · ${selectedPatient.phone}` : ''}</span>
+                             <HpvBadge status={selectedHpvStatus} />
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                              {selectedPatient.condition && (
@@ -5192,7 +5201,7 @@ export default function ClinicianPortal() {
                       <p className="text-xs text-saivie-plum">Risk: {selectedPatient.riskScore?.level || (selectedPatient.status === 'High Risk' ? 'High' : 'Not recorded')}</p>
                       {showPregnancyContext && <p className="text-xs text-saivie-plum">{pregnancyContext ? `${pregnancyContext.weeks}w ${pregnancyContext.days}d · EDD ${pregnancyContext.dueDate} (LMP estimate)` : 'Valid LMP required for pregnancy dating'}</p>}
                       <VitalsSparklineGrid vitals={activeAppointment?.vitals || selectedPatient.appointmentVitals || null} bpLogs={bpLogsData} weightLogs={weightLogs} onAdoptVitals={(summary) => setSoapObjectiveDraft((current) => [current, summary].filter(Boolean).join('\n'))} />
-                      <IntakeSummaryActions patient={surveyPatient} weightLogs={weightLogs} bpLogs={bpLogsData} checkInVitals={activeAppointment?.vitals} />
+                      <IntakeSummaryActions patient={surveyPatient} weightLogs={weightLogs} bpLogs={bpLogsData} checkInVitals={activeAppointment?.vitals} hpvClinicStatus={selectedHpvClinicStatus} />
                     </div>
                   </details>
 

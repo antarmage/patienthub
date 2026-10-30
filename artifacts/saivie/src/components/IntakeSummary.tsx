@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getPrintBrandStyles } from "@/lib/brand";
 import { readConsultationSurvey } from "@/lib/consultationSurvey";
+import { HPV_BADGE_COPY, hpvProtection, type HpvProtection } from "@/lib/hpvProtection";
+import { HpvBadge } from "@/components/HpvBadge";
 
 type WeightLog = { weight: number; unit: string; date: string; week: number | null };
 type BpLog = { systolic: number; diastolic: number; pulse: number | null; date: string };
@@ -27,6 +29,7 @@ type Summary = {
     weightRows: [string, string][];
     sections: Section[];
     hasIntake: boolean;
+    hpv: HpvProtection | null;
 };
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : "");
@@ -50,7 +53,7 @@ const ageFrom = (dob: string) => {
 
 type CheckInVitals = { bp?: unknown; pulse?: unknown; temp?: unknown; spo2?: unknown; weight?: unknown; height?: unknown; bmi?: unknown; recordedAt?: unknown };
 
-function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], checkInVitals?: CheckInVitals | null): Summary {
+function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], checkInVitals?: CheckInVitals | null, hpvClinicStatus?: HpvProtection | null): Summary {
     const history = patient?.history || {};
     const form = history.onboarding || {};
     const consultation = readConsultationSurvey(form.consultation);
@@ -181,7 +184,7 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], ch
     if (["5+ years ago", "Never had one"].includes(text(life.mammogram)) && Number(age) >= 40) insights.push({ level: "watch", text: `Mammogram ${text(life.mammogram).toLowerCase()} — screening may be due.` });
     if (["5+ years ago", "Never had one"].includes(text(gyn.lastPap)) && Number(age) >= 25) insights.push({ level: "watch", text: `Pap smear ${text(gyn.lastPap).toLowerCase()} — cervical screening may be due.` });
     if (text(life.exercise) === "0 days per week") insights.push({ level: "info", text: "Not currently exercising." });
-    if (["No", "Not sure", "Yes, some doses"].includes(text(gyn.hpvVaccine))) insights.push({ level: "info", text: `HPV vaccination: ${text(gyn.hpvVaccine).toLowerCase()} — discuss vaccination and cervical screening.` });
+    if (["No", "Not sure", "Yes, some doses"].includes(text(gyn.hpvVaccine)) && hpvClinicStatus !== "protected") insights.push({ level: "info", text: `HPV vaccination: ${text(gyn.hpvVaccine).toLowerCase()} — discuss vaccination and cervical screening.` });
     const allergies = list(history.allergies);
     if (allergies.length) insights.push({ level: "watch", text: `Allergies: ${allergies.join(", ")}.` });
     const conds = list(health.conditions);
@@ -246,6 +249,7 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], ch
         weightRows: weightLogs.slice(0, 6).map((w) => [fmtDate(w.date), `${w.weight} ${w.unit}${w.week ? ` (wk ${w.week})` : ""}`]),
         sections,
         hasIntake: Boolean(history.onboarding),
+        hpv: hpvProtection(text(gyn.hpvVaccine), hpvClinicStatus),
     };
 }
 
@@ -270,6 +274,7 @@ const ICONS = {
     notes: icon('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/>'),
     alert: icon('<path d="M12 3l9.5 17H2.5L12 3z"/><path d="M12 10v4M12 17.5v.01"/>'),
     info: icon('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/>'),
+    shield: icon('<path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>'),
 };
 
 const metricIcon = (label: string) => {
@@ -386,6 +391,9 @@ table{width:100%;border-collapse:collapse}
 .line{border-bottom:1px solid var(--saivie-border);height:26px}
 .disclaimer{background:var(--saivie-surface-blush);border-radius:10px;padding:8px 14px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--saivie-plum);font-size:10px;margin-bottom:14px}
 .disclaimer svg{width:16px;height:16px;color:var(--saivie-rose)}
+.hpv{display:flex;align-items:center;gap:12px;border:1px solid var(--saivie-border)}.hpv.protected{background:var(--saivie-sage)}.hpv.in-progress{background:var(--saivie-surface-blush)}
+.hpv .mico{background:var(--saivie-teal)}.hpv.in-progress .mico{background:var(--saivie-rose)}
+.hpv .msg{font-family:Georgia,"Times New Roman",serif;font-size:14px;font-weight:600;color:var(--saivie-plum);margin-top:2px}
 .printed{text-align:right;color:var(--saivie-plum);font-size:9px;margin-top:6px}
 @page{size:A4;margin:42mm 10mm 12mm}
 @media print{body{padding:0;background:#fff}.page{max-width:none}}
@@ -396,6 +404,8 @@ table{width:100%;border-collapse:collapse}
   <div>${field(ICONS.user, "Visit date", s.visitDate)}</div>
   <div>${field(ICONS.notes, "Patient ID", s.patientId)}</div>
 </div>
+
+${s.hpv ? `<div class="band hpv ${s.hpv}"><span class="mico">${ICONS.shield}</span><div><div class="ml">${esc(HPV_BADGE_COPY[s.hpv].label)}</div><div class="msg">${esc(HPV_BADGE_COPY[s.hpv].message)}</div></div></div>` : ""}
 
 ${s.metrics.length ? `<div class="band sage metrics">${s.metrics.map((m) => `<div class="metric"><span class="mico">${metricIcon(m.label)}</span><div><div class="ml">${esc(m.label)}</div><div class="mv" style="color:${toneColor(m.tone)}">${esc(m.value)}</div>${m.hint ? `<div class="mh">${esc(m.hint)}</div>` : ""}</div></div>`).join("")}</div>` : ""}
 
@@ -430,13 +440,13 @@ const insightClass: Record<Insight["level"], string> = {
     info: "border-saivie-border bg-saivie-surface-muted text-saivie-teal",
 };
 
-export function printPatientSummary(patient: any, checkInVitals?: CheckInVitals | null) {
-    if (!printSummary(buildSummary(patient, [], [], checkInVitals))) alert("Please allow pop-ups to print the patient summary.");
+export function printPatientSummary(patient: any, checkInVitals?: CheckInVitals | null, hpvClinicStatus?: HpvProtection | null) {
+    if (!printSummary(buildSummary(patient, [], [], checkInVitals, hpvClinicStatus))) alert("Please allow pop-ups to print the patient summary.");
 }
 
-export function IntakeSummaryActions({ patient, weightLogs, bpLogs, checkInVitals }: { patient: any; weightLogs: WeightLog[]; bpLogs: BpLog[]; checkInVitals?: CheckInVitals | null }) {
+export function IntakeSummaryActions({ patient, weightLogs, bpLogs, checkInVitals, hpvClinicStatus }: { patient: any; weightLogs: WeightLog[]; bpLogs: BpLog[]; checkInVitals?: CheckInVitals | null; hpvClinicStatus?: HpvProtection | null }) {
     const [open, setOpen] = useState(false);
-    const summary = buildSummary(patient, weightLogs, bpLogs, checkInVitals);
+    const summary = buildSummary(patient, weightLogs, bpLogs, checkInVitals, hpvClinicStatus);
     const print = () => {
         if (!printSummary(summary)) alert("Please allow pop-ups to print the intake summary.");
     };
@@ -458,6 +468,8 @@ export function IntakeSummaryActions({ patient, weightLogs, bpLogs, checkInVital
                         </DialogTitle>
                         {summary.meta.length > 0 && <p className="text-xs text-saivie-plum">{summary.meta.join(" · ")}</p>}
                     </DialogHeader>
+
+                    <HpvBadge status={summary.hpv} variant="full" />
 
                     {!summary.hasIntake && (
                         <p className="rounded-lg border border-dashed border-saivie-border bg-saivie-ivory p-3 text-xs text-saivie-teal">This patient hasn't completed the online intake form yet. Showing clinic records and self-recorded vitals only.</p>

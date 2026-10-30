@@ -88,6 +88,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatInvoiceNumber, InvoiceDocument, type InvoiceDocumentItem, type InvoiceTemplateData } from "@/components/InvoiceDocument";
 import { printPatientSummary } from "@/components/IntakeSummary";
+import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import { ReceptionDashboard, getArrivalState, type ReceptionFollowUp } from "@/components/ReceptionDashboard";
 import { useToast } from "@/hooks/use-toast";
 import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialogs";
@@ -1666,6 +1667,7 @@ export default function StaffPortal() {
   const [selectedPatientForCreate, setSelectedPatientForCreate] = useState<any>(null);
   const [isViewLogOpen, setIsViewLogOpen] = useState(false);
   const [selectedPatientForLog, setSelectedPatientForLog] = useState<any>(null);
+  const logHpvClinicStatus = useHpvClinicStatuses([selectedPatientForLog?.id]);
   const [logData, setLogData] = useState<{ visits: any[], medications: any[], notes: any[], appointments: any[], protocols: any[], documents: any[] }>({ visits: [], medications: [], notes: [], appointments: [], protocols: [], documents: [] });
   const [logLoading, setLogLoading] = useState(false);
   const [logTab, setLogTab] = useState("all");
@@ -5782,7 +5784,7 @@ export default function StaffPortal() {
                                     const latestVitals = [...logData.appointments]
                                         .filter((a: any) => a?.vitals)
                                         .sort((a: any, b: any) => String(b.vitals?.recordedAt || b.date || "").localeCompare(String(a.vitals?.recordedAt || a.date || "")))[0]?.vitals;
-                                    printPatientSummary(selectedPatientForLog, latestVitals);
+                                    printPatientSummary(selectedPatientForLog, latestVitals, logHpvClinicStatus(selectedPatientForLog?.id));
                                 }}>
                                 <Printer className="mr-1 h-3 w-3" /> Print summary
                             </Button>

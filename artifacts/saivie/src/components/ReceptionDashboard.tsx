@@ -33,6 +33,9 @@ import { getInventoryAlerts, getStockStatus, getExpiryStatus, useInventory } fro
 import { ReferralsCard, type ReferralRequest } from "@/components/ReferralsCard";
 import { printPatientSummary } from "@/components/IntakeSummary";
 import { hasVisitSurvey } from "@/lib/consultationSurvey";
+import { hpvProtection, hpvSurveyAnswer } from "@/lib/hpvProtection";
+import { HpvBadge } from "@/components/HpvBadge";
+import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 
 export type ArrivalState = "upcoming" | "late" | "waiting" | "in-consultation" | "completed" | "cancelled" | "no-show";
 type FlowFilter = "all" | "upcoming" | "arrived" | "waiting" | "completed" | "closed";
@@ -190,6 +193,8 @@ export function ReceptionDashboard({
     .sort((a, b) => new Date(a.apt.checkedInAt || 0).getTime() - new Date(b.apt.checkedInAt || 0).getTime());
 
   const findPatient = (apt: any) => patients.find((p) => p.id === apt.patientId);
+  const hpvClinicStatus = useHpvClinicStatuses(appointments.map((apt: any) => apt.patientId));
+  const hpvStatusFor = (apt: any) => hpvProtection(hpvSurveyAnswer(findPatient(apt)), hpvClinicStatus(apt.patientId));
   const pendingRx = appointments.filter((apt) => getArrivalState(apt) === "completed" && !prescribedAppointmentIds.has(apt.id));
   const { data: inventoryItems = [] } = useInventory();
   const inventoryAlerts = useMemo(() => getInventoryAlerts(inventoryItems), [inventoryItems]);
@@ -218,7 +223,10 @@ export function ReceptionDashboard({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not record vaccine dose");
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/vaccination-reminders"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vaccination-reminders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/hpv-protection"] });
+    },
   });
   const isPending = (id: number) => pendingAppointmentId === id;
   const stamp = () => new Date().toISOString();
@@ -412,6 +420,7 @@ export function ReceptionDashboard({
                                   <ClipboardList className="h-3 w-3" />Survey pending
                                 </span>
                               )}
+                              <HpvBadge status={hpvStatusFor(apt)} />
                             </div>
                             {patient?.phone ? (
                               <a href={`tel:${patient.phone.replace(/[^\d+]/g, "")}`} className="mt-0.5 inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-saivie-teal hover:underline" aria-label={`Call ${apt.patient} on ${patient.phone}`} data-testid={`flow-phone-${apt.id}`}>
@@ -432,7 +441,7 @@ export function ReceptionDashboard({
                           {renderAction(apt, state)}
                           <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-saivie-plum hover:text-saivie-teal" data-testid={`btn-print-summary-${apt.id}`}
                             title="Print patient summary" aria-label={`Print summary for ${apt.patient}`}
-                            onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals)}>
+                            onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals, hpvClinicStatus(apt.patientId))}>
                             <Printer className="h-4 w-4" />
                           </Button>
                         </div>
@@ -498,7 +507,7 @@ export function ReceptionDashboard({
                         <div className="flex items-center gap-1.5">
                         <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" data-testid={`queue-print-summary-${apt.id}`}
                           title="Print history & check-in vitals for the doctor"
-                          onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals)}>
+                          onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals, hpvClinicStatus(apt.patientId))}>
                           <Printer className="mr-1 h-3 w-3" /> Print
                         </Button>
                         <Select value="" onValueChange={(value) => handleWaitingStatus(apt, value)} disabled={isPending(apt.id)}>

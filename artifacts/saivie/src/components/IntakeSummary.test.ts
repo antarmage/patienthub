@@ -62,6 +62,15 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
         assert.ok(html.includes("118/76"));
         assert.ok(html.includes("Pulse"));
         assert.ok(html.includes("61 kg"));
+
+        assert.ok(!html.includes("I have protected myself from cervical cancer"));
+        form.gyn.hpvVaccine = "Yes, all doses";
+        printPatientSummary(patient);
+        assert.ok(html.includes("I have protected myself from cervical cancer"));
+        form.gyn.hpvVaccine = "No";
+        printPatientSummary(patient, null, "protected");
+        assert.ok(html.includes("I have protected myself from cervical cancer"));
+        assert.ok(!html.includes("discuss vaccination"));
     } finally {
         if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
         else Reflect.deleteProperty(globalThis, "window");

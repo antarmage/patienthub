@@ -22,6 +22,7 @@ import { ai, AI_AVAILABLE } from "../replit_integrations/image/client";
 import { whatsapp } from "../whatsapp";
 import { isSmtpConfigured, maskEmail, sendEmail, sendOtpEmail, type OtpDeliveryMethod } from "../smtp";
 import { checkDeliverableEmail } from "../email-check";
+import { hpvClinicStatuses } from "../hpv-protection";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
 import { analyseGenome, analyseGenomeFromKey } from "../genome-engine";
 import multer from "multer";
@@ -1333,10 +1334,13 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
     const patient = await storage.getPatient(appt.patientId!);
     if (!patient) return res.status(404).json({ error: "Patient not found" });
 
+    const [vaccineSchedules, vaccineRecords] = await Promise.all([storage.getVaccinationSchedules(), storage.getVaccinationRecords()]);
+    const hpvProtection = hpvClinicStatuses([patient.id], vaccineSchedules, vaccineRecords)[patient.id] ?? null;
+
     // Return only non-sensitive fields — history is restricted to authenticated staff
     res.json({
       appointment: { id: appt.id, date: appt.date, time: appt.time, chiefComplaint: appt.chiefComplaint },
-      patient: { id: patient.id, name: patient.name, dob: patient.dob, referredBy: patient.referredBy }
+      patient: { id: patient.id, name: patient.name, dob: patient.dob, referredBy: patient.referredBy, hpvProtection }
     });
   });
 
@@ -3669,6 +3673,15 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     }
     reminders.sort((a, b) => Number(a.daysUntilDue) - Number(b.daysUntilDue) || String(a.patientName).localeCompare(String(b.patientName)));
     res.json(reminders);
+  });
+
+  // Returns { [patientId]: "protected" | "in-progress" } from clinic-recorded HPV doses.
+  app.get("/api/hpv-protection", async (req, res) => {
+    const raw = typeof req.query.patientIds === "string" ? req.query.patientIds : "";
+    const patientIds = Array.from(new Set(raw.split(",").map((id) => parseId(id.trim())).filter((id): id is number => !!id))).slice(0, 500);
+    if (!patientIds.length) return res.json({});
+    const [schedules, records] = await Promise.all([storage.getVaccinationSchedules(), storage.getVaccinationRecords()]);
+    res.json(hpvClinicStatuses(patientIds, schedules, records));
   });
 
   app.get("/api/vaccination-records", async (req, res) => {
