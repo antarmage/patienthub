@@ -71,6 +71,12 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
         printPatientSummary(patient, null, "protected");
         assert.ok(html.includes("I have protected myself from cervical cancer"));
         assert.ok(!html.includes("discuss vaccination"));
+
+        printPatientSummary({ name: "Lab Patient", history: { labSurvey: { tests: "Thyroid profile", lastMeal: "Less than 2 hours ago", allergies: ["Latex"], appointmentId: 7 } } });
+        assert.ok(html.includes("Lab visit survey"));
+        assert.ok(html.includes("Thyroid profile"));
+        assert.ok(html.includes("Not fasting"));
+        assert.ok(html.includes("Allergy: Latex"));
     } finally {
         if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
         else Reflect.deleteProperty(globalThis, "window");

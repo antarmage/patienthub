@@ -34,6 +34,7 @@ import { ReferralsCard, type ReferralRequest } from "@/components/ReferralsCard"
 import { printPatientSummary } from "@/components/IntakeSummary";
 import { hasVisitSurvey } from "@/lib/consultationSurvey";
 import { hpvProtection, hpvSurveyAnswer } from "@/lib/hpvProtection";
+import { surveyKindFor } from "@/lib/labSurvey";
 import { HpvBadge } from "@/components/HpvBadge";
 import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 
@@ -242,6 +243,10 @@ export function ReceptionDashboard({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem data-testid={`menu-survey-kind-${apt.id}`}
+            onClick={() => onUpdateAppointment(apt.id, { surveyType: surveyKindFor(apt) === "lab" ? "consultation" : "lab" })}>
+            {surveyKindFor(apt) === "lab" ? "Use consultation survey" : "Use lab test survey"}
+          </DropdownMenuItem>
           <DropdownMenuItem data-testid={`menu-no-show-${apt.id}`}
             onClick={() => { if (window.confirm(`Mark ${apt.patient} as no-show?`)) onUpdateAppointment(apt.id, { status: "no-show" }); }}>
             Mark as no-show
@@ -413,11 +418,11 @@ export function ReceptionDashboard({
                               <p className="font-semibold text-saivie-plum">{apt.patient}</p>
                               {hasVisitSurvey(patient?.history, apt.id) ? (
                                 <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700" title="Pre-visit survey submitted for this appointment" data-testid={`flow-survey-${apt.id}`}>
-                                  <ClipboardCheck className="h-3 w-3" />Survey filled
+                                  <ClipboardCheck className="h-3 w-3" />{surveyKindFor(apt) === "lab" ? "Lab survey filled" : "Survey filled"}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-saivie-border bg-saivie-ivory px-2 py-0.5 text-[10px] font-medium text-saivie-plum/70" title="Pre-visit survey not submitted for this appointment" data-testid={`flow-survey-${apt.id}`}>
-                                  <ClipboardList className="h-3 w-3" />Survey pending
+                                  <ClipboardList className="h-3 w-3" />{surveyKindFor(apt) === "lab" ? "Lab survey pending" : "Survey pending"}
                                 </span>
                               )}
                               <HpvBadge status={hpvStatusFor(apt)} />

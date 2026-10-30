@@ -23,6 +23,7 @@ import { whatsapp } from "../whatsapp";
 import { isSmtpConfigured, maskEmail, sendEmail, sendOtpEmail, type OtpDeliveryMethod } from "../smtp";
 import { checkDeliverableEmail } from "../email-check";
 import { hpvClinicStatuses } from "../hpv-protection";
+import { readLabPrescription, sanitizeLabSurvey, surveyKindFor } from "../survey-kind";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
 import { analyseGenome, analyseGenomeFromKey } from "../genome-engine";
 import multer from "multer";
@@ -1339,7 +1340,7 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
 
     // Return only non-sensitive fields — history is restricted to authenticated staff
     res.json({
-      appointment: { id: appt.id, date: appt.date, time: appt.time, chiefComplaint: appt.chiefComplaint },
+      appointment: { id: appt.id, date: appt.date, time: appt.time, chiefComplaint: appt.chiefComplaint, surveyKind: surveyKindFor(appt) },
       patient: { id: patient.id, name: patient.name, dob: patient.dob, referredBy: patient.referredBy, hpvProtection }
     });
   });
@@ -1680,16 +1681,55 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const appointmentId = parseId(req.params.appointmentId);
     if (!appointmentId) return res.status(400).json({ error: "Invalid appointment ID" });
 
-    const { chiefComplaint, history, patientDetails } = req.body;
+    const { patientDetails } = req.body;
+    let { chiefComplaint, history } = req.body;
 
     const appt = await storage.getAppointments().then(all => all.find(a => a.id === appointmentId));
     if (!appt) return res.status(404).json({ error: "Appointment not found" });
 
-    // Update appointment chief complaint
-    await storage.updateAppointment(appointmentId, { chiefComplaint });
-
     const patient = await storage.getPatient(appt.patientId!);
     if (!patient) return res.status(404).json({ error: "Patient not found" });
+
+    // Lab visits submit a short lab survey (and optional prescription photo) instead of the full intake.
+    if (req.body.labSurvey !== undefined) {
+      const prescription = readLabPrescription(req.body.labPrescription);
+      if (prescription && "error" in prescription) return res.status(400).json({ error: prescription.error });
+      const answers = sanitizeLabSurvey(req.body.labSurvey);
+      let prescriptionDocumentId: number | null = null;
+      if (prescription) {
+        let s3Key: string | null = null;
+        if (isS3Configured()) {
+          const extension = prescription.mimeType === "application/pdf" ? "pdf" : prescription.mimeType.split("/")[1];
+          s3Key = await uploadBufferToS3(`documents/${patient.id}/${Date.now()}.${extension}`, Buffer.from(prescription.base64, "base64"), prescription.mimeType);
+        }
+        const stored = await storage.createPatientDocument({
+          patientId: patient.id,
+          fileName: prescription.fileName,
+          fileData: s3Key ? null : prescription.base64,
+          s3Key,
+          mimeType: prescription.mimeType,
+          docType: "prescription",
+          label: "Lab test prescription (patient upload)",
+          uploadedAt: new Date().toISOString(),
+        });
+        const doc = await storage.createDocument({
+          patientId: patient.id,
+          name: "Lab test prescription (patient upload)",
+          category: "prescription",
+          type: prescription.mimeType,
+          date: todayLocal(),
+          description: `Uploaded with lab survey for appointment #${appointmentId}`,
+          metadata: { fileName: prescription.fileName, patientDocumentId: stored.id, s3Key, appointmentId },
+        });
+        prescriptionDocumentId = doc.id;
+      }
+      const tests = typeof answers.tests === "string" ? answers.tests : "";
+      chiefComplaint = tests ? `Lab tests: ${tests}`.slice(0, 500) : appt.chiefComplaint;
+      history = { labSurvey: { ...answers, appointmentId, prescriptionDocumentId, submittedAt: new Date().toISOString() } };
+    }
+
+    // Update appointment chief complaint
+    await storage.updateAppointment(appointmentId, { chiefComplaint });
 
     if (patientDetails && typeof patientDetails === "object") {
       const updates: Record<string, string> = {};

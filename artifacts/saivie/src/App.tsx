@@ -14,7 +14,7 @@ import CheckIn from "@/pages/CheckIn";
 import NewBooking from "@/pages/NewBooking";
 import PatientListByCategory from "@/pages/PatientListByCategory";
 import OwnerPortal from "@/pages/OwnerPortal";
-import PatientOnboarding from "@/pages/PatientOnboarding";
+import VisitSurvey from "@/pages/VisitSurvey";
 import Kiosk from "@/pages/Kiosk";
 import { useBrandFavicon } from "@/components/BrandLogo";
 
@@ -29,7 +29,7 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/kiosk" component={Kiosk} />
       <Route path="/patient" component={PatientPortal} />
-      <Route path="/onboarding/:id" component={PatientOnboarding} />
+      <Route path="/onboarding/:id" component={VisitSurvey} />
       <Route path="/clinician" component={ClinicianPortal} />
       <Route path="/clinician/patients/:category" component={PatientListByCategory} />
       <Route path="/staff" component={StaffPortal} />

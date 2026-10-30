@@ -118,6 +118,7 @@ export const appointments = pgTable("appointments", {
   chiefComplaint: text("chief_complaint"),
   visitType: text("visit_type"),
   visitMode: text("visit_mode"),
+  surveyType: text("survey_type"),
   priority: text("priority"),
   room: text("room"),
   billingCode: text("billing_code"),

@@ -6,6 +6,7 @@ import { getPrintBrandStyles } from "@/lib/brand";
 import { readConsultationSurvey } from "@/lib/consultationSurvey";
 import { HPV_BADGE_COPY, hpvProtection, type HpvProtection } from "@/lib/hpvProtection";
 import { HpvBadge } from "@/components/HpvBadge";
+import { labSurveyFlags, labSurveyRows, readLabSurvey } from "@/lib/labSurvey";
 
 type WeightLog = { weight: number; unit: string; date: string; week: number | null };
 type BpLog = { systolic: number; diastolic: number; pulse: number | null; date: string };
@@ -196,7 +197,11 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], ch
         return v && (includeZero || v !== "0") ? [label, v] : null;
     };
     const section = (title: string, rows: ([string, string] | null)[]): Section => ({ title, rows: rows.filter(Boolean) as [string, string][] });
+    const labSurvey = readLabSurvey(history);
+    insights.push(...labSurveyFlags(labSurvey));
+    const labSubmitted = text(labSurvey?.submittedAt) && fmtDate(text(labSurvey?.submittedAt));
     const sections = [
+        section("Lab visit survey", [...labSurveyRows(labSurvey), ...(labSubmitted ? [["Submitted", labSubmitted] as [string, string]] : [])]),
         section("Check-in vitals", [
             row("Blood pressure (mmHg)", cv.bp), row("Pulse (bpm)", cv.pulse), row("Temperature (°F)", cv.temp), row("SpO₂ (%)", cv.spo2),
             row("Weight (kg)", cv.weight), row("Height (cm)", cv.height), row("BMI", cv.bmi),
@@ -248,7 +253,7 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], ch
         bpRows: bpLogs.slice(0, 6).map((b) => [fmtDate(b.date), `${b.systolic}/${b.diastolic}`, b.pulse ? String(b.pulse) : "—"]),
         weightRows: weightLogs.slice(0, 6).map((w) => [fmtDate(w.date), `${w.weight} ${w.unit}${w.week ? ` (wk ${w.week})` : ""}`]),
         sections,
-        hasIntake: Boolean(history.onboarding),
+        hasIntake: Boolean(history.onboarding || labSurvey),
         hpv: hpvProtection(text(gyn.hpvVaccine), hpvClinicStatus),
     };
 }
@@ -293,6 +298,7 @@ const metricIcon = (label: string) => {
 const sectionIcon = (title: string) => {
     const t = title.toLowerCase();
     if (t.includes("vitals")) return ICONS.heart;
+    if (t.includes("lab")) return ICONS.drop;
     if (t.includes("complaint")) return ICONS.chat;
     if (t.includes("menstrual")) return ICONS.drop;
     if (t.includes("obstetric")) return ICONS.baby;
@@ -324,7 +330,7 @@ function printSummary(s: Summary) {
         : "";
     const presenting = s.sections.find((sec) => sec.title === "Presenting complaint");
     const others = s.sections.filter((sec) => sec !== presenting && sec.title !== "Check-in vitals");
-    const wideTitles = new Set(["Lifestyle & screening", "Gynecological history"]);
+    const wideTitles = new Set(["Lifestyle & screening", "Gynecological history", "Lab visit survey"]);
     let toneIndex = 0;
     const sectionCards = others.map((sec) => {
         const tone = toneIndex++ % 2 === 0 ? "rose" : "sage";
