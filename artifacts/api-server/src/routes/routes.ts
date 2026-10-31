@@ -5,6 +5,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { storage } from "../storage";
+import { registerIcdRoutes, invoiceDiagnoses } from "../icd";
 import { registerBillingTemplateRoutes } from "../billing-templates";
 import { readAppointmentRange } from "../appointment-range";
 import { buildMedicineSuggestions } from "../medicine-suggestions";
@@ -348,6 +349,16 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  registerIcdRoutes(app, async (req, res, clinicianOnly) => {
+    const id = getStaffUserId(req, res);
+    if (!id) return null;
+    const user = await storage.getUser(id);
+    if (!user || (clinicianOnly ? user.role !== "clinician" : !["staff", "clinician", "owner"].includes(user.role || ""))) {
+      res.status(403).json({ error: clinicianOnly ? "Clinician access required" : "Staff access required" });
+      return null;
+    }
+    return id;
+  });
 
   registerBillingTemplateRoutes(app, async (req, res) => {
     const id = getStaffUserId(req, res);
@@ -2376,9 +2387,17 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       return res.status(400).json({ error: err.message || "Could not calculate invoice" });
     }
     const templateSnapshot = await storage.getInvoiceTemplateSettings() || defaultInvoiceTemplate;
+    if (req.body.diagnosisEncounterId != null) {
+      const userId = getStaffUserId(req, res);
+      if (!userId) return;
+      const user = await storage.getUser(userId);
+      if (!user || !["staff", "clinician"].includes(user.role || "")) return res.status(403).json({ error: "Staff access required to include diagnoses" });
+    }
+    const diagnoses = await invoiceDiagnoses(id, req.body.diagnosisEncounterId);
     try {
       const inv = await storage.createInvoiceWithStock({
         patientId: id,
+        diagnoses,
         date: req.body.date || new Date().toISOString().split("T")[0],
         items: quote.items,
         subtotal: quote.subtotal,
@@ -2543,6 +2562,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.patch("/api/invoices/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (req.body?.diagnoses !== undefined || req.body?.diagnosisEncounterId !== undefined) return res.status(400).json({ error: "Issued invoice diagnoses are immutable. Create a new invoice to change them." });
     const updated = await storage.updateInvoice(id, req.body);
     if (!updated) return res.status(404).json({ error: "Invoice not found" });
     res.json(updated);
@@ -2579,6 +2599,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       <hr style="border:none;border-top:1px solid #ddd;margin:14px 0"/>
       <p>Dear ${esc(patient.name)},</p>
       <p>Thank you for visiting us. Here is your invoice <strong>SAI-${inv.id}</strong> dated ${esc(inv.date)}.</p>
+      ${inv.diagnoses?.length ? `<h3>Doctor-confirmed diagnoses</h3><ul>${inv.diagnoses.map((diagnosis) => `<li>${esc(diagnosis.code)} - ${esc(diagnosis.title)} (${diagnosis.primary ? "Primary" : "Secondary"}; ${esc(diagnosis.system)} ${esc(diagnosis.release)})</li>`).join("")}</ul>` : ""}
       <table style="width:100%;border-collapse:collapse;font-size:14px">
         <thead><tr style="background:#f5f5f5"><th style="padding:6px 8px;text-align:left">Item</th><th style="padding:6px 8px">Qty</th><th style="padding:6px 8px;text-align:right">Amount</th></tr></thead>
         <tbody>${rows}</tbody>
@@ -2595,6 +2616,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     </div>`;
     const text = [
       `${clinic} - Invoice SAI-${inv.id} (${inv.date})`,
+      ...(inv.diagnoses || []).map((diagnosis) => `${diagnosis.code} - ${diagnosis.title} (${diagnosis.primary ? "Primary" : "Secondary"}; ${diagnosis.system} ${diagnosis.release})`),
       ...items.map((l) => `${l.name} x${l.quantity}: ${money(l.lineTotal)}`),
       `Total: ${money(inv.total)}`,
       `Payment: ${inv.paymentMethod || "-"} (${inv.paymentStatus || "paid"})`,
@@ -2810,7 +2832,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       username: user.username,
       displayName: user.displayName ?? null,
       id: user.id,
-      staffToken: user.role === "staff" ? issueStaffToken(user.id) : undefined,
+      staffToken: ["staff", "clinician"].includes(user.role || "") ? issueStaffToken(user.id) : undefined,
       provider: providerInfo ? { id: providerInfo.id, name: providerInfo.name, specialty: providerInfo.specialty, role: providerInfo.role } : null,
     });
   });

@@ -28,6 +28,14 @@
       ],
       "secrets": [
         {
+          "name": "WHO_ICD_CLIENT_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/who_icd_client_id-bmRHcq"
+        },
+        {
+          "name": "WHO_ICD_CLIENT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/who_icd_client_secret-vrnFgr"
+        },
+        {
           "name": "DATABASE_URL",
           "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/database_url"
         },

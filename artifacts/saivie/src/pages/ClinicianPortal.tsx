@@ -16,6 +16,9 @@ import { consultationDirectionsByPath, consultationPaths, consultationSurveyForV
 import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
 import { ConsultationVitalsTrends } from "@/components/ConsultationVitalsTrends";
 import { PatientSummaryDashboard } from "@/components/PatientSummaryDashboard";
+import { DoctorDashboard } from "@/components/DoctorDashboard";
+import { clinicalRequest, DiagnosisHistory, IcdDiagnosisEditor, usePatientDiagnoses } from "@/components/IcdDiagnoses";
+import type { IcdDiagnosis } from "../../../../lib/db/src/icd";
 import { PatientVisitTimeline, visitTests } from "@/components/PatientVisitTimeline";
 import { ConsultationAssessment } from "@/components/ConsultationAssessment";
 import { ConceptionHistory } from "@/components/ConceptionHistory";
@@ -546,6 +549,7 @@ export default function ClinicianPortal() {
         });
       } catch (e) {
         console.error("Failed to set appointment in-consultation", e);
+        return;
       }
     }
     navigateToPatient(patient);
@@ -1635,7 +1639,21 @@ export default function ClinicianPortal() {
     setTreatmentResponseDraft('');
   };
 
+  const diagnosisHistoryQuery = usePatientDiagnoses(selectedPatient?.id ?? null);
+  const [icdEdits, setIcdEdits] = useState<{ key: string; items: IcdDiagnosis[] } | null>(null);
+  const diagnosisAppointmentId = activeAppointment?.id || selectedPatient?.appointmentId;
+  const diagnosisVisitId = currentEncounterVisit?.id || savedEncounterId.current;
+  const diagnosisKey = `${selectedPatient?.id}:${diagnosisAppointmentId ? `a${diagnosisAppointmentId}` : diagnosisVisitId ? `v${diagnosisVisitId}` : "new"}`;
+  const savedDiagnoses = diagnosisHistoryQuery.data?.find((encounter) => diagnosisAppointmentId
+    ? encounter.appointmentId === diagnosisAppointmentId : encounter.visitId === diagnosisVisitId)?.diagnoses || [];
+  const selectedDiagnoses = icdEdits?.key === diagnosisKey ? icdEdits.items : savedDiagnoses;
+  const diagnosesDirty = JSON.stringify(selectedDiagnoses) !== JSON.stringify(savedDiagnoses);
+
   const saveConsultationNote = async () => {
+    if (diagnosesDirty && (diagnosisHistoryQuery.isLoading || diagnosisHistoryQuery.isError)) {
+      setSoapSavedMsg("Cannot confirm consultation until saved diagnoses are loaded. Retry diagnosis history.");
+      return false;
+    }
     const snapshot = [soapSubjectiveDraft, soapObjectiveDraft, consultationAssessmentText, soapPlanDraft, JSON.stringify(orderedConsultationTests), JSON.stringify(assessmentDraft)];
     setSoapSaving(true);
     setSoapSavedMsg(null);
@@ -1680,6 +1698,17 @@ export default function ClinicianPortal() {
       }
       const savedVisit = await response.json();
       savedEncounterId.current = savedVisit.id;
+      if (diagnosesDirty) {
+        await clinicalRequest(`/api/patients/${selectedPatient.id}/diagnoses`, {
+          method: "PUT",
+          body: JSON.stringify({
+            ...(diagnosisAppointmentId ? { appointmentId: diagnosisAppointmentId } : { visitId: savedVisit.id }),
+            diagnoses: selectedDiagnoses.map(({ code, primary }) => ({ code, primary })),
+          }),
+        });
+        await queryClient.invalidateQueries({ queryKey: ["confirmed-diagnoses", selectedPatient.id] });
+        setIcdEdits(null);
+      }
       setSoapSavedMsg('Clinician-reviewed note saved to visit record.');
       setSavedConsultationSnapshot(snapshot);
       await queryClient.invalidateQueries({ queryKey: [`/api/patients/${selectedPatient.id}/visit-history`] });
@@ -1692,11 +1721,11 @@ export default function ClinicianPortal() {
     }
   };
 
-  const consultationHasContent = consultationTests !== null || assessmentEdits?.key === consultationSurveyKey || [soapSubjectiveDraft, soapObjectiveDraft, consultationAssessmentText, soapPlanDraft].some((value) => value.trim());
+  const consultationHasContent = diagnosesDirty || consultationTests !== null || assessmentEdits?.key === consultationSurveyKey || [soapSubjectiveDraft, soapObjectiveDraft, consultationAssessmentText, soapPlanDraft].some((value) => value.trim());
   const consultationCanSave = consultationHasContent || Boolean(savedConsultationSnapshot?.some((value) => value.trim()));
-  const consultationNoteSaved = JSON.stringify(savedConsultationSnapshot) === JSON.stringify([soapSubjectiveDraft, soapObjectiveDraft, consultationAssessmentText, soapPlanDraft, JSON.stringify(orderedConsultationTests), JSON.stringify(assessmentDraft)]) ||
+  const consultationNoteSaved = !diagnosesDirty && (JSON.stringify(savedConsultationSnapshot) === JSON.stringify([soapSubjectiveDraft, soapObjectiveDraft, consultationAssessmentText, soapPlanDraft, JSON.stringify(orderedConsultationTests), JSON.stringify(assessmentDraft)]) ||
     (!savedConsultationSnapshot && assessmentEdits?.key !== consultationSurveyKey && Boolean(assessmentVisit) &&
-      consultationTests === null && ![soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft].some((value) => value.trim()));
+      consultationTests === null && ![soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft].some((value) => value.trim())));
   const consultationChecklist = [
     { label: 'Reason', done: Boolean(soapSubjectiveDraft.trim()) },
     { label: 'History', done: selectedDirections.length > 0 },
@@ -2251,7 +2280,7 @@ export default function ClinicianPortal() {
               </div>
             )}
             <button
-              onClick={() => { localStorage.removeItem("clinicianProvider"); navigate("/"); }}
+              onClick={() => { localStorage.removeItem("clinicianProvider"); sessionStorage.removeItem("billing_staff_token"); navigate("/"); }}
               className="p-1.5 rounded-md hover:bg-rose-50 text-saivie-plum hover:text-rose-600 transition-colors"
               title="Sign Out"
               data-testid="button-signout"
@@ -2267,8 +2296,27 @@ export default function ClinicianPortal() {
         
         {/* NEW DASHBOARD VIEW */}
         {activeView === 'dashboard' && (
-           <div className="flex-1 overflow-y-auto p-4 md:p-6">
+           <div className="flex-1 overflow-y-auto bg-[#faf5e6] p-4 md:p-6">
              <div className="max-w-[1440px] mx-auto space-y-5">
+               <DoctorDashboard
+                 doctorName={providerName}
+                 patients={queuePatients}
+                 date={queueDateFrom}
+                 onDate={(date) => { setQueueDateFrom(date); setQueueDateTo(date); }}
+                 filter={queueStatusFilter}
+                 onFilter={setQueueStatusFilter}
+                 isLoading={patientsQuery.isLoading || appointmentsQuery.isLoading}
+                 error={patientsQuery.error || appointmentsQuery.error}
+                 isStarting={updateAppointmentMutation.isPending}
+                 onRefresh={() => { patientsQuery.refetch(); appointmentsQuery.refetch(); dashboardStatsQuery.refetch(); }}
+                 onOpen={navigateToPatient}
+                 onStart={handleStartConsultation}
+                 onSchedule={() => setActiveView("schedule")}
+                 onSettings={() => setActiveView("settings")}
+               />
+               <details className="rounded-3xl border border-saivie-border bg-saivie-ivory p-4" data-testid="doctor-clinic-tools">
+                 <summary className="cursor-pointer text-sm font-semibold text-saivie-plum">Detailed patient flow, triage &amp; clinic insights</summary>
+                 <div className="mt-5 space-y-5">
                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-saivie-plum">Clinician workspace</p>
@@ -2976,6 +3024,8 @@ export default function ClinicianPortal() {
                   </div>
                 </div>
 
+                 </div>
+               </details>
              </div>
           </div>
         )}
@@ -5182,6 +5232,7 @@ export default function ClinicianPortal() {
                   <PatientReportsList patientId={selectedPatient.id} documents={Array.isArray(patientDocumentsQuery.data) ? patientDocumentsQuery.data : []} isLoading={patientDocumentsQuery.isLoading} isError={patientDocumentsQuery.isError} onRetry={() => { void patientDocumentsQuery.refetch(); }} />
                 </div>
                 <PatientVisitTimeline visits={visitHistory} isLoading={visitHistoryQuery.isLoading} isError={visitHistoryQuery.isError} onRetry={() => { void visitHistoryQuery.refetch(); }} />
+                <DiagnosisHistory patientId={selectedPatient.id} />
               </div>
             )}
 
@@ -5349,6 +5400,13 @@ export default function ClinicianPortal() {
                           </div>
                         )}
 
+                        <div className={consultationStep === 'evidence' ? "space-y-3" : "hidden"}>
+                          <IcdDiagnosisEditor key={diagnosisKey} items={selectedDiagnoses}
+                            onChange={(items) => setIcdEdits({ key: diagnosisKey, items })}
+                            loading={diagnosisHistoryQuery.isLoading}
+                            error={diagnosisHistoryQuery.isError ? diagnosisHistoryQuery.error.message : null}
+                            retry={() => { void diagnosisHistoryQuery.refetch(); }} />
+                        </div>
                         {consultationStep === 'evidence' && (
                           <ConsultationAssessment key={consultationSurveyKey} draft={assessmentDraft}
                             onChange={(draft) => setAssessmentEdits({ key: consultationSurveyKey, draft })}

@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import type { IcdDiagnosis } from "../../../../lib/db/src/icd";
 
 export interface InvoiceTemplateData {
   clinicName?: string | null;
@@ -33,6 +34,7 @@ export interface InvoiceDocumentItem {
 }
 
 interface InvoiceDocumentProps {
+  diagnoses?: IcdDiagnosis[];
   template: InvoiceTemplateData;
   patient: { name?: string; phone?: string | null; email?: string | null; address?: string | null; type?: string | null; isPrimeMember?: boolean };
   items: InvoiceDocumentItem[];
@@ -83,6 +85,7 @@ function InvoiceArticle({
   invoiceId,
   draft = false,
   duplicate = false,
+  diagnoses = [],
 }: InvoiceDocumentProps) {
   const sections = {
     patientContact: true,
@@ -163,6 +166,10 @@ function InvoiceArticle({
           </div>
         </section>
 
+        {diagnoses.length > 0 && <section className="mt-4 border border-saivie-border p-3">
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-emerald-800">Doctor-confirmed diagnoses</h2>
+          {diagnoses.map((diagnosis) => <p key={diagnosis.code} className="mt-1 text-[10px]"><strong>{diagnosis.code}</strong> - {diagnosis.title} ({diagnosis.primary ? "Primary" : "Secondary"} · {diagnosis.system} {diagnosis.release})</p>)}
+        </section>}
         <section className="mt-4 grid grid-cols-4 border border-slate-400">
           {[
             { label: "Invoice number", value: invoiceId ? formatInvoiceNumber(invoiceId) : "Pending" },

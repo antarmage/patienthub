@@ -8,6 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "import-icd10": "node --enable-source-maps dist/icd-catalog-import.mjs --import",
     "rescan-prescriptions": "node --experimental-strip-types scripts/rescan-prescriptions.mjs",
     "local-reports": "node scripts/local-reports.mjs"
   },

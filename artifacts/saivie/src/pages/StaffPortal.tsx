@@ -97,6 +97,7 @@ import { useToast } from "@/hooks/use-toast";
 import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialogs";
 import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
 import { ReportViewButton } from "@/components/PatientReports";
+import { usePatientDiagnoses } from "@/components/IcdDiagnoses";
 
 
 
@@ -1712,6 +1713,10 @@ export default function StaffPortal() {
   const [followUpTriggerFilter, setFollowUpTriggerFilter] = useState("all");
 
   const [billingPatientId, setBillingPatientId] = useState<number | null>(null);
+  const [billingDiagnosisSource, setBillingDiagnosisSource] = useState<{ patientId: number; encounterId: number } | null>(null);
+  const billingDiagnosesQuery = usePatientDiagnoses(billingPatientId);
+  const billingDiagnosisEncounter = billingDiagnosesQuery.data?.find((encounter) =>
+    billingDiagnosisSource?.patientId === billingPatientId && encounter.id === billingDiagnosisSource.encounterId);
   const [billingTab, setBillingTab] = useState("new-bill");
   const [billingItemSearch, setBillingItemSearch] = useState("");
   const [billingItemCategory, setBillingItemCategory] = useState("");
@@ -1880,19 +1885,23 @@ export default function StaffPortal() {
   }, [billingPatientId, billingCatalogItems, patients, appointments, getAutoEstimate]);
 
   const createInvoiceMutation = useMutation({
-    mutationFn: async (data: { patientId: number; items: { catalogItemId?: number; inventoryItemId?: number; quantity: number }[]; paymentMethod: string; notes: string }) => {
+    mutationFn: async (data: { patientId: number; items: { catalogItemId?: number; inventoryItemId?: number; quantity: number }[]; paymentMethod: string; notes: string; diagnosisEncounterId?: number }) => {
       const res = await fetch(`/api/patients/${data.patientId}/invoices`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(data.diagnosisEncounterId ? { Authorization: `Bearer ${sessionStorage.getItem("billing_staff_token") || ""}` } : {}) },
         body: JSON.stringify({
           patientId: data.patientId,
           date: new Date().toISOString().split("T")[0],
           items: data.items,
           paymentMethod: data.paymentMethod,
           notes: data.notes,
+          diagnosisEncounterId: data.diagnosisEncounterId,
         }),
       });
-      if (!res.ok) throw new Error("Failed to create invoice");
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to create invoice");
+      }
       return res.json();
     },
     onSuccess: (invoice, variables) => {
@@ -1905,6 +1914,7 @@ export default function StaffPortal() {
       setIsIssuedInvoicePreview(true);
       setBillingItems([]);
       setBillingPatientId(null);
+      setBillingDiagnosisSource(null);
       setBillingNotes("");
       setBillingPaymentMethod("cash");
       setBillingIsEstimate(false);
@@ -4257,6 +4267,7 @@ export default function StaffPortal() {
                           const selectPatient = (id: number) => {
                             prevBillingPatientRef.current = null;
                             setBillingPatientId(id);
+                            setBillingDiagnosisSource(null);
                             setBillingItems([]);
                             setBillingIsEstimate(false);
                             setBillingEstimateSource("");
@@ -4632,6 +4643,17 @@ export default function StaffPortal() {
                                 </Select>
                               </div>
 
+                              {billingPatientId && <details className="rounded-lg border border-saivie-border bg-white p-3">
+                                <summary className="cursor-pointer text-xs font-medium text-saivie-plum">Include diagnoses for insurance (optional)</summary>
+                                <p className="my-2 text-xs text-saivie-plum">Select a doctor-confirmed encounter only when needed. These diagnoses will appear on the printed/PDF and emailed invoice.</p>
+                                {billingDiagnosesQuery.isLoading && <p role="status" className="text-xs">Loading diagnoses...</p>}
+                                {billingDiagnosesQuery.isError && <p role="alert" className="text-xs text-rose-700">{billingDiagnosesQuery.error.message} <Button variant="outline" size="sm" onClick={() => void billingDiagnosesQuery.refetch()}>Retry</Button></p>}
+                                <select aria-label="Invoice diagnosis encounter" className="w-full rounded-md border border-saivie-border bg-white p-2 text-xs" value={billingDiagnosisEncounter?.id || ""} disabled={billingDiagnosesQuery.isLoading || billingDiagnosesQuery.isError} onChange={(event) => setBillingDiagnosisSource(event.target.value ? { patientId: billingPatientId, encounterId: Number(event.target.value) } : null)}>
+                                  <option value="">Do not include diagnoses</option>
+                                  {billingDiagnosesQuery.data?.filter((encounter) => encounter.diagnoses.length).map((encounter) => <option key={encounter.id} value={encounter.id}>{new Date(encounter.confirmedAt).toLocaleDateString()} - {encounter.diagnoses.map((diagnosis) => diagnosis.code).join(", ")}</option>)}
+                                </select>
+                                {billingDiagnosisEncounter?.diagnoses.map((diagnosis) => <p key={diagnosis.code} className="mt-1 text-xs">{diagnosis.code} - {diagnosis.title} ({diagnosis.primary ? "Primary" : "Secondary"})</p>)}
+                              </details>}
                               <details>
                                 <summary className="cursor-pointer text-xs text-saivie-plum">Add a note (optional)</summary>
                                 <Label className="text-xs font-medium text-saivie-plum">Notes (optional)</Label>
@@ -4727,6 +4749,7 @@ export default function StaffPortal() {
                             paymentMethod={issuedInvoice?.paymentMethod || billingPaymentMethod}
                             paymentStatus={issuedInvoice?.paymentStatus}
                             notes={issuedInvoice?.notes ?? billingNotes}
+                            diagnoses={issuedInvoice ? issuedInvoice.diagnoses : billingDiagnosisEncounter?.diagnoses}
                             invoiceId={issuedInvoice?.id}
                             duplicate={!!issuedInvoice?.isReprint}
                             draft={!issuedInvoice}
@@ -4753,6 +4776,7 @@ export default function StaffPortal() {
                                   items: requestedBillingItems,
                                   paymentMethod: billingPaymentMethod,
                                   notes: billingNotes,
+                                  diagnosisEncounterId: billingDiagnosisEncounter?.id,
                                 })}
                                 data-testid="btn-generate-invoice"
                               >

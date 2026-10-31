@@ -45,6 +45,25 @@ export async function ensureSchema(): Promise<void> {
       ALTER TABLE lab_tasks ADD COLUMN IF NOT EXISTS ordered_at text;
       ALTER TABLE lab_tasks ALTER COLUMN ordered_at SET DEFAULT CURRENT_TIMESTAMP::text;
 
+      CREATE TABLE IF NOT EXISTS icd10_catalog (
+        code text PRIMARY KEY, title text NOT NULL, release text NOT NULL,
+        leaf boolean NOT NULL, terms text NOT NULL DEFAULT ''
+      );
+      CREATE TABLE IF NOT EXISTS encounter_diagnoses (
+        id serial PRIMARY KEY,
+        patient_id integer NOT NULL REFERENCES patients(id),
+        appointment_id integer REFERENCES appointments(id),
+        visit_id integer REFERENCES visit_history(id),
+        diagnoses jsonb NOT NULL,
+        confirmed_by varchar NOT NULL REFERENCES users(id),
+        confirmed_at text NOT NULL,
+        CHECK ((appointment_id IS NOT NULL) <> (visit_id IS NOT NULL))
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS encounter_diagnoses_appointment_idx ON encounter_diagnoses(appointment_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS encounter_diagnoses_visit_idx ON encounter_diagnoses(visit_id);
+      CREATE INDEX IF NOT EXISTS encounter_diagnoses_patient_idx ON encounter_diagnoses(patient_id);
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS diagnoses jsonb;
+
       CREATE TABLE IF NOT EXISTS personal_billing_templates (
         id serial PRIMARY KEY,
         user_id varchar NOT NULL REFERENCES users(id),

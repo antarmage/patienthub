@@ -36,6 +36,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Backend Structure
 
+- WHO ICD credentials are injected into the API container as `WHO_ICD_CLIENT_ID` and `WHO_ICD_CLIENT_SECRET` from separate plaintext AWS Secrets Manager secrets in `ap-south-1`. The ECS execution role's existing `saivie/prod/*` read policy covers them. Task-definition mappings take effect on the next API deployment; ICD search and diagnosis integration are not yet implemented.
+
 - `artifacts/api-server/src/routes/routes.ts` — all app route handlers (legacy registerRoutes pattern); includes `/api/postop/*` routes for SaivieRecover, `/api/desk/*` routes for SaivieDesk, and `/api/genome/*` routes for SaivieGene (upload, status polling, results, PDF report)
 - `artifacts/api-server/src/genome-engine.ts` — SNP-to-health-association analysis engine (parses VCF/23andMe/AncestryDNA files)
 - `artifacts/api-server/src/storage.ts` — data access layer
@@ -72,6 +74,9 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - On the receptionist dashboard, the time-of-day greeting and full date appear in the content immediately below the top navigation bar.
 
 ## Shared Saivie web UI
+
+- The doctor dashboard uses a cream background with yellow/pink/sage/blue summaries, a searchable patient list and visit preview, and a date-picker/day timeline. Summaries use the selected day's appointments; visit durations require actual start/completion timestamps and risk levels use recorded scores. Preview selection never changes appointment status; Open details and Start consultation retain appointment context and existing actions.
+- Full date-range patient flow, triage sorting, category shortcuts and clinical alerts remain available under "Detailed patient flow, triage & clinic insights". The compact calendar selects one day; full scheduling and settings remain accessible.
 
 - Receptionist Billing has separate New bill and All invoices tabs. New bill uses compact patient/template controls and searchable category-based items, with the selected patient's last invoice linked from the summary. Switching tabs preserves the draft.
 - Patient, Template, Items and Invoice summary sections have sage backgrounds. Items shows only the selected catalog category or Products; there is no Suggested/all-items tab. All invoices displays 10 rows per page after searching/sorting, with Previous/Next controls and result counts; search resets to page 1 and shortened lists clamp to an available page.

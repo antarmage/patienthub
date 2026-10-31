@@ -377,6 +377,7 @@ export const invoices = pgTable("invoices", {
   paymentMethod: text("payment_method"),
   paymentStatus: text("payment_status"),
   insuranceClaimId: text("insurance_claim_id"),
+  diagnoses: jsonb("diagnoses").$type<import("../icd").IcdDiagnosis[]>(),
   notes: text("notes"),
   templateSnapshot: jsonb("template_snapshot"),
   discountTotal: real("discount_total").notNull().default(0),
@@ -386,6 +387,24 @@ export const invoices = pgTable("invoices", {
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true });
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type Invoice = typeof invoices.$inferSelect;
+
+export const icdCatalog = pgTable("icd10_catalog", {
+  code: text("code").primaryKey(),
+  title: text("title").notNull(),
+  release: text("release").notNull(),
+  leaf: boolean("leaf").notNull(),
+  terms: text("terms").notNull().default(""),
+});
+
+export const encounterDiagnoses = pgTable("encounter_diagnoses", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
+  visitId: integer("visit_id").references(() => visitHistory.id),
+  diagnoses: jsonb("diagnoses").notNull().$type<import("../icd").IcdDiagnosis[]>(),
+  confirmedBy: varchar("confirmed_by").notNull().references(() => users.id),
+  confirmedAt: text("confirmed_at").notNull(),
+});
 
 export const personalBillingTemplates = pgTable("personal_billing_templates", {
   id: serial("id").primaryKey(),
