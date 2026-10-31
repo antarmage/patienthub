@@ -12,9 +12,9 @@ The persisted roles `clinician` and `owner` can author shared clinical records. 
 
 ## Protected paths
 
-The following require clinical authorization for writes; patient-specific GET/HEAD requests also allow the corresponding patient session/mobile token. Receptionists cannot read these clinical records:
+The following require clinical authorization for writes; patient-specific GET/HEAD requests also allow the corresponding patient session/mobile token. Receptionist/staff reads are denied by default, but may be enabled clinic-wide as described below:
 
-`/api/patients/:id/{conception,pregnancy-status,visit-history,medications,clinical-notes,diagnoses,documents,pregnancy-metrics,weight-logs,bp-logs,follicle-data,usg-data,lab-results,referrals,risk-score,trimester-checklist,manual-prescription,extract-prescription,parse-prescription,extract-lab-results}`
+`/api/patients/:id/{conception,pregnancy-status,visit-history,medications,clinical-notes,diagnoses,documents,hormones,pregnancy-metrics,weight-logs,bp-logs,follicle-data,usg-data,lab-results,referrals,risk-score,trimester-checklist,manual-prescription,extract-prescription,parse-prescription,extract-lab-results}`
 
 This includes `/api/patients/:id/documents/:docId/file`. Own-patient clinical-note responses exclude notes marked private. The existing diagnosis endpoint still validates doctor-confirmed encounter ownership and imported ICD codes.
 
@@ -26,7 +26,7 @@ Prescription extraction remains read-for-review only; saving is independently pr
 
 ## Receptionist response and write contracts
 
-Authenticated nonclinical staff can use `/api/patients`, `/api/patients/:id`, `/api/desk/patients`, `/api/desk/patients/:id`, `/api/prime-members`, and `/api/postop/patients`. Their list, detail, registration, and update responses allow only:
+Authenticated nonclinical staff can use `/api/patients`, `/api/patients/:id`, `/api/desk/patients`, `/api/desk/patients/:id`, `/api/prime-members`, and `/api/postop/patients`. With clinical visibility off, their list, detail, registration, and update responses allow only:
 
 `id, name, phone, age, email, address, dob, avatar, mode, referredBy, insurance, lastVisit, nextReview, isPrimeMember, primeMemberSince`
 
@@ -43,6 +43,34 @@ Authenticated receptionist appointment responses allow:
 No `reason`, `chiefComplaint`, `notes`, `vitals`, `followUpNotes`, or triage text is returned. Booking may submit `reason` as a scheduling prefill, but never as a patient clinical field. Staff can book, reschedule, check in, cancel, mark no-show, and handle payment logistics. They cannot write `seenAt`/`completedAt` or clinical appointment states. Allowed staff statuses are `scheduled`, `booked`, `confirmed`, `checked-in`, `cancelled`, and `no-show`.
 
 Walk-ins may atomically POST `status: "checked-in"` plus an ISO `checkedInAt`; the date must be today in the clinic's India timezone. Changing a receptionist appointment's date, time, or provider resets `status` to `scheduled` and clears `checkedInAt`. Once a consultation has begun, nonclinical staff cannot change its schedule or arrival/consultation state; billing updates remain allowed. Receptionist completion does not trigger automatic clinical-summary authoring. Existing appointment persistence does **not** enforce overlapping-slot availability; clients must not claim that it does.
+
+## Doctor-controlled receptionist clinical visibility
+
+`GET /api/clinic/reception-access` accepts authenticated `staff`, `receptionist`, `admin`, `clinician`, and `owner` tokens and returns `{clinicalDetailsVisible: boolean, canRecordVitals: true}`. `PUT` accepts only `clinician`/`owner`, with the strict body `{clinicalDetailsVisible: boolean}`, and returns the same shape. Patients, unknown roles, and admins cannot configure this permission. Reading the clinic setting does not grant admins clinical read or measurement-entry access.
+
+The singleton `clinic_reception_access` database setting defaults to false. Updates persist the authenticated `updated_by` and server `updated_at`; startup's idempotent `ensureSchema` initializes the row without overwriting previous decisions. Tokens themselves retain their existing lifetime; permission decisions are read from persistence on each applicable request, not cached per token.
+
+When enabled, **only** `staff` and `receptionist` gain clinical GET/HEAD access to the protected patient records and shared clinical collections above, including doctor-confirmed diagnoses and stored report files. Patient lists/details and clinical cohort categories return known shared clinical fields in addition to logistics. Unknown top-level fields, `clinicianNote`, and raw `genomics` remain excluded. Both shared and patient-specific clinical-note lists exclude `isPrivate: true`/`1`. Patient ownership checks remain unchanged. Reads send `Cache-Control: private, no-store`; clients must discard cached clinical data and close read-only views on revocation or permission errors.
+
+Report metadata retains `metadata.patientDocumentId`. Fetch `GET /api/patients/:patientId/documents/:docId/file` with the staff token; the handler verifies the document and stored file both belong to that patient. It sends safe inline PDF/image bytes (other types download), or redirects to an S3 signed download URL. This is read access, not permission to upload/import a report.
+
+This toggle never grants authoring: generic patient/appointment field restrictions, invoice diagnosis protection, manual prescriptions, medication mutations, ICD selection/diagnosis writes, clinical tools, import/OCR writes, and intake ownership remain unchanged. Existing narrowly scoped paper transcription and reviewed local-report workflows retain their separate authorization, validation, and audit requirements. Registration/update responses and ordinary appointment responses remain logistics-only even when clinical reads are enabled. `admin` does not gain clinical access from this flag.
+
+## Receptionist preconsultation measurements
+
+`GET/POST /api/appointments/:id/reception-vitals` is independent of clinical visibility. Authenticated `staff`, `receptionist`, `clinician`, and `owner` may use it; patient tokens/sessions, admins, and unknown roles cannot. IDs must be plain positive safe integers; an appointment without an existing associated patient returns 404.
+
+Both methods return `{appointmentId, patientId, vitals, lmp}`. GET contains only that appointment's whitelisted measurement payload and its patient-reported LMP, never patient history, clinical notes, previous-visit measurements, or clinician-confirmed pregnancy dates. It remains available when clinical read access is off.
+
+POST accepts the strict body `{vitals: {bp?, pulse?, temp?, spo2?, weight?, height?, bmi?, recordedAt?} | null, lmp: string | null}`. An object must contain at least one measurement. Numeric fields accept finite numbers or numeric decimal strings and persist as numbers:
+
+- `bp`: `systolic/diastolic` string; systolic 50–260, diastolic 30–180, systolic greater than diastolic.
+- Pulse 20–250 bpm; temperature 30–45 °C; SpO2 50–100%; weight 0.1–500 kg; height 30–250 cm; BMI 0.1–150.
+- LMP: a real `YYYY-MM-DD` date, not in the future in clinic India time, or null. Unknown keys, clinical fields, submitted actor/source fields, booleans, blank strings, and invalid/range-exceeding measurements return 400. Submitted `recordedAt` is ignored; `recordedAt`/`recordedBy` are generated server-side.
+
+Measurement objects merge into the current appointment vitals; `vitals: null` leaves them unchanged. POST never advances the queue/check-in state or creates a visit, medication, diagnosis, or clinical note. A locked transaction permits updates only for `scheduled`, `booked`, `confirmed`, or `checked-in` appointments with neither `seenAt` nor `completedAt`; consultation-started, completed, cancelled, no-show, or unknown states return 409 without writes, even for a doctor using this receptionist endpoint.
+
+LMP is stored as `{value, source: "patient-reported", recordedAt, recordedBy}` in `appointments.patientReportedLmp` and in `patient.history.patientReportedLmp` (also containing `appointmentId`). The clinician's existing `patient.lmp`/conception history is deliberately not overwritten. Clinician clients should display the reported date separately and explicitly confirm it through their existing clinical workflow. Other history namespaces remain intact.
 
 ## Receptionist paper prescription transcription
 

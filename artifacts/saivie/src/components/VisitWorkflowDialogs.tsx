@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { gestationalWeeks, parseLmp } from "@/lib/pregnancyMilestones";
+import { useToast } from "@/hooks/use-toast";
+import { calendarDateValue } from "@/lib/calendarDates";
 
 const localDate = (offsetDays = 0) => {
   const d = new Date();
@@ -20,6 +22,8 @@ const localDate = (offsetDays = 0) => {
 const emptyVitals = { systolic: "", diastolic: "", pulse: "", temp: "", spo2: "", weight: "", height: "" };
 
 interface VitalsDialogProps {
+  recordingOnly?: boolean;
+  initialVitals?: Record<string, unknown> | null;
   appointment: any | null;
   patient: any | null;
   saving: boolean;
@@ -27,17 +31,24 @@ interface VitalsDialogProps {
   onSave: (vitals: Record<string, unknown> | null, lmp: string | null) => void;
 }
 
-export function VitalsDialog({ appointment, patient, saving, onClose, onSave }: VitalsDialogProps) {
+export function VitalsDialog({ appointment, patient, saving, onClose, onSave, recordingOnly = false, initialVitals }: VitalsDialogProps) {
+  const { toast } = useToast();
   const [form, setForm] = useState(emptyVitals);
   const [lmp, setLmp] = useState("");
 
   useEffect(() => {
     if (appointment) {
-      setForm({ ...emptyVitals, height: patient?.height ? String(patient.height) : "" });
+      const [systolic = "", diastolic = ""] = String(initialVitals?.bp || "").split("/");
+      setForm({
+        ...emptyVitals, systolic, diastolic,
+        pulse: String(initialVitals?.pulse || ""), temp: String(initialVitals?.temp || ""),
+        spo2: String(initialVitals?.spo2 || ""), weight: String(initialVitals?.weight || ""),
+        height: String(initialVitals?.height || patient?.height || ""),
+      });
       const parsed = parseLmp(patient?.lmp);
       setLmp(parsed ? `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}` : "");
     }
-  }, [appointment, patient]);
+  }, [appointment, patient, initialVitals]);
 
   const set = (key: keyof typeof emptyVitals) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
@@ -49,7 +60,13 @@ export function VitalsDialog({ appointment, patient, saving, onClose, onSave }: 
   const weeks = gestationalWeeks(lmp);
   const lmpValue = lmp || null;
 
-  const submit = () =>
+  const submit = () => {
+    if (Boolean(form.systolic) !== Boolean(form.diastolic) ||
+        Object.values(form).some((value) => value !== "" && (!Number.isFinite(Number(value)) || Number(value) <= 0)) ||
+        (form.spo2 && Number(form.spo2) > 100)) {
+      toast({ title: "Check the vitals", description: "Enter positive measurements, SpO2 no greater than 100%, and both BP values.", variant: "destructive" });
+      return;
+    }
     onSave(
       hasAny
         ? {
@@ -65,13 +82,14 @@ export function VitalsDialog({ appointment, patient, saving, onClose, onSave }: 
         : null,
       lmpValue,
     );
+  };
 
   return (
     <Dialog open={!!appointment} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Check in · {patient?.name || "Patient"}</DialogTitle>
-          <DialogDescription>Record vitals as the patient arrives, then add them to the waiting queue.</DialogDescription>
+          <DialogTitle>{recordingOnly ? "Record vitals" : "Check in"} · {patient?.name || "Patient"}</DialogTitle>
+          <DialogDescription>{recordingOnly ? "Record arrival measurements and patient-reported LMP. This does not change the consultation or queue status." : "Record vitals as the patient arrives, then add them to the waiting queue."}</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
@@ -87,7 +105,7 @@ export function VitalsDialog({ appointment, patient, saving, onClose, onSave }: 
             <Input type="number" value={form.pulse} onChange={set("pulse")} data-testid="input-vitals-pulse" />
           </div>
           <div className="space-y-1">
-            <Label>Temperature (°F)</Label>
+            <Label>Temperature ({recordingOnly ? "°C" : "°F"})</Label>
             <Input type="number" value={form.temp} onChange={set("temp")} />
           </div>
           <div className="space-y-1">
@@ -107,14 +125,14 @@ export function VitalsDialog({ appointment, patient, saving, onClose, onSave }: 
           </div>
           <div className="col-span-2 space-y-1">
             <Label>LMP (last menstrual period)</Label>
-            <DateInput value={lmp} max={new Date().toISOString().split("T")[0]} onValueChange={(value) => setLmp(value)} data-testid="input-vitals-lmp" />
+            <DateInput value={lmp} max={calendarDateValue(new Date())} onValueChange={(value) => setLmp(value)} data-testid="input-vitals-lmp" />
             {weeks !== null && <p className="text-xs text-saivie-plum">Gestational age: {weeks} weeks</p>}
           </div>
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={() => onSave(null, lmpValue)} disabled={saving}>Skip vitals</Button>
+          {!recordingOnly && <Button variant="ghost" onClick={() => onSave(null, lmpValue)} disabled={saving}>Skip vitals</Button>}
           <Button onClick={submit} disabled={saving || (!hasAny && !lmpValue)} data-testid="button-save-vitals">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save & check in"}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : recordingOnly ? "Save vitals" : "Save & check in"}
           </Button>
         </DialogFooter>
       </DialogContent>

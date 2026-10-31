@@ -132,6 +132,7 @@ export const appointments = pgTable("appointments", {
   followUpNotes: text("follow_up_notes"),
   notes: text("notes"),
   vitals: jsonb("vitals"),
+  patientReportedLmp: jsonb("patient_reported_lmp").$type<{ value: string | null; source: "patient-reported"; recordedAt: string; recordedBy: string }>(),
   telemedicineLink: text("telemedicine_link"),
   whatsappReminderSent: text("whatsapp_reminder_sent"),
   triageScore: integer("triage_score"),
@@ -335,6 +336,13 @@ export const referrals = pgTable("referrals", {
 export const insertReferralSchema = createInsertSchema(referrals).omit({ id: true });
 export type InsertReferral = z.infer<typeof insertReferralSchema>;
 export type Referral = typeof referrals.$inferSelect;
+
+export const clinicReceptionAccess = pgTable("clinic_reception_access", {
+  id: integer("id").primaryKey().default(1),
+  clinicalDetailsVisible: boolean("clinical_details_visible").notNull().default(false),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP::text`),
+});
 
 export const invoiceTemplateSettings = pgTable("invoice_template_settings", {
   id: integer("id").primaryKey().default(1),

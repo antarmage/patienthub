@@ -100,6 +100,10 @@ import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialog
 import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
 import { ReceptionPatientList } from "@/components/ReceptionPatientList";
 import { PaperPrescriptionTranscriptions } from "@/components/PaperPrescriptionTranscriptions";
+import { ReceptionPatientDetails } from "@/components/ReceptionPatientDetails";
+import { ReceptionVitalsDialog } from "@/components/ReceptionVitalsDialog";
+import { useReceptionAccess } from "@/lib/receptionAccess";
+import type { ReceptionAppointment } from "@/lib/receptionTimeline";
 import type { ReceptionPatient } from "@/lib/receptionTimeline";
 import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { ReportViewButton } from "@/components/PatientReports";
@@ -1347,6 +1351,8 @@ export default function StaffPortal() {
     : "nutritionist";
   const [activeRole, setActiveRole] = useState(defaultRole);
   const receptionist = activeRole === "receptionist";
+  const receptionAccess = useReceptionAccess(receptionist);
+  const canViewClinical = receptionist && receptionAccess.isSuccess && receptionAccess.data.clinicalDetailsVisible;
 
   const patientsQuery = useQuery({
     queryKey: ['/api/patients'],
@@ -1356,7 +1362,9 @@ export default function StaffPortal() {
       return res.json();
     }
   });
-  const patients = patientsQuery.data || [];
+  const patients = receptionist
+    ? (patientsQuery.data || []).map((patient: any) => ({ id: patient.id, name: patient.name, phone: patient.phone, age: patient.age, email: patient.email, address: patient.address, dob: patient.dob, avatar: patient.avatar, mode: patient.mode, referredBy: patient.referredBy, insurance: patient.insurance, lastVisit: patient.lastVisit, nextReview: patient.nextReview, isPrimeMember: patient.isPrimeMember, primeMemberSince: patient.primeMemberSince }))
+    : patientsQuery.data || [];
   const functionalMedicinePatients = patients.filter((p: any) => p.genomics);
 
   const nutritionPlansQuery = useQuery({
@@ -2179,6 +2187,15 @@ export default function StaffPortal() {
   const [afterVisitAppointment, setAfterVisitAppointment] = useState<any | null>(null);
   const [prescriptionAppointment, setPrescriptionAppointment] = useState<any | null>(null);
   const [paperPrescriptionPatient, setPaperPrescriptionPatient] = useState<ReceptionPatient | null>(null);
+  const [clinicalDetailPatient, setClinicalDetailPatient] = useState<ReceptionPatient | null>(null);
+  const [receptionVitalsAppointment, setReceptionVitalsAppointment] = useState<ReceptionAppointment | null>(null);
+  useEffect(() => {
+    if (!canViewClinical) {
+      setClinicalDetailPatient(null);
+      void queryClient.cancelQueries({ queryKey: ["reception-clinical"] });
+      queryClient.removeQueries({ queryKey: ["reception-clinical"] });
+    }
+  }, [canViewClinical, queryClient]);
   const { toast } = useToast();
   const openManualPrescription = (patient: any) => {
     if (!patient?.id) return;
@@ -2299,6 +2316,10 @@ export default function StaffPortal() {
 
   const openViewLog = async (patient: any) => {
     if (receptionist) {
+      if (canViewClinical) {
+        setClinicalDetailPatient({ id: patient.id, name: patient.name, phone: patient.phone, age: patient.age });
+        return;
+      }
       setDocSearch(patient.phone || patient.name || String(patient.id));
       setActiveView("patients");
       return;
@@ -2626,6 +2647,12 @@ export default function StaffPortal() {
 
         {/* Dashboard Content */}
         <div className={`flex-1 overflow-y-auto p-4 md:p-6 ${activeRole === 'receptionist' && ['dashboard', 'patients'].includes(activeView) ? 'bg-[#faf5e6]' : ''}`}>
+          {receptionist && ['dashboard', 'patients'].includes(activeView) && <div className="mb-3 rounded-xl border border-[#e9e1d2] bg-white px-4 py-2 text-xs text-[#705364]">
+            {receptionAccess.isError ? <p role="alert">Could not load doctor permissions: {receptionAccess.error.message} <button type="button" className="underline" onClick={() => void receptionAccess.refetch()}>Retry</button></p>
+              : receptionAccess.isPending ? "Loading doctor permissions..."
+              : canViewClinical ? "Patient clinical details: read-only access enabled by your doctor. Vitals entry is available."
+              : "Clinical details are hidden. Your doctor can enable viewing in Profile & Settings → Receptionist permissions. Vitals entry is available."}
+          </div>}
             
             {/* 6. SCHEDULE VIEW */}
             {activeView === 'schedule' && (
@@ -3794,6 +3821,8 @@ export default function StaffPortal() {
                 </section>
                 <ReceptionDashboard
                   logisticsOnly
+                  clinicalDetailsVisible={canViewClinical}
+                  onRecordVitals={setReceptionVitalsAppointment}
                   onTranscribePrescription={setPaperPrescriptionPatient}
                   appointments={todayAppointments}
                   patients={patients}
@@ -3835,6 +3864,8 @@ export default function StaffPortal() {
             )}
             {activeRole === 'receptionist' && activeView === 'patients' && (
                 <ReceptionPatientList
+                    onRecordVitals={setReceptionVitalsAppointment}
+                    onViewPatient={canViewClinical ? setClinicalDetailPatient : undefined}
                     onTranscribePrescription={setPaperPrescriptionPatient}
                     patients={patients}
                     providers={providers}
@@ -5263,6 +5294,8 @@ export default function StaffPortal() {
               onClose={() => setPrescriptionAppointment(null)}
             />
             <PaperPrescriptionTranscriptions patient={paperPrescriptionPatient} onClose={() => setPaperPrescriptionPatient(null)} />
+            {canViewClinical && clinicalDetailPatient && <ReceptionPatientDetails patient={clinicalDetailPatient} onClose={() => setClinicalDetailPatient(null)} />}
+            {receptionist && receptionVitalsAppointment && <ReceptionVitalsDialog appointment={receptionVitalsAppointment} patient={patients.find((patient: ReceptionPatient) => patient.id === receptionVitalsAppointment.patientId) || { id: receptionVitalsAppointment.patientId!, name: "Patient" }} onClose={() => setReceptionVitalsAppointment(null)} />}
             <AfterVisitDialog
               appointment={receptionist ? null : afterVisitAppointment}
               patient={patients.find((p: any) => p.id === afterVisitAppointment?.patientId) || null}

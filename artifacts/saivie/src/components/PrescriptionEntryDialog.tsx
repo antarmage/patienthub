@@ -572,7 +572,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     setFollowUp(existing?.followUpPlan || "");
     setPrescriptionDate(String(existing?.date || appointment.date || "").slice(0, 10));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appointment, isFetched, existing?.id, patient?.id]);
+  }, [appointment, appointment?.historical ? true : isFetched, existing?.id, patient?.id]);
 
   const scanFile = async (file: File) => {
     if (!patientId) return;

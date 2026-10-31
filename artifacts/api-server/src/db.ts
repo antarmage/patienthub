@@ -36,6 +36,14 @@ export async function ensureSchema(): Promise<void> {
       ALTER TABLE medications ADD COLUMN IF NOT EXISTS instructions text;
       ALTER TABLE visit_history ADD COLUMN IF NOT EXISTS assessment_details jsonb;
       ALTER TABLE appointments ADD COLUMN IF NOT EXISTS survey_type text;
+      ALTER TABLE appointments ADD COLUMN IF NOT EXISTS patient_reported_lmp jsonb;
+      CREATE TABLE IF NOT EXISTS clinic_reception_access (
+        id integer PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+        clinical_details_visible boolean NOT NULL DEFAULT false,
+        updated_by varchar REFERENCES users(id),
+        updated_at text NOT NULL DEFAULT CURRENT_TIMESTAMP::text
+      );
+      INSERT INTO clinic_reception_access (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 
       ALTER TABLE follow_up_calls ADD COLUMN IF NOT EXISTS source_key text;
       ALTER TABLE follow_up_calls ADD COLUMN IF NOT EXISTS trigger_type text;

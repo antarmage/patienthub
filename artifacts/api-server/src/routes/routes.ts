@@ -8,6 +8,7 @@ import { storage } from "../storage";
 import { registerIcdRoutes, invoiceDiagnoses } from "../icd";
 import { registerBillingTemplateRoutes } from "../billing-templates";
 import { readAppointmentRange } from "../appointment-range";
+import { registerReceptionAccessRoutes } from "../reception-access";
 import { buildMedicineSuggestions } from "../medicine-suggestions";
 import { checkInIsToday, registerClinicalAccess, registrationFields, rescheduledLogistics, type AccessActor } from "../clinical-access";
 import { knownRateCard, parseRateCardText } from "../referral-rate-cards";
@@ -376,12 +377,21 @@ export async function registerRoutes(
   registerClinicalAccess(app, {
     authenticate: getAccessActor,
     appointmentPatientId: async (id) => (await storage.getAppointments()).find((item) => item.id === id)?.patientId ?? null,
+    clinicalDetailsVisible: () => storage.getReceptionClinicalDetailsVisible(),
+  });
+  registerReceptionAccessRoutes(app, {
+    authenticate: getAccessActor,
+    clinicalDetailsVisible: () => storage.getReceptionClinicalDetailsVisible(),
+    saveClinicalDetailsVisible: (visible, userId) => storage.saveReceptionClinicalDetailsVisible(visible, userId),
+    getVitals: (id) => storage.getReceptionVitals(id),
+    saveVitals: (id, body, userId) => storage.saveReceptionVitals(id, body, userId),
   });
   registerIcdRoutes(app, async (req, res, clinicianOnly) => {
     if (!clinicianOnly) {
       const actor = await getAccessActor(req, res);
       if (actor && "patientId" in actor && actor.patientId === Number(req.params.id)) return `patient:${actor.patientId}`;
       if (actor && "role" in actor && ["clinician", "owner"].includes(actor.role)) return actor.userId;
+      if (actor && "role" in actor && res.locals.receptionClinicalRead === true) return actor.userId;
       if (!res.headersSent) res.status(actor ? 403 : 401).json({ error: "Clinician or own-patient access required" });
       return null;
     }
@@ -2714,8 +2724,8 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.get("/api/patients/:id/documents", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
-    // When a patient session is active, only allow reading their own documents.
-    const sid = (req as any).session?.patientId;
+    // Use the resolved actor, not a stale patient cookie accompanying a staff token.
+    const sid = res.locals.accessPatientId;
     if (sid != null && sid !== id) {
       return res.status(403).json({ error: "Forbidden" });
     }
@@ -2758,7 +2768,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const id = parseId(req.params.id);
     const docId = parseId(req.params.docId);
     if (!id || !docId) return res.status(400).json({ error: "Invalid ID" });
-    const sid = (req as any).session?.patientId;
+    const sid = res.locals.accessPatientId;
     if (sid != null && sid !== id) return res.status(403).json({ error: "Forbidden" });
     const doc = (await storage.getDocuments(id)).find((d) => d.id === docId);
     if (!doc) return res.status(404).json({ error: "Document not found" });

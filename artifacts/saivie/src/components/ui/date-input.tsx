@@ -49,7 +49,7 @@ const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
           </PopoverTrigger>
         </div>
         {touched && error && <p role="alert" className="mt-1 text-xs text-rose-700">{error}</p>}
-        <PopoverContent align="start" className="w-[min(420px,calc(100vw-2rem))] p-0">
+        <PopoverContent align="start" className="z-[80] w-[min(420px,calc(100vw-2rem))] p-0">
           <Calendar selected={selected} defaultMonth={minimum && minimum > new Date() ? minimum : maximum && maximum < new Date() ? maximum : undefined} disabled={(date) => Boolean((minimum && date < minimum) || (maximum && date > maximum))} onSelect={(date) => { change(calendarDateValue(date)); setOpen(false); }} />
           {!props.required && currentValue && <button type="button" className="mx-3 mb-3 text-xs text-[#705364] hover:underline" onClick={() => { change(""); setOpen(false); }}>Clear date</button>}
         </PopoverContent>

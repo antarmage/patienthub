@@ -54,6 +54,8 @@ export interface ReceptionFollowUp {
 
 interface ReceptionDashboardProps {
   logisticsOnly?: boolean;
+  clinicalDetailsVisible?: boolean;
+  onRecordVitals?: (appointment: any) => void;
   onTranscribePrescription?: (patient: { id: number; name: string; phone?: string | null; age?: number | null }) => void;
   appointments: any[];
   patients: any[];
@@ -132,6 +134,8 @@ const ARRIVAL_BADGE: Record<ArrivalState, { label: string; className: string }> 
 
 export function ReceptionDashboard({
   logisticsOnly = false,
+  clinicalDetailsVisible = false,
+  onRecordVitals,
   onTranscribePrescription,
   appointments,
   patients,
@@ -243,7 +247,7 @@ export function ReceptionDashboard({
     const base = "h-8 min-w-[88px] text-xs border-saivie-border bg-saivie-surface-muted text-saivie-teal hover:bg-saivie-sage";
     const busy = isPending(apt.id);
     if (logisticsOnly && (state === "waiting" || state === "in-consultation" || state === "completed")) {
-      return <Button size="sm" variant="outline" className={base} onClick={() => { const patient = findPatient(apt); if (patient) onOpenPatient(patient); }}>View appointments</Button>;
+      return <Button size="sm" variant="outline" className={base} onClick={() => { const patient = findPatient(apt); if (patient) onOpenPatient(patient); }}>{clinicalDetailsVisible ? "View patient details" : "View appointments"}</Button>;
     }
     const closeMenu = (
       <DropdownMenu>
@@ -454,6 +458,7 @@ export function ReceptionDashboard({
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1">
                           {renderAction(apt, state)}
+                          {logisticsOnly && patient && onRecordVitals && !["in-consultation", "completed", "cancelled", "no-show"].includes(state) && !apt.seenAt && !apt.completedAt && <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => onRecordVitals(apt)} data-testid={`btn-reception-vitals-${apt.id}`}>Record vitals</Button>}
                           {logisticsOnly && patient && onTranscribePrescription && <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => onTranscribePrescription(patient)} data-testid={`btn-paper-prescription-${apt.id}`}>Add / Edit prescription</Button>}
                           {!logisticsOnly && <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-saivie-plum hover:text-saivie-teal" data-testid={`btn-print-summary-${apt.id}`}
                             title="Print patient summary" aria-label={`Print summary for ${apt.patient}`}
@@ -521,7 +526,10 @@ export function ReceptionDashboard({
                       <td className="px-3 py-3"><Badge variant="outline" className={`text-[11px] ${tone}`}>{minutes} min</Badge></td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1.5">
-                        {logisticsOnly ? <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { const patient = findPatient(apt); if (patient) onOpenPatient(patient); }}>View appointments</Button> : <>
+                        {logisticsOnly ? <>
+                          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { const patient = findPatient(apt); if (patient) onOpenPatient(patient); }}>{clinicalDetailsVisible ? "View patient details" : "View appointments"}</Button>
+                          {onRecordVitals && <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => onRecordVitals(apt)}>Record vitals</Button>}
+                        </> : <>
                         <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" data-testid={`queue-print-summary-${apt.id}`}
                           title="Print history & check-in vitals for the doctor"
                           onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals, hpvClinicStatus(apt.patientId))}>

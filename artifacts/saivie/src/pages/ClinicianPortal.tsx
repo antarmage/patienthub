@@ -11,6 +11,7 @@ import { MedicineFrequencyInput } from "@/components/MedicineFrequencyInput";
 import { ReportReadingButton } from "@/components/ReportReadingButton";
 import { useToast } from "@/hooks/use-toast";
 import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSettings";
+import { ReceptionAccessSettings } from "@/components/ReceptionAccessSettings";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
 import { HpvBadge } from "@/components/HpvBadge";
 import { hpvProtection, hpvSurveyAnswer } from "@/lib/hpvProtection";
@@ -3912,6 +3913,9 @@ export default function ClinicianPortal() {
                             >
                                <Syringe className="w-4 h-4 mr-3" /> Vaccination Rules
                             </Button>
+                            <Button variant="ghost" className={`w-full justify-start ${activeSettingsTab === 'reception-access' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum'}`} onClick={() => setActiveSettingsTab('reception-access')} data-testid="button-reception-access-settings">
+                               <Users className="w-4 h-4 mr-3" /> Receptionist permissions
+                            </Button>
                             <Button variant="ghost" className="w-full justify-start text-saivie-plum hover:text-saivie-plum">
                                <Settings className="w-4 h-4 mr-3" /> System Preferences
                             </Button>
@@ -3921,6 +3925,7 @@ export default function ClinicianPortal() {
 
                    {/* Settings Content */}
                    <div className="md:col-span-2 space-y-6">
+                      {activeSettingsTab === 'reception-access' && <ReceptionAccessSettings />}
                       
                       {activeSettingsTab === 'profile' && (
                           <>

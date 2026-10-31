@@ -1,5 +1,6 @@
 import { eq, desc, sql, gte, lte, and, inArray } from "drizzle-orm";
 import type { TranscriptionTx } from "./prescription-transcriptions";
+import { assertPreconsult, prepareReceptionVitals, receptionMeasurements, type ReceptionVitalsInput, type ReceptionVitalsRecord } from "./reception-access";
 import { db } from "./db";
 import {
   users, patients, providers, services, appointments, labTasks,
@@ -60,6 +61,7 @@ import {
   patientDocuments,
   type PatientDocument, type InsertPatientDocument,
   invoiceTemplateSettings,
+  clinicReceptionAccess,
   type InvoiceTemplateSettings, type InsertInvoiceTemplateSettings,
   primePricingRules,
   type PrimePricingRules, type InsertPrimePricingRules,
@@ -155,6 +157,10 @@ export interface IStorage {
   deleteInvoice(id: number): Promise<boolean>;
   getInvoiceTemplateSettings(): Promise<InvoiceTemplateSettings | undefined>;
   saveInvoiceTemplateSettings(data: Partial<InsertInvoiceTemplateSettings>): Promise<InvoiceTemplateSettings>;
+  getReceptionClinicalDetailsVisible(): Promise<boolean>;
+  saveReceptionClinicalDetailsVisible(visible: boolean, userId: string): Promise<void>;
+  getReceptionVitals(id: number): Promise<ReceptionVitalsRecord>;
+  saveReceptionVitals(id: number, input: ReceptionVitalsInput, userId: string): Promise<ReceptionVitalsRecord>;
   getPrimePricingRules(): Promise<PrimePricingRules | undefined>;
   savePrimePricingRules(data: Partial<InsertPrimePricingRules>): Promise<PrimePricingRules>;
 
@@ -662,6 +668,45 @@ export class DatabaseStorage implements IStorage {
   async getInvoiceTemplateSettings(): Promise<InvoiceTemplateSettings | undefined> {
     const [settings] = await db.select().from(invoiceTemplateSettings).where(eq(invoiceTemplateSettings.id, 1)).limit(1);
     return settings;
+  }
+
+  async getReceptionClinicalDetailsVisible(): Promise<boolean> {
+    const [setting] = await db.select().from(clinicReceptionAccess).where(eq(clinicReceptionAccess.id, 1));
+    return setting?.clinicalDetailsVisible === true;
+  }
+
+  async saveReceptionClinicalDetailsVisible(visible: boolean, userId: string): Promise<void> {
+    const values = { clinicalDetailsVisible: visible, updatedBy: userId, updatedAt: new Date().toISOString() };
+    await db.insert(clinicReceptionAccess).values({ id: 1, ...values })
+      .onConflictDoUpdate({ target: clinicReceptionAccess.id, set: values });
+  }
+
+  async getReceptionVitals(id: number): Promise<ReceptionVitalsRecord> {
+    const [row] = await db.select({ appointment: appointments }).from(appointments)
+      .innerJoin(patients, eq(appointments.patientId, patients.id)).where(eq(appointments.id, id));
+    if (!row) throw Object.assign(new Error("Appointment or associated patient not found"), { status: 404 });
+    return {
+      appointmentId: id, patientId: row.appointment.patientId!,
+      vitals: receptionMeasurements(row.appointment.vitals), lmp: row.appointment.patientReportedLmp?.value ?? null,
+    };
+  }
+
+  async saveReceptionVitals(id: number, input: ReceptionVitalsInput, userId: string): Promise<ReceptionVitalsRecord> {
+    return db.transaction(async (tx) => {
+      const [appointment] = await tx.select().from(appointments).where(eq(appointments.id, id)).for("update");
+      if (!appointment?.patientId) throw Object.assign(new Error("Appointment or associated patient not found"), { status: 404 });
+      assertPreconsult(appointment);
+      const [patient] = await tx.select().from(patients).where(eq(patients.id, appointment.patientId)).for("update");
+      if (!patient) throw Object.assign(new Error("Associated patient not found"), { status: 404 });
+      const update = prepareReceptionVitals(appointment.vitals, input, userId);
+      await tx.update(appointments).set(update).where(eq(appointments.id, id));
+      const history = patient.history && typeof patient.history === "object" && !Array.isArray(patient.history)
+        ? patient.history as Record<string, unknown> : {};
+      // Patient-reported dates remain separate from clinician-confirmed pregnancy dates.
+      await tx.update(patients).set({ history: { ...history, patientReportedLmp: { ...update.patientReportedLmp, appointmentId: id } } })
+        .where(eq(patients.id, patient.id));
+      return { appointmentId: id, patientId: patient.id, vitals: receptionMeasurements(update.vitals), lmp: input.lmp };
+    });
   }
 
   async saveInvoiceTemplateSettings(data: Partial<InsertInvoiceTemplateSettings>): Promise<InvoiceTemplateSettings> {
