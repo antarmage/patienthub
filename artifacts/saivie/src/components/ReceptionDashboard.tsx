@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getPregnancyReminders } from "@/lib/pregnancyMilestones";
 import { getInventoryAlerts, getStockStatus, getExpiryStatus, useInventory } from "@/components/InventoryManager";
 import { ReferralsCard, type ReferralRequest } from "@/components/ReferralsCard";
@@ -540,7 +541,18 @@ export function ReceptionDashboard({
         </Card>
       </div>
 
-      <div className="col-span-12 space-y-6 xl:col-span-4">
+      <div className="col-span-12 min-w-0 xl:sticky xl:top-4 xl:col-span-4 xl:max-h-[calc(100vh-2rem)] xl:self-start">
+        <div className="mb-3">
+          <h2 className="text-lg font-bold text-saivie-plum">Reception desk</h2>
+          <p className="text-xs text-saivie-plum">Tasks, reminders, and front-desk tools</p>
+        </div>
+        <Tabs defaultValue="work" className="flex min-h-0 flex-col" data-testid="reception-sidebar-tabs">
+          <TabsList className="grid h-auto w-full grid-cols-3 rounded-xl bg-saivie-ivory">
+            <TabsTrigger value="work" className="px-2 text-xs">Work ({tasks.length + pendingRx.length})</TabsTrigger>
+            <TabsTrigger value="reminders" className="px-2 text-xs">Reminders ({followUps.length + pregnancyReminders.length + (vaccinationRemindersQuery.data?.length || 0)})</TabsTrigger>
+            <TabsTrigger value="tools" className="px-2 text-xs">Tools</TabsTrigger>
+          </TabsList>
+          <TabsContent value="work" className="mt-3 max-h-[60vh] space-y-3 overflow-y-auto pr-1 xl:max-h-[calc(100vh-9rem)]">
         <Card className="border-saivie-border shadow-sm" data-testid="card-reception-tasks">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-saivie-plum">
@@ -616,7 +628,9 @@ export function ReceptionDashboard({
             {pendingRx.length === 0 && <p className="px-5 py-6 text-center text-sm text-saivie-plum">All prescriptions recorded</p>}
           </CardContent>
         </Card>
+          </TabsContent>
 
+          <TabsContent value="reminders" className="mt-3 max-h-[60vh] space-y-3 overflow-y-auto pr-1 xl:max-h-[calc(100vh-9rem)]">
         <Card className="border-saivie-border shadow-sm" data-testid="card-followup-reminders">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-saivie-plum">
@@ -733,7 +747,9 @@ export function ReceptionDashboard({
             {recordVaccinationMutation.isError && <p role="alert" className="px-5 py-2 text-xs text-rose-600">{recordVaccinationMutation.error.message}</p>}
           </CardContent>
         </Card>
+          </TabsContent>
 
+          <TabsContent value="tools" className="mt-3 max-h-[60vh] space-y-3 overflow-y-auto pr-1 xl:max-h-[calc(100vh-9rem)]">
         <Card className="border-saivie-border shadow-sm" data-testid="card-quick-actions">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-bold text-saivie-plum">Quick actions</CardTitle>
@@ -781,6 +797,8 @@ export function ReceptionDashboard({
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
