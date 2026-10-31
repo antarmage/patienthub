@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { Link, useRoute, useLocation } from "wouter";
 import { ArrowLeft, User, Phone, Mail, Heart, AlertTriangle, Clock, Baby, Dna, Activity, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";

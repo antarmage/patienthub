@@ -9,6 +9,7 @@ import { registerIcdRoutes, invoiceDiagnoses } from "../icd";
 import { registerBillingTemplateRoutes } from "../billing-templates";
 import { readAppointmentRange } from "../appointment-range";
 import { buildMedicineSuggestions } from "../medicine-suggestions";
+import { checkInIsToday, registerClinicalAccess, registrationFields, rescheduledLogistics, type AccessActor } from "../clinical-access";
 import { knownRateCard, parseRateCardText } from "../referral-rate-cards";
 import { synchronizeFollowUpCalls } from "../follow-up-calls";
 import { insertPatientSchema, parseCallDate, prescriptionDueDate } from "@workspace/db";
@@ -201,6 +202,26 @@ function getStaffUserId(req: Request, res: Response): string | null {
   return entry.userId;
 }
 
+async function getAccessActor(req: Request, res: Response): Promise<AccessActor | null> {
+  const auth = req.headers.authorization;
+  const legacyToken = req.headers["x-staff-token"];
+  if (auth || typeof legacyToken === "string") {
+    const token = auth?.startsWith("Bearer ") ? auth.slice(7) : !auth && typeof legacyToken === "string" ? legacyToken : "";
+    if (mobileAuthTokens.has(token)) {
+      const patientId = getMobilePatientId(req, res);
+      return patientId ? { patientId } : null;
+    }
+    // Keep the legacy appointment header, but apply the same expiration and user-role checks.
+    if (!auth && typeof legacyToken === "string") req.headers.authorization = `Bearer ${legacyToken}`;
+    const userId = getStaffUserId(req, res);
+    if (!userId) return null;
+    const user = await storage.getUser(userId);
+    return user ? { userId, role: user.role || "" } : null;
+  }
+  const patientId = (req as Request & { session?: { patientId?: number } }).session?.patientId;
+  return typeof patientId === "number" && Number.isSafeInteger(patientId) && patientId > 0 ? { patientId } : null;
+}
+
 // ── OTP Store ─────────────────────────────────────────────────────────────────
 const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const OTP_COOLDOWN_MS = 60 * 1000; // 60 seconds between requests
@@ -349,11 +370,22 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  registerClinicalAccess(app, {
+    authenticate: getAccessActor,
+    appointmentPatientId: async (id) => (await storage.getAppointments()).find((item) => item.id === id)?.patientId ?? null,
+  });
   registerIcdRoutes(app, async (req, res, clinicianOnly) => {
+    if (!clinicianOnly) {
+      const actor = await getAccessActor(req, res);
+      if (actor && "patientId" in actor && actor.patientId === Number(req.params.id)) return `patient:${actor.patientId}`;
+      if (actor && "role" in actor && ["clinician", "owner"].includes(actor.role)) return actor.userId;
+      if (!res.headersSent) res.status(actor ? 403 : 401).json({ error: "Clinician or own-patient access required" });
+      return null;
+    }
     const id = getStaffUserId(req, res);
     if (!id) return null;
     const user = await storage.getUser(id);
-    if (!user || (clinicianOnly ? user.role !== "clinician" : !["staff", "clinician", "owner"].includes(user.role || ""))) {
+    if (!user || (clinicianOnly ? !["clinician", "owner"].includes(user.role || "") : !["staff", "clinician", "owner"].includes(user.role || ""))) {
       res.status(403).json({ error: clinicianOnly ? "Clinician access required" : "Staff access required" });
       return null;
     }
@@ -1192,8 +1224,8 @@ export async function registerRoutes(
     // patientId must NOT come from the URL query string (CodeQL js/sensitive-get-query).
     // Derive it from the authenticated session, or from the X-Patient-Id header for
     // staff requests. The URL query param is intentionally not supported.
-    const sid = sessionPatientId(req);
-    const isStaff = !!(req.headers["x-staff-token"] && staffAuthTokens.has(req.headers["x-staff-token"] as string));
+    const sid = res.locals.accessPatientId ?? (res.locals.accessRole ? null : sessionPatientId(req));
+    const isStaff = !!res.locals.accessRole;
     const headerPid = parseId((req.headers["x-patient-id"] as string) ?? "");
     const filterPatientId: number | null = sid ?? headerPid ?? null;
 
@@ -1211,6 +1243,7 @@ export async function registerRoutes(
       if (!isStaff) return res.status(403).json({ error: "Authentication required" });
       appts = await storage.getAppointments();
     }
+    if (filterPatientId) appts = appts.filter(a => a.patientId === filterPatientId);
     if (providerId) {
       appts = appts.filter(a => a.providerId === parseInt(providerId as string));
     }
@@ -1281,14 +1314,27 @@ export async function registerRoutes(
   app.patch("/api/appointments/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
-    const updated = await storage.updateAppointment(id, req.body);
+    let patch = req.body;
+    if (!["clinician", "owner"].includes(res.locals.accessRole)) {
+      const existing = (await storage.getAppointments()).find((item) => item.id === id);
+      if (!existing) return res.status(404).json({ error: "Appointment not found" });
+      if ((existing.seenAt || existing.completedAt || ["seen", "completed", "in-consultation", "in-progress"].includes(String(existing.status).toLowerCase())) &&
+          ["date", "time", "providerId", "status", "checkedInAt"].some((key) => patch[key] !== undefined)) {
+        return res.status(403).json({ error: "Clinician access required to change an appointment after consultation has begun" });
+      }
+      patch = rescheduledLogistics(existing, patch);
+      if (!checkInIsToday(existing, patch)) {
+        return res.status(400).json({ error: "Appointments can only be checked in on their booked date" });
+      }
+    }
+    const updated = await storage.updateAppointment(id, patch);
     if (!updated) return res.status(404).json({ error: "Appointment not found" });
     res.json(updated);
 
     // Auto-trigger post-visit WhatsApp summary when appointment is marked Completed
     // Guard against duplicate sends if appointment is updated to "completed" multiple times
-    const newStatus = (req.body.status || "").toLowerCase();
-    if (newStatus === "completed" && !postVisitSummarySentIds.has(id)) {
+    const newStatus = (patch.status || "").toLowerCase();
+    if (["clinician", "owner"].includes(res.locals.accessRole) && newStatus === "completed" && !postVisitSummarySentIds.has(id)) {
       postVisitSummarySentIds.add(id);
       (async () => {
         try {
@@ -2391,7 +2437,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       const userId = getStaffUserId(req, res);
       if (!userId) return;
       const user = await storage.getUser(userId);
-      if (!user || !["staff", "clinician"].includes(user.role || "")) return res.status(403).json({ error: "Staff access required to include diagnoses" });
+      if (!user || !["clinician", "owner"].includes(user.role || "")) return res.status(403).json({ error: "Clinical access required to include diagnoses" });
     }
     const diagnoses = await invoiceDiagnoses(id, req.body.diagnosisEncounterId);
     try {
@@ -2832,7 +2878,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       username: user.username,
       displayName: user.displayName ?? null,
       id: user.id,
-      staffToken: ["staff", "clinician"].includes(user.role || "") ? issueStaffToken(user.id) : undefined,
+      staffToken: ["staff", "receptionist", "admin", "owner", "clinician"].includes(user.role || "") ? issueStaffToken(user.id) : undefined,
       provider: providerInfo ? { id: providerInfo.id, name: providerInfo.name, specialty: providerInfo.specialty, role: providerInfo.role } : null,
     });
   });
@@ -5595,22 +5641,16 @@ async function getDeskStaffUserId(req: Request, res: Response): Promise<string |
   const userId = getStaffUserId(req, res);
   if (!userId) return null;
   const user = await storage.getUser(userId);
-  if (!user || (user.role !== "receptionist" && user.role !== "admin")) {
-    res.status(403).json({ error: "Access denied. Receptionist or admin role required." });
+  if (!user || !["staff", "receptionist", "admin", "owner"].includes(user.role || "")) {
+    res.status(403).json({ error: "Registration staff access required." });
     return null;
   }
   return userId;
 }
 
 // Tightly-scoped intake schema — only the fields a receptionist may set
-const deskIntakeFields = {
-  name: true, phone: true, age: true, email: true, address: true,
-  lmp: true, dob: true, procedureDate: true,
-  mode: true, referredBy: true, condition: true, clinicianNote: true,
-} as const;
-
-const deskCreateSchema = insertPatientSchema.pick(deskIntakeFields);
-const deskUpdateSchema = insertPatientSchema.pick(deskIntakeFields).partial();
+const deskCreateSchema = insertPatientSchema.pick(registrationFields).strict();
+const deskUpdateSchema = insertPatientSchema.pick(registrationFields).partial().strict();
 
 async function handleDeskAuth(req: Request, res: Response) {
   try {

@@ -98,6 +98,8 @@ import { ReceptionDashboard, getArrivalState, type ReceptionFollowUp } from "@/c
 import { useToast } from "@/hooks/use-toast";
 import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialogs";
 import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
+import { ReceptionPatientList } from "@/components/ReceptionPatientList";
+import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { ReportViewButton } from "@/components/PatientReports";
 import { usePatientDiagnoses } from "@/components/IcdDiagnoses";
 
@@ -1335,6 +1337,14 @@ function toIsoDate(value: unknown): string {
 
 export default function StaffPortal() {
   const [_, setLocation] = useLocation();
+  const staffUsername = typeof window !== 'undefined' ? localStorage.getItem("staffUsername") || "" : "";
+  const staffDisplayName = typeof window !== 'undefined' ? localStorage.getItem("staffDisplayName")?.trim() || staffUsername : staffUsername;
+  const defaultRole = staffUsername.includes("reception") ? "receptionist"
+    : staffUsername.includes("nurse") ? "phlebotomist"
+    : staffUsername.includes("nutritionist") ? "nutritionist"
+    : "nutritionist";
+  const [activeRole, setActiveRole] = useState(defaultRole);
+  const receptionist = activeRole === "receptionist";
 
   const patientsQuery = useQuery({
     queryKey: ['/api/patients'],
@@ -1348,6 +1358,7 @@ export default function StaffPortal() {
   const functionalMedicinePatients = patients.filter((p: any) => p.genomics);
 
   const nutritionPlansQuery = useQuery({
+    enabled: !receptionist,
     queryKey: ['/api/nutrition-plans'],
     queryFn: async () => {
       const res = await fetch('/api/nutrition-plans');
@@ -1358,6 +1369,7 @@ export default function StaffPortal() {
   const nutritionPlans = nutritionPlansQuery.data || [];
 
   const workoutsQuery = useQuery({
+    enabled: !receptionist,
     queryKey: ['/api/workouts'],
     queryFn: async () => {
       const res = await fetch('/api/workouts');
@@ -1368,6 +1380,7 @@ export default function StaffPortal() {
   const workouts = workoutsQuery.data || [];
 
   const labTasksQuery = useQuery({
+    enabled: !receptionist,
     queryKey: ['/api/lab-tasks'],
     queryFn: async () => {
       const res = await fetch('/api/lab-tasks');
@@ -1398,6 +1411,7 @@ export default function StaffPortal() {
   const providers = providersQuery.data || [];
 
   const allVisitHistoryQuery = useQuery({
+    enabled: !receptionist,
     queryKey: ['/api/visit-history'],
     queryFn: async () => {
       const res = await fetch('/api/visit-history');
@@ -1408,6 +1422,7 @@ export default function StaffPortal() {
   const allVisits = allVisitHistoryQuery.data || [];
 
   const allClinicalNotesQuery = useQuery({
+    enabled: !receptionist,
     queryKey: ['/api/clinical-notes'],
     queryFn: async () => {
       const res = await fetch('/api/clinical-notes');
@@ -1418,6 +1433,7 @@ export default function StaffPortal() {
   const allClinicalNotes = allClinicalNotesQuery.data || [];
 
   const allDocumentsQuery = useQuery({
+    enabled: !receptionist,
     queryKey: ['/api/documents'],
     queryFn: async () => {
       const res = await fetch('/api/documents');
@@ -1621,13 +1637,6 @@ export default function StaffPortal() {
     return patientsNeedingFollowUp.slice(0, 5);
   }, [patients, appointments, allVisits]);
 
-  const staffUsername = typeof window !== 'undefined' ? localStorage.getItem("staffUsername") || "" : "";
-  const staffDisplayName = typeof window !== 'undefined' ? localStorage.getItem("staffDisplayName")?.trim() || staffUsername : staffUsername;
-  const defaultRole = staffUsername.includes("reception") ? "receptionist" 
-    : staffUsername.includes("nurse") ? "phlebotomist" 
-    : staffUsername.includes("nutritionist") ? "nutritionist"
-    : "nutritionist";
-  const [activeRole, setActiveRole] = useState(defaultRole);
   const [activeView, setActiveView] = useState("dashboard"); // 'dashboard', 'patients', 'schedule', 'reports'
   const [scheduleDate, setScheduleDate] = useState(() => clinicDate());
   const scheduleAppointmentsQuery = useQuery<CalendarAppointment[]>({
@@ -1727,7 +1736,7 @@ export default function StaffPortal() {
 
   const [billingPatientId, setBillingPatientId] = useState<number | null>(null);
   const [billingDiagnosisSource, setBillingDiagnosisSource] = useState<{ patientId: number; encounterId: number } | null>(null);
-  const billingDiagnosesQuery = usePatientDiagnoses(billingPatientId);
+  const billingDiagnosesQuery = usePatientDiagnoses(receptionist ? null : billingPatientId);
   const billingDiagnosisEncounter = billingDiagnosesQuery.data?.find((encounter) =>
     billingDiagnosisSource?.patientId === billingPatientId && encounter.id === billingDiagnosisSource.encounterId);
   const [billingTab, setBillingTab] = useState("new-bill");
@@ -2229,6 +2238,7 @@ export default function StaffPortal() {
     });
   };
   const { data: allVisitHistory = [] } = useQuery<any[]>({
+    enabled: !receptionist,
     queryKey: ["/api/visit-history"],
     queryFn: async () => {
       const res = await fetch("/api/visit-history");
@@ -2239,7 +2249,7 @@ export default function StaffPortal() {
     () => new Set<number>(allVisitHistory.filter((v: any) => v.appointmentId && v.prescriptions?.medicines?.length).map((v: any) => v.appointmentId)),
     [allVisitHistory],
   );
-  const [registerForm, setRegisterForm] = useState({ name: '', age: '', phone: '', email: '', type: 'General' });
+  const [registerForm, setRegisterForm] = useState({ name: '', age: '', phone: '', email: '', type: 'General', reason: '' });
   const [isUploadPickerOpen, setIsUploadPickerOpen] = useState(false);
 
   const registerPatientMutation = useMutation({
@@ -2252,16 +2262,16 @@ export default function StaffPortal() {
           age: Number(registerForm.age),
           phone: registerForm.phone.trim() || null,
           email: registerForm.email.trim() || null,
-          type: registerForm.type,
         }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to register patient');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (patient: { id: number }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
       setIsRegisterOpen(false);
-      setRegisterForm({ name: '', age: '', phone: '', email: '', type: 'General' });
+      if (receptionist && registerForm.reason.trim()) setLocation(`/staff/booking?patientId=${patient.id}&reason=${encodeURIComponent(registerForm.reason.trim())}`);
+      setRegisterForm({ name: '', age: '', phone: '', email: '', type: 'General', reason: '' });
     },
   });
 
@@ -2285,6 +2295,11 @@ export default function StaffPortal() {
   };
 
   const openViewLog = async (patient: any) => {
+    if (receptionist) {
+      setDocSearch(patient.phone || patient.name || String(patient.id));
+      setActiveView("patients");
+      return;
+    }
     setSelectedPatientForLog(patient);
     setIsViewLogOpen(true);
     setLogLoading(true);
@@ -2435,14 +2450,14 @@ export default function StaffPortal() {
                     <CalendarCheck className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
                     {sidebarOpen && "Schedule"}
                  </Button>
-                 <Button 
+                 {!receptionist && <Button
                     variant={activeView === 'reports' ? 'secondary' : 'ghost'} 
                     className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'reports' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('reports')}
                  >
                     <FileText className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
                     {sidebarOpen && "Notes & Reports"}
-                 </Button>
+                 </Button>}
                  {activeRole === 'receptionist' && (
                  <Button 
                     variant={activeView === 'followup' ? 'secondary' : 'ghost'} 
@@ -2607,15 +2622,7 @@ export default function StaffPortal() {
         </header>
 
         {/* Dashboard Content */}
-        <div className={`flex-1 overflow-y-auto p-6 ${activeRole === 'receptionist' && activeView === 'dashboard' ? 'bg-[#faf5e6]' : ''}`}>
-            {activeRole === 'receptionist' && activeView === 'dashboard' && (
-              <section className="mb-6" aria-label="Welcome" data-testid="receptionist-greeting">
-                <h2 className="font-serif text-3xl font-semibold text-[#242821]">
-                  Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}{staffDisplayName ? `, ${staffDisplayName}` : ''}
-                </h2>
-                <p className="mt-1 text-sm text-[#705364]">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
-              </section>
-            )}
+        <div className={`flex-1 overflow-y-auto p-4 md:p-6 ${activeRole === 'receptionist' && ['dashboard', 'patients'].includes(activeView) ? 'bg-[#faf5e6]' : ''}`}>
             
             {/* 6. SCHEDULE VIEW */}
             {activeView === 'schedule' && (
@@ -3110,77 +3117,6 @@ export default function StaffPortal() {
             )}
 
             {/* 1. NUTRITIONIST - MY PATIENTS VIEW (Functional & Genomics) */}
-            {activeRole === 'receptionist' && activeView === 'patients' && (
-                <div className="max-w-5xl mx-auto space-y-4">
-                    <div>
-                        <h2 className="text-2xl font-bold text-saivie-plum font-serif">Patients</h2>
-                        <p className="text-sm text-saivie-plum mt-1">Each appointment and prescription is listed separately. Use Edit on the one you want to change.</p>
-                    </div>
-                    <Input placeholder="Search by name, phone, or ID" value={docSearch} onChange={(e) => setDocSearch(e.target.value)} className="max-w-md bg-saivie-ivory" />
-                    <div className="divide-y divide-saivie-border rounded-lg border border-saivie-border bg-saivie-ivory">
-                        {patients.filter((patient: any) => {
-                            const query = docSearch.trim().toLowerCase();
-                            if (!query) return true;
-                            return [patient.name, patient.phone, patient.id].filter(Boolean).join(" ").toLowerCase().includes(query);
-                        }).map((patient: any) => {
-                            const visits = allVisitHistory.filter((visit: any) => visit.patientId === patient.id);
-                            const uploads = allDocuments.filter((doc: any) => doc.patientId === patient.id && /prescription|usg|scan/i.test(`${doc.type || ""} ${doc.category || ""} ${doc.name || ""}`));
-                            const seen = new Set<string>();
-                            const records = [
-                              ...uploads.map((doc: any) => {
-                                const key = doc.metadata?.appointmentId ? `appt-${doc.metadata.appointmentId}` : `doc-${doc.id}`;
-                                seen.add(key);
-                                return { key, date: doc.date, label: doc.name || "Prescription", document: doc, visit: visits.find((visit: any) => visit.appointmentId === doc.metadata?.appointmentId) };
-                              }),
-                              ...visits.map((visit: any) => {
-                                const key = visit.appointmentId ? `appt-${visit.appointmentId}` : `visit-${visit.id}`;
-                                if (seen.has(key)) return null;
-                                seen.add(key);
-                                return { key, date: visit.date, label: visit.chiefComplaint || visit.visitType || "Visit", visit };
-                              }),
-                              ...appointmentsRaw.filter((appointment: any) => appointment.patientId === patient.id).map((appointment: any) => {
-                                const key = `appt-${appointment.id}`;
-                                if (seen.has(key)) return null;
-                                seen.add(key);
-                                return { key, date: appointment.date, label: `${appointment.type || "Appointment"}${appointment.time ? ` · ${appointment.time}` : ""}`, appointment, visit: visits.find((visit: any) => visit.appointmentId === appointment.id) };
-                              }),
-                            ].filter(Boolean).sort((a: any, b: any) => String(b.date || "").localeCompare(String(a.date || "")));
-                            return (
-                                <div key={patient.id} className="p-4 space-y-3">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div>
-                                            <p className="font-semibold text-sm text-saivie-plum">{patient.name}</p>
-                                            <p className="text-xs text-saivie-plum mt-0.5">ID: {patient.id}{patient.phone ? ` · ${patient.phone}` : ""}</p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Button size="sm" variant="outline" onClick={() => openManualPrescription(patient)}>Add prescription</Button>
-                                            <Button size="sm" variant="outline" onClick={() => openViewLog(patient)}>Open record</Button>
-                                        </div>
-                                    </div>
-                                    {records.length === 0 ? (
-                                        <p className="text-xs text-saivie-teal">No prescription recorded</p>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {records.map((record: any) => (
-                                                <div key={record.key} className="flex items-center justify-between gap-3 rounded-md border border-saivie-border bg-saivie-surface-muted px-3 py-2">
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm text-saivie-plum truncate">{record.label}</p>
-                                                        <p className="text-[10px] text-saivie-plum">{String(record.date || "").slice(0, 10) || "Date not recorded"}{(record.visit?.vitals?.antenatal?.usg || record.visit?.examination?.scans || record.document?.metadata?.antenatal?.usg || []).map((line: any) => toIsoDate(line?.scanDate || line?.date)).filter(Boolean).filter((date: string, index: number, dates: string[]) => dates.indexOf(date) === index).map((date: string) => ` · Scan date ${date}`)}</p>
-                                                    </div>
-                                                    <Button size="sm" variant="outline" className="h-7 shrink-0 text-xs" data-testid={`btn-edit-record-${patient.id}-${record.key}`} onClick={() => openEditPrescription(patient, record)}>
-                                                        <Pencil className="w-3 h-3 mr-1" /> Edit
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
             {activeRole === 'nutritionist' && activeView === 'patients' && (
                 <div className="max-w-7xl mx-auto space-y-6">
                     <div className="flex items-center justify-between">
@@ -3845,49 +3781,21 @@ export default function StaffPortal() {
             )}
 
             {/* 6. RECEPTIONIST VIEW */}
-            {activeRole === 'receptionist' && activeView === 'dashboard' && (
-                <ReceptionDashboard
-                    appointments={todayAppointments}
+            {activeRole === 'receptionist' && ['dashboard', 'patients'].includes(activeView) && (
+                <ReceptionPatientList
                     patients={patients}
-                    tasks={receptionistTasks}
-                    followUps={receptionFollowUps}
-                    pendingAppointmentId={updateAppointmentMutation.isPending ? (updateAppointmentMutation.variables?.id ?? null) : null}
-                    sheetStatus={sheetStatus}
-                    syncResult={syncResult}
-                    lastSyncedAt={lastSyncedAt}
-                    isSyncing={isSyncing}
-                    onSync={handleSheetSync}
-                    onUpdateAppointment={(id, data) => updateAppointmentMutation.mutate({ id, data })}
-                    onCheckIn={(apt) => setVitalsAppointment(apt)}
-                    onComplete={(apt) => {
-                      updateAppointmentMutation.mutate({ id: apt.id, data: { status: 'Completed', completedAt: new Date().toISOString() } });
-                      setAfterVisitAppointment(apt);
-                    }}
-                    onAfterVisit={(apt) => setAfterVisitAppointment(apt)}
-                    onRecordPrescription={(apt) => setPrescriptionAppointment(apt)}
-                    onUploadPrescription={(patient) => { setSelectedPatientForUpload(patient); setIsUploadOpen(true); }}
-                    prescribedAppointmentIds={prescribedAppointmentIds}
-                    onOpenTask={(task) => { setSelectedTaskForAction(task); setTaskBookingDate(""); setIsClinicalActionOpen(true); }}
-                    onOpenPatient={openViewLog}
-                    onRegisterPatient={() => setIsRegisterOpen(true)}
-                    onUploadReport={() => setIsUploadPickerOpen(true)}
-                    onViewSchedule={() => setActiveView('schedule')}
-                    onViewFollowUps={() => setActiveView('followup')}
-                    onCallFollowUp={(id) => {
-                      const call = followUpCalls.find((c: any) => c.id === id);
-                      if (!call) return;
-                      setSelectedCallPatient(call);
-                      setFollowUpCallForm({
-                        feeling: call.feeling || '',
-                        gotMedicines: call.gotMedicines || '',
-                        concerns: call.concerns || '',
-                        crossSell: call.crossSell || '',
-                        nextVisit: call.nextVisit || '',
-                        notes: call.notes || '',
-                        nextMilestone: call.nextMilestone || '',
-                        didntPickCallTime: call.didntPickCallTime || '',
-                      });
-                      setIsFollowUpCallOpen(true);
+                    providers={providers}
+                    patientsLoading={patientsQuery.isLoading}
+                    patientsError={patientsQuery.isError}
+                    onRetryPatients={() => void patientsQuery.refetch()}
+                    search={docSearch}
+                    onSearch={setDocSearch}
+                    onRegister={() => setIsRegisterOpen(true)}
+                    onPayment={(patientId) => { setBillingPatientId(patientId); setActiveView('billing'); }}
+                    onWhatsApp={(patient, message) => {
+                      setWhatsAppTarget({ patientId: patient.id, name: patient.name, phone: patient.phone || undefined });
+                      setWhatsAppMessage(message);
+                      setIsWhatsAppOpen(true);
                     }}
                 />
             )}
@@ -4515,7 +4423,7 @@ export default function StaffPortal() {
                                 </Select>
                               </div>
 
-                              {billingPatientId && <details className="rounded-lg border border-saivie-border bg-white p-3">
+                              {!receptionist && billingPatientId && <details className="rounded-lg border border-saivie-border bg-white p-3">
                                 <summary className="cursor-pointer text-xs font-medium text-saivie-plum">Include diagnoses for insurance (optional)</summary>
                                 <p className="my-2 text-xs text-saivie-plum">Select a doctor-confirmed encounter only when needed. These diagnoses will appear on the printed/PDF and emailed invoice.</p>
                                 {billingDiagnosesQuery.isLoading && <p role="status" className="text-xs">Loading diagnoses...</p>}
@@ -4788,7 +4696,7 @@ export default function StaffPortal() {
                       <Button
                         className="w-full bg-saivie-teal hover:bg-saivie-teal text-white"
                         onClick={handleSheetSync}
-                        disabled={isSyncing}
+                        disabled={receptionist || isSyncing}
                         data-testid="btn-sync-sheets-full"
                       >
                         {isSyncing ? (
@@ -4797,6 +4705,7 @@ export default function StaffPortal() {
                           <><RefreshCw className="w-4 h-4 mr-2" /> Sync All Patient Data</>
                         )}
                       </Button>
+                      {receptionist && <p className="mt-2 text-xs text-saivie-plum">Clinical patient-data imports require a clinician or owner account.</p>}
                     </CardContent>
                   </Card>
 
@@ -4847,7 +4756,7 @@ export default function StaffPortal() {
                       <Button
                         className="w-full bg-saivie-teal hover:bg-saivie-teal text-white"
                         onClick={handleLabImport}
-                        disabled={isImportingLabs}
+                        disabled={receptionist || isImportingLabs}
                         data-testid="btn-import-labs-full"
                       >
                         {isImportingLabs ? (
@@ -4856,6 +4765,7 @@ export default function StaffPortal() {
                           <><Upload className="w-4 h-4 mr-2" /> Import Lab Reports</>
                         )}
                       </Button>
+                      {receptionist && <p className="mt-2 text-xs text-saivie-plum">Clinical report imports require a clinician or owner account.</p>}
                     </CardContent>
                   </Card>
 
@@ -5257,7 +5167,7 @@ export default function StaffPortal() {
 
             {/* Upload Records Dialog */}
             <UploadRecordsDialog
-                isOpen={isUploadOpen}
+                isOpen={!receptionist && isUploadOpen}
                 onClose={() => { setIsUploadOpen(false); }}
                 patient={selectedPatientForUpload}
                 onSaveComplete={() => {
@@ -5270,7 +5180,7 @@ export default function StaffPortal() {
 
             {/* Onboarding Dialog */}
             <VitalsDialog
-              appointment={vitalsAppointment}
+              appointment={receptionist ? null : vitalsAppointment}
               patient={patients.find((p: any) => p.id === vitalsAppointment?.patientId) || null}
               saving={updateAppointmentMutation.isPending}
               onClose={() => setVitalsAppointment(null)}
@@ -5295,12 +5205,12 @@ export default function StaffPortal() {
               }}
             />
             <PrescriptionEntryDialog
-              appointment={prescriptionAppointment}
+              appointment={receptionist ? null : prescriptionAppointment}
               patient={patients.find((p: any) => p.id === prescriptionAppointment?.patientId) || null}
               onClose={() => setPrescriptionAppointment(null)}
             />
             <AfterVisitDialog
-              appointment={afterVisitAppointment}
+              appointment={receptionist ? null : afterVisitAppointment}
               patient={patients.find((p: any) => p.id === afterVisitAppointment?.patientId) || null}
               onClose={() => setAfterVisitAppointment(null)}
             />
@@ -5326,10 +5236,15 @@ export default function StaffPortal() {
                       <Input value={registerForm.phone} onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })} data-testid="input-register-phone" />
                     </div>
                   </div>
-                  <div className="space-y-1">
+                  {!receptionist && <div className="space-y-1">
                     <Label>Email</Label>
                     <Input type="email" value={registerForm.email} onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })} />
-                  </div>
+                  </div>}
+                  {receptionist && <div className="space-y-1">
+                    <Label>Reason for appointment (optional)</Label>
+                    <Input value={registerForm.reason} onChange={(e) => setRegisterForm({ ...registerForm, reason: e.target.value })} data-testid="input-register-reason" />
+                    <p className="text-xs text-saivie-plum/70">Enter a reason to continue to booking after registration.</p>
+                  </div>}
                   {registerPatientMutation.isError && (
                     <p className="text-sm text-rose-600">{(registerPatientMutation.error as Error).message}</p>
                   )}
@@ -5337,7 +5252,7 @@ export default function StaffPortal() {
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsRegisterOpen(false)}>Cancel</Button>
                   <Button
-                    disabled={!registerForm.name.trim() || !registerForm.age || registerPatientMutation.isPending}
+                    disabled={!registerForm.name.trim() || !registerForm.age || (receptionist && !registerForm.phone.trim()) || registerPatientMutation.isPending}
                     onClick={() => registerPatientMutation.mutate()}
                     data-testid="button-submit-register"
                   >

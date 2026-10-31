@@ -1,3 +1,5 @@
+import { authenticatedFetch } from "./authenticatedFetch.ts";
+
 export interface DirectoryAppointment {
   patientId: number | string | null;
   date: string;
@@ -13,7 +15,7 @@ export function directoryAppointmentUrl(from: string, to: string): string {
 }
 
 export async function fetchDirectoryAppointments(from: string, to: string, signal?: AbortSignal): Promise<DirectoryAppointment[]> {
-  const response = await fetch(directoryAppointmentUrl(from, to), { signal });
+  const response = await authenticatedFetch(directoryAppointmentUrl(from, to), { signal });
   const isJson = response.headers.get("content-type")?.includes("application/json");
   if (!response.ok) {
     const body: unknown = isJson ? await response.json() : null;

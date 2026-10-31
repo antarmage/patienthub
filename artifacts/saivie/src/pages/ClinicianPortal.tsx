@@ -1,4 +1,5 @@
 import { DateInput } from "@/components/ui/date-input";
+import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { AppointmentCalendar } from "@/components/AppointmentCalendar";
 import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";

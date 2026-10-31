@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";

@@ -75,7 +75,9 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Shared Saivie web UI
 
-- Reception dashboard colors follow the doctor's dashboard: cream/white card surfaces, warm neutral borders, and pastel accents limited to summary icons and selected tabs. Arrival, waiting-time and alert badges retain their semantic status colors.
+- Receptionist Dashboard and My Patients share the logistics-only `ReceptionPatientList`: Today timeline, This week and Last week, phone-first search, doctor/status/payment/follow-up/tomorrow-reminder filters, daily booking counts, collapsed past-day groups and sticky headers. Check-in sets `checked-in` and `checkedInAt` in one authenticated request so the doctor queue sees the arrival. Registration, booking/walk-in, rescheduling, reminders, billing and rebooking are linked to the existing workflows. Walk-ins are booked for today with arrival state atomically. Clinical history, gestation, diagnosis and prescription-authoring controls are not rendered for reception; clinical queries are disabled. Cream/white surfaces and muted status accents match the doctor dashboard.
+- `authenticatedFetch` carries the signed-in staff token only to same-origin `/api/` requests, preserving explicit headers, credentials and multipart uploads. UI role hiding is not authorization: the API must enforce its clinical permission rules.
+- The API enforces clinician/owner-only shared prescription, medication, diagnosis and clinical-record authoring, including OCR/import aliases. Receptionist patient, appointment and invoice responses exclude clinical fields, and clinical diagnosis linkage on invoices requires clinical authorization. Staff retain registration, appointment/check-in and payment logistics. See [API authorization contracts](artifacts/api-server/AUTHORIZATION.md). Existing generic staff accounts do not grant separate nurse/nutritionist clinical-authoring privileges.
 
 - The clinician navigation defaults to a 64px icon rail. Mouse hover or keyboard focus reveals labels in an overlay without shifting the workspace; the pin button keeps the wider sidebar open. Small screens retain the compact rail.
 

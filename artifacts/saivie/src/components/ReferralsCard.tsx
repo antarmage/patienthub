@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";

@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { authenticatedFetch as fetch } from "./authenticatedFetch";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {

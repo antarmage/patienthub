@@ -1,4 +1,5 @@
 import { DateInput } from "@/components/ui/date-input";
+import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";

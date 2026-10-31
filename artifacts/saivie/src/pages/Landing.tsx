@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
@@ -129,6 +130,8 @@ export default function Landing() {
         return;
       }
       // No phone on account — direct access (legacy)
+      await queryClient.cancelQueries();
+      queryClient.clear();
       if (data.staffToken) sessionStorage.setItem("billing_staff_token", data.staffToken);
       else sessionStorage.removeItem("billing_staff_token");
       if (data.username) localStorage.setItem("staffUsername", data.username);
@@ -162,6 +165,8 @@ export default function Landing() {
         return;
       }
       const data = await res.json();
+      await queryClient.cancelQueries();
+      queryClient.clear();
       if (data.staffToken) sessionStorage.setItem("billing_staff_token", data.staffToken);
       else sessionStorage.removeItem("billing_staff_token");
       if (data.username) localStorage.setItem("staffUsername", data.username);
@@ -229,6 +234,9 @@ export default function Landing() {
         setPatientLoading(false);
         return;
       }
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      sessionStorage.removeItem("billing_staff_token");
       localStorage.setItem("patientUser", JSON.stringify(data.patient));
       setLocation("/patient");
     } catch {

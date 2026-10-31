@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import type { HpvProtection } from "@/lib/hpvProtection";
 
 export function useHpvClinicStatuses(patientIds: Array<number | null | undefined>) {

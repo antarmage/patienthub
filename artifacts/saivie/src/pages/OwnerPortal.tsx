@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { OwnerAuthGate } from "@/components/OwnerAuthGate";
 import { ReferralsManager } from "@/components/ReferralsManager";
 import { InventoryManager, getInventoryAlerts, useInventory } from "@/components/InventoryManager";

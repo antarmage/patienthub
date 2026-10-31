@@ -1,4 +1,5 @@
 import { DateInput } from "@/components/ui/date-input";
+import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -62,13 +63,19 @@ export default function PatientPortal() {
       return raw ? JSON.parse(raw) : null;
     } catch { return null; }
   })();
-  const patientId = storedPatient?.id?.toString() || new URLSearchParams(window.location.search).get('patientId') || '1';
+  const patientId = storedPatient?.id?.toString() || new URLSearchParams(window.location.search).get('patientId');
 
-  const { data: patients } = useQuery({
-    queryKey: ['/api/patients'],
-    queryFn: async () => { const r = await fetch('/api/patients'); return r.json(); },
+  const patientQuery = useQuery({
+    queryKey: ['/api/patients', patientId],
+    enabled: Boolean(patientId),
+    queryFn: async () => {
+      const response = await fetch(`/api/patients/${patientId}`);
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Unable to load your patient record. Please sign in again.");
+      return body;
+    },
   });
-  const patient = patients?.find((p: any) => p.id === parseInt(patientId)) || patients?.[0];
+  const patient = patientQuery.data;
 
   function inferPatientMode(p: any): string {
     if (!p) return "general";
@@ -218,6 +225,9 @@ export default function PatientPortal() {
 
   return (
     <div className="min-h-screen bg-background pb-32 relative selection:bg-primary/20 overflow-hidden">
+      {(!patientId || patientQuery.isError) && <div role="alert" className="relative z-10 m-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+        {patientQuery.error?.message || "Please sign in to access your patient record."} <a href="/" className="underline">Sign in</a>
+      </div>}
       {/* Background Layer - Dynamic based on scroll/mode */}
       <div 
         className="fixed inset-0 z-0 opacity-40 pointer-events-none transition-opacity duration-1000"

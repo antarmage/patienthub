@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
+import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import {
     Calendar as CalendarIcon,
     Clock,
@@ -103,16 +104,22 @@ function formatHistoryDate(value: string | null | undefined) {
 
 export default function NewBooking() {
     const [_, setLocation] = useLocation();
+    const params = new URLSearchParams(useSearch());
+    const walkIn = params.get("walkIn") === "1";
+    const receptionist = (localStorage.getItem("staffUsername") || "").includes("reception");
     const queryClient = useQueryClient();
     const [step, setStep] = useState(1);
     const [date, setDate] = useState<Date | undefined>(new Date());
 
     // Form State
     const [patientType, setPatientType] = useState("existing");
-    const [selectedTime, setSelectedTime] = useState("");
+    const [selectedTime, setSelectedTime] = useState(() => walkIn ? `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}` : "");
     const [selectedService, setSelectedService] = useState("");
     const [selectedProvider, setSelectedProvider] = useState("");
-    const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
+    const [selectedPatientId, setSelectedPatientId] = useState<number | null>(() => {
+        const id = Number(params.get("patientId"));
+        return Number.isSafeInteger(id) && id > 0 ? id : null;
+    });
     const [visitMode, setVisitMode] = useState("in-clinic");
     const [isSuccess, setIsSuccess] = useState(false);
     const [createdAppointmentId, setCreatedAppointmentId] = useState<number | null>(null);
@@ -120,7 +127,7 @@ export default function NewBooking() {
     const [newPatient, setNewPatient] = useState<NewPatientDraft>(emptyNewPatientDraft);
     // Reused on retry so a failed appointment save does not register the same new patient twice.
     const [createdPatient, setCreatedPatient] = useState<{ id: number; key: string } | null>(null);
-    const [notes, setNotes] = useState("");
+    const [notes, setNotes] = useState(params.get("reason") || "");
     const { toast } = useToast();
 
     const newPatientData = useMemo(() => newPatientPayload(newPatient), [newPatient]);
@@ -184,7 +191,7 @@ export default function NewBooking() {
 
     const { data: patientHistory, isLoading: historyLoading, isError: historyError } = useQuery({
         queryKey: ["/api/patient-history", selectedPatientId],
-        enabled: !!selectedPatientId,
+        enabled: !!selectedPatientId && !receptionist,
         queryFn: async () => {
             const id = selectedPatientId;
             const [visitsRes, scopedRes, medsRes] = await Promise.all([
@@ -237,7 +244,10 @@ export default function NewBooking() {
                     const patientRes = await fetch('/api/patients', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(newPatientData),
+                        body: JSON.stringify({
+                            name: newPatientData.name, age: newPatientData.age,
+                            phone: newPatientData.phone, email: newPatientData.email,
+                        }),
                     });
                     const patient = await patientRes.json().catch(() => ({}));
                     if (!patientRes.ok || !patient.id) throw new Error(patient.error || 'Failed to register patient');
@@ -261,8 +271,8 @@ export default function NewBooking() {
             setCreatedTelemedicineLink(data.telemedicineLink || null);
             setIsSuccess(true);
             toast({
-                title: "Appointment Booked",
-                description: "The appointment has been successfully scheduled.",
+                title: walkIn ? "Walk-in checked in" : "Appointment Booked",
+                description: walkIn ? "The patient has been added to today's doctor queue." : "The appointment has been successfully scheduled.",
             });
         },
         onError: (err: Error) => {
@@ -289,7 +299,8 @@ export default function NewBooking() {
             date: bookingDateKey(date),
             time: formatAppointmentTime(selectedTime),
             reason: notes.trim() || null,
-            status: "scheduled",
+            status: walkIn ? "checked-in" : "scheduled",
+            ...(walkIn ? { checkedInAt: new Date().toISOString() } : {}),
             visitMode,
         });
     };
@@ -314,7 +325,7 @@ export default function NewBooking() {
                             <div className="w-16 h-16 bg-saivie-ivory/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
                                 <CheckCircle2 className="w-8 h-8 text-white" />
                             </div>
-                            <h2 className="text-3xl font-serif font-bold">Appointment Scheduled!</h2>
+                            <h2 className="text-3xl font-serif font-bold">{walkIn ? "Walk-in added to today's queue!" : "Appointment Scheduled!"}</h2>
                             <p className="text-saivie-sage mt-2 opacity-90">Session ID: #{createdAppointmentId}</p>
                         </div>
 
@@ -396,7 +407,7 @@ export default function NewBooking() {
                     </Button>
                     <div>
                         <h1 className="text-xl font-bold font-serif text-saivie-plum">New Booking</h1>
-                        <p className="text-xs text-saivie-plum">Schedule Appointment</p>
+                        <p className="text-xs text-saivie-plum">{walkIn ? "Register today's arrival" : "Schedule Appointment"}</p>
                     </div>
                 </div>
 
@@ -641,7 +652,8 @@ export default function NewBooking() {
                                     <Calendar
                                         mode="single"
                                         selected={date}
-                                        onSelect={(nextDate) => { if (nextDate) setDate(nextDate); }}
+                                        onSelect={(nextDate) => { if (nextDate && !walkIn) setDate(nextDate); }}
+                                        disabled={walkIn ? (day) => bookingDateKey(day) !== bookingDateKey(new Date()) : undefined}
                                         className="rounded-md border-0"
                                     />
                                 </div>
@@ -770,7 +782,7 @@ export default function NewBooking() {
                 </div>
 
                 {/* Right Col - Summary/Help */}
-                <div className="w-80 hidden lg:block space-y-6 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
+                {!receptionist && <div className="w-80 hidden lg:block space-y-6 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
                     <Card className="bg-saivie-surface-muted border-saivie-border">
                         <CardHeader>
                             <CardTitle className="text-sm font-medium uppercase tracking-wide text-saivie-plum">Quick Actions</CardTitle>
@@ -905,7 +917,7 @@ export default function NewBooking() {
                         </p>
                         <p className="font-mono text-sm bg-saivie-ivory/20 p-2 rounded text-center">Ext. 4049</p>
                     </div>
-                </div>
+                </div>}
 
             </main>
         </div>

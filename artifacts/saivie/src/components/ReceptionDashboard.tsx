@@ -379,13 +379,13 @@ export function ReceptionDashboard({
         <Card className="border-[#e9e1d2] bg-[#fffaf0] shadow-sm" data-testid="card-patient-flow">
           <CardHeader className="space-y-3 rounded-t-3xl bg-[#fffaf0] pb-3">
             <CardTitle className="text-lg font-bold text-saivie-plum">Today's patient flow</CardTitle>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto pb-1" aria-label="Patient flow filters">
               {filterTabs.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setFilter(tab.id)}
-                  className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${filter === tab.id ? "border-[#242821] bg-[#242821] text-white" : "border-[#e9dcb7] bg-white/70 text-[#705364] hover:bg-white"}`}
+                  className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${filter === tab.id ? "border-[#242821] bg-[#242821] text-white" : "border-[#e9dcb7] bg-white/70 text-[#705364] hover:bg-white"}`}
                   data-testid={`filter-flow-${tab.id}`}
                 >
                   {tab.label} ({counts[tab.id]})

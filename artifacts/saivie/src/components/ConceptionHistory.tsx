@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

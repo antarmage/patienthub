@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { useRoute } from "wouter";
 import { 
   ArrowLeft, 
