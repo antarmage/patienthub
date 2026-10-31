@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/ui/date-input";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Camera, Loader2, Plus, Trash2 } from "lucide-react";
@@ -1027,15 +1028,15 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           {needsDate && (
             <div className="space-y-1">
               <Label>Prescription date</Label>
-              <Input type="date" value={prescriptionDate} onChange={(e) => changePrescriptionDate(e.target.value)} data-testid="input-rx-date" />
+              <DateInput value={prescriptionDate} onValueChange={changePrescriptionDate} data-testid="input-rx-date" />
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="space-y-1">
               <Label>LMP</Label>
-              <Input type="date" value={lmp} onChange={(e) => {
-                setLmp(e.target.value);
+              <DateInput value={lmp} onValueChange={(value) => {
+                setLmp(value);
                 setEod("");
                 setPog("");
               }} data-testid="input-rx-lmp" />
@@ -1076,8 +1077,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
             <div className="grid grid-cols-2 gap-3 rounded-lg border border-saivie-border p-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label>EDD</Label>
-                <Input type="date" value={eod} onChange={(e) => {
-                  setEod(e.target.value);
+                <DateInput value={eod} onValueChange={(value) => {
+                  setEod(value);
                   if (!lmp) setPog("");
                 }} data-testid="input-rx-eod" />
                 <p className="text-[11px] text-muted-foreground">Expected date of delivery. Calculated automatically when dating is available; editable.</p>
@@ -1199,7 +1200,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div className="space-y-1">
                           <Label className="text-xs">Scan date</Label>
-                          <Input type="date" value={toIsoDate(line.scanDate)} onChange={(e) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, scanDate: e.target.value } : item) })} aria-label="Scan date" data-testid={`input-rx-usg-date-${index}`} />
+                          <DateInput value={toIsoDate(line.scanDate)} onValueChange={(value) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, scanDate: value } : item) })} aria-label="Scan date" data-testid={`input-rx-usg-date-${index}`} />
                         </div>
                         <ScanGestation value={line.weeks} index={index} onChange={(value) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, weeks: value } : item) })} />
                         <ScanSelect label="Finding" value={line.finding} options={["Single live fetus", "Live twin pregnancy", "Multiple live fetuses", "Intrauterine gestational sac"]} onChange={(value) => setAntenatal({ ...antenatal, usg: antenatal.usg.map((item, i) => i === index ? { ...item, finding: value } : item) })} testId={`input-rx-usg-finding-${index}`} />
@@ -1293,7 +1294,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
               setFollowUpDateOverride(null);
             }} data-testid="input-rx-followup" />
             <Label htmlFor="input-rx-followup-date">Follow-up date</Label>
-            <Input id="input-rx-followup-date" type="date" min={visitDate} value={followUpDate} onChange={(e) => setFollowUpDateOverride(e.target.value)} data-testid="input-rx-followup-date" />
+            <DateInput id="input-rx-followup-date" min={visitDate} value={followUpDate} onValueChange={setFollowUpDateOverride} data-testid="input-rx-followup-date" />
             <p className="text-xs text-muted-foreground">Calculated from the prescription date and the doctor's interval. Confirm or change the date for receptionist reminders.</p>
             {followUp.trim() && !followUpDate && <p className="text-xs text-amber-700">No follow-up date calculated. Enter a date or an interval such as "after 5 days".</p>}
           </div>

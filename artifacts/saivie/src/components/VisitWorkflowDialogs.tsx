@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/ui/date-input";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
@@ -105,7 +106,7 @@ export function VitalsDialog({ appointment, patient, saving, onClose, onSave }: 
           </div>
           <div className="col-span-2 space-y-1">
             <Label>LMP (last menstrual period)</Label>
-            <Input type="date" value={lmp} max={new Date().toISOString().split("T")[0]} onChange={(e) => setLmp(e.target.value)} data-testid="input-vitals-lmp" />
+            <DateInput value={lmp} max={new Date().toISOString().split("T")[0]} onValueChange={(value) => setLmp(value)} data-testid="input-vitals-lmp" />
             {weeks !== null && <p className="text-xs text-saivie-plum">Gestational age: {weeks} weeks</p>}
           </div>
         </div>
@@ -265,7 +266,7 @@ export function AfterVisitDialog({ appointment, patient, onClose }: AfterVisitDi
               </label>
               {state.on && (
                 <div className="grid grid-cols-2 gap-2">
-                  <Input type="date" value={state.date} onChange={(e) => set({ ...state, date: e.target.value })} />
+                  <DateInput value={state.date} onValueChange={(value) => set({ ...state, date: value })} />
                   <Input type="time" value={state.time} onChange={(e) => set({ ...state, time: e.target.value })} />
                   <Input
                     className="col-span-2"
@@ -294,10 +295,9 @@ export function AfterVisitDialog({ appointment, patient, onClose }: AfterVisitDi
                       {name}
                     </label>
                     {r.on && (
-                      <Input
-                        type="date"
+                      <DateInput
                         value={r.date}
-                        onChange={(e) => setReferrals({ ...referrals, [name]: { ...r, date: e.target.value } })}
+                        onValueChange={(value) => setReferrals({ ...referrals, [name]: { ...r, date: value } })}
                       />
                     )}
                   </div>
@@ -312,7 +312,7 @@ export function AfterVisitDialog({ appointment, patient, onClose }: AfterVisitDi
               <Checkbox checked={followUp.on} onCheckedChange={(v) => setFollowUp({ ...followUp, on: !!v })} data-testid="check-followup" />
               Follow-up call (default: 2 days after the visit)
             </label>
-            {followUp.on && <Input type="date" value={followUp.date} onChange={(e) => setFollowUp({ ...followUp, date: e.target.value })} />}
+            {followUp.on && <DateInput value={followUp.date} onValueChange={(value) => setFollowUp({ ...followUp, date: value })} />}
           </div>
 
           <Textarea placeholder="Notes for the follow-up (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />

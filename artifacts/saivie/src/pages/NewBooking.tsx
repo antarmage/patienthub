@@ -637,7 +637,7 @@ export default function NewBooking() {
                             </div>
 
                             <div className="flex flex-col md:flex-row gap-8 items-start">
-                                <div className="border border-saivie-border rounded-xl bg-saivie-ivory p-4 shadow-sm">
+                                <div className="w-full min-w-0 border border-saivie-border rounded-xl bg-saivie-ivory p-4 shadow-sm md:w-1/2">
                                     <Calendar
                                         mode="single"
                                         selected={date}

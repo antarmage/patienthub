@@ -75,6 +75,9 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Shared Saivie web UI
 
+- Calendars use a shared horizontal, scrollable 14-day strip with blue selected-date pills, previous/next-week arrows, and month/year controls for distant dates. Staff and clinician schedules list appointments for the selected local calendar date instead of month/week grids.
+- Date fields use `DateInput`: an editable ISO (`YYYY-MM-DD`) field with the same strip in a popover. Minimum/maximum dates, required/disabled fields, clearing optional dates, and local-date arithmetic are preserved. Use `onValueChange` for date strings; non-date inputs retain `onChange`.
+
 - The doctor dashboard uses a cream background with yellow/pink/sage/blue summaries, a searchable patient list and visit preview, and a date-picker/day timeline. Summaries use the selected day's appointments; visit durations require actual start/completion timestamps and risk levels use recorded scores. Preview selection never changes appointment status; Open details and Start consultation retain appointment context and existing actions.
 - Full date-range patient flow, triage sorting, category shortcuts and clinical alerts remain available under "Detailed patient flow, triage & clinic insights". The compact calendar selects one day; full scheduling and settings remain accessible.
 

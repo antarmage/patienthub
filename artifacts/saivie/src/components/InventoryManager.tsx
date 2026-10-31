@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/ui/date-input";
 import { useMemo, useState } from "react";
 import { formatCost, useOwnerCosts } from "@/components/OwnerCosts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -348,7 +349,7 @@ export function InventoryManager({ token, onSignOut }: { token: string; onSignOu
             </div>
             <div className="space-y-1">
               <Label>Expiry date</Label>
-              <Input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} />
+              <DateInput value={form.expiryDate} onValueChange={(value) => setForm({ ...form, expiryDate: value })} />
             </div>
             <div className="col-span-2 space-y-1">
               <Label>Patient selling price / MRP (₹, inclusive of GST)</Label>

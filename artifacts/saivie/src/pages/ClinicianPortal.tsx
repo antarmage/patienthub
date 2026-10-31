@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/ui/date-input";
+import { AppointmentCalendar } from "@/components/AppointmentCalendar";
 import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -417,8 +419,6 @@ export default function ClinicianPortal() {
   const [careMode, setCareMode] = useState("natural_conception"); 
   const [showPastRecords, setShowPastRecords] = useState(true);
   const [selectedTrailVisitId, setSelectedTrailVisitId] = useState<number | string | null>(null);
-  const [scheduleViewMode, setScheduleViewMode] = useState("appointments");
-  const [calendarViewMode, setCalendarViewMode] = useState("month");
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
   const [patientDetailTab, setPatientDetailTab] = useState<'summary' | 'consultation' | 'record' | 'medicine' | 'investigations' | 'postop' | 'genome'>('summary');
   const isPatientOverview = patientDetailTab !== 'postop' && patientDetailTab !== 'genome';
@@ -1488,19 +1488,6 @@ export default function ClinicianPortal() {
       .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
   }, [patients, directoryAppointmentsQuery.data, patientDirectorySearch, patientDirectoryDateFrom, patientDirectoryDateTo]);
 
-  const appointmentsByDay = useMemo(() => {
-    const map: Record<number, any[]> = {};
-    appointments.forEach((apt: any) => {
-      if (apt.date) {
-        const dayOfMonth = new Date(apt.date).getDate();
-        if (!map[dayOfMonth]) map[dayOfMonth] = [];
-        const patient = patients.find((p: any) => p.id === apt.patientId);
-        map[dayOfMonth].push({ ...apt, patientName: patient?.name || 'Unknown' });
-      }
-    });
-    return map;
-  }, [appointments, patients]);
-
   const getInitials = (name?: string) => {
     if (!name) return '??';
     return name.split(' ').map((n: string) => n[0]).join('');
@@ -1780,7 +1767,7 @@ export default function ClinicianPortal() {
                           </td>
                           <td className="px-1 py-1"><MedicineDoseInput value={editMedData.dose || ''} onChange={dose => setEditMedData({...editMedData, dose})} /></td>
                           <td className="px-1 py-1"><MedicineFrequencyInput value={editMedData.frequency || ''} onChange={frequency => setEditMedData({...editMedData, frequency})} label="Edit medicine frequency" /></td>
-                          <td className="px-1 py-1"><Input type="date" value={editMedData.startDate || ''} onChange={e => setEditMedData({...editMedData, startDate: e.target.value})} className="h-7 text-xs" /></td>
+                          <td className="px-1 py-1"><DateInput value={editMedData.startDate || ''} onValueChange={(value) => setEditMedData({...editMedData, startDate: value})} className="h-7 text-xs" /></td>
                           <td className="px-1 py-1">
                             <Select value={editMedData.status || 'Active'} onValueChange={v => setEditMedData({...editMedData, status: v})}>
                               <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
@@ -1843,7 +1830,7 @@ export default function ClinicianPortal() {
                       </td>
                       <td className="px-1 py-1"><MedicineDoseInput value={newMed.dose} onChange={dose => setNewMed({...newMed, dose})} /></td>
                       <td className="px-1 py-1"><MedicineFrequencyInput value={newMed.frequency} onChange={frequency => setNewMed({...newMed, frequency})} label="New medicine frequency" testId="input-new-med-frequency" /></td>
-                      <td className="px-1 py-1"><Input type="date" value={newMed.startDate} onChange={e => setNewMed({...newMed, startDate: e.target.value})} className="h-7 text-xs" /></td>
+                      <td className="px-1 py-1"><DateInput value={newMed.startDate} onValueChange={(value) => setNewMed({...newMed, startDate: value})} className="h-7 text-xs" /></td>
                       <td className="px-1 py-1">
                         <Select value={newMed.status} onValueChange={v => setNewMed({...newMed, status: v})}>
                           <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
@@ -2548,18 +2535,16 @@ export default function ClinicianPortal() {
                               </p>
                            </div>
                            <div className="flex flex-wrap items-center justify-end gap-1.5">
-                              <Input
-                                type="date"
+                              <DateInput
                                 value={queueDateFrom}
-                                onChange={(e) => { setQueueDateFrom(e.target.value); if (e.target.value > queueDateTo) setQueueDateTo(e.target.value); }}
+                                onValueChange={(value) => { setQueueDateFrom(value); if (value > queueDateTo) setQueueDateTo(value); }}
                                 className="h-7 text-xs w-[120px] border-saivie-border"
                                 data-testid="input-queue-date-from"
                               />
                               <span className="text-[10px] text-saivie-plum">to</span>
-                              <Input
-                                type="date"
+                              <DateInput
                                 value={queueDateTo}
-                                onChange={(e) => { setQueueDateTo(e.target.value); if (e.target.value < queueDateFrom) setQueueDateFrom(e.target.value); }}
+                                onValueChange={(value) => { setQueueDateTo(value); if (value < queueDateFrom) setQueueDateFrom(value); }}
                                 className="h-7 text-xs w-[120px] border-saivie-border"
                                 data-testid="input-queue-date-to"
                               />
@@ -3055,52 +3040,7 @@ export default function ClinicianPortal() {
                        </div>
                        <div className="h-6 w-px bg-saivie-sage"></div>
                        
-                       <div className="flex items-center bg-saivie-sage p-1 rounded-lg">
-                          <Button 
-                             variant="ghost" 
-                             size="sm" 
-                             className={`h-7 text-xs ${scheduleViewMode === 'appointments' ? 'bg-saivie-ivory text-saivie-plum shadow-sm' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                             onClick={() => setScheduleViewMode('appointments')}
-                          >
-                             Appointments
-                          </Button>
-                          <Button 
-                             variant="ghost" 
-                             size="sm" 
-                             className={`h-7 text-xs ${scheduleViewMode === 'occupancy' ? 'bg-saivie-ivory text-saivie-plum shadow-sm' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                             onClick={() => setScheduleViewMode('occupancy')}
-                          >
-                             Occupancy
-                          </Button>
-                       </div>
-
-                       <div className="h-6 w-px bg-saivie-sage"></div>
-                       <div className="flex bg-saivie-sage p-1 rounded-lg">
-                          <Button 
-                             variant="ghost" 
-                             size="sm" 
-                             className={`h-7 text-xs ${calendarViewMode === 'month' ? 'bg-saivie-ivory text-saivie-plum shadow-sm' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                             onClick={() => setCalendarViewMode('month')}
-                          >
-                             Month
-                          </Button>
-                          <Button 
-                             variant="ghost" 
-                             size="sm" 
-                             className={`h-7 text-xs ${calendarViewMode === 'week' ? 'bg-saivie-ivory text-saivie-plum shadow-sm' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                             onClick={() => setCalendarViewMode('week')}
-                          >
-                             Week
-                          </Button>
-                          <Button 
-                             variant="ghost" 
-                             size="sm" 
-                             className={`h-7 text-xs ${calendarViewMode === 'day' ? 'bg-saivie-ivory text-saivie-plum shadow-sm' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                             onClick={() => setCalendarViewMode('day')}
-                          >
-                             Day
-                          </Button>
-                       </div>
+                       <span className="text-xs text-saivie-plum">Select a date below</span>
                        <Button className="bg-saivie-teal hover:bg-saivie-teal h-9 text-xs">
                           <Plus className="w-4 h-4 mr-2" /> New Event
                        </Button>
@@ -3223,7 +3163,7 @@ export default function ClinicianPortal() {
                                       Date & Time
                                    </Label>
                                    <div className="col-span-3 flex gap-2">
-                                      <Input type="date" className="h-8 text-xs flex-1" />
+                                      <DateInput className="h-8 text-xs flex-1" />
                                       <Select>
                                          <SelectTrigger className="w-[100px] h-8 text-xs">
                                             <SelectValue placeholder="Time" />
@@ -3350,271 +3290,15 @@ export default function ClinicianPortal() {
                  </div>
 
                  {/* Calendar Grid */}
-                 <Card className="flex-1 shadow-sm border-saivie-border flex flex-col overflow-hidden">
-                    {/* Days Header - Different for Month/Week vs Day */}
-                    {calendarViewMode !== 'day' ? (
-                       <div className="grid grid-cols-7 border-b border-saivie-border bg-saivie-surface-muted shrink-0">
-                          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                             <div key={day} className="py-2 text-center text-xs font-bold text-saivie-plum uppercase tracking-wider">
-                                {day}
-                             </div>
-                          ))}
-                       </div>
-                    ) : (
-                       <div className="border-b border-saivie-border bg-saivie-surface-muted py-2 px-4 shrink-0 flex justify-between items-center">
-                          <span className="text-sm font-bold text-saivie-plum">Wednesday, Oct 24</span>
-                          <span className="text-xs text-saivie-plum">8:00 AM - 6:00 PM</span>
-                       </div>
-                    )}
-                    
-                    <div className="flex-1 overflow-y-auto relative bg-saivie-ivory">
-                    {/* 1. MONTH VIEW */}
-                    {calendarViewMode === 'month' && (
-                       <div className="grid grid-cols-7 min-h-full auto-rows-fr divide-x divide-slate-100 divide-y border-b border-saivie-border">
-                          {/* Previous Month Days */}
-                          {[29, 30].map(day => (
-                             <div key={`prev-${day}`} className="min-h-[100px] bg-saivie-surface-muted/50 p-2 opacity-50">
-                                <span className="text-xs font-medium text-saivie-plum">{day}</span>
-                             </div>
-                          ))}
-
-                          {/* Current Month Days (October) */}
-                          {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                             <div key={day} className={`min-h-[100px] p-2 hover:bg-saivie-surface-muted transition-colors relative group ${day === 24 ? 'bg-blue-50/30' : ''}`}>
-                                <div className="flex justify-between items-start mb-1">
-                                   <span className={`text-xs font-medium h-6 w-6 flex items-center justify-center rounded-full ${day === 24 ? 'bg-saivie-teal text-white' : 'text-saivie-plum'}`}>
-                                      {day}
-                                   </span>
-                                   {day === 24 && <span className="text-[10px] font-bold text-blue-600">Today</span>}
-                                </div>
-                                
-                                {/* Mock Events - Month View */}
-                                <div className="space-y-1">
-                                   {scheduleViewMode === 'occupancy' ? (
-                                      // OCCUPANCY VIEW - MONTH
-                                      <div className="space-y-1.5 mt-2">
-                                         <div className="space-y-0.5">
-                                            <div className="flex justify-between text-[10px] text-saivie-plum font-medium"><span>OT Util</span> <span className={day > 20 ? "text-emerald-600" : "text-amber-600"}>{day > 20 ? "40%" : "90%"}</span></div>
-                                            <div className="h-1.5 w-full bg-saivie-sage rounded-full overflow-hidden">
-                                               <div className={`h-full w-[${day > 20 ? 40 : 90}%] rounded-full ${day > 20 ? "bg-emerald-500" : "bg-amber-500"}`}></div>
-                                            </div>
-                                         </div>
-                                      </div>
-                                   ) : (
-                                      // APPOINTMENTS VIEW - MONTH
-                                      <>
-                                         {appointmentsByDay[day] && (
-                                            <>
-                                               {appointmentsByDay[day].slice(0, 2).map((apt: any, aidx: number) => {
-                                                  const eventColors = [
-                                                     { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500' },
-                                                     { bg: 'bg-saivie-blush', text: 'text-saivie-rose', border: 'border-saivie-blush', dot: 'bg-saivie-rose' },
-                                                  ];
-                                                  const c = eventColors[aidx % eventColors.length];
-                                                  return (
-                                                     <div key={apt.id || aidx} data-testid={`calendar-event-${day}-${aidx}`} className={`text-[10px] px-1.5 py-0.5 rounded ${c.bg} ${c.text} border ${c.border} truncate font-medium flex items-center gap-1`}>
-                                                        <div className={`w-1 h-1 rounded-full ${c.dot}`}></div> {apt.time} • {apt.patientName}
-                                                     </div>
-                                                  );
-                                               })}
-                                               {appointmentsByDay[day].length > 2 && (
-                                                  <div className="text-[10px] px-1.5 py-0.5 rounded bg-saivie-sage text-saivie-plum border border-saivie-border truncate font-medium opacity-70">
-                                                     +{appointmentsByDay[day].length - 2} more...
-                                                  </div>
-                                               )}
-                                            </>
-                                         )}
-                                      </>
-                                   )}
-                                </div>
-                             </div>
-                          ))}
-
-                          {/* Next Month Days */}
-                          {[1, 2].map(day => (
-                             <div key={`next-${day}`} className="min-h-[100px] bg-saivie-surface-muted/50 p-2 opacity-50">
-                                <span className="text-xs font-medium text-saivie-plum">{day}</span>
-                             </div>
-                          ))}
-                       </div>
-                    )}
-
-                    {/* 2. WEEK VIEW */}
-                    {calendarViewMode === 'week' && (
-                       <div className="flex min-h-full">
-                          {/* Time Axis */}
-                          <div className="w-12 shrink-0 border-r border-saivie-border bg-saivie-surface-muted/50 flex flex-col pt-10">
-                             {Array.from({ length: 11 }, (_, i) => i + 8).map(hour => (
-                                <div key={hour} className="h-20 text-right pr-2 text-[10px] text-saivie-plum font-medium relative">
-                                   <span className="-top-2 absolute right-2">{hour}:00</span>
-                                </div>
-                             ))}
-                          </div>
-                          {/* Days Columns */}
-                          <div className="flex-1 grid grid-cols-7 divide-x divide-slate-100">
-                             {Array.from({ length: 7 }, (_, i) => i).map(dayIndex => (
-                                <div key={dayIndex} className="relative pt-2">
-                                   {/* Day Grid Lines */}
-                                   {Array.from({ length: 11 }, (_, i) => i + 8).map(hour => (
-                                      <div key={hour} className="h-20 border-b border-saivie-border w-full relative group">
-                                         {/* Hover add button */}
-                                         <div className="absolute inset-0 hover:bg-saivie-surface-muted flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
-                                            <Plus className="w-3 h-3 text-blue-400" />
-                                         </div>
-                                      </div>
-                                   ))}
-
-                                   {/* EVENTS FOR THIS DAY */}
-                                   {dayIndex === 3 && scheduleViewMode === 'appointments' && (
-                                      <>
-                                         {appointments.slice(0, 3).map((apt: any, aidx: number) => {
-                                            const patient = patients.find((p: any) => p.id === apt.patientId);
-                                            const weekColors = [
-                                               { bg: 'bg-blue-100', border: 'border-blue-500', name: 'text-blue-800', desc: 'text-blue-600', hover: 'hover:bg-blue-200' },
-                                               { bg: 'bg-saivie-blush', border: 'border-saivie-blush', name: 'text-saivie-plum', desc: 'text-saivie-rose', hover: 'hover:bg-saivie-blush' },
-                                               { bg: 'bg-saivie-sage', border: 'border-saivie-teal', name: 'text-saivie-plum', desc: 'text-saivie-teal', hover: 'hover:bg-saivie-sage' },
-                                            ];
-                                            const c = weekColors[aidx % weekColors.length];
-                                            const tops = [80, 150, 320];
-                                            const heights = [60, 45, 90];
-                                            return (
-                                               <div key={apt.id || aidx} data-testid={`week-event-${apt.id || aidx}`} className={`absolute top-[${tops[aidx]}px] left-1 right-1 h-[${heights[aidx]}px] ${c.bg} border-l-2 ${c.border} rounded p-1 shadow-sm z-10 cursor-pointer ${c.hover} transition-colors`}>
-                                                  <p className={`text-[10px] font-bold ${c.name}`}>{patient?.name || apt.reason || 'Appointment'}</p>
-                                                  <p className={`text-[9px] ${c.desc}`}>{apt.type || apt.reason || 'Consultation'}</p>
-                                               </div>
-                                            );
-                                         })}
-                                      </>
-                                   )}
-                                   
-                                   {dayIndex === 5 && scheduleViewMode === 'appointments' && (
-                                      <div className="absolute top-[240px] left-1 right-1 h-[120px] bg-amber-100 border-l-2 border-amber-500 rounded p-1 shadow-sm z-10 cursor-pointer hover:bg-amber-200 transition-colors flex flex-col justify-center">
-                                         <p className="text-[10px] font-bold text-amber-800">Dept Meeting</p>
-                                         <p className="text-[9px] text-amber-600">Conference Room B</p>
-                                      </div>
-                                   )}
-
-                                   {/* OCCUPANCY VIEW MOCKUP */}
-                                   {scheduleViewMode === 'occupancy' && dayIndex >= 1 && dayIndex <= 5 && (
-                                      <>
-                                         {/* Random occupancy blocks */}
-                                         <div className={`absolute top-[${100 + dayIndex * 20}px] left-0 right-0 h-[${60 + dayIndex * 10}px] bg-saivie-sage/50 border-y border-dashed border-saivie-border flex items-center justify-center`}>
-                                            <span className="text-[9px] font-bold text-saivie-plum uppercase tracking-widest rotate-90 md:rotate-0">High Volume</span>
-                                         </div>
-                                      </>
-                                   )}
-                                </div>
-                             ))}
-                          </div>
-                       </div>
-                    )}
-
-                    {/* 3. DAY VIEW */}
-                    {calendarViewMode === 'day' && (
-                       <div className="flex min-h-full">
-                          {/* Time Axis - Detailed */}
-                          <div className="w-16 shrink-0 border-r border-saivie-border bg-saivie-surface-muted/50 flex flex-col pt-4">
-                             {Array.from({ length: 11 }, (_, i) => i + 8).map(hour => (
-                                <div key={hour} className="h-32 text-right pr-2 text-xs text-saivie-plum font-bold relative">
-                                   <span className="-top-2 absolute right-2">{hour}:00</span>
-                                   <span className="top-14 absolute right-2 text-[10px] text-slate-300 font-normal">:30</span>
-                                </div>
-                             ))}
-                          </div>
-                          
-                          {/* Day Column */}
-                          <div className="flex-1 relative pt-4 px-4 bg-saivie-surface-muted/10">
-                             {Array.from({ length: 11 }, (_, i) => i + 8).map(hour => (
-                                <div key={hour} className="h-32 border-b border-saivie-border w-full relative">
-                                   <div className="absolute top-1/2 left-0 right-0 border-b border-dashed border-saivie-border"></div>
-                                </div>
-                             ))}
-                             
-                             {/* Detailed Events for TODAY */}
-                             {scheduleViewMode === 'appointments' ? (
-                                <>
-                                   {appointments.slice(0, 3).map((apt: any, aidx: number) => {
-                                      const patient = patients.find((p: any) => p.id === apt.patientId);
-                                      const dayStyles = [
-                                         { top: 20, height: 90, borderColor: 'border-blue-200', borderLeft: 'border-l-blue-500', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', avatarBg: 'bg-blue-50', avatarText: 'text-blue-700', avatarBorder: 'border-blue-100' },
-                                         { top: 130, height: 60, borderColor: 'border-saivie-blush', borderLeft: 'border-l-pink-500', badgeBg: 'bg-saivie-blush', badgeText: 'text-saivie-rose', avatarBg: 'bg-saivie-surface-blush', avatarText: 'text-saivie-rose', avatarBorder: 'border-saivie-blush' },
-                                         { top: 270, height: 120, borderColor: 'border-saivie-border', borderLeft: 'border-l-purple-500', badgeBg: 'bg-saivie-sage', badgeText: 'text-saivie-teal', avatarBg: 'bg-saivie-surface-muted', avatarText: 'text-saivie-teal', avatarBorder: 'border-saivie-border' },
-                                      ];
-                                      const s = dayStyles[aidx];
-                                      return (
-                                         <div key={apt.id || aidx} data-testid={`day-event-${apt.id || aidx}`} className={`absolute top-[${s.top}px] left-4 right-4 h-[${s.height}px] bg-saivie-ivory border ${s.borderColor} border-l-4 ${s.borderLeft} rounded shadow-sm hover:shadow-md transition-all p-3 flex justify-between items-start`}>
-                                            <div>
-                                               <div className="flex items-center gap-2 mb-1">
-                                                  <Badge className={`${s.badgeBg} ${s.badgeText} hover:${s.badgeBg} border-none h-5 text-[10px]`}>{apt.type || apt.visitType || 'Consultation'}</Badge>
-                                                  <span className="text-xs text-saivie-plum">{apt.time}{apt.endTime ? ` - ${apt.endTime}` : ''}</span>
-                                               </div>
-                                               <h3 className="font-bold text-saivie-plum text-sm">{patient?.name || 'Patient'} - {apt.reason || apt.type || 'Appointment'}</h3>
-                                               <p className="text-xs text-saivie-plum mt-1 flex items-center gap-2"><MapPin className="w-3 h-3" /> {apt.room || 'Room TBD'} • {providerName}</p>
-                                            </div>
-                                            <Avatar className={`h-8 w-8 ${s.avatarBg} ${s.avatarText} border ${s.avatarBorder}`}>
-                                               <AvatarFallback>{getInitials(patient?.name)}</AvatarFallback>
-                                            </Avatar>
-                                         </div>
-                                      );
-                                   })}
-                                   {appointments.length >= 2 && (
-                                      <div className="absolute top-[210px] left-4 right-4 h-[40px] bg-saivie-sage rounded border border-dashed border-saivie-border flex items-center justify-center text-xs text-saivie-plum font-medium">
-                                         Free Slot (11:15 - 11:45)
-                                      </div>
-                                   )}
-                                </>
-                             ) : (
-                                // OCCUPANCY DAY VIEW
-                                <div className="absolute inset-0 p-4">
-                                   <div className="h-full w-full bg-saivie-surface-muted rounded-xl border border-saivie-border p-6">
-                                      <h3 className="font-bold text-saivie-plum mb-4">Resource Utilization - Today</h3>
-                                      <div className="space-y-6">
-                                         <div>
-                                            <div className="flex justify-between text-sm font-medium mb-2"><span>Operation Theater 1</span> <span className="text-emerald-600">Available from 3 PM</span></div>
-                                            <div className="h-8 w-full bg-saivie-sage rounded-md overflow-hidden flex">
-                                               <div className="h-full w-[60%] bg-rose-500 flex items-center justify-center text-[10px] font-bold text-white uppercase tracking-wider">Booked</div>
-                                               <div className="h-full w-[40%] bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white uppercase tracking-wider">Free</div>
-                                            </div>
-                                         </div>
-                                         <div>
-                                            <div className="flex justify-between text-sm font-medium mb-2"><span>USG Room</span> <span className="text-amber-600">Heavy Load</span></div>
-                                            <div className="h-8 w-full bg-saivie-sage rounded-md overflow-hidden flex">
-                                               <div className="h-full w-[30%] bg-rose-500"></div>
-                                               <div className="h-full w-[20%] bg-rose-400"></div>
-                                               <div className="h-full w-[40%] bg-rose-500"></div>
-                                               <div className="h-full w-[10%] bg-emerald-500"></div>
-                                            </div>
-                                         </div>
-                                         <div>
-                                            <div className="flex justify-between text-sm font-medium mb-2"><span>Consultation Rooms</span> <span className="text-blue-600">Normal Flow</span></div>
-                                            <div className="grid grid-cols-4 gap-2">
-                                               <div className="h-12 rounded bg-rose-100 border border-rose-200 flex flex-col items-center justify-center">
-                                                  <span className="text-xs font-bold text-rose-800">Room 1</span>
-                                                  <span className="text-[10px] text-rose-600">Busy</span>
-                                               </div>
-                                               <div className="h-12 rounded bg-rose-100 border border-rose-200 flex flex-col items-center justify-center">
-                                                  <span className="text-xs font-bold text-rose-800">Room 2</span>
-                                                  <span className="text-[10px] text-rose-600">Busy</span>
-                                               </div>
-                                               <div className="h-12 rounded bg-emerald-100 border border-emerald-200 flex flex-col items-center justify-center">
-                                                  <span className="text-xs font-bold text-emerald-800">Room 3</span>
-                                                  <span className="text-[10px] text-emerald-600">Free</span>
-                                               </div>
-                                               <div className="h-12 rounded bg-rose-100 border border-rose-200 flex flex-col items-center justify-center">
-                                                  <span className="text-xs font-bold text-rose-800">Room 4</span>
-                                                  <span className="text-[10px] text-rose-600">Busy</span>
-                                               </div>
-                                            </div>
-                                         </div>
-                                      </div>
-                                   </div>
-                                </div>
-                             )}
-                          </div>
-                       </div>
-                    )}
-                    </div>
-                 </Card>
+                 <AppointmentCalendar
+                    date={queueDateFrom}
+                    onDate={(date) => { setQueueDateFrom(date); setQueueDateTo(date); }}
+                    appointments={appointments}
+                    patients={patients}
+                    onOpenPatient={(id) => { const patient = patients.find((item: any) => item.id === id); if (patient) navigateToPatient(patient); }}
+                    isLoading={appointmentsQuery.isLoading}
+                    error={appointmentsQuery.error}
+                 />
               </div>
            </div>
         )}
@@ -4878,21 +4562,19 @@ export default function ClinicianPortal() {
                     </div>
                     <label className="flex items-center gap-2 text-xs text-saivie-plum">
                       <span className="whitespace-nowrap">Appointment date</span>
-                      <Input
-                        type="date"
+                      <DateInput
                         value={patientDirectoryDateFrom}
                         max={patientDirectoryDateTo || undefined}
-                        onChange={(event) => setPatientDirectoryDateFrom(event.target.value)}
+                        onValueChange={(value) => setPatientDirectoryDateFrom(value)}
                         aria-label="Appointment date from"
                         className="h-9 w-[142px] text-xs border-saivie-border"
                         data-testid="input-patient-directory-date-from"
                       />
                       <span>to</span>
-                      <Input
-                        type="date"
+                      <DateInput
                         value={patientDirectoryDateTo}
                         min={patientDirectoryDateFrom || undefined}
-                        onChange={(event) => setPatientDirectoryDateTo(event.target.value)}
+                        onValueChange={(value) => setPatientDirectoryDateTo(value)}
                         aria-label="Appointment date to"
                         className="h-9 w-[142px] text-xs border-saivie-border"
                         data-testid="input-patient-directory-date-to"

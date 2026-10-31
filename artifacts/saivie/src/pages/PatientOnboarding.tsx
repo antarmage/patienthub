@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
 import { ArrowLeft, ArrowRight, Baby, Check, CheckCircle2, Flower2, Heart, Hospital, Leaf, LockKeyhole, Minus, Plus, Printer, ShieldCheck, Timer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DateInput } from "@/components/ui/date-input";
 import { useToast } from "@/hooks/use-toast";
 import { getOnboardingQuestions, getRelevantIntake, initialForm, isOnboardingStep, type IntakeForm, type OptionalHistory } from "@/lib/onboardingFlow";
 import { getPrintBrandStyles } from "@/lib/brand";
@@ -190,7 +191,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function TextInput({ label, value, onChange, placeholder, type = "text" }: {
     label: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string;
 }) {
-    return <Field label={label}><input className={inputClass} type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} /></Field>;
+    return <Field label={label}>{type === "date" ? <DateInput className={inputClass} value={value} onValueChange={onChange} aria-label={label} placeholder={placeholder} /> : <input className={inputClass} type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />}</Field>;
 }
 
 function RulerSlider({ label, value, onChange, min, max, step = 1, unit, optional = false }: {

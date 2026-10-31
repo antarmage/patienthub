@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/ui/date-input";
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1218,11 +1219,10 @@ export default function PatientPortal() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Preferred Date</label>
-                        <input
-                          type="date"
+                        <DateInput
                           value={bookingDate}
                           min={new Date().toISOString().split('T')[0]}
-                          onChange={(e) => setBookingDate(e.target.value)}
+                          onValueChange={(value) => setBookingDate(value)}
                           className="w-full rounded-xl border border-black/10 bg-saivie-ivory/70 px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
                           data-testid="booking-date-input"
                         />

@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/ui/date-input";
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Camera, Check, CheckCircle2, FileText, FlaskConical, LockKeyhole, X } from "lucide-react";
@@ -140,7 +141,7 @@ export default function LabSurvey({ appointmentId, onboardingData }: { appointme
                     <Question number={1} label="Your details">
                         <div className="grid gap-3 sm:grid-cols-2">
                             <input className={inputClass} value={form.name} onChange={(e) => set("name")(e.target.value)} placeholder="Full name" aria-label="Full name" data-testid="lab-name" />
-                            <input className={inputClass} type="date" value={form.dob} onChange={(e) => set("dob")(e.target.value)} aria-label="Date of birth" data-testid="lab-dob" />
+                            <DateInput className={inputClass} value={form.dob} onValueChange={(value) => set("dob")(value)} aria-label="Date of birth" data-testid="lab-dob" />
                         </div>
                     </Question>
 
@@ -164,7 +165,7 @@ export default function LabSurvey({ appointmentId, onboardingData }: { appointme
                     </Question>
 
                     <Question number={4} label="When did your last period start?" hint="Some hormone tests depend on the day of your cycle.">
-                        <input className={`${inputClass} mb-2 sm:max-w-xs`} type="date" value={LAB_PERIOD_SKIP.includes(form.lastPeriod) ? "" : form.lastPeriod} onChange={(e) => set("lastPeriod")(e.target.value)} aria-label="First day of last period" data-testid="lab-last-period" />
+                        <DateInput className={`${inputClass} mb-2 sm:max-w-xs`} value={LAB_PERIOD_SKIP.includes(form.lastPeriod) ? "" : form.lastPeriod} onValueChange={(value) => set("lastPeriod")(value)} aria-label="First day of last period" data-testid="lab-last-period" />
                         <Chips options={LAB_PERIOD_SKIP} value={form.lastPeriod} onChange={set("lastPeriod")} />
                     </Question>
 

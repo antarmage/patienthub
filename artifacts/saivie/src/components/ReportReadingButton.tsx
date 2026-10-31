@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/ui/date-input";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Sparkle, Trash2 } from "lucide-react";
@@ -243,16 +244,15 @@ export function ReportReadingButton({ patientId }: { patientId: number }) {
               </a>
               <label className="block text-xs">
                 Report date
-                <Input
-                  type="date"
+                <DateInput
                   value={doc.date}
                   disabled={saving}
-                  onChange={(event) => {
+                  onValueChange={(value) => {
                     setReviewed(false);
                     setDocuments((current) =>
                       current.map((item) =>
                         item.id === doc.id
-                          ? { ...item, date: event.target.value }
+                          ? { ...item, date: value }
                           : item,
                       ),
                     );

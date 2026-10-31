@@ -1,3 +1,5 @@
+import { DateInput } from "@/components/ui/date-input";
+import { AppointmentCalendar, type CalendarAppointment } from "@/components/AppointmentCalendar";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { AllInvoices } from "@/components/AllInvoices";
@@ -805,7 +807,7 @@ function UploadRecordsDialog({ isOpen, onClose, patient, onSaveComplete }: { isO
                       )}
                       <div className="flex gap-3 items-center">
                         <span className="text-xs font-bold text-saivie-plum uppercase w-24 shrink-0">{activeDocTab === "usg" ? "Scan date" : "Date"}</span>
-                        <Input type="date" className="h-8 max-w-[180px]" value={toIsoDate(ocrResult.date)} onChange={(e) => { setScanReviewed(false); setOcrResult({ ...ocrResult, date: e.target.value }); }} data-testid="input-scan-date" />
+                        <DateInput className="h-8 max-w-[180px]" value={toIsoDate(ocrResult.date)} onValueChange={(value) => { setScanReviewed(false); setOcrResult({ ...ocrResult, date: value }); }} data-testid="input-scan-date" />
                       </div>
                       {(ocrResult.reportType) && (
                         <div className="flex gap-3">
@@ -1627,6 +1629,17 @@ export default function StaffPortal() {
     : "nutritionist";
   const [activeRole, setActiveRole] = useState(defaultRole);
   const [activeView, setActiveView] = useState("dashboard"); // 'dashboard', 'patients', 'schedule', 'reports'
+  const [scheduleDate, setScheduleDate] = useState(() => clinicDate());
+  const scheduleAppointmentsQuery = useQuery<CalendarAppointment[]>({
+    queryKey: ["/api/appointments", "schedule", scheduleDate],
+    enabled: activeView === "schedule",
+    queryFn: async () => {
+      const response = await fetch(`/api/appointments?date=${scheduleDate}`);
+      if (!response.ok) throw new Error("Could not load appointments for the selected date");
+      return response.json();
+    },
+    refetchInterval: 30000,
+  });
   const [optimiseLoading, setOptimiseLoading] = useState(false);
   const [optimiseResult, setOptimiseResult] = useState<any>(null);
   const [showOptimiseDialog, setShowOptimiseDialog] = useState(false);
@@ -2688,156 +2701,15 @@ export default function StaffPortal() {
                       </div>
                     )}
 
-                    <div className="grid grid-cols-12 gap-6 h-[calc(100vh-12rem)]">
-                        {/* Calendar Sidebar */}
-                        <Card className="col-span-3 border-saivie-border shadow-sm flex flex-col">
-                            <CardHeader className="py-4 border-b border-saivie-border">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-sm font-bold text-saivie-plum">February 2026</h3>
-                                    <div className="flex gap-1">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6"><ChevronRight className="w-4 h-4 rotate-180" /></Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6"><ChevronRight className="w-4 h-4" /></Button>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-4">
-                                <div className="grid grid-cols-7 gap-1 text-center text-xs mb-2">
-                                    <span className="text-saivie-plum">Su</span>
-                                    <span className="text-saivie-plum">Mo</span>
-                                    <span className="text-saivie-plum">Tu</span>
-                                    <span className="text-saivie-plum">We</span>
-                                    <span className="text-saivie-plum">Th</span>
-                                    <span className="text-saivie-plum">Fr</span>
-                                    <span className="text-saivie-plum">Sa</span>
-                                </div>
-                                <div className="grid grid-cols-7 gap-1 text-center text-sm">
-                                    {/* Mock Calendar Grid */}
-                                    {[...Array(3)].map((_, i) => <span key={`empty-${i}`} className="p-2"></span>)}
-                                    {[...Array(28)].map((_, i) => (
-                                        <button 
-                                            key={i} 
-                                            className={`p-2 rounded-full hover:bg-saivie-sage ${i === 7 ? 'bg-saivie-teal text-white hover:bg-saivie-teal' : 'text-saivie-plum'}`}
-                                        >
-                                            {i + 1}
-                                        </button>
-                                    ))}
-                                </div>
-                                
-                                <div className="mt-6 space-y-4">
-                                    <div>
-                                        <h4 className="text-xs font-bold text-saivie-plum uppercase mb-2">Filters</h4>
-                                        <div className="space-y-2">
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox id="filter-consult" defaultChecked />
-                                                <label htmlFor="filter-consult" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Consultations</label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox id="filter-scan" defaultChecked />
-                                                <label htmlFor="filter-scan" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Scans & Tests</label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox id="filter-team" />
-                                                <label htmlFor="filter-team" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Team Meetings</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Daily Schedule */}
-                        <Card className="col-span-9 border-saivie-border shadow-sm flex flex-col overflow-hidden">
-                             <CardHeader className="py-3 border-b border-saivie-border bg-saivie-surface-muted/50 flex flex-row items-center justify-between">
-                                 <div className="flex gap-4">
-                                    <span className="text-sm font-bold text-saivie-plum border-b-2 border-saivie-teal pb-3 -mb-3.5">Day View</span>
-                                    <span className="text-sm font-medium text-saivie-plum cursor-pointer hover:text-saivie-plum">Week View</span>
-                                 </div>
-                                 <span className="text-xs font-medium text-saivie-plum">Sunday, Feb 8th</span>
-                             </CardHeader>
-                             <ScrollArea className="flex-1 bg-saivie-ivory">
-                                <div className="divide-y divide-slate-50">
-                                    {(() => {
-                                        const todayStr = new Date().toISOString().split('T')[0];
-                                        const todayAppts = appointments.filter((a: any) => a.date === todayStr);
-                                        const colorSchemes = [
-                                            { bg: 'bg-saivie-surface-muted', border: 'border-saivie-teal', title: 'text-saivie-plum', sub: 'text-saivie-teal', avatarBg: 'bg-saivie-sage', avatarText: 'text-saivie-plum', badgeBg: 'bg-saivie-ivory', badgeText: 'text-saivie-teal', accent: 'text-saivie-teal' },
-                                            { bg: 'bg-emerald-50', border: 'border-emerald-500', title: 'text-emerald-900', sub: 'text-emerald-700', avatarBg: 'bg-emerald-200', avatarText: 'text-emerald-800', badgeBg: 'bg-saivie-ivory', badgeText: 'text-emerald-700', accent: 'text-emerald-600' },
-                                        ];
-                                        return todayAppts.slice(0, 2).map((appt: any, idx: number) => {
-                                            const patient = patients.find((p: any) => p.id === appt.patientId);
-                                            const patientName = patient?.name || `Patient #${appt.patientId}`;
-                                            const initials = patientName?.split(' ').map((n: string) => n[0]).join('') || '?';
-                                            const colors = colorSchemes[idx % colorSchemes.length];
-                                            return (
-                                                <div key={appt.id} className="flex h-32 group">
-                                                    <div className="w-20 py-4 px-2 text-right text-xs text-saivie-plum font-medium border-r border-saivie-border group-hover:bg-saivie-surface-muted/50">
-                                                        {appt.time || '—'}
-                                                    </div>
-                                                    <div className="flex-1 p-2 relative">
-                                                        <div className={`absolute top-2 left-2 right-2 bottom-2 ${colors.bg} border-l-4 ${colors.border} rounded p-3 cursor-pointer hover:shadow-sm transition-shadow`}>
-                                                            <div className="flex justify-between items-start">
-                                                                <div>
-                                                                    <p className={`font-bold ${colors.title} text-sm`}>{appt.reason || appt.type || 'Consultation'}</p>
-                                                                    <p className={`text-xs ${colors.sub} mt-0.5`}>{patientName}{patient?.type ? ` (${patient.type})` : ''} • {appt.visitType || 'In-Person'}</p>
-                                                                </div>
-                                                                <Badge variant="secondary" className={`${colors.badgeBg} ${colors.badgeText} text-[10px] hover:${colors.badgeBg}`}>{appt.status || 'Confirmed'}</Badge>
-                                                            </div>
-                                                            <div className="mt-3 flex gap-2">
-                                                                <Avatar className="h-6 w-6 text-[10px]">
-                                                                    <AvatarFallback className={`${colors.avatarBg} ${colors.avatarText}`}>{initials}</AvatarFallback>
-                                                                </Avatar>
-                                                                {appt.doctor && <span className={`text-xs ${colors.accent} self-center`}>+ {appt.doctor}</span>}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        });
-                                    })()}
-
-                                    {/* 11:00 Slot (Empty) */}
-                                    <div className="flex h-20 group">
-                                        <div className="w-20 py-4 px-2 text-right text-xs text-saivie-plum font-medium border-r border-saivie-border group-hover:bg-saivie-surface-muted/50">
-                                            11:00 AM
-                                        </div>
-                                        <div className="flex-1 p-2 group-hover:bg-saivie-surface-muted/30 cursor-pointer border-b border-transparent group-hover:border-saivie-border flex items-center justify-center">
-                                            <Button variant="ghost" size="sm" className="hidden group-hover:flex text-saivie-plum text-xs h-8">
-                                                <Plus className="w-3 h-3 mr-1" /> Add Slot
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                     {/* 12:00 Slot */}
-                                    <div className="flex h-32 group">
-                                        <div className="w-20 py-4 px-2 text-right text-xs text-saivie-plum font-medium border-r border-saivie-border group-hover:bg-saivie-surface-muted/50">
-                                            12:00 PM
-                                        </div>
-                                        <div className="flex-1 p-2 relative">
-                                            <div className="absolute top-2 left-2 right-2 bottom-2 bg-amber-50 border-l-4 border-amber-500 rounded p-3 cursor-pointer hover:shadow-sm transition-shadow">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <p className="font-bold text-amber-900 text-sm">Staff Case Review</p>
-                                                        <p className="text-xs text-amber-700 mt-0.5">Multidisciplinary Team • Conf Room B</p>
-                                                    </div>
-                                                    <Badge variant="secondary" className="bg-saivie-ivory text-amber-700 text-[10px] hover:bg-saivie-ivory">Internal</Badge>
-                                                </div>
-                                                <div className="mt-3 flex -space-x-2">
-                                                    <Avatar className="h-6 w-6 text-[10px] border-2 border-white">
-                                                        <AvatarFallback className="bg-saivie-sage text-saivie-plum">DR</AvatarFallback>
-                                                    </Avatar>
-                                                    <Avatar className="h-6 w-6 text-[10px] border-2 border-white">
-                                                        <AvatarFallback className="bg-saivie-sage text-saivie-plum">ST</AvatarFallback>
-                                                    </Avatar>
-                                                    <div className="h-6 w-6 rounded-full bg-saivie-sage border-2 border-white flex items-center justify-center text-[9px] font-bold text-saivie-plum">+3</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                             </ScrollArea>
-                        </Card>
-                    </div>
+                    <AppointmentCalendar
+                        date={scheduleDate}
+                        onDate={setScheduleDate}
+                        appointments={scheduleAppointmentsQuery.data || []}
+                        patients={patients}
+                        onOpenPatient={(id) => { const patient = patients.find((item: any) => item.id === id); if (patient) openViewLog(patient); }}
+                        isLoading={scheduleAppointmentsQuery.isLoading}
+                        error={scheduleAppointmentsQuery.error}
+                    />
                 </div>
             )}
 
@@ -5534,7 +5406,7 @@ export default function StaffPortal() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold text-saivie-plum uppercase">Date of Birth</Label>
-                                    <Input type="date" />
+                                    <DateInput />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold text-saivie-plum uppercase">Gender</Label>
@@ -5643,7 +5515,7 @@ export default function StaffPortal() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="task-booking-date" className="text-xs font-bold text-saivie-plum uppercase">Booking date</Label>
-                            <Input id="task-booking-date" type="date" min={clinicDate(new Date())} value={taskBookingDate} onChange={(event) => setTaskBookingDate(event.target.value)} disabled={bookLabTaskMutation.isPending} />
+                            <DateInput id="task-booking-date" min={clinicDate(new Date())} value={taskBookingDate} onValueChange={(value) => setTaskBookingDate(value)} disabled={bookLabTaskMutation.isPending} />
                         </div>
                     </div>
 
