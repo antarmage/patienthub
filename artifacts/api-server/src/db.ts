@@ -45,6 +45,18 @@ export async function ensureSchema(): Promise<void> {
       ALTER TABLE lab_tasks ADD COLUMN IF NOT EXISTS ordered_at text;
       ALTER TABLE lab_tasks ALTER COLUMN ordered_at SET DEFAULT CURRENT_TIMESTAMP::text;
 
+      -- Remove only legacy, unlinked demo orders; preserve dated orders and clinical results.
+      DELETE FROM lab_tasks AS task
+      USING patients AS patient
+      WHERE task.patient_id = patient.id
+        AND task.ordered_at IS NULL
+        AND (
+          (patient.name = 'Ananya S.' AND task.test = 'Serum Progesterone' AND task.due = 'Today' AND task.status = 'Pending')
+          OR (patient.name = 'Meera D.' AND task.test = 'OGTT (75g)' AND task.due = 'Tomorrow' AND task.status = 'Scheduled')
+          OR (patient.name = 'Priya K.' AND task.test = 'Hormone Panel' AND task.due = 'Overdue' AND task.status = 'Delayed')
+        )
+        AND NOT EXISTS (SELECT 1 FROM lab_results AS result WHERE result.lab_task_id = task.id);
+
       CREATE TABLE IF NOT EXISTS invoice_template_settings (
         id integer PRIMARY KEY DEFAULT 1,
         clinic_name text NOT NULL DEFAULT '',

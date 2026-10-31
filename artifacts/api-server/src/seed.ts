@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { eq, isNull } from "drizzle-orm";
 import {
-  patients, providers, services, appointments, labTasks,
+  patients, providers, services, appointments,
   nutritionPlans, workouts, hormoneReadings, pregnancyMetrics,
   follicleData, usgData, users
 } from "@workspace/db";
@@ -308,12 +308,6 @@ export async function seedDatabase() {
     { patientId: p2.id, providerId: prov1.id, serviceId: svc2.id, date: today, time: "09:30", type: "Antenatal Check", status: "Late" },
     { patientId: p3.id, providerId: prov1.id, serviceId: svc2.id, date: today, time: "10:00", type: "Postpartum Review", status: "On Time" },
     { patientId: p5.id, providerId: prov2.id, serviceId: svc1.id, date: today, time: "11:00", type: "Diet Consult", status: "On Time" },
-  ]);
-
-  await db.insert(labTasks).values([
-    { patientId: p1.id, test: "Serum Progesterone", due: "Today", status: "Pending" },
-    { patientId: p2.id, test: "OGTT (75g)", due: "Tomorrow", status: "Scheduled" },
-    { patientId: p5.id, test: "Hormone Panel", due: "Overdue", status: "Delayed" },
   ]);
 
   await db.insert(nutritionPlans).values([

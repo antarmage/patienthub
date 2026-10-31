@@ -63,12 +63,18 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Staff personal names and receptionist greeting
 
+- Reception tasks show only unbooked Pending/Delayed investigations and refresh every 30 seconds. Confirm Booking saves the actual investigation's date and Scheduled status; scheduled orders remain in the investigation queue, not the pending booking count.
+- API startup removes the three legacy demo lab orders only when their original patient/test/due/status match, `ordered_at` is null, and no lab result references them. Dated or clinically linked orders are preserved; new database seeds no longer create these demo tasks. Deploy/restart the API with the frontend for the cleanup.
+
 - Owner Portal -> Staff Accounts -> Edit includes an optional Personal name (up to 100 characters). Only authenticated owners can update it.
 - API startup adds `users.display_name` with an idempotent migration. Deploy/restart the API with the frontend.
 - Successful staff login stores the account's personal name for the welcome greeting. Name changes take effect after signing in again; older or unnamed accounts use the login username rather than an invented name.
 - On the receptionist dashboard, the time-of-day greeting and full date appear in the content immediately below the top navigation bar.
 
 ## Shared Saivie web UI
+
+- Receptionist Billing has separate New bill and All invoices tabs. New bill uses compact patient/template controls and searchable category-based items, with the selected patient's last invoice linked from the summary. Switching tabs preserves the draft.
+- All invoices lists every patient's saved bills newest first, searchable by patient name or invoice number (`53`, `#53`, `SAI-53`), with view/print, email, edit, delete, explicit load errors and refresh. Existing server quotes, discounts, GST, inventory checks and preview-before-create flow are unchanged.
 
 - The main Saivie web app uses softly rounded ivory cards with restrained shadows, pill buttons/tabs/badges, and rounded fields. The page background adds subtle sage/blush radial washes; solid page wrappers retain their own backgrounds.
 - Shared primitives keep existing sizes, semantics, clinical status colours and caller class overrides. Form boundaries and placeholder colours have explicit contrast; keyboard focus uses a two-pixel ring. Dialogs default to 16px mobile side margins. Print output omits the background wash.

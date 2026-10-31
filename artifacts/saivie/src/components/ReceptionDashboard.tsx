@@ -37,6 +37,7 @@ import { hpvProtection, hpvSurveyAnswer } from "@/lib/hpvProtection";
 import { surveyKindFor } from "@/lib/labSurvey";
 import { HpvBadge } from "@/components/HpvBadge";
 import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
+import type { ReceptionTask } from "@/lib/receptionTasks";
 
 export type ArrivalState = "upcoming" | "late" | "waiting" | "in-consultation" | "completed" | "cancelled" | "no-show";
 type FlowFilter = "all" | "upcoming" | "arrived" | "waiting" | "completed" | "closed";
@@ -53,7 +54,7 @@ export interface ReceptionFollowUp {
 interface ReceptionDashboardProps {
   appointments: any[];
   patients: any[];
-  tasks: any[];
+  tasks: ReceptionTask[];
   followUps: ReceptionFollowUp[];
   pendingAppointmentId: number | null;
   sheetStatus: any;
@@ -68,7 +69,7 @@ interface ReceptionDashboardProps {
   onRecordPrescription: (apt: any) => void;
   onUploadPrescription: (patient: any) => void;
   prescribedAppointmentIds: Set<number>;
-  onOpenTask: (task: any) => void;
+  onOpenTask: (task: ReceptionTask) => void;
   onOpenPatient: (patient: any) => void;
   onRegisterPatient: () => void;
   onUploadReport: () => void;

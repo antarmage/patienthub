@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { AllInvoices } from "@/components/AllInvoices";
 import { ClinicalReadingEditor } from "@/components/ClinicalReadingEditor";
 import { exactLabNumber } from "@/lib/labReading";
+import { pendingReceptionTasks, type ReceptionTask } from "@/lib/receptionTasks";
 import { CALL_TRIGGER_LABELS, callOutcome, clinicDate, type CallTrigger } from "../../../../lib/db/src/follow-up";
-import type { FollowUpCall } from "../../../../lib/db/src/schema/schema";
+import type { FollowUpCall, Invoice } from "../../../../lib/db/src/schema/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Users, 
@@ -1367,7 +1369,8 @@ export default function StaffPortal() {
       const res = await fetch('/api/lab-tasks');
       if (!res.ok) throw new Error('Failed to fetch');
       return res.json();
-    }
+    },
+    refetchInterval: 30_000,
   });
   const labTasksRaw = labTasksQuery.data || [];
   const labTasks = useMemo(() => {
@@ -1551,18 +1554,7 @@ export default function StaffPortal() {
       });
   }, [todayAppointments, patients]);
 
-  const receptionistTasks = useMemo(() => {
-    return labTasks
-      .filter((t: any) => t.status === 'Pending' || t.status === 'Scheduled' || t.status === 'Delayed')
-      .map((t: any) => ({
-        id: t.id,
-        type: t.test?.toLowerCase().includes('usg') || t.test?.toLowerCase().includes('scan') ? 'usg' : 'lab',
-        patient: t.patient,
-        title: t.status === 'Delayed' ? `Urgent: ${t.test}` : `Book ${t.test}`,
-        urgency: t.status === 'Delayed' ? 'High' : t.due === 'Today' ? 'High' : 'Medium',
-        status: t.status,
-      }));
-  }, [labTasks]);
+  const receptionistTasks = useMemo(() => pendingReceptionTasks(labTasks), [labTasks]);
 
   const crossSellOpportunities = useMemo(() => {
     const opportunities: any[] = [];
@@ -1649,7 +1641,8 @@ export default function StaffPortal() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [selectedPatientForOnboarding, setSelectedPatientForOnboarding] = useState<any>(null);
   const [isClinicalActionOpen, setIsClinicalActionOpen] = useState(false);
-  const [selectedTaskForAction, setSelectedTaskForAction] = useState<any>(null);
+  const [selectedTaskForAction, setSelectedTaskForAction] = useState<ReceptionTask | null>(null);
+  const [taskBookingDate, setTaskBookingDate] = useState("");
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPatientForCheckout, setSelectedPatientForCheckout] = useState<any>(null);
   const [selectedDocItem, setSelectedDocItem] = useState<any>(null);
@@ -1718,6 +1711,10 @@ export default function StaffPortal() {
   const [followUpTriggerFilter, setFollowUpTriggerFilter] = useState("all");
 
   const [billingPatientId, setBillingPatientId] = useState<number | null>(null);
+  const [billingTab, setBillingTab] = useState("new-bill");
+  const [billingItemSearch, setBillingItemSearch] = useState("");
+  const [billingItemCategory, setBillingItemCategory] = useState("suggested");
+  const [showAllBillingTemplates, setShowAllBillingTemplates] = useState(false);
   const [isBillingPatientPickerOpen, setIsBillingPatientPickerOpen] = useState(false);
   const [billingItems, setBillingItems] = useState<{catalogItemId?: number; inventoryItemId?: number; name: string; price: number; quantity: number; taxRate: number; isEstimated?: boolean}[]>([]);
   const [billingPaymentMethod, setBillingPaymentMethod] = useState("cash");
@@ -1761,7 +1758,7 @@ export default function StaffPortal() {
   });
   const patientInvoices = patientInvoicesQuery.data || [];
   const [invoiceSearch, setInvoiceSearch] = useState("");
-  const allInvoicesQuery = useQuery<any[]>({
+  const allInvoicesQuery = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
     queryFn: async () => {
       const res = await fetch("/api/invoices");
@@ -1770,6 +1767,27 @@ export default function StaffPortal() {
     },
   });
   const queryClient = useQueryClient();
+  const bookLabTaskMutation = useMutation({
+    mutationFn: async ({ id, due }: { id: number; due: string }) => {
+      const res = await fetch(`/api/lab-tasks/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "Scheduled", due }),
+      });
+      if (!res.ok) throw new Error("Could not save the investigation booking. Please try again.");
+      return res.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/lab-tasks"] });
+      setIsClinicalActionOpen(false);
+      setSelectedTaskForAction(null);
+      setTaskBookingDate("");
+      toast({ title: "Investigation booking saved" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Booking failed", description: err.message, variant: "destructive" });
+    },
+  });
   const requestedBillingItems = billingItems.map(({ catalogItemId, inventoryItemId, quantity }) => ({
     ...(catalogItemId != null ? { catalogItemId } : {}),
     ...(inventoryItemId != null ? { inventoryItemId } : {}),
@@ -3962,7 +3980,7 @@ export default function StaffPortal() {
                     onRecordPrescription={(apt) => setPrescriptionAppointment(apt)}
                     onUploadPrescription={(patient) => { setSelectedPatientForUpload(patient); setIsUploadOpen(true); }}
                     prescribedAppointmentIds={prescribedAppointmentIds}
-                    onOpenTask={(task) => { setSelectedTaskForAction(task); setIsClinicalActionOpen(true); }}
+                    onOpenTask={(task) => { setSelectedTaskForAction(task); setTaskBookingDate(""); setIsClinicalActionOpen(true); }}
                     onOpenPatient={openViewLog}
                     onRegisterPatient={() => setIsRegisterOpen(true)}
                     onUploadReport={() => setIsUploadPickerOpen(true)}
@@ -4206,22 +4224,28 @@ export default function StaffPortal() {
                 <div className="flex justify-between items-center">
                   <div>
                     <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-billing-title">Patient Billing</h2>
-                    <p className="text-sm text-saivie-plum mt-1">Select a patient to auto-estimate, then review and confirm</p>
+                    <p className="text-sm text-saivie-plum mt-1">Create a bill or browse all patient invoices</p>
                   </div>
                 </div>
 
+                <Tabs value={billingTab} onValueChange={setBillingTab}>
+                  <TabsList aria-label="Billing views" className="mb-4">
+                    <TabsTrigger value="new-bill" data-testid="tab-new-bill">New bill</TabsTrigger>
+                    <TabsTrigger value="all-invoices" data-testid="tab-all-invoices">All invoices</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="new-bill" className="mt-0">
+                <h3 className="mb-4 font-serif text-xl font-bold text-saivie-plum">New bill</h3>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 space-y-4">
-                    <Card className="border-saivie-border shadow-sm">
+                    <Card className="border-0 bg-transparent shadow-none">
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
-                          <Users className="w-4 h-4 text-saivie-teal" />
-                          Today's Queue
+                          1 · Patient
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {(() => {
-                          const todayStr = new Date().toISOString().split('T')[0];
+                          const todayStr = clinicDate(new Date());
                           const todayAppts = appointments.filter((a: any) => a.date === todayStr);
                           const todayPatientIds = Array.from(new Set(todayAppts.map((a: any) => a.patientId)));
                           const todayPatients = todayPatientIds.map(id => patients.find((p: any) => p.id === id)).filter(Boolean);
@@ -4231,6 +4255,8 @@ export default function StaffPortal() {
                             setBillingItems([]);
                             setBillingIsEstimate(false);
                             setBillingEstimateSource("");
+                            setBillingItemSearch("");
+                            setBillingItemCategory("suggested");
                             createInvoiceMutation.reset();
                           };
                           const selectedPatient = patients.find((p: any) => p.id === billingPatientId);
@@ -4238,7 +4264,7 @@ export default function StaffPortal() {
                           return (
                             <>
                               {todayPatients.length > 0 ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className="flex flex-wrap gap-2">
                                   {todayPatients.map((p: any) => {
                                     const appt = todayAppts.find((a: any) => a.patientId === p.id);
                                     const isSelected = billingPatientId === p.id;
@@ -4246,21 +4272,10 @@ export default function StaffPortal() {
                                       <button
                                         key={p.id}
                                         onClick={() => selectPatient(p.id)}
-                                        className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${isSelected ? 'border-saivie-teal bg-saivie-surface-muted ring-2 ring-saivie-border' : 'border-saivie-border hover:border-saivie-border hover:bg-saivie-surface-muted'}`}
+                                        className={`rounded-full border px-3 py-1.5 text-left text-xs transition-colors ${isSelected ? 'border-saivie-teal bg-saivie-sage text-saivie-teal' : 'border-saivie-border bg-white text-saivie-plum hover:bg-saivie-surface-muted'}`}
                                         data-testid={`btn-queue-patient-${p.id}`}
                                       >
-                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${isSelected ? 'bg-saivie-teal text-white' : 'bg-saivie-sage text-saivie-plum'}`}>
-                                          {p.name?.charAt(0)}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="text-sm font-semibold text-saivie-plum truncate">
-                                            {p.name} {p.isPrimeMember ? '⭐' : ''}
-                                          </div>
-                                          <div className="text-xs text-saivie-plum truncate">
-                                            {appt?.time || ''} · {p.type || appt?.visitType || 'General'}
-                                          </div>
-                                        </div>
-                                        {isSelected && <CheckCircle2 className="w-4 h-4 text-saivie-teal flex-shrink-0" />}
+                                        {p.name}{appt?.time ? ` · ${appt.time}` : ""}{p.isPrimeMember ? " · Prime" : ""}
                                       </button>
                                     );
                                   })}
@@ -4269,8 +4284,7 @@ export default function StaffPortal() {
                                 <div className="text-center py-4 text-sm text-saivie-plum">No appointments scheduled for today</div>
                               )}
 
-                              <div className="pt-2 border-t border-saivie-border">
-                                <p className="text-xs text-saivie-plum mb-2">Or search all patients</p>
+                              <div>
                                 <Popover open={isBillingPatientPickerOpen} onOpenChange={setIsBillingPatientPickerOpen}>
                                   <PopoverTrigger asChild>
                                     <Button
@@ -4332,18 +4346,18 @@ export default function StaffPortal() {
                     </Card>
 
                     {billingPatientId && (
-                      <Card className="border-saivie-border shadow-sm">
+                      <Card className="border-0 bg-transparent shadow-none">
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider">Quick Estimate Templates</CardTitle>
+                          <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider">2 · Template</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="flex flex-wrap gap-2">
-                            {Object.entries(estimationTemplates).map(([key, tmpl]) => (
+                            {Object.entries(estimationTemplates).filter(([key]) => showAllBillingTemplates || ["gynec_initial", "gynec_followup", "pcos", "pregnancy_initial", "pregnancy_followup"].includes(key)).map(([key, tmpl]) => (
                               <Button
                                 key={key}
                                 size="sm"
                                 variant="outline"
-                                className={`h-7 text-xs ${billingEstimateSource.includes(tmpl.label) ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-saivie-border text-saivie-plum hover:bg-saivie-surface-muted hover:border-saivie-border'}`}
+                                className={`h-7 rounded-full text-xs ${billingEstimateSource.includes(tmpl.label) ? 'border-saivie-teal bg-saivie-sage text-saivie-teal' : 'border-saivie-border text-saivie-plum hover:bg-saivie-surface-muted'}`}
                                 onClick={() => {
                                   const matchedItems = tmpl.items.map(name => {
                                     const catalogItem = billingCatalogItems.find((c: any) => c.name === name && c.isActive !== false);
@@ -4361,31 +4375,17 @@ export default function StaffPortal() {
                                 {tmpl.label}
                               </Button>
                             ))}
+                            <Button variant="outline" size="sm" className="h-7 rounded-full text-xs" onClick={() => setShowAllBillingTemplates(!showAllBillingTemplates)}>{showAllBillingTemplates ? "Less" : "More..."}</Button>
                           </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {billingIsEstimate && billingItems.length > 0 && (
-                      <Card className="border-amber-200 shadow-sm bg-amber-50/50 border-l-4 border-l-amber-400">
-                        <CardContent className="py-3 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                            <Sparkles className="w-4 h-4 text-amber-600" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-bold text-amber-900">Estimate: {billingEstimateSource}</p>
-                            <p className="text-xs text-amber-700 mt-0.5">Review the selected services and products below. Add or remove items, then confirm the bill.</p>
-                          </div>
-                          <Badge className="bg-amber-200 text-amber-800 border-amber-300 shrink-0">Estimated</Badge>
                         </CardContent>
                       </Card>
                     )}
 
                     {billingPatientId && (
-                      <Card className="border-saivie-border shadow-sm">
+                      <Card className="border-0 bg-transparent shadow-none">
                         <CardHeader className="pb-3">
                           <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center justify-between">
-                            <span>{billingIsEstimate ? 'Adjust Estimated Items' : 'Add Services and Products'}</span>
+                            <span>3 · Items</span>
                             {billingIsEstimate && (
                               <Button variant="ghost" size="sm" className="text-xs text-saivie-plum h-6" onClick={() => { setBillingItems([]); setBillingIsEstimate(false); }} data-testid="btn-clear-estimate">
                                 Clear All
@@ -4394,7 +4394,21 @@ export default function StaffPortal() {
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          <section className="space-y-2" aria-label="Products">
+                          <Input value={billingItemSearch} onChange={(event) => setBillingItemSearch(event.target.value)} placeholder="Search services, tests, products..." aria-label="Search billing items" data-testid="input-search-billing-items" />
+                          <Tabs value={billingItemCategory} onValueChange={setBillingItemCategory}>
+                            <TabsList className="flex h-auto flex-wrap justify-start gap-1 bg-transparent" aria-label="Item categories">
+                              <TabsTrigger value="suggested">Suggested</TabsTrigger>
+                              {[...new Set(billingCatalogItems.filter((item: any) => item.isActive !== false).map((item: any) => item.category || "Other"))].map((category) => <TabsTrigger key={category} value={`catalog:${category}`}>{category}</TabsTrigger>)}
+                              <TabsTrigger value="products">Products</TabsTrigger>
+                            </TabsList>
+                          </Tabs>
+                          {billingCatalogQuery.isError && <p role="alert" className="text-sm text-rose-600">Could not load services: {billingCatalogQuery.error.message}</p>}
+                          {billingCatalogQuery.isLoading && <p className="text-sm">Loading services...</p>}
+                          {!billingCatalogQuery.isLoading && !billingInventoryQuery.isLoading && !billingCatalogQuery.isError && !billingInventoryQuery.isError
+                            && !billingCatalogItems.some((item: any) => item.isActive !== false && item.name.toLowerCase().includes(billingItemSearch.trim().toLowerCase()) && (billingItemCategory === "suggested" || billingItemCategory === `catalog:${item.category || "Other"}`))
+                            && !billingProducts.some((item: any) => item.name.toLowerCase().includes(billingItemSearch.trim().toLowerCase()) && (billingItemCategory === "suggested" || billingItemCategory === "products"))
+                            && <p className="text-sm text-saivie-plum">No matching items</p>}
+                          {(billingItemCategory === "products" || billingItemCategory === "suggested") && <section className="space-y-2" aria-label="Products">
                             <p className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Products</p>
                             {billingInventoryQuery.isLoading ? (
                               <p className="text-sm text-saivie-plum">Loading products...</p>
@@ -4403,8 +4417,8 @@ export default function StaffPortal() {
                             ) : billingProducts.length === 0 ? (
                               <p className="text-sm text-saivie-plum">No active products with a selling price. Add a selling price in Inventory to make products available here.</p>
                             ) : (
-                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                {billingProducts.map((product: any) => {
+                              <div className="grid grid-cols-1 gap-2">
+                                {billingProducts.filter((product: any) => product.name.toLowerCase().includes(billingItemSearch.trim().toLowerCase())).map((product: any) => {
                                   const alreadyAdded = billingItems.some((line) => line.inventoryItemId === product.id);
                                   return (
                                     <div key={product.id} className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 ${alreadyAdded ? "border-emerald-200 bg-emerald-50" : "border-saivie-border"}`} data-testid={`billing-product-${product.id}`}>
@@ -4448,11 +4462,10 @@ export default function StaffPortal() {
                                 })}
                               </div>
                             )}
-                          </section>
-                          <Separator />
+                          </section>}
                           {Object.entries(
                             billingCatalogItems
-                              .filter((c: any) => c.isActive !== false)
+                              .filter((c: any) => c.isActive !== false && c.name.toLowerCase().includes(billingItemSearch.trim().toLowerCase()) && (billingItemCategory === "suggested" || billingItemCategory === `catalog:${c.category || "Other"}`))
                               .reduce((acc: any, item: any) => {
                                 const cat = item.category || "Other";
                                 if (!acc[cat]) acc[cat] = [];
@@ -4462,7 +4475,7 @@ export default function StaffPortal() {
                           ).map(([category, items]: [string, any]) => (
                             <div key={category}>
                               <p className="text-xs font-bold text-saivie-plum uppercase tracking-wider mb-2">{category}</p>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div className="grid grid-cols-1 gap-2">
                                 {items.map((item: any) => {
                                   const alreadyAdded = billingItems.some((b: any) => b.catalogItemId === item.id);
                                   const wasEstimated = alreadyAdded && billingItems.find((b: any) => b.catalogItemId === item.id)?.isEstimated;
@@ -4500,127 +4513,21 @@ export default function StaffPortal() {
                       </Card>
                     )}
 
-                    {billingPatientId && (
-                      <Card className="border-saivie-border shadow-sm">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
-                            <History className="w-4 h-4 text-emerald-600" />
-                            Invoice History
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          {patientInvoicesQuery.isLoading ? (
-                            <p className="text-sm text-saivie-plum text-center py-4">Loading invoices...</p>
-                          ) : patientInvoices.length === 0 ? (
-                            <p className="text-sm text-saivie-plum text-center py-4">No invoices yet for this patient</p>
-                          ) : (
-                            <div className="divide-y divide-slate-100">
-                              {[...patientInvoices]
-                                .sort((a: any, b: any) => (b.date || "").localeCompare(a.date || "") || (b.id - a.id))
-                                .map((inv: any) => (
-                                  <div key={inv.id} className="py-2.5 flex items-center justify-between gap-3" data-testid={`invoice-history-row-${inv.id}`}>
-                                    <div className="min-w-0">
-                                      <p className="text-sm font-bold text-saivie-plum">Invoice {formatInvoiceNumber(inv.id)} · ₹{Math.round(inv.total || 0).toLocaleString('en-IN')}</p>
-                                      <p className="text-xs text-saivie-plum mt-0.5">
-                                        {inv.date} · {(inv.items || []).length} item{(inv.items || []).length === 1 ? "" : "s"} · <span className="capitalize">{inv.paymentMethod || "cash"}</span>
-                                      </p>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <Badge variant="outline" className={`text-[10px] capitalize ${(inv.paymentStatus || 'paid') === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                                        {inv.paymentStatus || 'paid'}
-                                      </Badge>
-                                      <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openHistoryInvoice(inv)} data-testid={`btn-view-invoice-${inv.id}`}>
-                                        <Eye className="w-3.5 h-3.5 mr-1" />View / Print
-                                      </Button>
-                                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => openEditInvoice(inv)} data-testid={`btn-edit-invoice-${inv.id}`}>
-                                        <Pencil className="w-3.5 h-3.5" />
-                                      </Button>
-                                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-saivie-plum hover:text-red-600" onClick={() => confirmDeleteInvoice(inv)} disabled={deleteInvoiceMutation.isPending} data-testid={`btn-delete-invoice-${inv.id}`}>
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ))}
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    <Card className="border-saivie-border shadow-sm" data-testid="card-all-invoices">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
-                          <History className="w-4 h-4 text-emerald-600" />
-                          All Invoices
-                        </CardTitle>
-                        <Input
-                          value={invoiceSearch}
-                          onChange={(e) => setInvoiceSearch(e.target.value)}
-                          placeholder="Search by patient name or invoice #"
-                          className="mt-2 h-8 text-xs"
-                          data-testid="input-search-invoices"
-                        />
-                      </CardHeader>
-                      <CardContent>
-                        {(() => {
-                          const q = invoiceSearch.trim().toLowerCase().replace(/^#/, "").replace(/^sai-/, "");
-                          const rows = (allInvoicesQuery.data || [])
-                            .map((inv: any) => ({ inv, patient: patients.find((p: any) => p.id === inv.patientId) }))
-                            .filter(({ inv, patient }) => !q || (patient?.name || "").toLowerCase().includes(q) || String(inv.id) === q)
-                            .sort((a, b) => (b.inv.date || "").localeCompare(a.inv.date || "") || b.inv.id - a.inv.id);
-                          if (allInvoicesQuery.isLoading) return <p className="text-sm text-saivie-plum text-center py-4">Loading invoices...</p>;
-                          if (rows.length === 0) return <p className="text-sm text-saivie-plum text-center py-4">{q ? "No matching invoices" : "No invoices yet"}</p>;
-                          return (
-                            <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
-                              {rows.map(({ inv, patient }) => (
-                                <div key={inv.id} className="py-2.5 flex items-center justify-between gap-3" data-testid={`all-invoices-row-${inv.id}`}>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-bold text-saivie-plum truncate">{patient?.name || `Patient #${inv.patientId}`}</p>
-                                    <p className="text-xs text-saivie-plum mt-0.5">
-                                      Invoice {formatInvoiceNumber(inv.id)} · {inv.date} · ₹{Math.round(inv.total || 0).toLocaleString('en-IN')}
-                                    </p>
-                                  </div>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    <Badge variant="outline" className={`text-[10px] capitalize ${(inv.paymentStatus || 'paid') === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                                      {inv.paymentStatus || 'paid'}
-                                    </Badge>
-                                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openHistoryInvoice(inv)} data-testid={`btn-all-view-invoice-${inv.id}`}>
-                                      <Eye className="w-3.5 h-3.5 mr-1" />View / Print
-                                    </Button>
-                                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => startEmailInvoice(inv)} title="Email invoice" data-testid={`btn-all-email-invoice-${inv.id}`}>
-                                      <Mail className="w-3.5 h-3.5" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => openEditInvoice(inv)} data-testid={`btn-all-edit-invoice-${inv.id}`}>
-                                      <Pencil className="w-3.5 h-3.5" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-saivie-plum hover:text-red-600" onClick={() => confirmDeleteInvoice(inv)} disabled={deleteInvoiceMutation.isPending} data-testid={`btn-all-delete-invoice-${inv.id}`}>
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                      </CardContent>
-                    </Card>
                   </div>
 
                   <div className="space-y-4">
-                    <Card className={`shadow-sm sticky top-6 ${billingIsEstimate ? 'border-amber-200 border-2' : 'border-saivie-border'}`}>
+                    <Card className="sticky top-6 border-saivie-border shadow-sm">
                       <CardHeader className="pb-3 border-b border-saivie-border">
                         <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
                           <Receipt className="w-4 h-4 text-emerald-600" />
-                          {billingIsEstimate ? 'Estimated Bill' : 'Invoice Summary'}
-                          {billingIsEstimate && <Badge className="bg-amber-100 text-amber-700 border-amber-200 ml-auto text-[10px]">Est.</Badge>}
+                          Invoice summary
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4 pt-4">
                         {billingPatientId && (
-                          <div className={`p-3 rounded-lg border ${billingIsEstimate ? 'bg-amber-50 border-amber-100' : 'bg-saivie-surface-muted border-saivie-border'}`}>
-                            <p className={`text-xs font-medium ${billingIsEstimate ? 'text-amber-600' : 'text-saivie-teal'}`}>Patient</p>
-                            <p className={`text-sm font-bold ${billingIsEstimate ? 'text-amber-900' : 'text-saivie-plum'}`}>{patients.find((p: any) => p.id === billingPatientId)?.name || 'Unknown'}</p>
-                            <p className="text-xs text-saivie-plum mt-0.5">{patients.find((p: any) => p.id === billingPatientId)?.type || 'General'}</p>
+                          <div>
+                            <p className="text-sm font-bold text-saivie-plum">{patients.find((p: any) => p.id === billingPatientId)?.name || 'Unknown'}</p>
+                            <p className="text-xs text-saivie-plum mt-0.5">{billingIsEstimate ? `${billingEstimateSource} · Estimate` : patients.find((p: any) => p.id === billingPatientId)?.type || 'General'}</p>
                           </div>
                         )}
 
@@ -4648,7 +4555,7 @@ export default function StaffPortal() {
                                       <span className="text-xs font-medium text-saivie-plum">Qty: {item.quantity}</span>
                                       <button className="text-xs text-saivie-plum hover:text-saivie-plum" onClick={() => { const updated = [...billingItems]; updated[idx] = { ...item, quantity: item.quantity + 1 }; setBillingItems(updated); }}>+</button>
                                     </div>
-                                    {quoteItem && <p className="text-xs text-saivie-plum mt-0.5">GST {quoteItem.taxRate}% after discount: ₹{itemTax.toLocaleString('en-IN')}</p>}
+                                    {quoteItem && itemTax > 0 && <p className="text-xs text-saivie-plum mt-0.5">GST {quoteItem.taxRate}%: ₹{itemTax.toLocaleString('en-IN')}</p>}
                                     {quoteItem?.discountAmount ? <p className="text-xs text-emerald-700 mt-0.5">{quoteItem.discountLabel}: −₹{quoteItem.discountAmount.toLocaleString('en-IN')}</p> : null}
                                   </div>
                                   <div className="text-right flex items-start gap-2">
@@ -4680,7 +4587,7 @@ export default function StaffPortal() {
                               <div className="space-y-1 text-sm">
                                 <div className="flex justify-between text-saivie-plum"><span>Subtotal</span><span>₹{subtotal.toLocaleString('en-IN')}</span></div>
                                 <div className="flex justify-between text-saivie-plum"><span>GST after discount</span><span>₹{Math.round(tax).toLocaleString('en-IN')}</span></div>
-                                <div className="flex justify-between font-medium text-emerald-700"><span>Discounts</span><span>−₹{discountTotal.toLocaleString('en-IN')}</span></div>
+                                {discountTotal > 0 && <div className="flex justify-between font-medium text-emerald-700"><span>Discounts</span><span>−₹{discountTotal.toLocaleString('en-IN')}</span></div>}
                                 <Separator />
                                 <div className="flex justify-between font-bold text-lg text-saivie-plum">
                                   <span>{billingIsEstimate ? 'Estimated Total' : 'Total'}</span>
@@ -4703,10 +4610,11 @@ export default function StaffPortal() {
                                 </Select>
                               </div>
 
-                              <div>
+                              <details>
+                                <summary className="cursor-pointer text-xs text-saivie-plum">Add a note (optional)</summary>
                                 <Label className="text-xs font-medium text-saivie-plum">Notes (optional)</Label>
                                 <Textarea value={billingNotes} onChange={(e) => setBillingNotes(e.target.value)} placeholder="Add notes..." className="mt-1 min-h-[60px]" data-testid="input-billing-notes" />
-                              </div>
+                              </details>
 
                               <Button
                                 className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold"
@@ -4734,10 +4642,29 @@ export default function StaffPortal() {
                           );
                         })()}
                       </CardContent>
+                      {billingPatientId && <div className="px-6 pb-4 text-center">
+                        {patientInvoicesQuery.isError ? <p role="alert" className="text-xs text-rose-600">Could not load the last invoice.</p>
+                          : patientInvoicesQuery.isLoading ? <p className="text-xs">Loading last invoice...</p>
+                            : patientInvoices.length > 0 && (() => {
+                              const invoice = [...patientInvoices].sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.id - a.id)[0];
+                              return <button type="button" className="text-xs text-saivie-teal underline" onClick={() => openHistoryInvoice(invoice)} data-testid="btn-last-invoice">Last invoice: {formatInvoiceNumber(invoice.id)} · ₹{(invoice.total ?? 0).toLocaleString("en-IN")}</button>;
+                            })()}
+                      </div>}
                     </Card>
                   </div>
                 </div>
-
+                  </TabsContent>
+                  <TabsContent value="all-invoices" className="mt-0">
+                    <AllInvoices invoices={allInvoicesQuery.data || []} patients={patients}
+                      search={invoiceSearch} onSearch={setInvoiceSearch}
+                      isLoading={allInvoicesQuery.isLoading}
+                      error={allInvoicesQuery.error || (patientsQuery.isError ? patientsQuery.error : null)}
+                      isDeleting={deleteInvoiceMutation.isPending}
+                      onRefresh={() => { allInvoicesQuery.refetch(); patientsQuery.refetch(); }}
+                      onView={openHistoryInvoice} onEmail={startEmailInvoice}
+                      onEdit={openEditInvoice} onDelete={confirmDeleteInvoice} />
+                  </TabsContent>
+                </Tabs>
                 <Dialog open={isInvoicePreviewOpen} onOpenChange={setIsInvoicePreviewOpen}>
                   <DialogContent className="max-h-[95vh] max-w-5xl overflow-y-auto">
                     <div className="sticky top-0 z-10 -mt-2 flex justify-end bg-saivie-ivory/90 py-1 print:hidden">
@@ -5648,17 +5575,15 @@ export default function StaffPortal() {
             </Dialog>
 
             {/* Clinical Action Dialog */}
-            <Dialog open={isClinicalActionOpen} onOpenChange={setIsClinicalActionOpen}>
+            <Dialog open={isClinicalActionOpen} onOpenChange={(open) => { if (!bookLabTaskMutation.isPending) setIsClinicalActionOpen(open); }}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             {selectedTaskForAction?.type === 'lab' && <FlaskConical className="w-5 h-5 text-saivie-teal" />}
                             {selectedTaskForAction?.type === 'usg' && <Activity className="w-5 h-5 text-saivie-teal" />}
-                            {selectedTaskForAction?.type === 'onboard' && <Users className="w-5 h-5 text-emerald-600" />}
                             
                             {selectedTaskForAction?.type === 'lab' && "Schedule Lab Test"}
                             {selectedTaskForAction?.type === 'usg' && "Book Ultrasound Scan"}
-                            {selectedTaskForAction?.type === 'onboard' && "Complete Registration"}
                         </DialogTitle>
                         <DialogDescription>
                             Action for <span className="font-bold text-saivie-plum">{selectedTaskForAction?.patient}</span>: {selectedTaskForAction?.title}
@@ -5666,98 +5591,25 @@ export default function StaffPortal() {
                     </DialogHeader>
                     
                     <div className="py-4 space-y-4">
-                        {selectedTaskForAction?.type === 'lab' && (
-                            <>
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-saivie-plum uppercase">Test Type</Label>
-                                    <Input value="Oral Glucose Tolerance Test (OGTT)" readOnly className="bg-saivie-surface-muted" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-saivie-plum uppercase">Date</Label>
-                                        <Input type="date" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-saivie-plum uppercase">Time Slot</Label>
-                                        <Select>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select Time" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="08:00">08:00 AM</SelectItem>
-                                                <SelectItem value="09:00">09:00 AM</SelectItem>
-                                                <SelectItem value="10:00">10:00 AM</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-saivie-plum uppercase">Phlebotomist</Label>
-                                    <Select>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Assign Staff" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="sarah">Sarah J. (Available)</SelectItem>
-                                            <SelectItem value="mike">Mike T. (Busy)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </>
-                        )}
-
-                        {selectedTaskForAction?.type === 'usg' && (
-                            <>
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-saivie-plum uppercase">Scan Type</Label>
-                                    <Input value="T2 Anomaly Scan (20 Weeks)" readOnly className="bg-saivie-surface-muted" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-saivie-plum uppercase">Preferred Date</Label>
-                                        <Input type="date" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-saivie-plum uppercase">Radiologist</Label>
-                                        <Select>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select Doctor" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="dr_lee">Dr. Lee (Radiology)</SelectItem>
-                                                <SelectItem value="dr_patel">Dr. Patel (OBGYN)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 p-3 bg-amber-50 text-amber-800 text-xs rounded border border-amber-100">
-                                    <Info className="w-4 h-4 shrink-0" />
-                                    Patient requires a full bladder for this scan. Instructions will be sent via SMS.
-                                </div>
-                            </>
-                        )}
-
-                        {selectedTaskForAction?.type === 'onboard' && (
-                            <div className="text-center p-4">
-                                <p className="text-sm text-saivie-plum mb-4">This patient is waiting in the queue. Please proceed to the full onboarding form.</p>
-                                <Button className="w-full bg-saivie-teal hover:bg-saivie-teal text-white" onClick={() => {
-                                    setIsClinicalActionOpen(false);
-                                    setSelectedPatientForOnboarding({ name: selectedTaskForAction.patient });
-                                    setIsOnboardingOpen(true);
-                                }}>
-                                    Open Onboarding Form
-                                </Button>
-                            </div>
-                        )}
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-saivie-plum uppercase">Investigation</Label>
+                            <Input value={selectedTaskForAction?.test ?? ""} readOnly className="bg-saivie-surface-muted" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="task-booking-date" className="text-xs font-bold text-saivie-plum uppercase">Booking date</Label>
+                            <Input id="task-booking-date" type="date" min={clinicDate(new Date())} value={taskBookingDate} onChange={(event) => setTaskBookingDate(event.target.value)} disabled={bookLabTaskMutation.isPending} />
+                        </div>
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsClinicalActionOpen(false)}>Cancel</Button>
-                        {selectedTaskForAction?.type !== 'onboard' && (
-                            <Button className="bg-saivie-teal hover:bg-saivie-teal text-white" onClick={() => setIsClinicalActionOpen(false)}>
-                                Confirm Booking
-                            </Button>
-                        )}
+                        <Button variant="outline" disabled={bookLabTaskMutation.isPending} onClick={() => setIsClinicalActionOpen(false)}>Cancel</Button>
+                        <Button className="bg-saivie-teal hover:bg-saivie-teal text-white"
+                            disabled={!selectedTaskForAction || !taskBookingDate || taskBookingDate < clinicDate(new Date()) || bookLabTaskMutation.isPending}
+                            onClick={() => {
+                                if (selectedTaskForAction) bookLabTaskMutation.mutate({ id: selectedTaskForAction.id, due: taskBookingDate });
+                            }}>
+                            {bookLabTaskMutation.isPending ? "Saving..." : "Confirm Booking"}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
