@@ -53,6 +53,7 @@ export interface ReceptionFollowUp {
 }
 
 interface ReceptionDashboardProps {
+  logisticsOnly?: boolean;
   appointments: any[];
   patients: any[];
   tasks: ReceptionTask[];
@@ -129,6 +130,7 @@ const ARRIVAL_BADGE: Record<ArrivalState, { label: string; className: string }> 
 };
 
 export function ReceptionDashboard({
+  logisticsOnly = false,
   appointments,
   patients,
   tasks,
@@ -196,15 +198,16 @@ export function ReceptionDashboard({
     .sort((a, b) => new Date(a.apt.checkedInAt || 0).getTime() - new Date(b.apt.checkedInAt || 0).getTime());
 
   const findPatient = (apt: any) => patients.find((p) => p.id === apt.patientId);
-  const hpvClinicStatus = useHpvClinicStatuses(appointments.map((apt: any) => apt.patientId));
+  const hpvClinicStatus = useHpvClinicStatuses(logisticsOnly ? [] : appointments.map((apt: any) => apt.patientId));
   const hpvStatusFor = (apt: any) => hpvProtection(hpvSurveyAnswer(findPatient(apt)), hpvClinicStatus(apt.patientId));
-  const pendingRx = appointments.filter((apt) => getArrivalState(apt) === "completed" && !prescribedAppointmentIds.has(apt.id));
+  const pendingRx = logisticsOnly ? [] : appointments.filter((apt) => getArrivalState(apt) === "completed" && !prescribedAppointmentIds.has(apt.id));
   const { data: inventoryItems = [] } = useInventory();
   const inventoryAlerts = useMemo(() => getInventoryAlerts(inventoryItems), [inventoryItems]);
   const inventoryAlertCount = new Set([...inventoryAlerts.stock, ...inventoryAlerts.expiry].map((i) => i.id)).size;
   const pregnancyReminders = useMemo(() => getPregnancyReminders(patients), [patients]);
   const queryClient = useQueryClient();
   const vaccinationRemindersQuery = useQuery<any[]>({
+    enabled: !logisticsOnly,
     queryKey: ["/api/vaccination-reminders"],
     queryFn: async () => {
       const res = await fetch("/api/vaccination-reminders");
@@ -237,6 +240,9 @@ export function ReceptionDashboard({
   const renderAction = (apt: any, state: ArrivalState) => {
     const base = "h-8 min-w-[88px] text-xs border-saivie-border bg-saivie-surface-muted text-saivie-teal hover:bg-saivie-sage";
     const busy = isPending(apt.id);
+    if (logisticsOnly && (state === "waiting" || state === "in-consultation" || state === "completed")) {
+      return <Button size="sm" variant="outline" className={base} onClick={() => { const patient = findPatient(apt); if (patient) onOpenPatient(patient); }}>View appointments</Button>;
+    }
     const closeMenu = (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -418,7 +424,7 @@ export function ReceptionDashboard({
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                               <p className="font-semibold text-saivie-plum">{apt.patient}</p>
-                              {hasVisitSurvey(patient?.history, apt.id) ? (
+                              {!logisticsOnly && (hasVisitSurvey(patient?.history, apt.id) ? (
                                 <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700" title="Pre-visit survey submitted for this appointment" data-testid={`flow-survey-${apt.id}`}>
                                   <ClipboardCheck className="h-3 w-3" />{surveyKindFor(apt) === "lab" ? "Lab survey filled" : "Survey filled"}
                                 </span>
@@ -426,8 +432,8 @@ export function ReceptionDashboard({
                                 <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-saivie-border bg-saivie-ivory px-2 py-0.5 text-[10px] font-medium text-saivie-plum/70" title="Pre-visit survey not submitted for this appointment" data-testid={`flow-survey-${apt.id}`}>
                                   <ClipboardList className="h-3 w-3" />{surveyKindFor(apt) === "lab" ? "Lab survey pending" : "Survey pending"}
                                 </span>
-                              )}
-                              <HpvBadge status={hpvStatusFor(apt)} />
+                              ))}
+                              {!logisticsOnly && <HpvBadge status={hpvStatusFor(apt)} />}
                             </div>
                             {patient?.phone ? (
                               <a href={`tel:${patient.phone.replace(/[^\d+]/g, "")}`} className="mt-0.5 inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-saivie-teal hover:underline" aria-label={`Call ${apt.patient} on ${patient.phone}`} data-testid={`flow-phone-${apt.id}`}>
@@ -446,11 +452,11 @@ export function ReceptionDashboard({
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1">
                           {renderAction(apt, state)}
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-saivie-plum hover:text-saivie-teal" data-testid={`btn-print-summary-${apt.id}`}
+                          {!logisticsOnly && <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-saivie-plum hover:text-saivie-teal" data-testid={`btn-print-summary-${apt.id}`}
                             title="Print patient summary" aria-label={`Print summary for ${apt.patient}`}
                             onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals, hpvClinicStatus(apt.patientId))}>
                             <Printer className="h-4 w-4" />
-                          </Button>
+                          </Button>}
                         </div>
                       </td>
                       <td className="pr-4">
@@ -512,6 +518,7 @@ export function ReceptionDashboard({
                       <td className="px-3 py-3"><Badge variant="outline" className={`text-[11px] ${tone}`}>{minutes} min</Badge></td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1.5">
+                        {logisticsOnly ? <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { const patient = findPatient(apt); if (patient) onOpenPatient(patient); }}>View appointments</Button> : <>
                         <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" data-testid={`queue-print-summary-${apt.id}`}
                           title="Print history & check-in vitals for the doctor"
                           onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals, hpvClinicStatus(apt.patientId))}>
@@ -527,6 +534,7 @@ export function ReceptionDashboard({
                             <SelectItem value="undo">Undo check-in</SelectItem>
                           </SelectContent>
                         </Select>
+                        </>}
                         </div>
                       </td>
                     </tr>
@@ -579,7 +587,7 @@ export function ReceptionDashboard({
           </CardContent>
         </Card>
 
-        <ReferralsCard patients={patients} request={referRequest} onRequestHandled={clearReferRequest} />
+        {!logisticsOnly && <ReferralsCard patients={patients} request={referRequest} onRequestHandled={clearReferRequest} />}
 
         <Card className="border-[#e9e1d2] bg-[#fffaf5] shadow-sm" data-testid="card-inventory-alerts">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -606,7 +614,7 @@ export function ReceptionDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-[#e9e1d2] bg-white shadow-sm" data-testid="card-pending-prescriptions">
+        {!logisticsOnly && <Card className="border-[#e9e1d2] bg-white shadow-sm" data-testid="card-pending-prescriptions">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-saivie-plum">
               <ClipboardList className="h-5 w-5 text-saivie-teal" /> Prescriptions to record
@@ -627,7 +635,7 @@ export function ReceptionDashboard({
             ))}
             {pendingRx.length === 0 && <p className="px-5 py-6 text-center text-sm text-saivie-plum">All prescriptions recorded</p>}
           </CardContent>
-        </Card>
+        </Card>}
           </TabsContent>
 
           <TabsContent value="reminders" className="mt-3 max-h-[60vh] space-y-3 overflow-y-auto pr-1 xl:max-h-[calc(100vh-9rem)]">
@@ -665,7 +673,7 @@ export function ReceptionDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-[#e9e1d2] bg-white shadow-sm" data-testid="card-pregnancy-reminders">
+        {!logisticsOnly && <Card className="border-[#e9e1d2] bg-white shadow-sm" data-testid="card-pregnancy-reminders">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-saivie-plum">
               <Baby className="h-5 w-5 text-saivie-rose" /> Pregnancy milestones
@@ -696,9 +704,9 @@ export function ReceptionDashboard({
             ))}
             {pregnancyReminders.length === 0 && <p className="px-5 py-6 text-center text-sm text-saivie-plum">No milestones due</p>}
           </CardContent>
-        </Card>
+        </Card>}
 
-        <Card className="border-[#e9e1d2] bg-white shadow-sm" data-testid="card-vaccination-reminders">
+        {!logisticsOnly && <Card className="border-[#e9e1d2] bg-white shadow-sm" data-testid="card-vaccination-reminders">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-saivie-plum">
               <Syringe className="h-5 w-5 text-saivie-teal" /> Vaccination reminders
@@ -746,7 +754,7 @@ export function ReceptionDashboard({
             )}
             {recordVaccinationMutation.isError && <p role="alert" className="px-5 py-2 text-xs text-rose-600">{recordVaccinationMutation.error.message}</p>}
           </CardContent>
-        </Card>
+        </Card>}
           </TabsContent>
 
           <TabsContent value="tools" className="mt-3 max-h-[60vh] space-y-3 overflow-y-auto pr-1 xl:max-h-[calc(100vh-9rem)]">
@@ -761,12 +769,18 @@ export function ReceptionDashboard({
             <Button asChild variant="outline" className="h-14 justify-start gap-2 border-saivie-border text-xs text-saivie-plum">
               <Link href="/staff/booking"><CalendarPlus className="h-4 w-4 text-saivie-teal" /> Book appointment</Link>
             </Button>
-            <Button asChild variant="outline" className="h-14 justify-start gap-2 border-saivie-border text-xs text-saivie-plum">
-              <Link href="/staff/check-in"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Check in patient</Link>
-            </Button>
-            <Button variant="outline" className="h-14 justify-start gap-2 border-saivie-border text-xs text-saivie-plum" onClick={onUploadReport} data-testid="btn-quick-upload">
+            {logisticsOnly ? (
+              <Button variant="outline" className="h-14 justify-start gap-2 border-saivie-border text-xs text-saivie-plum" onClick={() => setFilter("upcoming")}>
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Check in patient
+              </Button>
+            ) : (
+              <Button asChild variant="outline" className="h-14 justify-start gap-2 border-saivie-border text-xs text-saivie-plum">
+                <Link href="/staff/check-in"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Check in patient</Link>
+              </Button>
+            )}
+            {!logisticsOnly && <Button variant="outline" className="h-14 justify-start gap-2 border-saivie-border text-xs text-saivie-plum" onClick={onUploadReport} data-testid="btn-quick-upload">
               <Upload className="h-4 w-4 text-saivie-teal" /> Upload report
-            </Button>
+            </Button>}
           </CardContent>
         </Card>
 
@@ -786,10 +800,11 @@ export function ReceptionDashboard({
                   </p>
                 </div>
               </div>
-              <Button size="sm" variant="outline" className="h-8 shrink-0 border-saivie-border bg-saivie-surface-muted text-xs text-saivie-teal hover:bg-saivie-sage" onClick={onSync} disabled={isSyncing} data-testid="button-sync-sheets">
+              <Button size="sm" variant="outline" className="h-8 shrink-0 border-saivie-border bg-saivie-surface-muted text-xs text-saivie-teal hover:bg-saivie-sage" onClick={onSync} disabled={logisticsOnly || isSyncing} data-testid="button-sync-sheets">
                 {isSyncing ? <><RefreshCw className="mr-1 h-3 w-3 animate-spin" />Syncing</> : "Sync patient data"}
               </Button>
             </div>
+            {logisticsOnly && <p className="text-xs text-saivie-plum">Clinical data sync requires a clinician or owner account.</p>}
             {syncResult && (
               <p className={`rounded p-2 text-xs ${syncResult.error ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`} data-testid="sync-result">
                 {syncResult.error || syncResult.message}

@@ -3781,7 +3781,55 @@ export default function StaffPortal() {
             )}
 
             {/* 6. RECEPTIONIST VIEW */}
-            {activeRole === 'receptionist' && ['dashboard', 'patients'].includes(activeView) && (
+            {activeRole === 'receptionist' && activeView === 'dashboard' && (
+              <>
+                <section className="mb-6" aria-label="Welcome" data-testid="receptionist-greeting">
+                  <h2 className="font-serif text-3xl font-semibold text-[#242821]">
+                    Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}{staffDisplayName ? `, ${staffDisplayName}` : ''}
+                  </h2>
+                  <p className="mt-1 text-sm text-[#705364]">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </section>
+                <ReceptionDashboard
+                  logisticsOnly
+                  appointments={todayAppointments}
+                  patients={patients}
+                  tasks={receptionistTasks}
+                  followUps={receptionFollowUps}
+                  pendingAppointmentId={updateAppointmentMutation.isPending ? (updateAppointmentMutation.variables?.id ?? null) : null}
+                  sheetStatus={sheetStatus}
+                  syncResult={syncResult}
+                  lastSyncedAt={lastSyncedAt}
+                  isSyncing={isSyncing}
+                  onSync={handleSheetSync}
+                  onUpdateAppointment={(id, data) => updateAppointmentMutation.mutate({ id, data })}
+                  onCheckIn={(apt) => updateAppointmentMutation.mutate({ id: apt.id, data: { status: 'checked-in', checkedInAt: new Date().toISOString() } })}
+                  onComplete={() => setActiveView('patients')}
+                  onAfterVisit={() => setActiveView('patients')}
+                  onRecordPrescription={() => setActiveView('patients')}
+                  onUploadPrescription={() => setActiveView('patients')}
+                  prescribedAppointmentIds={prescribedAppointmentIds}
+                  onOpenTask={() => setActiveView('patients')}
+                  onOpenPatient={openViewLog}
+                  onRegisterPatient={() => setIsRegisterOpen(true)}
+                  onUploadReport={() => setActiveView('patients')}
+                  onViewSchedule={() => setActiveView('schedule')}
+                  onViewFollowUps={() => setActiveView('followup')}
+                  onCallFollowUp={(id) => {
+                    const call = followUpCalls.find((item: any) => item.id === id);
+                    if (!call) return;
+                    setSelectedCallPatient(call);
+                    setFollowUpCallForm({
+                      feeling: call.feeling || '', gotMedicines: call.gotMedicines || '',
+                      concerns: call.concerns || '', crossSell: call.crossSell || '',
+                      nextVisit: call.nextVisit || '', notes: call.notes || '',
+                      nextMilestone: call.nextMilestone || '', didntPickCallTime: call.didntPickCallTime || '',
+                    });
+                    setIsFollowUpCallOpen(true);
+                  }}
+                />
+              </>
+            )}
+            {activeRole === 'receptionist' && activeView === 'patients' && (
                 <ReceptionPatientList
                     patients={patients}
                     providers={providers}
