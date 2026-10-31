@@ -387,6 +387,14 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true 
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type Invoice = typeof invoices.$inferSelect;
 
+export const personalBillingTemplates = pgTable("personal_billing_templates", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  groupName: text("group_name").notNull(),
+  items: jsonb("items").notNull().$type<import("../billing-templates").BillingTemplateItem[]>(),
+});
+
 export const consentForms = pgTable("consent_forms", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").references(() => patients.id),

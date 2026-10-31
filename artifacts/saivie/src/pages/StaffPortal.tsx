@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { AllInvoices } from "@/components/AllInvoices";
+import { BillingTemplates } from "@/components/BillingTemplates";
 import { ClinicalReadingEditor } from "@/components/ClinicalReadingEditor";
 import { exactLabNumber } from "@/lib/labReading";
 import { pendingReceptionTasks, type ReceptionTask } from "@/lib/receptionTasks";
@@ -1713,7 +1714,7 @@ export default function StaffPortal() {
   const [billingPatientId, setBillingPatientId] = useState<number | null>(null);
   const [billingTab, setBillingTab] = useState("new-bill");
   const [billingItemSearch, setBillingItemSearch] = useState("");
-  const [billingItemCategory, setBillingItemCategory] = useState("suggested");
+  const [billingItemCategory, setBillingItemCategory] = useState("");
   const [showAllBillingTemplates, setShowAllBillingTemplates] = useState(false);
   const [isBillingPatientPickerOpen, setIsBillingPatientPickerOpen] = useState(false);
   const [billingItems, setBillingItems] = useState<{catalogItemId?: number; inventoryItemId?: number; name: string; price: number; quantity: number; taxRate: number; isEstimated?: boolean}[]>([]);
@@ -1730,6 +1731,10 @@ export default function StaffPortal() {
   const [editNotes, setEditNotes] = useState("");
   const billingCatalogQuery = useQuery<any[]>({ queryKey: ["/api/billing-catalog"] });
   const billingCatalogItems = billingCatalogQuery.data || [];
+  const billingCategories = [...new Set<string>(billingCatalogItems.filter((item: any) => item.isActive !== false).map((item: any) => item.category || "Other"))];
+  const selectedBillingCategory = billingItemCategory === "products" || billingCategories.some((category) => billingItemCategory === `catalog:${category}`)
+    ? billingItemCategory
+    : billingCategories.length ? `catalog:${billingCategories[0]}` : "products";
   const billingInventoryQuery = useQuery<any[]>({
     queryKey: ["/api/inventory"],
     queryFn: async () => {
@@ -2469,7 +2474,7 @@ export default function StaffPortal() {
                 {sidebarOpen && (
                     <div className="overflow-hidden">
                         <p className="text-sm font-medium text-saivie-plum truncate">{currentRole?.label || 'Staff'}</p>
-                        <button onClick={() => { localStorage.removeItem("staffUsername"); localStorage.removeItem("staffDisplayName"); setLocation("/"); }} className="text-xs text-rose-500 hover:text-rose-700 truncate text-left block w-full">Sign Out</button>
+                        <button onClick={() => { localStorage.removeItem("staffUsername"); localStorage.removeItem("staffDisplayName"); sessionStorage.removeItem("billing_staff_token"); queryClient.removeQueries({ queryKey: ["/api/billing-templates"] }); setLocation("/"); }} className="text-xs text-rose-500 hover:text-rose-700 truncate text-left block w-full">Sign Out</button>
                     </div>
                 )}
              </div>
@@ -4237,7 +4242,7 @@ export default function StaffPortal() {
                 <h3 className="mb-4 font-serif text-xl font-bold text-saivie-plum">New bill</h3>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 space-y-4">
-                    <Card className="border-0 bg-transparent shadow-none">
+                    <Card className="border-saivie-border bg-saivie-surface-muted shadow-sm" data-testid="billing-patient-section">
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
                           1 · Patient
@@ -4256,7 +4261,7 @@ export default function StaffPortal() {
                             setBillingIsEstimate(false);
                             setBillingEstimateSource("");
                             setBillingItemSearch("");
-                            setBillingItemCategory("suggested");
+                            setBillingItemCategory("");
                             createInvoiceMutation.reset();
                           };
                           const selectedPatient = patients.find((p: any) => p.id === billingPatientId);
@@ -4346,7 +4351,7 @@ export default function StaffPortal() {
                     </Card>
 
                     {billingPatientId && (
-                      <Card className="border-0 bg-transparent shadow-none">
+                      <Card className="border-saivie-border bg-saivie-surface-muted shadow-sm" data-testid="billing-template-section">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider">2 · Template</CardTitle>
                         </CardHeader>
@@ -4377,12 +4382,30 @@ export default function StaffPortal() {
                             ))}
                             <Button variant="outline" size="sm" className="h-7 rounded-full text-xs" onClick={() => setShowAllBillingTemplates(!showAllBillingTemplates)}>{showAllBillingTemplates ? "Less" : "More..."}</Button>
                           </div>
+                          <BillingTemplates
+                            currentItems={billingItems.map(({ catalogItemId, inventoryItemId, quantity }) => ({
+                              ...(catalogItemId != null ? { catalogItemId } : {}),
+                              ...(inventoryItemId != null ? { inventoryItemId } : {}),
+                              quantity,
+                            }))}
+                            currentName={billingEstimateSource}
+                            options={[
+                              ...billingCatalogItems.map((item: any) => ({ id: item.id, name: item.name, price: Number(item.price), taxRate: Number(item.taxRate) || 0, kind: "catalog" as const, isActive: item.isActive !== false })),
+                              ...(billingInventoryQuery.data || []).map((item: any) => ({ id: item.id, name: item.name, price: Number(item.sellingPrice), taxRate: Number(item.taxRate) || 0, kind: "inventory" as const, isActive: item.isActive && item.sellingPrice != null })),
+                            ]}
+                            defaults={estimationTemplates}
+                            onApply={(name, items) => {
+                              setBillingItems(items);
+                              setBillingEstimateSource(name);
+                              setBillingIsEstimate(true);
+                            }}
+                          />
                         </CardContent>
                       </Card>
                     )}
 
                     {billingPatientId && (
-                      <Card className="border-0 bg-transparent shadow-none">
+                      <Card className="border-saivie-border bg-saivie-surface-muted shadow-sm" data-testid="billing-items-section">
                         <CardHeader className="pb-3">
                           <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center justify-between">
                             <span>3 · Items</span>
@@ -4395,20 +4418,19 @@ export default function StaffPortal() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <Input value={billingItemSearch} onChange={(event) => setBillingItemSearch(event.target.value)} placeholder="Search services, tests, products..." aria-label="Search billing items" data-testid="input-search-billing-items" />
-                          <Tabs value={billingItemCategory} onValueChange={setBillingItemCategory}>
+                          <Tabs value={selectedBillingCategory} onValueChange={setBillingItemCategory}>
                             <TabsList className="flex h-auto flex-wrap justify-start gap-1 bg-transparent" aria-label="Item categories">
-                              <TabsTrigger value="suggested">Suggested</TabsTrigger>
-                              {[...new Set(billingCatalogItems.filter((item: any) => item.isActive !== false).map((item: any) => item.category || "Other"))].map((category) => <TabsTrigger key={category} value={`catalog:${category}`}>{category}</TabsTrigger>)}
+                              {billingCategories.map((category) => <TabsTrigger key={category} value={`catalog:${category}`}>{category}</TabsTrigger>)}
                               <TabsTrigger value="products">Products</TabsTrigger>
                             </TabsList>
                           </Tabs>
                           {billingCatalogQuery.isError && <p role="alert" className="text-sm text-rose-600">Could not load services: {billingCatalogQuery.error.message}</p>}
                           {billingCatalogQuery.isLoading && <p className="text-sm">Loading services...</p>}
                           {!billingCatalogQuery.isLoading && !billingInventoryQuery.isLoading && !billingCatalogQuery.isError && !billingInventoryQuery.isError
-                            && !billingCatalogItems.some((item: any) => item.isActive !== false && item.name.toLowerCase().includes(billingItemSearch.trim().toLowerCase()) && (billingItemCategory === "suggested" || billingItemCategory === `catalog:${item.category || "Other"}`))
-                            && !billingProducts.some((item: any) => item.name.toLowerCase().includes(billingItemSearch.trim().toLowerCase()) && (billingItemCategory === "suggested" || billingItemCategory === "products"))
+                            && !billingCatalogItems.some((item: any) => item.isActive !== false && item.name.toLowerCase().includes(billingItemSearch.trim().toLowerCase()) && selectedBillingCategory === `catalog:${item.category || "Other"}`)
+                            && !billingProducts.some((item: any) => item.name.toLowerCase().includes(billingItemSearch.trim().toLowerCase()) && selectedBillingCategory === "products")
                             && <p className="text-sm text-saivie-plum">No matching items</p>}
-                          {(billingItemCategory === "products" || billingItemCategory === "suggested") && <section className="space-y-2" aria-label="Products">
+                          {selectedBillingCategory === "products" && <section className="space-y-2" aria-label="Products">
                             <p className="text-xs font-bold text-saivie-plum uppercase tracking-wider">Products</p>
                             {billingInventoryQuery.isLoading ? (
                               <p className="text-sm text-saivie-plum">Loading products...</p>
@@ -4465,7 +4487,7 @@ export default function StaffPortal() {
                           </section>}
                           {Object.entries(
                             billingCatalogItems
-                              .filter((c: any) => c.isActive !== false && c.name.toLowerCase().includes(billingItemSearch.trim().toLowerCase()) && (billingItemCategory === "suggested" || billingItemCategory === `catalog:${c.category || "Other"}`))
+                              .filter((c: any) => c.isActive !== false && c.name.toLowerCase().includes(billingItemSearch.trim().toLowerCase()) && selectedBillingCategory === `catalog:${c.category || "Other"}`)
                               .reduce((acc: any, item: any) => {
                                 const cat = item.category || "Other";
                                 if (!acc[cat]) acc[cat] = [];
@@ -4516,7 +4538,7 @@ export default function StaffPortal() {
                   </div>
 
                   <div className="space-y-4">
-                    <Card className="sticky top-6 border-saivie-border shadow-sm">
+                    <Card className="sticky top-6 border-saivie-border bg-saivie-surface-muted shadow-sm" data-testid="billing-summary-section">
                       <CardHeader className="pb-3 border-b border-saivie-border">
                         <CardTitle className="text-sm font-bold text-saivie-plum uppercase tracking-wider flex items-center gap-2">
                           <Receipt className="w-4 h-4 text-emerald-600" />

@@ -5,6 +5,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { storage } from "../storage";
+import { registerBillingTemplateRoutes } from "../billing-templates";
 import { readAppointmentRange } from "../appointment-range";
 import { buildMedicineSuggestions } from "../medicine-suggestions";
 import { knownRateCard, parseRateCardText } from "../referral-rate-cards";
@@ -347,6 +348,17 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  registerBillingTemplateRoutes(app, async (req, res) => {
+    const id = getStaffUserId(req, res);
+    if (!id) return null;
+    const user = await storage.getUser(id);
+    if (!user || user.role !== "staff") {
+      res.status(403).json({ error: "Receptionist staff access required" });
+      return null;
+    }
+    return id;
+  });
 
   // Mobile app: request OTP — prefers WhatsApp and falls back to registered email via SMTP
   app.post("/api/mobile/auth/request", async (req, res) => {
@@ -2798,6 +2810,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       username: user.username,
       displayName: user.displayName ?? null,
       id: user.id,
+      staffToken: user.role === "staff" ? issueStaffToken(user.id) : undefined,
       provider: providerInfo ? { id: providerInfo.id, name: providerInfo.name, specialty: providerInfo.specialty, role: providerInfo.role } : null,
     });
   });

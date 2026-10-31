@@ -45,6 +45,15 @@ export async function ensureSchema(): Promise<void> {
       ALTER TABLE lab_tasks ADD COLUMN IF NOT EXISTS ordered_at text;
       ALTER TABLE lab_tasks ALTER COLUMN ordered_at SET DEFAULT CURRENT_TIMESTAMP::text;
 
+      CREATE TABLE IF NOT EXISTS personal_billing_templates (
+        id serial PRIMARY KEY,
+        user_id varchar NOT NULL REFERENCES users(id),
+        name text NOT NULL,
+        group_name text NOT NULL,
+        items jsonb NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS personal_billing_templates_user_idx ON personal_billing_templates(user_id);
+
       -- Remove only legacy, unlinked demo orders; preserve dated orders and clinical results.
       DELETE FROM lab_tasks AS task
       USING patients AS patient

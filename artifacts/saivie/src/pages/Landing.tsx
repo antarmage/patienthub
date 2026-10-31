@@ -129,6 +129,8 @@ export default function Landing() {
         return;
       }
       // No phone on account — direct access (legacy)
+      if (data.staffToken) sessionStorage.setItem("billing_staff_token", data.staffToken);
+      else sessionStorage.removeItem("billing_staff_token");
       if (data.username) localStorage.setItem("staffUsername", data.username);
       if (data.displayName?.trim()) localStorage.setItem("staffDisplayName", data.displayName.trim());
       else localStorage.removeItem("staffDisplayName");
@@ -160,6 +162,8 @@ export default function Landing() {
         return;
       }
       const data = await res.json();
+      if (data.staffToken) sessionStorage.setItem("billing_staff_token", data.staffToken);
+      else sessionStorage.removeItem("billing_staff_token");
       if (data.username) localStorage.setItem("staffUsername", data.username);
       if (data.displayName?.trim()) localStorage.setItem("staffDisplayName", data.displayName.trim());
       else localStorage.removeItem("staffDisplayName");

@@ -6,6 +6,14 @@ export interface InvoiceListRecord {
     paymentStatus: string | null;
 }
 
+export function invoicePage<T>(rows: T[], requestedPage: number) {
+    const pageSize = 10;
+    const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+    const page = Math.min(Math.max(1, requestedPage), pageCount);
+    const start = (page - 1) * pageSize;
+    return { rows: rows.slice(start, start + pageSize), page, pageCount, first: rows.length ? start + 1 : 0, last: Math.min(start + pageSize, rows.length) };
+}
+
 export function invoiceRows<T extends InvoiceListRecord>(
     invoices: T[],
     patients: { id: number; name: string }[],

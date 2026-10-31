@@ -74,6 +74,9 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 ## Shared Saivie web UI
 
 - Receptionist Billing has separate New bill and All invoices tabs. New bill uses compact patient/template controls and searchable category-based items, with the selected patient's last invoice linked from the summary. Switching tabs preserves the draft.
+- Patient, Template, Items and Invoice summary sections have sage backgrounds. Items shows only the selected catalog category or Products; there is no Suggested/all-items tab. All invoices displays 10 rows per page after searching/sorting, with Previous/Next controls and result counts; search resets to page 1 and shortened lists clamp to an available page.
+- Receptionists can save current items, create/edit/delete personal billing templates and organize them with named groups. Built-in templates can be copied into a personal template; defaults stay unchanged. Only item IDs and quantities are stored, so applying a template uses current prices/GST and fails explicitly for unavailable items.
+- Personal templates persist in `personal_billing_templates`, scoped by the authenticated staff user on every API operation. Web staff OTP login now issues the existing eight-hour staff token, kept in session storage and cleared on sign-out. Existing sessions must sign in again. Deploy/restart the API with the frontend for the new table and routes.
 - All invoices lists every patient's saved bills newest first, searchable by patient name or invoice number (`53`, `#53`, `SAI-53`), with view/print, email, edit, delete, explicit load errors and refresh. Existing server quotes, discounts, GST, inventory checks and preview-before-create flow are unchanged.
 
 - The main Saivie web app uses softly rounded ivory cards with restrained shadows, pill buttons/tabs/badges, and rounded fields. The page background adds subtle sage/blush radial washes; solid page wrappers retain their own backgrounds.
