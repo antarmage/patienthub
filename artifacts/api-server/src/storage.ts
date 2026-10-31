@@ -1,4 +1,5 @@
-import { eq, desc, sql, gte, lte, and } from "drizzle-orm";
+import { eq, desc, sql, gte, lte, and, inArray } from "drizzle-orm";
+import type { TranscriptionTx } from "./prescription-transcriptions";
 import { db } from "./db";
 import {
   users, patients, providers, services, appointments, labTasks,
@@ -486,6 +487,41 @@ export class DatabaseStorage implements IStorage {
   async updateVisitHistory(id: number, data: Partial<InsertVisitHistory>): Promise<VisitHistory | undefined> {
     const [updated] = await db.update(visitHistory).set(data).where(eq(visitHistory.id, id)).returning();
     return updated;
+  }
+
+  async prescriptionTranscriptionTransaction<T>(work: (tx: TranscriptionTx) => Promise<T>): Promise<T> {
+    return db.transaction((tx) => work({
+      async lockVisit(id) {
+        const [row] = await tx.select().from(visitHistory).where(eq(visitHistory.id, id)).for("update");
+        return row ? { ...row, patientId: row.patientId } : undefined;
+      },
+      async createVisit(data) {
+        const [created] = await tx.insert(visitHistory).values(data as InsertVisitHistory).returning();
+        return created;
+      },
+      async updateVisit(id, data) {
+        const [updated] = await tx.update(visitHistory).set(data as Partial<InsertVisitHistory>).where(eq(visitHistory.id, id)).returning();
+        return updated;
+      },
+      getMedications: (patientId, ids) => tx.select().from(medications)
+        .where(and(eq(medications.patientId, patientId), inArray(medications.id, ids))),
+      async createMedication(data) {
+        const [created] = await tx.insert(medications).values(data).returning();
+        return created;
+      },
+      async updateMedication(id, data) {
+        const [updated] = await tx.update(medications).set(data).where(eq(medications.id, id)).returning();
+        return updated;
+      },
+      async deleteMedication(id) {
+        const [deleted] = await tx.delete(medications).where(eq(medications.id, id)).returning({ id: medications.id });
+        return !!deleted;
+      },
+      async createPatientDocument(data) {
+        const [created] = await tx.insert(patientDocuments).values(data).returning();
+        return created;
+      },
+    }));
   }
 
   async getMedications(patientId: number): Promise<Medication[]> {

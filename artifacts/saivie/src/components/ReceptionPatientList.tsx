@@ -24,7 +24,7 @@ const stageColors: Record<string, string> = {
   "No-show": "bg-[#faf0e7] text-[#92542a]", Cancelled: "bg-[#f2eef0] text-[#705364]",
 };
 
-export function ReceptionPatientList({ patients, providers, patientsLoading, patientsError, onRetryPatients, onRegister, onPayment, onWhatsApp, search, onSearch }: {
+export function ReceptionPatientList({ patients, providers, patientsLoading, patientsError, onRetryPatients, onRegister, onPayment, onWhatsApp, onTranscribePrescription, search, onSearch }: {
   patients: ReceptionPatient[];
   providers: { id: number; name: string }[];
   patientsLoading: boolean;
@@ -33,6 +33,7 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
   onRegister: () => void;
   onPayment: (patientId: number) => void;
   onWhatsApp: (patient: ReceptionPatient, message: string) => void;
+  onTranscribePrescription: (patient: ReceptionPatient) => void;
   search: string;
   onSearch: (value: string) => void;
 }) {
@@ -103,6 +104,7 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
       <div><p className="text-sm text-saivie-plum">{providers.find((provider) => provider.id === appointment.providerId)?.name || "Doctor not assigned"}</p><p className="mt-1 text-xs text-[#705364]">{appointment.visitType || appointment.type || "Appointment"}</p></div>
       <div><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${stageColors[stage]}`}>{stage}</span>{late && <p className="mt-1 text-[11px] text-amber-800">Running late</p>}</div>
       <div className="flex flex-wrap items-center gap-2 md:col-span-4 md:pl-[87px]">
+        {patient && <Button size="sm" variant="outline" onClick={() => onTranscribePrescription(patient)}>Add / Edit paper prescription</Button>}
         {appointment.date === today && stage === "Scheduled" && <Button size="sm" disabled={busy(appointment.id)} data-testid={`reception-checkin-${appointment.id}`} onClick={() => update.mutate({ id: appointment.id, data: { status: "checked-in", checkedInAt: new Date().toISOString() } })}>Check in</Button>}
         {period === "last-week" || closed ? <Button size="sm" variant="outline" asChild><Link href={`/staff/booking?patientId=${appointment.patientId || ""}`}>Rebook</Link></Button> : <>
           {stage === "Scheduled" && <Button size="sm" variant="outline" onClick={() => openReschedule(appointment)} disabled={busy(appointment.id)}>Reschedule</Button>}

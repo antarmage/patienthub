@@ -54,6 +54,7 @@ export interface ReceptionFollowUp {
 
 interface ReceptionDashboardProps {
   logisticsOnly?: boolean;
+  onTranscribePrescription?: (patient: { id: number; name: string; phone?: string | null; age?: number | null }) => void;
   appointments: any[];
   patients: any[];
   tasks: ReceptionTask[];
@@ -131,6 +132,7 @@ const ARRIVAL_BADGE: Record<ArrivalState, { label: string; className: string }> 
 
 export function ReceptionDashboard({
   logisticsOnly = false,
+  onTranscribePrescription,
   appointments,
   patients,
   tasks,
@@ -452,6 +454,7 @@ export function ReceptionDashboard({
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1">
                           {renderAction(apt, state)}
+                          {logisticsOnly && patient && onTranscribePrescription && <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => onTranscribePrescription(patient)} data-testid={`btn-paper-prescription-${apt.id}`}>Add / Edit prescription</Button>}
                           {!logisticsOnly && <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-saivie-plum hover:text-saivie-teal" data-testid={`btn-print-summary-${apt.id}`}
                             title="Print patient summary" aria-label={`Print summary for ${apt.patient}`}
                             onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals, hpvClinicStatus(apt.patientId))}>

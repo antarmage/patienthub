@@ -19,6 +19,7 @@ import { OcrError } from "../replit_integrations/ocr/document";
 import { registerLocalReportRoutes } from "../local-reports";
 import { createLocalReportStore } from "../local-report-store";
 import { pool } from "../db";
+import { antenatalFromBody, registerPrescriptionTranscriptionRoutes } from "../prescription-transcriptions";
 import { getUncachableGoogleSheetClient } from "../google-sheets";
 import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../google-drive";
 import { ai, AI_AVAILABLE } from "../replit_integrations/image/client";
@@ -36,6 +37,8 @@ import {
   uploadBufferToS3,
   getPresignedDownloadUrl,
   isS3Configured,
+  readS3ObjectAsBuffer,
+  deleteS3Object,
 } from "../lib/s3-storage";
 
 function parseId(val: string): number | null {
@@ -390,6 +393,30 @@ export async function registerRoutes(
       return null;
     }
     return id;
+  });
+
+  registerPrescriptionTranscriptionRoutes(app, {
+    authenticate: getAccessActor,
+    patientExists: async (id) => !!(await storage.getPatient(id)),
+    getAppointment: async (id) => (await storage.getAppointments()).find((item) => item.id === id),
+    listVisits: (patientId) => storage.getVisitHistory(patientId),
+    getPatientDocument: (id) => storage.getPatientDocument(id),
+    async readStoredFile(doc) {
+      if (doc.s3Key) return readS3ObjectAsBuffer(doc.s3Key);
+      return doc.fileData ? Buffer.from(doc.fileData.replace(/^data:[^;]+;base64,/, ""), "base64") : null;
+    },
+    async putOriginalFile(patientId, bytes, mimeType) {
+      if (!isS3Configured()) return { fileData: bytes.toString("base64"), s3Key: null };
+      const extension = mimeType === "application/pdf" ? "pdf" : mimeType.split("/")[1];
+      const key = `documents/${patientId}/paper-prescription-${Date.now()}-${crypto.randomBytes(6).toString("hex")}.${extension}`;
+      return { fileData: null, s3Key: await uploadBufferToS3(key, bytes, mimeType) };
+    },
+    async discardOriginalFile(stored) {
+      if (stored.s3Key) await deleteS3Object(stored.s3Key);
+    },
+    transaction: (work) => storage.prescriptionTranscriptionTransaction(work),
+    parseCallDate,
+    prescriptionDueDate,
   });
 
   registerBillingTemplateRoutes(app, async (req, res) => {
@@ -2001,51 +2028,6 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     });
     res.status(201).json(visit);
   });
-
-  const antenatalFromBody = (body: any) => {
-    if (!/pregnant/i.test(String(body?.patientType || ""))) return null;
-    const source = body?.antenatal && typeof body.antenatal === "object" ? body.antenatal : {};
-    const text = (value: unknown) => String(value || "").trim() || null;
-    const date = (value: unknown) => {
-      const raw = String(value || "").trim();
-      const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
-      const dmy = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
-      if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
-      return null;
-    };
-    const rawUsg: any[] = Array.isArray(source.usg) ? source.usg : [];
-    const mappedUsg = rawUsg.map((line) => ({
-      scanDate: date(line?.scanDate || line?.date),
-      finding: text(line?.finding),
-      weeks: text(line?.weeks || line?.pog),
-      placenta: text(line?.placenta),
-      liquor: text(line?.liquor),
-      efw: text(line?.efw),
-      anomaly: text(line?.anomaly),
-    }));
-    const usg = mappedUsg.filter((line) => line.scanDate || line.finding || line.weeks || line.placenta || line.liquor || line.efw || line.anomaly);
-    return {
-      bloodGroup: text(source.bloodGroup),
-      hb: text(source.hb),
-      hbDate: date(source.hbDate),
-      urineRe: text(source.urineRe),
-      urineReDate: date(source.urineReDate),
-      usg,
-      slf: text(source.slf),
-      pulse: text(source.pulse),
-      bp: text(source.bp),
-      spo2: text(source.spo2),
-      rr: text(source.rr),
-      perAbdomen: text(source.perAbdomen),
-      uterusSize: text(source.uterusSize),
-      uterusSizeDate: date(source.uterusSizeDate),
-      fetalMovements: text(source.fetalMovements),
-      fetalHeartSound: text(source.fetalHeartSound),
-      fetalHeartDoppler: text(source.fetalHeartDoppler),
-      scarTenderness: text(source.scarTenderness),
-    };
-  };
 
   app.post("/api/patients/:id/manual-prescription", async (req, res) => {
     const id = parseId(req.params.id);

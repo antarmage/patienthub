@@ -44,8 +44,18 @@ No `reason`, `chiefComplaint`, `notes`, `vitals`, `followUpNotes`, or triage tex
 
 Walk-ins may atomically POST `status: "checked-in"` plus an ISO `checkedInAt`; the date must be today in the clinic's India timezone. Changing a receptionist appointment's date, time, or provider resets `status` to `scheduled` and clears `checkedInAt`. Once a consultation has begun, nonclinical staff cannot change its schedule or arrival/consultation state; billing updates remain allowed. Receptionist completion does not trigger automatic clinical-summary authoring. Existing appointment persistence does **not** enforce overlapping-slot availability; clients must not claim that it does.
 
+## Receptionist paper prescription transcription
+
+`GET/POST /api/patients/:id/prescription-transcriptions` is a dedicated route (not a relaxation of `manual-prescription`, `visit-history`, `medications`, `documents` or OCR, which stay clinician-only). It authenticates through the same resolver; persisted roles `staff`, `receptionist`, `clinician` and `owner` are allowed. `admin`, unknown roles and patient sessions/tokens get 403; missing/invalid auth gets 401. The patient ID must be a plain positive integer of an existing patient.
+
+- GET returns only records whose `prescriptions.source` is `receptionist-paper-transcription` with `doctorIssuedPaper: true` for that patient—never clinician encounters—including the integrity-checked original (`name`, `mimeType`, base64 `fileData`, `sha256`) needed to edit.
+- POST requires `sourceReviewed: true` and, for every new record, `originalPrescription: { name, mimeType, fileData }` as base64 JPG/PNG/WebP/PDF ≤ 8 MB whose bytes match the declared type. URLs or server document references are rejected. On edit (`transcriptionId`), `originalPrescription` may be `null` or the identical original to retain the stored file, which is re-verified by SHA-256; a different file replaces it while the previous file is kept.
+- Unknown body fields return 400. The paper's date cannot be in the future. Optional `appointmentId` must belong to the patient. It is kept only as metadata: the transcription is an isolated visit row (`appointmentId: null`) and never updates appointments, queue/consult state, patient demographics/history, ICD diagnoses or any other visit.
+- Medicines are saved immediately as `active` medication rows linked by ID from the transcription record. Edits update, create or remove only those linked rows for the same patient, matched by name. The visit, medications and source document commit in one database transaction.
+- `enteredBy/At` and `updatedBy/At` record the authenticated user. Every edit appends a revision with the previous content and original-file reference.
+
 ## Regression tests
 
-Run `node artifacts/api-server/scripts/test-authorization.mjs` from the repository root (or `pnpm --filter @workspace/api-server run test:authorization`). Tests exercise the actual registered middleware through HTTP with deterministic authentication dependencies, including denied writes before storage, role enforcement, future-field privacy, aliases, malformed IDs/case, patient ownership, registration, and walk-in logistics. No real database or credentials are needed.
+Run `node artifacts/api-server/scripts/test-authorization.mjs` from the repository root (or `pnpm --filter @workspace/api-server run test:authorization`). Tests exercise the actual registered middleware through HTTP with deterministic authentication dependencies, including denied writes before storage, role enforcement, paper-transcription source validation/edit ownership/rollback, future-field privacy, aliases, malformed IDs/case, patient ownership, registration, and walk-in logistics. No real database or credentials are needed.
 
 Backend typecheck: `node node_modules/typescript/bin/tsc -p artifacts/api-server/tsconfig.json --noEmit`.

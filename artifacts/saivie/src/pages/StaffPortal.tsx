@@ -99,6 +99,8 @@ import { useToast } from "@/hooks/use-toast";
 import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialogs";
 import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
 import { ReceptionPatientList } from "@/components/ReceptionPatientList";
+import { PaperPrescriptionTranscriptions } from "@/components/PaperPrescriptionTranscriptions";
+import type { ReceptionPatient } from "@/lib/receptionTimeline";
 import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { ReportViewButton } from "@/components/PatientReports";
 import { usePatientDiagnoses } from "@/components/IcdDiagnoses";
@@ -2176,6 +2178,7 @@ export default function StaffPortal() {
   const [vitalsAppointment, setVitalsAppointment] = useState<any | null>(null);
   const [afterVisitAppointment, setAfterVisitAppointment] = useState<any | null>(null);
   const [prescriptionAppointment, setPrescriptionAppointment] = useState<any | null>(null);
+  const [paperPrescriptionPatient, setPaperPrescriptionPatient] = useState<ReceptionPatient | null>(null);
   const { toast } = useToast();
   const openManualPrescription = (patient: any) => {
     if (!patient?.id) return;
@@ -3791,6 +3794,7 @@ export default function StaffPortal() {
                 </section>
                 <ReceptionDashboard
                   logisticsOnly
+                  onTranscribePrescription={setPaperPrescriptionPatient}
                   appointments={todayAppointments}
                   patients={patients}
                   tasks={receptionistTasks}
@@ -3831,6 +3835,7 @@ export default function StaffPortal() {
             )}
             {activeRole === 'receptionist' && activeView === 'patients' && (
                 <ReceptionPatientList
+                    onTranscribePrescription={setPaperPrescriptionPatient}
                     patients={patients}
                     providers={providers}
                     patientsLoading={patientsQuery.isLoading}
@@ -5257,6 +5262,7 @@ export default function StaffPortal() {
               patient={patients.find((p: any) => p.id === prescriptionAppointment?.patientId) || null}
               onClose={() => setPrescriptionAppointment(null)}
             />
+            <PaperPrescriptionTranscriptions patient={paperPrescriptionPatient} onClose={() => setPaperPrescriptionPatient(null)} />
             <AfterVisitDialog
               appointment={receptionist ? null : afterVisitAppointment}
               patient={patients.find((p: any) => p.id === afterVisitAppointment?.patientId) || null}

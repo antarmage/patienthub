@@ -334,13 +334,14 @@ const TEST_CATEGORY = /lab|test|diagnos|usg|ultra|scan|sono/i;
 const USG_CATEGORY = /usg|ultra|scan|sono/i;
 
 interface Props {
+  transcriptionMode?: boolean;
   appointment: any | null;
   patient: any | null;
   onClose: () => void;
   onSaved?: (patientId: number) => void;
 }
 
-export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved }: Props) {
+export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved, transcriptionMode = false }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [medicines, setMedicines] = useState<Medicine[]>([emptyMedicine()]);
@@ -395,7 +396,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     setScanReviewed(false);
     sourceSaved.current = false;
     return () => { scanRevision.current++; };
-  }, [patientId, appointment?.id]);
+  }, [patientId, appointment?.id, appointment?.transcriptionId]);
   const editing = !!appointment?.edit;
   const needsDate = !appointment?.id || editing;
   const recordedVitals = {
@@ -447,27 +448,35 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     stepHeadingRef.current?.focus();
   }, [step]);
 
-  const { data: visits = [], isFetched } = useQuery<any[]>({
-    queryKey: ["/api/patients", patientId, "visit-history"],
+  const visitsQuery = useQuery<any[]>({
+    queryKey: ["/api/patients", patientId, transcriptionMode ? "prescription-transcriptions" : "visit-history"],
     enabled: !!appointment && !!patientId,
     queryFn: async () => {
-      const res = await fetch(`/api/patients/${patientId}/visit-history`);
-      return res.ok ? res.json() : [];
+      const res = await fetch(`/api/patients/${patientId}/${transcriptionMode ? "prescription-transcriptions" : "visit-history"}`);
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Could not load prescription records");
+      if (!Array.isArray(body)) throw new Error("The prescription API returned an invalid record list");
+      return body;
     },
   });
+  const visits = visitsQuery.data || [];
+  const isFetched = visitsQuery.isFetched;
 
   const { data: invoices = [] } = useQuery<any[]>({
     queryKey: ["/api/patients", patientId, "invoices"],
-    enabled: !!appointment && !!patientId,
+    enabled: !!appointment && !!patientId && !transcriptionMode,
     queryFn: async () => {
       const res = await fetch(`/api/patients/${patientId}/invoices`);
       return res.ok ? res.json() : [];
     },
   });
 
-  const existing = visits.find((v: any) => v.appointmentId === appointment?.id) || null;
+  const existing = (transcriptionMode
+    ? visits.find((v: any) => v.id === appointment?.transcriptionId)
+    : visits.find((v: any) => v.appointmentId === appointment?.id)) || null;
+  const originalPrescription = scanSource || (transcriptionMode ? existing?.prescriptions?.originalPrescription : null);
 
-  const billedTests: TestLine[] = invoices
+  const billedTests: TestLine[] = (transcriptionMode ? [] : invoices)
     .filter((inv: any) => inv.appointmentId === appointment?.id || String(inv.date).slice(0, 10) === String(appointment?.date).slice(0, 10))
     .flatMap((inv: any) => (Array.isArray(inv.items) ? inv.items : []))
     .filter((it: any) => TEST_CATEGORY.test(String(it.category || "")))
@@ -477,7 +486,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       fromBilling: true,
     }))
     .filter((t: TestLine) => t.name);
-  const testOptions = [...suggestedTests.tests, ...billedTests, ...tests].filter((test, index, all) =>
+  const testOptions = [...(transcriptionMode ? [] : suggestedTests.tests), ...billedTests, ...tests].filter((test, index, all) =>
     all.findIndex((item) => item.name.toLowerCase() === test.name.toLowerCase()) === index,
   );
 
@@ -566,8 +575,9 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
 
   const scanFile = async (file: File) => {
     if (!patientId) return;
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Maximum upload size is 10MB.", variant: "destructive" });
+    const maxMegabytes = transcriptionMode ? 8 : 10;
+    if (file.size > maxMegabytes * 1024 * 1024) {
+      toast({ title: "File too large", description: `Maximum upload size is ${maxMegabytes}MB.`, variant: "destructive" });
       return;
     }
     setScanning(true);
@@ -580,6 +590,15 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
+      if (transcriptionMode) {
+        if (revision !== scanRevision.current) return;
+        if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type)) throw new Error("Use a JPEG, PNG, WebP photo or PDF scan.");
+        setScanSource({ fileData: base64, mimeType: file.type, name: file.name, provider: "manual-transcription", sourcePages: [] });
+        setScanned(false);
+        setScanWarnings([]);
+        toast({ title: "Original prescription attached", description: "Type the doctor's written instructions and verify them against this copy." });
+        return;
+      }
       const res = await fetch(`/api/patients/${patientId}/parse-prescription`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -888,6 +907,10 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   }, [appointment]);
 
   const save = async () => {
+    if (transcriptionMode && (!originalPrescription || !scanReviewed)) {
+      toast({ title: "Original and review required", description: "Attach the doctor's prescription and verify the transcribed fields before saving.", variant: "destructive" });
+      return;
+    }
     if (scanned && !scanReviewed) {
       toast({ title: "Review required", description: "Check the extracted fields against the original prescription before saving.", variant: "destructive" });
       return;
@@ -910,7 +933,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     }
     setSaving(true);
     try {
-      if (scanSource && !sourceSaved.current) {
+      if (!transcriptionMode && scanSource && !sourceSaved.current) {
         const sourceResponse = await fetch(`/api/patients/${patientId}/documents`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -924,7 +947,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
         if (!sourceResponse.ok) throw new Error("Could not save the original prescription. No prescription changes were saved.");
         sourceSaved.current = true;
       }
-      const res = await fetch(`/api/patients/${patientId}/manual-prescription`, {
+      const res = await fetch(`/api/patients/${patientId}/${transcriptionMode ? "prescription-transcriptions" : "manual-prescription"}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -952,19 +975,31 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           tests,
           scanned,
           scanReviewed,
+          ...(transcriptionMode ? {
+            transcriptionId: appointment?.transcriptionId,
+            originalPrescription: originalPrescription ? {
+              name: originalPrescription.name,
+              mimeType: originalPrescription.mimeType,
+              fileData: originalPrescription.fileData,
+            } : null,
+            sourceReviewed: scanReviewed,
+          } : {}),
         }),
       });
       const raw = await res.text();
       const routeMissing = res.status === 404 || raw.includes("Cannot POST") || raw.trimStart().startsWith("<");
       let savedAppointmentId = appointment?.id;
-      if (routeMissing) {
+      if (routeMissing && transcriptionMode && raw.trimStart().startsWith("<")) throw new Error("The transcription API is not available. Deploy the updated API before saving. No prescription changes were saved.");
+      if (routeMissing && !transcriptionMode) {
         await saveOnCurrentServer();
       } else {
         const body = raw.trim() ? JSON.parse(raw) : {};
         if (!res.ok) throw new Error(body.error || "Could not save prescription");
+        if (transcriptionMode && !Number.isInteger(body.visit?.id)) throw new Error("The transcription API did not confirm a saved record. Please reload the transcription list before retrying.");
         savedAppointmentId = body.appointment?.id || body.visit?.appointmentId || appointment?.id;
       }
-      await persistExamination(savedAppointmentId);
+      if (!transcriptionMode) await persistExamination(savedAppointmentId);
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "prescription-transcriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "visit-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visit-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
@@ -974,7 +1009,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       queryClient.invalidateQueries({ queryKey: ["/api/medicine-suggestions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/follow-up-calls"] });
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] });
-      toast({ title: editing ? "Prescription updated" : appointment?.id ? "Prescription recorded" : "Prescription recorded and visit created" });
+      toast({ title: transcriptionMode ? editing ? "Transcription updated" : "Prescription transcribed" : editing ? "Prescription updated" : appointment?.id ? "Prescription recorded" : "Prescription recorded and visit created" });
       onSaved?.(patientId);
       closePage();
     } catch (err: any) {
@@ -994,9 +1029,11 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           Close
         </Button>
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-semibold">{editing ? "Edit prescription" : "Record prescription"}{patient?.name ? ` — ${patient.name}` : ""}</h1>
+          <h1 className="truncate text-lg font-semibold">{transcriptionMode ? editing ? "Edit paper transcription" : "Transcribe doctor's prescription" : editing ? "Edit prescription" : "Record prescription"}{patient?.name ? ` — ${patient.name}` : ""}</h1>
           <p className="text-sm text-muted-foreground">
-            {editing
+            {transcriptionMode
+              ? "Record only what is written on the doctor's paper prescription."
+              : editing
               ? "Update this record, then close to return to the list."
               : needsDate
               ? "Enter the paper prescription. Close returns to the patient list."
@@ -1004,6 +1041,10 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           </p>
         </div>
       </header>
+      {transcriptionMode && <div className="border-b bg-amber-50 px-4 py-2 text-xs text-amber-900">
+        Copy the doctor's written prescription only. A photo or scan and verification are required. Saving activates the transcribed medicines immediately and records your identity.
+        {visitsQuery.isError && <p role="alert">{visitsQuery.error.message} <button type="button" className="underline" onClick={() => void visitsQuery.refetch()}>Retry</button></p>}
+      </div>}
       <nav aria-label="Prescription entry steps" className="border-b px-4 py-3 sm:px-6">
         <ol className="mx-auto flex max-w-3xl gap-2 overflow-x-auto">
           {steps.map((item, index) => (
@@ -1114,17 +1155,21 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
             </div>
           )}
           <div className="rounded-lg border border-dashed border-saivie-border bg-saivie-surface-muted/50 p-3">
-            <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" data-testid="input-rx-file"
+            <input ref={fileRef} type="file" accept={transcriptionMode ? "image/jpeg,image/png,image/webp,application/pdf" : "image/*,application/pdf"} className="hidden" data-testid="input-rx-file"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) scanFile(f); }} />
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm text-saivie-plum">
-                {scanned ? "Filled from the photo — review and correct below." : "Have a photo of the paper prescription? Upload it and the fields below are filled in for you to check."}
+                {transcriptionMode ? originalPrescription ? `Original attached: ${originalPrescription.name}. Enter the doctor's instructions below.` : "Required: attach a photo or scan of the doctor's handwritten prescription, then transcribe it below." : scanned ? "Filled from the photo — review and correct below." : "Have a photo of the paper prescription? Upload it and the fields below are filled in for you to check."}
               </p>
               <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={scanning} onClick={() => fileRef.current?.click()} data-testid="btn-rx-scan">
                 {scanning ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />}
-                {scanning ? "Reading..." : "Upload photo"}
+                {scanning ? transcriptionMode ? "Attaching..." : "Reading..." : "Upload photo"}
               </Button>
             </div>
+            {transcriptionMode && originalPrescription && <div className="mt-3">
+              {originalPrescription.mimeType.startsWith("image/") && <img className="max-h-72 max-w-full rounded border object-contain" alt="Doctor's original handwritten prescription" src={`data:${originalPrescription.mimeType};base64,${originalPrescription.fileData}`} />}
+              <a className="mt-2 inline-block text-xs text-saivie-teal underline" href={`data:${originalPrescription.mimeType};base64,${originalPrescription.fileData}`} download={originalPrescription.name}>Download original prescription</a>
+            </div>}
           </div>
 
           </>
@@ -1256,10 +1301,11 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           <div className="space-y-2">
             <Label>Tests advised (lab / USG)</Label>
             <p className="text-xs text-muted-foreground">Tests ordered on this prescription, not report results.</p>
-            <div className="rounded-md border bg-muted/30 p-3" data-testid="rx-test-context">
+            {!transcriptionMode && <div className="rounded-md border bg-muted/30 p-3" data-testid="rx-test-context">
               <p className="text-sm font-medium">{suggestedTests.context}</p>
               <p className="mt-1 text-xs text-muted-foreground">Options for clinician review, not automatic orders. Confirm timing, prior results and local protocol. Only checked tests are saved.</p>
-            </div>
+            </div>}
+            {transcriptionMode && <p className="text-xs text-muted-foreground">Enter only the tests written by the doctor on the attached prescription.</p>}
             <div className="grid gap-3 sm:grid-cols-2">
               {(["lab", "usg"] as const).map((type) => (
                 <fieldset key={type} className="space-y-2 rounded-md border p-3">
@@ -1330,8 +1376,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           <Button type="button" onClick={() => goToStep(steps[stepIndex + 1].id)} disabled={saving || scanning} data-testid="btn-rx-next">Next</Button>
         ) : (
         <>
-        {scanned && <label className="flex items-start gap-2 text-xs"><input type="checkbox" className="mt-0.5" checked={scanReviewed} onChange={(event) => setScanReviewed(event.target.checked)} data-testid="checkbox-review-prescription" />I verified all extracted fields against the original prescription.</label>}
-        <Button type="button" onClick={save} disabled={saving || scanning || (scanned && !scanReviewed) || (needsDate && !prescriptionDate)} data-testid="btn-rx-save">
+        {(scanned || transcriptionMode) && <label className="flex items-start gap-2 text-xs"><input type="checkbox" className="mt-0.5" checked={scanReviewed} onChange={(event) => setScanReviewed(event.target.checked)} data-testid="checkbox-review-prescription" />I verified all entered fields against the doctor's original prescription.</label>}
+        <Button type="button" onClick={save} disabled={saving || scanning || (scanned && !scanReviewed) || (transcriptionMode && (!originalPrescription || !scanReviewed || visitsQuery.isError || visitsQuery.isLoading)) || (needsDate && !prescriptionDate)} data-testid="btn-rx-save">
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {editing ? "Update prescription" : "Save prescription"}
         </Button>
