@@ -10,6 +10,8 @@
 
 The persisted roles `clinician` and `owner` can author shared clinical records. `staff`, `receptionist`, and `admin` cannot. Existing `staff` accounts do not have separate persisted receptionist/nurse/nutritionist roles; frontend username-based labels do not grant prescribing permissions. Allied protocol/planning, nursing observations, billing, and patient self-tracking endpoints are not reclassified as shared prescription authoring.
 
+The explicitly authorized receptionist patient-details editor below is a narrow exception for registration, patient history, and pregnancy details only. It does not grant encounter, diagnosis, prescription, clinical-note, or care-plan authoring.
+
 ## Protected paths
 
 The following require clinical authorization for writes; patient-specific GET/HEAD requests also allow the corresponding patient session/mobile token. Receptionist/staff reads are denied by default, but may be enabled clinic-wide as described below:
@@ -43,6 +45,45 @@ Authenticated receptionist appointment responses allow:
 No `reason`, `chiefComplaint`, `notes`, `vitals`, `followUpNotes`, or triage text is returned. Booking may submit `reason` as a scheduling prefill, but never as a patient clinical field. Staff can book, reschedule, check in, cancel, mark no-show, and handle payment logistics. They cannot write `seenAt`/`completedAt` or clinical appointment states. Allowed staff statuses are `scheduled`, `booked`, `confirmed`, `checked-in`, `cancelled`, and `no-show`.
 
 Walk-ins may atomically POST `status: "checked-in"` plus an ISO `checkedInAt`; the date must be today in the clinic's India timezone. Changing a receptionist appointment's date, time, or provider resets `status` to `scheduled` and clears `checkedInAt`. Once a consultation has begun, nonclinical staff cannot change its schedule or arrival/consultation state; billing updates remain allowed. Receptionist completion does not trigger automatic clinical-summary authoring. Existing appointment persistence does **not** enforce overlapping-slot availability; clients must not claim that it does.
+
+## Immediate receptionist patient-details editing
+
+`GET` and `PATCH /api/patients/:id/reception-details-edit` independently authenticate the persisted roles `staff`, `receptionist`, `clinician`, and `owner`. Admins, patients (including the corresponding patient), and unknown roles return 403; missing/invalid authentication returns 401. This explicit editing permission is available immediately, **regardless of `clinicalDetailsVisible`**, with no separate doctor switch. It does not change generic patient/desk or clinical middleware permissions.
+
+Both methods return the editable projection **directly**, not `{patient: ...}`:
+
+`id, name, age, phone, email, address, dob, type, lmp, height, weight, pregnancyStatus, condition, contraception, history`
+
+`id` is a read-only number. `history` is always an object with protected namespaces omitted, including nested protected keys. No clinician note, risk score, plan, genomics, visit record, encounter, prescription, or clinical-note collection is returned. Both methods send `Cache-Control: private, no-store`. Patient IDs must be canonical positive decimal PostgreSQL integers (1–2,147,483,647). Missing patients return 404.
+
+PATCH must be a nonempty object containing only the editable fields above, excluding `id`. All fields are optional; omitted fields remain unchanged. Unknown/protected fields and invalid values return 400 with no write:
+
+| Field | Constraint |
+| --- | --- |
+| `name` | String, trimmed, 1–200 characters; not null |
+| `age` | JSON integer, 0–130; not string/null |
+| `phone` | String ≤ 50 characters or null |
+| `email` | Valid email ≤ 254 characters, empty string, or null |
+| `address` | String ≤ 2,000 characters or null |
+| `type` | String ≤ 100 characters or null |
+| `condition`, `contraception` | String ≤ 2,000 characters or null |
+| `dob`, `lmp` | Real `YYYY-MM-DD` date, year ≥ 0001, no later than today's date in India, or null; empty string is invalid |
+| `height` | Numeric decimal **string**, 30–250 cm, or null |
+| `weight` | JSON number, 0.1–500 kg, or null; numeric strings invalid |
+| `pregnancyStatus` | `active`, `pregnant`, `completed`, `aborted`, `not_continuing`, or null (case-sensitive) |
+| `history` | JSON object, ≤ 100,000 UTF-8 serialized bytes, depth ≤ 20, ≤ 20,000 values; no null/array/scalar root |
+
+History accepts arbitrary patient-history keys such as `medical`, `surgical`, `drug`, `allergies`, `family`, `onboarding`, `labSurvey`, and `obstetric`. Nested reported-history values, including `obstetric.eod`, are JSON rather than typed date fields; future expected-delivery dates are allowed. Object updates recursively merge: omitted keys at every level remain, arrays/scalars replace the submitted value, and explicit null clears that key. Sending the complete editable GET history is supported. Replacing/clearing a section or array containing hidden protected descendants returns 400; edit its individual editable fields instead. The merged editable history is also bounded to 100,000 UTF-8 bytes.
+
+At **every history depth**, keys beginning `_` are protected. Other keys normalize by removing non-alphanumeric characters and lowercasing. Exact protected normalized names are:
+
+`proto, prototype, constructor, conception, patientconception, patientreportedlmp, onboardingappointmentid, receptiondetailseditaudit, recordedat, recordedby, updatedat, updatedby, createdat, createdby, appointmentid, source, diagnosisencounterid, cliniciannote, riskscore, plan, diagnosis, diagnoses, diagnosisencounters, clinicalnotes, prescriptions, visithistory`
+
+(`__proto__` is also protected by its leading underscore.) Normalized names beginning `audit`, `provenance`, `private`, `clinician`, `assessment`, `server`, `secret`, `password`, `credential`, or `token`, or ending `audit`/`provenance`, are protected. These namespaces are omitted from GET/PATCH responses, rejected if submitted, and preserved in storage. In particular, existing clinician `conception`, patient-intake `patientConception`/`onboardingAppointmentId`, and preconsult `patientReportedLmp` provenance cannot be overwritten.
+
+PATCH reads the patient using `SELECT ... FOR UPDATE` inside a database transaction before merging. Every successful save appends a server-authored `history.receptionDetailsEditAudit` revision with `source: "reception-details-edit"`, authenticated `editedBy`/`role`, server `editedAt`, submitted field paths, and the complete previous editable projection. Previous revisions are retained (legacy non-array audit values are retained in an entry). Audit history is not exposed to the editor and is not included in the editable-history byte limit. Registration-only edits are audited too. Concurrent saves through this endpoint serialize on the same patient row; rejected/failed transactions do not save either patient changes or audit revisions.
+
+Only the allowlisted patient columns and merged history are written. `clinicianNote`, `riskScore`, `plan`, visits, appointments, diagnosis encounters, medications, and clinical notes remain unchanged. Generic patient PATCH, encounter/diagnosis authoring, manual prescriptions, and clinical-note mutations remain independently protected.
 
 ## Doctor-controlled receptionist clinical visibility
 
@@ -86,6 +127,6 @@ Deploy the API and frontend together for this workflow. If the transcription lis
 
 ## Regression tests
 
-Run `node artifacts/api-server/scripts/test-authorization.mjs` from the repository root (or `pnpm --filter @workspace/api-server run test:authorization`). Tests exercise the actual registered middleware through HTTP with deterministic authentication dependencies, including denied writes before storage, role enforcement, paper-transcription source validation/edit ownership/rollback, future-field privacy, aliases, malformed IDs/case, patient ownership, registration, and walk-in logistics. No real database or credentials are needed.
+Run `node artifacts/api-server/scripts/test-authorization.mjs` from the repository root (or `pnpm --filter @workspace/api-server run test:authorization`). Tests exercise the actual registered middleware through HTTP with deterministic authentication dependencies, including denied writes before storage, role enforcement, paper-transcription source validation/edit ownership/rollback, immediate details-edit projection/strict validation/deep merge/provenance/revisions/transaction rollback, future-field privacy, aliases, malformed IDs/case, patient ownership, registration, and walk-in logistics. No real database or credentials are needed.
 
 Backend typecheck: `node node_modules/typescript/bin/tsc -p artifacts/api-server/tsconfig.json --noEmit`.

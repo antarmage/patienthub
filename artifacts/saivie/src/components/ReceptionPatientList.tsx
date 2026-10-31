@@ -24,7 +24,7 @@ const stageColors: Record<string, string> = {
   "No-show": "bg-[#faf0e7] text-[#92542a]", Cancelled: "bg-[#f2eef0] text-[#705364]",
 };
 
-export function ReceptionPatientList({ patients, providers, patientsLoading, patientsError, onRetryPatients, onRegister, onPayment, onWhatsApp, onTranscribePrescription, onRecordVitals, onViewPatient, search, onSearch }: {
+export function ReceptionPatientList({ patients, providers, patientsLoading, patientsError, onRetryPatients, onRegister, onPayment, onWhatsApp, onTranscribePrescription, onRecordVitals, onViewPatient, onEditPatient, search, onSearch }: {
   patients: ReceptionPatient[];
   providers: { id: number; name: string }[];
   patientsLoading: boolean;
@@ -36,6 +36,7 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
   onTranscribePrescription: (patient: ReceptionPatient) => void;
   onRecordVitals: (appointment: ReceptionAppointment) => void;
   onViewPatient?: (patient: ReceptionPatient) => void;
+  onEditPatient: (patient: ReceptionPatient) => void;
   search: string;
   onSearch: (value: string) => void;
 }) {
@@ -109,6 +110,7 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
         {patient && <Button size="sm" variant="outline" onClick={() => onTranscribePrescription(patient)}>Add / Edit paper prescription</Button>}
         {patient && appointment.date === today && !closed && stage !== "With doctor" && <Button size="sm" variant="outline" onClick={() => onRecordVitals(appointment)} data-testid={`btn-reception-vitals-${appointment.id}`}>Record vitals</Button>}
         {patient && onViewPatient && <Button size="sm" variant="outline" onClick={() => onViewPatient(patient)} data-testid={`btn-reception-details-${patient.id}`}>View patient details</Button>}
+        {patient && <Button size="sm" variant="outline" onClick={() => onEditPatient(patient)} data-testid={`btn-reception-edit-${patient.id}`}>Edit patient details</Button>}
         {appointment.date === today && stage === "Scheduled" && <Button size="sm" disabled={busy(appointment.id)} data-testid={`reception-checkin-${appointment.id}`} onClick={() => update.mutate({ id: appointment.id, data: { status: "checked-in", checkedInAt: new Date().toISOString() } })}>Check in</Button>}
         {period === "last-week" || closed ? <Button size="sm" variant="outline" asChild><Link href={`/staff/booking?patientId=${appointment.patientId || ""}`}>Rebook</Link></Button> : <>
           {stage === "Scheduled" && <Button size="sm" variant="outline" onClick={() => openReschedule(appointment)} disabled={busy(appointment.id)}>Reschedule</Button>}

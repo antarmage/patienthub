@@ -1,6 +1,7 @@
 import { eq, desc, sql, gte, lte, and, inArray } from "drizzle-orm";
 import type { TranscriptionTx } from "./prescription-transcriptions";
 import { assertPreconsult, prepareReceptionVitals, receptionMeasurements, type ReceptionVitalsInput, type ReceptionVitalsRecord } from "./reception-access";
+import { commitReceptionDetailsEdit, type ReceptionDetailsEditInput, type ReceptionDetailsEditActor } from "./reception-details-edit";
 import { db } from "./db";
 import {
   users, patients, providers, services, appointments, labTasks,
@@ -82,6 +83,7 @@ export interface IStorage {
   getPatient(id: number): Promise<Patient | undefined>;
   createPatient(patient: InsertPatient): Promise<Patient>;
   updatePatient(id: number, data: Partial<InsertPatient>): Promise<Patient | undefined>;
+  saveReceptionDetailsEdit(id: number, input: ReceptionDetailsEditInput, actor: ReceptionDetailsEditActor): Promise<Patient>;
   updatePatientRiskData(id: number, data: { riskScore?: Record<string, unknown>; trimesterChecklist?: Record<string, unknown> }): Promise<void>;
 
   getProviders(): Promise<Provider[]>;
@@ -319,6 +321,19 @@ export class DatabaseStorage implements IStorage {
   async updatePatient(id: number, data: Partial<InsertPatient>): Promise<Patient | undefined> {
     const [updated] = await db.update(patients).set(data).where(eq(patients.id, id)).returning();
     return updated;
+  }
+
+  async saveReceptionDetailsEdit(id: number, input: ReceptionDetailsEditInput, actor: ReceptionDetailsEditActor): Promise<Patient> {
+    return db.transaction((tx) => commitReceptionDetailsEdit({
+      async lockPatient(patientId) {
+        const [patient] = await tx.select().from(patients).where(eq(patients.id, patientId)).for("update");
+        return patient;
+      },
+      async updatePatient(patientId, update) {
+        const [updated] = await tx.update(patients).set(update).where(eq(patients.id, patientId)).returning();
+        return updated;
+      },
+    }, id, input, actor));
   }
 
   async updatePatientRiskData(id: number, data: { riskScore?: Record<string, unknown>; trimesterChecklist?: Record<string, unknown> }): Promise<void> {

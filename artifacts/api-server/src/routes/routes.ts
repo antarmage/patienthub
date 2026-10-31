@@ -9,6 +9,7 @@ import { registerIcdRoutes, invoiceDiagnoses } from "../icd";
 import { registerBillingTemplateRoutes } from "../billing-templates";
 import { readAppointmentRange } from "../appointment-range";
 import { registerReceptionAccessRoutes } from "../reception-access";
+import { registerReceptionDetailsEditRoutes } from "../reception-details-edit";
 import { buildMedicineSuggestions } from "../medicine-suggestions";
 import { checkInIsToday, registerClinicalAccess, registrationFields, rescheduledLogistics, type AccessActor } from "../clinical-access";
 import { knownRateCard, parseRateCardText } from "../referral-rate-cards";
@@ -385,6 +386,11 @@ export async function registerRoutes(
     saveClinicalDetailsVisible: (visible, userId) => storage.saveReceptionClinicalDetailsVisible(visible, userId),
     getVitals: (id) => storage.getReceptionVitals(id),
     saveVitals: (id, body, userId) => storage.saveReceptionVitals(id, body, userId),
+  });
+  registerReceptionDetailsEditRoutes(app, {
+    authenticate: getAccessActor,
+    getPatient: (id) => storage.getPatient(id),
+    savePatient: (id, body, actor) => storage.saveReceptionDetailsEdit(id, body, actor),
   });
   registerIcdRoutes(app, async (req, res, clinicianOnly) => {
     if (!clinicianOnly) {

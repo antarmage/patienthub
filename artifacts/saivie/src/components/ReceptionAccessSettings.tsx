@@ -29,10 +29,10 @@ export function ReceptionAccessSettings() {
       {access.isError && <p role="alert" className="text-sm text-rose-700">{access.error.message} <Button variant="link" onClick={() => void access.refetch()}>Retry</Button></p>}
       <div className="flex items-start justify-between gap-4 rounded-xl border p-4">
         <div><label htmlFor="reception-clinical-access" className="font-medium">Allow receptionists to view patient clinical details</label>
-          <p className="mt-1 text-sm text-muted-foreground">History, prescriptions, medicines, reports and pregnancy details. Read-only: this does not permit prescribing or changing the doctor's clinical records.</p></div>
+          <p className="mt-1 text-sm text-muted-foreground">View clinical encounters, prescriptions, medicines, reports and pregnancy details. This does not permit prescribing or changing the doctor's encounter records.</p></div>
         <Switch id="reception-clinical-access" data-testid="switch-reception-clinical-access" checked={access.isSuccess && access.data.clinicalDetailsVisible} disabled={!access.isSuccess || save.isPending} onCheckedChange={(value) => save.mutate(value)} />
       </div>
-      <p className="text-sm text-muted-foreground">Receptionists can record arrival vitals and patient-reported LMP independently of this viewing permission. Paper prescriptions still require the original scan and verification.</p>
+      <p className="text-sm text-muted-foreground">Receptionists can edit patient registration, history and pregnancy details and record arrival vitals independently of this viewing permission. Patient edits are audited. Paper prescriptions still require the original scan and verification.</p>
     </CardContent>
   </Card>;
 }

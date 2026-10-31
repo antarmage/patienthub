@@ -57,6 +57,7 @@ interface ReceptionDashboardProps {
   clinicalDetailsVisible?: boolean;
   onRecordVitals?: (appointment: any) => void;
   onTranscribePrescription?: (patient: { id: number; name: string; phone?: string | null; age?: number | null }) => void;
+  onEditPatient?: (patient: { id: number; name: string; phone?: string | null; age?: number | null }) => void;
   appointments: any[];
   patients: any[];
   tasks: ReceptionTask[];
@@ -137,6 +138,7 @@ export function ReceptionDashboard({
   clinicalDetailsVisible = false,
   onRecordVitals,
   onTranscribePrescription,
+  onEditPatient,
   appointments,
   patients,
   tasks,
@@ -355,6 +357,7 @@ export function ReceptionDashboard({
         <DropdownMenuContent align="end">
           {patient && beforeConsultation && onRecordVitals && <DropdownMenuItem onClick={() => onRecordVitals(apt)} data-testid={`${location}-record-vitals-${apt.id}`}>Record vitals</DropdownMenuItem>}
           {patient && onTranscribePrescription && <DropdownMenuItem onClick={() => onTranscribePrescription(patient)} data-testid={`${location}-paper-prescription-${apt.id}`}>Add / Edit prescription</DropdownMenuItem>}
+          {patient && onEditPatient && <DropdownMenuItem onClick={() => onEditPatient(patient)} data-testid={`${location}-edit-patient-${apt.id}`}>Edit patient details</DropdownMenuItem>}
           {patient && <DropdownMenuItem onClick={() => onOpenPatient(patient)}>{clinicalDetailsVisible ? "View patient details" : "View appointments"}</DropdownMenuItem>}
           {scheduled && <>
             <DropdownMenuItem disabled={isPending(apt.id)} onClick={() => { if (window.confirm(`Mark ${apt.patient} as no-show?`)) onUpdateAppointment(apt.id, { status: "no-show" }); }}>Mark as no-show</DropdownMenuItem>

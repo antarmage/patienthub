@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { authenticatedFetch, receptionRequest } from "@/lib/authenticatedFetch";
 import type { ReceptionPatient } from "@/lib/receptionTimeline";
+import { receptionVisitDates } from "@/lib/receptionVisitDates";
 import { useToast } from "@/hooks/use-toast";
 
 type ClinicalRecord = Record<string, unknown>;
@@ -49,7 +50,8 @@ function OriginalReport({ patientId, doc }: { patientId: number; doc: ClinicalRe
     : <Button size="sm" variant="outline" disabled={loading} onClick={() => void load()}>{loading ? "Loading..." : "Load original report"}</Button>;
 }
 
-export function ReceptionPatientDetails({ patient, onClose }: { patient: ReceptionPatient; onClose: () => void }) {
+export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient: ReceptionPatient; onClose: () => void; onEdit: () => void }) {
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const record = useQuery({
     queryKey: ["reception-clinical", patient.id],
     queryFn: async ({ signal }) => {
@@ -68,31 +70,53 @@ export function ReceptionPatientDetails({ patient, onClose }: { patient: Recepti
     refetchInterval: 15_000,
   });
   const data = record.data;
+  const visitDates = receptionVisitDates(data?.visits ?? []);
+  const selectedVisits = visitDates.find((group) => group.date === selectedDate) ?? visitDates[0];
   return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
     <DialogContent className="left-0 top-0 flex h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col overflow-hidden rounded-none border-0 p-4 data-[state=closed]:animate-none data-[state=open]:animate-none sm:p-6" data-testid="reception-patient-details">
       <DialogHeader className="shrink-0 pr-6 text-left">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <Button type="button" variant="outline" className="shrink-0" onClick={onClose} data-testid="button-back-patient-details"><ArrowLeft className="mr-1 h-4 w-4" />Back</Button>
-          <DialogTitle className="min-w-0 break-words leading-snug">Patient details · {patient.name}</DialogTitle>
+          <DialogTitle className="min-w-0 flex-1 break-words leading-snug">Patient details · {patient.name}</DialogTitle>
+          <Button type="button" variant="outline" className="ml-auto shrink-0" onClick={onEdit} data-testid="button-edit-patient-details">Edit patient details</Button>
         </div>
-        <DialogDescription>Read-only access enabled by your doctor. Clinical records cannot be changed here.</DialogDescription>
+        <DialogDescription>Clinical viewing enabled by your doctor. Patient profile and history can be edited; doctor-authored encounters remain protected.</DialogDescription>
       </DialogHeader>
       {record.isPending && <p role="status">Loading patient details...</p>}
       {record.isError && <p role="alert" className="overflow-y-auto break-words text-rose-700">{record.error.message} <Button variant="link" onClick={() => void record.refetch()}>Retry</Button></p>}
-      {record.isSuccess && data && <Tabs defaultValue="history" className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <TabsList className="flex h-auto w-full shrink-0 flex-nowrap"><TabsTrigger value="history">Details & history</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions & medicines</TabsTrigger><TabsTrigger value="reports">Reports</TabsTrigger><TabsTrigger value="pregnancy">Pregnancy</TabsTrigger></TabsList>
+      {record.isSuccess && data && <Tabs defaultValue="visits" className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="shrink-0 overflow-x-auto"><TabsList className="h-auto w-max justify-start"><TabsTrigger value="visits">Visit dates</TabsTrigger><TabsTrigger value="history">Patient history</TabsTrigger><TabsTrigger value="prescriptions">Medicines</TabsTrigger><TabsTrigger value="reports">Reports</TabsTrigger><TabsTrigger value="pregnancy">Pregnancy</TabsTrigger></TabsList></div>
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pr-1 [overflow-wrap:anywhere]" data-testid="reception-details-scroll">
+        <TabsContent value="visits" className="space-y-4 text-sm">
+          <div className="rounded-xl border bg-stone-50 p-4">
+            <p className="font-medium">{text(data.detail.name)}</p>
+            <p className="mt-1 text-muted-foreground">{text(data.detail.age)} years · {text(data.detail.phone) || "Phone not recorded"}</p>
+          </div>
+          <div><h2 className="font-medium">Recorded visit dates</h2><p className="mt-1 text-xs text-muted-foreground">Newest first. Select a date to see its visit records and paper prescription transcriptions.</p></div>
+          {!visitDates.length && <p className="rounded-xl border p-4 text-muted-foreground">No visit records yet.</p>}
+          {selectedVisits && <div className="grid min-w-0 gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
+            <nav aria-label="Patient visit dates" className="min-w-0 space-y-2">
+              {visitDates.map((group) => <button key={group.date} type="button" aria-pressed={group.date === selectedVisits.date} onClick={() => setSelectedDate(group.date)} className={`w-full rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saivie-teal ${group.date === selectedVisits.date ? "border-saivie-teal/40 bg-saivie-teal/5" : "bg-white hover:bg-stone-50"}`} data-testid={`reception-visit-date-${group.date || "unknown"}`}>
+                <span className="block font-medium">{group.label}</span><span className="mt-1 block text-xs text-muted-foreground">{group.records.length} {group.records.length === 1 ? "record" : "records"}</span>
+              </button>)}
+            </nav>
+            <section aria-label={`Visit records for ${selectedVisits.label}`} className="min-w-0 space-y-3">
+              <h3 className="font-medium">{selectedVisits.label}</h3>
+              {selectedVisits.records.map((visit) => <article key={text(visit.id)} className="min-w-0 space-y-3 rounded-xl border p-4" data-testid={`reception-visit-record-${text(visit.id)}`}>
+                <h4 className="font-medium">{object(visit.prescriptions).source === "receptionist-paper-transcription" ? "Paper prescription transcription" : text(visit.visitType) || "Consultation"}</h4>
+                <RecordedDetails value={{ complaint: visit.chiefComplaint, examination: visit.examination || visit.objective, diagnosis: visit.diagnosis, assessment: visit.assessment, vitals: visit.vitals }} />
+                <details className="rounded-lg border p-3"><summary className="cursor-pointer font-medium">Prescription & follow-up</summary><div className="mt-3"><RecordedDetails value={{ medicines: object(visit.prescriptions).medicines || (Array.isArray(visit.prescriptions) ? visit.prescriptions : null), advice: visit.planNotes, followUp: visit.followUpPlan, tests: visit.labsOrdered }} /></div></details>
+              </article>)}
+            </section>
+          </div>}
+        </TabsContent>
         <TabsContent value="history" className="space-y-3 text-sm">
           <RecordedDetails value={{ name: data.detail.name, age: data.detail.age, phone: data.detail.phone, patientType: data.detail.type, history: data.detail.history }} />
-          {data.visits.map((visit) => <article key={text(visit.id)} className="space-y-2 rounded-xl border p-3">
-            <h3 className="font-medium">{text(visit.date)} · {text(visit.visitType) || "Visit"}</h3>
-            <RecordedDetails value={{ complaint: visit.chiefComplaint, examination: visit.examination || visit.objective, diagnosis: visit.diagnosis, assessment: visit.assessment, vitals: visit.vitals }} />
-          </article>)}
           {data.notes.map((note) => <article key={text(note.id)} className="rounded-xl border p-3"><p className="font-medium">{text(note.date || note.createdAt)}</p><RecordedDetails value={note.content || note.note || note.text} /></article>)}
         </TabsContent>
         <TabsContent value="prescriptions" className="space-y-3 text-sm">
           {!data.visits.length && !data.medicines.length && <p>No prescriptions or medicines recorded.</p>}
-          {data.visits.map((visit) => <article key={text(visit.id)} className="space-y-2 rounded-xl border p-3"><h3 className="font-medium">{text(visit.date)}</h3><RecordedDetails value={{ medicines: object(visit.prescriptions).medicines || (Array.isArray(visit.prescriptions) ? visit.prescriptions : null), advice: visit.planNotes, followUp: visit.followUpPlan, tests: visit.labsOrdered }} /></article>)}
+          <p className="text-muted-foreground">Visit prescriptions and follow-up instructions are under Visit dates.</p>
           {data.medicines.map((medicine) => <article key={text(medicine.id)} className="rounded-xl border p-3"><RecordedDetails value={{ medicine: medicine.name, dose: medicine.dose, frequency: medicine.frequency, duration: medicine.duration, instructions: medicine.instructions, status: medicine.status }} /></article>)}
         </TabsContent>
         <TabsContent value="reports" className="space-y-3 text-sm">

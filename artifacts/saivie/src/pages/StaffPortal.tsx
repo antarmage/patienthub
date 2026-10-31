@@ -101,6 +101,7 @@ import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
 import { ReceptionPatientList } from "@/components/ReceptionPatientList";
 import { PaperPrescriptionTranscriptions } from "@/components/PaperPrescriptionTranscriptions";
 import { ReceptionPatientDetails } from "@/components/ReceptionPatientDetails";
+import { ReceptionPatientEdit } from "@/components/ReceptionPatientEdit";
 import { ReceptionVitalsDialog } from "@/components/ReceptionVitalsDialog";
 import { useReceptionAccess } from "@/lib/receptionAccess";
 import type { ReceptionAppointment } from "@/lib/receptionTimeline";
@@ -2188,6 +2189,7 @@ export default function StaffPortal() {
   const [prescriptionAppointment, setPrescriptionAppointment] = useState<any | null>(null);
   const [paperPrescriptionPatient, setPaperPrescriptionPatient] = useState<ReceptionPatient | null>(null);
   const [clinicalDetailPatient, setClinicalDetailPatient] = useState<ReceptionPatient | null>(null);
+  const [editDetailPatient, setEditDetailPatient] = useState<ReceptionPatient | null>(null);
   const [receptionVitalsAppointment, setReceptionVitalsAppointment] = useState<ReceptionAppointment | null>(null);
   useEffect(() => {
     if (!canViewClinical) {
@@ -2547,7 +2549,7 @@ export default function StaffPortal() {
       <main className="flex-1 flex flex-col h-screen overflow-hidden bg-saivie-surface-muted/50">
         
         {/* Top Header */}
-        <header className="h-16 bg-saivie-ivory border-b border-saivie-border px-6 flex items-center justify-between shrink-0 z-10">
+        {!receptionist && <header className="h-16 bg-saivie-ivory border-b border-saivie-border px-6 flex items-center justify-between shrink-0 z-10">
             <div className="flex items-center gap-4">
                 <div className={`p-2 rounded-lg ${currentRole?.bg}`}>
                     {currentRole && <currentRole.icon className={`w-5 h-5 ${currentRole.color}`} />}
@@ -2643,15 +2645,15 @@ export default function StaffPortal() {
                   </>
                 )}
             </div>
-        </header>
+        </header>}
 
         {/* Dashboard Content */}
         <div className={`flex-1 overflow-y-auto p-4 md:p-6 ${activeRole === 'receptionist' && ['dashboard', 'patients'].includes(activeView) ? 'bg-[#faf5e6]' : ''}`}>
           {receptionist && ['dashboard', 'patients'].includes(activeView) && <div className="mb-3 rounded-xl border border-[#e9e1d2] bg-white px-4 py-2 text-xs text-[#705364]">
             {receptionAccess.isError ? <p role="alert">Could not load doctor permissions: {receptionAccess.error.message} <button type="button" className="underline" onClick={() => void receptionAccess.refetch()}>Retry</button></p>
               : receptionAccess.isPending ? "Loading doctor permissions..."
-              : canViewClinical ? "Patient clinical details: read-only access enabled by your doctor. Vitals entry is available."
-              : "Clinical details are hidden. Your doctor can enable viewing in Profile & Settings → Receptionist permissions. Vitals entry is available."}
+              : canViewClinical ? "Clinical viewing enabled by your doctor. Patient details editing and vitals entry are available."
+              : "Clinical encounter viewing is hidden. Patient details editing and vitals entry are available. Your doctor can enable clinical viewing in Profile & Settings → Receptionist permissions."}
           </div>}
             
             {/* 6. SCHEDULE VIEW */}
@@ -3824,6 +3826,7 @@ export default function StaffPortal() {
                   clinicalDetailsVisible={canViewClinical}
                   onRecordVitals={setReceptionVitalsAppointment}
                   onTranscribePrescription={setPaperPrescriptionPatient}
+                  onEditPatient={setEditDetailPatient}
                   appointments={todayAppointments}
                   patients={patients}
                   tasks={receptionistTasks}
@@ -3867,6 +3870,7 @@ export default function StaffPortal() {
                     onRecordVitals={setReceptionVitalsAppointment}
                     onViewPatient={canViewClinical ? setClinicalDetailPatient : undefined}
                     onTranscribePrescription={setPaperPrescriptionPatient}
+                    onEditPatient={setEditDetailPatient}
                     patients={patients}
                     providers={providers}
                     patientsLoading={patientsQuery.isLoading}
@@ -5294,7 +5298,8 @@ export default function StaffPortal() {
               onClose={() => setPrescriptionAppointment(null)}
             />
             <PaperPrescriptionTranscriptions patient={paperPrescriptionPatient} onClose={() => setPaperPrescriptionPatient(null)} />
-            {canViewClinical && clinicalDetailPatient && <ReceptionPatientDetails patient={clinicalDetailPatient} onClose={() => setClinicalDetailPatient(null)} />}
+            {canViewClinical && clinicalDetailPatient && !editDetailPatient && <ReceptionPatientDetails patient={clinicalDetailPatient} onClose={() => setClinicalDetailPatient(null)} onEdit={() => setEditDetailPatient(clinicalDetailPatient)} />}
+            {receptionist && editDetailPatient && <ReceptionPatientEdit patient={editDetailPatient} onClose={() => setEditDetailPatient(null)} />}
             {receptionist && receptionVitalsAppointment && <ReceptionVitalsDialog appointment={receptionVitalsAppointment} patient={patients.find((patient: ReceptionPatient) => patient.id === receptionVitalsAppointment.patientId) || { id: receptionVitalsAppointment.patientId!, name: "Patient" }} onClose={() => setReceptionVitalsAppointment(null)} />}
             <AfterVisitDialog
               appointment={receptionist ? null : afterVisitAppointment}
