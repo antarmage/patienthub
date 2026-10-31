@@ -2594,7 +2594,7 @@ export default function StaffPortal() {
         </header>
 
         {/* Dashboard Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className={`flex-1 overflow-y-auto p-6 ${activeRole === 'receptionist' && activeView === 'dashboard' ? 'bg-[#faf5e6]' : ''}`}>
             {activeRole === 'receptionist' && activeView === 'dashboard' && (
               <section className="mb-6" aria-label="Welcome" data-testid="receptionist-greeting">
                 <h2 className="text-2xl font-bold text-saivie-plum">
