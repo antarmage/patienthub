@@ -75,6 +75,10 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Shared Saivie web UI
 
+- The clinician navigation defaults to a 64px icon rail. Mouse hover or keyboard focus reveals labels in an overlay without shifting the workspace; the pin button keeps the wider sidebar open. Small screens retain the compact rail.
+
+- The clinician patient directory uses `ClinicalPatientList` with Today, Pregnant, PCOS, High-risk, Follow-ups due and All patients filters. Pregnancy trimester and due-date estimates come from valid recorded LMP (explicitly labeled), not sample data; delivered patients are excluded and missing dating is shown separately. Risk uses recorded scores/status and defaults to "Not assessed". Follow-ups due require a valid ISO `nextReview` on or before today. Upcoming appointment data polls every 30 seconds independently of the directory's optional appointment-date range. Name/contact/pathway search and patient-record actions are preserved.
+
 - Calendars use a shared horizontal, scrollable 14-day strip with blue selected-date pills, previous/next-week arrows, and month/year controls for distant dates. Staff and clinician schedules list appointments for the selected local calendar date instead of month/week grids.
 - Date fields use `DateInput`: an editable ISO (`YYYY-MM-DD`) field with the same strip in a popover. Minimum/maximum dates, required/disabled fields, clearing optional dates, and local-date arithmetic are preserved. Use `onValueChange` for date strings; non-date inputs retain `onChange`.
 

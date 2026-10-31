@@ -2,6 +2,7 @@ export interface DirectoryAppointment {
   patientId: number | string | null;
   date: string;
   status?: string | null;
+  time?: string | null;
 }
 
 export function directoryAppointmentUrl(from: string, to: string): string {
@@ -26,7 +27,8 @@ export async function fetchDirectoryAppointments(from: string, to: string, signa
     const appointment = item as Record<string, unknown>;
     return typeof appointment.date === "string" &&
       (appointment.patientId === null || typeof appointment.patientId === "number" || typeof appointment.patientId === "string") &&
-      (appointment.status == null || typeof appointment.status === "string");
+      (appointment.status == null || typeof appointment.status === "string") &&
+      (appointment.time == null || typeof appointment.time === "string");
   })) throw new Error("Appointment API returned an invalid appointment list.");
   return body;
 }

@@ -19,6 +19,8 @@ import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
 import { ConsultationVitalsTrends } from "@/components/ConsultationVitalsTrends";
 import { PatientSummaryDashboard } from "@/components/PatientSummaryDashboard";
 import { DoctorDashboard } from "@/components/DoctorDashboard";
+import { ClinicalPatientList } from "@/components/ClinicalPatientList";
+import { calendarDateValue } from "@/lib/calendarDates";
 import { clinicalRequest, DiagnosisHistory, IcdDiagnosisEditor, usePatientDiagnoses } from "@/components/IcdDiagnoses";
 import type { IcdDiagnosis } from "../../../../lib/db/src/icd";
 import { PatientVisitTimeline, visitTests } from "@/components/PatientVisitTimeline";
@@ -411,7 +413,10 @@ export default function ClinicianPortal() {
   const patientSearchParams = useSearch();
   const openedPatientLink = React.useRef<string | null>(null);
   const [activeView, setActiveView] = useState("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 640);
+  const [sidebarPinned, setSidebarPinned] = useState(false);
+  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const [sidebarFocused, setSidebarFocused] = useState(false);
+  const sidebarOpen = sidebarPinned || sidebarHovered || sidebarFocused;
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [patientDirectorySearch, setPatientDirectorySearch] = useState('');
   const [patientDirectoryDateFrom, setPatientDirectoryDateFrom] = useState('');
@@ -1221,6 +1226,13 @@ export default function ClinicianPortal() {
     queryKey: ['/api/appointments', 'directory', patientDirectoryDateFrom, patientDirectoryDateTo],
     enabled: Boolean(patientDirectoryDateFrom || patientDirectoryDateTo),
     queryFn: ({ signal }) => fetchDirectoryAppointments(patientDirectoryDateFrom, patientDirectoryDateTo, signal),
+    refetchInterval: 30000,
+  });
+  const directoryToday = calendarDateValue(new Date());
+  const upcomingDirectoryAppointmentsQuery = useQuery<DirectoryAppointment[]>({
+    queryKey: ['/api/appointments', 'directory', directoryToday, ''],
+    enabled: activeView === 'patient_list',
+    queryFn: ({ signal }) => fetchDirectoryAppointments(directoryToday, '', signal),
     refetchInterval: 30000,
   });
 
@@ -2203,8 +2215,16 @@ export default function ClinicianPortal() {
     <div className="min-h-screen bg-saivie-surface-muted flex font-sans text-saivie-plum overflow-hidden">
       
       {/* Sidebar */}
-      <aside className={`bg-saivie-ivory text-saivie-plum ${activeView === 'patient_detail' && isPatientOverview ? 'hidden' : 'flex'} flex-col shrink-0 border-r border-saivie-border z-20 transition-all duration-300 ${sidebarOpen ? "w-64 max-sm:w-16" : "w-20"}`}>
-        <div className="p-3 max-sm:p-2 border-b border-saivie-border flex items-center justify-between gap-2 max-sm:justify-center">
+      <aside
+        aria-label="Clinician navigation"
+        onPointerEnter={(event) => { if (event.pointerType === 'mouse') setSidebarHovered(true); }}
+        onPointerLeave={() => setSidebarHovered(false)}
+        onFocusCapture={() => setSidebarFocused(true)}
+        onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSidebarFocused(false); }}
+        className={`relative text-saivie-plum ${activeView === 'patient_detail' && isPatientOverview ? 'hidden' : 'flex'} shrink-0 z-20 transition-[width] duration-200 motion-reduce:transition-none ${sidebarPinned ? "w-64 max-sm:w-16" : "w-16"}`}
+      >
+        <div className={`absolute inset-y-0 left-0 flex flex-col border-r border-saivie-border bg-saivie-ivory transition-[width,box-shadow] duration-200 motion-reduce:transition-none ${sidebarOpen ? 'w-64 max-sm:w-16 shadow-lg' : 'w-16'}`}>
+        <div className="p-2 border-b border-saivie-border flex items-center justify-between gap-2 max-sm:justify-center">
           {sidebarOpen ? (
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-8 h-8 rounded-full bg-saivie-surface-muted flex items-center justify-center shrink-0">
@@ -2224,15 +2244,16 @@ export default function ClinicianPortal() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-saivie-plum hover:text-saivie-plum hover:bg-saivie-sage shrink-0 max-sm:hidden"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            className={`h-8 w-8 text-saivie-plum hover:text-saivie-plum hover:bg-saivie-sage shrink-0 max-sm:hidden ${sidebarOpen ? '' : 'hidden'}`}
+            onClick={() => setSidebarPinned(!sidebarPinned)}
+            aria-label={sidebarPinned ? "Unpin sidebar" : "Pin sidebar open"}
+            aria-pressed={sidebarPinned}
           >
             <Menu className="w-4 h-4" />
           </Button>
         </div>
         
-        <nav className="flex-1 px-3 py-3 space-y-1">
+        <nav className="flex-1 px-2 py-3 space-y-1">
           {[
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { id: 'patient_list', label: 'Patients', icon: Users },
@@ -2255,7 +2276,7 @@ export default function ClinicianPortal() {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-saivie-border bg-saivie-ivory">
+        <div className="p-2 border-t border-saivie-border bg-saivie-ivory">
           <div className={`flex max-sm:flex-col max-sm:items-center max-sm:gap-2 ${sidebarOpen ? 'items-center gap-3' : 'flex-col items-center gap-2'}`}>
             <Avatar className="h-9 w-9 border border-saivie-border shrink-0">
               <AvatarFallback className="bg-saivie-surface-muted text-saivie-teal">{providerInitials}</AvatarFallback>
@@ -2270,11 +2291,13 @@ export default function ClinicianPortal() {
               onClick={() => { localStorage.removeItem("clinicianProvider"); sessionStorage.removeItem("billing_staff_token"); navigate("/"); }}
               className="p-1.5 rounded-md hover:bg-rose-50 text-saivie-plum hover:text-rose-600 transition-colors"
               title="Sign Out"
+              aria-label="Sign Out"
               data-testid="button-signout"
             >
               <LogOut className="w-4 h-4" />
             </button>
           </div>
+        </div>
         </div>
       </aside>
 
@@ -4528,35 +4551,30 @@ export default function ClinicianPortal() {
         )}
 
         {activeView === 'patient_list' && (
-          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          <div className="flex-1 overflow-y-auto bg-[#f5f8f5] p-4 md:p-6">
             <div className="max-w-[1440px] mx-auto space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-saivie-plum">Clinical workspace</p>
-                  <h2 className="mt-1 text-2xl font-semibold text-saivie-plum">Patients</h2>
-                  <p className="mt-1 text-sm text-saivie-plum">Search your patient directory and open a record to continue care.</p>
-                </div>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-md bg-saivie-ivory border border-saivie-border px-3 py-2 text-saivie-plum"><strong className="text-saivie-plum">{patients.length}</strong> patients</span>
-                  <span className="rounded-md bg-[#fff0ef] border border-[#f2d9d8] px-3 py-2 text-[#9c4e53]"><strong>{riskAlerts.length}</strong> high-risk</span>
-                  <span className="rounded-md bg-saivie-sage border border-saivie-border px-3 py-2 text-saivie-plum"><strong>{queuePatients.length}</strong> in selected schedule</span>
+                  <h2 className="mt-1 font-serif text-4xl font-semibold text-saivie-plum">Patients</h2>
+                  <p className="mt-1 text-xs text-saivie-plum/70">Care pathways, recorded risk and upcoming visits in one workspace.</p>
                 </div>
               </div>
 
-              <section className="bg-saivie-ivory border border-saivie-border rounded-lg overflow-hidden">
-                <div className="p-4 border-b border-saivie-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <section aria-label="Patient search and appointment dates">
+                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-saivie-plum">Patient directory</h3>
-                    <p className="mt-0.5 text-xs text-saivie-plum">{filteredDirectoryPatients.length} of {patients.length} records</p>
+                    <p className="text-xs text-saivie-plum/70">{patientsQuery.isLoading ? 'Loading directory...' : `${filteredDirectoryPatients.length} of ${patients.length} records`}</p>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div className="flex flex-col md:flex-row md:items-center gap-2">
                     <div className="relative w-full sm:w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-saivie-plum" />
                       <Input
                         value={patientDirectorySearch}
                         onChange={(event) => setPatientDirectorySearch(event.target.value)}
-                        placeholder="Search patients"
-                        className="h-9 pl-9 text-sm border-saivie-border"
+                        placeholder="Name, phone or care pathway"
+                        aria-label="Search patients"
+                        className="h-10 rounded-full pl-9 text-sm border-saivie-border"
                         data-testid="input-patient-directory-search"
                       />
                     </div>
@@ -4567,7 +4585,7 @@ export default function ClinicianPortal() {
                         max={patientDirectoryDateTo || undefined}
                         onValueChange={(value) => setPatientDirectoryDateFrom(value)}
                         aria-label="Appointment date from"
-                        className="h-9 w-[142px] text-xs border-saivie-border"
+                        className="h-10 w-[142px] rounded-full bg-white text-xs border-saivie-border"
                         data-testid="input-patient-directory-date-from"
                       />
                       <span>to</span>
@@ -4576,7 +4594,7 @@ export default function ClinicianPortal() {
                         min={patientDirectoryDateFrom || undefined}
                         onValueChange={(value) => setPatientDirectoryDateTo(value)}
                         aria-label="Appointment date to"
-                        className="h-9 w-[142px] text-xs border-saivie-border"
+                        className="h-10 w-[142px] rounded-full bg-white text-xs border-saivie-border"
                         data-testid="input-patient-directory-date-to"
                       />
                     </label>
@@ -4602,77 +4620,21 @@ export default function ClinicianPortal() {
 
                 {(patientDirectoryDateFrom || patientDirectoryDateTo) && directoryAppointmentsQuery.isLoading && <p role="status" className="px-4 py-3 text-xs text-saivie-plum">Loading appointments for the selected range…</p>}
                 {(patientDirectoryDateFrom || patientDirectoryDateTo) && directoryAppointmentsQuery.isError && <div role="alert" className="px-4 py-3 text-xs text-rose-700">{directoryAppointmentsQuery.error.message} <button type="button" className="underline" onClick={() => void directoryAppointmentsQuery.refetch()}>Retry</button></div>}
-                <div className="overflow-x-auto">
-                  <table className="min-w-[760px] w-full text-left text-sm">
-                    <thead className="bg-saivie-surface-muted text-[10px] uppercase tracking-wide text-saivie-plum">
-                      <tr>
-                        <th className="px-4 py-3 font-semibold">Patient</th>
-                        <th className="px-4 py-3 font-semibold">Care pathway</th>
-                        <th className="px-4 py-3 font-semibold">Status</th>
-                        <th className="px-4 py-3 font-semibold">Last visit</th>
-                        <th className="px-4 py-3 font-semibold">Next follow-up</th>
-                        <th className="px-4 py-3 font-semibold">Risk</th>
-                        <th className="px-3 py-3" aria-label="Open patient record" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {filteredDirectoryPatients.map((patient: any) => {
-                        const riskLevel = patient.riskScore?.level || (patient.status === 'High Risk' ? 'High' : '');
-                        const riskClass = riskLevel === 'Critical' || riskLevel === 'High'
-                          ? 'bg-[#fff0ef] text-[#a34d52]'
-                          : riskLevel === 'Medium'
-                            ? 'bg-amber-50 text-amber-700'
-                            : 'bg-saivie-surface-muted text-saivie-plum';
-                        return (
-                          <tr
-                            key={patient.id}
-                            data-testid={`patient-directory-row-${patient.id}`}
-                            tabIndex={0}
-                            role="button"
-                            onClick={() => navigateToPatient(patient)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                navigateToPatient(patient);
-                              }
-                            }}
-                            className="cursor-pointer hover:bg-saivie-ivory focus-visible:outline-none focus-visible:bg-saivie-surface-muted"
-                          >
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <Avatar className="h-9 w-9 shrink-0">
-                                  <AvatarFallback className="bg-saivie-surface-muted text-saivie-teal text-xs font-semibold">{getInitials(patient.name)}</AvatarFallback>
-                                </Avatar>
-                                <div className="min-w-0">
-                                  <p className="font-medium text-saivie-plum truncate">{patient.name || 'Unnamed patient'}</p>
-                                  <p className="text-xs text-saivie-plum truncate">{patient.phone || patient.email || 'Contact not provided'}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-saivie-plum">{patient.type || patient.condition || patient.mode || 'General care'}</td>
-                            <td className="px-4 py-3 text-saivie-plum">{patient.status || 'Active'}</td>
-                            <td className="px-4 py-3 text-saivie-plum">{patient.lastVisit || '—'}</td>
-                            <td className="px-4 py-3 text-saivie-plum">{patient.nextReview || '—'}</td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-flex rounded px-2 py-1 text-[10px] font-medium ${riskClass}`}>{riskLevel || 'Low'}</span>
-                            </td>
-                            <td className="px-3 py-3"><ChevronRight className="h-4 w-4 text-saivie-plum" /></td>
-                          </tr>
-                        );
-                      })}
-                      {filteredDirectoryPatients.length === 0 && (!(patientDirectoryDateFrom || patientDirectoryDateTo) || directoryAppointmentsQuery.isSuccess) && (
-                        <tr>
-                          <td colSpan={7} className="px-4 py-14 text-center">
-                            <Users className="mx-auto h-6 w-6 text-slate-300" />
-                            <p className="mt-2 text-sm font-medium text-saivie-plum">No matching patients</p>
-                            <p className="mt-1 text-xs text-saivie-plum">Try a different name, phone number, email, or care type.</p>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
               </section>
+              <ClinicalPatientList
+                patients={filteredDirectoryPatients}
+                allPatients={patients}
+                appointments={upcomingDirectoryAppointmentsQuery.data || []}
+                loadingAppointments={upcomingDirectoryAppointmentsQuery.isLoading}
+                appointmentsAvailable={upcomingDirectoryAppointmentsQuery.isSuccess}
+                loadingPatients={patientsQuery.isLoading || (Boolean(patientDirectoryDateFrom || patientDirectoryDateTo) && directoryAppointmentsQuery.isLoading)}
+                patientsAvailable={patientsQuery.isSuccess && (!(patientDirectoryDateFrom || patientDirectoryDateTo) || directoryAppointmentsQuery.isSuccess)}
+                onOpen={navigateToPatient}
+              >
+                {patientsQuery.isLoading && <p role="status" className="px-5 py-3 text-sm text-saivie-plum">Loading patients...</p>}
+                {patientsQuery.isError && <div role="alert" className="px-5 py-3 text-sm text-rose-700">Unable to load patients. <button type="button" className="underline" onClick={() => void patientsQuery.refetch()}>Retry</button></div>}
+                {upcomingDirectoryAppointmentsQuery.isError && <div role="alert" className="px-5 py-3 text-xs text-rose-700">{upcomingDirectoryAppointmentsQuery.error.message} <button type="button" className="underline" onClick={() => void upcomingDirectoryAppointmentsQuery.refetch()}>Retry</button></div>}
+              </ClinicalPatientList>
             </div>
           </div>
         )}
