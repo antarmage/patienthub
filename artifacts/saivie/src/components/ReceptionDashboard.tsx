@@ -335,10 +335,10 @@ export function ReceptionDashboard({
   };
 
   const statCards = [
-    { key: "total", label: "Today's appointments", value: counts.all, link: "View calendar", onClick: onViewSchedule, icon: CalendarCheck, tone: "bg-white/50 text-[#584c1e]", surface: "border-[#e8cf70] bg-[#f7df78]", testId: "stat-today-visits" },
-    { key: "checked", label: "Checked in", value: checkedInCount, link: "View arrivals", onClick: () => setFilter("arrived"), icon: UserCheck, tone: "bg-white/50 text-[#45552c]", surface: "border-[#a9bc7b] bg-[#b9cb8c]", testId: "stat-checked-in" },
-    { key: "waiting", label: "Waiting", value: counts.waiting, link: "View queue", onClick: () => setFilter("waiting"), icon: Hourglass, tone: "bg-white/50 text-[#704660]", surface: "border-[#dfa3c1] bg-[#efb8d5]", testId: "stat-waiting" },
-    { key: "tasks", label: "Admin tasks", value: tasks.length, link: "See tasks", onClick: undefined, icon: ClipboardList, tone: "bg-white/50 text-[#385679]", surface: "border-[#a7bfdc] bg-[#b9cee8]", testId: "stat-pending-tasks" },
+    { key: "total", label: "Today's appointments", value: counts.all, link: "View calendar", onClick: onViewSchedule, icon: CalendarCheck, tone: "bg-[#f7df78] text-[#584c1e]", surface: "border-[#e9e1d2] bg-[#fffaf0]", testId: "stat-today-visits" },
+    { key: "checked", label: "Checked in", value: checkedInCount, link: "View arrivals", onClick: () => setFilter("arrived"), icon: UserCheck, tone: "bg-[#b9cb8c] text-[#45552c]", surface: "border-[#e9e1d2] bg-[#fffaf0]", testId: "stat-checked-in" },
+    { key: "waiting", label: "Waiting", value: counts.waiting, link: "View queue", onClick: () => setFilter("waiting"), icon: Hourglass, tone: "bg-[#efb8d5] text-[#704660]", surface: "border-[#e9e1d2] bg-[#fffaf0]", testId: "stat-waiting" },
+    { key: "tasks", label: "Admin tasks", value: tasks.length, link: "See tasks", onClick: undefined, icon: ClipboardList, tone: "bg-[#b9cee8] text-[#385679]", surface: "border-[#e9e1d2] bg-[#fffaf0]", testId: "stat-pending-tasks" },
   ];
 
   const filterTabs: Array<{ id: FlowFilter; label: string }> = [
@@ -355,7 +355,7 @@ export function ReceptionDashboard({
       <div className="col-span-12 space-y-6 xl:col-span-8">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {statCards.map((card) => (
-            <Card key={card.key} className={`${card.surface} shadow-sm`} data-testid={card.testId}>
+            <Card key={card.key} className={`${card.surface} shadow-none`} data-testid={card.testId}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${card.tone}`}>
@@ -365,11 +365,11 @@ export function ReceptionDashboard({
                 </div>
                 <p className="mt-3 text-3xl font-bold text-[#242821]">{card.value}</p>
                 {card.onClick ? (
-                  <button type="button" className="mt-1 flex items-center gap-1 text-xs text-[#242821] hover:underline" onClick={card.onClick}>
+                  <button type="button" className="mt-1 flex items-center gap-1 text-xs text-[#705364] hover:underline" onClick={card.onClick}>
                     {card.link} <ChevronRight className="h-3 w-3" />
                   </button>
                 ) : (
-                  <p className="mt-1 text-xs text-[#242821]">Pending</p>
+                  <p className="mt-1 text-xs text-[#705364]">Pending</p>
                 )}
               </CardContent>
             </Card>
@@ -377,7 +377,7 @@ export function ReceptionDashboard({
         </div>
 
         <Card className="border-[#e9e1d2] bg-[#fffaf0] shadow-sm" data-testid="card-patient-flow">
-          <CardHeader className="space-y-3 rounded-t-3xl bg-[#fff2ca] pb-3">
+          <CardHeader className="space-y-3 rounded-t-3xl bg-[#fffaf0] pb-3">
             <CardTitle className="text-lg font-bold text-saivie-plum">Today's patient flow</CardTitle>
             <div className="flex flex-wrap gap-2">
               {filterTabs.map((tab) => (
@@ -395,7 +395,7 @@ export function ReceptionDashboard({
           </CardHeader>
           <CardContent className="p-0">
             <table className="w-full text-left text-sm">
-              <thead className="border-y border-[#e9e1d2] bg-[#f5edda] text-[11px] uppercase tracking-wider text-saivie-plum">
+              <thead className="border-y border-[#e9e1d2] bg-[#f8f5ed] text-[11px] uppercase tracking-wider text-saivie-plum">
                 <tr>
                   <th className="px-5 py-3 font-semibold">Time</th>
                   <th className="px-3 py-3 font-semibold">Patient</th>
@@ -410,11 +410,11 @@ export function ReceptionDashboard({
                   const badge = ARRIVAL_BADGE[state];
                   const patient = findPatient(apt);
                   return (
-                    <tr key={apt.id} className="hover:bg-[#f9e8ef]" data-testid={`flow-row-${apt.id}`}>
+                    <tr key={apt.id} className="bg-white hover:bg-[#fffaf5]" data-testid={`flow-row-${apt.id}`}>
                       <td className="whitespace-nowrap px-5 py-3 text-saivie-plum">{formatTime(apt.time)}</td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#efb8d5] text-[11px] font-bold text-[#704660]">{initials(apt.patient)}</div>
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f4eef1] text-[11px] font-bold text-[#704660]">{initials(apt.patient)}</div>
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                               <p className="font-semibold text-saivie-plum">{apt.patient}</p>
@@ -475,8 +475,8 @@ export function ReceptionDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-[#e8cbdc] bg-[#fff8fc] shadow-sm" data-testid="card-waiting-queue">
-          <CardHeader className="flex flex-row items-center justify-between rounded-t-3xl bg-[#f5d9e8] pb-3">
+        <Card className="border-[#eadbdc] bg-white shadow-sm" data-testid="card-waiting-queue">
+          <CardHeader className="flex flex-row items-center justify-between rounded-t-3xl bg-[#fffaf5] pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-saivie-plum">
               <UserCheck className="h-5 w-5 text-saivie-teal" /> Waiting queue
             </CardTitle>
@@ -542,18 +542,18 @@ export function ReceptionDashboard({
       </div>
 
       <div className="col-span-12 min-w-0 xl:sticky xl:top-4 xl:col-span-4 xl:max-h-[calc(100vh-2rem)] xl:self-start">
-        <div className="mb-3 rounded-2xl border border-[#a7bfdc] bg-[#b9cee8] px-4 py-3">
+        <div className="mb-3 rounded-2xl border border-[#e9e1d2] bg-[#fffaf0] px-4 py-3">
           <h2 className="text-lg font-bold text-saivie-plum">Reception desk</h2>
-          <p className="text-xs text-saivie-plum">Tasks, reminders, and front-desk tools</p>
+          <p className="text-xs text-[#705364]">Tasks, reminders, and front-desk tools</p>
         </div>
         <Tabs defaultValue="work" className="flex min-h-0 flex-col" data-testid="reception-sidebar-tabs">
           <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-xl border-[#e9e1d2] bg-[#fffaf0]">
-            <TabsTrigger value="work" className="px-2 text-xs data-[state=active]:bg-[#f7df78] data-[state=active]:text-[#584c1e]">Work ({tasks.length + pendingRx.length})</TabsTrigger>
-            <TabsTrigger value="reminders" className="px-2 text-xs data-[state=active]:bg-[#efb8d5] data-[state=active]:text-[#704660]">Reminders ({followUps.length + pregnancyReminders.length + (vaccinationRemindersQuery.data?.length || 0)})</TabsTrigger>
-            <TabsTrigger value="tools" className="px-2 text-xs data-[state=active]:bg-[#b9cb8c] data-[state=active]:text-[#45552c]">Tools</TabsTrigger>
+            <TabsTrigger value="work" className="px-2 text-xs data-[state=active]:bg-[#f5edda] data-[state=active]:text-[#584c1e]">Work ({tasks.length + pendingRx.length})</TabsTrigger>
+            <TabsTrigger value="reminders" className="px-2 text-xs data-[state=active]:bg-[#f4eef1] data-[state=active]:text-[#704660]">Reminders ({followUps.length + pregnancyReminders.length + (vaccinationRemindersQuery.data?.length || 0)})</TabsTrigger>
+            <TabsTrigger value="tools" className="px-2 text-xs data-[state=active]:bg-[#eef2e8] data-[state=active]:text-[#45552c]">Tools</TabsTrigger>
           </TabsList>
           <TabsContent value="work" className="mt-3 max-h-[60vh] space-y-3 overflow-y-auto pr-1 xl:max-h-[calc(100vh-9rem)]">
-        <Card className="border-[#a7bfdc] bg-[#e8f0fa] shadow-sm" data-testid="card-reception-tasks">
+        <Card className="border-[#e9e1d2] bg-white shadow-sm" data-testid="card-reception-tasks">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-saivie-plum">
               <ClipboardList className="h-5 w-5 text-saivie-teal" /> Reception tasks
@@ -581,7 +581,7 @@ export function ReceptionDashboard({
 
         <ReferralsCard patients={patients} request={referRequest} onRequestHandled={clearReferRequest} />
 
-        <Card className="border-[#e8cf70] bg-[#fff2ca] shadow-sm" data-testid="card-inventory-alerts">
+        <Card className="border-[#e9e1d2] bg-[#fffaf5] shadow-sm" data-testid="card-inventory-alerts">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-saivie-plum">
               <AlertCircle className="h-5 w-5 text-amber-500" /> Stock alerts
@@ -606,7 +606,7 @@ export function ReceptionDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-[#a9bc7b] bg-[#edf3dc] shadow-sm" data-testid="card-pending-prescriptions">
+        <Card className="border-[#e9e1d2] bg-white shadow-sm" data-testid="card-pending-prescriptions">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-saivie-plum">
               <ClipboardList className="h-5 w-5 text-saivie-teal" /> Prescriptions to record
@@ -631,7 +631,7 @@ export function ReceptionDashboard({
           </TabsContent>
 
           <TabsContent value="reminders" className="mt-3 max-h-[60vh] space-y-3 overflow-y-auto pr-1 xl:max-h-[calc(100vh-9rem)]">
-        <Card className="border-[#e8cbdc] bg-[#f9e8ef] shadow-sm" data-testid="card-followup-reminders">
+        <Card className="border-[#eadbdc] bg-[#fffaf5] shadow-sm" data-testid="card-followup-reminders">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-saivie-plum">
               <Bell className="h-5 w-5 text-saivie-teal" /> Follow-up reminders
@@ -665,7 +665,7 @@ export function ReceptionDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-[#a7bfdc] bg-[#e8f0fa] shadow-sm" data-testid="card-pregnancy-reminders">
+        <Card className="border-[#e9e1d2] bg-white shadow-sm" data-testid="card-pregnancy-reminders">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-saivie-plum">
               <Baby className="h-5 w-5 text-saivie-rose" /> Pregnancy milestones
@@ -698,7 +698,7 @@ export function ReceptionDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-[#a9bc7b] bg-[#edf3dc] shadow-sm" data-testid="card-vaccination-reminders">
+        <Card className="border-[#e9e1d2] bg-white shadow-sm" data-testid="card-vaccination-reminders">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-saivie-plum">
               <Syringe className="h-5 w-5 text-saivie-teal" /> Vaccination reminders
@@ -750,7 +750,7 @@ export function ReceptionDashboard({
           </TabsContent>
 
           <TabsContent value="tools" className="mt-3 max-h-[60vh] space-y-3 overflow-y-auto pr-1 xl:max-h-[calc(100vh-9rem)]">
-        <Card className="border-[#a9bc7b] bg-[#edf3dc] shadow-sm" data-testid="card-quick-actions">
+        <Card className="border-[#e9e1d2] bg-white shadow-sm" data-testid="card-quick-actions">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-bold text-saivie-plum">Quick actions</CardTitle>
           </CardHeader>
@@ -770,7 +770,7 @@ export function ReceptionDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-[#e8cf70] bg-[#fff2ca] shadow-sm" data-testid="card-sheets-sync">
+        <Card className="border-[#e9e1d2] bg-[#fffaf0] shadow-sm" data-testid="card-sheets-sync">
           <CardContent className="space-y-3 p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">

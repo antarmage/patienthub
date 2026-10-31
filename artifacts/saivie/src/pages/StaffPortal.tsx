@@ -2610,10 +2610,10 @@ export default function StaffPortal() {
         <div className={`flex-1 overflow-y-auto p-6 ${activeRole === 'receptionist' && activeView === 'dashboard' ? 'bg-[#faf5e6]' : ''}`}>
             {activeRole === 'receptionist' && activeView === 'dashboard' && (
               <section className="mb-6" aria-label="Welcome" data-testid="receptionist-greeting">
-                <h2 className="text-2xl font-bold text-saivie-plum">
+                <h2 className="font-serif text-3xl font-semibold text-[#242821]">
                   Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}{staffDisplayName ? `, ${staffDisplayName}` : ''}
                 </h2>
-                <p className="mt-1 text-sm text-saivie-plum">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <p className="mt-1 text-sm text-[#705364]">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
               </section>
             )}
             

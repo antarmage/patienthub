@@ -75,6 +75,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Shared Saivie web UI
 
+- Reception dashboard colors follow the doctor's dashboard: cream/white card surfaces, warm neutral borders, and pastel accents limited to summary icons and selected tabs. Arrival, waiting-time and alert badges retain their semantic status colors.
+
 - The clinician navigation defaults to a 64px icon rail. Mouse hover or keyboard focus reveals labels in an overlay without shifting the workspace; the pin button keeps the wider sidebar open. Small screens retain the compact rail.
 
 - The clinician patient directory uses `ClinicalPatientList` with Today, Pregnant, PCOS, High-risk, Follow-ups due and All patients filters. Pregnancy trimester and due-date estimates come from valid recorded LMP (explicitly labeled), not sample data; delivered patients are excluded and missing dating is shown separately. Risk uses recorded scores/status and defaults to "Not assessed". Follow-ups due require a valid ISO `nextReview` on or before today. Upcoming appointment data polls every 30 seconds independently of the directory's optional appointment-date range. Name/contact/pathway search and patient-record actions are preserved.
