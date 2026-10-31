@@ -447,7 +447,7 @@ export default function ClinicianPortal() {
   const [queueDateFrom, setQueueDateFrom] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
   const [queueDateTo, setQueueDateTo] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
   const [queueTriageSort, setQueueTriageSort] = useState(true);
-  const [queueStatusFilter, setQueueStatusFilter] = useState<'all' | 'waiting' | 'in-consultation' | 'scheduled' | 'completed'>('waiting');
+  const [queueStatusFilter, setQueueStatusFilter] = useState<'all' | 'waiting' | 'in-consultation' | 'scheduled' | 'completed'>('all');
   const [patientSearch, setPatientSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -2302,6 +2302,9 @@ export default function ClinicianPortal() {
                  doctorName={providerName}
                  patients={queuePatients}
                  date={queueDateFrom}
+                 stats={dashStats}
+                 statsLoading={dashboardStatsQuery.isLoading}
+                 statsError={dashboardStatsQuery.error}
                  onDate={(date) => { setQueueDateFrom(date); setQueueDateTo(date); }}
                  filter={queueStatusFilter}
                  onFilter={setQueueStatusFilter}
@@ -2313,6 +2316,7 @@ export default function ClinicianPortal() {
                  onStart={handleStartConsultation}
                  onSchedule={() => setActiveView("schedule")}
                  onSettings={() => setActiveView("settings")}
+                 onOpenCategory={(category) => navigate(`/clinician/patients/${category}`)}
                />
                <details className="rounded-3xl border border-saivie-border bg-saivie-ivory p-4" data-testid="doctor-clinic-tools">
                  <summary className="cursor-pointer text-sm font-semibold text-saivie-plum">Detailed patient flow, triage &amp; clinic insights</summary>
