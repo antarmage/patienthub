@@ -9,12 +9,24 @@ export function authenticatedFetch(input: RequestInfo | URL, init?: RequestInit)
   return fetch(input, { ...init, headers, credentials: init?.credentials ?? (input instanceof Request ? input.credentials : "same-origin") });
 }
 
-export async function receptionRequest<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await authenticatedFetch(url, init);
-  const body: unknown = await response.json();
+export async function readApiResponse(response: Response): Promise<unknown> {
+  if (!response.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+    throw new Error(`The API returned a web page or non-JSON response (HTTP ${response.status}). Check that /api requests reach the API server and that the updated API is deployed.`);
+  }
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    throw new Error(`The API returned invalid JSON (HTTP ${response.status}). Please retry or contact your administrator.`);
+  }
   if (!response.ok) {
     const message = body && typeof body === "object" && "error" in body && typeof body.error === "string" ? body.error : `Request failed (${response.status})`;
     throw new Error(message);
   }
-  return body as T;
+  return body;
+}
+
+export async function receptionRequest<T>(url: string, init?: RequestInit): Promise<T> {
+  return await readApiResponse(await authenticatedFetch(url, init)) as T;
 }

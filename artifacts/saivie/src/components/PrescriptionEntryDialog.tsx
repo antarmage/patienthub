@@ -1,5 +1,6 @@
 import { DateInput } from "@/components/ui/date-input";
 import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
+import { readApiResponse } from "@/lib/authenticatedFetch";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Camera, Loader2, Plus, Trash2 } from "lucide-react";
@@ -453,7 +454,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     enabled: !!appointment && !!patientId,
     queryFn: async () => {
       const res = await fetch(`/api/patients/${patientId}/${transcriptionMode ? "prescription-transcriptions" : "visit-history"}`);
-      const body = await res.json();
+      const body = transcriptionMode ? await readApiResponse(res) : await res.json();
       if (!res.ok) throw new Error(body.error || "Could not load prescription records");
       if (!Array.isArray(body)) throw new Error("The prescription API returned an invalid record list");
       return body;
@@ -986,7 +987,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           } : {}),
         }),
       });
-      const raw = await res.text();
+      const raw = transcriptionMode ? JSON.stringify(await readApiResponse(res)) : await res.text();
       const routeMissing = res.status === 404 || raw.includes("Cannot POST") || raw.trimStart().startsWith("<");
       let savedAppointmentId = appointment?.id;
       if (routeMissing && transcriptionMode && raw.trimStart().startsWith("<")) throw new Error("The transcription API is not available. Deploy the updated API before saving. No prescription changes were saved.");

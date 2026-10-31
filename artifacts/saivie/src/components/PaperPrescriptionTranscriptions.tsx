@@ -20,14 +20,24 @@ export function PaperPrescriptionTranscriptions({ patient, onClose }: {
   const records = useQuery<PaperTranscription[]>({
     queryKey: ["/api/patients", patient?.id, "prescription-transcriptions"],
     enabled: Boolean(patient),
-    queryFn: ({ signal }) => receptionRequest(`/api/patients/${patient?.id}/prescription-transcriptions`, { signal }),
+    queryFn: async ({ signal }) => {
+      const body = await receptionRequest<unknown>(`/api/patients/${patient?.id}/prescription-transcriptions`, { signal });
+      if (!Array.isArray(body) || !body.every((record: unknown) =>
+        record !== null && typeof record === "object" &&
+        "id" in record && Number.isInteger(record.id) &&
+        "date" in record && typeof record.date === "string" &&
+        "appointmentId" in record && (record.appointmentId === null || Number.isInteger(record.appointmentId)))) {
+        throw new Error("The transcription API returned an invalid record list. Please contact your administrator.");
+      }
+      return body as PaperTranscription[];
+    },
   });
   const close = () => { setSelected(null); onClose(); };
   return <>
     {!selected && <Dialog open={Boolean(patient)} onOpenChange={(open) => { if (!open) close(); }}>
       <DialogContent>
         <DialogHeader><DialogTitle>Paper prescriptions · {patient?.name}</DialogTitle><DialogDescription>Add or correct a transcription of the doctor's handwritten prescription. The original photo or scan is required.</DialogDescription></DialogHeader>
-        <Button onClick={() => { if (patient) setSelected({ patientId: patient.id, historical: true }); }} data-testid="button-add-paper-prescription">Add prescription transcription</Button>
+        <Button disabled={!records.isSuccess} onClick={() => { if (patient) setSelected({ patientId: patient.id, historical: true }); }} data-testid="button-add-paper-prescription">Add prescription transcription</Button>
         {records.isLoading && <p role="status" className="text-sm">Loading transcriptions...</p>}
         {records.isError && <p role="alert" className="text-sm text-rose-700">{records.error.message} <button type="button" className="underline" onClick={() => void records.refetch()}>Retry</button></p>}
         <div className="max-h-[50vh] space-y-2 overflow-y-auto">

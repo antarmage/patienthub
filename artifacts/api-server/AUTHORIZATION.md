@@ -54,6 +54,8 @@ Walk-ins may atomically POST `status: "checked-in"` plus an ISO `checkedInAt`; t
 - Medicines are saved immediately as `active` medication rows linked by ID from the transcription record. Edits update, create or remove only those linked rows for the same patient, matched by name. The visit, medications and source document commit in one database transaction.
 - `enteredBy/At` and `updatedBy/At` record the authenticated user. Every edit appends a revision with the previous content and original-file reference.
 
+Deploy the API and frontend together for this workflow. If the transcription list receives HTML (for example `<!DOCTYPE html>`) instead of JSON, check that same-origin `/api/*` requests route to the API, not the frontend SPA, and that the running API includes the transcription routes. A correctly routed unauthenticated request returns JSON with HTTP 401, not a web page. Retry cannot install a missing API route; update/restart the backend first. The frontend displays the API error and disables Add until the list successfully loads.
+
 ## Regression tests
 
 Run `node artifacts/api-server/scripts/test-authorization.mjs` from the repository root (or `pnpm --filter @workspace/api-server run test:authorization`). Tests exercise the actual registered middleware through HTTP with deterministic authentication dependencies, including denied writes before storage, role enforcement, paper-transcription source validation/edit ownership/rollback, future-field privacy, aliases, malformed IDs/case, patient ownership, registration, and walk-in logistics. No real database or credentials are needed.
