@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -18,12 +19,12 @@ function list(value: unknown): ClinicalRecord[] {
   if (!Array.isArray(value) || value.some((row) => !row || typeof row !== "object" || Array.isArray(row))) throw new Error("The clinical API returned an invalid record list.");
   return value.map(object);
 }
-function RecordedDetails({ value }: { value: unknown }) {
+function RecordedDetails({ value, nested = false }: { value: unknown; nested?: boolean }) {
   if (value == null || value === "") return <span className="text-muted-foreground">Not recorded</span>;
-  if (Array.isArray(value)) return <div className="space-y-2">{value.map((item, index) => <RecordedDetails key={index} value={item} />)}</div>;
-  if (typeof value === "object") return <dl className="grid gap-2 sm:grid-cols-2">{Object.entries(object(value)).map(([key, item]) =>
-    <div key={key} className="rounded border p-2"><dt className="text-xs font-medium text-muted-foreground">{key.replace(/([a-z])([A-Z])/g, "$1 $2")}</dt><dd className="mt-1"><RecordedDetails value={item} /></dd></div>)}</dl>;
-  return <span className="whitespace-pre-wrap">{String(value)}</span>;
+  if (Array.isArray(value)) return <div className="min-w-0 space-y-2">{value.map((item, index) => <RecordedDetails key={index} value={item} nested />)}</div>;
+  if (typeof value === "object") return <dl className={`grid min-w-0 gap-2 ${nested ? "" : "sm:grid-cols-2"}`}>{Object.entries(object(value)).map(([key, item]) =>
+    <div key={key} className={`min-w-0 rounded border p-2 ${item && typeof item === "object" && !nested ? "sm:col-span-2" : ""}`}><dt className="break-words text-xs font-medium text-muted-foreground">{key.replace(/([a-z])([A-Z])/g, "$1 $2")}</dt><dd className="mt-1 min-w-0 [overflow-wrap:anywhere]"><RecordedDetails value={item} nested /></dd></div>)}</dl>;
+  return <span className="whitespace-pre-wrap [overflow-wrap:anywhere]">{String(value)}</span>;
 }
 
 function OriginalReport({ patientId, doc }: { patientId: number; doc: ClinicalRecord }) {
@@ -68,12 +69,19 @@ export function ReceptionPatientDetails({ patient, onClose }: { patient: Recepti
   });
   const data = record.data;
   return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-    <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
-      <DialogHeader><DialogTitle>Patient details · {patient.name}</DialogTitle><DialogDescription>Read-only access enabled by your doctor. Clinical records cannot be changed here.</DialogDescription></DialogHeader>
+    <DialogContent className="left-0 top-0 flex h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col overflow-hidden rounded-none border-0 p-4 data-[state=closed]:animate-none data-[state=open]:animate-none sm:p-6" data-testid="reception-patient-details">
+      <DialogHeader className="shrink-0 pr-6 text-left">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button type="button" variant="outline" className="shrink-0" onClick={onClose} data-testid="button-back-patient-details"><ArrowLeft className="mr-1 h-4 w-4" />Back</Button>
+          <DialogTitle className="min-w-0 break-words leading-snug">Patient details · {patient.name}</DialogTitle>
+        </div>
+        <DialogDescription>Read-only access enabled by your doctor. Clinical records cannot be changed here.</DialogDescription>
+      </DialogHeader>
       {record.isPending && <p role="status">Loading patient details...</p>}
-      {record.isError && <p role="alert" className="text-rose-700">{record.error.message} <Button variant="link" onClick={() => void record.refetch()}>Retry</Button></p>}
-      {record.isSuccess && data && <Tabs defaultValue="history">
-        <TabsList className="flex h-auto flex-wrap"><TabsTrigger value="history">Details & history</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions & medicines</TabsTrigger><TabsTrigger value="reports">Reports</TabsTrigger><TabsTrigger value="pregnancy">Pregnancy</TabsTrigger></TabsList>
+      {record.isError && <p role="alert" className="overflow-y-auto break-words text-rose-700">{record.error.message} <Button variant="link" onClick={() => void record.refetch()}>Retry</Button></p>}
+      {record.isSuccess && data && <Tabs defaultValue="history" className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <TabsList className="flex h-auto w-full shrink-0 flex-nowrap"><TabsTrigger value="history">Details & history</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions & medicines</TabsTrigger><TabsTrigger value="reports">Reports</TabsTrigger><TabsTrigger value="pregnancy">Pregnancy</TabsTrigger></TabsList>
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pr-1 [overflow-wrap:anywhere]" data-testid="reception-details-scroll">
         <TabsContent value="history" className="space-y-3 text-sm">
           <RecordedDetails value={{ name: data.detail.name, age: data.detail.age, phone: data.detail.phone, patientType: data.detail.type, history: data.detail.history }} />
           {data.visits.map((visit) => <article key={text(visit.id)} className="space-y-2 rounded-xl border p-3">
@@ -94,6 +102,7 @@ export function ReceptionPatientDetails({ patient, onClose }: { patient: Recepti
         <TabsContent value="pregnancy" className="text-sm">
           <RecordedDetails value={{ pregnancyStatus: data.detail.pregnancyStatus, clinicianRecordedLmp: data.detail.lmp, patientReportedLmp: object(data.detail.history).patientReportedLmp, obstetric: object(data.detail.history).obstetric }} />
         </TabsContent>
+        </div>
       </Tabs>}
     </DialogContent>
   </Dialog>;

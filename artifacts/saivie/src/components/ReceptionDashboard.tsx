@@ -340,6 +340,31 @@ export function ReceptionDashboard({
     );
   };
 
+  const renderReceptionActions = (apt: any, state: ArrivalState, location: "flow" | "queue") => {
+    const patient = findPatient(apt);
+    const beforeConsultation = !["in-consultation", "completed", "cancelled", "no-show"].includes(state) && !apt.seenAt && !apt.completedAt;
+    const scheduled = state === "upcoming" || state === "late";
+    return <div className="flex shrink-0 items-center gap-1">
+      {scheduled ? <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" disabled={isPending(apt.id)} onClick={() => onCheckIn(apt)} data-testid={`btn-checkin-${apt.id}`}>
+        {isPending(apt.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : "Check in"}
+      </Button> : state === "cancelled" || state === "no-show" ? renderAction(apt, state) : <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" disabled={!patient} onClick={() => patient && onOpenPatient(patient)} aria-label={`${clinicalDetailsVisible ? "View patient details" : "View appointments"} for ${apt.patient}`}>View</Button>}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="ghost" className="h-8 w-8 shrink-0 p-0" aria-label={`More actions for ${apt.patient}`} data-testid={`${location}-reception-actions-${apt.id}`}><MoreVertical className="h-4 w-4" /></Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {patient && beforeConsultation && onRecordVitals && <DropdownMenuItem onClick={() => onRecordVitals(apt)} data-testid={`${location}-record-vitals-${apt.id}`}>Record vitals</DropdownMenuItem>}
+          {patient && onTranscribePrescription && <DropdownMenuItem onClick={() => onTranscribePrescription(patient)} data-testid={`${location}-paper-prescription-${apt.id}`}>Add / Edit prescription</DropdownMenuItem>}
+          {patient && <DropdownMenuItem onClick={() => onOpenPatient(patient)}>{clinicalDetailsVisible ? "View patient details" : "View appointments"}</DropdownMenuItem>}
+          {scheduled && <>
+            <DropdownMenuItem disabled={isPending(apt.id)} onClick={() => { if (window.confirm(`Mark ${apt.patient} as no-show?`)) onUpdateAppointment(apt.id, { status: "no-show" }); }}>Mark as no-show</DropdownMenuItem>
+            <DropdownMenuItem disabled={isPending(apt.id)} className="text-rose-600" onClick={() => { if (window.confirm(`Cancel ${apt.patient}'s appointment?`)) onUpdateAppointment(apt.id, { status: "cancelled" }); }}>Cancel appointment</DropdownMenuItem>
+          </>}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>;
+  };
+
   const handleWaitingStatus = (apt: any, value: string) => {
     if (value === "in-consultation") onUpdateAppointment(apt.id, { status: "in-consultation", seenAt: stamp() });
     else if (value === "completed") onComplete(apt);
@@ -405,7 +430,7 @@ export function ReceptionDashboard({
               ))}
             </div>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="overflow-x-auto p-0">
             <table className="w-full text-left text-sm">
               <thead className="border-y border-[#e9e1d2] bg-[#f8f5ed] text-[11px] uppercase tracking-wider text-saivie-plum">
                 <tr>
@@ -457,9 +482,7 @@ export function ReceptionDashboard({
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1">
-                          {renderAction(apt, state)}
-                          {logisticsOnly && patient && onRecordVitals && !["in-consultation", "completed", "cancelled", "no-show"].includes(state) && !apt.seenAt && !apt.completedAt && <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => onRecordVitals(apt)} data-testid={`btn-reception-vitals-${apt.id}`}>Record vitals</Button>}
-                          {logisticsOnly && patient && onTranscribePrescription && <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => onTranscribePrescription(patient)} data-testid={`btn-paper-prescription-${apt.id}`}>Add / Edit prescription</Button>}
+                          {logisticsOnly ? renderReceptionActions(apt, state, "flow") : renderAction(apt, state)}
                           {!logisticsOnly && <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-saivie-plum hover:text-saivie-teal" data-testid={`btn-print-summary-${apt.id}`}
                             title="Print patient summary" aria-label={`Print summary for ${apt.patient}`}
                             onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals, hpvClinicStatus(apt.patientId))}>
@@ -498,7 +521,7 @@ export function ReceptionDashboard({
               View all in queue <ChevronRight className="h-3 w-3" />
             </button>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="overflow-x-auto p-0">
             <table className="w-full text-left text-sm">
               <thead className="border-y border-saivie-border bg-saivie-surface-muted text-[11px] uppercase tracking-wider text-saivie-plum">
                 <tr>
@@ -526,10 +549,7 @@ export function ReceptionDashboard({
                       <td className="px-3 py-3"><Badge variant="outline" className={`text-[11px] ${tone}`}>{minutes} min</Badge></td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1.5">
-                        {logisticsOnly ? <>
-                          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { const patient = findPatient(apt); if (patient) onOpenPatient(patient); }}>{clinicalDetailsVisible ? "View patient details" : "View appointments"}</Button>
-                          {onRecordVitals && <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => onRecordVitals(apt)}>Record vitals</Button>}
-                        </> : <>
+                        {logisticsOnly ? renderReceptionActions(apt, getArrivalState(apt), "queue") : <>
                         <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" data-testid={`queue-print-summary-${apt.id}`}
                           title="Print history & check-in vitals for the doctor"
                           onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals, hpvClinicStatus(apt.patientId))}>
