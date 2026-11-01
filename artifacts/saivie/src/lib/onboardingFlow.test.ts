@@ -11,9 +11,23 @@ const ids = (form: IntakeForm, extra = short) => getOnboardingQuestions(form, ex
 describe("one-question onboarding", () => {
     it("keeps the baseline short without unrelated or sensitive follow-ups", () => {
         assert.deepEqual(ids(formFor()), [
-            "name", "dob", "concerns", "chiefComplaint", "conditions", "medications",
+            "name", "dob", "hpvVaccine", "concerns", "chiefComplaint", "conditions", "medications",
             "allergies", "surgeries", "familyHistory", "extraBackground", "review",
         ]);
+    });
+
+    it("asks HPV vaccination once after personal details and retains every answer without opting into GYN history", () => {
+        for (const extra of [short, all]) {
+            const form = formFor("Routine checkup");
+            const questions = getOnboardingQuestions(form, extra);
+            assert.deepEqual(questions.slice(0, 3).map((question) => question.id), ["name", "dob", "hpvVaccine"]);
+            assert.equal(questions[2].section, "about");
+            assert.equal(questions.filter((question) => question.id === "hpvVaccine").length, 1);
+            for (const answer of ["", "Yes, all doses", "Yes, some doses", "No", "Not sure"]) {
+                form.gyn.hpvVaccine = answer;
+                assert.equal(getRelevantIntake(form, extra).gyn.hpvVaccine, answer);
+            }
+        }
     });
 
     it("routes breast and bowel screening only to matching concerns or conditions", () => {
@@ -60,7 +74,7 @@ describe("one-question onboarding", () => {
         const form = formFor("Fertility", "Birth control");
         form.pregnancies.total = "2";
         form.gyn.sexuallyActive = "Yes";
-        for (const id of ["menarcheAge", "lastPap", "hpvVaccine", "firstEncounterAge", "partnerCount", "vaginal", "miscarriages", "smoking", "alcohol", "referredBy"]) {
+        for (const id of ["menarcheAge", "lastPap", "firstEncounterAge", "partnerCount", "vaginal", "miscarriages", "smoking", "alcohol", "referredBy"]) {
             assert.ok(!ids(form).includes(id), `${id} should be opt-in`);
             assert.ok(ids(form, all).includes(id), `${id} should be reachable`);
         }

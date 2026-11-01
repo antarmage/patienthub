@@ -37,7 +37,7 @@ export function getOnboardingQuestions(form: IntakeForm, extra: OptionalHistory)
     const questions: { id: string; section: string }[] = [];
     const add = (section: string, ...ids: string[]) => questions.push(...ids.map((id) => ({ id, section })));
 
-    add("about", "name", "dob");
+    add("about", "name", "dob", "hpvVaccine");
     add("concern", "concerns", "chiefComplaint");
     if (has("Abdominal or pelvic pain")) add("concern", "painLocation", "painDuration", "painSeverity", "painSymptoms");
     if (cycle || pregnancy) add("cycle", "lastPeriod");
@@ -62,7 +62,7 @@ export function getOnboardingQuestions(form: IntakeForm, extra: OptionalHistory)
         if (has("Birth control", "Fertility")) add("gyn", "sexuallyActive", "birthControl");
         if (extra.gyn) {
             if (!has("Birth control", "Fertility")) add("gyn", "sexuallyActive", "birthControl");
-            add("gyn", "lastPap", "hpvVaccine");
+            add("gyn", "lastPap");
             if (form.gyn.sexuallyActive === "Yes") add("gyn", "firstEncounterAge", "partnerCount");
             add("gyn", "gynDetails");
         }

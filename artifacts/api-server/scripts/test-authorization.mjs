@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const serverDir = fileURLToPath(new URL("../", import.meta.url));
 const outdir = path.join(path.relative(process.cwd(), serverDir), `.authorization-tests-${process.pid}`);
-const tests = ["clinical-access.test.ts", "prescription-transcriptions.test.ts", "reception-access.test.ts", "reception-details-edit.test.ts", "online-consultations.test.ts", "reception-follow-up.test.ts"];
+const tests = ["clinical-access.test.ts", "prescription-transcriptions.test.ts", "reception-access.test.ts", "reception-details-edit.test.ts", "online-consultations.test.ts", "reception-follow-up.test.ts", "onboarding-links.test.ts"];
 try {
   await build({
     entryPoints: tests.map((file) => path.join(serverDir, "src", file)),

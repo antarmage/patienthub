@@ -18,6 +18,8 @@ import { checkInIsToday, registerClinicalAccess, registrationFields, rescheduled
 import { knownRateCard, parseRateCardText } from "../referral-rate-cards";
 import { synchronizeFollowUpCalls } from "../follow-up-calls";
 import { registerReceptionFollowUpRoutes } from "../reception-follow-up";
+import { createOnboardingLinks, registerOnboardingLinkRoutes } from "../onboarding-links";
+import { onboardingLinkStore } from "../onboarding-link-store";
 import { insertPatientSchema, parseCallDate, prescriptionDueDate } from "@workspace/db";
 import { calculateInvoiceQuote } from "../prime-pricing";
 import { registerOcrRoutes, registerPrescriptionReadingRoutes, scanClinicalDocument } from "../replit_integrations/ocr";
@@ -383,6 +385,7 @@ export async function registerRoutes(
     authenticate: getAccessActor,
     appointmentPatientId: async (id) => (await storage.getAppointments()).find((item) => item.id === id)?.patientId ?? null,
     clinicalDetailsVisible: () => storage.getReceptionClinicalDetailsVisible(),
+    onboardingPatientId: (id, token) => createOnboardingLinks(onboardingLinkStore).patient(id, token),
   });
   registerReceptionAccessRoutes(app, {
     authenticate: getAccessActor,
@@ -397,6 +400,7 @@ export async function registerRoutes(
     savePatient: (id, body, actor) => storage.saveReceptionDetailsEdit(id, body, actor),
   });
   const online = registerOnlineConsultationRoutes(app, onlineStore, getAccessActor);
+  registerOnboardingLinkRoutes(app, onboardingLinkStore, getAccessActor);
   registerReceptionFollowUpRoutes(app, {
     authenticate: getAccessActor,
     patients: () => storage.getPatients(),
@@ -1478,6 +1482,7 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
 
     const appt = await storage.getAppointments().then(all => all.find(a => a.id === appointmentId));
     if (!appt) return res.status(404).json({ error: "Appointment not found" });
+    if (res.locals.onboardingPatientId !== undefined && res.locals.onboardingPatientId !== appt.patientId) return res.status(403).json({ error: "The appointment's patient changed. Ask your clinic for a new onboarding link." });
 
     const patient = await storage.getPatient(appt.patientId!);
     if (!patient) return res.status(404).json({ error: "Patient not found" });
@@ -1833,6 +1838,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
     const appt = await storage.getAppointments().then(all => all.find(a => a.id === appointmentId));
     if (!appt) return res.status(404).json({ error: "Appointment not found" });
+    if (res.locals.onboardingPatientId !== undefined && res.locals.onboardingPatientId !== appt.patientId) return res.status(403).json({ error: "The appointment's patient changed. Ask your clinic for a new onboarding link." });
 
     const patient = await storage.getPatient(appt.patientId!);
     if (!patient) return res.status(404).json({ error: "Patient not found" });

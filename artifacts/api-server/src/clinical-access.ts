@@ -6,6 +6,7 @@ export interface ClinicalAccessDependencies {
   authenticate(req: Request, res: Response): Promise<AccessActor | null>;
   appointmentPatientId(id: number): Promise<number | null>;
   clinicalDetailsVisible?(): Promise<boolean>;
+  onboardingPatientId?(id: number, token: string): Promise<number | null>;
 }
 
 export const registrationFields = {
@@ -116,10 +117,21 @@ export function registerClinicalAccess(app: Express, dependencies: ClinicalAcces
     const invoice = !!patientInvoice || /^\/api\/invoices(?:\/[^/]+(?:\/email)?)?\/?$/.test(path);
     const primeMutation = /^\/api\/patients\/[^/]+\/prime-member\/?$/.test(path);
     const onboarding = /^\/api\/onboarding(?:\/[^/]+)?\/?$/.test(path);
+    if (onboarding) res.set({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
     if (!clinicalPatient && !clinicalCollection && !clinicianTool && !patientRecord && !patientListAlias && !appointment && !invoice && !primeMutation && !onboarding) return next();
 
     try {
-      const actor = await dependencies.authenticate(req, res);
+      let resolvedActor: AccessActor | null;
+      if (onboarding && req.headers["x-onboarding-token"] !== undefined) {
+        const id = Number(read ? req.headers["x-appointment-id"] : req.params.appointmentId || path.split("/").at(-1));
+        const token = req.headers["x-onboarding-token"];
+        const patientId = typeof token === "string" ? await dependencies.onboardingPatientId?.(id, token) : null;
+        if (!patientId) { res.status(410).json({ error: "This private onboarding link is invalid, expired, replaced, or the appointment was cancelled. Ask your clinic for a new link." }); return; }
+        resolvedActor = { patientId };
+      } else {
+        resolvedActor = await dependencies.authenticate(req, res);
+      }
+      const actor = resolvedActor;
       if (!actor) {
         if (!res.headersSent) res.status(401).json({ error: "Authentication required" });
         return;
@@ -182,10 +194,11 @@ export function registerClinicalAccess(app: Express, dependencies: ClinicalAcces
             res.status(403).json({ error: "Forbidden" });
             return;
           }
+          res.locals.onboardingPatientId = patientId;
           if (!read && req.body?.history != null) {
             const history = req.body.history;
             if (!history || typeof history !== "object" || Array.isArray(history) ||
-                Object.keys(history).some((key) => key !== "onboarding" && key !== "labSurvey")) {
+                Object.keys(history).some((key) => !["onboarding", "labSurvey", "medical", "surgical", "drug", "allergies", "family", "pregnancyDatingEstimate"].includes(key))) {
               res.status(403).json({ error: "Only patient intake history may be submitted" });
               return;
             }

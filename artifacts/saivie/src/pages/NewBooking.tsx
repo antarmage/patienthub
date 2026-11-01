@@ -4,6 +4,7 @@ import { useLocation, useSearch } from "wouter";
 import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { readApiResponse } from "@/lib/authenticatedFetch";
 import { OnlineConsultationActions } from "@/components/OnlineConsultationActions";
+import { OnboardingLink } from "@/components/OnboardingLink";
 import {
     Calendar as CalendarIcon,
     Clock,
@@ -311,7 +312,6 @@ export default function NewBooking() {
         });
     };
 
-    const onboardingUrl = `${window.location.origin}/onboarding/${createdAppointmentId}`;
 
     if (isSuccess) {
         return (
@@ -366,32 +366,10 @@ export default function NewBooking() {
                                     <Share2 className="w-5 h-5 text-saivie-teal" />
                                     Share Patient Onboarding Link
                                 </h3>
-                                <p className="text-saivie-plum text-sm">
-                                    Copy this unique link and send it to the patient. They can use it to complete their medical history and chief complaint before the visit.
-                                </p>
-
-                                <div className="flex gap-2 p-4 bg-saivie-surface-muted rounded-xl border border-saivie-border items-center">
-                                    <code className="flex-1 text-sm font-mono text-saivie-teal break-all select-all">
-                                        {onboardingUrl}
-                                    </code>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="shrink-0 bg-saivie-ivory"
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(onboardingUrl);
-                                            toast({ title: "Link Copied", description: "Copied to clipboard" });
-                                        }}
-                                    >
-                                        <Copy className="w-4 h-4 mr-2" /> Copy
-                                    </Button>
-                                </div>
+                                {createdAppointmentId && <OnboardingLink appointmentId={createdAppointmentId} />}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <Button variant="outline" className="h-12" onClick={() => window.open(onboardingUrl, '_blank')}>
-                                    <ExternalLink className="w-4 h-4 mr-2" /> Preview Onboarding
-                                </Button>
                                 <Button className="h-12 bg-saivie-plum hover:bg-black" onClick={() => setLocation("/staff")}>
                                     Done
                                 </Button>

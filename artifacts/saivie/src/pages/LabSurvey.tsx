@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Camera, Check, CheckCircle2, FileText, FlaskConical, LockKeyhole, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { onboardingFetch } from "@/lib/onboardingSession";
+import { readApiResponse } from "@/lib/authenticatedFetch";
 import {
     LAB_ALLERGY_OPTIONS, LAB_DRAW_OPTIONS, LAB_ILLNESS_OPTIONS, LAB_MEAL_OPTIONS, LAB_MEDICINE_OPTIONS, LAB_PERIOD_SKIP,
     initialLabSurvey, labSurveyErrors, labSurveyPayload, type LabSurveyForm,
@@ -73,9 +75,7 @@ export default function LabSurvey({ appointmentId, onboardingData }: { appointme
         mutationFn: async () => {
             const payload: Record<string, unknown> = labSurveyPayload(form);
             if (prescription) payload.labPrescription = { fileData: await readFile(prescription), mimeType: prescription.type, fileName: prescription.name };
-            const response = await fetch(`/api/onboarding/${appointmentId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || "Could not submit your answers. Please try again.");
+            await readApiResponse(await onboardingFetch(`/api/onboarding/${appointmentId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
         },
         onSuccess: () => { setSubmitted(true); window.scrollTo({ top: 0 }); },
         onError: (error: Error) => setErrors([error.message]),

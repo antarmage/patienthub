@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
+import { onboardingFetch, useOnboardingSession } from "@/lib/onboardingSession";
+import { readApiResponse } from "@/lib/authenticatedFetch";
 import { useLocation, useParams } from "wouter";
 import { ArrowLeft, ArrowRight, Baby, Check, CheckCircle2, Flower2, Heart, Hospital, Leaf, LockKeyhole, Minus, Plus, Printer, ShieldCheck, Timer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +52,7 @@ function printOnboardingSummary(form: IntakeForm) {
         ["Patient details", rows([
             ["Full name", form.name],
             ["Date of birth", form.dob],
+            ["HPV vaccination", form.gyn.hpvVaccine],
             ["Referred by", form.referredBy],
             ["Occupation", form.occupation],
         ])],
@@ -83,7 +86,6 @@ function printOnboardingSummary(form: IntakeForm) {
             ["Number of partners", form.gyn.partnerCount],
             ["Last Pap smear", form.gyn.lastPap],
             ["Currently sexually active", form.gyn.sexuallyActive],
-            ["HPV vaccination", form.gyn.hpvVaccine],
             ["Birth control methods", form.gyn.birthControl],
             ["GYN history / concerns", form.gyn.concerns],
             ["Additional details", form.gyn.details],
@@ -517,14 +519,7 @@ export default function PatientOnboarding() {
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     });
 
-    const { data: onboardingData, isLoading } = useQuery({
-        queryKey: ["/api/onboarding", id],
-        queryFn: async () => {
-            const response = await fetch("/api/onboarding", { headers: { "X-Appointment-Id": String(id) } });
-            if (!response.ok) throw new Error("Failed to load onboarding session");
-            return response.json();
-        },
-    });
+    const { data: onboardingData, isPending: isLoading } = useOnboardingSession(id);
 
     const questions = getOnboardingQuestions(form, extra);
     const answers = getRelevantIntake(form, extra);
@@ -588,7 +583,7 @@ export default function PatientOnboarding() {
                 form.concerns.length ? `Visit concerns: ${form.concerns.join(", ")}` : "",
                 form.chiefComplaint.trim(),
             ].filter(Boolean).join("\n");
-            const response = await fetch(`/api/onboarding/${id}`, {
+            const response = await onboardingFetch(`/api/onboarding/${id}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -601,8 +596,7 @@ export default function PatientOnboarding() {
                     },
                 }),
             });
-            if (!response.ok) throw new Error("Failed to save onboarding information");
-            return response.json();
+            return readApiResponse(response);
         },
         onSuccess: () => {
             setSubmitted(true);
@@ -789,7 +783,7 @@ export default function PatientOnboarding() {
         if (first) setStep(first.id);
     };
     const reviewSections: { key: string; title: string; items: string[] }[] = [
-        { key: "about", title: "About you", items: [answers.name, answers.dob] },
+        { key: "about", title: "About you", items: [answers.name, answers.dob, answers.gyn.hpvVaccine && `HPV vaccine: ${answers.gyn.hpvVaccine}`] },
         { key: "concern", title: "Your concern", items: [...answers.concerns, answers.chiefComplaint, ...answers.pain.location, answers.pain.duration, answers.pain.severity, ...answers.pain.relatedSymptoms] },
         { key: "survey", title: "Pre-visit survey", items: [
             ...answers.consultation.directions.map((direction) => surveyDirectionLabels[direction]),
@@ -797,7 +791,7 @@ export default function PatientOnboarding() {
                 .map((question) => `${patientSurveyPrompt(question)} ${answers.consultation.answers[question]}`),
         ] },
         { key: "cycle", title: "Cycle", items: [answers.cycle.lastPeriod && `Last period began ${answers.cycle.lastPeriod}`, answers.cycle.lateBy && `Period late: ${answers.cycle.lateBy}`, answers.cycle.regularity, answers.cycle.pregnancyTest && `Pregnancy test: ${answers.cycle.pregnancyTest}`, answers.cycle.menarcheAge && `Periods started at ${answers.cycle.menarcheAge}`, answers.cycle.cycleLength && `${answers.cycle.cycleLength}-day cycle`, answers.cycle.flow, ...answers.cycle.symptoms, answers.cycle.details] },
-        { key: "gyn", title: "GYN history", items: [answers.gyn.sexuallyActive && `Sexually active: ${answers.gyn.sexuallyActive}`, answers.gyn.firstEncounterAge && `First sexual encounter at ${answers.gyn.firstEncounterAge}`, answers.gyn.partnerCount && `Partners: ${answers.gyn.partnerCount}`, answers.gyn.lastPap && `Last Pap: ${answers.gyn.lastPap}`, answers.gyn.hpvVaccine && `HPV vaccine: ${answers.gyn.hpvVaccine}`, ...answers.gyn.birthControl, ...answers.gyn.concerns, answers.gyn.details] },
+        { key: "gyn", title: "GYN history", items: [answers.gyn.sexuallyActive && `Sexually active: ${answers.gyn.sexuallyActive}`, answers.gyn.firstEncounterAge && `First sexual encounter at ${answers.gyn.firstEncounterAge}`, answers.gyn.partnerCount && `Partners: ${answers.gyn.partnerCount}`, answers.gyn.lastPap && `Last Pap: ${answers.gyn.lastPap}`, ...answers.gyn.birthControl, ...answers.gyn.concerns, answers.gyn.details] },
         { key: "pregnancy", title: "Pregnancies", items: [
             answers.pregnancies.currentStatus && `Currently pregnant: ${answers.pregnancies.currentStatus}`,
             answers.pregnancies.conceptionMethod && `How conceived: ${answers.pregnancies.conceptionMethod}`,

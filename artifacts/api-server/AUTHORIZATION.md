@@ -15,6 +15,14 @@
 
 ## Client authentication
 
+### Private onboarding links
+
+Staff create or replace an appointment's private intake link with `POST /api/onboarding-links/:id`. The random 256-bit token is hashed in `onboarding_links`, expires 30 days after issuance, and is included only in the frontend URL fragment. Creating another link invalidates the previous one. Cancellation/no-show removes the saved link permanently.
+
+The frontend sends `X-Onboarding-Token` to the onboarding GET/POST endpoints without cookies or staff credentials. The access policy validates the token against the exact appointment and grants only that patient's intake access, not other clinical endpoints. The intake-history allowlist includes the current form's patient-reported medical/surgical/drug/allergy/family sections and dating estimate, but not diagnoses or private clinical history. Number-only URLs still require existing authentication; patients must receive a new private link. Receptionists can generate one on the booking confirmation or by opening an existing numbered onboarding URL while signed in.
+
+Deploy API and frontend together and restart the API for the new table migration. Loading uses one shared query with a 15-second timeout and explicit error/retry UI; failed requests never mount a second form that restarts the loading loop.
+
 - `GET /api/reception/follow-up-patients` is a narrow receptionist/clinician/owner read for call planning, independent of full clinical-view permission. It returns only patient ID, name, phone, latest recorded past visit and a current-pregnancy flag. Recent visitors cover today and the preceding 13 India calendar dates; completed appointments, recorded visits and saved last-visit dates are deduplicated per patient. The separate pregnant list includes explicitly recorded active/pregnant/antenatal/ANC patients even without a visit or scheduled call. It exposes no LMP, clinical history, diagnoses or encounter content.
 
 - Staff requests send `Authorization: Bearer <staffToken>`, returned by `/api/auth/passcode` after OTP verification (also by the existing staff/desk logins). Staff tokens expire after eight hours and are invalidated by server restart. Staff cookies are **not** supported.

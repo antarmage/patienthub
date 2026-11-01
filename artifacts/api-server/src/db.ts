@@ -31,6 +31,12 @@ export async function ensureSchema(): Promise<void> {
       );
 
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email text;
+      CREATE TABLE IF NOT EXISTS onboarding_links (
+        appointment_id integer PRIMARY KEY REFERENCES appointments(id),
+        patient_id integer NOT NULL REFERENCES patients(id),
+        token_hash text NOT NULL,
+        expires_at timestamptz NOT NULL
+      );
       ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name text;
       DO $online_provider$
       BEGIN
