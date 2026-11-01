@@ -3,6 +3,7 @@ import { pgTable, text, varchar, serial, integer, real, date, jsonb, boolean, un
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import type { PregnancyEpisodeDetails } from "../pregnancy-episodes";
+import type { PregnancyFollowUp } from "../pregnancy-follow-up";
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -295,6 +296,14 @@ export const pregnancyEpisodes = pgTable("pregnancy_episodes", {
 }, (table) => [uniqueIndex("pregnancy_episodes_id_patient_idx").on(table.id, table.patientId),
   uniqueIndex("pregnancy_episodes_number_idx").on(table.patientId, sql`((${table.details}->>'number')::int)`),
   uniqueIndex("pregnancy_episodes_current_idx").on(table.patientId).where(sql`${table.details}->>'status'='current'`)]);
+
+export const pregnancyFollowUpPlans = pgTable("pregnancy_follow_up_plans", {
+  patientId: integer("patient_id").primaryKey().references(() => patients.id),
+  plan: jsonb("plan").$type<PregnancyFollowUp | null>(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: text("updated_by").notNull(),
+  audit: jsonb("audit").notNull().default(sql`'[]'::jsonb`),
+});
 
 export const pregnancyEpisodeRecords = pgTable("pregnancy_episode_records", {
   id: serial("id").primaryKey(),

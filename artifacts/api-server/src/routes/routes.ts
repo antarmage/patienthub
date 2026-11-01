@@ -40,6 +40,7 @@ import { registerSurgeryWorkflow } from "../surgery-workflow";
 import { createSurgeryStore } from "../surgery-store";
 import { registerPregnancyEpisodes } from "../pregnancy-episodes";
 import { createPregnancyEpisodeStore } from "../pregnancy-episode-store";
+import { createPregnancyFollowUpStore, registerPregnancyFollowUps } from "../pregnancy-follow-ups";
 import { readLabPrescription, sanitizeLabSurvey, surveyKindFor } from "../survey-kind";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
 import { analyseGenome, analyseGenomeFromKey } from "../genome-engine";
@@ -5652,6 +5653,7 @@ Return a JSON object:
   // Pass it via the X-Patient-Id request header instead.
   registerSurgeryWorkflow(app, createSurgeryStore(pool), getAccessActor);
   registerPregnancyEpisodes(app, createPregnancyEpisodeStore(pool), getAccessActor);
+  registerPregnancyFollowUps(app, createPregnancyFollowUpStore(pool), getAccessActor);
 
   app.use("/api", (err: any, _req: any, res: any, _next: any) => {
     console.error("API Error:", err.message);

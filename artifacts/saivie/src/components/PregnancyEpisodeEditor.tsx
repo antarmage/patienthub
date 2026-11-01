@@ -110,6 +110,9 @@ export function PregnancyEpisodeEditor({
       await queryClient.invalidateQueries({
         queryKey: ["/api/patients", patient.id, "pregnancy-episodes"],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["pregnancy-follow-ups"],
+      });
       onSaved(saved.id);
     },
   });

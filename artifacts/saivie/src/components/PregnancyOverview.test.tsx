@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PregnancyOverview } from "./PregnancyOverview";
 import { indiaToday } from "@/lib/pregnancyOverview";
 import type { PregnancyEpisode } from "../../../../lib/db/src/pregnancy-episodes";
+import type { PregnancyFollowUp } from "../../../../lib/db/src/pregnancy-follow-up";
 
 const current: PregnancyEpisode = {
   id: 2,
@@ -93,11 +94,16 @@ function render(
   canEdit = true,
   ready = true,
   fixturePatient: Record<string, unknown> & { id: number } = patient,
+  followUp?: PregnancyFollowUp,
 ) {
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity } },
   });
   client.setQueryData(["/api/patients", 1, "pregnancy-episodes"], episodes);
+  if (followUp)
+    client.setQueryData(["pregnancy-follow-ups", canEdit, "1"], {
+      1: followUp,
+    });
   try {
     return renderToStaticMarkup(
       <QueryClientProvider client={client}>
@@ -125,6 +131,25 @@ test("saved tabs default to current, don't leak older pregnancy values, and show
   assert.ok(html.includes("Dating not available"));
   assert.ok(html.includes("not a clinical diagnosis"));
   assert.ok(!html.includes("0 years"));
+});
+test("saved pregnancy follow-up has a source/date and is never presented as a booked visit", () => {
+  const followUp: PregnancyFollowUp = {
+    episodeId: current.id,
+    datingKey: "synthetic",
+    date: "2020-01-01",
+    source: "milestone",
+    reason: "Timing prompt only",
+    sourceRecord: "milestone:36",
+  };
+  const html = render([current], true, true, patient, followUp);
+  assert.ok(html.includes("Milestone follow-up · not booked"));
+  assert.ok(html.includes("2020-01-01"));
+  assert.ok(html.includes("Overdue"));
+  assert.ok(
+    !render([past], true, true, patient, followUp).includes(
+      'aria-label="Saved pregnancy follow-up"',
+    ),
+  );
 });
 test("reception sees episodes but not authoring controls; incomplete sources disable editing", () => {
   const html = render([past, current], false);

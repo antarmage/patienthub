@@ -1009,6 +1009,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       queryClient.invalidateQueries({ queryKey: ["/api/medicine-suggestions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/follow-up-calls"] });
+      queryClient.invalidateQueries({ queryKey: ["pregnancy-follow-ups"] });
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/documents`] });
       toast({ title: transcriptionMode ? editing ? "Transcription updated" : "Prescription transcribed" : editing ? "Prescription updated" : appointment?.id ? "Prescription recorded" : "Prescription recorded and visit created" });
       onSaved?.(patientId);

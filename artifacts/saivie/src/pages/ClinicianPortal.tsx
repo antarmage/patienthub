@@ -9,6 +9,7 @@ import { ReceptionPatientEdit } from "@/components/ReceptionPatientEdit";
 import { ReceptionVitalsDialog } from "@/components/ReceptionVitalsDialog";
 import { patientAge, indiaToday } from "@/lib/pregnancyOverview";
 import { presentPatientRisk } from "@/lib/riskPresentation";
+import { usePregnancyFollowUps } from "@/hooks/use-pregnancy-follow-ups";
 import { MedicineAutocomplete } from "@/components/MedicineAutocomplete";
 import { MedicineDoseInput } from "@/components/MedicineDoseInput";
 import { MedicineFrequencyInput } from "@/components/MedicineFrequencyInput";
@@ -624,8 +625,11 @@ export default function ClinicianPortal() {
     },
     refetchInterval: 30000,
   });
+  const pregnancyFollowUps = usePregnancyFollowUps((patientsQuery.data || []).map((patient: { id: number }) => patient.id),
+    true, patientsQuery.isSuccess);
   const patients = useMemo(() => (patientsQuery.data || []).map((patient: Record<string, unknown>) =>
-    ({ ...patient, riskScore: presentPatientRisk(patient.riskScore) })), [patientsQuery.data]);
+    ({ ...patient, riskScore: presentPatientRisk(patient.riskScore),
+      pregnancyFollowUp: pregnancyFollowUps.data?.[String(patient.id)] })), [patientsQuery.data, pregnancyFollowUps.data]);
 
   const hormoneQuery = useQuery({
     queryKey: [`/api/patients/${selectedPatient?.id}/hormones`],
@@ -4622,6 +4626,9 @@ export default function ClinicianPortal() {
                 {(patientDirectoryDateFrom || patientDirectoryDateTo) && directoryAppointmentsQuery.isError && <div role="alert" className="px-4 py-3 text-xs text-rose-700">{directoryAppointmentsQuery.error.message} <button type="button" className="underline" onClick={() => void directoryAppointmentsQuery.refetch()}>Retry</button></div>}
               </section>
               <ClinicalPatientList
+                followUpsLoading={pregnancyFollowUps.isFetching}
+                followUpsError={pregnancyFollowUps.error?.message}
+                onRetryFollowUps={() => void pregnancyFollowUps.refetch()}
                 patients={filteredDirectoryPatients}
                 allPatients={patients}
                 appointments={upcomingDirectoryAppointmentsQuery.data || []}

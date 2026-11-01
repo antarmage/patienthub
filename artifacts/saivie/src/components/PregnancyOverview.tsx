@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { PregnancyEpisodeEditor } from "@/components/PregnancyEpisodeEditor";
 import { MeasurementTrend } from "@/components/MeasurementTrend";
 import { presentPatientRisk } from "@/lib/riskPresentation";
+import { usePregnancyFollowUps } from "@/hooks/use-pregnancy-follow-ups";
+import { pregnancyFollowUpLabel } from "@/lib/pregnancyFollowUps";
 import {
   bpReference,
   pregnancyWeightReference,
@@ -213,6 +215,13 @@ export function PregnancyOverview({
       detection.mutate();
     }
   }, [canEdit, query.isSuccess, query.data, detection.mutate]);
+  const followUpQuery = usePregnancyFollowUps(
+    [patient.id],
+    canEdit,
+    query.isSuccess &&
+      query.data.some((episode) => episode.details.status === "current") &&
+      recordsReady,
+  );
   if (query.isPending)
     return (
       <p role="status" className={card}>
@@ -266,6 +275,7 @@ export function PregnancyOverview({
     pregnancy = historyRecord(historyRecord(history.onboarding).pregnancies);
   const risk = historyRecord(presentPatientRisk(patient.riskScore));
   const current = selected?.details.status === "current";
+  const followUp = followUpQuery.data?.[String(patient.id)];
   const todayAppointments = context.appointments.filter(
     (appointment) =>
       appointment.date === today &&
@@ -525,6 +535,54 @@ export function PregnancyOverview({
           Record sources are loading or unavailable. Episode editing is disabled
           until the date trail can be reviewed.
         </p>
+      )}
+      {current && (
+        <section className={card} aria-label="Saved pregnancy follow-up">
+          <h3 className="text-sm font-semibold">Next pregnancy follow-up</h3>
+          {!recordsReady && (
+            <p role="status" className="text-xs">
+              Record sources are unavailable; automatic follow-up
+              synchronization is paused.
+            </p>
+          )}
+          {followUpQuery.isPending && recordsReady && (
+            <p role="status" className="text-xs">
+              Loading saved follow-up...
+            </p>
+          )}
+          {followUpQuery.isError && (
+            <p role="alert" className="text-xs">
+              {followUpQuery.error.message}{" "}
+              <Button
+                variant="link"
+                onClick={() => void followUpQuery.refetch()}
+              >
+                Retry follow-up
+              </Button>
+            </p>
+          )}
+          {followUp?.episodeId === selected.id && (
+            <>
+              <p className="mt-2 font-semibold">
+                {followUp.date || "Timing needs clinician review"}
+                {followUp.date && followUp.date < today ? " · Overdue" : ""}
+              </p>
+              <p className="text-xs">
+                {pregnancyFollowUpLabel(followUp.source)}
+              </p>
+              <p className="mt-1 text-xs">{followUp.reason}</p>
+            </>
+          )}
+          {followUpQuery.isSuccess && !followUp && (
+            <p className="text-xs">
+              No saved plan. Ask the doctor to review follow-up timing.
+            </p>
+          )}
+          <p className="mt-2 text-xs">
+            Booked appointments remain separate below. A milestone plan is not
+            an appointment or a test/vaccine order.
+          </p>
+        </section>
       )}
       {!selected ? (
         <section className={card}>
