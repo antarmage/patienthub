@@ -1199,7 +1199,7 @@ export default function ClinicianPortal() {
   }, [activeAppointment, selectedPatient, appointments]);
 
   const surveyPatient = patients.find((patient: any) => patient.id === selectedPatient?.id) || selectedPatient;
-  const displayedPatientAge = patientAge(surveyPatient || {}, indiaToday());
+  const displayedPatientAge = patientAge(surveyPatient || {}, indiaToday(), [...visitHistory, ...(appointmentHistoryQuery.data || [])]);
   const hpvClinicStatus = useHpvClinicStatuses([selectedPatient?.id]);
   const selectedHpvClinicStatus = hpvClinicStatus(selectedPatient?.id);
   const selectedHpvStatus = hpvProtection(hpvSurveyAnswer(surveyPatient), selectedHpvClinicStatus);

@@ -128,22 +128,45 @@ export function readPregnancyEpisodes(
 export function patientAge(
   patient: Record<string, unknown>,
   asOf: string,
+  records: Record<string, unknown>[] = [],
 ): number | null {
-  const dob = patient.dob;
-  if (validDate(dob) && validDate(asOf) && String(dob) <= asOf) {
+  const onboarding = historyRecord(historyRecord(patient.history).onboarding);
+  for (const dob of [patient.dob, onboarding.dob]) {
+    if (!validDate(dob) || !validDate(asOf) || String(dob) > asOf) continue;
     const birth = String(dob);
-    return (
+    const age =
       Number(asOf.slice(0, 4)) -
       Number(birth.slice(0, 4)) -
-      (asOf.slice(5) < birth.slice(5) ? 1 : 0)
-    );
+      (asOf.slice(5) < birth.slice(5) ? 1 : 0);
+    if (age >= 0 && age <= 130) return age;
   }
-  return typeof patient.age === "number" &&
-    Number.isInteger(patient.age) &&
-    patient.age > 0 &&
-    patient.age <= 130
-    ? patient.age
-    : null;
+  const recordedAge = (value: unknown) => {
+    const age =
+      typeof value === "number"
+        ? value
+        : typeof value === "string" && /^\d+$/.test(value.trim())
+          ? Number(value.trim())
+          : null;
+    return age !== null && Number.isInteger(age) && age > 0 && age <= 130
+      ? age
+      : null;
+  };
+  for (const value of [patient.age, onboarding.age]) {
+    const age = recordedAge(value);
+    if (age !== null) return age;
+  }
+  const dated = records
+    .filter((row) => validDate(row.date) && String(row.date) <= asOf)
+    .sort(
+      (a, b) =>
+        String(b.date).localeCompare(String(a.date)) ||
+        Number(b.id) - Number(a.id),
+    );
+  for (const row of dated) {
+    const age = recordedAge(historyRecord(row.vitals).age);
+    if (age !== null) return age;
+  }
+  return null;
 }
 
 export function pregnancyGestation(
@@ -242,6 +265,7 @@ export function suggestedEpisode(
 export function pregnancyBaseline(
   patient: Record<string, unknown>,
   today = indiaToday(),
+  records: Record<string, unknown>[] = [],
 ) {
   const history = historyRecord(patient.history),
     health = historyRecord(historyRecord(history.onboarding).health);
@@ -251,7 +275,7 @@ export function pregnancyBaseline(
   const allergies = historyText(history.allergies ?? health.allergies);
   const medical = historyText(history.medical ?? health.conditions);
   return {
-    age: patientAge(patient, today),
+    age: patientAge(patient, today, records),
     bloodGroup,
     allergies,
     medical,

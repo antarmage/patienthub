@@ -68,6 +68,48 @@ test("age derives from DOB at the birthday and zero does not become an age", () 
   assert.equal(patientAge({ age: 0 }, "2026-05-15"), null);
   assert.equal(patientAge({ age: 30 }, "2026-05-15"), 30);
 });
+
+test("previously recorded age is retained until corrected, with DOB and profile corrections taking priority", () => {
+  const records = [
+    { id: 1, date: "2024-01-01", vitals: { age: "28" } },
+    { id: 2, date: "2025-01-01", vitals: { age: 29 } },
+    { id: 3, date: "2026-01-01", vitals: { age: null } },
+    { id: 4, date: "2027-01-01", vitals: { age: 31 } },
+  ];
+  assert.equal(patientAge({ age: 0 }, "2026-11-02", records), 29);
+  assert.equal(patientAge({ age: "30" }, "2026-11-02", records), 30);
+  assert.equal(patientAge({ age: 32 }, "2026-11-02", records), 32);
+  assert.equal(
+    patientAge(
+      { age: 0, history: { onboarding: { age: "27" } } },
+      "2026-11-02",
+      records,
+    ),
+    27,
+  );
+  assert.equal(
+    patientAge(
+      { age: 0, history: { onboarding: { dob: "1996-05-01" } } },
+      "2026-11-02",
+      records,
+    ),
+    30,
+  );
+  assert.equal(
+    patientAge({ dob: "1990-01-01", age: 28 }, "2026-11-02", records),
+    36,
+  );
+  for (const age of ["", "unknown", "30 years", 0, -1, 131, 30.5]) {
+    assert.equal(patientAge({ age }, "2026-11-02", records), 29);
+  }
+  assert.equal(
+    patientAge({ age: 0 }, "2026-11-02", [
+      { date: "2026-02-30", vitals: { age: 30 } },
+    ]),
+    null,
+  );
+  assert.equal(pregnancyBaseline({ age: 0 }, "2026-11-02", records).age, 29);
+});
 test("gestation uses saved dating and past end date, never projects an earlier pregnancy to today", () => {
   assert.deepEqual(pregnancyGestation(episode.details, "2020-04-08"), {
     weeks: 14,

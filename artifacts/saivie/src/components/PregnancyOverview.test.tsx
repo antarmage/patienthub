@@ -169,6 +169,20 @@ test("all earlier graph types remain available for explicitly linked pregnancy r
   assert.ok(html.includes('data-testid="episode-measurements"'));
   assert.ok(!html.includes('data-testid="overall-measurements"'));
 });
+test("saved intake age avoids a false missing-age attention item", () => {
+  const html = render([current], true, true, {
+    ...patient,
+    dob: null,
+    age: 0,
+    history: {
+      ...patient.history,
+      onboarding: { age: "30", pregnancies: { total: 2 } },
+    },
+  });
+  assert.ok(html.includes("Age: 30"));
+  assert.ok(!html.includes("Patient date of birth / age"));
+  assert.ok(html.includes("retained until corrected"));
+});
 test("patient risk is kept distinct from missing information and is not silently reclassified", () => {
   const html = render([current], true, true, {
     ...patient,

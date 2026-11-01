@@ -212,7 +212,10 @@ export function PregnancyOverview({
   const gestation = selected
     ? pregnancyGestation(selected.details, today)
     : null;
-  const baseline = pregnancyBaseline(patient, today);
+  const baseline = pregnancyBaseline(patient, today, [
+    ...visits,
+    ...appointments,
+  ]);
   const history = historyRecord(patient.history),
     pregnancy = historyRecord(historyRecord(history.onboarding).pregnancies);
   const risk = historyRecord(patient.riskScore);
@@ -586,8 +589,10 @@ export function PregnancyOverview({
           </p>
           <p className="mt-3 text-xs">
             Age: {baseline.age ?? "Not recorded"}
-            {baseline.age !== null && patient.dob ? " (from DOB)" : ""} · Blood
-            group: {baseline.bloodGroup || "Not recorded"} · Allergies:{" "}
+            {baseline.age !== null
+              ? " (DOB or recorded age; retained until corrected)"
+              : ""}{" "}
+            · Blood group: {baseline.bloodGroup || "Not recorded"} · Allergies:{" "}
             {baseline.allergies || "Not recorded"}
           </p>
           <ul className="mt-3 divide-y">

@@ -108,7 +108,7 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
     }, retry: false, gcTime: 0, refetchInterval: 15_000,
   });
   const data = record.data;
-  const age = patientAge(data?.detail || {}, indiaToday());
+  const age = patientAge(data?.detail || {}, indiaToday(), [...(data?.visits || []), ...(data?.appointments || [])]);
   const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
   const visitDates = receptionVisitDates(visitTrail(data?.visits ?? [], data?.appointments ?? [], data?.documents ?? []));
   const selectedVisits = visitDates.find((group) => group.date === selectedDate) ?? visitDates[0];
