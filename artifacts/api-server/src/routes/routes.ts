@@ -20,6 +20,7 @@ import { synchronizeFollowUpCalls } from "../follow-up-calls";
 import { registerReceptionFollowUpRoutes } from "../reception-follow-up";
 import { createOnboardingLinks, registerOnboardingLinkRoutes } from "../onboarding-links";
 import { onboardingLinkStore } from "../onboarding-link-store";
+import { registerRecoveryPasscodeLogin } from "../recovery-auth";
 import { insertPatientSchema, parseCallDate, prescriptionDueDate } from "@workspace/db";
 import { calculateInvoiceQuote } from "../prime-pricing";
 import { registerOcrRoutes, registerPrescriptionReadingRoutes, scanClinicalDocument } from "../replit_integrations/ocr";
@@ -5595,6 +5596,10 @@ Return a JSON object:
   });
 
   // ── Post-Op (SaivieRecover tablet) routes ────────────────────────────────────
+  registerRecoveryPasscodeLogin(app, {
+    usersForPasscode: async (passcode) => (await pool.query<{ id: string; username: string; role: string | null }>("SELECT id, username, role FROM users WHERE password = $1 LIMIT 2", [passcode])).rows,
+    issueToken: issueStaffToken,
+  });
 
   // Staff login: authenticate using username+password stored in users table
   app.post("/api/postop/auth/login", async (req, res) => {

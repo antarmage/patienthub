@@ -15,6 +15,8 @@
 
 ## Client authentication
 
+Recovery temporarily uses `POST /api/postop/auth/passcode` with an individual staff passcode only, without a username or WhatsApp OTP. The passcode must match exactly one persisted account with an allowed staff role; duplicate passcodes are rejected instead of choosing an arbitrary user. The endpoint permits 10 attempts per IP per 15 minutes and returns the existing expiring staff bearer session. Existing OTP/ticket login endpoints and all other portal login flows remain unchanged. Administrators must assign unique staff passcodes; this temporary single-factor flow has weaker protection than OTP.
+
 ### Private onboarding links
 
 Staff create or replace an appointment's private intake link with `POST /api/onboarding-links/:id`. The random 256-bit token is hashed in `onboarding_links`, expires 30 days after issuance, and is included only in the frontend URL fragment. Creating another link invalidates the previous one. Cancellation/no-show removes the saved link permanently.

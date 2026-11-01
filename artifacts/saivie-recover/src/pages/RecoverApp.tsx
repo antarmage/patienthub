@@ -89,19 +89,9 @@ export default function RecoverApp() {
   const [staff, setStaff] = useState<Staff | null>(() => {
     try { return JSON.parse(sessionStorage.getItem("recover_staff") || "null"); } catch { return null; }
   });
-  const [loginStep, setLoginStep] = useState<"credentials" | "otp">("credentials");
-  const [loginForm, setLoginForm] = useState({ username: "", passcode: "" });
-  const [loginOtp, setLoginOtp] = useState("");
-  const [loginMaskedPhone, setLoginMaskedPhone] = useState("");
+  const [passcode, setPasscode] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
-
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [resendCooldown]);
 
   // ── Auto-lock (goes to patient search, keeps session) ─────────────────────
   const idleTimer = useRef<ReturnType<typeof setTimeout>>(null);
@@ -137,72 +127,31 @@ export default function RecoverApp() {
     setView("search");
   }
 
-  async function handleRequestOtp(e: React.FormEvent) {
+  async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setLoginError("");
     setLoginLoading(true);
     try {
-      const r = await api("/api/staff/otp/request", {
+      const r = await api("/api/postop/auth/passcode", {
         method: "POST",
-        body: JSON.stringify({ username: loginForm.username, passcode: loginForm.passcode }),
+        body: JSON.stringify({ passcode }),
       });
-      const data = await r.json().catch(() => ({}));
+      if (!r.headers.get("content-type")?.includes("application/json")) throw new Error("The recovery API is unavailable. Check that the updated API is deployed.");
+      const data: unknown = await r.json();
       if (!r.ok) {
-        setLoginError((data as any).error || "Invalid credentials");
+        setLoginError(data && typeof data === "object" && "error" in data && typeof data.error === "string" ? data.error : "Sign-in failed");
         return;
       }
-      setLoginMaskedPhone((data as any).phone || "");
-      setLoginStep("otp");
-    } catch {
-      setLoginError("Network error, please try again.");
-    } finally {
-      setLoginLoading(false);
-    }
-  }
-
-  async function handleResendOtp() {
-    if (resendCooldown > 0) return;
-    setLoginError("");
-    setLoginLoading(true);
-    try {
-      const r = await api("/api/staff/otp/request", {
-        method: "POST",
-        body: JSON.stringify({ username: loginForm.username, passcode: loginForm.passcode }),
-      });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        setLoginError((data as any).error || "Could not resend code");
-        return;
-      }
-      setResendCooldown(30);
-      toast({ title: "New code sent", description: `A new verification code was sent to ${(data as any).phone || loginMaskedPhone} via WhatsApp.` });
-    } catch {
-      setLoginError("Network error, please try again.");
-    } finally {
-      setLoginLoading(false);
-    }
-  }
-
-  async function handleVerifyOtp(e: React.FormEvent) {
-    e.preventDefault();
-    setLoginError("");
-    setLoginLoading(true);
-    try {
-      const r = await api("/api/postop/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ username: loginForm.username, passcode: loginForm.passcode, otp: loginOtp }),
-      });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        setLoginError((data as any).error || "Verification failed");
-        return;
-      }
+      if (!data || typeof data !== "object" || !("staffToken" in data) || typeof data.staffToken !== "string" || !data.staffToken ||
+          !("user" in data) || !data.user || typeof data.user !== "object" || !("id" in data.user) || typeof data.user.id !== "string" ||
+          !("username" in data.user) || typeof data.user.username !== "string" || !("role" in data.user) || typeof data.user.role !== "string") throw new Error("The recovery API returned an invalid staff session.");
       sessionStorage.setItem("recover_token", data.staffToken);
       sessionStorage.setItem("recover_staff", JSON.stringify(data.user));
       setToken(data.staffToken);
-      setStaff(data.user);
-    } catch {
-      setLoginError("Network error, please try again.");
+      setStaff({ id: data.user.id, username: data.user.username, role: data.user.role });
+      setPasscode("");
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : "Sign-in failed. Please try again.");
     } finally {
       setLoginLoading(false);
     }
@@ -295,71 +244,23 @@ export default function RecoverApp() {
             <p className="text-muted-foreground text-sm mt-1">Post-Operative Care Tablet</p>
           </CardHeader>
           <CardContent className="pt-4">
-            {loginStep === "credentials" ? (
-              <form onSubmit={handleRequestOtp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="username" className="text-sm font-semibold text-foreground">Staff Username</Label>
-                  <Input
-                    id="username" autoCapitalize="none" autoCorrect="off"
-                    value={loginForm.username} onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))}
-                    placeholder="Enter your username" className="h-13 text-base"
-                  />
-                </div>
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <p className="text-sm text-muted-foreground">Enter your individual staff passcode to sign in. No WhatsApp code is required.</p>
                 <div className="space-y-2">
                   <Label htmlFor="passcode" className="text-sm font-semibold text-foreground">Passcode</Label>
                   <Input
                     id="passcode" type="password" autoComplete="current-password"
-                    value={loginForm.passcode} onChange={e => setLoginForm(f => ({ ...f, passcode: e.target.value }))}
+                    value={passcode} onChange={e => setPasscode(e.target.value)}
                     placeholder="Enter passcode" className="h-13 text-base"
                   />
                 </div>
                 {loginError && (
-                  <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm px-4 py-3 rounded-xl">{loginError}</div>
+                  <div role="alert" className="bg-rose-50 border border-rose-200 text-rose-700 text-sm px-4 py-3 rounded-xl">{loginError}</div>
                 )}
-                <Button type="submit" className="w-full h-13 text-base font-semibold bg-primary hover:bg-primary/90" disabled={loginLoading || !loginForm.username || !loginForm.passcode}>
-                  {loginLoading ? "Sending code…" : "Continue"}
+                <Button type="submit" className="w-full h-13 text-base font-semibold bg-primary hover:bg-primary/90" disabled={loginLoading || !passcode.trim()}>
+                  {loginLoading ? "Signing in…" : "Sign In"}
                 </Button>
               </form>
-            ) : (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <button
-                  type="button"
-                  onClick={() => { setLoginStep("credentials"); setLoginOtp(""); setLoginError(""); }}
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-2"
-                >
-                  ← Back
-                </button>
-                <p className="text-sm text-muted-foreground">
-                  Enter the 6-digit code sent to <strong>{loginMaskedPhone || "your registered phone"}</strong> via WhatsApp.
-                </p>
-                <div className="space-y-2">
-                  <Label htmlFor="otp" className="text-sm font-semibold text-foreground">Verification Code</Label>
-                  <Input
-                    id="otp" type="number" inputMode="numeric"
-                    value={loginOtp} onChange={e => setLoginOtp(e.target.value.slice(0, 6))}
-                    placeholder="000000" className="h-13 text-2xl tracking-widest text-center"
-                    autoFocus
-                  />
-                </div>
-                {loginError && (
-                  <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm px-4 py-3 rounded-xl">{loginError}</div>
-                )}
-                <Button type="submit" className="w-full h-13 text-base font-semibold bg-primary hover:bg-primary/90" disabled={loginLoading || loginOtp.length !== 6}>
-                  {loginLoading ? "Verifying…" : "Sign In"}
-                </Button>
-                <div className="flex flex-col items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={handleResendOtp}
-                    disabled={loginLoading || resendCooldown > 0}
-                    className="text-sm text-primary hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
-                  >
-                    {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
-                  </button>
-                  <p className="text-xs text-muted-foreground text-center">Code expires in 5 minutes.</p>
-                </div>
-              </form>
-            )}
           </CardContent>
         </Card>
       </div>
