@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { CalendarPlus, ChevronRight, Phone, Search, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OnlineConsultationActions } from "@/components/OnlineConsultationActions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DateInput } from "@/components/ui/date-input";
@@ -107,6 +108,7 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
       <div><p className="text-sm text-saivie-plum">{providers.find((provider) => provider.id === appointment.providerId)?.name || "Doctor not assigned"}</p><p className="mt-1 text-xs text-[#705364]">{appointment.visitType || appointment.type || "Appointment"}</p></div>
       <div><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${stageColors[stage]}`}>{stage}</span>{late && <p className="mt-1 text-[11px] text-amber-800">Running late</p>}</div>
       <div className="flex flex-wrap items-center gap-2 md:col-span-4 md:pl-[87px]">
+        {appointment.visitMode === "telemedicine" && <OnlineConsultationActions appointmentId={appointment.id} />}
         {patient && <Button size="sm" variant="outline" onClick={() => onTranscribePrescription(patient)}>Add / Edit paper prescription</Button>}
         {patient && appointment.date === today && !closed && stage !== "With doctor" && <Button size="sm" variant="outline" onClick={() => onRecordVitals(appointment)} data-testid={`btn-reception-vitals-${appointment.id}`}>Record vitals</Button>}
         {patient && onViewPatient && <Button size="sm" variant="outline" onClick={() => onViewPatient(patient)} data-testid={`btn-reception-details-${patient.id}`}>View patient details</Button>}

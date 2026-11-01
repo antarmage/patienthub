@@ -28,8 +28,9 @@ const appointmentLogisticsFields = new Set([
   "type", "status", "visitType", "visitMode", "surveyType", "priority", "room",
   "billingCode", "billingAmount", "paymentStatus", "insuranceClaim", "checkedInAt",
   "seenAt", "completedAt", "followUpDate", "telemedicineLink", "whatsappReminderSent",
+  "patientConsultationUrl", "notificationStatus",
 ]);
-const appointmentWriteFields = new Set([...appointmentLogisticsFields].filter((key) => !["id", "seenAt", "completedAt"].includes(key)));
+const appointmentWriteFields = new Set([...appointmentLogisticsFields].filter((key) => !["id", "seenAt", "completedAt", "patientConsultationUrl", "notificationStatus"].includes(key)));
 appointmentWriteFields.add("suppressNotification");
 appointmentWriteFields.add("reason");
 

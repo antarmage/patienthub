@@ -405,8 +405,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAppointment(id: number, data: Partial<InsertAppointment>): Promise<Appointment | undefined> {
-    const [updated] = await db.update(appointments).set(data).where(eq(appointments.id, id)).returning();
-    return updated;
+    return db.transaction(async (tx) => {
+      const [updated] = await tx.update(appointments).set(data).where(eq(appointments.id, id)).returning();
+      if (["cancelled", "canceled", "no-show"].includes(String(data.status).toLowerCase()) || data.visitMode && data.visitMode !== "telemedicine") {
+        await tx.execute(sql`UPDATE online_consultations SET revoked = true, updated_at = now() WHERE appointment_id = ${id}`);
+      }
+      return updated;
+    });
   }
 
   async getLabTasks(): Promise<LabTask[]> {

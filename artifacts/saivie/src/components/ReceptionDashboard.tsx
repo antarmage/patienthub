@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { OnlineConsultationActions } from "@/components/OnlineConsultationActions";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -165,6 +166,7 @@ export function ReceptionDashboard({
   onCallFollowUp,
 }: ReceptionDashboardProps) {
   const [filter, setFilter] = useState<FlowFilter>("all");
+  const [onlineAppointmentId, setOnlineAppointmentId] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [referRequest, setReferRequest] = useState<ReferralRequest | null>(null);
   const clearReferRequest = useCallback(() => setReferRequest(null), []);
@@ -259,6 +261,7 @@ export function ReceptionDashboard({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {apt.visitMode === "telemedicine" && <DropdownMenuItem onClick={() => setOnlineAppointmentId(apt.id)}>Online consultation / Patient link</DropdownMenuItem>}
           <DropdownMenuItem data-testid={`menu-survey-kind-${apt.id}`}
             onClick={() => onUpdateAppointment(apt.id, { surveyType: surveyKindFor(apt) === "lab" ? "consultation" : "lab" })}>
             {surveyKindFor(apt) === "lab" ? "Use consultation survey" : "Use lab test survey"}
@@ -356,6 +359,7 @@ export function ReceptionDashboard({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {patient && beforeConsultation && onRecordVitals && <DropdownMenuItem onClick={() => onRecordVitals(apt)} data-testid={`${location}-record-vitals-${apt.id}`}>Record vitals</DropdownMenuItem>}
+          {apt.visitMode === "telemedicine" && <DropdownMenuItem onClick={() => setOnlineAppointmentId(apt.id)}>Online consultation / Patient link</DropdownMenuItem>}
           {patient && onTranscribePrescription && <DropdownMenuItem onClick={() => onTranscribePrescription(patient)} data-testid={`${location}-paper-prescription-${apt.id}`}>Add / Edit prescription</DropdownMenuItem>}
           {patient && onEditPatient && <DropdownMenuItem onClick={() => onEditPatient(patient)} data-testid={`${location}-edit-patient-${apt.id}`}>Edit patient details</DropdownMenuItem>}
           {patient && <DropdownMenuItem onClick={() => onOpenPatient(patient)}>{clinicalDetailsVisible ? "View patient details" : "View appointments"}</DropdownMenuItem>}
@@ -392,6 +396,7 @@ export function ReceptionDashboard({
 
   return (
     <div className="mx-auto grid max-w-7xl grid-cols-12 gap-6">
+      {onlineAppointmentId && <OnlineConsultationActions key={onlineAppointmentId} appointmentId={onlineAppointmentId} initiallyOpen onClose={() => setOnlineAppointmentId(null)} />}
       <div className="col-span-12 space-y-6 xl:col-span-8">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {statCards.map((card) => (

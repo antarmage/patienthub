@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { authenticatedFetch, readApiResponse, receptionRequest } from "./authenticatedFetch.ts";
+import { ApiResponseError, authenticatedFetch, readApiResponse, receptionRequest } from "./authenticatedFetch.ts";
 
 test("staff token is only attached to same-origin API calls, preserving headers and multipart bodies", async (t) => {
   t.mock.method(globalThis, "fetch", async (_input: RequestInfo | URL, init?: RequestInit) => new Response(JSON.stringify({
@@ -35,6 +35,7 @@ test("staff token is only attached to same-origin API calls, preserving headers 
     assert.deepEqual(await readApiResponse(new Response("[]", {
       headers: { "Content-Type": "application/json; charset=utf-8" },
     })), []);
+    await assert.rejects(readApiResponse(Response.json({ error: "Consultation page is unavailable." }, { status: 410 })), (error: unknown) => error instanceof ApiResponseError && error.status === 410 && error.message === "Consultation page is unavailable.");
   });
 
   await t.test("reception requests surface unavailable transcription APIs rather than empty records", async (t) => {

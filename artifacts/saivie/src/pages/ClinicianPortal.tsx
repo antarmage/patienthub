@@ -12,6 +12,8 @@ import { ReportReadingButton } from "@/components/ReportReadingButton";
 import { useToast } from "@/hooks/use-toast";
 import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSettings";
 import { ReceptionAccessSettings } from "@/components/ReceptionAccessSettings";
+import { GoogleMeetSettings } from "@/components/GoogleMeetSettings";
+import { OnlineConsultationActions } from "@/components/OnlineConsultationActions";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
 import { HpvBadge } from "@/components/HpvBadge";
 import { hpvProtection, hpvSurveyAnswer } from "@/lib/hpvProtection";
@@ -94,7 +96,8 @@ import {
   LogOut,
   Mic,
   MessageCircle,
-  Save
+  Save,
+  Video
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -414,7 +417,7 @@ export default function ClinicianPortal() {
   const [, navigate] = useLocation();
   const patientSearchParams = useSearch();
   const openedPatientLink = React.useRef<string | null>(null);
-  const [activeView, setActiveView] = useState("dashboard");
+  const [activeView, setActiveView] = useState(() => new URLSearchParams(window.location.search).get("googleMeet") === "connected" ? "settings" : "dashboard");
   const [sidebarPinned, setSidebarPinned] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [sidebarFocused, setSidebarFocused] = useState(false);
@@ -426,7 +429,7 @@ export default function ClinicianPortal() {
   const [careMode, setCareMode] = useState("natural_conception"); 
   const [showPastRecords, setShowPastRecords] = useState(true);
   const [selectedTrailVisitId, setSelectedTrailVisitId] = useState<number | string | null>(null);
-  const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
+  const [activeSettingsTab, setActiveSettingsTab] = useState(() => new URLSearchParams(window.location.search).get("googleMeet") === "connected" ? "google-meet" : "profile");
   const [patientDetailTab, setPatientDetailTab] = useState<'summary' | 'consultation' | 'record' | 'medicine' | 'investigations' | 'postop' | 'genome'>('summary');
   const isPatientOverview = patientDetailTab !== 'postop' && patientDetailTab !== 'genome';
   const [consultationStep, setConsultationStep] = useState<ConsultationStep>('reason');
@@ -2659,10 +2662,7 @@ export default function ClinicianPortal() {
                                              {p.appointmentVisitMode === "telemedicine" && (
                                                <div className="text-xs text-blue-600 flex items-center gap-1 mt-0.5">
                                                  <span>📹</span>
-                                                 {p.appointmentTelemedicineLink
-                                                   ? <a href={p.appointmentTelemedicineLink} target="_blank" rel="noopener noreferrer" className="underline" onClick={e => e.stopPropagation()}>Join Call</a>
-                                                   : <span>Telemedicine</span>
-                                                 }
+                                                 <span onClick={event => event.stopPropagation()}><OnlineConsultationActions appointmentId={p.appointmentId} canShare /></span>
                                                </div>
                                              )}
                                           </td>
@@ -3916,6 +3916,9 @@ export default function ClinicianPortal() {
                             <Button variant="ghost" className={`w-full justify-start ${activeSettingsTab === 'reception-access' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum'}`} onClick={() => setActiveSettingsTab('reception-access')} data-testid="button-reception-access-settings">
                                <Users className="w-4 h-4 mr-3" /> Receptionist permissions
                             </Button>
+                            <Button variant="ghost" className={`w-full justify-start ${activeSettingsTab === 'google-meet' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum'}`} onClick={() => setActiveSettingsTab('google-meet')}>
+                               <Video className="w-4 h-4 mr-3" /> Google Meet
+                            </Button>
                             <Button variant="ghost" className="w-full justify-start text-saivie-plum hover:text-saivie-plum">
                                <Settings className="w-4 h-4 mr-3" /> System Preferences
                             </Button>
@@ -3926,6 +3929,7 @@ export default function ClinicianPortal() {
                    {/* Settings Content */}
                    <div className="md:col-span-2 space-y-6">
                       {activeSettingsTab === 'reception-access' && <ReceptionAccessSettings />}
+                      {activeSettingsTab === 'google-meet' && <GoogleMeetSettings />}
                       
                       {activeSettingsTab === 'profile' && (
                           <>

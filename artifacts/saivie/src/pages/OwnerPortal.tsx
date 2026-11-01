@@ -1886,6 +1886,16 @@ function StaffAccountsView() {
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editName, setEditName] = useState("");
+  const [editProviderId, setEditProviderId] = useState("");
+  const providerOptions = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/providers", "owner-account-mapping"],
+    enabled: authStep === "authenticated",
+    queryFn: async () => {
+      const response = await fetch("/api/providers");
+      if (!response.ok) throw new Error("Could not load doctor choices.");
+      return response.json();
+    },
+  });
 
   const sendOtp = async () => {
     setLoginError("");
@@ -1976,7 +1986,7 @@ function StaffAccountsView() {
   });
 
   const updateContact = useMutation({
-    mutationFn: async ({ id, phone, email, displayName }: { id: string; phone: string | null; email: string | null; displayName: string | null }) => {
+    mutationFn: async ({ id, phone, email, displayName, providerId }: { id: string; phone: string | null; email: string | null; displayName: string | null; providerId?: number | null }) => {
       const requests = [
         fetch(`/api/owner/staff-accounts/${id}/name`, {
           method: "PATCH",
@@ -1994,6 +2004,10 @@ function StaffAccountsView() {
           body: JSON.stringify({ email }),
         }),
       ];
+      if (providerId !== undefined) requests.push(fetch(`/api/owner/staff-accounts/${id}/provider`, {
+        method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ providerId }),
+      }));
       const responses = await Promise.all(requests);
       for (const res of responses) {
         if (!res.ok) {
@@ -2026,10 +2040,13 @@ function StaffAccountsView() {
     setEditPhone(user.phone || "");
     setEditEmail(user.email || "");
     setEditName(user.displayName || "");
+    setEditProviderId(user.providerId == null ? "" : String(user.providerId));
   };
 
   const saveEdit = (id: string) => {
-    updateContact.mutate({ id, phone: editPhone.trim() || null, email: editEmail.trim() || null, displayName: editName.trim() || null });
+    const user = accounts.find((account) => account.id === id);
+    updateContact.mutate({ id, phone: editPhone.trim() || null, email: editEmail.trim() || null, displayName: editName.trim() || null,
+      ...(["clinician", "owner"].includes(user?.role) ? { providerId: editProviderId ? Number(editProviderId) : null } : {}) });
   };
 
   return (
@@ -2037,7 +2054,7 @@ function StaffAccountsView() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-saivie-plum">Staff Accounts</h2>
-          <p className="text-sm text-saivie-plum mt-0.5">Manage staff personal names, phone numbers and SMTP fallback email addresses. Name changes appear after the staff member signs in again.</p>
+          <p className="text-sm text-saivie-plum mt-0.5">Manage staff names, contact details and doctor account mappings for Google Meet. Name and provider changes appear after signing in again.</p>
         </div>
         {authStep === "authenticated" && !isLoading && missing.length > 0 && (
           <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
@@ -2144,8 +2161,10 @@ function StaffAccountsView() {
                   <TableCell className="font-medium text-saivie-plum">{user.username}</TableCell>
                   <TableCell>
                     {editingId === user.id ? (
-                      <Input aria-label={`Personal name for ${user.username}`} value={editName} onChange={(e) => setEditName(e.target.value)}
+                      <div className="space-y-2"><Input aria-label={`Personal name for ${user.username}`} value={editName} onChange={(e) => setEditName(e.target.value)}
                         placeholder="Full name" maxLength={100} className="h-8 text-sm w-48" data-testid={`input-name-${user.username}`} />
+                        {["clinician", "owner"].includes(user.role) && <><label className="block text-xs">Doctor account mapping</label><select aria-label={`Doctor mapping for ${user.username}`} className="w-48 rounded border p-1 text-xs" value={editProviderId} onChange={(event) => setEditProviderId(event.target.value)} disabled={providerOptions.isPending || providerOptions.isError}><option value="">Not linked</option>{providerOptions.data?.map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}</select>{providerOptions.isError && <p role="alert" className="text-xs text-rose-700">{providerOptions.error.message}</p>}</>}
+                      </div>
                     ) : (
                       <span className="text-sm text-saivie-plum">{user.displayName || <span className="italic">Not set</span>}</span>
                     )}

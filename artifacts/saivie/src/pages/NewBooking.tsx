@@ -2,6 +2,8 @@ import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
+import { readApiResponse } from "@/lib/authenticatedFetch";
+import { OnlineConsultationActions } from "@/components/OnlineConsultationActions";
 import {
     Calendar as CalendarIcon,
     Clock,
@@ -124,6 +126,8 @@ export default function NewBooking() {
     const [isSuccess, setIsSuccess] = useState(false);
     const [createdAppointmentId, setCreatedAppointmentId] = useState<number | null>(null);
     const [createdTelemedicineLink, setCreatedTelemedicineLink] = useState<string | null>(null);
+    const [createdPatientConsultationUrl, setCreatedPatientConsultationUrl] = useState<string | null>(null);
+    const [notificationStatus, setNotificationStatus] = useState("");
     const [newPatient, setNewPatient] = useState<NewPatientDraft>(emptyNewPatientDraft);
     // Reused on retry so a failed appointment save does not register the same new patient twice.
     const [createdPatient, setCreatedPatient] = useState<{ id: number; key: string } | null>(null);
@@ -261,14 +265,16 @@ export default function NewBooking() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...apptData, patientId }),
             });
-            const body = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(body.error || 'Failed to create appointment');
-            return body;
+            const body = await readApiResponse(res);
+            if (!body || typeof body !== "object" || !("id" in body) || typeof body.id !== "number") throw new Error("The API did not confirm the appointment.");
+            return { ...body, id: body.id };
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
             setCreatedAppointmentId(data.id);
-            setCreatedTelemedicineLink(data.telemedicineLink || null);
+            setCreatedTelemedicineLink("telemedicineLink" in data && typeof data.telemedicineLink === "string" ? data.telemedicineLink : null);
+            setCreatedPatientConsultationUrl("patientConsultationUrl" in data && typeof data.patientConsultationUrl === "string" ? data.patientConsultationUrl : null);
+            setNotificationStatus("notificationStatus" in data && typeof data.notificationStatus === "string" ? data.notificationStatus : "not-sent");
             setIsSuccess(true);
             toast({
                 title: walkIn ? "Walk-in checked in" : "Appointment Booked",
@@ -334,23 +340,24 @@ export default function NewBooking() {
                                 <div className="space-y-3 p-5 bg-saivie-surface-muted border border-saivie-border rounded-xl">
                                     <h3 className="text-base font-bold text-saivie-plum flex items-center gap-2">
                                         <Video className="w-5 h-5 text-saivie-teal" />
-                                        Video Consultation Link
+                                        Private Patient Consultation Page
                                     </h3>
                                     <p className="text-saivie-plum text-sm">
-                                        This secure Jitsi Meet link has been sent to the patient via WhatsApp. Share it again if needed.
+                                        Google Meet is ready. {notificationStatus === "sent" ? "The patient page link was submitted to WhatsApp for delivery." : "Share the patient page link manually; WhatsApp delivery was not confirmed."} The private page expires 30 days after the appointment.
                                     </p>
                                     <div className="flex gap-2 items-center bg-saivie-ivory rounded-lg border border-saivie-border p-3">
-                                        <code className="flex-1 text-xs font-mono text-saivie-teal break-all select-all">{createdTelemedicineLink}</code>
+                                        <code className="flex-1 text-xs font-mono text-saivie-teal break-all select-all">{createdPatientConsultationUrl || "Patient page link unavailable. Open online consultation below."}</code>
                                         <Button size="sm" variant="outline" className="shrink-0" onClick={() => {
-                                            navigator.clipboard.writeText(createdTelemedicineLink);
-                                            toast({ title: "Link Copied", description: "Telemedicine link copied" });
+                                            if (!createdPatientConsultationUrl) return;
+                                            navigator.clipboard.writeText(createdPatientConsultationUrl).then(() => toast({ title: "Private patient link copied" }), (error: Error) => toast({ title: "Copy failed", description: error.message, variant: "destructive" }));
                                         }}>
                                             <Copy className="w-3 h-3 mr-1" /> Copy
                                         </Button>
                                     </div>
                                     <Button size="sm" variant="outline" className="w-full border-saivie-border text-saivie-teal" onClick={() => window.open(createdTelemedicineLink, '_blank')}>
-                                        <ExternalLink className="w-3 h-3 mr-2" /> Open Video Room
+                                        <ExternalLink className="w-3 h-3 mr-2" /> Join Google Meet
                                     </Button>
+                                    {createdAppointmentId && <OnlineConsultationActions appointmentId={createdAppointmentId} />}
                                 </div>
                             )}
 

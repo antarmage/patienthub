@@ -12,6 +12,7 @@ import StaffPatientProtocol from "@/pages/StaffPatientProtocol";
 import StaffCarePlan from "@/pages/StaffCarePlan";
 import CheckIn from "@/pages/CheckIn";
 import NewBooking from "@/pages/NewBooking";
+import OnlineConsultation from "@/pages/OnlineConsultation";
 import PatientListByCategory from "@/pages/PatientListByCategory";
 import OwnerPortal from "@/pages/OwnerPortal";
 import VisitSurvey from "@/pages/VisitSurvey";
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/kiosk" component={Kiosk} />
       <Route path="/patient" component={PatientPortal} />
+      <Route path="/consultation" component={OnlineConsultation} />
       <Route path="/onboarding/:id" component={VisitSurvey} />
       <Route path="/clinician" component={ClinicianPortal} />
       <Route path="/clinician/patients/:category" component={PatientListByCategory} />

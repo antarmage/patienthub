@@ -194,7 +194,7 @@ export function DoctorDashboard<T extends DoctorDashboardPatient>({
                                 <Button size="sm" variant="outline" onClick={() => onOpen(patient)} data-testid="btn-dashboard-open-patient">Open</Button>
                                 {doctorQueueState(patient) === "waiting" && <Button size="sm" disabled={isStarting} onClick={() => onStart(patient)} data-testid="btn-dashboard-start-consult">Start</Button>}
                                 {doctorQueueState(patient) === "in-consultation" && <Button size="sm" onClick={() => onOpen(patient)}>Resume</Button>}
-                                {patient.appointmentTelemedicineLink && <Button size="icon" variant="outline" aria-label={`Join ${patient.name}'s telemedicine visit`} asChild><a href={patient.appointmentTelemedicineLink} target="_blank" rel="noopener noreferrer"><Video className="h-4 w-4" /></a></Button>}
+                                {patient.appointmentVisitMode === "telemedicine" && <OnlineConsultationActions appointmentId={patient.appointmentId} canShare />}
                             </div>)}
                             {!visible.length && <p className="rounded-2xl bg-white p-6 text-center text-sm">No patients match this view.</p>}
                         </div>
@@ -277,3 +277,4 @@ export function DoctorDashboard<T extends DoctorDashboardPatient>({
         </section>
     );
 }
+import { OnlineConsultationActions } from "@/components/OnlineConsultationActions";

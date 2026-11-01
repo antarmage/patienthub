@@ -9,20 +9,24 @@ export function authenticatedFetch(input: RequestInfo | URL, init?: RequestInit)
   return fetch(input, { ...init, headers, credentials: init?.credentials ?? (input instanceof Request ? input.credentials : "same-origin") });
 }
 
+export class ApiResponseError extends Error {
+  constructor(public status: number, message: string) { super(message); }
+}
+
 export async function readApiResponse(response: Response): Promise<unknown> {
   if (!response.headers.get("content-type")?.toLowerCase().includes("application/json")) {
-    throw new Error(`The API returned a web page or non-JSON response (HTTP ${response.status}). Check that /api requests reach the API server and that the updated API is deployed.`);
+    throw new ApiResponseError(response.status, `The API returned a web page or non-JSON response (HTTP ${response.status}). Check that /api requests reach the API server and that the updated API is deployed.`);
   }
   let body: unknown;
   try {
     body = await response.json();
   } catch (error) {
     if (!(error instanceof SyntaxError)) throw error;
-    throw new Error(`The API returned invalid JSON (HTTP ${response.status}). Please retry or contact your administrator.`);
+    throw new ApiResponseError(response.status, `The API returned invalid JSON (HTTP ${response.status}). Please retry or contact your administrator.`);
   }
   if (!response.ok) {
     const message = body && typeof body === "object" && "error" in body && typeof body.error === "string" ? body.error : `Request failed (${response.status})`;
-    throw new Error(message);
+    throw new ApiResponseError(response.status, message);
   }
   return body;
 }

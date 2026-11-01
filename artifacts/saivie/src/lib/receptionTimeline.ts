@@ -15,6 +15,7 @@ export interface ReceptionAppointment {
   time: string;
   type?: string | null;
   visitType?: string | null;
+  visitMode?: string | null;
   status?: string | null;
   checkedInAt?: string | null;
   seenAt?: string | null;

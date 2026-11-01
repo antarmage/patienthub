@@ -32,6 +32,40 @@ export async function ensureSchema(): Promise<void> {
 
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email text;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name text;
+      DO $online_provider$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'provider_id') THEN
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_id integer REFERENCES providers(id);
+          UPDATE users u SET provider_id = p.id FROM providers p
+            WHERE u.provider_id IS NULL AND u.role = 'clinician'
+            AND ((u.username = 'dr.priya' AND p.name = 'Dr. Priya')
+              OR (u.username = 'dr.ramesh' AND p.name = 'Dr. Ramesh')
+              OR (u.username = 'dr.sai' AND p.name = 'Dr. Sai Dibyadarshini Bhuyan'));
+        END IF;
+      END $online_provider$;
+      CREATE UNIQUE INDEX IF NOT EXISTS users_provider_id_idx ON users(provider_id) WHERE provider_id IS NOT NULL;
+      CREATE TABLE IF NOT EXISTS google_meet_connections (
+        provider_id integer PRIMARY KEY REFERENCES providers(id),
+        user_id varchar NOT NULL REFERENCES users(id),
+        encrypted_refresh_token text NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS google_meet_oauth_states (
+        state_hash text PRIMARY KEY,
+        provider_id integer NOT NULL REFERENCES providers(id),
+        user_id varchar NOT NULL REFERENCES users(id),
+        expires_at timestamptz NOT NULL DEFAULT now() + interval '10 minutes'
+      );
+      CREATE TABLE IF NOT EXISTS online_consultations (
+        appointment_id integer PRIMARY KEY REFERENCES appointments(id),
+        token_hash text UNIQUE NOT NULL,
+        encrypted_token text NOT NULL,
+        revoked boolean NOT NULL DEFAULT false,
+        shared_visit_ids integer[] NOT NULL DEFAULT '{}',
+        shared_document_ids integer[] NOT NULL DEFAULT '{}',
+        updated_by varchar REFERENCES users(id),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
       ALTER TABLE medications ADD COLUMN IF NOT EXISTS duration text;
       ALTER TABLE medications ADD COLUMN IF NOT EXISTS instructions text;
       ALTER TABLE visit_history ADD COLUMN IF NOT EXISTS assessment_details jsonb;
