@@ -484,7 +484,6 @@ export default function ClinicianPortal() {
   const [treatmentResponseDraft, setTreatmentResponseDraft] = useState('');
   const [objectiveEdits, setObjectiveEdits] = useState<{ key: string; value: string } | null>(null);
   const [obstetricEdits, setObstetricEdits] = useState<{ key: string; value: ObstetricExam } | null>(null);
-  const [obstetricPanelKey, setObstetricPanelKey] = useState<string | null>(null);
   const [soapAssessmentDraft, setSoapAssessmentDraft] = useState("");
   const [soapPlanDraft, setSoapPlanDraft] = useState("");
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
@@ -1243,8 +1242,7 @@ export default function ClinicianPortal() {
   const obstetricDirty = obstetricEdits?.key === consultationSurveyKey &&
     JSON.stringify(relevantObstetricExamination(obstetricDraft)) !== JSON.stringify(relevantObstetricExamination(recordedObstetric));
   const hasObstetricRecord = Object.values(recordedObstetric).some((value) => value.trim());
-  const showObstetricPanel = showPregnancyContext || hasObstetricRecord || obstetricPanelKey === consultationSurveyKey ||
-    surveyPatient?.history?.onboarding?.pregnancies?.currentStatus === "Yes";
+  const showObstetricPanel = showPregnancyContext;
   const savedObjectiveNotes = obstetricNotes(assessmentVisit?.examination, assessmentVisit?.objective);
   const soapObjectiveDraft = objectiveEdits?.key === consultationSurveyKey ? objectiveEdits.value : savedObjectiveNotes;
   const consultationObjective = obstetricObjective(soapObjectiveDraft, obstetricDraft);
@@ -1523,7 +1521,6 @@ export default function ClinicianPortal() {
     setTreatmentResponseDraft('');
     setObjectiveEdits(null);
     setObstetricEdits(null);
-    setObstetricPanelKey(null);
     setSoapAssessmentDraft("");
     setSoapPlanDraft("");
     setPostVisitSummaryResult(null);
@@ -5076,7 +5073,7 @@ export default function ClinicianPortal() {
                             {visitHistoryQuery.isError ? <p role="alert" className="text-xs text-red-700">Unable to load this visit’s examination. <button type="button" className="underline" onClick={() => visitHistoryQuery.refetch()}>Retry</button></p>
                               : visitHistoryQuery.isLoading ? <p role="status" className="text-xs">Loading this visit’s examination…</p>
                               : showObstetricPanel ? <ObstetricExamination value={obstetricDraft} onChange={(value) => setObstetricEdits({ key: consultationSurveyKey, value })} />
-                              : <Button type="button" variant="outline" size="sm" onClick={() => setObstetricPanelKey(consultationSurveyKey)}>Add antenatal examination</Button>}
+                              : null}
                             <label className="block text-xs font-semibold text-saivie-plum">Other examination findings / notes
                               <Textarea value={soapObjectiveDraft} onChange={(event) => setSoapObjectiveDraft(event.target.value)} placeholder="Additional findings, vitals, and observations from today..." className="mt-2 min-h-[96px] text-sm" data-testid="input-consultation-examination" />
                             </label>
