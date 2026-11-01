@@ -3,7 +3,7 @@ import { ChevronRight, Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { calendarDate, calendarDateValue } from "@/lib/calendarDates";
 import { directoryPatientIds, type DirectoryAppointment } from "@/lib/patientDirectory";
-import { compareClinicalPatients, matchesPatientTab, matchesTrimester, patientGestation, patientRisk, type ClinicalDirectoryPatient, type PatientListSort, type PatientListTab, type TrimesterFilter } from "@/lib/clinicalPatientList";
+import { compareClinicalPatients, directoryPatientAge, directoryPatientFlags, matchesPatientTab, matchesTrimester, patientGestation, patientRisk, type ClinicalDirectoryPatient, type PatientListSort, type PatientListTab, type TrimesterFilter } from "@/lib/clinicalPatientList";
 
 const tabs: { value: PatientListTab; label: string }[] = [
   { value: "today", label: "Today" }, { value: "pregnant", label: "Pregnant" },
@@ -103,11 +103,12 @@ export function ClinicalPatientList({ patients, allPatients, appointments, loadi
             const gestation = patientGestation(patient, today);
             const nextVisit = nextVisits.get(String(patient.id));
             const level = patientRisk(patient);
-            const flags = [...new Set([patient.condition, ...(patient.riskScore?.factors || []).map((factor) => factor.factor)].filter((value): value is string => Boolean(value)))];
+            const flags = directoryPatientFlags(patient);
+            const age = directoryPatientAge(patient, today);
             return <tr key={patient.id} data-testid={`patient-directory-row-${patient.id}`} className="border-t border-slate-100 hover:bg-[#f8faf8]">
               <td className="px-5 py-4"><button type="button" onClick={() => onOpen(patient)} className="flex items-center gap-3 text-left focus-visible:outline-saivie-teal">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#edf3f0] text-xs font-semibold text-saivie-teal">{patient.name.split(" ").filter(Boolean).slice(0, 2).map((name) => name[0]).join("")}</span>
-                <span><span className="block font-semibold text-saivie-plum">{patient.name || "Unnamed patient"}</span><span className="block text-xs text-saivie-plum/70">{patient.age != null ? `${patient.age} y · ` : ""}{patient.phone ? `•••• ${patient.phone.slice(-5)}` : "No phone recorded"}</span></span>
+                <span><span className="block font-semibold text-saivie-plum">{patient.name || "Unnamed patient"}</span><span className="block text-xs text-saivie-plum/70">{age !== null ? `${age} y · ` : "Age not recorded · "}{patient.phone ? `•••• ${patient.phone.slice(-5)}` : "No phone recorded"}</span></span>
               </button></td>
               <td className="px-5 py-4">{gestation.dating && gestation.weeks !== null ? <div className="max-w-[240px]">
                 <div><strong className="text-saivie-plum">{gestation.weeks}w {gestation.days}d</strong> <span className="text-[11px] text-saivie-plum/70">{gestation.weeks < 14 ? "1st" : gestation.weeks < 28 ? "2nd" : "3rd"} trimester</span></div>

@@ -1,10 +1,13 @@
 import { pregnancyDatingFromLmp } from "./pregnancyDating.ts";
 import { calendarDate } from "./calendarDates.ts";
+import { patientAge } from "./pregnancyOverview";
 
 export interface ClinicalDirectoryPatient {
   id: number;
   name: string;
   age?: number | null;
+  dob?: string | null;
+  history?: unknown;
   phone?: string | null;
   email?: string | null;
   type?: string | null;
@@ -15,7 +18,18 @@ export interface ClinicalDirectoryPatient {
   lmp?: string | null;
   lastVisit?: string | null;
   nextReview?: string | null;
-  riskScore?: { level?: string; factors?: { factor: string }[] } | null;
+  riskScore?: { level?: string; factors?: { factor: string }[]; reviewRequired?: boolean } | null;
+}
+
+export function directoryPatientAge(patient: ClinicalDirectoryPatient, today: string) {
+  return patientAge({ age: patient.age, dob: patient.dob, history: patient.history }, today);
+}
+
+export function directoryPatientFlags(patient: ClinicalDirectoryPatient) {
+  const factors = patient.riskScore?.reviewRequired
+    ? ["Previous assessment needs review"]
+    : (patient.riskScore?.factors || []).map((factor) => factor.factor);
+  return [...new Set([patient.condition, ...factors].filter((value): value is string => Boolean(value)))];
 }
 
 export type PatientListTab = "today" | "pregnant" | "pcos" | "high-risk" | "follow-ups" | "all";
