@@ -13,6 +13,8 @@ import {
   hasHistoryValue,
 } from "./receptionPatientHistory";
 import { pregnancyDatingFromLmp } from "./pregnancyDating";
+import { patientAge } from "../../../../lib/db/src/patient-age";
+export { patientAge } from "../../../../lib/db/src/patient-age";
 
 export const indiaToday = () =>
   new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
@@ -95,6 +97,21 @@ export function readPregnancyEpisodes(
       ) ||
       typeof details.notes !== "string" ||
       typeof details.conceptionMethod !== "string" ||
+      [
+        ["maternalHeightCm", 50, 250],
+        ["prePregnancyWeightKg", 20, 500],
+        ["fetusCount", 1, 10],
+      ].some(([key, min, max]) => {
+        const value = details[String(key)];
+        return (
+          value != null &&
+          (typeof value !== "number" ||
+            !Number.isFinite(value) ||
+            value < Number(min) ||
+            value > Number(max) ||
+            (key === "fetusCount" && !Number.isInteger(value)))
+        );
+      }) ||
       typeof episode.updatedAt !== "string" ||
       !Array.isArray(episode.records) ||
       episode.records.some((item) => {
@@ -123,50 +140,6 @@ export function readPregnancyEpisodes(
     );
   }
   return episodes;
-}
-
-export function patientAge(
-  patient: Record<string, unknown>,
-  asOf: string,
-  records: Record<string, unknown>[] = [],
-): number | null {
-  const onboarding = historyRecord(historyRecord(patient.history).onboarding);
-  for (const dob of [patient.dob, onboarding.dob]) {
-    if (!validDate(dob) || !validDate(asOf) || String(dob) > asOf) continue;
-    const birth = String(dob);
-    const age =
-      Number(asOf.slice(0, 4)) -
-      Number(birth.slice(0, 4)) -
-      (asOf.slice(5) < birth.slice(5) ? 1 : 0);
-    if (age >= 0 && age <= 130) return age;
-  }
-  const recordedAge = (value: unknown) => {
-    const age =
-      typeof value === "number"
-        ? value
-        : typeof value === "string" && /^\d+$/.test(value.trim())
-          ? Number(value.trim())
-          : null;
-    return age !== null && Number.isInteger(age) && age > 0 && age <= 130
-      ? age
-      : null;
-  };
-  for (const value of [patient.age, onboarding.age]) {
-    const age = recordedAge(value);
-    if (age !== null) return age;
-  }
-  const dated = records
-    .filter((row) => validDate(row.date) && String(row.date) <= asOf)
-    .sort(
-      (a, b) =>
-        String(b.date).localeCompare(String(a.date)) ||
-        Number(b.id) - Number(a.id),
-    );
-  for (const row of dated) {
-    const age = recordedAge(historyRecord(row.vitals).age);
-    if (age !== null) return age;
-  }
-  return null;
 }
 
 export function pregnancyGestation(

@@ -1,5 +1,6 @@
 import { ai } from "./replit_integrations/image/client";
 import { storage } from "./storage";
+import { patientAge } from "../../../lib/db/src/patient-age";
 
 export interface RiskFactor {
   factor: string;
@@ -46,7 +47,7 @@ export async function scorePatient(patientId: number): Promise<RiskScore | null>
 
     const context = {
       name: patient.name,
-      age: patient.age,
+      age: patientAge(patient, new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10), visitHistory),
       type: patient.type,
       bp: patient.bp,
       hb: patient.hb,
@@ -105,7 +106,7 @@ Risk level rules:
 - High (61-80): Needs prompt clinical action within 1-2 days
 - Critical (81-100): Urgent clinical attention needed today
 
-Focus on: abnormal lab values (anaemia, high glucose, abnormal thyroid), high BP, missed follow-up scans, overdue vaccines, unusual pregnancy metrics, or concerning clinical notes. If no significant data exists, return Low risk with a note that more data is needed.`,
+Focus on: abnormal lab values (anaemia, high glucose, abnormal thyroid), high BP, missed follow-up scans, overdue vaccines, unusual pregnancy metrics, or concerning clinical notes. Missing age, absent vitals/baseline measurements, unknown gestational age and missing clinical history are data-quality gaps, never evidence of High or Critical clinical risk by themselves. Age null means not recorded, not age zero. Do not list missing information as clinical risk factors; request clarification in recommendations. If no significant data exists, return Low risk with a note that more data is needed, not a clinical clearance.`,
             },
           ],
         },

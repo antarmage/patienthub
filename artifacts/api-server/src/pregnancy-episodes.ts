@@ -39,6 +39,9 @@ export const episodeDetailsSchema = z
     outcome: z.enum(pregnancyOutcomes),
     deliveryMode: z.enum(deliveryModes),
     conceptionMethod: z.string().trim().max(200),
+    maternalHeightCm: z.number().min(50).max(250).nullable().optional(),
+    prePregnancyWeightKg: z.number().min(20).max(500).nullable().optional(),
+    fetusCount: z.number().int().min(1).max(10).nullable().optional(),
     notes: z.string().trim().max(5000),
   })
   .strict()

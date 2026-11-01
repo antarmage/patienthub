@@ -25,6 +25,9 @@ export type PregnancyEpisodeDetails = {
   outcome: (typeof pregnancyOutcomes)[number];
   deliveryMode: (typeof deliveryModes)[number];
   conceptionMethod: string;
+  maternalHeightCm?: number | null;
+  prePregnancyWeightKg?: number | null;
+  fetusCount?: number | null;
   notes: string;
 };
 export type PregnancyRecordLink = {

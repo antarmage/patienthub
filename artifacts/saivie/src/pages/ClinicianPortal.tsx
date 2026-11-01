@@ -8,6 +8,7 @@ import { PrescriptionPreview } from "@/components/PrescriptionPreview";
 import { ReceptionPatientEdit } from "@/components/ReceptionPatientEdit";
 import { ReceptionVitalsDialog } from "@/components/ReceptionVitalsDialog";
 import { patientAge, indiaToday } from "@/lib/pregnancyOverview";
+import { presentPatientRisk } from "@/lib/riskPresentation";
 import { MedicineAutocomplete } from "@/components/MedicineAutocomplete";
 import { MedicineDoseInput } from "@/components/MedicineDoseInput";
 import { MedicineFrequencyInput } from "@/components/MedicineFrequencyInput";
@@ -623,7 +624,8 @@ export default function ClinicianPortal() {
     },
     refetchInterval: 30000,
   });
-  const patients = patientsQuery.data || [];
+  const patients = useMemo(() => (patientsQuery.data || []).map((patient: Record<string, unknown>) =>
+    ({ ...patient, riskScore: presentPatientRisk(patient.riskScore) })), [patientsQuery.data]);
 
   const hormoneQuery = useQuery({
     queryKey: [`/api/patients/${selectedPatient?.id}/hormones`],
@@ -933,6 +935,14 @@ export default function ClinicianPortal() {
   const [editCatalogData, setEditCatalogData] = useState<any>({});
 
   const [riskDialogPatient, setRiskDialogPatient] = useState<any>(null);
+  useEffect(() => {
+    const refreshRisk = (previous: { id: number; riskScore?: unknown } | null) => {
+      const current = previous && patients.find((patient: Record<string, unknown>) => patient.id === previous.id);
+      return current && current.riskScore !== previous.riskScore ? { ...previous, riskScore: current.riskScore } : previous;
+    };
+    setSelectedPatient(refreshRisk);
+    setRiskDialogPatient(refreshRisk);
+  }, [patients]);
   const [scoringPatientId, setScoringPatientId] = useState<number | null>(null);
 
   const updateCatalogMutation = useMutation({
@@ -4652,7 +4662,7 @@ export default function ClinicianPortal() {
                   <div className="flex gap-2.5"><Shield className="h-4 w-4 shrink-0 text-saivie-sage" /><div><dt className="text-white/70">Allergies</dt><dd className="mt-1 font-medium">{selectedPatient.history?.allergies?.join(', ') || 'Not recorded'}</dd></div></div>
                 </dl>
                 <button type="button" className="mb-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-left text-rose-800" onClick={() => selectedPatient.riskScore ? setRiskDialogPatient(selectedPatient) : setPatientDetailTab('summary')}>
-                  <span className="flex items-center gap-2 text-[11px] font-semibold"><AlertTriangle className="h-4 w-4" />Clinical risk <ChevronRight className="ml-auto h-3 w-3" /></span>
+                  <span className="flex items-center gap-2 text-[11px] font-semibold"><AlertTriangle className="h-4 w-4" />{selectedPatient.riskScore?.reviewRequired ? 'Assessment needs review' : 'Clinical risk'} <ChevronRight className="ml-auto h-3 w-3" /></span>
                   <span className="mt-1.5 block text-xs">{selectedPatient.riskScore?.level || (selectedPatient.status === 'High Risk' ? 'High' : 'Not recorded')}</span>
                   {(selectedPatient.riskScore?.summary || selectedPatient.riskScore?.factors?.[0]?.factor) && <span className="mt-1 block text-[10px] line-clamp-3">{selectedPatient.riskScore.summary || selectedPatient.riskScore.factors[0].factor}</span>}
                 </button>
@@ -5339,21 +5349,26 @@ export default function ClinicianPortal() {
               {/* Level + Score */}
               <div className="flex items-center gap-3">
                 <div className={`text-2xl font-bold tabular-nums ${
+                  riskDialogPatient.riskScore.reviewRequired ? 'text-saivie-plum' :
                   riskDialogPatient.riskScore.level === 'Critical' ? 'text-red-600' :
                   riskDialogPatient.riskScore.level === 'High' ? 'text-orange-600' :
                   riskDialogPatient.riskScore.level === 'Medium' ? 'text-amber-600' : 'text-emerald-600'
-                }`}>{riskDialogPatient.riskScore.score}/100</div>
+                }`}>{riskDialogPatient.riskScore.reviewRequired ? "Review" : `${riskDialogPatient.riskScore.score}/100`}</div>
                 <div>
                   <Badge className={`text-xs border-none ${
+                    riskDialogPatient.riskScore.reviewRequired ? 'bg-saivie-ivory text-saivie-plum' :
                     riskDialogPatient.riskScore.level === 'Critical' ? 'bg-red-100 text-red-700' :
                     riskDialogPatient.riskScore.level === 'High' ? 'bg-orange-100 text-orange-700' :
                     riskDialogPatient.riskScore.level === 'Medium' ? 'bg-amber-100 text-amber-700' :
                     'bg-emerald-100 text-emerald-700'
-                  }`}>{riskDialogPatient.riskScore.level} Risk</Badge>
+                  }`}>{riskDialogPatient.riskScore.reviewRequired ? "Assessment needs review" : `${riskDialogPatient.riskScore.level} Risk`}</Badge>
                   <p className="text-[10px] text-saivie-plum mt-0.5">
                     Updated {riskDialogPatient.riskScore.updatedAt ? new Date(riskDialogPatient.riskScore.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'recently'}
                   </p>
                 </div>
+                {riskDialogPatient.riskScore.reviewRequired && <p role="alert" className="rounded-lg border p-3 text-xs">
+                  {riskDialogPatient.riskScore.summary} Original recorded assessment: {riskDialogPatient.riskScore.originalLevel} ({riskDialogPatient.riskScore.originalScore}/100). It has not been deleted or changed.
+                </p>}
               </div>
 
               {/* Risk Factors */}

@@ -74,6 +74,45 @@ test("episode validation requires real dates, consistent outcomes and explicit u
     false,
   );
 });
+test("episode graph baseline fields are optional for legacy records, validated and retained by the API", () => {
+  const details = {
+    ...input.details,
+    maternalHeightCm: 160,
+    prePregnancyWeightKg: 60,
+    fetusCount: 1,
+  };
+  const parsed = episodeInputSchema.parse({ ...input, details });
+  assert.deepEqual(parsed.details, details);
+  assert.ok(episodeInputSchema.safeParse(input).success);
+  for (const change of [
+    { maternalHeightCm: "160" },
+    { maternalHeightCm: 0 },
+    { maternalHeightCm: 251 },
+    { prePregnancyWeightKg: 19 },
+    { prePregnancyWeightKg: 501 },
+    { fetusCount: 0 },
+    { fetusCount: 1.5 },
+    { fetusCount: 11 },
+  ])
+    assert.equal(
+      episodeInputSchema.safeParse({
+        ...input,
+        details: { ...details, ...change },
+      }).success,
+      false,
+    );
+  assert.ok(
+    episodeInputSchema.safeParse({
+      ...input,
+      details: {
+        ...details,
+        maternalHeightCm: null,
+        prePregnancyWeightKg: null,
+        fetusCount: null,
+      },
+    }).success,
+  );
+});
 
 test("pregnancy routes gate staff writes, toggle reception reads and preserve own-patient boundaries", async () => {
   const app = express();
@@ -252,7 +291,21 @@ test(
       await ensurePregnancyEpisodeSchema(pool);
       await ensurePregnancyEpisodeSchema(pool);
       const store = createPregnancyEpisodeStore(pool);
-      const current = await store.save(1, null, input, "doctor");
+      const current = await store.save(
+        1,
+        null,
+        {
+          ...input,
+          details: {
+            ...input.details,
+            maternalHeightCm: 160,
+            prePregnancyWeightKg: 60,
+            fetusCount: 1,
+          },
+        },
+        "doctor",
+      );
+      assert.equal((await store.list(1))[0].details.prePregnancyWeightKg, 60);
       const pastInput: EpisodeInput = {
         details: {
           ...input.details,
@@ -367,12 +420,18 @@ test(
         current.id,
         {
           ...input,
-          details: { ...input.details, notes: "Updated synthetic" },
+          details: {
+            ...current.details,
+            prePregnancyWeightKg: 65,
+            notes: "Updated synthetic",
+          },
           version: 1,
         },
         "doctor",
       );
       assert.equal(updated.version, 2);
+      assert.equal((await store.list(1))[0].details.prePregnancyWeightKg, 65);
+      assert.equal(updated.details.maternalHeightCm, 160);
       await assert.rejects(
         store.save(1, current.id, { ...input, version: 1 }, "doctor"),
         /updated elsewhere/,

@@ -188,6 +188,31 @@ test("episode suggestions do not auto-assign records or parse ambiguous legacy L
 });
 test("response validates patient ownership and invalid dates; explicit no counts as recorded history", () => {
   assert.deepEqual(readPregnancyEpisodes([episode], 1), [episode]);
+  const baselineDetails = {
+    ...episode.details,
+    maternalHeightCm: 160,
+    prePregnancyWeightKg: 60,
+    fetusCount: 1,
+  };
+  assert.equal(
+    readPregnancyEpisodes([{ ...episode, details: baselineDetails }], 1)[0]
+      .details.prePregnancyWeightKg,
+    60,
+  );
+  for (const change of [
+    { maternalHeightCm: "160" },
+    { prePregnancyWeightKg: 0 },
+    { fetusCount: 1.5 },
+  ]) {
+    assert.throws(
+      () =>
+        readPregnancyEpisodes(
+          [{ ...episode, details: { ...baselineDetails, ...change } }],
+          1,
+        ),
+      /invalid/,
+    );
+  }
   assert.throws(() => readPregnancyEpisodes([episode], 2), /mismatched/);
   assert.throws(
     () =>

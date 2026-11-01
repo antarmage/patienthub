@@ -183,6 +183,36 @@ test("saved intake age avoids a false missing-age attention item", () => {
   assert.ok(!html.includes("Patient date of birth / age"));
   assert.ok(html.includes("retained until corrected"));
 });
+test("pregnancy graph references disclose sources and missing baseline without guessing current weight", () => {
+  const dated = {
+    ...current,
+    details: {
+      ...current.details,
+      lmp: "2026-01-01",
+      datingBasis: "LMP" as const,
+    },
+  };
+  const html = render([dated]);
+  assert.ok(html.includes("Pregnancy hypertension thresholds"));
+  assert.ok(html.includes("Pregnancy anemia screening cutoff"));
+  assert.ok(html.includes("confirmed pre-pregnancy weight"));
+  assert.ok(html.includes("NICE NG133"));
+  assert.ok(html.includes("IOM/NRC 2009"));
+  assert.ok(html.includes("labour CTG baseline ranges are not applied"));
+  const baseline = render([
+    {
+      ...dated,
+      details: {
+        ...dated.details,
+        maternalHeightCm: 160,
+        prePregnancyWeightKg: 60,
+        fetusCount: 1,
+      },
+    },
+  ]);
+  assert.ok(baseline.includes("Illustrative pregnancy weight-gain band"));
+  assert.ok(baseline.includes("BMI 23.4"));
+});
 test("patient risk is kept distinct from missing information and is not silently reclassified", () => {
   const html = render([current], true, true, {
     ...patient,
@@ -195,4 +225,27 @@ test("patient risk is kept distinct from missing information and is not silently
   });
   assert.ok(html.includes("Previously recorded risk assessment: High"));
   assert.ok(html.includes("not linked to a saved pregnancy episode"));
+});
+test("missing-age-only legacy risk is explicitly marked for review without deleting original evidence", () => {
+  const html = render([current], true, true, {
+    ...patient,
+    age: 0,
+    dob: "1996-01-01",
+    riskScore: {
+      level: "Critical",
+      score: 95,
+      factors: [
+        "Invalid/Missing Patient Age",
+        "Absence of Vital Signs and Baseline Data",
+        "Undetermined Gestational Age",
+        "Complete Lack of Clinical History",
+      ].map((factor) => ({ factor })),
+    },
+  });
+  assert.ok(
+    html.includes("Previously recorded risk assessment: Review required"),
+  );
+  assert.ok(!html.includes("Previously recorded risk assessment: Critical"));
+  assert.ok(html.includes("Invalid/Missing Patient Age"));
+  assert.ok(html.includes("Age: 30"));
 });

@@ -3,6 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { PregnancyEpisodeEditor } from "@/components/PregnancyEpisodeEditor";
 import { MeasurementTrend } from "@/components/MeasurementTrend";
+import { presentPatientRisk } from "@/lib/riskPresentation";
+import {
+  bpReference,
+  pregnancyWeightReference,
+  pregnancyHemoglobinReference,
+} from "@/lib/pregnancyGraphReferences";
 import { PatientVisitTimeline } from "@/components/PatientVisitTimeline";
 import { receptionRequest } from "@/lib/authenticatedFetch";
 import {
@@ -16,15 +22,20 @@ import {
 import { historyRecord, historyText } from "@/lib/receptionPatientHistory";
 import { appointmentLabel, visitTrail } from "@/lib/visitTrail";
 import { summaryTrends, type SummaryLab } from "@/lib/patientSummary";
-import type { PregnancyEpisode } from "../../../../lib/db/src/pregnancy-episodes";
+import type {
+  PregnancyEpisode,
+  PregnancyEpisodeDetails,
+} from "../../../../lib/db/src/pregnancy-episodes";
 
 const dateLabel = (value: string | null) => value || "Not recorded";
 const card =
   "min-w-0 rounded-2xl border border-saivie-border bg-white p-4 sm:p-5";
 function MeasurementGraphs({
   trends,
+  details,
 }: {
   trends: ReturnType<typeof summaryTrends>;
+  details?: PregnancyEpisodeDetails;
 }) {
   return (
     <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -33,19 +44,49 @@ function MeasurementGraphs({
         unit="mmHg"
         points={trends.bp}
         paired
+        reference={details ? bpReference : undefined}
       />
-      <MeasurementTrend title="Weight" unit="kg" points={trends.weight} />
-      <MeasurementTrend title="Hemoglobin" unit="g/dL" points={trends.hb} />
-      <MeasurementTrend title="Pulse" unit="bpm" points={trends.pulse} />
+      <MeasurementTrend
+        title="Weight"
+        unit="kg"
+        points={trends.weight}
+        reference={details ? pregnancyWeightReference(details) : undefined}
+      />
+      <MeasurementTrend
+        title="Hemoglobin"
+        unit="g/dL"
+        points={trends.hb}
+        reference={details ? pregnancyHemoglobinReference(details) : undefined}
+      />
+      <MeasurementTrend
+        title="Pulse"
+        unit="bpm"
+        points={trends.pulse}
+        referenceNote={
+          details
+            ? "No universal pregnancy pulse target is plotted; symptoms, activity and clinical context affect interpretation."
+            : undefined
+        }
+      />
       <MeasurementTrend
         title="Fetal heart rate"
         unit="bpm"
         points={trends.fetalHeart}
+        referenceNote={
+          details
+            ? "No antenatal ideal line: labour CTG baseline ranges are not applied to isolated antenatal fetal heart readings."
+            : undefined
+        }
       />
       <MeasurementTrend
         title="Fundal height"
         unit="cm"
         points={trends.fundalHeight}
+        referenceNote={
+          details
+            ? "No universal ideal line: fundal height needs an appropriate fetal growth chart. NICE NG201 recommends plotting singleton measurements after 24 weeks, not a guessed week = cm target."
+            : undefined
+        }
       />
       {trends.sugar.length ? (
         trends.sugar.map((series) => (
@@ -54,6 +95,11 @@ function MeasurementGraphs({
             title={series.name}
             unit={series.unit}
             points={series.points}
+            referenceNote={
+              details
+                ? "No generic glucose target is applied. Fasting, random, post-meal and OGTT results require distinct test context; diagnostic cutoffs are not treatment targets."
+                : undefined
+            }
           />
         ))
       ) : (
@@ -218,7 +264,7 @@ export function PregnancyOverview({
   ]);
   const history = historyRecord(patient.history),
     pregnancy = historyRecord(historyRecord(history.onboarding).pregnancies);
-  const risk = historyRecord(patient.riskScore);
+  const risk = historyRecord(presentPatientRisk(patient.riskScore));
   const current = selected?.details.status === "current";
   const todayAppointments = context.appointments.filter(
     (appointment) =>
@@ -777,7 +823,7 @@ export function PregnancyOverview({
               No linked readings means no measurement is assumed. Only
               explicitly assigned records appear here.
             </p>
-            <MeasurementGraphs trends={trends} />
+            <MeasurementGraphs trends={trends} details={selected?.details} />
           </div>
         ) : (
           <p className="mt-3 text-sm">

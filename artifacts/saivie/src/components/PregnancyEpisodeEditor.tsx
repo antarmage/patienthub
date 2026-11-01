@@ -199,6 +199,47 @@ export function PregnancyEpisodeEditor({
                   </label>
                 ),
               )}
+              {(
+                [
+                  [
+                    "maternalHeightCm",
+                    "Confirmed maternal height (cm)",
+                    50,
+                    250,
+                  ],
+                  [
+                    "prePregnancyWeightKg",
+                    "Confirmed pre-pregnancy weight (kg)",
+                    20,
+                    500,
+                  ],
+                  ["fetusCount", "Number of babies in this pregnancy", 1, 10],
+                ] as const
+              ).map(([key, label, min, max]) => (
+                <label key={key} className="text-xs">
+                  {label}
+                  <Input
+                    type="number"
+                    min={min}
+                    max={max}
+                    step={key === "fetusCount" ? 1 : "any"}
+                    value={details[key] ?? ""}
+                    onChange={(event) =>
+                      update(
+                        key,
+                        event.target.value === ""
+                          ? null
+                          : Number(event.target.value),
+                      )
+                    }
+                  />
+                </label>
+              ))}
+              <p className="text-xs sm:col-span-2">
+                These episode-specific details support the weight reference
+                band. Leave unknown values blank; a current or first-visit
+                weight is not automatically a pre-pregnancy weight.
+              </p>
               <label className="text-xs">
                 Dating basis
                 <select
