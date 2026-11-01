@@ -42,3 +42,28 @@ it("escapes medicine details instead of treating them as print markup", () => {
   assert.ok(html.includes("&lt;b&gt;After food&lt;/b&gt;"));
   assert.ok(!html.includes("<script>example</script>"));
 });
+  it("prints full A4 letterhead with the selected visit date and escaped clinical data", () => {
+    const html = generatePrescriptionHTML({
+      ...prescription, providerQualification: "MBBS, DNB", providerRegistration: "123 / Council",
+      clinicName: "Clinic", clinicPhone: "0000000000", date: "2026-08-12",
+      chiefComplaint: "<script>complaint</script>", clinicalFindings: "<b>finding</b>",
+      advice: "Review <tomorrow>", investigations: ["USG <scan>"],
+      patient: { ...prescription.patient, name: "<Patient>" },
+    });
+    assert.ok(html.includes("size:A4 portrait"));
+    assert.ok(html.includes("12 Aug 2026"));
+    assert.ok(html.includes("MBBS, DNB") && html.includes("123 / Council"));
+    assert.ok(html.includes("For appointments: 0000000000"));
+    for (const text of ["&lt;Patient&gt;", "&lt;script&gt;complaint&lt;/script&gt;", "&lt;b&gt;finding&lt;/b&gt;", "USG &lt;scan&gt;"]) assert.ok(html.includes(text));
+    assert.ok(!html.includes("letterhead-spacer"));
+    assert.ok(html.includes('class="left"') && html.includes('class="right"'));
+  });
+
+  it("marks unsaved drafts and preserves long notes without clipping rules", () => {
+    const notes = "Detailed finding\n".repeat(150);
+    const html = generatePrescriptionHTML({ ...prescription, draft: true, clinicalFindings: notes });
+    assert.ok(html.includes("DRAFT") && html.includes(notes));
+    assert.ok(!html.includes("overflow:hidden"));
+    assert.ok(!html.includes('onclick="window.print()"'));
+    assert.ok(!generatePrescriptionHTML(prescription, { printButton: false }).includes('onclick="window.print()"'));
+  });

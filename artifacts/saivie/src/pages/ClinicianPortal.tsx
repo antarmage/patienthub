@@ -4,7 +4,7 @@ import { AppointmentCalendar } from "@/components/AppointmentCalendar";
 import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { openPrescription } from "@/lib/prescriptionTemplate";
+import { PrescriptionPreview } from "@/components/PrescriptionPreview";
 import { MedicineAutocomplete } from "@/components/MedicineAutocomplete";
 import { MedicineDoseInput } from "@/components/MedicineDoseInput";
 import { MedicineFrequencyInput } from "@/components/MedicineFrequencyInput";
@@ -605,80 +605,6 @@ export default function ClinicianPortal() {
     }
   };
 
-
-  const generatePrescription = () => {
-    if (!selectedPatient) return;
-    const visitVitals = (latestVisit?.vitals as any) || {};
-    const latestAppt = appointments
-      .filter((a: any) => a.patientId === selectedPatient.id && a.status === 'Completed')
-      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-    const apptVitals = (latestAppt?.vitals as any) || {};
-    const vitals = {
-      ...apptVitals,
-      ...Object.fromEntries(Object.entries(visitVitals).filter(([_, v]) => v !== undefined && v !== null && v !== '')),
-    };
-    const nextTests: string[] = vitals.nextInvestigationTests || [];
-    const customInv = vitals.nextInvestigationCustom || '';
-    const allInv = [...new Set([...visitTests(latestVisit), ...nextTests, ...(customInv ? [customInv] : [])])];
-
-    const age = selectedPatient.age || selectedPatient.dateOfBirth ? (() => {
-      if (selectedPatient.age) return selectedPatient.age;
-      if (selectedPatient.dateOfBirth) {
-        const diff = new Date().getTime() - new Date(selectedPatient.dateOfBirth).getTime();
-        return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
-      }
-      return '';
-    })() : '';
-
-    let pregnancyInfo = '';
-    if (careMode === 'pregnancy' && selectedPatient.lmp) {
-      const weeks = Math.floor((new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24*7));
-      const days = Math.floor(((new Date().getTime() - new Date(selectedPatient.lmp).getTime()) / (1000*60*60*24)) % 7);
-      pregnancyInfo = `${weeks}w ${days}d`;
-    }
-
-    openPrescription({
-      providerName,
-      providerSpecialty,
-      patient: {
-        name: selectedPatient.name,
-        age: age || '',
-        phone: selectedPatient.phone || '',
-        address: selectedPatient.address || '',
-        lmp: selectedPatient.lmp,
-      },
-      vitals: {
-        weight: vitals.weight,
-        height: vitals.height,
-        bp: vitals.bp,
-        pulse: vitals.pulse,
-        temperature: vitals.temperature,
-        fetalHeartRate: fetalHeartRateVal || vitals.fetalHeartRate,
-        fundalHeight: fundalHeightVal || vitals.fundalHeight,
-        pvExam: vitals.pvExam,
-        psExam: vitals.psExam,
-      },
-      pregnancyInfo,
-      chiefComplaint: latestVisit?.chiefComplaint || latestVisit?.subjective || '',
-      clinicalFindings: latestVisit?.objective || '',
-      observation: latestVisit?.objective || '',
-      assessment: latestVisit?.assessment || '',
-      diagnosis: latestVisit?.diagnosis || '',
-      medications: medications.map((med: any) => ({
-        name: med.name,
-        dose: med.dose || '',
-        frequency: med.frequency || '',
-        duration: med.duration || '',
-        instructions: med.instructions || '',
-        route: med.route || '',
-        notes: med.notes || '',
-      })),
-      investigations: allInv,
-      advice: latestVisit?.planNotes || '',
-      nextFollowUp: selectedPatient.nextReview || '',
-      nextVaccinationDate: ((latestVisit?.vitals as any) || {}).nextImmunisationDate || '',
-    });
-  };
 
   const patientsQuery = useQuery({
     queryKey: ['/api/patients', clinicianProvider?.id],
@@ -1716,6 +1642,7 @@ export default function ClinicianPortal() {
           body: JSON.stringify({
             date: new Date().toISOString().split('T')[0],
             visitType: 'consultation',
+            providerId: activeAppointment?.providerId || clinicianProvider?.id || null,
             ...((activeAppointment?.id || selectedPatient.appointmentId) ? { appointmentId: activeAppointment?.id || selectedPatient.appointmentId } : {}),
             subjective: soapSubjectiveDraft,
             objective: consultationObjective,
@@ -5266,6 +5193,13 @@ export default function ClinicianPortal() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Button type="button" variant="outline" size="sm" className="h-8 text-[11px] text-saivie-teal" onClick={saveConsultationNote} disabled={soapSaving || !consultationCanSave} data-testid="button-save-consultation-note"><Save className="mr-1.5 h-3.5 w-3.5" />Save note</Button>
                   <Button type="button" variant="outline" size="sm" className="h-8 text-[11px] text-saivie-teal" onClick={() => setNotePreviewOpen(true)} data-testid="button-preview-consultation-note"><Eye className="mr-1.5 h-3.5 w-3.5" />Preview note</Button>
+                  <PrescriptionPreview patient={surveyPatient || selectedPatient} providerId={activeAppointment?.providerId || clinicianProvider?.id}
+                    disabled={!visitHistoryQuery.isSuccess} draft={!assessmentVisit || !consultationNoteSaved}
+                    visit={{ ...assessmentVisit, date: assessmentVisit?.date || activeAppointment?.date || new Date().toISOString().slice(0, 10),
+                      vitals: { ...(activeAppointment?.vitals || {}), ...(assessmentVisit?.vitals || {}) },
+                      appointmentId: activeAppointment?.id || selectedPatient.appointmentId, subjective: soapSubjectiveDraft || assessmentVisit?.subjective,
+                      objective: consultationObjective, assessment: consultationAssessmentText, planNotes: soapPlanDraft || assessmentVisit?.planNotes,
+                      labsOrdered: orderedConsultationTests }} />
                   <Button type="button" size="sm" className="h-8 bg-saivie-teal text-[11px] hover:bg-saivie-teal/90" disabled={soapSaving || !consultationCanSave} onClick={async () => {
                     if (await saveConsultationNote()) {
                       const next = consultationSteps.findIndex((step) => step.id === consultationStep) + 1;

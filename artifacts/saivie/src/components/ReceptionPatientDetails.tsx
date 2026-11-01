@@ -10,6 +10,7 @@ import { receptionVisitDates } from "@/lib/receptionVisitDates";
 import { hasHistoryValue, receptionPatientHistory } from "@/lib/receptionPatientHistory";
 import { calendarDate } from "@/lib/calendarDates";
 import { useToast } from "@/hooks/use-toast";
+import { PrescriptionPreview } from "@/components/PrescriptionPreview";
 
 type ClinicalRecord = Record<string, unknown>;
 function object(value: unknown): ClinicalRecord {
@@ -149,6 +150,7 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
               <div className={cardClass}><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Visit on</p><h3 className={`${headingClass} mt-1 text-xl`}>{selectedVisits.label}</h3><p className="mt-1 text-xs text-muted-foreground">Recorded encounters and paper prescription transcriptions for this date.</p></div>
               {selectedVisits.records.map((visit) => <article key={text(visit.id)} className={`${cardClass} space-y-4`} data-testid={`reception-visit-record-${text(visit.id)}`}>
                 <h4 className={headingClass}>{object(visit.prescriptions).source === "receptionist-paper-transcription" ? "Paper prescription transcription" : text(visit.visitType) || "Consultation"}</h4>
+                <PrescriptionPreview patient={data.detail} visit={visit} />
                 <HistoryFields fields={{ Complaint: visit.chiefComplaint, Examination: visit.examination || visit.objective, Diagnosis: visit.diagnosis, Assessment: visit.assessment, Vitals: visit.vitals }} />
                 <details className="rounded-lg border p-3"><summary className="cursor-pointer font-medium">Prescription & follow-up</summary><div className="mt-3"><RecordedDetails value={{ medicines: object(visit.prescriptions).medicines || (Array.isArray(visit.prescriptions) ? visit.prescriptions : null), advice: visit.planNotes, followUp: visit.followUpPlan, tests: visit.labsOrdered }} /></div></details>
               </article>)}

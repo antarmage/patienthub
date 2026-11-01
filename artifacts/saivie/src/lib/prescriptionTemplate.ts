@@ -1,25 +1,18 @@
-import { getPrintBrandStyles } from "./brand";
-
 export interface PrescriptionData {
   providerName: string;
   providerSpecialty: string;
-  patient: {
-    name: string;
-    age: string | number;
-    phone: string;
-    address: string;
-    lmp?: string;
-  };
+  providerQualification?: string;
+  providerRegistration?: string;
+  clinicName?: string;
+  clinicAddress?: string;
+  clinicPhone?: string;
+  logoUrl?: string;
+  date?: string;
+  draft?: boolean;
+  patient: { name: string; age: string | number; phone: string; address: string; lmp?: string; sex?: string };
   vitals: {
-    weight?: string;
-    height?: string;
-    bp?: string;
-    pulse?: string;
-    temperature?: string;
-    fetalHeartRate?: string;
-    fundalHeight?: string;
-    pvExam?: string;
-    psExam?: string;
+    weight?: string; height?: string; bp?: string; pulse?: string; temperature?: string;
+    fetalHeartRate?: string; fundalHeight?: string; pvExam?: string; psExam?: string;
   };
   pregnancyInfo: string;
   chiefComplaint: string;
@@ -28,13 +21,8 @@ export interface PrescriptionData {
   assessment: string;
   diagnosis: string;
   medications: {
-    name: string;
-    dose: string;
-    frequency: string;
-    duration?: string;
-    instructions?: string;
-    route?: string;
-    notes: string;
+    name: string; dose: string; frequency: string; duration?: string;
+    instructions?: string; route?: string; notes: string;
   }[];
   investigations: string[];
   advice: string;
@@ -42,302 +30,93 @@ export interface PrescriptionData {
   nextVaccinationDate: string;
 }
 
-function computeBMI(weight?: string, height?: string): string {
-  if (!weight || !height) return "";
-  const w = Number(weight);
-  const h = Number(height) / 100;
-  if (!w || !h) return "";
-  return (w / (h * h)).toFixed(1);
+const escapeText = (value: string | number) => String(value).replace(/[&<>"']/g, (character) => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+})[character]!);
+
+function displayDate(value?: string): string {
+  if (!value) return "Not recorded";
+  const date = value.slice(0, 10);
+  const parsed = new Date(`${date}T00:00:00Z`);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date
+    ? parsed.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })
+    : value;
 }
 
-function formatVitals(
-  vitals: PrescriptionData["vitals"],
-  bmi: string,
-  pregnancyInfo: string,
-): string {
-  const items = [
-    vitals.weight ? `<span class="vital-item"><span class="vital-label">Weight:</span> <span class="vital-value">${vitals.weight} Kg</span></span>` : "",
-    vitals.height ? `<span class="vital-item"><span class="vital-label">Height:</span> <span class="vital-value">${vitals.height} Cm</span></span>` : "",
-    bmi ? `<span class="vital-item"><span class="vital-label">B.M.I:</span> <span class="vital-value">${bmi}</span></span>` : "",
-    vitals.bp ? `<span class="vital-item"><span class="vital-label">BP:</span> <span class="vital-value">${vitals.bp} mmHg</span></span>` : "",
-    vitals.pulse ? `<span class="vital-item"><span class="vital-label">Pulse:</span> <span class="vital-value">${vitals.pulse}</span></span>` : "",
-    vitals.temperature ? `<span class="vital-item"><span class="vital-label">Temp:</span> <span class="vital-value">${vitals.temperature}\u00B0F</span></span>` : "",
-  ].filter(Boolean);
-  if (items.length === 0) return "";
-  return `<div class="vitals-grid">${items.join("")}</div>`;
-}
-
-function formatChiefComplaints(cc: string): string {
-  if (!cc || cc === "—") return "\u2014";
-  return cc
-    .split(/[,;]/)
-    .map((c) => `* ${c.trim()}`)
-    .join("\n");
-}
-
-function formatAdvice(advice: string): string {
-  if (!advice) return "";
-  return advice
-    .split(/[.;]/)
-    .filter((s) => s.trim())
-    .map((s) => `* ${s.trim()}`)
-    .join("\n");
-}
-
-function escapeMedicineText(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[character]!);
-}
-
-function buildMedicationsTable(
-  medications: PrescriptionData["medications"],
-): string {
-  if (medications.length === 0) {
-    return '<p style="font-size: 12px; color: #999; font-style: italic; margin: 8px 0;">No medications prescribed</p>';
+export function prescriptionLogoSource(value?: string): string {
+  if (!value) return "";
+  if (/^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=\s]+$/i.test(value)) return value;
+  try {
+    const url = new URL(value, window.location.href);
+    if (!["https:", "http:"].includes(url.protocol)) throw new Error("Unsupported clinic logo URL.");
+    return url.href;
+  } catch {
+    throw new Error("The clinic logo URL is invalid. Update the uploaded logo in clinic settings.");
   }
-  const rows = medications
-    .map(
-      (med, i) => `
-      <tr>
-        <td class="med-num">${i + 1})</td>
-        <td class="med-name-col">
-          <div class="med-drug-name">${escapeMedicineText(med.name)}</div>
-          ${med.notes ? `<div class="med-generic">${escapeMedicineText(med.notes)}</div>` : ""}
-          ${med.instructions ? `<div class="med-generic">${escapeMedicineText(med.instructions)}</div>` : ""}
-          ${med.route ? `<div class="med-generic">${escapeMedicineText(med.route)}</div>` : ""}
-        </td>
-        <td class="med-dosage">${escapeMedicineText([med.dose, med.frequency].filter(Boolean).join(" / ")) || "\u2014"}</td>
-        <td class="med-duration">${escapeMedicineText(med.duration || "") || "\u2014"}</td>
-      </tr>`,
-    )
-    .join("");
-
-  return `
-  <table class="med-table">
-    <thead>
-      <tr>
-        <th class="med-num"></th>
-        <th>Medicine Name</th>
-        <th class="med-dosage">Dosage</th>
-        <th class="med-duration" style="text-align:right">Duration</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>`;
 }
 
-function buildInvestigations(investigations: string[]): string {
-  if (investigations.length === 0) return "";
-  return `
-  <div class="inv-section">
-    <div class="inv-label">Investigations Advised</div>
-    <ul class="inv-list">
-      ${investigations.map((t) => `<li>${t}</li>`).join("")}
-    </ul>
-  </div>`;
+function medicinesTable(medications: PrescriptionData["medications"]): string {
+  if (!medications.length) return '<p class="unrecorded">No medications recorded for this visit.</p>';
+  return `<table class="med-table"><thead><tr><th></th><th>Medicine</th><th>Dosage</th><th>Duration</th></tr></thead><tbody>${medications.map((med, index) => `<tr>
+    <td>${index + 1})</td><td><strong>${escapeText(med.name)}</strong>${[med.notes, med.instructions, med.route].filter(Boolean).map((line) => `<div class="med-detail">${escapeText(line!)}</div>`).join("")}</td>
+    <td class="med-dosage">${escapeText([med.dose, med.frequency].filter(Boolean).join(" / ")) || "&mdash;"}</td>
+    <td class="med-duration">${escapeText(med.duration || "") || "&mdash;"}</td></tr>`).join("")}</tbody></table>`;
 }
 
-const PRESCRIPTION_STYLES = `
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: var(--saivie-plum); font-size: 13px; line-height: 1.4; }
-  @page { size: A4 portrait; margin: 10mm 15mm 15mm 15mm; }
-  @media print { body { padding: 0; } .no-print { display: none !important; } .letterhead-spacer { display: block !important; height: 29mm; } }
-  .page { max-width: 210mm; margin: 0 auto; padding: 0 20px 20px 20px; }
-
-  /* Pre-printed letterhead spacer: 2.9cm header with logo area (3x2.5cm centered) */
-  .letterhead-spacer { height: 29mm; position: relative; margin-bottom: 6px; }
-  .letterhead-preview { height: 29mm; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; position: relative; background: var(--saivie-surface-muted); margin-bottom: 6px; }
-  .letterhead-preview .logo-placeholder { width: 30mm; height: 25mm; border: 1px dashed #aaa; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999; text-align: center; }
-  .letterhead-preview .left-text, .letterhead-preview .right-text { position: absolute; top: 4px; font-size: 9px; color: #bbb; }
-  .letterhead-preview .left-text { left: 8px; }
-  .letterhead-preview .right-text { right: 8px; text-align: right; }
-  @media print { .letterhead-preview { display: none; } }
-
-  .header-line { border-bottom: 1.5px solid var(--saivie-teal); margin-bottom: 8px; }
-
-  .patient-section { border-bottom: 1px solid #ccc; padding-bottom: 6px; margin-bottom: 8px; }
-  .patient-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
-  .patient-id { font-size: 13px; font-weight: 600; }
-  .date-display { font-size: 13px; font-weight: 700; text-align: right; }
-  .patient-vitals { font-size: 11px; color: #444; margin-top: 4px; }
-  .vitals-grid { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 3px; }
-  .vital-item { font-size: 11px; color: #333; }
-  .vital-label { font-weight: 700; color: #555; }
-  .vital-value { font-weight: 600; }
-
-  .cc-section { display: flex; border: 1px solid #bbb; margin-bottom: 8px; }
-  .cc-left, .cc-right { width: 50%; padding: 6px 10px; }
-  .cc-left { border-right: 1px solid #bbb; }
-  .cc-title { font-size: 11px; font-weight: 700; text-decoration: underline; margin-bottom: 3px; }
-  .cc-content { font-size: 11px; color: #333; white-space: pre-wrap; }
-
-  .diagnosis-section { margin-bottom: 8px; }
-  .obs-assess-section { display: flex; gap: 12px; margin-bottom: 8px; border-bottom: 1px solid var(--saivie-border); padding-bottom: 6px; }
-  .obs-assess-section > div { flex: 1; }
-  .obs-assess-label { font-size: 11px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
-  .obs-assess-content { font-size: 12px; color: #333; white-space: pre-wrap; line-height: 1.4; }
-
-  .diagnosis-label { font-size: 13px; font-weight: 700; }
-  .diagnosis-text { font-size: 13px; color: #333; margin-left: 4px; }
-
-  .rx-symbol { font-size: 22px; font-weight: 700; font-family: serif; margin: 6px 0; color: var(--saivie-plum); }
-
-  .med-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-  .med-table th { text-align: left; font-size: 11px; font-weight: 700; border-bottom: 2px solid #333; padding: 4px 6px; }
-  .med-table td { padding: 5px 6px; vertical-align: top; border-bottom: 1px solid var(--saivie-border); }
-  .med-num { width: 28px; font-weight: 600; }
-  .med-name-col { }
-  .med-drug-name { font-size: 12px; font-weight: 600; }
-  .med-generic { font-size: 9px; color: #777; text-transform: uppercase; margin-top: 1px; }
-  .med-dosage { width: 150px; font-size: 11px; }
-  .med-duration { width: 90px; font-size: 11px; text-align: right; }
-
-  .inv-section { margin-bottom: 10px; }
-  .inv-label { font-size: 12px; font-weight: 700; text-decoration: underline; margin-bottom: 3px; }
-  .inv-list { list-style: none; margin-left: 4px; }
-  .inv-list li { font-size: 11px; padding: 2px 0; }
-  .inv-list li::before { content: '\\2610  '; }
-
-  .advice-section { margin-bottom: 10px; }
-  .advice-label { font-size: 13px; font-weight: 700; }
-  .advice-content { font-size: 11px; color: #333; margin-left: 4px; white-space: pre-wrap; line-height: 1.5; }
-
-  .followup { font-size: 13px; font-weight: 700; margin: 10px 0; }
-  .vaccination-date { font-size: 12px; font-weight: 600; color: var(--saivie-teal); margin: 4px 0; }
-
-  .footer-line { text-align: center; font-size: 9px; color: #999; margin-top: 16px; padding-top: 6px; border-top: 1px solid #ddd; font-style: italic; }
-
-  .signature-area { display: flex; justify-content: flex-end; margin-top: 24px; }
-  .signature-box { text-align: center; }
-  .sig-line { border-top: 1px solid #555; width: 180px; padding-top: 4px; font-size: 11px; color: #555; }
-
-  .print-btn { position: fixed; bottom: 20px; right: 20px; background: var(--saivie-teal); color: white; border: none; padding: 12px 28px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 100; }
-  .print-btn:hover { background: var(--saivie-plum); }
-`;
-
-export function generatePrescriptionHTML(data: PrescriptionData): string {
-  const bmi = computeBMI(data.vitals.weight, data.vitals.height);
-  const vitalsLine = formatVitals(data.vitals, bmi, data.pregnancyInfo);
-  const ccFormatted = formatChiefComplaints(data.chiefComplaint);
-  const todayFormatted = new Date().toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-
-  const clinicalItems = [
-    data.clinicalFindings || "",
-    data.vitals.fundalHeight ? `Fundal Height: ${data.vitals.fundalHeight}` : "",
-    data.vitals.fetalHeartRate ? `Fetal Heart Rate: ${data.vitals.fetalHeartRate}` : "",
-    data.pregnancyInfo ? `GA: ${data.pregnancyInfo}` : "",
-    data.vitals.pvExam ? `P/V: ${data.vitals.pvExam}` : "",
-    data.vitals.psExam ? `P/S: ${data.vitals.psExam}` : "",
-  ].filter(Boolean);
-  const clinicalFindingsContent = clinicalItems.length > 0 ? clinicalItems.join("\n") : "\u2014";
-
-  return `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Prescription - ${data.patient.name}</title>
-<style>${getPrintBrandStyles()}${PRESCRIPTION_STYLES}</style></head><body>
-<button class="print-btn no-print" onclick="window.print()">Print Prescription</button>
-<div class="page">
-
-  <!-- Letterhead area: 2.9cm height reserved for pre-printed header -->
-  <!-- On screen: shows a preview outline; on print: blank space for letterhead -->
-  <div class="letterhead-preview no-print">
-    <div class="left-text">${data.providerName}<br>${data.providerSpecialty}</div>
-    <div class="logo-placeholder">Logo<br>3 x 2.5 cm</div>
-    <div class="right-text">Saivie<br>Women's Health</div>
-  </div>
-  <div class="letterhead-spacer" style="display:none;"></div>
-  <div class="header-line"></div>
-
-  <div class="patient-section">
-    <div class="patient-row">
-      <div class="patient-id">${data.patient.name}${data.patient.age ? " / " + data.patient.age + " Y" : ""}${data.patient.phone ? "&nbsp;&nbsp;&nbsp;Mob: " + data.patient.phone : ""}</div>
-      <div class="date-display">Date: ${todayFormatted}</div>
-    </div>
-    ${data.patient.address ? `<div style="font-size: 12px; color: #555;">Address: ${data.patient.address}</div>` : ""}
-    ${vitalsLine ? `<div class="patient-vitals">${vitalsLine}</div>` : ""}
-  </div>
-
-  <div class="cc-section">
-    <div class="cc-left">
-      <div class="cc-title">Chief Complaints</div>
-      <div class="cc-content">${ccFormatted}</div>
-    </div>
-    <div class="cc-right">
-      <div class="cc-title">Clinical Findings</div>
-      <div class="cc-content">${clinicalFindingsContent}</div>
-    </div>
-  </div>
-
-  ${
-    (data.observation || data.assessment)
-      ? `
-  <div class="obs-assess-section">
-    ${data.observation ? `<div><div class="obs-assess-label">Observation</div><div class="obs-assess-content">${data.observation}</div></div>` : ""}
-    ${data.assessment ? `<div><div class="obs-assess-label">Assessment</div><div class="obs-assess-content">${data.assessment}</div></div>` : ""}
-  </div>`
-      : ""
-  }
-
-  ${
-    data.diagnosis
-      ? `
-  <div class="diagnosis-section">
-    <span class="diagnosis-label">Diagnosis:</span>
-    <span class="diagnosis-text">* ${data.diagnosis}</span>
-  </div>`
-      : ""
-  }
-
-  <div class="rx-symbol">Rx</div>
-
-  ${buildMedicationsTable(data.medications)}
-
-  ${buildInvestigations(data.investigations)}
-
-  ${
-    data.advice
-      ? `
-  <div class="advice-section">
-    <span class="advice-label">Advice:</span>
-    <div class="advice-content">${formatAdvice(data.advice)}</div>
-  </div>`
-      : ""
-  }
-
-  ${
-    data.nextFollowUp
-      ? `
-  <div class="followup">Follow Up: ${new Date(data.nextFollowUp).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })}</div>`
-      : ""
-  }
-
-  ${
-    data.nextVaccinationDate
-      ? `
-  <div class="vaccination-date">Next Vaccination: ${new Date(data.nextVaccinationDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>`
-      : ""
-  }
-
-  <div class="signature-area">
-    <div class="signature-box">
-      <div class="sig-line">${data.providerName}</div>
-    </div>
-  </div>
-
-  <div class="footer-line">Substitute with equivalent Generics as required.</div>
-</div>
-</body></html>`;
+export function generatePrescriptionHTML(data: PrescriptionData, options: { printButton?: boolean } = {}): string {
+  const section = (label: string, content: string, always = false) => content || always
+    ? `<section class="clinical-section"><h2>${label}</h2><div class="content">${escapeText(content) || '<span class="unrecorded">Not recorded</span>'}</div></section>` : "";
+  const vitals = [
+    data.vitals.weight && `Wt: ${data.vitals.weight} kg`, data.vitals.height && `Ht: ${data.vitals.height} cm`,
+    data.vitals.bp && `BP: ${data.vitals.bp} mmHg`, data.vitals.pulse && `Pulse: ${data.vitals.pulse} bpm`,
+    data.vitals.temperature && `Temp: ${data.vitals.temperature} °F`,
+  ].filter(Boolean).map((value) => `<span>${escapeText(value!)}</span>`).join("");
+  const findings = [...new Set([
+    data.clinicalFindings, data.observation,
+    data.vitals.fundalHeight && `Fundal height: ${data.vitals.fundalHeight} cm`,
+    data.vitals.fetalHeartRate && `Fetal heart rate: ${data.vitals.fetalHeartRate} bpm`,
+    data.vitals.pvExam && `P/V: ${data.vitals.pvExam}`, data.vitals.psExam && `P/S: ${data.vitals.psExam}`,
+  ].filter(Boolean))].join("\n");
+  const logo = prescriptionLogoSource(data.logoUrl);
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Prescription - ${escapeText(data.patient.name)}</title><style>
+    *{box-sizing:border-box}body{margin:0;background:#f1f3f0;color:#252525;font:12px/1.5 Arial,sans-serif}
+    @page{size:A4 portrait;margin:12mm}
+    .page{width:186mm;min-height:273mm;margin:20px auto;padding:0;background:#fff;display:flex;flex-direction:column}
+    .letterhead{display:grid;grid-template-columns:1fr 110px 1fr;align-items:center;gap:12px;padding:16px 0;border-bottom:1px solid #9aafa8}
+    .doctor-name{font-size:14px;font-weight:700}.doctor-details{font-size:10px;white-space:pre-line}.logo{text-align:center}.logo img{width:90px;height:78px;object-fit:contain}.logo-name{font-size:20px;letter-spacing:2px;color:#305b50}
+    .date{text-align:right}.patient{padding:12px 0;border-bottom:1px solid #9aafa8}.patient-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}.patient-meta{margin-top:4px;font-size:11px}.vitals{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:11px}
+    .columns{display:table;width:100%;table-layout:fixed;flex:1}.left,.right{display:table-cell;vertical-align:top;padding:16px 14px}.left{width:38%;padding-left:0;border-right:1px solid #9aafa8}.right{width:62%;padding-right:0}
+    h2{font-size:12px;margin:0 0 6px;font-weight:700}.clinical-section{margin-bottom:22px}.content{white-space:pre-wrap;overflow-wrap:anywhere}.unrecorded{color:#777;font-size:11px}.rx{font:28px Georgia,serif;margin-bottom:10px}
+    .med-table{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:22px}.med-table th{text-align:left;font-size:10px;border-bottom:1px solid #9aafa8}.med-table td{padding:8px 3px;vertical-align:top;border-bottom:1px solid #ddd;overflow-wrap:anywhere;font-size:11px}.med-table th:first-child{width:7%}.med-table th:nth-child(2){width:43%}.med-table th:nth-child(3){width:30%}.med-table th:last-child{width:20%}.med-detail{font-size:10px;margin-top:3px}
+    .investigations{margin:0;padding-left:16px}.investigations li{margin-bottom:6px;overflow-wrap:anywhere}
+    .signature{margin:36px 0 12px;text-align:right;break-inside:avoid}.signature-line{display:inline-block;border-top:1px solid #777;padding-top:5px;min-width:160px;font-size:11px}
+    footer{border-top:1px solid #9aafa8;text-align:center;padding:10px 0;font-size:10px;white-space:pre-line}
+    .draft{padding:8px;background:#fff4dc;border:1px solid #b99853;margin-top:12px;font-weight:bold}
+    .no-print{display:block}.print-button{display:block;margin:12px auto;padding:10px 20px;background:#305b50;color:white;border:0;border-radius:6px;cursor:pointer}
+    tr{break-inside:avoid}h2{break-after:avoid}
+    @media print{body{background:white}.page{margin:0;min-height:273mm;width:100%}.no-print{display:none!important}}
+  </style></head><body>${options.printButton !== false && !data.draft ? '<button class="print-button no-print" onclick="window.print()">Print prescription</button>' : ""}<main class="page">
+  <header class="letterhead"><div><div class="doctor-name">${escapeText(data.providerName)}</div><div class="doctor-details">${escapeText([data.providerQualification, data.providerSpecialty, data.providerRegistration && `Reg. No.: ${data.providerRegistration}`].filter(Boolean).join("\n"))}</div></div>
+  <div class="logo">${logo ? `<img src="${escapeText(logo)}" alt="Saivie">` : '<div class="logo-name">SAIVIE</div><div class="doctor-details">Complete women care</div>'}</div><div class="date"><strong>Date:</strong> ${escapeText(displayDate(data.date))}</div></header>
+  ${data.draft ? '<div class="draft">DRAFT — unsaved consultation content. Review and save before issuing.</div>' : ""}
+  <div class="patient"><div class="patient-row"><strong>Name: ${escapeText(data.patient.name)}</strong><span>Age: ${escapeText(data.patient.age || "Not recorded")}${data.patient.sex ? ` &nbsp; Sex: ${escapeText(data.patient.sex)}` : ""}</span></div>
+  ${data.patient.phone || data.patient.address ? `<div class="patient-meta">${escapeText([data.patient.phone && `Phone: ${data.patient.phone}`, data.patient.address].filter(Boolean).join(" · "))}</div>` : ""}
+  ${vitals ? `<div class="vitals">${vitals}</div>` : ""}</div>
+  <div class="columns"><div class="left">${section("Chief complaint", data.chiefComplaint, true)}
+  ${section("Pregnancy details", [data.patient.lmp && `LMP: ${displayDate(data.patient.lmp)}`, data.pregnancyInfo].filter(Boolean).join("\n"))}
+  <section class="clinical-section"><h2>Investigation</h2>${data.investigations.length ? `<ul class="investigations">${data.investigations.map((test) => `<li>${escapeText(test)}</li>`).join("")}</ul>` : '<p class="unrecorded">Not recorded</p>'}</section>
+  ${section("O/E", findings, true)}${section("Assessment", data.assessment)}${section("Diagnosis", data.diagnosis)}</div>
+  <div class="right"><div class="rx">Rx</div>${medicinesTable(data.medications)}${section("Advice", data.advice)}
+  ${data.nextFollowUp ? section("Follow-up", displayDate(data.nextFollowUp)) : ""}${data.nextVaccinationDate ? section("Next vaccination", displayDate(data.nextVaccinationDate)) : ""}
+  <div class="signature"><div class="signature-line">${escapeText(data.providerName)}<br>Signature</div></div></div></div>
+  <footer>${escapeText([data.clinicName, data.clinicAddress, data.clinicPhone && `For appointments: ${data.clinicPhone}`].filter(Boolean).join("\n"))}</footer></main></body></html>`;
 }
 
-export function openPrescription(data: PrescriptionData): void {
-  const html = generatePrescriptionHTML(data);
-  const blob = new Blob([html], { type: "text/html" });
-  const blobUrl = URL.createObjectURL(blob);
+export function openPrescription(data: PrescriptionData): boolean {
+  const blobUrl = URL.createObjectURL(new Blob([generatePrescriptionHTML(data)], { type: "text/html" }));
   const win = window.open(blobUrl, "_blank");
-  if (!win) return;
+  if (!win) { URL.revokeObjectURL(blobUrl); return false; }
   setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+  return true;
 }
