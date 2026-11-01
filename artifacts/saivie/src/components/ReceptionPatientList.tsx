@@ -10,6 +10,8 @@ import { DateInput } from "@/components/ui/date-input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
+import { HpvBadge } from "@/components/HpvBadge";
 import { receptionRequest } from "@/lib/authenticatedFetch";
 import { calendarDate, calendarDateValue, shiftCalendarDays } from "@/lib/calendarDates";
 import { matchesReceptionFilter, receptionLate, receptionStage, receptionTimeMinutes, receptionWeek, type ReceptionAppointment, type ReceptionFilter, type ReceptionPatient, type ReceptionPeriod } from "@/lib/receptionTimeline";
@@ -65,6 +67,7 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
     refetchInterval: 30_000,
   });
   const appointments = appointmentsQuery.data || [];
+  const hpvStatus = useHpvClinicStatuses(appointments.map((appointment) => appointment.patientId));
   const byPatient = useMemo(() => new Map(patients.map((patient) => [patient.id, patient])), [patients]);
   const matching = appointments.filter((appointment) => {
     const patient = appointment.patientId != null ? byPatient.get(appointment.patientId) : undefined;
@@ -104,7 +107,7 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
     const phone = patient?.phone?.replace(/[^\d+]/g, "");
     return <div key={appointment.id} data-testid={`reception-patient-row-${appointment.id}`} className="grid gap-3 border-t border-[#eee5d7] bg-white p-4 md:grid-cols-[75px_minmax(150px,1fr)_minmax(130px,1fr)_110px]">
       <p className="text-sm font-semibold text-[#705364]">{appointment.time}</p>
-      <div><p className="font-semibold text-saivie-plum">{patient?.name || `Patient #${appointment.patientId ?? "unassigned"}`}</p><p className="mt-1 text-xs text-[#705364]">{patient?.phone || "Phone not recorded"}</p></div>
+      <div><p className="font-semibold text-saivie-plum">{patient?.name || `Patient #${appointment.patientId ?? "unassigned"}`}</p><HpvBadge status={hpvStatus(appointment.patientId)} className="mt-1" /><p className="mt-1 text-xs text-[#705364]">{patient?.phone || "Phone not recorded"}</p></div>
       <div><p className="text-sm text-saivie-plum">{providers.find((provider) => provider.id === appointment.providerId)?.name || "Doctor not assigned"}</p><p className="mt-1 text-xs text-[#705364]">{appointment.visitType || appointment.type || "Appointment"}</p></div>
       <div><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${stageColors[stage]}`}>{stage}</span>{late && <p className="mt-1 text-[11px] text-amber-800">Running late</p>}</div>
       <div className="flex flex-wrap items-center gap-2 md:col-span-4 md:pl-[87px]">

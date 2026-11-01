@@ -208,7 +208,7 @@ export function ReceptionDashboard({
     .sort((a, b) => new Date(a.apt.checkedInAt || 0).getTime() - new Date(b.apt.checkedInAt || 0).getTime());
 
   const findPatient = (apt: any) => patients.find((p) => p.id === apt.patientId);
-  const hpvClinicStatus = useHpvClinicStatuses(logisticsOnly ? [] : appointments.map((apt: any) => apt.patientId));
+  const hpvClinicStatus = useHpvClinicStatuses(appointments.map((apt: any) => apt.patientId));
   const hpvStatusFor = (apt: any) => hpvProtection(hpvSurveyAnswer(findPatient(apt)), hpvClinicStatus(apt.patientId));
   const pendingRx = logisticsOnly ? [] : appointments.filter((apt) => getArrivalState(apt) === "completed" && !prescribedAppointmentIds.has(apt.id));
   const { data: inventoryItems = [] } = useInventory();
@@ -472,7 +472,7 @@ export function ReceptionDashboard({
                                   <ClipboardList className="h-3 w-3" />{surveyKindFor(apt) === "lab" ? "Lab survey pending" : "Survey pending"}
                                 </span>
                               ))}
-                              {!logisticsOnly && <HpvBadge status={hpvStatusFor(apt)} />}
+                              <HpvBadge status={hpvStatusFor(apt)} />
                             </div>
                             {patient?.phone ? (
                               <a href={`tel:${patient.phone.replace(/[^\d+]/g, "")}`} className="mt-0.5 inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-saivie-teal hover:underline" aria-label={`Call ${apt.patient} on ${patient.phone}`} data-testid={`flow-phone-${apt.id}`}>

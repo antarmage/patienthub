@@ -63,13 +63,13 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
         assert.ok(html.includes("Pulse"));
         assert.ok(html.includes("61 kg"));
 
-        assert.ok(!html.includes("I have protected myself from cervical cancer"));
+        assert.ok(!html.includes("All doses reported or recorded"));
         form.gyn.hpvVaccine = "Yes, all doses";
         printPatientSummary(patient);
-        assert.ok(html.includes("I have protected myself from cervical cancer"));
+        assert.ok(html.includes("All doses reported or recorded"));
         form.gyn.hpvVaccine = "No";
         printPatientSummary(patient, null, "protected");
-        assert.ok(html.includes("I have protected myself from cervical cancer"));
+        assert.ok(html.includes("All doses reported or recorded"));
         assert.ok(!html.includes("discuss vaccination"));
 
         printPatientSummary({ name: "Lab Patient", history: { labSurvey: { tests: "Thyroid profile", lastMeal: "Less than 2 hours ago", allergies: ["Latex"], appointmentId: 7 } } });

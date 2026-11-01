@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { hpvProtection, hpvSurveyAnswer } from "./hpvProtection.ts";
 
-it("treats either the survey answer or clinic records as proof of HPV protection", () => {
+it("uses survey answers or clinic doses for vaccination status, not proof of immunity", () => {
     assert.equal(hpvProtection("Yes, all doses", null), "protected");
     assert.equal(hpvProtection("No", "protected"), "protected");
     assert.equal(hpvProtection("Yes, some doses", "protected"), "protected");

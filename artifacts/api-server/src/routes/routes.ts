@@ -35,7 +35,7 @@ import { ai, AI_AVAILABLE } from "../replit_integrations/image/client";
 import { whatsapp } from "../whatsapp";
 import { isSmtpConfigured, maskEmail, sendEmail, sendOtpEmail, type OtpDeliveryMethod } from "../smtp";
 import { checkDeliverableEmail } from "../email-check";
-import { hpvClinicStatuses } from "../hpv-protection";
+import { hpvClinicStatuses, registerHpvStatusRoute } from "../hpv-protection";
 import { readLabPrescription, sanitizeLabSurvey, surveyKindFor } from "../survey-kind";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
 import { analyseGenome, analyseGenomeFromKey } from "../genome-engine";
@@ -3824,13 +3824,15 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.json(reminders);
   });
 
-  // Returns { [patientId]: "protected" | "in-progress" } from clinic-recorded HPV doses.
-  app.get("/api/hpv-protection", async (req, res) => {
-    const raw = typeof req.query.patientIds === "string" ? req.query.patientIds : "";
-    const patientIds = Array.from(new Set(raw.split(",").map((id) => parseId(id.trim())).filter((id): id is number => !!id))).slice(0, 500);
-    if (!patientIds.length) return res.json({});
-    const [schedules, records] = await Promise.all([storage.getVaccinationSchedules(), storage.getVaccinationRecords()]);
-    res.json(hpvClinicStatuses(patientIds, schedules, records));
+  registerHpvStatusRoute(app, {
+    authenticate: getAccessActor,
+    clinicStatuses: async (ids) => {
+      const [schedules, records] = await Promise.all([storage.getVaccinationSchedules(), storage.getVaccinationRecords()]);
+      return hpvClinicStatuses(ids, schedules, records);
+    },
+    surveyAnswers: async (ids) => (await pool.query<{ id: number; answer: string | null }>(
+      "SELECT id, history->'onboarding'->'gyn'->>'hpvVaccine' AS answer FROM patients WHERE id = ANY($1::int[])", [ids],
+    )).rows,
   });
 
   app.get("/api/vaccination-records", async (req, res) => {

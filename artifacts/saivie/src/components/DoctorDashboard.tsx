@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { doctorQueueState, type DoctorDashboardPatient, type DoctorQueueFilter } from "@/lib/doctorDashboard";
+import { HpvBadge } from "@/components/HpvBadge";
+import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 
 type DashboardCategory = "today-appointments" | "fertility" | "pregnancy" | "postpartum" | "high-risk";
 
@@ -102,6 +104,7 @@ export function DoctorDashboard<T extends DoctorDashboardPatient>({
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const selectedDate = new Date(`${date}T00:00:00`);
     const datePatients = patients.filter((patient) => patient.appointmentDate === date && doctorQueueState(patient) !== "closed");
+    const hpvStatus = useHpvClinicStatuses(datePatients.map((patient) => patient.id));
     const visible = datePatients.filter((patient) =>
         (filter === "all" || doctorQueueState(patient) === filter) &&
         `${patient.name} ${patient.type || ""} ${patient.appointmentChiefComplaint || ""}`.toLowerCase().includes(search.trim().toLowerCase()),
@@ -187,6 +190,7 @@ export function DoctorDashboard<T extends DoctorDashboardPatient>({
                                 <span className="w-14 shrink-0 text-xs font-medium text-[#705364]">{patient.appointmentTime || "—"}</span>
                                 <span className="min-w-0 flex-1">
                                     <button type="button" className="block max-w-full truncate text-left text-sm font-semibold hover:underline" onClick={() => setSelectedId(patient.appointmentId)}>{patient.name}</button>
+                                    <HpvBadge status={hpvStatus(patient.id)} className="mt-1" />
                                     <span className="block truncate text-xs text-[#705364]">{careType(patient)} · {patient.appointmentChiefComplaint || patient.appointmentType || "Visit reason not recorded"}</span>
                                 </span>
                                 <Badge variant="outline">{patientStateLabel(patient)}</Badge>
@@ -215,6 +219,7 @@ export function DoctorDashboard<T extends DoctorDashboardPatient>({
                             {selected ? <>
                                 <div className="mt-3 flex items-start justify-between gap-2"><h3 className="font-semibold">{selected.name}</h3><Badge variant="outline" className="bg-white/70 text-[10px]">#{selected.appointmentId}</Badge></div>
                                 <p className="mt-1 text-xs">{selected.age != null ? `${selected.age} years · ` : ""}{careType(selected)}</p>
+                                <HpvBadge status={hpvStatus(selected.id)} variant="full" className="mt-3" />
                                 <dl className="mt-4 space-y-3 text-xs">
                                     <div><dt className="text-[#705364]">Reason for visit</dt><dd className="mt-1 font-medium">{selected.appointmentChiefComplaint || "Not recorded"}</dd></div>
                                     <div><dt className="text-[#705364]">Check-in vitals</dt><dd className="mt-1">{[selected.appointmentVitals?.bp && `BP ${selected.appointmentVitals.bp}`, selected.appointmentVitals?.pulse && `Pulse ${selected.appointmentVitals.pulse}`, selected.appointmentVitals?.weight && `Weight ${selected.appointmentVitals.weight} kg`].filter(Boolean).join(" · ") || "Not recorded"}</dd></div>

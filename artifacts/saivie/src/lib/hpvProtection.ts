@@ -1,8 +1,8 @@
 export type HpvProtection = "protected" | "in-progress";
 
 export const HPV_BADGE_COPY: Record<HpvProtection, { label: string; message: string }> = {
-    protected: { label: "HPV vaccinated", message: "I have protected myself from cervical cancer" },
-    "in-progress": { label: "HPV in progress", message: "I'm on my way to protecting myself from cervical cancer" },
+    protected: { label: "HPV vaccinated", message: "All doses reported or recorded. Continue cervical screening as advised." },
+    "in-progress": { label: "HPV doses started", message: "Some doses reported or recorded. Ask your doctor about completing vaccination." },
 };
 
 export const hpvSurveyAnswer = (patient: any): string => {
@@ -10,7 +10,7 @@ export const hpvSurveyAnswer = (patient: any): string => {
     return typeof value === "string" ? value.trim() : "";
 };
 
-// Combines the patient's survey answer with clinic-recorded doses; either source can confirm protection.
+// Combines reported vaccination with clinic doses; this status does not imply immunity.
 export function hpvProtection(surveyAnswer?: string | null, clinicStatus?: HpvProtection | null): HpvProtection | null {
     if (surveyAnswer === "Yes, all doses" || clinicStatus === "protected") return "protected";
     if (surveyAnswer === "Yes, some doses" || clinicStatus === "in-progress") return "in-progress";
