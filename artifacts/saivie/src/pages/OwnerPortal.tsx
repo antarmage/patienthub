@@ -392,17 +392,10 @@ export default function OwnerPortal() {
 
   return (
     <div className="min-h-screen bg-saivie-surface-muted flex font-sans text-saivie-plum overflow-hidden">
-      <aside className={`bg-saivie-ivory border-r border-saivie-border flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? "w-64" : "w-20"}`}>
-        <div className="p-4 border-b border-saivie-border flex items-center justify-between">
-          {sidebarOpen ? (
-            <div className="flex items-center gap-2">
-              <BrandLogo fallback="S" />
-              <span className="font-serif font-bold text-lg text-saivie-plum">Saivie</span>
-            </div>
-          ) : (
-            <BrandLogo fallback="S" className="w-8 h-8 mx-auto" />
-          )}
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-saivie-plum" onClick={() => setSidebarOpen(!sidebarOpen)} data-testid="btn-toggle-sidebar">
+      <aside aria-label="Owner navigation" className={`bg-saivie-ivory border-r border-saivie-border flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? "w-64" : "w-20"}`}>
+        <div className={`p-3 border-b border-saivie-border flex items-center gap-2 ${sidebarOpen ? 'justify-between' : 'flex-col'}`}>
+          <BrandLogo fallback="S" className={`${sidebarOpen ? 'w-36 h-16' : 'w-12 h-12'} shrink-0 text-2xl`} />
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-saivie-plum" aria-label={sidebarOpen ? "Collapse navigation" : "Expand navigation"} title={sidebarOpen ? "Collapse navigation" : "Expand navigation"} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(!sidebarOpen)} data-testid="btn-toggle-sidebar">
             <Menu className="w-4 h-4" />
           </Button>
         </div>
@@ -412,7 +405,9 @@ export default function OwnerPortal() {
             <Button
               key={item.id}
               variant={activeView === item.id ? "secondary" : "ghost"}
-              className={`w-full justify-start ${!sidebarOpen ? "px-2" : ""} ${activeView === item.id ? "bg-saivie-sage text-saivie-plum" : "text-saivie-plum hover:text-saivie-plum"}`}
+              aria-label={item.label}
+              title={item.label}
+              className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === item.id ? "bg-saivie-sage text-saivie-plum" : "text-saivie-plum hover:text-saivie-plum"}`}
               onClick={() => setActiveView(item.id)}
               data-testid={`nav-${item.id}`}
             >
@@ -427,12 +422,12 @@ export default function OwnerPortal() {
 
         <div className="mt-auto p-4 border-t border-saivie-border space-y-2">
           <Link href="/">
-            <Button variant="ghost" className={`w-full justify-start text-saivie-plum hover:text-saivie-plum ${!sidebarOpen ? "px-2" : ""}`} data-testid="btn-back-home">
+            <Button variant="ghost" aria-label="Back to Home" title="Back to Home" className={`w-full text-saivie-plum hover:text-saivie-plum ${sidebarOpen ? 'justify-start' : 'justify-center px-2'}`} data-testid="btn-back-home">
               <ArrowLeft className={`w-4 h-4 ${sidebarOpen ? "mr-3" : ""}`} />
               {sidebarOpen && "Back to Home"}
             </Button>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-3 ${sidebarOpen ? '' : 'justify-center'}`}>
             <Avatar className="h-9 w-9 border border-saivie-border">
               <AvatarFallback className="bg-gradient-to-br from-saivie-sage to-saivie-sage text-saivie-teal font-bold">OW</AvatarFallback>
             </Avatar>

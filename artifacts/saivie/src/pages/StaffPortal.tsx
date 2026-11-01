@@ -2436,17 +2436,10 @@ export default function StaffPortal() {
     <div className="min-h-screen bg-saivie-surface-muted flex font-sans text-saivie-plum overflow-hidden">
       
       {/* Sidebar - Logged In State */}
-      <aside className={`bg-saivie-ivory border-r border-saivie-border flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
-        <div className="p-4 border-b border-saivie-border flex items-center justify-between">
-          {sidebarOpen ? (
-            <div className="flex items-center gap-2">
-                <BrandLogo fallback="S" />
-                <span className="font-serif font-bold text-lg text-saivie-plum">Saivie</span>
-            </div>
-          ) : (
-            <BrandLogo fallback="S" className="w-8 h-8 mx-auto" />
-          )}
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-saivie-plum" onClick={() => setSidebarOpen(!sidebarOpen)}>
+      <aside aria-label="Staff navigation" className={`bg-saivie-ivory border-r border-saivie-border flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
+        <div className={`p-3 border-b border-saivie-border flex items-center gap-2 ${sidebarOpen ? 'justify-between' : 'flex-col'}`}>
+          <BrandLogo fallback="S" className={`${sidebarOpen ? 'w-36 h-16' : 'w-12 h-12'} shrink-0 text-2xl`} />
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-saivie-plum" aria-label={sidebarOpen ? "Collapse navigation" : "Expand navigation"} title={sidebarOpen ? "Collapse navigation" : "Expand navigation"} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(!sidebarOpen)}>
              <Menu className="w-4 h-4" />
           </Button>
         </div>
@@ -2455,7 +2448,8 @@ export default function StaffPortal() {
             <div className="space-y-1">
                  <Button 
                     variant={activeView === 'dashboard' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'dashboard' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
+                    aria-label="Dashboard" title="Dashboard"
+                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'dashboard' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('dashboard')}
                  >
                     <Activity className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
@@ -2463,7 +2457,8 @@ export default function StaffPortal() {
                  </Button>
                  <Button 
                     variant={activeView === 'patients' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'patients' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
+                    aria-label="My Patients" title="My Patients"
+                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'patients' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('patients')}
                  >
                     <Users className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
@@ -2471,7 +2466,8 @@ export default function StaffPortal() {
                  </Button>
                  <Button 
                     variant={activeView === 'schedule' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'schedule' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
+                    aria-label="Schedule" title="Schedule"
+                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'schedule' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('schedule')}
                  >
                     <CalendarCheck className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
@@ -2479,7 +2475,8 @@ export default function StaffPortal() {
                  </Button>
                  {!receptionist && <Button
                     variant={activeView === 'reports' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'reports' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
+                    aria-label="Notes & Reports" title="Notes & Reports"
+                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'reports' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('reports')}
                  >
                     <FileText className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
@@ -2488,7 +2485,8 @@ export default function StaffPortal() {
                  {activeRole === 'receptionist' && (
                  <Button 
                     variant={activeView === 'followup' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'followup' ? 'bg-orange-50 text-orange-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
+                    aria-label="Follow-Up Calls" title="Follow-Up Calls"
+                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'followup' ? 'bg-orange-50 text-orange-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('followup')}
                  >
                     <Phone className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
@@ -2498,7 +2496,8 @@ export default function StaffPortal() {
                  {activeRole === 'receptionist' && (
                  <Button 
                     variant={activeView === 'prime' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'prime' ? 'bg-amber-50 text-amber-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
+                    aria-label="Prime Members" title="Prime Members"
+                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'prime' ? 'bg-amber-50 text-amber-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('prime')}
                     data-testid="btn-prime-members"
                  >
@@ -2509,7 +2508,8 @@ export default function StaffPortal() {
                  {activeRole === 'receptionist' && (
                  <Button 
                     variant={activeView === 'billing' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'billing' ? 'bg-emerald-50 text-emerald-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
+                    aria-label="Billing" title="Billing"
+                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'billing' ? 'bg-emerald-50 text-emerald-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('billing')}
                     data-testid="btn-billing"
                  >
@@ -2520,7 +2520,8 @@ export default function StaffPortal() {
                  {activeRole === 'receptionist' && (
                  <Button 
                     variant={activeView === 'sync' ? 'secondary' : 'ghost'} 
-                    className={`w-full justify-start ${!sidebarOpen ? 'px-2' : ''} ${activeView === 'sync' ? 'bg-blue-50 text-blue-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
+                    aria-label="Sync & Import" title="Sync & Import"
+                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'sync' ? 'bg-blue-50 text-blue-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
                     onClick={() => setActiveView('sync')}
                     data-testid="btn-sync-import"
                  >
@@ -2532,7 +2533,7 @@ export default function StaffPortal() {
         </div>
 
         <div className="mt-auto p-4 border-t border-saivie-border">
-             <div className="flex items-center gap-3">
+             <div className={`flex items-center gap-3 ${sidebarOpen ? '' : 'justify-center'}`}>
                 <Avatar className="h-9 w-9 border border-saivie-border">
                     <AvatarFallback className="bg-saivie-sage text-saivie-plum">ST</AvatarFallback>
                 </Avatar>

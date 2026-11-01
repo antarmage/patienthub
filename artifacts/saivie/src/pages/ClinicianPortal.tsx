@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSettings";
 import { ReceptionAccessSettings } from "@/components/ReceptionAccessSettings";
 import { GoogleMeetSettings } from "@/components/GoogleMeetSettings";
+import { BrandLogo } from "@/components/BrandLogo";
 import { OnlineConsultationActions } from "@/components/OnlineConsultationActions";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
 import { HpvBadge } from "@/components/HpvBadge";
@@ -2230,21 +2231,7 @@ export default function ClinicianPortal() {
       >
         <div className={`absolute inset-y-0 left-0 flex flex-col border-r border-saivie-border bg-saivie-ivory transition-[width,box-shadow] duration-200 motion-reduce:transition-none ${sidebarOpen ? 'w-64 max-sm:w-16 shadow-lg' : 'w-16'}`}>
         <div className="p-2 border-b border-saivie-border flex items-center justify-between gap-2 max-sm:justify-center">
-          {sidebarOpen ? (
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-saivie-surface-muted flex items-center justify-center shrink-0">
-                <Stethoscope className="w-4 h-4 text-saivie-teal" />
-              </div>
-              <div className="min-w-0 max-sm:hidden">
-                <h1 className="text-saivie-plum font-serif text-xl tracking-tight truncate">Helix<span className="text-saivie-teal">Care</span></h1>
-                <p className="text-[10px] uppercase tracking-widest text-saivie-plum font-medium">Clinician OS v2.1</p>
-              </div>
-            </div>
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-saivie-surface-muted flex items-center justify-center mx-auto shrink-0">
-              <Stethoscope className="w-4 h-4 text-saivie-teal" />
-            </div>
-          )}
+          <BrandLogo fallback="S" className={`${sidebarOpen ? 'w-36 h-16 max-sm:w-12 max-sm:h-12' : 'w-12 h-12 mx-auto'} shrink-0 text-2xl`} />
 
           <Button
             variant="ghost"
