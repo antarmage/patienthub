@@ -1,37 +1,15 @@
 import React from "react";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { MeasurementTrend as Trend } from "@/components/MeasurementTrend";
 import { Button } from "@/components/ui/button";
 import { consultationSurveyForVisit, surveyQuestions } from "@/lib/consultationSurvey";
 import { recordedLabValue } from "@/lib/labReading";
-import { summaryRecord, summaryTrends, type SummaryLab, type SummaryPoint, type SummaryVisit } from "@/lib/patientSummary";
+import { summaryRecord, summaryTrends, type SummaryLab, type SummaryVisit } from "@/lib/patientSummary";
 import { receptionVisitDates } from "@/lib/receptionVisitDates";
 import { appointmentLabel, type TrailRecord } from "@/lib/visitTrail";
+import { PregnancyOverview } from "@/components/PregnancyOverview";
 
-function Trend({ title, unit, points, paired = false }: { title: string; unit: string; points: SummaryPoint[]; paired?: boolean }) {
-  const latest = points.at(-1);
-  return <section className="min-w-0 rounded-lg border border-saivie-border bg-saivie-ivory p-4">
-    <div className="flex flex-wrap justify-between gap-2"><h3 className="text-xs font-semibold text-saivie-teal">{title}</h3><span className="text-[10px] text-saivie-plum">{unit}</span></div>
-    {latest ? <>
-      <p className="mt-2 text-xl font-semibold text-saivie-plum">{latest.value}{paired ? `/${latest.secondary}` : ""}<span className="ml-2 text-[10px] font-normal">{latest.date} · {latest.source}</span></p>
-      <div className="mt-3 h-40" data-testid={`summary-trend-${title}`}>
-        <ResponsiveContainer width="100%" height="100%" minWidth={1}>
-          <LineChart data={points} margin={{ left: -20, right: 12, top: 8 }}>
-            <CartesianGrid stroke="var(--saivie-border)" strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(date: string) => date.slice(5)} />
-            <YAxis domain={["auto", "auto"]} tick={{ fontSize: 10 }} />
-            <Tooltip labelFormatter={(label) => String(label)} contentStyle={{ fontSize: 11 }} />
-            <Line dataKey="value" name={paired ? "Systolic" : title} stroke="var(--saivie-teal)" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
-            {paired && <Line dataKey="secondary" name="Diastolic" stroke="var(--saivie-rose)" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-      <p className="text-[10px] text-saivie-plum">{paired ? "Systolic / diastolic · " : ""}{points.length === 1 ? "One reading; trend not yet available." : `${points.length} recorded readings`}</p>
-    </> : <p className="flex h-48 items-center justify-center text-xs text-saivie-plum">No recorded readings.</p>}
-  </section>;
-}
-
-export function PatientSummaryDashboard({ patient, appointmentId, complaint, checkInVitals, visits, trail, onRecord, labs, bpLogs, weightLogs, medications, pregnancy, pregnancyContext, conceptionSection, sources, onConsultation }: {
-  patient: { name: string; history?: unknown; lmp?: string; cycleLength?: number | string; riskScore?: { level?: string; factors?: { factor: string }[] } };
+export function PatientSummaryDashboard({ patient, appointmentId, complaint, checkInVitals, visits, trail, onRecord, labs, bpLogs, weightLogs, medications, pregnancy, pregnancyContext, conceptionSection, sources, onConsultation, pregnancyData, onProfile, onVitals }: {
+  patient: { id?: number; name: string; history?: unknown; lmp?: string; cycleLength?: number | string; riskScore?: { level?: string; factors?: { factor: string }[] } };
   appointmentId?: number;
   complaint?: string;
   checkInVitals?: unknown;
@@ -47,6 +25,8 @@ export function PatientSummaryDashboard({ patient, appointmentId, complaint, che
   conceptionSection?: React.ReactNode;
   sources: { label: string; loading: boolean; failed: boolean; retry: () => void }[];
   onConsultation: () => void;
+  pregnancyData?: { patient: Record<string, unknown> & { id: number }; appointments: Record<string, unknown>[]; visits: Record<string, unknown>[]; labs: Record<string, unknown>[]; documents?: Record<string, unknown>[]; ready: boolean };
+  onProfile?: () => void; onVitals?: () => void;
 }) {
   const trends = summaryTrends(visits, bpLogs, weightLogs, labs);
   const history = summaryRecord(patient.history);
@@ -61,6 +41,16 @@ export function PatientSummaryDashboard({ patient, appointmentId, complaint, che
   const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
   const checkIn = summaryRecord(checkInVitals);
   const text = (value: unknown) => typeof value === "string" && value.trim() ? value : Array.isArray(value) ? value.filter((item) => typeof item === "string").join(", ") || "Not recorded" : "Not recorded";
+  if (pregnancy && pregnancyData) return <div className="relative z-0 min-h-0 flex-1 overflow-y-auto bg-saivie-surface-muted p-3 sm:p-5" data-testid="patient-summary-dashboard">
+    <div className="mx-auto max-w-[1500px] space-y-4"><div className="flex flex-wrap justify-between gap-2">
+      <h2 className="text-lg font-semibold">Pregnancy summary</h2><Button onClick={onConsultation}>Open consultation</Button></div>
+      {sources.filter((source) => source.loading || source.failed).map((source) => <p key={source.label} role={source.failed ? "alert" : "status"} className="rounded-lg border p-3 text-sm">
+        {source.failed ? `${source.label} unavailable; summary may be incomplete.` : `Loading ${source.label}...`}
+        {source.failed && <Button variant="link" onClick={source.retry}>Retry {source.label}</Button>}</p>)}
+      <PregnancyOverview key={pregnancyData.patient.id} patient={pregnancyData.patient} appointments={pregnancyData.appointments} visits={pregnancyData.visits} labs={pregnancyData.labs} documents={pregnancyData.documents}
+        canEdit recordsReady={pregnancyData.ready} onProfile={onProfile} onConsultation={onConsultation} onVitals={onVitals} />
+    </div>
+  </div>;
   return <div className="relative z-0 min-h-0 flex-1 overflow-y-auto bg-saivie-surface-muted p-3 sm:p-5" data-testid="patient-summary-dashboard">
     <div className="mx-auto max-w-[1500px] space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold text-saivie-teal">Patient Summary</h2><p className="text-xs text-saivie-plum">{pregnancy ? "Pregnancy overview" : "Pre-consultation overview"} · {visits.length} recorded visits</p></div><Button size="sm" onClick={onConsultation}>Open consultation</Button></div>

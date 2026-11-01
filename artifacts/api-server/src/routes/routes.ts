@@ -38,6 +38,8 @@ import { checkDeliverableEmail } from "../email-check";
 import { hpvClinicStatuses, registerHpvStatusRoute } from "../hpv-protection";
 import { registerSurgeryWorkflow } from "../surgery-workflow";
 import { createSurgeryStore } from "../surgery-store";
+import { registerPregnancyEpisodes } from "../pregnancy-episodes";
+import { createPregnancyEpisodeStore } from "../pregnancy-episode-store";
 import { readLabPrescription, sanitizeLabSurvey, surveyKindFor } from "../survey-kind";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
 import { analyseGenome, analyseGenomeFromKey } from "../genome-engine";
@@ -5649,6 +5651,7 @@ Return a JSON object:
   // patientId must NOT appear in the URL (CodeQL js/sensitive-get-query).
   // Pass it via the X-Patient-Id request header instead.
   registerSurgeryWorkflow(app, createSurgeryStore(pool), getAccessActor);
+  registerPregnancyEpisodes(app, createPregnancyEpisodeStore(pool), getAccessActor);
 
   app.use("/api", (err: any, _req: any, res: any, _next: any) => {
     console.error("API Error:", err.message);

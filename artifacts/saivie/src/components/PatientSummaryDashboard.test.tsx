@@ -4,6 +4,7 @@ import { it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PatientSummaryDashboard } from "./PatientSummaryDashboard.tsx";
 import { visitTrail } from "@/lib/visitTrail";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const props = {
   patient: { name: "Summary Demo", history: { onboardingAppointmentId: 42, onboarding: { chiefComplaint: "Patient concern", consultation: { directions: ["Ovulatory timing"], answers: { "Are cycles regular?": "Irregular" } } } } },
@@ -47,4 +48,17 @@ it("summary trail includes appointment-only dates without counting them as saved
   assert.ok(html.includes("Open full date trail"));
   assert.ok(html.includes("0 recorded visits"));
   assert.ok(!html.includes("Saved clinical encounter"));
+});
+
+it("doctor pregnancy summary uses saved-episode overview rather than global historical readings", () => {
+  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
+  client.setQueryData(["/api/patients", 1, "pregnancy-episodes"], []);
+  try {
+    const html = renderToStaticMarkup(<QueryClientProvider client={client}><PatientSummaryDashboard {...props} pregnancy
+      pregnancyData={{ patient: { ...props.patient, id: 1 }, appointments: [], visits: [], labs: [], ready: true }} /></QueryClientProvider>);
+    assert.ok(html.includes('data-testid="pregnancy-overview"'));
+    assert.ok(html.includes("No saved pregnancy episode"));
+    assert.ok(!html.includes("Last recorded prescription"));
+    assert.ok(html.includes("Add pregnancy"));
+  } finally { client.clear(); }
 });

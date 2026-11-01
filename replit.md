@@ -48,6 +48,14 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `artifacts/api-server/src/risk-engine.ts` — AI risk scoring engine
 - `artifacts/api-server/src/replit_integrations/` — OCR and AI image integrations
 
+## Pregnancy episodes and summary
+
+- Doctor Summary and reception's Pregnancy tab share a saved, episode-specific overview. Doctors/owners create and edit episodes; staff/receptionists can read them only when clinical viewing is enabled. Patient sessions may read their own episodes, never author them.
+- `GET/POST /api/patients/:id/pregnancy-episodes` and `PUT /api/patients/:id/pregnancy-episodes/:episodeId` persist dating, current/past status, outcome, delivery mode, conception and explicitly chosen appointment, consultation and lab-result associations. Updates require the saved `version`; stale updates return 409.
+- Startup creates the episode/link tables idempotently. There is no automatic backfill, assignment by date, or overwrite of the patient's profile LMP. A clinician must review and save each episode. Only one episode can be current; pregnancy numbers and record associations are unique per patient. An appointment and its consultation cannot be assigned to different episodes.
+- Gestation uses the saved LMP or clinically established EDD. Earlier pregnancies use their recorded end date, not today's date. Trends and today's check-in use only linked records; unassigned bookings remain in All patient dates. Missing information is presented separately from previously recorded, patient-level clinical risk.
+- Isolated database tests use `TEST_PREGNANCY_DATABASE_URL`; the tests create and remove their own schema. Never point this variable at production.
+
 ## Clinical document reading
 
 - `OCR_PROVIDER=glm-ocr` enables an opt-in self-hosted GLM-OCR gateway plus a separate self-hosted text-structuring model. Without this setting, document reading uses the existing Gemini provider.

@@ -116,7 +116,7 @@ export function registerClinicalAccess(app: Express, dependencies: ClinicalAcces
   app.use(async (req, res, next) => {
     const path = req.path.toLowerCase();
     const read = req.method === "GET" || req.method === "HEAD";
-    const clinicalPatient = path.match(patientClinicalPath);
+    const clinicalPatient = path.match(patientClinicalPath) || path.match(/^\/api\/patients\/([^/]+)\/(pregnancy-episodes)(?:\/[^/]+)?\/?$/);
     const clinicalCollection = clinicalCollectionPath.test(path);
     const clinicianTool = clinicianToolPath.test(path);
     const patientRecord = patientRecordPath.test(path);

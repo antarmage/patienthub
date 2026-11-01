@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { PrescriptionPreview } from "@/components/PrescriptionPreview";
 import { consultationHistoryText } from "@/lib/consultationSurvey";
 import { appointmentLabel, readAppointmentHistory, visitTrail } from "@/lib/visitTrail";
+import { PregnancyOverview } from "@/components/PregnancyOverview";
+import { patientAge, indiaToday } from "@/lib/pregnancyOverview";
 
 type ClinicalRecord = Record<string, unknown>;
 function object(value: unknown): ClinicalRecord {
@@ -97,7 +99,16 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
     retry: false,
     refetchInterval: 15_000,
   });
+  const pregnancyLabs = useQuery({
+    queryKey: ["reception-pregnancy-labs", patient.id], enabled: record.isSuccess && tab === "pregnancy",
+    queryFn: async ({ signal }) => {
+      const response = await receptionRequest<unknown>(`/api/patients/${patient.id}/lab-results`, { signal });
+      if (!Array.isArray(response)) throw new Error("The lab API returned an invalid result list.");
+      return list(response);
+    }, retry: false, gcTime: 0, refetchInterval: 15_000,
+  });
   const data = record.data;
+  const age = patientAge(data?.detail || {}, indiaToday());
   const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
   const visitDates = receptionVisitDates(visitTrail(data?.visits ?? [], data?.appointments ?? [], data?.documents ?? []));
   const selectedVisits = visitDates.find((group) => group.date === selectedDate) ?? visitDates[0];
@@ -128,7 +139,7 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
         <section aria-label="Patient summary" className="relative mx-2 -mt-6 flex shrink-0 flex-wrap items-center justify-between gap-4 rounded-2xl border border-saivie-border bg-white px-5 py-4 sm:mx-5 sm:px-6">
           <div className="flex w-full min-w-0 items-center gap-3 sm:w-auto sm:flex-1">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-saivie-teal/10 text-sm font-semibold text-saivie-teal">{patient.name.split(/\s+/).map((part) => part[0]).slice(0, 2).join("")}</span>
-            <div className="min-w-0"><h2 className={`${headingClass} break-words`}>{text(data.detail.name)}</h2><p className="mt-1 text-xs text-muted-foreground">{text(data.detail.age)} years{data.detail.dob ? ` · DOB ${dateLabel(data.detail.dob)}` : ""} · {text(data.detail.phone) || "Phone not recorded"} · {text(data.detail.type) || "Patient type not recorded"}</p></div>
+            <div className="min-w-0"><h2 className={`${headingClass} break-words`}>{text(data.detail.name)}</h2><p className="mt-1 text-xs text-muted-foreground">{age !== null ? `${age} years` : "Age not recorded"}{data.detail.dob ? ` · DOB ${dateLabel(data.detail.dob)}` : ""} · {text(data.detail.phone) || "Phone not recorded"} · {text(data.detail.type) || "Patient type not recorded"}</p></div>
           </div>
           <dl className="grid grid-cols-2 gap-3 text-xs sm:gap-6">
             {[["Earliest recorded visit", datedVisits.at(-1)?.label], ["Latest recorded visit", datedVisits[0]?.label]].map(([label, value]) => <div key={label}><dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</dt><dd className="mt-1">{value || "Not recorded"}</dd></div>)}
@@ -203,7 +214,9 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
           {data.documents.map((doc) => <article key={text(doc.id)} className={`${cardClass} space-y-3`}><h3 className={`${headingClass} flex items-center gap-2`}><FileText className="h-4 w-4 shrink-0 text-saivie-teal" />{text(doc.name) || "Report"}</h3><p className="text-xs text-muted-foreground">{dateLabel(doc.date)}</p><RecordedDetails value={doc.description} /><OriginalReport patientId={patient.id} doc={doc} /></article>)}
         </TabsContent>
         <TabsContent value="pregnancy" className="text-sm">
-          <section className={cardClass}><h3 className={`${headingClass} mb-4`}>Pregnancy details</h3><RecordedDetails value={{ pregnancyStatus: data.detail.pregnancyStatus, clinicianRecordedLmp: data.detail.lmp, patientReportedLmp: object(data.detail.history).patientReportedLmp, obstetric: object(data.detail.history).obstetric }} /></section>
+          {pregnancyLabs.isError && <p role="alert" className={cardClass}>{pregnancyLabs.error.message}<Button variant="link" onClick={() => void pregnancyLabs.refetch()}>Retry pregnancy labs</Button></p>}
+          <PregnancyOverview key={patient.id} patient={{ ...data.detail, id: patient.id }} appointments={data.appointments} visits={data.visits} labs={pregnancyLabs.data || []} documents={data.documents}
+            recordsReady={record.isSuccess && pregnancyLabs.isSuccess} onProfile={onEdit} />
         </TabsContent>
         </div>
       </Tabs></>}

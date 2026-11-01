@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "@workspace/db";
 import { ensureSurgerySchema } from "./surgery-store";
+import { ensurePregnancyEpisodeSchema } from "./pregnancy-episode-store";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set.");
@@ -23,6 +24,7 @@ export async function ensureSchema(): Promise<void> {
   const client = await pool.connect();
   try {
     await ensureSurgerySchema(client);
+    await ensurePregnancyEpisodeSchema(client);
     await client.query(`
       CREATE TABLE IF NOT EXISTS local_report_imports (
         import_id uuid PRIMARY KEY,

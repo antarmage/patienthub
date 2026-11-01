@@ -8,6 +8,7 @@ export interface SummaryVisit {
   planNotes?: string | null;
   followUpPlan?: string | null;
   vitals?: unknown;
+  source?: string;
 }
 
 export interface SummaryLab {
@@ -57,15 +58,16 @@ export function summaryTrends(
   const fundalHeight: SummaryPoint[] = [];
   for (const visit of visits) {
     const vitals = summaryRecord(visit.vitals);
+    const source = visit.source || "Visit";
     const reading = typeof vitals.bp === "string" ? vitals.bp.match(/^(\d+)\s*\/\s*(\d+)$/) : null;
-    if (reading && Number(reading[1]) > 0 && Number(reading[2]) > 0) bp.push({ date: visit.date, value: Number(reading[1]), secondary: Number(reading[2]), source: "Visit" });
+    if (reading && Number(reading[1]) > 0 && Number(reading[2]) > 0) bp.push({ date: visit.date, value: Number(reading[1]), secondary: Number(reading[2]), source });
     const kg = numeric(vitals.weight);
-    if (kg !== null) weight.push({ date: visit.date, value: kg, source: "Visit" });
+    if (kg !== null) weight.push({ date: visit.date, value: kg, source });
     const hemoglobin = numeric(vitals.hb);
-    if (hemoglobin !== null) hb.push({ date: visit.date, value: hemoglobin, source: "Visit" });
+    if (hemoglobin !== null) hb.push({ date: visit.date, value: hemoglobin, source });
     for (const [field, points] of [["pulse", pulse], ["fetalHeartRate", fetalHeart], ["fundalHeight", fundalHeight]] as const) {
       const value = numeric(vitals[field]);
-      if (value !== null) points.push({ date: visit.date, value, source: "Visit" });
+      if (value !== null) points.push({ date: visit.date, value, source });
     }
   }
   for (const log of bpLogs) {

@@ -1,7 +1,8 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, serial, integer, real, date, jsonb, boolean, uniqueIndex, uuid, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, integer, real, date, jsonb, boolean, uniqueIndex, uuid, timestamp, foreignKey, check, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import type { PregnancyEpisodeDetails } from "../pregnancy-episodes";
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -282,6 +283,31 @@ export const visitHistory = pgTable("visit_history", {
 export const insertVisitHistorySchema = createInsertSchema(visitHistory).omit({ id: true });
 export type InsertVisitHistory = z.infer<typeof insertVisitHistorySchema>;
 export type VisitHistory = typeof visitHistory.$inferSelect;
+
+export const pregnancyEpisodes = pgTable("pregnancy_episodes", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  details: jsonb("details").$type<PregnancyEpisodeDetails>().notNull(),
+  version: integer("version").notNull().default(1),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  updatedBy: varchar("updated_by").notNull().references(() => users.id),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [uniqueIndex("pregnancy_episodes_id_patient_idx").on(table.id, table.patientId),
+  uniqueIndex("pregnancy_episodes_number_idx").on(table.patientId, sql`((${table.details}->>'number')::int)`),
+  uniqueIndex("pregnancy_episodes_current_idx").on(table.patientId).where(sql`${table.details}->>'status'='current'`)]);
+
+export const pregnancyEpisodeRecords = pgTable("pregnancy_episode_records", {
+  id: serial("id").primaryKey(),
+  episodeId: integer("episode_id").notNull(),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  appointmentId: integer("appointment_id").unique().references(() => appointments.id),
+  visitId: integer("visit_id").unique().references(() => visitHistory.id),
+  labResultId: integer("lab_result_id").unique().references(() => labResults.id),
+}, (table) => [
+  foreignKey({ name: "pregnancy_episode_records_episode_patient_fk", columns: [table.episodeId, table.patientId], foreignColumns: [pregnancyEpisodes.id, pregnancyEpisodes.patientId] }),
+  check("pregnancy_episode_records_one_record", sql`num_nonnulls(${table.appointmentId},${table.visitId},${table.labResultId})=1`),
+  index("pregnancy_episode_records_patient_idx").on(table.patientId),
+]);
 
 export const medications = pgTable("medications", {
   id: serial("id").primaryKey(),

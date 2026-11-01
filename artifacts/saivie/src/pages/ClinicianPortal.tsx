@@ -5,6 +5,9 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PrescriptionPreview } from "@/components/PrescriptionPreview";
+import { ReceptionPatientEdit } from "@/components/ReceptionPatientEdit";
+import { ReceptionVitalsDialog } from "@/components/ReceptionVitalsDialog";
+import { patientAge, indiaToday } from "@/lib/pregnancyOverview";
 import { MedicineAutocomplete } from "@/components/MedicineAutocomplete";
 import { MedicineDoseInput } from "@/components/MedicineDoseInput";
 import { MedicineFrequencyInput } from "@/components/MedicineFrequencyInput";
@@ -439,6 +442,8 @@ export default function ClinicianPortal() {
   const setCareMode = (mode: string) => setCareModeOverride({ key: careModeKey, mode });
   const [showPastRecords, setShowPastRecords] = useState(true);
   const [selectedTrailVisitId, setSelectedTrailVisitId] = useState<number | string | null>(null);
+  const [pregnancyProfileOpen, setPregnancyProfileOpen] = useState(false);
+  const [pregnancyVitalsOpen, setPregnancyVitalsOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState(() => new URLSearchParams(window.location.search).get("googleMeet") === "connected" ? "google-meet" : "profile");
   const [patientDetailTab, setPatientDetailTab] = useState<'summary' | 'consultation' | 'record' | 'medicine' | 'investigations' | 'postop' | 'genome'>('summary');
   const isPatientOverview = patientDetailTab !== 'postop' && patientDetailTab !== 'genome';
@@ -1194,6 +1199,7 @@ export default function ClinicianPortal() {
   }, [activeAppointment, selectedPatient, appointments]);
 
   const surveyPatient = patients.find((patient: any) => patient.id === selectedPatient?.id) || selectedPatient;
+  const displayedPatientAge = patientAge(surveyPatient || {}, indiaToday());
   const hpvClinicStatus = useHpvClinicStatuses([selectedPatient?.id]);
   const selectedHpvClinicStatus = hpvClinicStatus(selectedPatient?.id);
   const selectedHpvStatus = hpvProtection(hpvSurveyAnswer(surveyPatient), selectedHpvClinicStatus);
@@ -1485,6 +1491,8 @@ export default function ClinicianPortal() {
   const navigateToPatient = (patient: typeof patients[0]) => {
     queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
     setSelectedPatient(patient);
+    setPregnancyProfileOpen(false);
+    setPregnancyVitalsOpen(false);
     setCareModeOverride(null);
     setSelectedTrailVisitId(null);
     setActiveView("patient_detail");
@@ -4633,7 +4641,7 @@ export default function ClinicianPortal() {
                 <div className="border-b border-white/20 px-2 pb-4 pt-1">
                   <h2 className="text-base font-semibold">{selectedPatient.name}</h2>
                   <HpvBadge status={selectedHpvStatus} className="mt-1.5" />
-                  <p className="mt-1 text-xs text-white/80">{selectedPatient.age ? `${selectedPatient.age}y` : 'Age not recorded'}{selectedPatient.type ? ` · ${selectedPatient.type}` : ''}</p>
+                  <p className="mt-1 text-xs text-white/80">{displayedPatientAge !== null ? `${displayedPatientAge}y` : 'Age not recorded'}{selectedPatient.type ? ` · ${selectedPatient.type}` : ''}</p>
                   {selectedPatient.phone && <p className="mt-2 text-xs">{selectedPatient.phone}</p>}
                 </div>
                 <dl className="space-y-4 px-2 py-4 text-xs">
@@ -4685,7 +4693,7 @@ export default function ClinicianPortal() {
                        <div>
                           <div className="flex items-center gap-2">
                              <h2 className="text-sm font-bold text-saivie-plum">{selectedPatient.name}</h2>
-                             <span className="text-[11px] text-saivie-plum font-medium">{selectedPatient.age}y{selectedPatient.phone ? ` · ${selectedPatient.phone}` : ''}</span>
+                             <span className="text-[11px] text-saivie-plum font-medium">{displayedPatientAge !== null ? `${displayedPatientAge}y` : 'Age not recorded'}{selectedPatient.phone ? ` · ${selectedPatient.phone}` : ''}</span>
                              <HpvBadge status={selectedHpvStatus} />
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
@@ -4840,6 +4848,13 @@ export default function ClinicianPortal() {
               complaint={activeAppointment?.chiefComplaint || selectedPatient.appointmentChiefComplaint || activeAppointment?.reason}
               checkInVitals={activeAppointment?.vitals || selectedPatient.appointmentVitals}
               visits={visitHistory}
+              pregnancyData={{ patient: surveyPatient || selectedPatient, appointments: appointmentHistoryQuery.data || [], visits: visitHistory, labs: labResults,
+                documents: patientDocumentsQuery.data || [], ready: appointmentHistoryQuery.isSuccess && visitHistoryQuery.isSuccess && labResultsQuery.isSuccess && patientDocumentsQuery.isSuccess }}
+              onProfile={() => setPregnancyProfileOpen(true)}
+              onVitals={activeAppointment?.date === indiaToday() &&
+                !activeAppointment?.seenAt && !activeAppointment?.completedAt &&
+                ["scheduled", "booked", "confirmed", "checked-in"].includes(String(activeAppointment?.status).toLowerCase()) &&
+                !/lab|usg|ultrasound/i.test(String(activeAppointment?.type)) ? () => setPregnancyVitalsOpen(true) : undefined}
               trail={visitTrail(visitHistory, appointmentHistoryQuery.data || [], patientDocumentsQuery.data || [])}
               onRecord={() => setPatientDetailTab('record')}
               labs={labResults}
@@ -4862,6 +4877,9 @@ export default function ClinicianPortal() {
               ].map(({ label, query }) => ({ label, loading: query.isLoading, failed: query.isError, retry: () => { void query.refetch(); } }))}
               onConsultation={() => setPatientDetailTab('consultation')}
             />}
+            {pregnancyProfileOpen && <ReceptionPatientEdit key={selectedPatient.id} patient={selectedPatient} onClose={() => setPregnancyProfileOpen(false)} />}
+            {pregnancyVitalsOpen && activeAppointment && <ReceptionVitalsDialog key={activeAppointment.id} appointment={activeAppointment}
+              patient={selectedPatient} onClose={() => { setPregnancyVitalsOpen(false); void appointmentHistoryQuery.refetch(); }} />}
 
             {patientDetailTab === 'record' && (
               <div className="min-h-0 flex-1 overflow-y-auto bg-saivie-surface-muted">
