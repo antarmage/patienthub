@@ -133,10 +133,16 @@ test("vitals entry and minimal prefill work with clinical read off without queue
     }
     assert.deepEqual(await (await request("/api/appointments/4/reception-vitals", "reception")).json(), { appointmentId: 4, patientId: 7, vitals: { pulse: 72 }, lmp: null });
     const response = await request("/api/appointments/4/reception-vitals", "desk", "POST", {
-      vitals: { bp: "120/80", weight: "60", height: "165", temp: "36.6", recordedAt: "spoof" }, lmp: "2026-01-01",
+      vitals: { bp: "120/80", weight: "60", height: "165", temp: "98.6", recordedAt: "spoof" }, lmp: "2026-01-01",
     });
     assert.equal(response.status, 200);
     const body = await response.json() as { vitals: Record<string, unknown>; lmp: string | null };
+    assert.equal(body.vitals.temp, 98.6);
+    const beforeInvalidTemperature = store.writes;
+    const invalidTemperature = await request("/api/appointments/4/reception-vitals", "desk", "POST", { vitals: { pulse: 80, temp: 37 }, lmp: null });
+    assert.equal(invalidTemperature.status, 400);
+    assert.deepEqual(await invalidTemperature.json(), { error: "Temperature must be between 86 and 113 °F" });
+    assert.equal(store.writes, beforeInvalidTemperature);
     assert.equal(body.vitals.pulse, 72); assert.equal(body.vitals.weight, 60); assert.equal(body.vitals.recordedBy, "desk");
     assert.notEqual(body.vitals.recordedAt, "spoof"); assert.equal(body.lmp, "2026-01-01");
     assert.equal((store.vitals as Record<string, unknown>).rr, 18);
@@ -160,7 +166,7 @@ test("vitals entry and minimal prefill work with clinical read off without queue
 });
 
 test("measurement validation rejects provenance, clinical fields, impossible dates, invalid BP and nonfinite/coerced values", () => {
-  const valid = { vitals: { bp: "120/80", pulse: 70, temp: 36.8, spo2: 99, weight: 60, height: 165, bmi: 22 }, lmp: "2026-01-01" };
+  const valid = { vitals: { bp: "120/80", pulse: 70, temp: 98.6, spo2: 99, weight: 60, height: 165, bmi: 22 }, lmp: "2026-01-01" };
   assert.ok(receptionVitalsSchema.safeParse(valid).success);
   const invalid: unknown[] = [
     {}, { ...valid, patientId: 8 }, { ...valid, status: "completed" },
@@ -168,7 +174,7 @@ test("measurement validation rejects provenance, clinical fields, impossible dat
     { ...valid, vitals: {} }, { ...valid, vitals: { recordedAt: "spoof" } },
     ...["120", "80/120", "10/5", "300/80", "120/200"].map((bp) => ({ ...valid, vitals: { bp } })),
     ...[NaN, Infinity, -Infinity, true, {}, [], "", "Infinity", "70bpm", -1, 251].map((pulse) => ({ ...valid, vitals: { pulse } })),
-    { ...valid, vitals: { temp: 98.6 } }, { ...valid, vitals: { spo2: 101 } },
+    ...[36.8, 85.9, 113.1].map((temp) => ({ ...valid, vitals: { temp } })), { ...valid, vitals: { spo2: 101 } },
     { ...valid, vitals: { weight: 0 } }, { ...valid, vitals: { height: 0 } },
     { ...valid, vitals: { bmi: -1 } }, { ...valid, vitals: { recordedBy: "doctor", pulse: 70 } },
   ];
@@ -180,4 +186,12 @@ test("measurement validation rejects provenance, clinical fields, impossible dat
   const update = prepareReceptionVitals({ bp: "110/70", pulse: 72 }, { vitals: { pulse: 80, recordedAt: "spoof" }, lmp: null }, "reception", "2026-01-01T00:00:00Z");
   assert.deepEqual(update.vitals, { bp: "110/70", pulse: 80, recordedAt: "2026-01-01T00:00:00Z", recordedBy: "reception" });
   assert.deepEqual(update.patientReportedLmp, { value: null, source: "patient-reported", recordedAt: "2026-01-01T00:00:00Z", recordedBy: "reception" });
+});
+
+test("reception temperature accepts Fahrenheit decimals and exact bounds without changing stored units", () => {
+  for (const temp of [86, 98.6, 100.4, 113, "86", "98.6", "113"]) {
+    const result = receptionVitalsSchema.safeParse({ vitals: { temp }, lmp: null });
+    assert.ok(result.success);
+    assert.equal(result.data.vitals?.temp, Number(temp));
+  }
 });

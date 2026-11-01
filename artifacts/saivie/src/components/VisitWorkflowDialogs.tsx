@@ -61,6 +61,10 @@ export function VitalsDialog({ appointment, patient, saving, onClose, onSave, re
   const lmpValue = lmp || null;
 
   const submit = () => {
+    if (form.temp && (!Number.isFinite(Number(form.temp)) || Number(form.temp) < 86 || Number(form.temp) > 113)) {
+      toast({ title: "Check the temperature", description: "Enter temperature in °F, between 86 and 113 (for example, 98.6).", variant: "destructive" });
+      return;
+    }
     if (Boolean(form.systolic) !== Boolean(form.diastolic) ||
         Object.values(form).some((value) => value !== "" && (!Number.isFinite(Number(value)) || Number(value) <= 0)) ||
         (form.spo2 && Number(form.spo2) > 100)) {
@@ -105,8 +109,8 @@ export function VitalsDialog({ appointment, patient, saving, onClose, onSave, re
             <Input type="number" value={form.pulse} onChange={set("pulse")} data-testid="input-vitals-pulse" />
           </div>
           <div className="space-y-1">
-            <Label>Temperature ({recordingOnly ? "°C" : "°F"})</Label>
-            <Input type="number" value={form.temp} onChange={set("temp")} />
+            <Label>Temperature (°F)</Label>
+            <Input type="number" min={86} max={113} step="0.1" placeholder="98.6" value={form.temp} onChange={set("temp")} data-testid="input-vitals-temperature" />
           </div>
           <div className="space-y-1">
             <Label>SpO₂ (%)</Label>

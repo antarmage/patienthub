@@ -131,7 +131,7 @@ Both methods return `{appointmentId, patientId, vitals, lmp}`. GET contains only
 POST accepts the strict body `{vitals: {bp?, pulse?, temp?, spo2?, weight?, height?, bmi?, recordedAt?} | null, lmp: string | null}`. An object must contain at least one measurement. Numeric fields accept finite numbers or numeric decimal strings and persist as numbers:
 
 - `bp`: `systolic/diastolic` string; systolic 50–260, diastolic 30–180, systolic greater than diastolic.
-- Pulse 20–250 bpm; temperature 30–45 °C; SpO2 50–100%; weight 0.1–500 kg; height 30–250 cm; BMI 0.1–150.
+- Pulse 20–250 bpm; temperature 86–113 °F (matching check-in and clinical display units); SpO2 50–100%; weight 0.1–500 kg; height 30–250 cm; BMI 0.1–150. Temperature input is explicitly Fahrenheit; Celsius values are rejected with a unit-specific error, not silently converted. Deploy the API and frontend together for this correction. Existing measurements are not rewritten.
 - LMP: a real `YYYY-MM-DD` date, not in the future in clinic India time, or null. Unknown keys, clinical fields, submitted actor/source fields, booleans, blank strings, and invalid/range-exceeding measurements return 400. Submitted `recordedAt` is ignored; `recordedAt`/`recordedBy` are generated server-side.
 
 Measurement objects merge into the current appointment vitals; `vitals: null` leaves them unchanged. POST never advances the queue/check-in state or creates a visit, medication, diagnosis, or clinical note. A locked transaction permits updates only for `scheduled`, `booked`, `confirmed`, or `checked-in` appointments with neither `seenAt` nor `completedAt`; consultation-started, completed, cancelled, no-show, or unknown states return 409 without writes, even for a doctor using this receptionist endpoint.

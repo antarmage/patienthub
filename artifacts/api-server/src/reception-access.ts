@@ -17,7 +17,7 @@ const measurementSchema = z.object({
     return systolic >= 50 && systolic <= 260 && diastolic >= 30 && diastolic <= 180 && systolic > diastolic;
   }, "Invalid blood pressure"),
   pulse: numericMeasurement(20, 250),
-  temp: numericMeasurement(30, 45),
+  temp: numericMeasurement(86, 113),
   spo2: numericMeasurement(50, 100),
   weight: numericMeasurement(0.1, 500),
   height: numericMeasurement(30, 250),
@@ -118,7 +118,9 @@ export function registerReceptionAccessRoutes(app: Express, dependencies: Recept
     try {
       if (!write) return res.json(await dependencies.getVitals(id));
       const parsed = receptionVitalsSchema.safeParse(req.body);
-      if (!parsed.success) return res.status(400).json({ error: parsed.error.issues.map((issue) => issue.message).join("; ") });
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.issues.map((issue) =>
+        issue.path.join(".") === "vitals.temp" ? "Temperature must be between 86 and 113 °F" : `${issue.path.join(".")}: ${issue.message}`,
+      ).join("; ") });
       res.json(await dependencies.saveVitals(id, parsed.data, actor.userId));
     } catch (error) {
       const status = (error as { status?: number }).status;
