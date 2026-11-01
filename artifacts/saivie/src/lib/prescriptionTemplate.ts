@@ -16,6 +16,7 @@ export interface PrescriptionData {
   };
   pregnancyInfo: string;
   chiefComplaint: string;
+  history?: string;
   clinicalFindings: string;
   observation: string;
   assessment: string;
@@ -104,6 +105,7 @@ export function generatePrescriptionHTML(data: PrescriptionData, options: { prin
   ${data.patient.phone || data.patient.address ? `<div class="patient-meta">${escapeText([data.patient.phone && `Phone: ${data.patient.phone}`, data.patient.address].filter(Boolean).join(" · "))}</div>` : ""}
   ${vitals ? `<div class="vitals">${vitals}</div>` : ""}</div>
   <div class="columns"><div class="left">${section("Chief complaint", data.chiefComplaint, true)}
+  ${section("History", data.history || "")}
   ${section("Pregnancy details", [data.patient.lmp && `LMP: ${displayDate(data.patient.lmp)}`, data.pregnancyInfo].filter(Boolean).join("\n"))}
   <section class="clinical-section"><h2>Investigation</h2>${data.investigations.length ? `<ul class="investigations">${data.investigations.map((test) => `<li>${escapeText(test)}</li>`).join("")}</ul>` : '<p class="unrecorded">Not recorded</p>'}</section>
   ${section("O/E", findings, true)}${section("Assessment", data.assessment)}${section("Diagnosis", data.diagnosis)}</div>

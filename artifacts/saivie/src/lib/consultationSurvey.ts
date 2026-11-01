@@ -154,10 +154,27 @@ export interface EffectiveConsultationSurvey {
     fromPatient: (question: string) => boolean;
 }
 
-export function effectiveConsultationSurvey(survey: ConsultationSurvey, edits: ConsultationSurveyEdits, recordedPaths: string[] = []): EffectiveConsultationSurvey {
-    const directions = edits.directions ?? survey.directions;
-    const paths = edits.paths ?? [...new Set([...pathsForDirections(survey.directions), ...recordedPaths])];
-    const answers = { ...survey.answers, ...edits.answers };
+export function readConsultationHistory(value: unknown): ConsultationSurveyEdits | undefined {
+    if (!value || typeof value !== "object" || !("paths" in value) || !Array.isArray(value.paths)) return undefined;
+    const survey = readConsultationSurvey(value);
+    return { ...survey, paths: value.paths.filter((path): path is string => typeof path === "string" && consultationPaths.includes(path)) };
+}
+
+export function consultationHistory(current: EffectiveConsultationSurvey): ConsultationSurveyEdits {
+    return { paths: current.paths, ...readConsultationSurvey(current) };
+}
+
+export function consultationHistoryText(value: unknown): string {
+    const history = readConsultationHistory(value);
+    if (!history) return "";
+    return surveyQuestions(history.directions || []).flatMap((question) =>
+        history.answers[question]?.trim() ? [`${question} ${history.answers[question].trim()}`] : []).join("\n");
+}
+
+export function effectiveConsultationSurvey(survey: ConsultationSurvey, edits: ConsultationSurveyEdits, recordedPaths: string[] = [], saved?: ConsultationSurveyEdits): EffectiveConsultationSurvey {
+    const directions = edits.directions ?? saved?.directions ?? survey.directions;
+    const paths = edits.paths ?? saved?.paths ?? [...new Set([...pathsForDirections(survey.directions), ...recordedPaths])];
+    const answers = { ...survey.answers, ...saved?.answers, ...edits.answers };
     return {
         paths,
         directions,

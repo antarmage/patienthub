@@ -3,6 +3,7 @@ import { it } from "node:test";
 import {
     consultationDirectionsByPath, consultationSurveyForVisit, guidedQuestionsByDirection, hasVisitSurvey,
     patientSurveyPrompt, readConsultationSurvey, surveyDirectionLabels, surveyDirectionsForConcerns, surveyQuestions,
+    consultationHistory, consultationHistoryText, readConsultationHistory, effectiveConsultationSurvey,
 } from "./consultationSurvey.ts";
 
 it("routes all former doctor directions into patient-friendly survey topics", () => {
@@ -20,6 +21,34 @@ it("routes all former doctor directions into patient-friendly survey topics", ()
     assert.deepEqual(surveyDirectionsForConcerns(["Vaginal discharge or infection"]), consultationDirectionsByPath["Vaginal discharge or infection"]);
     assert.deepEqual(surveyDirectionsForConcerns(["Breast problem"]), consultationDirectionsByPath.Other);
     assert.deepEqual(surveyDirectionsForConcerns([]), []);
+});
+
+it("saves all maternal answers and restores only the selected visit's clinician history", () => {
+    const survey = { directions: [], answers: {} };
+    const questions = guidedQuestionsByDirection["Maternal symptoms"];
+    const answers = Object.fromEntries(questions.map((question, index) => [question, ["No pain or fluid loss", "No headache", "Usual movement", "This morning"][index]]));
+    const current = effectiveConsultationSurvey(survey, {
+        paths: ["Pregnancy-related concern"], directions: ["Maternal symptoms"], answers,
+    });
+    const stored = JSON.parse(JSON.stringify(consultationHistory(current)));
+    const reopened = effectiveConsultationSurvey(survey, { answers: {} }, [], readConsultationHistory(stored));
+    assert.deepEqual(reopened.answers, answers);
+    assert.deepEqual(reopened.paths, current.paths);
+    assert.deepEqual(reopened.directions, current.directions);
+    for (const [question, answer] of Object.entries(answers)) assert.ok(consultationHistoryText(stored).includes(`${question} ${answer}`));
+    assert.deepEqual(effectiveConsultationSurvey(survey, { answers: {} }).answers, {});
+    const changed = effectiveConsultationSurvey(survey, { answers: { [questions[0]]: "" } }, [], readConsultationHistory(stored));
+    assert.equal(changed.answers[questions[0]], "");
+    assert.ok(!consultationHistoryText(consultationHistory(changed)).includes(questions[0]));
+});
+
+it("drops hidden history answers and preserves explicit cleared topic selections", () => {
+    const stored = readConsultationHistory({
+        paths: [], directions: [], answers: { "When did symptoms begin?": "Old answer" },
+    });
+    const current = effectiveConsultationSurvey({ directions: ["Maternal symptoms"], answers: {} }, { answers: {} }, ["Pregnancy-related concern"], stored);
+    assert.deepEqual(consultationHistory(current), { paths: [], directions: [], answers: {} });
+    assert.equal(consultationHistoryText(null), "");
 });
 
 it("deduplicates overlapping topics and questions", () => {

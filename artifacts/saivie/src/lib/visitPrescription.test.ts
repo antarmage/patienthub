@@ -24,3 +24,14 @@ test("missing visit medicines and follow-up are not filled from unrelated patien
   assert.equal(data.nextFollowUp, "");
   assert.equal(data.clinicalFindings, "");
 });
+
+test("prints the saved visit's guided history without carrying another visit's survey", () => {
+  const visit = { examination: { consultationHistory: {
+    paths: ["Pregnancy-related concern"], directions: ["Maternal symptoms"],
+    answers: { "Any pain, bleeding, fluid loss, or fever?": "None", "When did symptoms begin?": "Today" },
+  } } };
+  const patient = { name: "Synthetic", history: { onboarding: { consultation: { answers: { "When did symptoms begin?": "Last month" } } } } };
+  const data = visitPrescription(patient, visit, { name: "Doctor" });
+  assert.equal(data.history, "Any pain, bleeding, fluid loss, or fever? None\nWhen did symptoms begin? Today");
+  assert.equal(visitPrescription(patient, {}, { name: "Doctor" }).history, "");
+});

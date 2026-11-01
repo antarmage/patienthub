@@ -11,6 +11,7 @@ import { hasHistoryValue, receptionPatientHistory } from "@/lib/receptionPatient
 import { calendarDate } from "@/lib/calendarDates";
 import { useToast } from "@/hooks/use-toast";
 import { PrescriptionPreview } from "@/components/PrescriptionPreview";
+import { consultationHistoryText } from "@/lib/consultationSurvey";
 
 type ClinicalRecord = Record<string, unknown>;
 function object(value: unknown): ClinicalRecord {
@@ -151,7 +152,7 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
               {selectedVisits.records.map((visit) => <article key={text(visit.id)} className={`${cardClass} space-y-4`} data-testid={`reception-visit-record-${text(visit.id)}`}>
                 <h4 className={headingClass}>{object(visit.prescriptions).source === "receptionist-paper-transcription" ? "Paper prescription transcription" : text(visit.visitType) || "Consultation"}</h4>
                 <PrescriptionPreview patient={data.detail} visit={visit} />
-                <HistoryFields fields={{ Complaint: visit.chiefComplaint, Examination: visit.examination || visit.objective, Diagnosis: visit.diagnosis, Assessment: visit.assessment, Vitals: visit.vitals }} />
+                <HistoryFields fields={{ Complaint: visit.subjective || visit.chiefComplaint, History: consultationHistoryText(object(visit.examination).consultationHistory), Examination: visit.objective || object(visit.examination).findings || visit.examination, Diagnosis: visit.diagnosis, Assessment: visit.assessment, Vitals: visit.vitals }} />
                 <details className="rounded-lg border p-3"><summary className="cursor-pointer font-medium">Prescription & follow-up</summary><div className="mt-3"><RecordedDetails value={{ medicines: object(visit.prescriptions).medicines || (Array.isArray(visit.prescriptions) ? visit.prescriptions : null), advice: visit.planNotes, followUp: visit.followUpPlan, tests: visit.labsOrdered }} /></div></details>
               </article>)}
               <p className="flex items-start gap-2 rounded-xl bg-saivie-teal/5 p-3 text-xs text-muted-foreground"><LockKeyhole className="h-4 w-4 shrink-0" />Doctor-authored encounters are read-only. Patient history edits do not change these visit records.</p>

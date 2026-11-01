@@ -43,3 +43,16 @@ it("shows saved assessment certainty and evidence in the visit record", () => {
   assert.match(html, /Cycle length: 51 days/);
   assert.match(html, /Patient-reported survey/);
 });
+
+it("shows the selected visit's saved guided history alongside the chief complaint", () => {
+  const html = renderToStaticMarkup(<PatientVisitTimeline visits={[{
+    id: 11, date: "2026-11-01", subjective: "Antenatal review",
+    examination: { consultationHistory: {
+      paths: ["Pregnancy-related concern"], directions: ["Maternal symptoms"],
+      answers: { "Any pain, bleeding, fluid loss, or fever?": "No", "When did symptoms begin?": "Today" },
+    } },
+  }]} />);
+  assert.match(html, /Antenatal review/);
+  assert.match(html, /Any pain, bleeding, fluid loss, or fever\? No/);
+  assert.match(html, /When did symptoms begin\? Today/);
+});

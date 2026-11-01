@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ChevronRight, FileText } from "lucide-react";
 import { NoRecordsIllustration } from "./NoRecordsIllustration";
+import { consultationHistoryText } from "@/lib/consultationSurvey";
 
 type AnyRecord = Record<string, any>;
 
@@ -108,7 +109,8 @@ export function PatientVisitTimeline({ visits, isLoading, isError, onRetry }: { 
         </header>
         <div className="space-y-1.5">
           <Row label="Vitals" value={vitalsLine} />
-          <Row label="Complaint" value={text(visit.chiefComplaint)} />
+          <Row label="Complaint" value={text(visit.subjective || visit.chiefComplaint)} />
+          <Row label="History" value={consultationHistoryText(visit.examination?.consultationHistory)} />
           <Row label="O/E" value={examination} />
           <Row label="Diagnosis" value={text(visit.diagnosis)} />
           <Row label="Assessment" value={text(visit.assessment)} />

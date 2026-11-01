@@ -1,5 +1,6 @@
 import { examinationRecord } from "./obstetricExamination";
 import { pregnancyWeeks } from "./prescriptionTests";
+import { consultationHistoryText } from "./consultationSurvey";
 import type { PrescriptionData } from "./prescriptionTemplate";
 
 const text = (value: unknown) => typeof value === "string" || typeof value === "number" ? String(value) : "";
@@ -25,6 +26,7 @@ export function visitPrescription(patient: Record<string, unknown>, visit: Recor
     pregnancyInfo: text(vitals.pog) ? `POG: ${text(vitals.pog)}` : weeks !== null && /pregnan|antenatal|obs/i.test(text(patient.type))
       ? `Gestation at visit (LMP estimate): ${Math.floor(weeks)}w ${Math.round((weeks % 1) * 7)}d` : "",
     chiefComplaint: text(visit.subjective || visit.chiefComplaint),
+    history: consultationHistoryText(examination.consultationHistory),
     clinicalFindings: text(visit.objective || examination.findings || (typeof visit.examination === "string" ? visit.examination : "")),
     observation: "", assessment: text(visit.assessment), diagnosis: text(visit.diagnosis),
     medications: rawMedicines.map((raw: unknown) => {

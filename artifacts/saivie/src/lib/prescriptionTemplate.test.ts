@@ -42,6 +42,12 @@ it("escapes medicine details instead of treating them as print markup", () => {
   assert.ok(html.includes("&lt;b&gt;After food&lt;/b&gt;"));
   assert.ok(!html.includes("<script>example</script>"));
 });
+it("includes escaped guided history and default branding without requiring an uploaded logo", () => {
+  const html = generatePrescriptionHTML({ ...prescription, history: "When did symptoms begin? Today <review>" });
+  assert.ok(html.includes("<h2>History</h2>"));
+  assert.ok(html.includes("Today &lt;review&gt;"));
+  assert.ok(html.includes('class="logo-name">SAIVIE'));
+});
   it("prints full A4 letterhead with the selected visit date and escaped clinical data", () => {
     const html = generatePrescriptionHTML({
       ...prescription, providerQualification: "MBBS, DNB", providerRegistration: "123 / Council",

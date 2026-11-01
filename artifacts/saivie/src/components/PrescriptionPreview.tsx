@@ -17,7 +17,7 @@ export function PrescriptionPreview({ patient, visit, providerId, draft = false,
   const frame = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
   const details = useQuery({
-    queryKey: ["prescription-letterhead", visit.id, visit.appointmentId, providerId],
+    queryKey: ["prescription-letterhead", patient.id, visit.id, visit.appointmentId, visit.providerId, providerId],
     enabled: open,
     queryFn: async ({ signal }) => {
       let id = visit.providerId || providerId;
@@ -38,8 +38,8 @@ export function PrescriptionPreview({ patient, visit, providerId, draft = false,
       const provider = providers.map(examinationRecord).find((item) => String(item.id) === String(id));
       if (!provider || typeof provider.name !== "string") throw new Error("The assigned doctor's saved details could not be loaded.");
       const logoUrl = examinationRecord(template).logoUrl;
-      if (typeof logoUrl !== "string" || !logoUrl.trim()) throw new Error("Upload the clinic logo in clinic settings before printing the letterhead.");
-      return { provider, logoUrl: prescriptionLogoSource(logoUrl) };
+      if (logoUrl != null && typeof logoUrl !== "string") throw new Error("The clinic API returned an invalid logo. Update clinic settings before printing.");
+      return { provider, logoUrl: typeof logoUrl === "string" && logoUrl.trim() ? prescriptionLogoSource(logoUrl) : "" };
     },
     retry: false,
   });
@@ -68,7 +68,8 @@ export function PrescriptionPreview({ patient, visit, providerId, draft = false,
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="flex h-[90dvh] max-w-5xl flex-col">
         <DialogHeader><DialogTitle>Prescription preview · {String(patient.name || "Patient")}</DialogTitle>
-          <DialogDescription>A4 · full Saivie letterhead · {draft ? "Unsaved draft, not ready to issue." : "Recorded visit prescription."}</DialogDescription></DialogHeader>
+          <DialogDescription>A4 · full Saivie letterhead · {draft ? "Unsaved draft. Close this preview and click Save note to enable printing." : "Recorded visit prescription."}</DialogDescription></DialogHeader>
+        {details.data && !details.data.logoUrl && <p role="status" className="text-xs text-muted-foreground">No custom clinic logo is uploaded. The prescription uses the default Saivie text letterhead.</p>}
         {details.isPending && <p role="status">Loading saved doctor details and clinic logo...</p>}
         {details.isError && <p role="alert">{details.error.message} <Button variant="link" onClick={() => void details.refetch()}>Retry</Button></p>}
         {html && <iframe ref={frame} title="A4 prescription preview" srcDoc={html} sandbox="allow-same-origin allow-modals" onLoad={() => setReady(true)} className="min-h-0 w-full flex-1 rounded-lg border bg-white" />}
