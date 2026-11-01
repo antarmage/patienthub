@@ -46,6 +46,7 @@ import { fetchDirectoryAppointments, directoryPatientIds, type DirectoryAppointm
 import { pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
 import { prescriptionTestOptions } from "@/lib/prescriptionTests";
 import { clinicalCareMode } from "@/lib/clinicalCareMode";
+import { clinicianNavigationSearch, readClinicianNavigation, type PatientDetailTab, type ConsultationStep } from "@/lib/clinicianNavigation";
 import { ObstetricExamination } from "@/components/ObstetricExamination";
 import { examinationRecord, readObstetricExamination, relevantObstetricExamination, obstetricExaminationError, obstetricNotes, obstetricObjective, obstetricVisitExamination, type ObstetricExamination as ObstetricExam } from "@/lib/obstetricExamination";
 import { 
@@ -158,8 +159,6 @@ interface ClinicianBpLog {
   date: string;
   loggedAt: string;
 }
-
-type ConsultationStep = 'reason' | 'explore' | 'examine' | 'evidence' | 'plan';
 
 const consultationSteps: { id: ConsultationStep; label: string }[] = [
   { id: 'reason', label: 'Reason' },
@@ -428,8 +427,16 @@ export default function ClinicianPortal() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const patientSearchParams = useSearch();
+  const [initialLocation] = useState(() => ({
+    ...readClinicianNavigation(window.location.search),
+    patientId: new URLSearchParams(window.location.search).get("patientId"),
+  }));
   const openedPatientLink = React.useRef<string | null>(null);
-  const [activeView, setActiveView] = useState(() => new URLSearchParams(window.location.search).get("googleMeet") === "connected" ? "settings" : "dashboard");
+  const restoringPatientLocation = React.useRef<{ patientId: string; tab: PatientDetailTab; step: ConsultationStep } | null>(
+    initialLocation.view === "patient_detail" && initialLocation.patientId
+      ? { patientId: initialLocation.patientId, tab: initialLocation.tab, step: initialLocation.step } : null,
+  );
+  const [activeView, setActiveView] = useState<string>(initialLocation.view);
   const [sidebarPinned, setSidebarPinned] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [sidebarFocused, setSidebarFocused] = useState(false);
@@ -447,9 +454,9 @@ export default function ClinicianPortal() {
   const [pregnancyProfileOpen, setPregnancyProfileOpen] = useState(false);
   const [pregnancyVitalsOpen, setPregnancyVitalsOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState(() => new URLSearchParams(window.location.search).get("googleMeet") === "connected" ? "google-meet" : "profile");
-  const [patientDetailTab, setPatientDetailTab] = useState<'summary' | 'consultation' | 'record' | 'medicine' | 'investigations' | 'postop' | 'genome'>('summary');
+  const [patientDetailTab, setPatientDetailTab] = useState<PatientDetailTab>(initialLocation.tab);
   const isPatientOverview = patientDetailTab !== 'postop' && patientDetailTab !== 'genome';
-  const [consultationStep, setConsultationStep] = useState<ConsultationStep>('reason');
+  const [consultationStep, setConsultationStep] = useState<ConsultationStep>(initialLocation.step);
   const [consultationEdits, setConsultationEdits] = useState<ConsultationSurveyEdits>({ answers: {} });
   const [assessmentEdits, setAssessmentEdits] = useState<{ key: string; draft: AssessmentDraft } | null>(null);
   const [notePreviewOpen, setNotePreviewOpen] = useState(false);
@@ -1487,10 +1494,10 @@ export default function ClinicianPortal() {
   };
 
   useEffect(() => {
-    if (patients.length > 0 && !selectedPatient) {
+    if (patients.length > 0 && !selectedPatient && !new URLSearchParams(patientSearchParams).get("patientId")) {
       setSelectedPatient(patients[0]);
     }
-  }, [patients, selectedPatient]);
+  }, [patients, selectedPatient, patientSearchParams]);
 
   // Set the theme attribute on mount
   useEffect(() => {
@@ -1538,9 +1545,13 @@ export default function ClinicianPortal() {
       String(item.id) === appointmentId && String(item.patientId) === patientId,
     ) : null;
     if (!patient || (appointmentId && !appointment)) {
+      restoringPatientLocation.current = null;
+      setActiveView("patient_list");
       toast({ title: 'Unable to open details', description: !patient ? 'Patient not found in your directory.' : 'Appointment not found in the loaded schedule.', variant: 'destructive' });
       return;
     }
+    const location = readClinicianNavigation(patientSearchParams);
+    restoringPatientLocation.current = { patientId, tab: location.tab, step: location.step };
     navigateToPatient(appointment ? {
       ...patient,
       appointmentId: appointment.id,
@@ -1550,7 +1561,27 @@ export default function ClinicianPortal() {
       appointmentVitals: appointment.vitals,
       appointmentChiefComplaint: appointment.chiefComplaint,
     } : patient);
+    setPatientDetailTab(location.tab);
+    setConsultationStep(location.step);
   }, [patientSearchParams, patientsQuery.isSuccess, appointmentsQuery.isSuccess, patients, appointments]);
+
+  useEffect(() => {
+    const restoring = restoringPatientLocation.current;
+    if (restoring) {
+      if (openedPatientLink.current !== patientSearchParams ||
+        String(selectedPatient?.id) !== restoring.patientId || activeView !== "patient_detail" ||
+        patientDetailTab !== restoring.tab || consultationStep !== restoring.step) return;
+      restoringPatientLocation.current = null;
+    }
+    if (activeView === "patient_detail" && !selectedPatient) return;
+    const search = clinicianNavigationSearch(patientSearchParams, {
+      view: activeView, patientId: selectedPatient?.id, appointmentId: selectedPatient?.appointmentId,
+      tab: patientDetailTab, step: consultationStep,
+    });
+    if (search === new URLSearchParams(patientSearchParams).toString()) return;
+    openedPatientLink.current = search;
+    navigate(`${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`, { replace: true });
+  }, [activeView, selectedPatient?.id, selectedPatient?.appointmentId, patientDetailTab, consultationStep, patientSearchParams, navigate]);
 
   const toggleVoiceCapture = async () => {
     if (isRecording) {
