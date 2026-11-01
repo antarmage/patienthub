@@ -38,6 +38,8 @@ import { PatientReportsList, ReportViewButton, reportFileLink } from "@/componen
 import { fetchDirectoryAppointments, directoryPatientIds, type DirectoryAppointment } from "@/lib/patientDirectory";
 import { pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
 import { prescriptionTestOptions } from "@/lib/prescriptionTests";
+import { ObstetricExamination } from "@/components/ObstetricExamination";
+import { examinationRecord, readObstetricExamination, relevantObstetricExamination, obstetricExaminationError, obstetricNotes, obstetricObjective, obstetricVisitExamination, type ObstetricExamination as ObstetricExam } from "@/lib/obstetricExamination";
 import { 
   LayoutDashboard, 
   Users, 
@@ -467,7 +469,9 @@ export default function ClinicianPortal() {
   const [soapTranscript, setSoapTranscript] = useState<{subjective: string; objective: string; assessment: string; plan: string; rawTranscript: string} | null>(null);
   const [soapSubjectiveDraft, setSoapSubjectiveDraft] = useState("");
   const [treatmentResponseDraft, setTreatmentResponseDraft] = useState('');
-  const [soapObjectiveDraft, setSoapObjectiveDraft] = useState("");
+  const [objectiveEdits, setObjectiveEdits] = useState<{ key: string; value: string } | null>(null);
+  const [obstetricEdits, setObstetricEdits] = useState<{ key: string; value: ObstetricExam } | null>(null);
+  const [obstetricPanelKey, setObstetricPanelKey] = useState<string | null>(null);
   const [soapAssessmentDraft, setSoapAssessmentDraft] = useState("");
   const [soapPlanDraft, setSoapPlanDraft] = useState("");
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
@@ -1280,6 +1284,22 @@ export default function ClinicianPortal() {
     (visit: { id: number; appointmentId?: number }) => visit.id === savedEncounterId.current ||
       (activeAppointment?.id && visit.appointmentId === activeAppointment.id),
   );
+  const recordedObstetric = readObstetricExamination(examinationRecord(assessmentVisit?.examination).obstetric);
+  const obstetricDraft = obstetricEdits?.key === consultationSurveyKey ? obstetricEdits.value : recordedObstetric;
+  const obstetricDirty = obstetricEdits?.key === consultationSurveyKey &&
+    JSON.stringify(relevantObstetricExamination(obstetricDraft)) !== JSON.stringify(relevantObstetricExamination(recordedObstetric));
+  const hasObstetricRecord = Object.values(recordedObstetric).some((value) => value.trim());
+  const showObstetricPanel = showPregnancyContext || hasObstetricRecord || obstetricPanelKey === consultationSurveyKey ||
+    surveyPatient?.history?.onboarding?.pregnancies?.currentStatus === "Yes";
+  const savedObjectiveNotes = obstetricNotes(assessmentVisit?.examination, assessmentVisit?.objective);
+  const soapObjectiveDraft = objectiveEdits?.key === consultationSurveyKey ? objectiveEdits.value : savedObjectiveNotes;
+  const consultationObjective = obstetricObjective(soapObjectiveDraft, obstetricDraft);
+  const setSoapObjectiveDraft = (update: React.SetStateAction<string>) => {
+    setObjectiveEdits((current) => {
+      const value = current?.key === consultationSurveyKey ? current.value : savedObjectiveNotes;
+      return { key: consultationSurveyKey, value: typeof update === "function" ? update(value) : update };
+    });
+  };
   const orderedConsultationTests = consultationTests ?? visitTests(assessmentVisit);
   const selectedInvestigations = new Set(orderedConsultationTests);
   const assessmentDraft = assessmentEdits?.key === consultationSurveyKey ? assessmentEdits.draft
@@ -1292,7 +1312,7 @@ export default function ClinicianPortal() {
   }] : []), ...assembleEvidence({
     answers: guidedAnswers, fromPatient: effectiveSurvey.fromPatient, questions: surveyQuestions(selectedDirections),
     subjective: soapSubjectiveDraft || assessmentVisit?.subjective || "",
-    objective: soapObjectiveDraft || assessmentVisit?.objective || "",
+    objective: consultationObjective,
     appointmentDate: activeAppointment?.date || assessmentVisit?.date,
     lmp: selectedPatient?.lmp, fertility: selectedPaths.includes('Fertility evaluation'),
     visits: visitHistory.filter((visit: { id: number }) => visit.id !== assessmentVisit?.id),
@@ -1312,7 +1332,7 @@ export default function ClinicianPortal() {
   ];
   const assessmentMissing = [
     patientsQuery.isSuccess && !evidenceFacts.some((fact) => fact.id.startsWith('history:')) ? 'No survey/history answers recorded for this appointment.' : '',
-    visitHistoryQuery.isSuccess && !(soapObjectiveDraft || assessmentVisit?.objective) ? 'Examination findings not recorded for this visit.' : '',
+    visitHistoryQuery.isSuccess && !consultationObjective ? 'Examination findings not recorded for this visit.' : '',
     labResultsQuery.isSuccess && !labResults.length ? 'No laboratory results in the available record (not a normal result).' : '',
     patientDocumentsQuery.isSuccess && !evidenceFacts.some((fact) => fact.id.startsWith('document:')) ? 'No uploaded lab/USG reports available.' : '',
     visitTests(assessmentVisit).length ? `Tests ordered: ${visitTests(assessmentVisit).join(', ')}. Completion is not linked here; check reports for results.` : '',
@@ -1542,7 +1562,9 @@ export default function ClinicianPortal() {
     setSoapTranscript(null);
     setSoapSubjectiveDraft("");
     setTreatmentResponseDraft('');
-    setSoapObjectiveDraft("");
+    setObjectiveEdits(null);
+    setObstetricEdits(null);
+    setObstetricPanelKey(null);
     setSoapAssessmentDraft("");
     setSoapPlanDraft("");
     setPostVisitSummaryResult(null);
@@ -1656,11 +1678,21 @@ export default function ClinicianPortal() {
   const diagnosesDirty = JSON.stringify(selectedDiagnoses) !== JSON.stringify(savedDiagnoses);
 
   const saveConsultationNote = async () => {
+    if (!visitHistoryQuery.isSuccess) {
+      setSoapSavedMsg("Cannot save examination until this patient's visit history is loaded. Retry visit history.");
+      return false;
+    }
+    const obstetricError = obstetricExaminationError(relevantObstetricExamination(obstetricDraft));
+    if (obstetricError) {
+      setSoapSavedMsg(obstetricError);
+      setConsultationStep('examine');
+      return false;
+    }
     if (diagnosesDirty && (diagnosisHistoryQuery.isLoading || diagnosisHistoryQuery.isError)) {
       setSoapSavedMsg("Cannot confirm consultation until saved diagnoses are loaded. Retry diagnosis history.");
       return false;
     }
-    const snapshot = [soapSubjectiveDraft, soapObjectiveDraft, consultationAssessmentText, soapPlanDraft, JSON.stringify(orderedConsultationTests), JSON.stringify(assessmentDraft)];
+    const snapshot = [soapSubjectiveDraft, consultationObjective, consultationAssessmentText, soapPlanDraft, JSON.stringify(orderedConsultationTests), JSON.stringify(assessmentDraft)];
     setSoapSaving(true);
     setSoapSavedMsg(null);
     try {
@@ -1673,7 +1705,10 @@ export default function ClinicianPortal() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...(soapSubjectiveDraft || savedConsultationSnapshot?.[0] ? { subjective: soapSubjectiveDraft } : {}),
-            ...(soapObjectiveDraft || savedConsultationSnapshot?.[1] ? { objective: soapObjectiveDraft } : {}),
+            ...(objectiveEdits?.key === consultationSurveyKey || obstetricEdits?.key === consultationSurveyKey ? { objective: consultationObjective } : {}),
+            ...(obstetricEdits?.key === consultationSurveyKey || hasObstetricRecord ? {
+              examination: obstetricVisitExamination(assessmentVisit?.examination, soapObjectiveDraft, obstetricDraft),
+            } : {}),
             ...(consultationAssessmentText || savedConsultationSnapshot?.[2] || assessmentEdits?.key === consultationSurveyKey ? {
               assessment: consultationAssessmentText, assessmentDetails: assessmentDraft,
             } : {}),
@@ -1690,7 +1725,10 @@ export default function ClinicianPortal() {
             visitType: 'consultation',
             ...((activeAppointment?.id || selectedPatient.appointmentId) ? { appointmentId: activeAppointment?.id || selectedPatient.appointmentId } : {}),
             subjective: soapSubjectiveDraft,
-            objective: soapObjectiveDraft,
+            objective: consultationObjective,
+            ...(obstetricEdits?.key === consultationSurveyKey ? {
+              examination: obstetricVisitExamination(null, soapObjectiveDraft, obstetricDraft),
+            } : {}),
             assessment: consultationAssessmentText,
             assessmentDetails: assessmentDraft,
             planNotes: soapPlanDraft,
@@ -1727,15 +1765,15 @@ export default function ClinicianPortal() {
     }
   };
 
-  const consultationHasContent = diagnosesDirty || consultationTests !== null || assessmentEdits?.key === consultationSurveyKey || [soapSubjectiveDraft, soapObjectiveDraft, consultationAssessmentText, soapPlanDraft].some((value) => value.trim());
+  const consultationHasContent = diagnosesDirty || obstetricDirty || objectiveEdits?.key === consultationSurveyKey || consultationTests !== null || assessmentEdits?.key === consultationSurveyKey || [soapSubjectiveDraft, consultationObjective, consultationAssessmentText, soapPlanDraft].some((value) => value.trim());
   const consultationCanSave = consultationHasContent || Boolean(savedConsultationSnapshot?.some((value) => value.trim()));
-  const consultationNoteSaved = !diagnosesDirty && (JSON.stringify(savedConsultationSnapshot) === JSON.stringify([soapSubjectiveDraft, soapObjectiveDraft, consultationAssessmentText, soapPlanDraft, JSON.stringify(orderedConsultationTests), JSON.stringify(assessmentDraft)]) ||
+  const consultationNoteSaved = !diagnosesDirty && !obstetricDirty && (JSON.stringify(savedConsultationSnapshot) === JSON.stringify([soapSubjectiveDraft, consultationObjective, consultationAssessmentText, soapPlanDraft, JSON.stringify(orderedConsultationTests), JSON.stringify(assessmentDraft)]) ||
     (!savedConsultationSnapshot && assessmentEdits?.key !== consultationSurveyKey && Boolean(assessmentVisit) &&
-      consultationTests === null && ![soapSubjectiveDraft, soapObjectiveDraft, soapAssessmentDraft, soapPlanDraft].some((value) => value.trim())));
+      objectiveEdits?.key !== consultationSurveyKey && consultationTests === null && ![soapSubjectiveDraft, soapAssessmentDraft, soapPlanDraft].some((value) => value.trim())));
   const consultationChecklist = [
     { label: 'Reason', done: Boolean(soapSubjectiveDraft.trim()) },
     { label: 'History', done: selectedDirections.length > 0 },
-    { label: 'Examination', done: Boolean(soapObjectiveDraft.trim()) },
+    { label: 'Examination', done: Boolean(consultationObjective.trim()) },
     { label: 'Assessment', done: Boolean(assessmentDraft.impression.trim()) },
     { label: 'Plan', done: Boolean(soapPlanDraft.trim()) },
   ];
@@ -5043,7 +5081,13 @@ export default function ClinicianPortal() {
                                 { label: 'Last recorded hemoglobin', value: latestVisit?.vitals?.hb || selectedPatient.hb ? `${latestVisit?.vitals?.hb || selectedPatient.hb} g/dL` : 'Not recorded' },
                               ].map((vital) => <div key={vital.label} className="rounded-md border border-saivie-border bg-saivie-surface-muted/70 p-3"><p className="text-[10px] uppercase tracking-wide text-saivie-plum">{vital.label}</p><p className="mt-1 text-xs font-semibold text-saivie-plum">{vital.value}</p></div>)}
                             </div>
-                            <Textarea value={soapObjectiveDraft} onChange={(event) => setSoapObjectiveDraft(event.target.value)} placeholder="Examination findings, vitals, and observations from today..." className="min-h-[160px] text-sm" data-testid="input-consultation-examination" />
+                            {visitHistoryQuery.isError ? <p role="alert" className="text-xs text-red-700">Unable to load this visit’s examination. <button type="button" className="underline" onClick={() => visitHistoryQuery.refetch()}>Retry</button></p>
+                              : visitHistoryQuery.isLoading ? <p role="status" className="text-xs">Loading this visit’s examination…</p>
+                              : showObstetricPanel ? <ObstetricExamination value={obstetricDraft} onChange={(value) => setObstetricEdits({ key: consultationSurveyKey, value })} />
+                              : <Button type="button" variant="outline" size="sm" onClick={() => setObstetricPanelKey(consultationSurveyKey)}>Add antenatal examination</Button>}
+                            <label className="block text-xs font-semibold text-saivie-plum">Other examination findings / notes
+                              <Textarea value={soapObjectiveDraft} onChange={(event) => setSoapObjectiveDraft(event.target.value)} placeholder="Additional findings, vitals, and observations from today..." className="mt-2 min-h-[96px] text-sm" data-testid="input-consultation-examination" />
+                            </label>
                           </div>
                         )}
 
@@ -5238,7 +5282,7 @@ export default function ClinicianPortal() {
                   <div className="space-y-4">
                     {[
                       { label: 'Subjective', value: soapSubjectiveDraft },
-                      { label: 'Objective', value: soapObjectiveDraft },
+                      { label: 'Objective', value: consultationObjective },
                       { label: 'Assessment', value: consultationAssessmentText },
                       { label: 'Plan', value: soapPlanDraft },
                       { label: 'Tests ordered', value: orderedConsultationTests.join(' · ') },
