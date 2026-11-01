@@ -38,6 +38,7 @@ import { hasVisitSurvey } from "@/lib/consultationSurvey";
 import { hpvProtection, hpvSurveyAnswer } from "@/lib/hpvProtection";
 import { surveyKindFor } from "@/lib/labSurvey";
 import { HpvBadge } from "@/components/HpvBadge";
+import { ReceptionSurveyBadge, ReceptionSummaryPrint } from "@/components/ReceptionSurveyActions";
 import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import type { ReceptionTask } from "@/lib/receptionTasks";
 
@@ -463,7 +464,7 @@ export function ReceptionDashboard({
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                               <p className="font-semibold text-saivie-plum">{apt.patient}</p>
-                              {!logisticsOnly && (hasVisitSurvey(patient?.history, apt.id) ? (
+                              {logisticsOnly ? <ReceptionSurveyBadge appointment={apt} /> : (hasVisitSurvey(patient?.history, apt.id) ? (
                                 <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700" title="Pre-visit survey submitted for this appointment" data-testid={`flow-survey-${apt.id}`}>
                                   <ClipboardCheck className="h-3 w-3" />{surveyKindFor(apt) === "lab" ? "Lab survey filled" : "Survey filled"}
                                 </span>
@@ -491,6 +492,7 @@ export function ReceptionDashboard({
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1">
                           {logisticsOnly ? renderReceptionActions(apt, state, "flow") : renderAction(apt, state)}
+                          {logisticsOnly && <ReceptionSummaryPrint appointment={apt} patientName={apt.patient || patient?.name || "Patient"} canPrint={clinicalDetailsVisible} hpvStatus={hpvStatusFor(apt)} />}
                           {!logisticsOnly && <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-saivie-plum hover:text-saivie-teal" data-testid={`btn-print-summary-${apt.id}`}
                             title="Print patient summary" aria-label={`Print summary for ${apt.patient}`}
                             onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals, hpvClinicStatus(apt.patientId))}>

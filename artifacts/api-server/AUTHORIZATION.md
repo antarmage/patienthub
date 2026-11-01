@@ -33,6 +33,8 @@ Recovery temporarily uses `POST /api/postop/auth/passcode` with an individual st
 
 ### Private onboarding links
 
+Appointment list responses include the server-derived `surveyCompleted` flag matched to that patient's `history.onboardingAppointmentId`. Receptionists can see filled/pending status without clinical history permission, but cannot author this flag. The new receptionist patient list and dashboard restore **Print summary** using an explicit load-then-print dialog. Printing is enabled only while doctor-controlled clinical visibility is granted; it loads authorized patient details and that exact appointment's narrow vitals record, never prints a logistics-only record as though it were a complete clinical summary.
+
 Staff create or replace an appointment's private intake link with `POST /api/onboarding-links/:id`. The random 256-bit token is hashed in `onboarding_links`, expires 30 days after issuance, and is included only in the frontend URL fragment. Creating another link invalidates the previous one. Cancellation/no-show removes the saved link permanently.
 
 The frontend sends `X-Onboarding-Token` to the onboarding GET/POST endpoints without cookies or staff credentials. The access policy validates the token against the exact appointment and grants only that patient's intake access, not other clinical endpoints. The intake-history allowlist includes the current form's patient-reported medical/surgical/drug/allergy/family sections and dating estimate, but not diagnoses or private clinical history. Number-only URLs still require existing authentication; patients must receive a new private link. Receptionists can generate one on the booking confirmation or by opening an existing numbered onboarding URL while signed in.

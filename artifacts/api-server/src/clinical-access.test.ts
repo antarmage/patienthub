@@ -18,6 +18,7 @@ const appointment = {
   completedAt: null, paymentStatus: "unpaid", followUpDate: "2026-11-07",
   reason: "PRIVATE", notes: "PRIVATE", vitals: { bp: "PRIVATE" },
   chiefComplaint: "PRIVATE", followUpNotes: "PRIVATE", triageReason: "PRIVATE",
+  surveyCompleted: true,
 };
 
 async function harness(run: (request: (path: string, actor?: string, method?: string, body?: unknown) => Promise<Response>, writes: () => number) => Promise<void>) {
@@ -114,6 +115,20 @@ test("clinical authoring is protected before storage, including aliases, malform
       for (const [path, method] of endpoints) assert.ok((await request(path, actor, method, {})).ok, `${actor} ${path}`);
     }
     assert.equal(writes(), endpoints.length * 2);
+  });
+});
+
+test("receptionists can read server-derived survey completion but cannot submit that flag", async () => {
+    await harness(async (request, writes) => {
+      const response = await request("/api/appointments", "reception");
+      assert.equal(response.status, 200);
+      const rows = await response.json();
+      assert.ok(Array.isArray(rows));
+      assert.equal(rows[0].surveyCompleted, true);
+      assert.equal("vitals" in rows[0], false);
+      assert.equal("history" in rows[0], false);
+      assert.equal((await request("/api/appointments/4", "reception", "PATCH", { surveyCompleted: true })).status, 403);
+      assert.equal(writes(), 0);
   });
 });
 

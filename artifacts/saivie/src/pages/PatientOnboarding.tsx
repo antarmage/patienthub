@@ -772,10 +772,13 @@ export default function PatientOnboarding() {
     const currentIndex = Math.max(0, questions.findIndex((question) => question.id === step));
     const currentQuestion = questions[currentIndex];
     const currentSection = sections.find((section) => section.key === currentQuestion.section) ?? sections[0];
-    const progress = Math.round(((currentIndex + 1) / questions.length) * 100);
+    const sectionIndex = visibleSections.findIndex((section) => section.key === currentSection.key);
+    const sectionQuestions = questions.filter((question) => question.section === currentSection.key);
+    const progress = Math.round(((sectionIndex + 1) / visibleSections.length) * 100);
 
     const goToSection = (offset: number) => {
-        const next = questions[currentIndex + offset];
+        const section = visibleSections[sectionIndex + offset];
+        const next = questions.find((question) => question.section === section?.key);
         if (next) setStep(next.id);
     };
     const editSection = (sectionKey: string) => {
@@ -819,24 +822,24 @@ export default function PatientOnboarding() {
                 .onboarding-ruler-slider::-moz-range-thumb { width: 14px; height: 14px; border: 3px solid white; border-radius: 50%; background: var(--saivie-teal); box-shadow: 0 1px 5px color-mix(in srgb, var(--saivie-teal) 33%, transparent); }
                 .onboarding-ruler-slider:focus-visible { outline: 2px solid var(--saivie-teal); outline-offset: 5px; border-radius: 999px; }
             `}</style>
-            <aside className="fixed inset-y-0 left-0 z-20 hidden w-[230px] flex-col bg-saivie-sage px-5 py-6 text-saivie-plum lg:flex">
-                <div className="flex items-center gap-2.5 font-semibold"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-saivie-sage text-saivie-plum"><Heart size={18} /></span>Saivie</div>
-                <p className="mt-10 text-[10px] font-bold uppercase tracking-[0.18em] text-saivie-plum">Your care journey</p>
+            <aside className="fixed inset-y-0 left-0 z-20 hidden w-[230px] flex-col overflow-y-auto bg-[#17483e] px-5 py-6 text-white lg:flex" data-testid="onboarding-sidebar">
+                <div className="flex items-center gap-2.5 font-semibold"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-saivie-sage text-saivie-teal"><Heart size={18} /></span>Saivie</div>
+                <p className="mt-10 text-[10px] font-bold uppercase tracking-[0.18em] text-saivie-sage">Your care journey</p>
                 <nav className="mt-4 space-y-1" aria-label="Onboarding sections">
                     {visibleSections.map((section, index) => (
                         <button key={section.key} type="button" onClick={() => editSection(section.key)}
                             aria-current={currentQuestion.section === section.key ? "step" : undefined}
-                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs transition ${currentQuestion.section === section.key ? "bg-saivie-blush text-saivie-plum" : "text-saivie-plum hover:bg-saivie-ivory/50"}`}>
-                            <span className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] ${currentQuestion.section === section.key ? "border-saivie-plum text-saivie-plum" : "border-saivie-plum/30"}`}>
+                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs transition ${currentQuestion.section === section.key ? "bg-saivie-sage text-saivie-teal" : "text-white/85 hover:bg-white/10"}`}>
+                            <span className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] ${currentQuestion.section === section.key ? "border-saivie-teal text-saivie-teal" : "border-white/30"}`}>
                                 {index + 1}
                             </span>
                             {section.title}
                         </button>
                     ))}
                 </nav>
-                <div className="mt-auto rounded-xl border border-saivie-border bg-saivie-ivory/50 p-3.5">
-                    <div className="flex items-center gap-2 text-[11px] font-semibold"><LockKeyhole size={13} className="text-saivie-teal" /> Your privacy matters</div>
-                    <p className="mt-1.5 pl-5 text-[10px] leading-4 text-saivie-plum">Your answers are shared only with your care team.</p>
+                <div className="mt-auto rounded-xl border border-white/20 bg-white/5 p-3.5">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold"><LockKeyhole size={13} className="text-saivie-sage" /> Your privacy matters</div>
+                    <p className="mt-1.5 pl-5 text-[10px] leading-4 text-white/75">Your answers are shared only with your care team.</p>
                 </div>
             </aside>
 
@@ -844,7 +847,7 @@ export default function PatientOnboarding() {
                 <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-saivie-border bg-saivie-ivory/90 px-5 backdrop-blur sm:px-8">
                     <span className="text-sm font-semibold text-saivie-teal lg:hidden">Saivie care journey</span>
                     <span className="hidden items-center gap-2 text-xs text-saivie-teal sm:flex"><ShieldCheck size={15} className="text-saivie-teal" /> Secure patient onboarding</span>
-                    <span className="ml-auto rounded-full border border-saivie-border bg-saivie-surface-muted px-3 py-1.5 text-[11px] font-medium text-saivie-teal">{step === "review" ? "Review" : `Question ${currentIndex + 1} of ${questions.length - 1}`}</span>
+                    <span className="ml-auto rounded-full border border-saivie-border bg-saivie-surface-muted px-3 py-1.5 text-[11px] font-medium text-saivie-teal">{step === "review" ? "Review" : `Section ${sectionIndex + 1} of ${visibleSections.length - 1}`}</span>
                 </header>
 
                 <div className="mx-auto max-w-[900px] px-4 pb-12 pt-8 sm:px-8 sm:pt-12">
@@ -860,12 +863,14 @@ export default function PatientOnboarding() {
                     </div>
 
                     {step !== "review" && (
-                        <section key={step} className={`${cardClass} min-h-[260px]`} data-testid={`onboarding-question-${step}`}>
+                        <section key={currentSection.key} className={`${cardClass} min-h-[260px]`} data-testid={`onboarding-section-${currentSection.key}`}>
                             <p className="mb-5 text-xs leading-5 text-saivie-teal">
-                                {step === "concerns" ? "Choose all that apply. Your next questions will match these concerns." : "Optional. Answer if you can, or skip this question."}
+                                {currentSection.key === "concern" ? "Choose all that apply. Your next questions will match these concerns." : "Answer what you can. All questions are optional."}
                             </p>
-                            {questionContent[currentQuestion.id]}
-                            {step === "name" && <p className="mt-6 text-xs leading-5 text-saivie-teal">One question at a time. Your answers stay here as you move back and forth, and are shared only when you submit. Closing or refreshing the page discards unsubmitted answers.</p>}
+                            <div className="space-y-7 divide-y divide-saivie-border">
+                                {sectionQuestions.map((question, index) => <div key={question.id} className={index ? "pt-7" : ""} data-testid={`onboarding-question-${question.id}`}>{questionContent[question.id]}</div>)}
+                            </div>
+                            {currentSection.key === "about" && <p className="mt-6 text-xs leading-5 text-saivie-teal">Related questions are grouped together. Your answers stay here as you move between sections, and are shared only when you submit. Closing or refreshing the page discards unsubmitted answers.</p>}
                         </section>
                     )}
 
@@ -892,13 +897,13 @@ export default function PatientOnboarding() {
                         </section>
                     )}
 
-                    <div className="mt-5 flex items-center justify-between">
-                        {currentIndex > 0 ? (
+                    <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                        {sectionIndex > 0 ? (
                             <Button variant="ghost" className="text-xs text-saivie-teal hover:text-saivie-teal" onClick={() => goToSection(-1)}><ArrowLeft className="mr-2 h-3.5 w-3.5" />Back</Button>
                         ) : <span />}
-                        {currentIndex < questions.length - 1 ? (
+                        {sectionIndex < visibleSections.length - 1 ? (
                             <div className="flex items-center gap-2">
-                                <Button variant="ghost" className="text-xs text-saivie-teal" onClick={() => goToSection(1)}>Skip question</Button>
+                                <Button variant="ghost" className="text-xs text-saivie-teal" onClick={() => goToSection(1)}>Skip section</Button>
                                 <Button className="h-11 rounded-lg bg-saivie-teal px-5 text-xs font-semibold text-white shadow-lg shadow-saivie-teal/15 hover:bg-saivie-teal" onClick={() => goToSection(1)}>Continue<ArrowRight className="ml-2 h-3.5 w-3.5" /></Button>
                             </div>
                         ) : (

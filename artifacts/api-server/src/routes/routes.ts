@@ -1308,7 +1308,13 @@ export async function registerRoutes(
     if (providerId) {
       appts = appts.filter(a => a.providerId === parseInt(providerId as string));
     }
-    res.json(appts);
+    const surveyRows = appts.length ? (await pool.query<{ id: number; completed: boolean }>(
+      `SELECT a.id, coalesce(p.history->>'onboardingAppointmentId' = a.id::text, false) AS completed
+       FROM appointments a LEFT JOIN patients p ON p.id = a.patient_id WHERE a.id = ANY($1::int[])`,
+      [appts.map((appointment) => appointment.id)],
+    )).rows : [];
+    const surveys = new Map(surveyRows.map((row) => [row.id, row.completed]));
+    res.json(appts.map((appointment) => ({ ...appointment, surveyCompleted: surveys.get(appointment.id) ?? false })));
   });
 
   app.post("/api/appointments", async (req, res) => {

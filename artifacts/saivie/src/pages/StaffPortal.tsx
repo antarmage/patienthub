@@ -3869,6 +3869,7 @@ export default function StaffPortal() {
             )}
             {activeRole === 'receptionist' && activeView === 'patients' && (
                 <ReceptionPatientList
+                    canPrintSummary={canViewClinical}
                     onRecordVitals={setReceptionVitalsAppointment}
                     onViewPatient={canViewClinical ? setClinicalDetailPatient : undefined}
                     onTranscribePrescription={setPaperPrescriptionPatient}

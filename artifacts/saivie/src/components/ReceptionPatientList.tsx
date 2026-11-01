@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import { HpvBadge } from "@/components/HpvBadge";
+import { ReceptionSurveyBadge, ReceptionSummaryPrint } from "@/components/ReceptionSurveyActions";
 import { receptionRequest } from "@/lib/authenticatedFetch";
 import { calendarDate, calendarDateValue, shiftCalendarDays } from "@/lib/calendarDates";
 import { matchesReceptionFilter, receptionLate, receptionStage, receptionTimeMinutes, receptionWeek, type ReceptionAppointment, type ReceptionFilter, type ReceptionPatient, type ReceptionPeriod } from "@/lib/receptionTimeline";
@@ -27,7 +28,8 @@ const stageColors: Record<string, string> = {
   "No-show": "bg-[#faf0e7] text-[#92542a]", Cancelled: "bg-[#f2eef0] text-[#705364]",
 };
 
-export function ReceptionPatientList({ patients, providers, patientsLoading, patientsError, onRetryPatients, onRegister, onPayment, onWhatsApp, onTranscribePrescription, onRecordVitals, onViewPatient, onEditPatient, search, onSearch }: {
+export function ReceptionPatientList({ patients, providers, patientsLoading, patientsError, onRetryPatients, onRegister, onPayment, onWhatsApp, onTranscribePrescription, onRecordVitals, onViewPatient, onEditPatient, search, onSearch, canPrintSummary = false }: {
+  canPrintSummary?: boolean;
   patients: ReceptionPatient[];
   providers: { id: number; name: string }[];
   patientsLoading: boolean;
@@ -111,6 +113,8 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
       <div><p className="text-sm text-saivie-plum">{providers.find((provider) => provider.id === appointment.providerId)?.name || "Doctor not assigned"}</p><p className="mt-1 text-xs text-[#705364]">{appointment.visitType || appointment.type || "Appointment"}</p></div>
       <div><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${stageColors[stage]}`}>{stage}</span>{late && <p className="mt-1 text-[11px] text-amber-800">Running late</p>}</div>
       <div className="flex flex-wrap items-center gap-2 md:col-span-4 md:pl-[87px]">
+        <ReceptionSurveyBadge appointment={appointment} />
+        <ReceptionSummaryPrint appointment={appointment} patientName={patient?.name || "Patient"} canPrint={canPrintSummary} hpvStatus={hpvStatus(appointment.patientId)} />
         {appointment.visitMode === "telemedicine" && <OnlineConsultationActions appointmentId={appointment.id} />}
         {patient && <Button size="sm" variant="outline" onClick={() => onTranscribePrescription(patient)}>Add / Edit paper prescription</Button>}
         {patient && appointment.date === today && !closed && stage !== "With doctor" && <Button size="sm" variant="outline" onClick={() => onRecordVitals(appointment)} data-testid={`btn-reception-vitals-${appointment.id}`}>Record vitals</Button>}
