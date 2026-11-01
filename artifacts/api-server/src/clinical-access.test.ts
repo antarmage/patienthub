@@ -84,6 +84,22 @@ async function harness(run: (request: (path: string, actor?: string, method?: st
   }
 }
 
+test("appointment history requires clinical permission or the matching patient session", async () => {
+  await harness(async (request, writes) => {
+    const path = "/api/patients/7/appointment-history";
+    assert.equal((await request(path)).status, 401);
+    for (const actor of ["reception", "desk", "admin", "other-patient", "unknown-role"]) {
+      assert.equal((await request(path, actor)).status, 403, actor);
+    }
+    for (const actor of ["doctor", "owner", "patient"]) {
+      const response = await request(path, actor);
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("cache-control"), "private, no-store");
+    }
+    assert.equal(writes(), 0);
+  });
+});
+
 test("clinical authoring is protected before storage, including aliases, malformed IDs and case-insensitive routes", async () => {
   await harness(async (request, writes) => {
     const endpoints: [string, string][] = [

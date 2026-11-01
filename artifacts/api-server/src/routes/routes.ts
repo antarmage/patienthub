@@ -2085,6 +2085,13 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.json(visits);
   });
 
+  app.get("/api/patients/:id/appointment-history", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (!await storage.getPatient(id)) return res.status(404).json({ error: "Patient not found" });
+    res.json(await storage.getAppointmentsByPatient(id));
+  });
+
   app.post("/api/patients/:id/visit-history", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });

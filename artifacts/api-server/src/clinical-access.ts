@@ -79,7 +79,7 @@ export function checkInIsToday(
   return String(patch.date ?? current.date).slice(0, 10) === today;
 }
 
-const patientClinicalPath = /^\/api\/patients\/([^/]+)\/(conception|pregnancy-status|visit-history|medications|clinical-notes|diagnoses|documents|hormones|pregnancy-metrics|weight-logs|bp-logs|follicle-data|usg-data|lab-results|referrals|risk-score|trimester-checklist|manual-prescription|extract-prescription|parse-prescription|extract-lab-results)(?:\/[^/]+\/file)?\/?$/;
+const patientClinicalPath = /^\/api\/patients\/([^/]+)\/(conception|pregnancy-status|appointment-history|visit-history|medications|clinical-notes|diagnoses|documents|hormones|pregnancy-metrics|weight-logs|bp-logs|follicle-data|usg-data|lab-results|referrals|risk-score|trimester-checklist|manual-prescription|extract-prescription|parse-prescription|extract-lab-results)(?:\/[^/]+\/file)?\/?$/;
 const clinicalCollectionPath = /^\/api\/(visit-history|clinical-notes|documents|medications|referrals)(?:\/[^/]+)?\/?$/;
 const clinicianToolPath = /^\/api\/(?:ocr\/prescription|icd10\/search|patients\/batch-risk-score|google-sheets\/sync|google-drive\/import-lab-reports|voice\/soap-transcribe|appointments\/[^/]+\/post-visit-summary|appointments\/triage|appointments\/optimise-schedule)\/?$/;
 const patientRecordPath = /^\/api\/(?:desk\/)?patients(?:\/[^/]+)?\/?$/;

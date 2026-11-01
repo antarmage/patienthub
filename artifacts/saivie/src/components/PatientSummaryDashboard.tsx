@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { consultationSurveyForVisit, surveyQuestions } from "@/lib/consultationSurvey";
 import { recordedLabValue } from "@/lib/labReading";
 import { summaryRecord, summaryTrends, type SummaryLab, type SummaryPoint, type SummaryVisit } from "@/lib/patientSummary";
+import { receptionVisitDates } from "@/lib/receptionVisitDates";
+import { appointmentLabel, type TrailRecord } from "@/lib/visitTrail";
 
 function Trend({ title, unit, points, paired = false }: { title: string; unit: string; points: SummaryPoint[]; paired?: boolean }) {
   const latest = points.at(-1);
@@ -28,12 +30,14 @@ function Trend({ title, unit, points, paired = false }: { title: string; unit: s
   </section>;
 }
 
-export function PatientSummaryDashboard({ patient, appointmentId, complaint, checkInVitals, visits, labs, bpLogs, weightLogs, medications, pregnancy, pregnancyContext, conceptionSection, sources, onConsultation }: {
+export function PatientSummaryDashboard({ patient, appointmentId, complaint, checkInVitals, visits, trail, onRecord, labs, bpLogs, weightLogs, medications, pregnancy, pregnancyContext, conceptionSection, sources, onConsultation }: {
   patient: { name: string; history?: unknown; lmp?: string; cycleLength?: number | string; riskScore?: { level?: string; factors?: { factor: string }[] } };
   appointmentId?: number;
   complaint?: string;
   checkInVitals?: unknown;
   visits: SummaryVisit[];
+  trail?: TrailRecord[];
+  onRecord?: () => void;
   labs: SummaryLab[];
   bpLogs: { date?: string; systolic: number; diastolic: number }[];
   weightLogs: { date?: string; weight: number; unit?: string }[];
@@ -53,6 +57,8 @@ export function PatientSummaryDashboard({ patient, appointmentId, complaint, che
   const cycle = summaryRecord(intake.cycle);
   const sortedVisits = [...visits].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
   const latest = sortedVisits[0];
+  const trailDates = trail ? receptionVisitDates(trail) : undefined;
+  const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
   const checkIn = summaryRecord(checkInVitals);
   const text = (value: unknown) => typeof value === "string" && value.trim() ? value : Array.isArray(value) ? value.filter((item) => typeof item === "string").join(", ") || "Not recorded" : "Not recorded";
   return <div className="relative z-0 min-h-0 flex-1 overflow-y-auto bg-saivie-surface-muted p-3 sm:p-5" data-testid="patient-summary-dashboard">
@@ -93,7 +99,17 @@ export function PatientSummaryDashboard({ patient, appointmentId, complaint, che
           <h3 className="mt-5 text-xs font-semibold text-saivie-teal">Recent results</h3>{[...labs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6).map((lab, i) => <p key={i} className="mt-2 text-xs">{lab.date} · {lab.testName}: {recordedLabValue(lab) ?? "See report"}{lab.status ? ` · ${lab.status}` : ""}</p>)}{!labs.length && <p className="mt-2 text-xs">No results recorded.</p>}
         </section>
       </div>
-      <section className="rounded-lg border border-saivie-border bg-saivie-ivory p-4"><h3 className="text-xs font-semibold text-saivie-teal">Visit timeline</h3>{sortedVisits.map((visit) => <div key={visit.id} className="mt-3 border-l-2 border-saivie-sage pl-3 text-xs"><p className="font-semibold">{visit.date}</p><p className="mt-1">{visit.assessment || visit.diagnosis || visit.chiefComplaint || visit.subjective || "Visit recorded"}</p>{visit.planNotes && <p className="mt-1 whitespace-pre-wrap">{visit.planNotes}</p>}</div>)}{!visits.length && <p className="mt-3 text-xs">No visits recorded.</p>}</section>
+      <section className="rounded-lg border border-saivie-border bg-saivie-ivory p-4">
+        <div className="flex items-center justify-between gap-2"><h3 className="text-xs font-semibold text-saivie-teal">Visit timeline</h3>{onRecord && <Button variant="outline" size="sm" onClick={onRecord}>Open full date trail</Button>}</div>
+        {trailDates ? trailDates.map((group) => <div key={group.date} className="mt-3 border-l-2 border-saivie-sage pl-3 text-xs">
+          <p className="font-semibold">{group.label} · {group.records.length} {group.records.length === 1 ? "record" : "records"}</p>
+          {group.records.map((record) => <p key={record.trailKey} className="mt-1">
+            {record.reportOnly ? text(record.document?.name) : [text(record.visitType), appointmentLabel(record.appointment, today),
+              record.appointmentOnly ? "Consultation note unavailable" : "Saved clinical encounter"].filter(Boolean).join(" · ")}
+          </p>)}
+        </div>) : sortedVisits.map((visit) => <div key={visit.id} className="mt-3 border-l-2 border-saivie-sage pl-3 text-xs"><p className="font-semibold">{visit.date}</p><p className="mt-1">{visit.assessment || visit.diagnosis || visit.chiefComplaint || visit.subjective || "Visit recorded"}</p>{visit.planNotes && <p className="mt-1 whitespace-pre-wrap">{visit.planNotes}</p>}</div>)}
+        {!(trailDates ? trailDates.length : visits.length) && <p className="mt-3 text-xs">No visits recorded.</p>}
+      </section>
     </div>
   </div>;
 }

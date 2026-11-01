@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PatientVisitTimeline, sortVisitsNewestFirst, visitMedicines, visitTests } from "./PatientVisitTimeline.tsx";
+import { visitTrail } from "@/lib/visitTrail";
 
 const visits = [
   { id: 1, date: "2026-08-01", diagnosis: "PCOS", prescriptions: [{ name: "Metformin", dose: "500 mg", frequency: "BD" }] },
@@ -55,4 +56,25 @@ it("shows the selected visit's saved guided history alongside the chief complain
   assert.match(html, /Antenatal review/);
   assert.match(html, /Any pain, bleeding, fluid loss, or fever\? No/);
   assert.match(html, /When did symptoms begin\? Today/);
+});
+
+it("groups same-day appointments and notes without hiding distinct records or inventing prescriptions", () => {
+  const trail = visitTrail([{ id: 5, appointmentId: 1, date: "2024-10-04", subjective: "Recorded concern" }], [
+    { id: 1, date: "2024-10-04", status: "Completed" },
+    { id: 2, date: "2024-10-04", type: "USG", status: "Completed", vitals: { bp: "110/70", temp: "98.6" } },
+  ]);
+  const html = renderToStaticMarkup(<PatientVisitTimeline visits={trail} />);
+  assert.equal((html.match(/data-testid="visit-timeline-item-/g) || []).length, 1);
+  assert.match(html, /Recorded concern/);
+  assert.match(html, /Appointment recorded; consultation note unavailable/);
+  assert.match(html, /BP 110\/70/);
+  assert.match(html, /Temp 98.6/);
+  assert.match(html, /USG/);
+  assert.match(html, /Completed appointment/);
+});
+
+it("shows report-only dates without a consultation or prescription", () => {
+  const html = renderToStaticMarkup(<PatientVisitTimeline visits={visitTrail([], [], [{ id: 9, date: "2024-10-04", name: "Historical report" }])} />);
+  assert.match(html, /Historical report/);
+  assert.doesNotMatch(html, /visit-prescription/);
 });

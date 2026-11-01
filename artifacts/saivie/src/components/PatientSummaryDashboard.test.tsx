@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PatientSummaryDashboard } from "./PatientSummaryDashboard.tsx";
+import { visitTrail } from "@/lib/visitTrail";
 
 const props = {
   patient: { name: "Summary Demo", history: { onboardingAppointmentId: 42, onboarding: { chiefComplaint: "Patient concern", consultation: { directions: ["Ovulatory timing"], answers: { "Are cycles regular?": "Irregular" } } } } },
@@ -35,4 +36,15 @@ it("shows pregnancy dating and explicit source failures without claiming a compl
   assert.ok(html.includes("Lab results unavailable"));
   assert.ok(html.includes("Retry lab results"));
   assert.ok(html.includes("Hemoglobin"));
+});
+
+it("summary trail includes appointment-only dates without counting them as saved consultations", () => {
+  const html = renderToStaticMarkup(<PatientSummaryDashboard {...props} onRecord={() => {}}
+    trail={visitTrail([], [{ id: 9, date: "2024-10-04", status: "Completed", type: "Consultation" }])} />);
+  assert.ok(html.includes("4 Oct 2024"));
+  assert.ok(html.includes("Completed appointment"));
+  assert.ok(html.includes("Consultation note unavailable"));
+  assert.ok(html.includes("Open full date trail"));
+  assert.ok(html.includes("0 recorded visits"));
+  assert.ok(!html.includes("Saved clinical encounter"));
 });

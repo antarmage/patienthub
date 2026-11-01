@@ -12,6 +12,7 @@ import { calendarDate } from "@/lib/calendarDates";
 import { useToast } from "@/hooks/use-toast";
 import { PrescriptionPreview } from "@/components/PrescriptionPreview";
 import { consultationHistoryText } from "@/lib/consultationSurvey";
+import { appointmentLabel, readAppointmentHistory, visitTrail } from "@/lib/visitTrail";
 
 type ClinicalRecord = Record<string, unknown>;
 function object(value: unknown): ClinicalRecord {
@@ -81,27 +82,29 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
   const record = useQuery({
     queryKey: ["reception-clinical", patient.id],
     queryFn: async ({ signal }) => {
-      const [detail, visits, medicines, documents, notes] = await Promise.all([
+      const [detail, visits, medicines, documents, notes, appointments] = await Promise.all([
         receptionRequest<unknown>(`/api/patients/${patient.id}`, { signal }),
         receptionRequest<unknown>(`/api/patients/${patient.id}/visit-history`, { signal }),
         receptionRequest<unknown>(`/api/patients/${patient.id}/medications`, { signal }),
         receptionRequest<unknown>(`/api/patients/${patient.id}/documents`, { signal }),
         receptionRequest<unknown>(`/api/patients/${patient.id}/clinical-notes`, { signal }),
+        receptionRequest<unknown>(`/api/patients/${patient.id}/appointment-history`, { signal }),
       ]);
       if (object(detail).id !== patient.id) throw new Error("The clinical API returned an invalid patient record.");
-      return { detail: object(detail), visits: list(visits), medicines: list(medicines), documents: list(documents), notes: list(notes) };
+      return { detail: object(detail), visits: list(visits), medicines: list(medicines), documents: list(documents), notes: list(notes), appointments: readAppointmentHistory(appointments, patient.id) };
     },
     gcTime: 0,
     retry: false,
     refetchInterval: 15_000,
   });
   const data = record.data;
-  const visitDates = receptionVisitDates(data?.visits ?? []);
+  const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+  const visitDates = receptionVisitDates(visitTrail(data?.visits ?? [], data?.appointments ?? [], data?.documents ?? []));
   const selectedVisits = visitDates.find((group) => group.date === selectedDate) ?? visitDates[0];
   const summary = receptionPatientHistory(data?.detail ?? {});
-  const datedVisits = visitDates.filter((group) => group.date);
+  const datedVisits = visitDates.filter((group) => group.date && group.date <= today);
   const trail = receptionVisitDates([
-    ...(data?.visits ?? []).map((visit) => ({ date: visit.date, id: `visit-${text(visit.id)}`, kind: "visit", title: text(visit.visitType) || "Consultation" })),
+    ...visitTrail(data?.visits ?? [], data?.appointments ?? []).map((visit) => ({ date: visit.date, id: visit.trailKey, kind: "visit", title: text(visit.visitType) || "Consultation" })),
     ...(data?.documents ?? []).map((doc) => ({ date: doc.date, id: `report-${text(doc.id)}`, kind: "report", title: text(doc.name) || "Report" })),
   ]);
   const cardClass = "min-w-0 rounded-2xl border border-saivie-border bg-white p-5 sm:p-6";
@@ -144,15 +147,20 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
             <nav aria-label="Patient visit dates" className={`${cardClass} self-start !p-4 md:sticky md:top-0`}>
               <h2 className={headingClass}>Visit dates</h2><p className="mb-4 mt-1 text-xs text-muted-foreground">Select a date to open its records.</p>
               <div className="max-h-60 space-y-2 overflow-y-auto md:max-h-[min(60dvh,560px)]">{visitDates.map((group) => <button key={group.date} type="button" aria-pressed={group.date === selectedVisits.date} onClick={() => setSelectedDate(group.date)} className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saivie-teal ${group.date === selectedVisits.date ? "border-saivie-teal/40 bg-saivie-teal/10" : "border-saivie-border bg-white hover:bg-stone-50"}`} data-testid={`reception-visit-date-${group.date || "unknown"}`}>
-                <CalendarDays className="h-4 w-4 shrink-0 text-saivie-teal" /><span><span className="block text-sm font-medium">{group.label}</span><span className="mt-1 block text-[11px] text-muted-foreground">{group.records.length} {group.records.length === 1 ? "record" : "records"}</span></span>
+                <CalendarDays className="h-4 w-4 shrink-0 text-saivie-teal" /><span><span className="block text-sm font-medium">{group.label}</span><span className="mt-1 block text-[11px] text-muted-foreground">{group.records.some((record) => appointmentLabel(record.appointment, today).startsWith("Upcoming booking")) ? "Upcoming date · " : ""}{group.records.length} {group.records.length === 1 ? "record" : "records"}</span></span>
               </button>)}</div>
             </nav>
             <section aria-label={`Visit records for ${selectedVisits.label}`} className="min-w-0 space-y-3">
-              <div className={cardClass}><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Visit on</p><h3 className={`${headingClass} mt-1 text-xl`}>{selectedVisits.label}</h3><p className="mt-1 text-xs text-muted-foreground">Recorded encounters and paper prescription transcriptions for this date.</p></div>
-              {selectedVisits.records.map((visit) => <article key={text(visit.id)} className={`${cardClass} space-y-4`} data-testid={`reception-visit-record-${text(visit.id)}`}>
+              <div className={cardClass}><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Records on</p><h3 className={`${headingClass} mt-1 text-xl`}>{selectedVisits.label}</h3><p className="mt-1 text-xs text-muted-foreground">Appointments, saved consultations and paper prescription transcriptions for this date.</p></div>
+              {selectedVisits.records.map((visit) => visit.reportOnly ? <section key={visit.trailKey} className={cardClass}>
+                <p className="text-sm">{text(visit.document?.name) || "Report"}</p><p className="mt-1 text-xs text-muted-foreground">Recorded on this date; not assumed to belong to a particular consultation.</p>
+                <OriginalReport patientId={patient.id} doc={visit.document || {}} />
+              </section> : <article key={text(visit.id)} className={`${cardClass} space-y-4`} data-testid={`reception-visit-record-${text(visit.id)}`}>
                 <h4 className={headingClass}>{object(visit.prescriptions).source === "receptionist-paper-transcription" ? "Paper prescription transcription" : text(visit.visitType) || "Consultation"}</h4>
-                <PrescriptionPreview patient={data.detail} visit={visit} />
+                <p className="text-xs text-muted-foreground">{appointmentLabel(visit.appointment, today)}</p>
+                {visit.appointmentOnly ? <p className="text-xs text-muted-foreground">Appointment recorded; consultation note unavailable.</p> : <PrescriptionPreview patient={data.detail} visit={visit} />}
                 <HistoryFields fields={{ Complaint: visit.subjective || visit.chiefComplaint, History: consultationHistoryText(object(visit.examination).consultationHistory), Examination: visit.objective || object(visit.examination).findings || visit.examination, Diagnosis: visit.diagnosis, Assessment: visit.assessment, Vitals: visit.vitals }} />
+                {visit.appointment && <HistoryFields fields={{ "Appointment notes": visit.appointment.notes, "Follow-up date": visit.appointment.followUpDate, "Payment status": visit.appointment.paymentStatus, "Billing amount": visit.appointment.billingAmount }} />}
                 <details className="rounded-lg border p-3"><summary className="cursor-pointer font-medium">Prescription & follow-up</summary><div className="mt-3"><RecordedDetails value={{ medicines: object(visit.prescriptions).medicines || (Array.isArray(visit.prescriptions) ? visit.prescriptions : null), advice: visit.planNotes, followUp: visit.followUpPlan, tests: visit.labsOrdered }} /></div></details>
               </article>)}
               <p className="flex items-start gap-2 rounded-xl bg-saivie-teal/5 p-3 text-xs text-muted-foreground"><LockKeyhole className="h-4 w-4 shrink-0" />Doctor-authored encounters are read-only. Patient history edits do not change these visit records.</p>

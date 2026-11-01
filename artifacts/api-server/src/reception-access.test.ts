@@ -94,7 +94,7 @@ test("default off, clinician/owner-only configuration, persisted policy survives
         assert.deepEqual(row.history, patient.history);
         assert.equal(row.futureSecret, undefined); assert.equal(row.clinicianNote, undefined);
       }
-      for (const path of ["/api/patients/7/visit-history", "/api/visit-history", "/api/patients/7/medications", "/api/medications", "/api/documents", "/api/patients/7/documents", "/api/patients/7/pregnancy-metrics", "/api/patients/7/lab-results", "/api/patients/7/diagnoses"]) {
+      for (const path of ["/api/patients/7/appointment-history", "/api/patients/7/visit-history", "/api/visit-history", "/api/patients/7/medications", "/api/medications", "/api/documents", "/api/patients/7/documents", "/api/patients/7/pregnancy-metrics", "/api/patients/7/lab-results", "/api/patients/7/diagnoses"]) {
         assert.equal((await request(path, actor)).status, 200, path);
       }
       assert.equal(await (await request("/api/patients/7/documents/8/file", actor)).text(), "report bytes");
@@ -117,6 +117,7 @@ test("default off, clinician/owner-only configuration, persisted policy survives
     assert.equal(store.updatedBy, "owner");
     assert.equal((await request("/api/patients/7/documents/8/file", "reception")).status, 403);
     assert.equal((await request("/api/visit-history", "reception")).status, 403);
+    assert.equal((await request("/api/patients/7/appointment-history", "reception")).status, 403);
     assert.deepEqual(await (await request("/api/patients/7", "reception")).json(), { id: 7, name: "Patient" });
     assert.equal((await request("/api/patients/7/visit-history", "doctor")).status, 200);
     assert.equal((await request("/api/patients/7/visit-history", "patient")).status, 200);

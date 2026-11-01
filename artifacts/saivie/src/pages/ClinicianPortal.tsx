@@ -30,6 +30,8 @@ import { calendarDateValue } from "@/lib/calendarDates";
 import { clinicalRequest, DiagnosisHistory, IcdDiagnosisEditor, usePatientDiagnoses } from "@/components/IcdDiagnoses";
 import type { IcdDiagnosis } from "../../../../lib/db/src/icd";
 import { PatientVisitTimeline, visitTests } from "@/components/PatientVisitTimeline";
+import { readAppointmentHistory, visitTrail } from "@/lib/visitTrail";
+import { receptionRequest } from "@/lib/authenticatedFetch";
 import { ConsultationAssessment } from "@/components/ConsultationAssessment";
 import { ConceptionHistory } from "@/components/ConceptionHistory";
 import { conceptionHistory } from "@/lib/conceptionHistory";
@@ -672,6 +674,14 @@ export default function ClinicianPortal() {
     enabled: !!selectedPatient
   });
   const visitHistory = visitHistoryQuery.data || [];
+  const appointmentHistoryQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/appointment-history`],
+    queryFn: async ({ signal }) => readAppointmentHistory(
+      await receptionRequest<unknown>(`/api/patients/${selectedPatient.id}/appointment-history`, { signal }), selectedPatient.id,
+    ),
+    enabled: !!selectedPatient,
+    refetchInterval: 30_000,
+  });
   const sortedVisitHistory = [...visitHistory].sort((a: any, b: any) =>
     new Date(a.date).getTime() - new Date(b.date).getTime() || a.id - b.id
   );
@@ -814,7 +824,7 @@ export default function ClinicianPortal() {
       if (!res.ok) throw new Error('Failed to fetch documents');
       return res.json();
     },
-    enabled: !!selectedPatient && (patientDetailTab === 'record' || patientDetailTab === 'consultation' || patientDetailTab === 'investigations')
+    enabled: !!selectedPatient && (patientDetailTab === 'summary' || patientDetailTab === 'record' || patientDetailTab === 'consultation' || patientDetailTab === 'investigations')
   });
 
   const labDocumentsQuery = useQuery({
@@ -4830,6 +4840,8 @@ export default function ClinicianPortal() {
               complaint={activeAppointment?.chiefComplaint || selectedPatient.appointmentChiefComplaint || activeAppointment?.reason}
               checkInVitals={activeAppointment?.vitals || selectedPatient.appointmentVitals}
               visits={visitHistory}
+              trail={visitTrail(visitHistory, appointmentHistoryQuery.data || [], patientDocumentsQuery.data || [])}
+              onRecord={() => setPatientDetailTab('record')}
               labs={labResults}
               bpLogs={bpLogsData}
               weightLogs={weightLogs}
@@ -4840,6 +4852,8 @@ export default function ClinicianPortal() {
                 history={surveyPatient?.history} lmp={selectedPatient.lmp} appointmentId={activeAppointment?.id || selectedPatient.appointmentId} />}
               sources={[
                 { label: 'Visit history', query: visitHistoryQuery },
+                { label: 'Appointment history', query: appointmentHistoryQuery },
+                { label: 'Reports', query: patientDocumentsQuery },
                 { label: 'Blood pressure', query: bpLogsQuery },
                 { label: 'Weight', query: weightLogsQuery },
                 { label: 'Lab results', query: labResultsQuery },
@@ -4854,7 +4868,11 @@ export default function ClinicianPortal() {
                 <div className="px-3 pt-3">
                   <PatientReportsList patientId={selectedPatient.id} documents={Array.isArray(patientDocumentsQuery.data) ? patientDocumentsQuery.data : []} isLoading={patientDocumentsQuery.isLoading} isError={patientDocumentsQuery.isError} onRetry={() => { void patientDocumentsQuery.refetch(); }} />
                 </div>
-                <PatientVisitTimeline visits={visitHistory} isLoading={visitHistoryQuery.isLoading} isError={visitHistoryQuery.isError} onRetry={() => { void visitHistoryQuery.refetch(); }} />
+                <PatientVisitTimeline visits={visitTrail(visitHistory, appointmentHistoryQuery.data || [], patientDocumentsQuery.data || [])}
+                  patient={surveyPatient || selectedPatient}
+                  isLoading={visitHistoryQuery.isLoading || appointmentHistoryQuery.isLoading || patientDocumentsQuery.isLoading}
+                  isError={visitHistoryQuery.isError || appointmentHistoryQuery.isError || patientDocumentsQuery.isError}
+                  onRetry={() => { void visitHistoryQuery.refetch(); void appointmentHistoryQuery.refetch(); void patientDocumentsQuery.refetch(); }} />
                 <DiagnosisHistory patientId={selectedPatient.id} />
               </div>
             )}
