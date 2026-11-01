@@ -359,7 +359,7 @@ export function ReceptionDashboard({
           <Button size="sm" variant="ghost" className="h-8 w-8 shrink-0 p-0" aria-label={`More actions for ${apt.patient}`} data-testid={`${location}-reception-actions-${apt.id}`}><MoreVertical className="h-4 w-4" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {patient && beforeConsultation && onRecordVitals && <DropdownMenuItem onClick={() => onRecordVitals(apt)} data-testid={`${location}-record-vitals-${apt.id}`}>Record vitals</DropdownMenuItem>}
+          {patient && surveyKindFor(apt) !== "lab" && beforeConsultation && onRecordVitals && <DropdownMenuItem onClick={() => onRecordVitals(apt)} data-testid={`${location}-record-vitals-${apt.id}`}>Record vitals</DropdownMenuItem>}
           {apt.visitMode === "telemedicine" && <DropdownMenuItem onClick={() => setOnlineAppointmentId(apt.id)}>Online consultation / Patient link</DropdownMenuItem>}
           {patient && onTranscribePrescription && <DropdownMenuItem onClick={() => onTranscribePrescription(patient)} data-testid={`${location}-paper-prescription-${apt.id}`}>Add / Edit prescription</DropdownMenuItem>}
           {patient && onEditPatient && <DropdownMenuItem onClick={() => onEditPatient(patient)} data-testid={`${location}-edit-patient-${apt.id}`}>Edit patient details</DropdownMenuItem>}

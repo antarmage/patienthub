@@ -104,6 +104,7 @@ import { PaperPrescriptionTranscriptions } from "@/components/PaperPrescriptionT
 import { ReceptionPatientDetails } from "@/components/ReceptionPatientDetails";
 import { ReceptionPatientEdit } from "@/components/ReceptionPatientEdit";
 import { ReceptionVitalsDialog } from "@/components/ReceptionVitalsDialog";
+import { surveyKindFor } from "@/lib/labSurvey";
 import { useReceptionAccess } from "@/lib/receptionAccess";
 import type { ReceptionAppointment } from "@/lib/receptionTimeline";
 import type { ReceptionPatient } from "@/lib/receptionTimeline";
@@ -2192,6 +2193,16 @@ export default function StaffPortal() {
   const [clinicalDetailPatient, setClinicalDetailPatient] = useState<ReceptionPatient | null>(null);
   const [editDetailPatient, setEditDetailPatient] = useState<ReceptionPatient | null>(null);
   const [receptionVitalsAppointment, setReceptionVitalsAppointment] = useState<ReceptionAppointment | null>(null);
+  const [receptionCheckInAppointment, setReceptionCheckInAppointment] = useState<ReceptionAppointment | null>(null);
+  const handleReceptionCheckIn = (appointment: ReceptionAppointment) => {
+    if (surveyKindFor(appointment) === "lab") {
+      updateAppointmentMutation.mutate({ id: appointment.id, data: { status: 'checked-in', checkedInAt: new Date().toISOString() } });
+    } else if (appointment.patientId == null) {
+      toast({ title: "Cannot check in", description: "Assign a patient to this consultation before recording arrival vitals.", variant: "destructive" });
+    } else {
+      setReceptionCheckInAppointment(appointment);
+    }
+  };
   useEffect(() => {
     if (!canViewClinical) {
       setClinicalDetailPatient(null);
@@ -3840,7 +3851,7 @@ export default function StaffPortal() {
                   isSyncing={isSyncing}
                   onSync={handleSheetSync}
                   onUpdateAppointment={(id, data) => updateAppointmentMutation.mutate({ id, data })}
-                  onCheckIn={(apt) => updateAppointmentMutation.mutate({ id: apt.id, data: { status: 'checked-in', checkedInAt: new Date().toISOString() } })}
+                  onCheckIn={handleReceptionCheckIn}
                   onComplete={() => setActiveView('patients')}
                   onAfterVisit={() => setActiveView('patients')}
                   onRecordPrescription={() => setActiveView('patients')}
@@ -3871,6 +3882,7 @@ export default function StaffPortal() {
                 <ReceptionPatientList
                     canPrintSummary={canViewClinical}
                     onRecordVitals={setReceptionVitalsAppointment}
+                    onCheckIn={handleReceptionCheckIn}
                     onViewPatient={canViewClinical ? setClinicalDetailPatient : undefined}
                     onTranscribePrescription={setPaperPrescriptionPatient}
                     onEditPatient={setEditDetailPatient}
@@ -5315,6 +5327,10 @@ export default function StaffPortal() {
             {canViewClinical && clinicalDetailPatient && !editDetailPatient && <ReceptionPatientDetails patient={clinicalDetailPatient} onClose={() => setClinicalDetailPatient(null)} onEdit={() => setEditDetailPatient(clinicalDetailPatient)} />}
             {receptionist && editDetailPatient && <ReceptionPatientEdit patient={editDetailPatient} onClose={() => setEditDetailPatient(null)} />}
             {receptionist && receptionVitalsAppointment && <ReceptionVitalsDialog appointment={receptionVitalsAppointment} patient={patients.find((patient: ReceptionPatient) => patient.id === receptionVitalsAppointment.patientId) || { id: receptionVitalsAppointment.patientId!, name: "Patient" }} onClose={() => setReceptionVitalsAppointment(null)} />}
+            {receptionist && receptionCheckInAppointment && <ReceptionVitalsDialog key={receptionCheckInAppointment.id} appointment={receptionCheckInAppointment}
+              patient={patients.find((patient: ReceptionPatient) => patient.id === receptionCheckInAppointment.patientId) || { id: receptionCheckInAppointment.patientId!, name: "Patient" }}
+              onClose={() => setReceptionCheckInAppointment(null)}
+              onCheckIn={() => updateAppointmentMutation.mutateAsync({ id: receptionCheckInAppointment.id, data: { status: 'checked-in', checkedInAt: new Date().toISOString() } })} />}
             <AfterVisitDialog
               appointment={receptionist ? null : afterVisitAppointment}
               patient={patients.find((p: any) => p.id === afterVisitAppointment?.patientId) || null}

@@ -38,6 +38,7 @@ import { PatientReportsList, ReportViewButton, reportFileLink } from "@/componen
 import { fetchDirectoryAppointments, directoryPatientIds, type DirectoryAppointment } from "@/lib/patientDirectory";
 import { pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
 import { prescriptionTestOptions } from "@/lib/prescriptionTests";
+import { clinicalCareMode } from "@/lib/clinicalCareMode";
 import { ObstetricExamination } from "@/components/ObstetricExamination";
 import { examinationRecord, readObstetricExamination, relevantObstetricExamination, obstetricExaminationError, obstetricNotes, obstetricObjective, obstetricVisitExamination, type ObstetricExamination as ObstetricExam } from "@/lib/obstetricExamination";
 import { 
@@ -430,7 +431,10 @@ export default function ClinicianPortal() {
   const [patientDirectorySearch, setPatientDirectorySearch] = useState('');
   const [patientDirectoryDateFrom, setPatientDirectoryDateFrom] = useState('');
   const [patientDirectoryDateTo, setPatientDirectoryDateTo] = useState('');
-  const [careMode, setCareMode] = useState("natural_conception"); 
+  const [careModeOverride, setCareModeOverride] = useState<{ key: string; mode: string } | null>(null);
+  const careModeKey = `${selectedPatient?.id ?? ''}:${selectedPatient?.appointmentId ?? ''}`;
+  const careMode = careModeOverride?.key === careModeKey ? careModeOverride.mode : clinicalCareMode(selectedPatient || {});
+  const setCareMode = (mode: string) => setCareModeOverride({ key: careModeKey, mode });
   const [showPastRecords, setShowPastRecords] = useState(true);
   const [selectedTrailVisitId, setSelectedTrailVisitId] = useState<number | string | null>(null);
   const [activeSettingsTab, setActiveSettingsTab] = useState(() => new URLSearchParams(window.location.search).get("googleMeet") === "connected" ? "google-meet" : "profile");
@@ -601,18 +605,6 @@ export default function ClinicianPortal() {
     }
   };
 
-
-  useEffect(() => {
-    if (selectedPatient) {
-      const mode = (selectedPatient.mode || '').toLowerCase();
-      if (mode === 'pregnancy') setCareMode('pregnancy');
-      else if (mode === 'ivf' || mode === 'iui') setCareMode('iui');
-      else if (mode === 'postpartum') setCareMode('postpartum');
-      else if (mode === 'ttc' || mode === 'trying_to_conceive') setCareMode('natural_conception');
-      else if (mode === 'hormone' || mode === 'cycle') setCareMode('hormone_care');
-      else setCareMode('natural_conception');
-    }
-  }, [selectedPatient]);
 
   const generatePrescription = () => {
     if (!selectedPatient) return;
@@ -1549,6 +1541,7 @@ export default function ClinicianPortal() {
   const navigateToPatient = (patient: typeof patients[0]) => {
     queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
     setSelectedPatient(patient);
+    setCareModeOverride(null);
     setSelectedTrailVisitId(null);
     setActiveView("patient_detail");
     setPatientDetailTab('summary');
@@ -2042,7 +2035,7 @@ export default function ClinicianPortal() {
    let currentTests: { name: string; description: string }[] = [];
    let sectionTitle = '';
 
-   if (careMode === 'pregnancy' && pregnancyWeek > 0) {
+   if (showPregnancyContext && pregnancyWeek > 0) {
      if (pregnancyWeek <= 10) { currentTests = investigationsByWeek.booking.tests; sectionTitle = investigationsByWeek.booking.weekRange; }
      else if (pregnancyWeek <= 14) { currentTests = investigationsByWeek.first_trimester.tests; sectionTitle = investigationsByWeek.first_trimester.weekRange; }
      else if (pregnancyWeek <= 20) { currentTests = investigationsByWeek.second_trimester_early.tests; sectionTitle = investigationsByWeek.second_trimester_early.weekRange; }
@@ -2050,15 +2043,19 @@ export default function ClinicianPortal() {
      else if (pregnancyWeek <= 32) { currentTests = investigationsByWeek.third_trimester_early.tests; sectionTitle = investigationsByWeek.third_trimester_early.weekRange; }
      else if (pregnancyWeek <= 36) { currentTests = investigationsByWeek.third_trimester_late.tests; sectionTitle = investigationsByWeek.third_trimester_late.weekRange; }
      else { currentTests = investigationsByWeek.term.tests; sectionTitle = investigationsByWeek.term.weekRange; }
-   } else if (careMode === 'natural_conception' || careMode === 'iui' || careMode === 'ivf' || /fertility/i.test(selectedPatient.type || '')) {
+   } else if (careMode === 'natural_conception' || careMode === 'induction' || careMode === 'iui' || careMode === 'ivf') {
      currentTests = fertilityInvestigations;
      sectionTitle = 'Fertility Workup';
-   } else {
+   } else if (careMode === 'hormone_care' && !/pcos|irregular/i.test(selectedPatient.type || '')) {
      currentTests = cycleInvestigations;
      sectionTitle = 'Cycle & Hormonal Workup';
+   } else {
+     const suggestions = prescriptionTestOptions(showPregnancyContext ? 'Pregnant' : careMode === 'postpartum' ? 'Postpartum' : selectedPatient.type || '', pregnancyContext?.weeks ?? null);
+     currentTests = suggestions.tests.map((test) => ({ name: test.name, description: '' }));
+     sectionTitle = suggestions.context;
    }
    if (/mtp|irregular period/i.test(selectedPatient.type || '') || (showPregnancyContext && !pregnancyContext)) {
-     const suggestions = prescriptionTestOptions(showPregnancyContext ? 'Pregnant' : selectedPatient.type || '', pregnancyContext?.weeks ?? null);
+     const suggestions = prescriptionTestOptions(/mtp/i.test(selectedPatient.type || '') ? selectedPatient.type : showPregnancyContext ? 'Pregnant' : selectedPatient.type || '', pregnancyContext?.weeks ?? null);
      currentTests = suggestions.tests.map((test) => ({ name: test.name, description: '' }));
      sectionTitle = suggestions.context;
    }
@@ -4775,7 +4772,9 @@ export default function ClinicianPortal() {
                         <SelectItem value="natural_conception">Natural Conception</SelectItem>
                         <SelectItem value="induction">Ovulation Induction</SelectItem>
                         <SelectItem value="iui">IUI Procedure Cycle</SelectItem>
+                        <SelectItem value="ivf">IVF Cycle</SelectItem>
                         <SelectItem value="pregnancy">Pregnancy Care</SelectItem>
+                        <SelectItem value="general">General / Gynecology</SelectItem>
                         <SelectItem value="postpartum">Postpartum Care</SelectItem>
                       </SelectContent>
                     </Select>
