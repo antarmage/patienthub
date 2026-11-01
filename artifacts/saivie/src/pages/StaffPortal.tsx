@@ -95,6 +95,7 @@ import { formatInvoiceNumber, InvoiceDocument, type InvoiceDocumentItem, type In
 import { printPatientSummary } from "@/components/IntakeSummary";
 import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import { ReceptionDashboard, getArrivalState, type ReceptionFollowUp } from "@/components/ReceptionDashboard";
+import { ReceptionFollowUpPatients } from "@/components/ReceptionFollowUpPatients";
 import { useToast } from "@/hooks/use-toast";
 import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialogs";
 import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
@@ -3891,15 +3892,24 @@ export default function StaffPortal() {
             {/* FOLLOW-UP CALLS TAB (Receptionist only) */}
             {activeRole === 'receptionist' && activeView === 'followup' && (
                 <div className="max-w-7xl mx-auto space-y-6">
-                    <div className="flex items-center justify-between">
+                    <ReceptionFollowUpPatients onLogCall={(patient) => {
+                        const pending = followUpCalls.filter((call) => call.patientId === patient.patientId && call.status === 'pending')
+                            .sort((a, b) => (a.plannedDate || '9999').localeCompare(b.plannedDate || '9999') || a.id - b.id)[0];
+                        setSelectedCallPatient(pending || { patientId: patient.patientId, patientName: patient.name, phone: patient.phone || '', consultationDate: patient.lastVisit });
+                        setFollowUpCallForm({ feeling: pending?.feeling || '', gotMedicines: pending?.gotMedicines || '', concerns: pending?.concerns || '', crossSell: pending?.crossSell || '', nextVisit: pending?.nextVisit || '', notes: pending?.notes || '', nextMilestone: pending?.nextMilestone || '', didntPickCallTime: pending?.didntPickCallTime || '' });
+                        setIsFollowUpCallOpen(true);
+                    }} />
+                    <details className="rounded-xl border border-saivie-border bg-white p-4">
+                    <summary className="cursor-pointer text-sm font-medium text-saivie-teal">Scheduled calls & previous call logs</summary>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                             <Phone className="w-6 h-6 text-orange-600" />
                             <div>
-                                <h2 className="text-xl font-bold text-saivie-plum">Follow-Up Cold Calls</h2>
+                                <h2 className="text-xl font-bold text-saivie-plum">Call logs & reminders</h2>
                                 <p className="text-sm text-saivie-plum">Automatic 7-day check-ins, milestone and prescription reminders, pending tests and results</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                             <Button size="sm" variant="outline" disabled={followUpCallsQuery.isFetching} onClick={() => followUpCallsQuery.refetch()}>
                                 <RefreshCw className={`w-3 h-3 mr-1 ${followUpCallsQuery.isFetching ? 'animate-spin' : ''}`} /> Refresh queue
                             </Button>
@@ -3922,7 +3932,7 @@ export default function StaffPortal() {
                     </div>
 
                     <div className="grid grid-cols-12 gap-6">
-                        <div className="col-span-9">
+                        <div className="col-span-12 min-w-0 xl:col-span-9">
                             <Card className="shadow-sm border-saivie-border">
                                 <CardHeader className="py-3 border-b border-saivie-border flex justify-between items-center">
                                     <div className="flex border border-saivie-border rounded-md overflow-hidden text-xs">
@@ -3940,7 +3950,7 @@ export default function StaffPortal() {
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-0">
-                                    <div className="max-h-[calc(100vh-280px)] overflow-y-auto">
+                                    <div className="max-h-[calc(100vh-280px)] overflow-auto">
                                         <table className="w-full text-sm text-left">
                                             <thead className="bg-saivie-surface-muted text-saivie-plum uppercase text-xs border-b border-saivie-border sticky top-0 z-10">
                                                 <tr>
@@ -4024,7 +4034,7 @@ export default function StaffPortal() {
                             </Card>
                         </div>
 
-                        <div className="col-span-3 space-y-4">
+                        <div className="col-span-12 space-y-4 xl:col-span-3">
                             <Card className="shadow-sm border-saivie-border bg-orange-50/30">
                                 <CardHeader className="py-3 border-b border-orange-100 bg-orange-50/50">
                                     <div className="flex items-center gap-2">
@@ -4095,6 +4105,7 @@ export default function StaffPortal() {
                             </Card>
                         </div>
                     </div>
+                    </details>
                 </div>
             )}
 
@@ -5052,7 +5063,7 @@ export default function StaffPortal() {
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <Label className="text-xs font-medium">Patient Name</Label>
-                                    <Select onValueChange={(val) => {
+                                    <Select value={selectedCallPatient?.patientId ? String(selectedCallPatient.patientId) : ""} onValueChange={(val) => {
                                         const p = patients.find((pt: any) => pt.id === parseInt(val));
                                         if (p) setSelectedCallPatient({ patientId: p.id, patientName: p.name, phone: p.phone || '', patientType: p.type || '' });
                                     }}>
@@ -5152,6 +5163,7 @@ export default function StaffPortal() {
                                     payload.phone = selectedCallPatient?.phone || '';
                                     payload.patientType = selectedCallPatient?.patientType || '';
                                     payload.patientId = selectedCallPatient?.patientId || null;
+                                    payload.consultationDate = selectedCallPatient?.consultationDate || null;
                                     payload.plannedDate = today;
                                     saveFollowUpCallMutation.mutate({ data: payload });
                                 }

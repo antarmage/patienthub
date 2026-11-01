@@ -15,6 +15,8 @@
 
 ## Client authentication
 
+- `GET /api/reception/follow-up-patients` is a narrow receptionist/clinician/owner read for call planning, independent of full clinical-view permission. It returns only patient ID, name, phone, latest recorded past visit and a current-pregnancy flag. Recent visitors cover today and the preceding 13 India calendar dates; completed appointments, recorded visits and saved last-visit dates are deduplicated per patient. The separate pregnant list includes explicitly recorded active/pregnant/antenatal/ANC patients even without a visit or scheduled call. It exposes no LMP, clinical history, diagnoses or encounter content.
+
 - Staff requests send `Authorization: Bearer <staffToken>`, returned by `/api/auth/passcode` after OTP verification (also by the existing staff/desk logins). Staff tokens expire after eight hours and are invalidated by server restart. Staff cookies are **not** supported.
 - The existing appointment `X-Staff-Token` header remains supported with the same token expiry and persisted-user role checks. Prefer `Authorization` for all new requests.
 - Patient-specific reads accept the patient's existing `/api/auth/patient-login` session cookie, or their separate mobile-login Bearer token. Send cookies with same-origin requests or `credentials: "include"` where appropriate. An invalid explicitly supplied token never falls back to cookies.

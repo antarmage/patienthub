@@ -17,6 +17,7 @@ import { buildMedicineSuggestions } from "../medicine-suggestions";
 import { checkInIsToday, registerClinicalAccess, registrationFields, rescheduledLogistics, type AccessActor } from "../clinical-access";
 import { knownRateCard, parseRateCardText } from "../referral-rate-cards";
 import { synchronizeFollowUpCalls } from "../follow-up-calls";
+import { registerReceptionFollowUpRoutes } from "../reception-follow-up";
 import { insertPatientSchema, parseCallDate, prescriptionDueDate } from "@workspace/db";
 import { calculateInvoiceQuote } from "../prime-pricing";
 import { registerOcrRoutes, registerPrescriptionReadingRoutes, scanClinicalDocument } from "../replit_integrations/ocr";
@@ -396,6 +397,12 @@ export async function registerRoutes(
     savePatient: (id, body, actor) => storage.saveReceptionDetailsEdit(id, body, actor),
   });
   const online = registerOnlineConsultationRoutes(app, onlineStore, getAccessActor);
+  registerReceptionFollowUpRoutes(app, {
+    authenticate: getAccessActor,
+    patients: () => storage.getPatients(),
+    appointments: () => storage.getAppointments(),
+    visits: () => storage.getAllVisitHistory(),
+  });
   registerIcdRoutes(app, async (req, res, clinicianOnly) => {
     if (!clinicianOnly) {
       const actor = await getAccessActor(req, res);
