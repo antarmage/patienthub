@@ -1,4 +1,5 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
+import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -24,6 +25,13 @@ function BrandFavicon() {
   return null;
 }
 
+function RecoveryPortalRedirect() {
+  useEffect(() => {
+    window.location.replace(`${import.meta.env.BASE_URL}recover/index.html`);
+  }, []);
+  return <p className="p-6 text-sm text-saivie-teal">Opening recovery portal...</p>;
+}
+
 function Router() {
   return (
     <Switch>
@@ -40,6 +48,7 @@ function Router() {
       <Route path="/staff/protocol/:id" component={StaffPatientProtocol} />
       <Route path="/staff/create-plan/:id?" component={StaffCarePlan} />
       <Route path="/owner" component={OwnerPortal} />
+      <Route path={/^\/recover\/?$/} component={RecoveryPortalRedirect} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -9,6 +9,7 @@ echo ""
 # 1. Build all web frontends
 echo "[1/2] Building web applications..."
 pnpm -r --filter "!@workspace/mamacare-mobile" --if-present run build
+pnpm --filter @workspace/saivie-recover run build --base=/recover/ --outDir=dist/cloudfront-recover
 
 # 2. Sync builds to AWS S3 buckets
 echo ""
@@ -34,8 +35,14 @@ invalidate_distribution() {
 : "${CF_DIST_SAIVIE:=E1LS981L0SUTE8}"
 
 echo "  -> Syncing @workspace/saivie to s3://saivie-app..."
-aws s3 sync artifacts/saivie/dist/public s3://saivie-app --delete
+aws s3 sync artifacts/saivie/dist/public s3://saivie-app --delete --exclude 'recover/*'
 set_index_cache_policy saivie-app saivie
+
+echo "  -> Syncing recovery subpath to s3://saivie-app/recover/..."
+aws s3 sync artifacts/saivie-recover/dist/cloudfront-recover s3://saivie-app/recover/ --delete
+aws s3 cp artifacts/saivie-recover/dist/cloudfront-recover/index.html s3://saivie-app/recover/index.html \
+	--cache-control "no-cache, no-store, must-revalidate" \
+	--content-type "text/html; charset=utf-8"
 
 echo "  -> Syncing @workspace/saivie-desk to s3://saivie-desk..."
 aws s3 sync artifacts/saivie-desk/dist/public s3://saivie-desk --delete
