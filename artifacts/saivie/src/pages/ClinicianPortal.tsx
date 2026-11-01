@@ -17,6 +17,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { OnlineConsultationActions } from "@/components/OnlineConsultationActions";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
 import { HpvBadge } from "@/components/HpvBadge";
+import { SurgeryPlanningButton } from "@/components/SurgeryPlanning";
 import { hpvProtection, hpvSurveyAnswer } from "@/lib/hpvProtection";
 import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import { consultationDirectionsByPath, consultationPaths, consultationSurveyForVisit, effectiveConsultationSurvey, MAX_CONSULTATION_DIRECTIONS, surveyQuestions, toggleConsultationDirection, toggleConsultationPath, type ConsultationSurveyEdits } from "@/lib/consultationSurvey";
@@ -4725,7 +4726,8 @@ export default function ClinicianPortal() {
                     </div>
                  </div>
 
-                 <div className="flex items-center gap-3">
+                 <div className="flex flex-wrap items-center gap-3">
+                    <SurgeryPlanningButton patient={{ id: selectedPatient.id, name: selectedPatient.name }} />
                     <Select value={careMode} onValueChange={setCareMode}>
                       <SelectTrigger className="h-8 text-[11px] bg-saivie-ivory border-saivie-border w-[170px] font-semibold text-saivie-teal">
                         <SelectValue placeholder="Select Pathway" />

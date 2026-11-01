@@ -36,6 +36,8 @@ import { whatsapp } from "../whatsapp";
 import { isSmtpConfigured, maskEmail, sendEmail, sendOtpEmail, type OtpDeliveryMethod } from "../smtp";
 import { checkDeliverableEmail } from "../email-check";
 import { hpvClinicStatuses, registerHpvStatusRoute } from "../hpv-protection";
+import { registerSurgeryWorkflow } from "../surgery-workflow";
+import { createSurgeryStore } from "../surgery-store";
 import { readLabPrescription, sanitizeLabSurvey, surveyKindFor } from "../survey-kind";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
 import { analyseGenome, analyseGenomeFromKey } from "../genome-engine";
@@ -5630,53 +5632,10 @@ Return a JSON object:
     res.json({ staffToken, user: { id: user.id, username: user.username, role: user.role } });
   });
 
-  // Search patients (staff-authenticated)
-  app.get("/api/postop/patients", async (req, res) => {
-    if (!getStaffUserId(req, res)) return;
-    const q = ((req.query.q as string) || "").toLowerCase().trim();
-    const all = await storage.getPatients();
-    const results = q
-      ? all.filter(p => p.name?.toLowerCase().includes(q) || p.phone?.includes(q)).slice(0, 20)
-      : all.slice(0, 20);
-    res.json(results);
-  });
-
   // Get post-op observations for a patient (requires valid staff Bearer token).
   // patientId must NOT appear in the URL (CodeQL js/sensitive-get-query).
   // Pass it via the X-Patient-Id request header instead.
-  app.get("/api/postop/observations", async (req, res) => {
-    if (!getStaffUserId(req, res)) return;
-    const patientId = parseId((req.headers["x-patient-id"] as string) ?? "");
-    if (!patientId) return res.status(400).json({ error: "Missing or invalid X-Patient-Id header" });
-    const obs = await storage.getPostopObservations(patientId);
-    res.json(obs);
-  });
-
-  // Create a new post-op observation
-  app.post("/api/postop/observations", async (req, res) => {
-    const staffUserId = getStaffUserId(req, res);
-    if (!staffUserId) return;
-    const {
-      patientId, observedAt, painScore, systolic, diastolic, pulse,
-      nausea, mobility, woundCondition, notes
-    } = req.body;
-    if (!patientId || !observedAt) return res.status(400).json({ error: "patientId and observedAt required" });
-    const staffUser = await storage.getUser(staffUserId);
-    const obs = await storage.createPostopObservation({
-      patientId: parseInt(patientId),
-      observedAt,
-      painScore: painScore != null ? parseInt(painScore) : null,
-      systolic: systolic != null ? parseInt(systolic) : null,
-      diastolic: diastolic != null ? parseInt(diastolic) : null,
-      pulse: pulse != null ? parseInt(pulse) : null,
-      nausea: !!nausea,
-      mobility: mobility || null,
-      woundCondition: woundCondition || null,
-      notes: notes || null,
-      recordedBy: staffUser?.username || staffUserId,
-    });
-    res.status(201).json(obs);
-  });
+  registerSurgeryWorkflow(app, createSurgeryStore(pool), getAccessActor);
 
   app.use("/api", (err: any, _req: any, res: any, _next: any) => {
     console.error("API Error:", err.message);

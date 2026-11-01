@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
 
 const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
 
@@ -23,13 +24,18 @@ function api(path: string, opts?: RequestInit, token?: string) {
 }
 
 type Staff = { id: string; username: string; role: string };
-type Patient = { id: number; name: string; phone?: string; condition?: string; age?: number; dateOfBirth?: string };
-type Observation = {
-  id: number; patientId: number; observedAt: string; painScore: number | null;
-  systolic: number | null; diastolic: number | null; pulse: number | null;
-  nausea: boolean; mobility: string | null; woundCondition: string | null;
-  notes: string | null; recordedBy: string | null;
-};
+const recoveryPatientSchema = z.object({
+  id: z.number().int().positive(), name: z.string(), phone: z.string().nullable().optional(), age: z.number().nullable().optional(),
+  surgery: z.object({ id: z.number().int().positive(), procedureName: z.string(), plannedDate: z.string(), completedAt: z.string(), surgeonName: z.string() }),
+});
+type Patient = z.infer<typeof recoveryPatientSchema>;
+const observationSchema = z.object({
+  id: z.number().int().positive(), patientId: z.number().int().positive(), surgeryPlanId: z.number().int().positive(),
+  observedAt: z.string(), painScore: z.number().nullable(), systolic: z.number().nullable(),
+  diastolic: z.number().nullable(), pulse: z.number().nullable(), nausea: z.boolean(),
+  mobility: z.string().nullable(), woundCondition: z.string().nullable(), notes: z.string().nullable(), recordedBy: z.string().nullable(),
+});
+type Observation = z.infer<typeof observationSchema>;
 
 const PAIN_LABELS: Record<number, string> = {
   0: "0 – None", 1: "1", 2: "2", 3: "3 – Mild", 4: "4", 5: "5 – Moderate",
@@ -157,6 +163,21 @@ export default function RecoverApp() {
     }
   }
 
+  async function recoveryResponse(response: Response): Promise<unknown> {
+    if (!response.headers.get("content-type")?.includes("application/json")) throw new Error("The recovery API is unavailable. Deploy the updated API and recovery app together.");
+    const data: unknown = await response.json();
+    if (!response.ok) {
+      const message = data && typeof data === "object" && "error" in data && typeof data.error === "string" ? data.error : `Recovery request failed (HTTP ${response.status})`;
+      if (response.status === 401) handleLogout();
+      if (response.status === 409 || response.status === 404) {
+        setSelectedPatient(null); setView("search"); setSearch("");
+        toast({ title: "Recovery enrollment changed", description: message, variant: "destructive" });
+      }
+      throw new Error(message);
+    }
+    return data;
+  }
+
   // ── App state ──────────────────────────────────────────────────────────────
   type View = "search" | "confirm" | "form" | "history";
   const [view, setView] = useState<View>("search");
@@ -175,26 +196,31 @@ export default function RecoverApp() {
   // has explicitly confirmed the patient and navigated to the form.
   const isFormFilled = true;
 
-  const { data: patients = [], isFetching } = useQuery<Patient[]>({
-    queryKey: ["/api/postop/patients", search],
+  const { data: patients = [], isFetching, error: patientsError, refetch: refetchPatients } = useQuery<Patient[]>({
+    queryKey: ["/api/postop/patients", staff?.id, search],
     queryFn: async () => {
       if (!token) return [];
       const r = await api(`/api/postop/patients?q=${encodeURIComponent(search)}`, {}, token);
-      if (r.status === 401) { handleLogout(); return []; }
-      return r.json();
+      return z.array(recoveryPatientSchema).parse(await recoveryResponse(r));
     },
     enabled: !!token,
+    refetchInterval: 15_000,
+    retry: false,
   });
 
-  const { data: observations = [], refetch: refetchObs } = useQuery<Observation[]>({
-    queryKey: ["/api/postop/observations", selectedPatient?.id],
+  const { data: observations = [], error: observationsError, refetch: refetchObs } = useQuery<Observation[]>({
+    queryKey: ["/api/postop/observations", staff?.id, selectedPatient?.id, selectedPatient?.surgery.id],
     queryFn: async () => {
       if (!token || !selectedPatient) return [];
-      const r = await api(`/api/postop/observations`, { headers: { "X-Patient-Id": String(selectedPatient.id) } }, token);
-      if (r.status === 401) { handleLogout(); return []; }
-      return r.json();
+      const r = await api(`/api/postop/observations`, { headers: { "X-Patient-Id": String(selectedPatient.id), "X-Surgery-Plan-Id": String(selectedPatient.surgery.id) } }, token);
+      const data = await recoveryResponse(r);
+      const observations = z.array(observationSchema).parse(data);
+      if (observations.some((observation) => observation.patientId !== selectedPatient.id || observation.surgeryPlanId !== selectedPatient.surgery.id)) throw new Error("The recovery API returned observations for a different surgery");
+      return observations;
     },
     enabled: !!token && !!selectedPatient,
+    refetchInterval: 15_000,
+    retry: false,
   });
 
   const submitMutation = useMutation({
@@ -203,6 +229,7 @@ export default function RecoverApp() {
         method: "POST",
         body: JSON.stringify({
           patientId: selectedPatient!.id,
+          surgeryPlanId: selectedPatient!.surgery.id,
           observedAt: new Date().toISOString(),
           painScore: formData.painScore,
           systolic: formData.systolic || null,
@@ -214,9 +241,7 @@ export default function RecoverApp() {
           notes: formData.notes || null,
         }),
       }, token!);
-      if (r.status === 401) { handleLogout(); throw new Error("Session expired"); }
-      if (!r.ok) throw new Error("Failed to save");
-      return r.json();
+      return recoveryResponse(r);
     },
     onSuccess: () => {
       toast({ title: "Observation saved", description: "Post-op record submitted successfully." });
@@ -320,12 +345,13 @@ export default function RecoverApp() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
+        {observationsError && selectedPatient && <div role="alert" className="mx-auto max-w-3xl p-4 text-sm text-rose-700">Could not load recovery observations: {observationsError.message} <Button variant="link" onClick={() => void refetchObs()}>Retry</Button></div>}
         {/* Patient search */}
         {view === "search" && (
           <div className="max-w-3xl mx-auto px-6 pt-10 pb-20 space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-foreground mb-1">Find Patient</h2>
-              <p className="text-muted-foreground text-sm">Search by name or phone number to begin recording post-op vitals.</p>
+              <h2 className="text-2xl font-bold text-foreground mb-1">Patients in recovery</h2>
+              <p className="text-muted-foreground text-sm">Only patients whose surgery has been marked completed by a doctor appear here. Planned, cancelled and discharged cases are excluded.</p>
             </div>
             <Input
               value={search} onChange={e => setSearch(e.target.value)}
@@ -333,10 +359,10 @@ export default function RecoverApp() {
               className="h-14 text-base shadow-sm"
             />
             <div className="space-y-2">
-              {isFetching ? (
+              {patientsError ? <div role="alert" className="rounded-xl border border-rose-200 p-4 text-sm text-rose-700">{patientsError.message} <Button variant="link" onClick={() => void refetchPatients()}>Retry</Button></div> : isFetching ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">Searching…</div>
-              ) : patients.length === 0 && search ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">No patients found for "{search}"</div>
+              ) : patients.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">{search ? `No recovery patients found for "${search}"` : "No patients are currently in surgical recovery."}</div>
               ) : (
                 patients.map(p => (
                   <button
@@ -348,8 +374,9 @@ export default function RecoverApp() {
                       <div>
                         <p className="font-semibold text-foreground text-base">{p.name}</p>
                         <p className="text-sm text-muted-foreground mt-0.5">
-                          {[p.age && `${p.age} yrs`, p.phone, p.condition].filter(Boolean).join(" · ")}
+                          {[p.age && `${p.age} yrs`, p.phone].filter(Boolean).join(" · ")}
                         </p>
+                        <p className="mt-1 text-sm text-primary">{p.surgery.procedureName} · {p.surgery.surgeonName} · {new Date(p.surgery.completedAt).toLocaleDateString("en-IN")}</p>
                       </div>
                       <svg className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -377,7 +404,8 @@ export default function RecoverApp() {
                   </div>
                   <div>
                     <p className="text-xl font-bold text-foreground">{selectedPatient.name}</p>
-                    {selectedPatient.condition && <p className="text-sm text-primary font-medium mt-0.5">{selectedPatient.condition}</p>}
+                    <p className="text-sm text-primary font-medium mt-0.5">{selectedPatient.surgery.procedureName} · {selectedPatient.surgery.surgeonName}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Surgery completed {new Date(selectedPatient.surgery.completedAt).toLocaleDateString("en-IN")}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -389,12 +417,6 @@ export default function RecoverApp() {
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Phone</p>
                     <p className="text-foreground font-medium">{selectedPatient.phone || "—"}</p>
                   </div>
-                  {selectedPatient.dateOfBirth && (
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Date of Birth</p>
-                      <p className="text-foreground font-medium">{new Date(selectedPatient.dateOfBirth).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -414,7 +436,7 @@ export default function RecoverApp() {
           <div className="max-w-3xl mx-auto px-6 pt-8 pb-20 space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-foreground mb-1">New Observation</h2>
-              <p className="text-muted-foreground text-sm">Recording vitals for <span className="font-semibold text-primary">{selectedPatient.name}</span></p>
+              <p className="text-muted-foreground text-sm">Recording vitals for <span className="font-semibold text-primary">{selectedPatient.name}</span> · {selectedPatient.surgery.procedureName}</p>
             </div>
 
             {/* Pain score */}
@@ -558,7 +580,7 @@ export default function RecoverApp() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-foreground mb-1">Observation History</h2>
-                <p className="text-muted-foreground text-sm">{selectedPatient.name} — all recorded post-op entries</p>
+                <p className="text-muted-foreground text-sm">{selectedPatient.name} — {selectedPatient.surgery.procedureName} recovery entries</p>
               </div>
               <Button onClick={() => { resetForm(); setView("form"); }} className="bg-primary hover:bg-primary/90 h-11 font-semibold">
                 + New Observation

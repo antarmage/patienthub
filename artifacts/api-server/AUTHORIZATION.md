@@ -17,6 +17,16 @@
 
 Recovery temporarily uses `POST /api/postop/auth/passcode` with an individual staff passcode only, without a username or WhatsApp OTP. The passcode must match exactly one persisted account with an allowed staff role; duplicate passcodes are rejected instead of choosing an arbitrary user. The endpoint permits 10 attempts per IP per 15 minutes and returns the existing expiring staff bearer session. Existing OTP/ticket login endpoints and all other portal login flows remain unchanged. Administrators must assign unique staff passcodes; this temporary single-factor flow has weaker protection than OTP.
 
+### Surgery planning and recovery enrollment
+
+- Doctors (`clinician`) and owners use **Surgery planning** in the patient workspace or Owner Portal header. `GET/POST /api/patients/:id/surgeries` lists/creates plans; `PATCH /api/patients/:id/surgeries/:surgeryId` edits planned procedure/date/surgeon/notes or performs explicit lifecycle actions. Receptionists, staff, admins and patients cannot manage plans.
+- Lifecycle: `planned` → `completed` or `cancelled`; `completed` → `discharged`. Completion requires a valid actual surgery date no later than today in India time. Saving a plan or reaching its planned date never automatically enrolls a patient. Closed plans cannot be reopened; another surgery creates a new episode.
+- One open plan/recovery episode per patient is enforced by a partial unique index and patient-row locks. Status changes and observations lock the surgery row; a discharged case cannot accept a later observation. Creator/updater and completion/closure timestamps are persisted.
+- `GET /api/postop/patients` returns only completed, not-yet-discharged surgery patients (up to 20 matching name/phone search), with minimal identity and surgery context. It does not expose full patient history or surgery notes. Planned/cancelled/discharged cases and patients without a plan are excluded, including with no search filter.
+- Recovery staff roles may read/write observations only for an active completed episode belonging to the supplied patient. GET requires `X-Patient-Id` and `X-Surgery-Plan-Id`; POST requires numeric `patientId`/`surgeryPlanId`, observation time and validated measurements. Server resolves the recording staff identity. Missing/mismatched/closed episodes fail explicitly. Histories are filtered by surgery episode, not just patient.
+- Startup migration adds `surgery_plans` and nullable `postop_observations.surgery_plan_id`. Legacy observations are preserved unlinked; no automatic surgery enrollment or historical relinking occurs. Deploy API, main frontend and recovery frontend together; restart the API for the idempotent migration. Existing unrelated patient `procedureDate`/historical surgery fields do not enroll recovery patients.
+- Run the authorization suite with `TEST_SURGERY_DATABASE_URL` pointing to an isolated local test database to include migration/transaction/episode-isolation tests. That test creates and drops its own schema and must not target production.
+
 ### HPV vaccination badges
 
 `GET /api/hpv-protection?patientIds=1,2` provides a narrow HPV badge-status projection to authenticated staff/receptionist/admin/clinician/owner accounts, independent of receptionist clinical-detail visibility. Up to 500 positive patient IDs are accepted; malformed requests are rejected. It combines clinic-recorded HPV doses with the saved onboarding vaccination answer, returning only patient-ID-to-status entries, never history, dose records, or other clinical data. `protected` is the legacy identifier for all doses reported or recorded, not a guarantee of immunity; `in-progress` represents some doses. No/unknown/unanswered responses alone produce no badge. Responses are private/no-store. Deploy the API and frontend together for receptionist access to these badges.
@@ -57,7 +67,7 @@ Prescription extraction remains read-for-review only; saving is independently pr
 
 ## Receptionist response and write contracts
 
-Authenticated nonclinical staff can use `/api/patients`, `/api/patients/:id`, `/api/desk/patients`, `/api/desk/patients/:id`, `/api/prime-members`, and `/api/postop/patients`. With clinical visibility off, their list, detail, registration, and update responses allow only:
+Authenticated nonclinical staff can use `/api/patients`, `/api/patients/:id`, `/api/desk/patients`, `/api/desk/patients/:id`, and `/api/prime-members`. The separate `/api/postop/patients` endpoint is restricted to active completed surgery episodes and additionally includes only the surgery ID, procedure, planned/completed dates and surgeon name. With clinical visibility off, ordinary list, detail, registration, and update responses allow only:
 
 `id, name, phone, age, email, address, dob, avatar, mode, referredBy, insurance, lastVisit, nextReview, isPrimeMember, primeMemberSince`
 

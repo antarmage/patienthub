@@ -51,6 +51,14 @@ export function patientLogistics(row: unknown): unknown {
   return project(row, patientLogisticsFields);
 }
 
+function recoveryPatientProjection(row: unknown): unknown {
+  if (Array.isArray(row)) return row.map(recoveryPatientProjection);
+  if (!row || typeof row !== "object") return row;
+  const result = project(row, patientLogisticsFields);
+  if (!result || typeof result !== "object" || !("surgery" in row)) return result;
+  return { ...result, surgery: project(row.surgery, new Set(["id", "procedureName", "plannedDate", "completedAt", "surgeonName"])) };
+}
+
 export function rescheduledLogistics(
   current: { date: string; time: string; providerId: number | null },
   patch: Record<string, unknown>,
@@ -254,7 +262,7 @@ export function registerClinicalAccess(app: Express, dependencies: ClinicalAcces
 
       const json = res.json.bind(res);
       if (!clinician && (patientRecord || patientListAlias || primeMutation)) {
-        const patientResponse = (body: unknown) => receptionRead ? project(body, patientClinicalFields) : patientLogistics(body);
+        const patientResponse = (body: unknown) => path === "/api/postop/patients" ? recoveryPatientProjection(body) : receptionRead ? project(body, patientClinicalFields) : patientLogistics(body);
         res.json = ((body: unknown) => {
           if (res.statusCode >= 400) return json(body);
           if (path.includes("/by-category/") && body && typeof body === "object") {
