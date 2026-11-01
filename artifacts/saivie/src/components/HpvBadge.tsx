@@ -3,8 +3,8 @@ import { HPV_BADGE_COPY, type HpvProtection } from "@/lib/hpvProtection";
 
 type Props = { status: HpvProtection | null | undefined; variant?: "compact" | "full"; className?: string };
 
-function VaccinationSeal({ complete, className }: { complete: boolean; className: string }) {
-    return <svg viewBox="0 0 100 100" className={className} aria-hidden="true" fill="none" strokeLinecap="round" strokeLinejoin="round">
+export function VaccinationSeal({ complete, className, style }: { complete: boolean; className?: string; style?: React.CSSProperties }) {
+    return <svg viewBox="0 0 100 100" className={className} style={style} aria-hidden="true" fill="none" strokeLinecap="round" strokeLinejoin="round">
         <path d="M34 76 29 96 44 89 50 96 54 75M53 76 58 96 67 87 80 90 70 72" fill="#E5C4DB" stroke="#55344F" strokeWidth="1.8" />
         <circle cx="50" cy="45" r="39" fill="#FFFFFC" stroke="#55344F" strokeWidth="2" />
         <circle cx="50" cy="45" r="32" fill={complete ? "#CFE2DC" : "#E5C4DB"} />

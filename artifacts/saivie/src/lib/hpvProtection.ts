@@ -16,3 +16,13 @@ export function hpvProtection(surveyAnswer?: string | null, clinicStatus?: HpvPr
     if (surveyAnswer === "Yes, some doses" || clinicStatus === "in-progress") return "in-progress";
     return null;
 }
+
+export type HpvVaccinationStatus = HpvProtection | "not-vaccinated" | "unknown" | "not-recorded";
+
+export function hpvVaccinationStatus(surveyAnswer?: string | null, clinicStatus?: HpvProtection | null): HpvVaccinationStatus {
+    const recorded = hpvProtection(surveyAnswer?.trim(), clinicStatus);
+    if (recorded) return recorded;
+    if (surveyAnswer?.trim() === "No") return "not-vaccinated";
+    if (surveyAnswer?.trim() === "Not sure") return "unknown";
+    return "not-recorded";
+}

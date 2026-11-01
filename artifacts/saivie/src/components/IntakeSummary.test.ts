@@ -64,13 +64,31 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
         assert.ok(html.includes("61 kg"));
 
         assert.ok(!html.includes("All doses reported or recorded"));
+        assert.ok(html.includes('data-testid="hpv-print-badge-not-recorded"'));
         form.gyn.hpvVaccine = "Yes, all doses";
         printPatientSummary(patient);
         assert.ok(html.includes("All doses reported or recorded"));
+        assert.ok(html.includes('data-testid="hpv-print-badge-protected"'));
+        assert.ok(html.includes("<svg"));
+        form.gyn.hpvVaccine = "Yes, some doses";
+        printPatientSummary(patient);
+        assert.ok(html.includes('data-testid="hpv-print-badge-in-progress"'));
+        assert.ok(html.includes("HPV doses started"));
+        form.gyn.hpvVaccine = "Not sure";
+        printPatientSummary(patient);
+        assert.ok(html.includes('data-testid="hpv-print-badge-unknown"'));
+        assert.ok(!html.includes('data-testid="hpv-print-badge-not-vaccinated"'));
         form.gyn.hpvVaccine = "No";
+        printPatientSummary(patient);
+        assert.ok(html.includes('data-testid="hpv-print-badge-not-vaccinated"'));
+        assert.ok(html.includes("Patient reports no HPV vaccination"));
+        printPatientSummary(patient, null, "in-progress");
+        assert.ok(html.includes('data-testid="hpv-print-badge-in-progress"'));
+        assert.ok(!html.includes('data-testid="hpv-print-badge-not-vaccinated"'));
         printPatientSummary(patient, null, "protected");
         assert.ok(html.includes("All doses reported or recorded"));
         assert.ok(!html.includes("discuss vaccination"));
+        assert.ok(!html.includes('data-testid="hpv-print-badge-not-vaccinated"'));
 
         printPatientSummary({ name: "Lab Patient", history: { labSurvey: { tests: "Thyroid profile", lastMeal: "Less than 2 hours ago", allergies: ["Latex"], appointmentId: 7 } } });
         assert.ok(html.includes("Lab visit survey"));

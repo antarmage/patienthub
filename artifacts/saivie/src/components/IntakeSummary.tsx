@@ -4,8 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getPrintBrandStyles } from "@/lib/brand";
 import { readConsultationSurvey } from "@/lib/consultationSurvey";
-import { HPV_BADGE_COPY, hpvProtection, type HpvProtection } from "@/lib/hpvProtection";
+import { hpvProtection, hpvVaccinationStatus, type HpvProtection, type HpvVaccinationStatus } from "@/lib/hpvProtection";
 import { HpvBadge } from "@/components/HpvBadge";
+import { HpvPrintBadge } from "@/components/HpvPrintBadge";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { labSurveyFlags, labSurveyRows, readLabSurvey } from "@/lib/labSurvey";
 
 type WeightLog = { weight: number; unit: string; date: string; week: number | null };
@@ -31,6 +34,7 @@ type Summary = {
     sections: Section[];
     hasIntake: boolean;
     hpv: HpvProtection | null;
+    hpvVaccination: HpvVaccinationStatus;
 };
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : "");
@@ -255,6 +259,7 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], ch
         sections,
         hasIntake: Boolean(history.onboarding || labSurvey),
         hpv: hpvProtection(text(gyn.hpvVaccine), hpvClinicStatus),
+        hpvVaccination: hpvVaccinationStatus(text(gyn.hpvVaccine), hpvClinicStatus),
     };
 }
 
@@ -397,9 +402,6 @@ table{width:100%;border-collapse:collapse}
 .line{border-bottom:1px solid var(--saivie-border);height:26px}
 .disclaimer{background:var(--saivie-surface-blush);border-radius:10px;padding:8px 14px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--saivie-plum);font-size:10px;margin-bottom:14px}
 .disclaimer svg{width:16px;height:16px;color:var(--saivie-rose)}
-.hpv{display:flex;align-items:center;gap:12px;border:1px solid var(--saivie-border)}.hpv.protected{background:var(--saivie-sage)}.hpv.in-progress{background:var(--saivie-surface-blush)}
-.hpv .mico{background:var(--saivie-teal)}.hpv.in-progress .mico{background:var(--saivie-rose)}
-.hpv .msg{font-family:Georgia,"Times New Roman",serif;font-size:14px;font-weight:600;color:var(--saivie-plum);margin-top:2px}
 .printed{text-align:right;color:var(--saivie-plum);font-size:9px;margin-top:6px}
 @page{size:A4;margin:42mm 10mm 12mm}
 @media print{body{padding:0;background:#fff}.page{max-width:none}}
@@ -411,7 +413,7 @@ table{width:100%;border-collapse:collapse}
   <div>${field(ICONS.notes, "Patient ID", s.patientId)}</div>
 </div>
 
-${s.hpv ? `<div class="band hpv ${s.hpv}"><span class="mico">${ICONS.shield}</span><div><div class="ml">${esc(HPV_BADGE_COPY[s.hpv].label)}</div><div class="msg">${esc(HPV_BADGE_COPY[s.hpv].message)}</div></div></div>` : ""}
+${renderToStaticMarkup(<HpvPrintBadge status={s.hpvVaccination} />)}
 
 ${s.metrics.length ? `<div class="band sage metrics">${s.metrics.map((m) => `<div class="metric"><span class="mico">${metricIcon(m.label)}</span><div><div class="ml">${esc(m.label)}</div><div class="mv" style="color:${toneColor(m.tone)}">${esc(m.value)}</div>${m.hint ? `<div class="mh">${esc(m.hint)}</div>` : ""}</div></div>`).join("")}</div>` : ""}
 
@@ -475,7 +477,7 @@ export function IntakeSummaryActions({ patient, weightLogs, bpLogs, checkInVital
                         {summary.meta.length > 0 && <p className="text-xs text-saivie-plum">{summary.meta.join(" · ")}</p>}
                     </DialogHeader>
 
-                    <HpvBadge status={summary.hpv} variant="full" />
+                    {summary.hpv ? <HpvBadge status={summary.hpv} variant="full" /> : <HpvPrintBadge status={summary.hpvVaccination} />}
 
                     {!summary.hasIntake && (
                         <p className="rounded-lg border border-dashed border-saivie-border bg-saivie-ivory p-3 text-xs text-saivie-teal">This patient hasn't completed the online intake form yet. Showing clinic records and self-recorded vitals only.</p>
