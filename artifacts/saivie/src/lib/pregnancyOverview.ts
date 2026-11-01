@@ -18,6 +18,49 @@ export const indiaToday = () =>
   new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
 const validDate = (value: unknown) =>
   typeof value === "string" && !!calendarDate(value);
+
+export function readMeasurementLogs(value: unknown, patientId: number) {
+  const data = historyRecord(value);
+  if (!Array.isArray(data.bp) || !Array.isArray(data.weight))
+    throw new Error("The measurement API returned an invalid log list.");
+  const validate = (row: unknown, fields: string[]) => {
+    const log = historyRecord(row);
+    if (
+      log.patientId !== patientId ||
+      !validDate(log.date) ||
+      fields.some(
+        (field) =>
+          typeof log[field] !== "number" ||
+          !Number.isFinite(log[field]) ||
+          Number(log[field]) <= 0,
+      )
+    )
+      throw new Error(
+        "The measurement API returned invalid or mismatched patient logs.",
+      );
+    return log;
+  };
+  return {
+    bp: data.bp.map((row) => {
+      const log = validate(row, ["systolic", "diastolic"]);
+      return {
+        date: String(log.date),
+        systolic: Number(log.systolic),
+        diastolic: Number(log.diastolic),
+      };
+    }),
+    weight: data.weight.map((row) => {
+      const log = validate(row, ["weight"]);
+      if (log.unit != null && typeof log.unit !== "string")
+        throw new Error("The measurement API returned an invalid weight unit.");
+      return {
+        date: String(log.date),
+        weight: Number(log.weight),
+        unit: typeof log.unit === "string" ? log.unit : undefined,
+      };
+    }),
+  };
+}
 export function readPregnancyEpisodes(
   value: unknown,
   patientId: number,

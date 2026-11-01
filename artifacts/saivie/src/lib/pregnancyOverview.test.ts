@@ -7,7 +7,36 @@ import {
   pregnancyGestation,
   readPregnancyEpisodes,
   suggestedEpisode,
+  readMeasurementLogs,
 } from "./pregnancyOverview";
+
+test("overall measurement logs validate patient ownership, numeric readings and calendar dates", () => {
+  const data = {
+    bp: [{ patientId: 1, date: "2020-02-01", systolic: 120, diastolic: 80 }],
+    weight: [{ patientId: 1, date: "2020-02-01", weight: 130, unit: "lb" }],
+  };
+  assert.deepEqual(readMeasurementLogs(data, 1), {
+    bp: [{ date: "2020-02-01", systolic: 120, diastolic: 80 }],
+    weight: [{ date: "2020-02-01", weight: 130, unit: "lb" }],
+  });
+  assert.throws(() => readMeasurementLogs(data, 2), /mismatched/);
+  assert.throws(
+    () => readMeasurementLogs({ ...data, bp: {} }, 1),
+    /invalid log list/,
+  );
+  for (const change of [
+    { date: "2020-02-30" },
+    { systolic: "120" },
+    { systolic: 0 },
+    { systolic: NaN },
+  ]) {
+    assert.throws(
+      () =>
+        readMeasurementLogs({ ...data, bp: [{ ...data.bp[0], ...change }] }, 1),
+      /invalid/,
+    );
+  }
+});
 import type { PregnancyEpisode } from "../../../../lib/db/src/pregnancy-episodes";
 
 export const episode: PregnancyEpisode = {

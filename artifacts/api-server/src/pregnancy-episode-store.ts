@@ -1,6 +1,51 @@
 import type { Pool, PoolClient } from "pg";
-import { episodeError, type PregnancyEpisodeStore } from "./pregnancy-episodes";
+import {
+  episodeError,
+  episodeInputSchema,
+  type EpisodeInput,
+  type PregnancyEpisodeStore,
+} from "./pregnancy-episodes";
 import type { PregnancyEpisode } from "../../../lib/db/src/pregnancy-episodes";
+import { detectPregnancies } from "./pregnancy-detection";
+
+async function insertEpisode(
+  client: PoolClient,
+  patientId: number,
+  input: EpisodeInput,
+  userId: string,
+) {
+  return (
+    await client.query<{ id: number }>(
+      `INSERT INTO pregnancy_episodes(patient_id,details,version,created_by,updated_by,updated_at)
+    VALUES($1,$2::jsonb,1,$3,$3,$4) RETURNING id`,
+      [
+        patientId,
+        JSON.stringify(input.details),
+        userId,
+        new Date().toISOString(),
+      ],
+    )
+  ).rows[0].id;
+}
+async function insertLinks(
+  client: PoolClient,
+  patientId: number,
+  episodeId: number,
+  input: EpisodeInput,
+) {
+  for (const link of input.records) {
+    await client.query(
+      "INSERT INTO pregnancy_episode_records(episode_id,patient_id,appointment_id,visit_id,lab_result_id) VALUES($1,$2,$3,$4,$5)",
+      [
+        episodeId,
+        patientId,
+        link.kind === "appointment" ? link.id : null,
+        link.kind === "visit" ? link.id : null,
+        link.kind === "lab" ? link.id : null,
+      ],
+    );
+  }
+}
 
 const select = `SELECT id, patient_id AS "patientId", details, version, updated_at AS "updatedAt"
   FROM pregnancy_episodes`;
@@ -22,6 +67,80 @@ async function episodes(
 }
 export function createPregnancyEpisodeStore(pool: Pool): PregnancyEpisodeStore {
   return {
+    async detect(patientId, userId) {
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        const patient = (
+          await client.query<Record<string, unknown>>(
+            `SELECT id,lmp,type,history,pregnancy_status AS "pregnancyStatus" FROM patients WHERE id=$1 FOR UPDATE`,
+            [patientId],
+          )
+        ).rows[0];
+        if (!patient) throw episodeError(404, "Patient not found");
+        const existing = await episodes(client, patientId);
+        if (existing.length) {
+          await client.query("COMMIT");
+          return {
+            episodes: existing,
+            created: 0,
+            linked: 0,
+            message:
+              "Saved episodes already exist; automatic detection does not overwrite clinician edits or reassign records.",
+          };
+        }
+        const appointments = (
+          await client.query<Record<string, unknown>>(
+            `SELECT id,date::text,type,visit_type AS "visitType",survey_type AS "surveyType",vitals,status FROM appointments WHERE patient_id=$1 FOR UPDATE`,
+            [patientId],
+          )
+        ).rows;
+        const visits = (
+          await client.query<Record<string, unknown>>(
+            `SELECT id,date::text,appointment_id AS "appointmentId",vitals FROM visit_history WHERE patient_id=$1 FOR UPDATE`,
+            [patientId],
+          )
+        ).rows;
+        const detection = detectPregnancies(
+          patient,
+          appointments,
+          visits,
+          new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10),
+        );
+        for (const draft of detection.drafts) {
+          const parsed = episodeInputSchema.safeParse(draft);
+          if (!parsed.success)
+            throw episodeError(
+              409,
+              "Automatic pregnancy evidence requires clinician review before saving: " +
+                parsed.error.issues.map((issue) => issue.message).join("; "),
+            );
+          const episodeId = await insertEpisode(
+            client,
+            patientId,
+            parsed.data,
+            userId,
+          );
+          await insertLinks(client, patientId, episodeId, parsed.data);
+        }
+        const saved = await episodes(client, patientId);
+        await client.query("COMMIT");
+        return {
+          episodes: saved,
+          created: detection.drafts.length,
+          linked: detection.drafts.reduce(
+            (count, draft) => count + draft.records.length,
+            0,
+          ),
+          message: detection.reason,
+        };
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
     async list(patientId) {
       if (
         !(await pool.query("SELECT id FROM patients WHERE id=$1", [patientId]))
@@ -126,26 +245,9 @@ export function createPregnancyEpisodeStore(pool: Pool): PregnancyEpisodeStore {
             [episodeId],
           );
         } else {
-          episodeId = (
-            await client.query<{ id: number }>(
-              `INSERT INTO pregnancy_episodes(patient_id,details,version,created_by,updated_by,updated_at)
-            VALUES($1,$2::jsonb,1,$3,$3,$4) RETURNING id`,
-              [patientId, JSON.stringify(input.details), userId, now],
-            )
-          ).rows[0].id;
+          episodeId = await insertEpisode(client, patientId, input, userId);
         }
-        for (const record of input.records) {
-          await client.query(
-            "INSERT INTO pregnancy_episode_records(episode_id,patient_id,appointment_id,visit_id,lab_result_id) VALUES($1,$2,$3,$4,$5)",
-            [
-              episodeId,
-              patientId,
-              record.kind === "appointment" ? record.id : null,
-              record.kind === "visit" ? record.id : null,
-              record.kind === "lab" ? record.id : null,
-            ],
-          );
-        }
+        await insertLinks(client, patientId, episodeId, input);
         const saved = (await episodes(client, patientId)).find(
           (episode) => episode.id === episodeId,
         )!;

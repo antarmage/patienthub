@@ -143,6 +143,15 @@ export type EpisodeInput = {
 };
 export interface PregnancyEpisodeStore {
   list(patientId: number): Promise<PregnancyEpisode[]>;
+  detect(
+    patientId: number,
+    userId: string,
+  ): Promise<{
+    episodes: PregnancyEpisode[];
+    created: number;
+    linked: number;
+    message: string;
+  }>;
   save(
     patientId: number,
     episodeId: number | null,
@@ -165,76 +174,90 @@ export function registerPregnancyEpisodes(
     Number(value) <= 2147483647
       ? Number(value)
       : null;
-  const handle = (write: boolean) => async (req: Request, res: Response) => {
-    const patientId = id(req.params.id),
-      episodeId =
-        req.params.episodeId === undefined ? null : id(req.params.episodeId);
-    const actor = await authenticate(req, res);
-    if (!actor) {
-      if (!res.headersSent)
-        res.status(401).json({ error: "Authentication required" });
-      return;
-    }
-    const doctor =
-      "role" in actor && ["clinician", "owner"].includes(actor.role);
-    const ownPatient = "patientId" in actor && actor.patientId === patientId;
-    if (
-      !doctor &&
-      (write || (!ownPatient && res.locals.receptionClinicalRead !== true))
-    ) {
-      return res
-        .status(403)
-        .json({
+  const handle =
+    (write: boolean, detect = false) =>
+    async (req: Request, res: Response) => {
+      const patientId = id(req.params.id),
+        episodeId =
+          detect || req.params.episodeId === undefined
+            ? null
+            : id(req.params.episodeId);
+      const actor = await authenticate(req, res);
+      if (!actor) {
+        if (!res.headersSent)
+          res.status(401).json({ error: "Authentication required" });
+        return;
+      }
+      const doctor =
+        "role" in actor && ["clinician", "owner"].includes(actor.role);
+      const ownPatient = "patientId" in actor && actor.patientId === patientId;
+      if (
+        !doctor &&
+        (write || (!ownPatient && res.locals.receptionClinicalRead !== true))
+      ) {
+        return res.status(403).json({
           error: write
             ? "Doctor or owner access required to record pregnancy episodes"
             : "Clinical viewing permission required",
         });
-    }
-    res.setHeader("Cache-Control", "private, no-store");
-    if (!patientId || (req.params.episodeId !== undefined && !episodeId))
-      return res
-        .status(400)
-        .json({ error: "Invalid patient or pregnancy episode ID" });
-    try {
-      if (!write) return res.json(await store.list(patientId));
-      const parsed = episodeInputSchema.safeParse(req.body);
-      if (!parsed.success)
+      }
+      res.setHeader("Cache-Control", "private, no-store");
+      if (!patientId || (req.params.episodeId !== undefined && !episodeId))
         return res
           .status(400)
-          .json({
+          .json({ error: "Invalid patient or pregnancy episode ID" });
+      try {
+        if (!write) return res.json(await store.list(patientId));
+        if (detect) {
+          if (!("userId" in actor))
+            return res.status(403).json({ error: "Doctor account required" });
+          if (!z.object({}).strict().safeParse(req.body).success)
+            return res.status(400).json({
+              error:
+                "Automatic detection accepts an empty object; evidence is read from saved patient records",
+            });
+          return res.json(await store.detect(patientId, actor.userId));
+        }
+        const parsed = episodeInputSchema.safeParse(req.body);
+        if (!parsed.success)
+          return res.status(400).json({
             error: parsed.error.issues
               .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
               .join("; "),
           });
-      if (episodeId && !parsed.data.version)
-        return res
-          .status(400)
-          .json({
+        if (episodeId && !parsed.data.version)
+          return res.status(400).json({
             error:
               "Refresh the pregnancy episode before saving; version is required",
           });
-      if (!episodeId && parsed.data.version)
+        if (!episodeId && parsed.data.version)
+          return res.status(400).json({
+            error: "A new pregnancy episode must not supply a version",
+          });
+        if (!("userId" in actor))
+          return res.status(403).json({ error: "Doctor account required" });
         return res
-          .status(400)
-          .json({ error: "A new pregnancy episode must not supply a version" });
-      if (!("userId" in actor))
-        return res.status(403).json({ error: "Doctor account required" });
-      return res
-        .status(episodeId ? 200 : 201)
-        .json(
-          await store.save(patientId, episodeId, parsed.data, actor.userId),
-        );
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        "status" in error &&
-        [400, 404, 409].includes(Number(error.status))
-      )
-        return res.status(Number(error.status)).json({ error: error.message });
-      throw error;
-    }
-  };
+          .status(episodeId ? 200 : 201)
+          .json(
+            await store.save(patientId, episodeId, parsed.data, actor.userId),
+          );
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          "status" in error &&
+          [400, 404, 409].includes(Number(error.status))
+        )
+          return res
+            .status(Number(error.status))
+            .json({ error: error.message });
+        throw error;
+      }
+    };
   app.get("/api/patients/:id/pregnancy-episodes", handle(false));
   app.post("/api/patients/:id/pregnancy-episodes", handle(true));
+  app.post(
+    "/api/patients/:id/pregnancy-episodes/auto-detect",
+    handle(true, true),
+  );
   app.put("/api/patients/:id/pregnancy-episodes/:episodeId", handle(true));
 }

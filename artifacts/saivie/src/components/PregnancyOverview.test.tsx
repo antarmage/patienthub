@@ -72,7 +72,14 @@ const records = {
       id: 2,
       date: indiaToday(),
       status: "checked-in",
-      vitals: { weight: "55", bp: "120/80", pulse: "75", spo2: "98" },
+      vitals: {
+        weight: "55",
+        bp: "120/80",
+        pulse: "75",
+        spo2: "98",
+        fetalHeartRate: "145",
+        fundalHeight: "24",
+      },
     },
   ],
   visits: [],
@@ -134,12 +141,33 @@ test("past-only summary uses gestation at the recorded end and hides today's che
   assert.ok(!html.includes("Today&#x27;s check-in"));
   assert.ok(!html.includes("11.6"));
 });
-test("empty episodes are not synthesized from profile LMP or reported pregnancy count", () => {
+test("empty API response awaits authenticated detection rather than inventing unsaved episode tabs", () => {
   const html = render([]);
   assert.ok(html.includes("No saved pregnancy episode"));
-  assert.ok(!html.includes("aria-pressed"));
+  assert.ok(!html.includes("Pregnancy 1 ·"));
   assert.ok(html.includes("2 pregnancies"));
   assert.ok(html.includes("0 episode records saved"));
+  assert.ok(html.includes("Overall patient history"));
+});
+test("all earlier graph types remain available for explicitly linked pregnancy records", () => {
+  const html = render([past, current]);
+  for (const label of [
+    "Blood pressure",
+    "Weight",
+    "Hemoglobin",
+    "Pulse",
+    "Fetal heart rate",
+    "Fundal height",
+    "Blood sugar",
+  ]) {
+    assert.ok(html.includes(label), label);
+  }
+  assert.ok(html.includes("145"));
+  assert.ok(html.includes("24"));
+  assert.ok(html.includes("75"));
+  assert.ok(html.includes("No recorded readings."));
+  assert.ok(html.includes('data-testid="episode-measurements"'));
+  assert.ok(!html.includes('data-testid="overall-measurements"'));
 });
 test("patient risk is kept distinct from missing information and is not silently reclassified", () => {
   const html = render([current], true, true, {

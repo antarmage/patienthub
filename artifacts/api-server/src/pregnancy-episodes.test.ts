@@ -97,6 +97,15 @@ test("pregnancy routes gate staff writes, toggle reception reads and preserve ow
     clinicalDetailsVisible: async () => visible,
   });
   const store: PregnancyEpisodeStore = {
+    detect: async () => {
+      calls++;
+      return {
+        episodes: [],
+        created: 0,
+        linked: 0,
+        message: "Synthetic detection",
+      };
+    },
     list: async () => {
       calls++;
       return [];
@@ -137,6 +146,23 @@ test("pregnancy routes gate staff writes, toggle reception reads and preserve ow
     for (const role of ["receptionist", "staff", "admin", "unknown"])
       assert.equal((await request(path, role)).status, 403);
     assert.equal(calls, 0);
+    assert.equal(
+      (await request(`${path}/auto-detect`, undefined, "POST", {})).status,
+      401,
+    );
+    for (const role of [
+      "receptionist",
+      "staff",
+      "admin",
+      "patient",
+      "unknown",
+    ]) {
+      assert.equal(
+        (await request(`${path}/auto-detect`, role, "POST", {})).status,
+        403,
+      );
+    }
+    assert.equal(calls, 0);
     assert.equal((await request(path, "patient")).status, 200);
     assert.equal(
       (await request("/api/patients/2/pregnancy-episodes", "patient")).status,
@@ -154,6 +180,15 @@ test("pregnancy routes gate staff writes, toggle reception reads and preserve ow
       );
     }
     for (const role of ["clinician", "owner"]) {
+      assert.equal(
+        (await request(`${path}/auto-detect`, role, "POST", {})).status,
+        200,
+      );
+      assert.equal(
+        (await request(`${path}/auto-detect`, role, "POST", { total: 2 }))
+          .status,
+        400,
+      );
       const saved = await request(path, role, "POST", input);
       assert.equal(saved.status, 201);
       assert.equal(saved.headers.get("cache-control"), "private, no-store");
@@ -205,14 +240,14 @@ test(
     });
     try {
       await pool.query(`CREATE TABLE users(id varchar PRIMARY KEY);
-      CREATE TABLE patients(id integer PRIMARY KEY,lmp text);
-      CREATE TABLE appointments(id integer PRIMARY KEY,patient_id integer REFERENCES patients(id),date text);
-      CREATE TABLE visit_history(id integer PRIMARY KEY,patient_id integer REFERENCES patients(id),appointment_id integer REFERENCES appointments(id));
+      CREATE TABLE patients(id integer PRIMARY KEY,lmp text,type text,history jsonb,pregnancy_status text);
+      CREATE TABLE appointments(id integer PRIMARY KEY,patient_id integer REFERENCES patients(id),date text,type text,visit_type text,survey_type text,vitals jsonb,status text);
+      CREATE TABLE visit_history(id integer PRIMARY KEY,patient_id integer REFERENCES patients(id),appointment_id integer REFERENCES appointments(id),date text,vitals jsonb);
       CREATE TABLE lab_results(id integer PRIMARY KEY,patient_id integer REFERENCES patients(id),date text);
       INSERT INTO users VALUES ('doctor');
-      INSERT INTO patients VALUES (1,'2020-01-01'),(2,null);
-      INSERT INTO appointments VALUES (1,1,'2020-02-01'),(2,1,'2020-02-01'),(3,2,'2020-02-01');
-      INSERT INTO visit_history VALUES (1,1,1),(2,1,2),(3,2,3);
+      INSERT INTO patients(id,lmp) VALUES (1,'2020-01-01'),(2,null);
+      INSERT INTO appointments(id,patient_id,date) VALUES (1,1,'2020-02-01'),(2,1,'2020-02-01'),(3,2,'2020-02-01');
+      INSERT INTO visit_history(id,patient_id,appointment_id) VALUES (1,1,1),(2,1,2),(3,2,3);
       INSERT INTO lab_results VALUES (1,1,'2020-02-01'),(2,1,'2020-02-01'),(3,2,'2020-02-01');`);
       await ensurePregnancyEpisodeSchema(pool);
       await ensurePregnancyEpisodeSchema(pool);
@@ -235,6 +270,42 @@ test(
       const past = await store.save(1, null, pastInput, "doctor");
       assert.deepEqual(await store.list(1), [current, past]);
       assert.deepEqual(await store.list(2), []);
+      const preserved = await store.detect(1, "doctor");
+      assert.equal(preserved.created, 0);
+      assert.deepEqual(preserved.episodes, [current, past]);
+      assert.equal((await store.detect(2, "doctor")).created, 0);
+      await pool.query(`INSERT INTO patients(id,lmp,history,pregnancy_status) VALUES
+        (3,'2020-01-01','{"onboarding":{"pregnancies":{"total":2,"currentStatus":"Yes"}}}','pregnant'),
+        (4,'2020-01-01','{"onboarding":{"pregnancies":{"total":2,"currentStatus":"Yes"}}}','pregnant');
+        INSERT INTO appointments(id,patient_id,date,type,status) VALUES (5,3,'2020-02-01','Pregnancy','Completed'),
+        (6,3,'2020-02-01','Consultation','Completed'),(7,4,'2020-02-01','Pregnancy','Completed');
+        INSERT INTO visit_history(id,patient_id,appointment_id,date) VALUES (5,3,5,'2020-02-01');`);
+      const detections = await Promise.all([
+        store.detect(3, "doctor"),
+        store.detect(3, "doctor"),
+      ]);
+      assert.deepEqual(
+        detections.map((result) => result.created).sort(),
+        [0, 2],
+      );
+      const detected = await store.list(3);
+      assert.equal(detected.length, 2);
+      assert.deepEqual(detected[0].records, [{ kind: "appointment", id: 5 }]);
+      assert.equal(detected[1].details.outcome, "Not recorded");
+      assert.equal(detected[1].details.endDate, null);
+      assert.equal(
+        (await pool.query("SELECT lmp FROM patients WHERE id=3")).rows[0].lmp,
+        "2020-01-01",
+      );
+      await pool.query(`CREATE FUNCTION reject_auto_link() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN IF NEW.appointment_id=7 THEN RAISE EXCEPTION 'synthetic auto insert failure'; END IF; RETURN NEW; END $$;
+        CREATE TRIGGER reject_auto BEFORE INSERT ON pregnancy_episode_records FOR EACH ROW EXECUTE FUNCTION reject_auto_link();`);
+      await assert.rejects(
+        store.detect(4, "doctor"),
+        /synthetic auto insert failure/,
+      );
+      assert.deepEqual(await store.list(4), []);
+      await assert.rejects(store.detect(999, "doctor"), /Patient not found/);
       assert.equal(
         (await pool.query("SELECT lmp FROM patients WHERE id=1")).rows[0].lmp,
         "2020-01-01",

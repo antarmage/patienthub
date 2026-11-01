@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useEffect, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { PregnancyEpisodeEditor } from "@/components/PregnancyEpisodeEditor";
 import { MeasurementTrend } from "@/components/MeasurementTrend";
@@ -11,6 +11,7 @@ import {
   pregnancyBaseline,
   pregnancyGestation,
   readPregnancyEpisodes,
+  readMeasurementLogs,
 } from "@/lib/pregnancyOverview";
 import { historyRecord, historyText } from "@/lib/receptionPatientHistory";
 import { appointmentLabel, visitTrail } from "@/lib/visitTrail";
@@ -20,6 +21,51 @@ import type { PregnancyEpisode } from "../../../../lib/db/src/pregnancy-episodes
 const dateLabel = (value: string | null) => value || "Not recorded";
 const card =
   "min-w-0 rounded-2xl border border-saivie-border bg-white p-4 sm:p-5";
+function MeasurementGraphs({
+  trends,
+}: {
+  trends: ReturnType<typeof summaryTrends>;
+}) {
+  return (
+    <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <MeasurementTrend
+        title="Blood pressure"
+        unit="mmHg"
+        points={trends.bp}
+        paired
+      />
+      <MeasurementTrend title="Weight" unit="kg" points={trends.weight} />
+      <MeasurementTrend title="Hemoglobin" unit="g/dL" points={trends.hb} />
+      <MeasurementTrend title="Pulse" unit="bpm" points={trends.pulse} />
+      <MeasurementTrend
+        title="Fetal heart rate"
+        unit="bpm"
+        points={trends.fetalHeart}
+      />
+      <MeasurementTrend
+        title="Fundal height"
+        unit="cm"
+        points={trends.fundalHeight}
+      />
+      {trends.sugar.length ? (
+        trends.sugar.map((series) => (
+          <MeasurementTrend
+            key={`${series.name}:${series.unit}`}
+            title={series.name}
+            unit={series.unit}
+            points={series.points}
+          />
+        ))
+      ) : (
+        <MeasurementTrend
+          title="Blood sugar"
+          unit="Test-specific units"
+          points={[]}
+        />
+      )}
+    </div>
+  );
+}
 export function PregnancyOverview({
   patient,
   appointments,
@@ -48,6 +94,54 @@ export function PregnancyOverview({
     null,
   );
   const [showAllTrail, setShowAllTrail] = useState(false);
+  const [showOverallMeasurements, setShowOverallMeasurements] = useState(false);
+  const queryClient = useQueryClient();
+  const detectionAttempted = useRef(false);
+  const detection = useMutation({
+    mutationFn: async () => {
+      const response = historyRecord(
+        await receptionRequest(
+          `/api/patients/${patient.id}/pregnancy-episodes/auto-detect`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: "{}",
+          },
+        ),
+      );
+      if (
+        !Number.isInteger(response.created) ||
+        !Number.isInteger(response.linked) ||
+        typeof response.message !== "string"
+      )
+        throw new Error(
+          "The pregnancy API did not confirm automatic detection.",
+        );
+      return {
+        episodes: readPregnancyEpisodes(response.episodes, patient.id),
+        message: response.message,
+      };
+    },
+    onSuccess: (result) =>
+      queryClient.setQueryData(
+        ["/api/patients", patient.id, "pregnancy-episodes"],
+        result.episodes,
+      ),
+  });
+  const measurementLogs = useQuery({
+    queryKey: ["pregnancy-overall-measurement-logs", patient.id],
+    enabled: showOverallMeasurements,
+    queryFn: async ({ signal }) => {
+      const [bp, weight] = await Promise.all([
+        receptionRequest(`/api/patients/${patient.id}/bp-logs`, { signal }),
+        receptionRequest(`/api/patients/${patient.id}/weight-logs`, { signal }),
+      ]);
+      return readMeasurementLogs({ bp, weight }, patient.id);
+    },
+    retry: false,
+    gcTime: 0,
+    refetchInterval: 30_000,
+  });
   const query = useQuery({
     queryKey: ["/api/patients", patient.id, "pregnancy-episodes"],
     queryFn: async ({ signal }) =>
@@ -62,6 +156,17 @@ export function PregnancyOverview({
     gcTime: 0,
     refetchInterval: 30_000,
   });
+  useEffect(() => {
+    if (
+      canEdit &&
+      query.isSuccess &&
+      query.data.length === 0 &&
+      !detectionAttempted.current
+    ) {
+      detectionAttempted.current = true;
+      detection.mutate();
+    }
+  }, [canEdit, query.isSuccess, query.data, detection.mutate]);
   if (query.isPending)
     return (
       <p role="status" className={card}>
@@ -86,6 +191,24 @@ export function PregnancyOverview({
   const context = selected
     ? episodeRecords(selected, appointments, visits, labs)
     : { appointments: [], visits: [], labs: [] };
+  const assignedContexts = episodes.map((episode) =>
+    episodeRecords(episode, appointments, visits, labs),
+  );
+  const unassignedCount =
+    appointments.filter(
+      (appointment) =>
+        !assignedContexts.some((context) =>
+          context.appointments.includes(appointment),
+        ),
+    ).length +
+    visits.filter(
+      (visit) =>
+        !visit.appointmentId &&
+        !assignedContexts.some((context) => context.visits.includes(visit)),
+    ).length +
+    labs.filter(
+      (lab) => !assignedContexts.some((context) => context.labs.includes(lab)),
+    ).length;
   const gestation = selected
     ? pregnancyGestation(selected.details, today)
     : null;
@@ -226,13 +349,30 @@ export function PregnancyOverview({
           : "Saved consultation",
     }),
   );
-  const linkedLabs: SummaryLab[] = context.labs.map((lab) => ({
-    testName: String(lab.testName),
-    date: String(lab.date),
-    value: typeof lab.value === "number" ? lab.value : null,
-    unit: typeof lab.unit === "string" ? lab.unit : null,
+  const summaryLabs = (results: Record<string, unknown>[]): SummaryLab[] =>
+    results.map((lab) => ({
+      testName: String(lab.testName),
+      date: String(lab.date),
+      value: typeof lab.value === "number" ? lab.value : null,
+      unit: typeof lab.unit === "string" ? lab.unit : null,
+    }));
+  const trends = summaryTrends(points, [], [], summaryLabs(context.labs));
+  const overallPoints = visitTrail(visits, appointments).map((record) => ({
+    id: Number(record.id),
+    date: record.date,
+    vitals: record.vitals,
+    source: record.appointmentOnly
+      ? "Appointment"
+      : record.appointment
+        ? "Consultation / appointment"
+        : "Saved consultation",
   }));
-  const trends = summaryTrends(points, [], [], linkedLabs);
+  const overallTrends = summaryTrends(
+    overallPoints,
+    measurementLogs.data?.bp || [],
+    measurementLogs.data?.weight || [],
+    summaryLabs(labs),
+  );
   const trail = visitTrail(
     showAllTrail ? visits : context.visits,
     showAllTrail ? appointments : context.appointments,
@@ -240,6 +380,48 @@ export function PregnancyOverview({
   );
   return (
     <div className="space-y-4" data-testid="pregnancy-overview">
+      {detection.isPending && (
+        <p role="status" className={card}>
+          Establishing pregnancy episodes from saved history and matching
+          clearly supported records...
+        </p>
+      )}
+      {detection.isError && (
+        <p role="alert" className={card}>
+          {detection.error.message}
+          <Button variant="link" onClick={() => detection.mutate()}>
+            Retry automatic pregnancy detection
+          </Button>
+        </p>
+      )}
+      {detection.isSuccess && (
+        <p role="status" className={card}>
+          {detection.data.message}
+        </p>
+      )}
+      {!!episodes.length && unassignedCount > 0 && (
+        <div className={card}>
+          <p className="text-sm font-semibold">
+            {unassignedCount} {unassignedCount === 1 ? "record" : "records"}{" "}
+            awaiting episode review
+          </p>
+          <p className="mt-1 text-xs">
+            Unassigned or ambiguous appointments, standalone notes and lab
+            results remain in All patient dates / Overall patient history. They
+            are not attributed to a pregnancy automatically.
+          </p>
+          {canEdit && selected && (
+            <Button
+              className="mt-2"
+              variant="outline"
+              disabled={!recordsReady || detection.isPending}
+              onClick={() => setEditor({ episode: selected })}
+            >
+              Review record assignments
+            </Button>
+          )}
+        </div>
+      )}
       <div
         className="flex flex-wrap items-stretch gap-2"
         role="group"
@@ -281,6 +463,12 @@ export function PregnancyOverview({
         <p className="text-xs text-muted-foreground">
           Pregnancy episodes are clinician-authored and read-only here. Ask the
           doctor to confirm missing episode details.
+        </p>
+      )}
+      {!canEdit && !selected && (
+        <p className="text-xs">
+          Ask the doctor to open Summary once to automatically establish
+          episodes from the recorded pregnancy history.
         </p>
       )}
       {!recordsReady && (
@@ -514,39 +702,86 @@ export function PregnancyOverview({
           </p>
         </section>
       )}
-      {selected && (
-        <section className={card}>
+      <section className={card}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-serif text-lg font-semibold">
-            Linked measurements · Pregnancy {selected.details.number}
+            Measurement trends
           </h3>
-          <p className="mt-1 text-xs">
-            No linked readings means no measurement is assumed. Only explicitly
-            assigned records appear here.
-          </p>
-          <div className="mt-3 grid gap-4 sm:grid-cols-3">
-            <MeasurementTrend
-              title="Blood pressure"
-              unit="mmHg"
-              points={trends.bp}
-              paired
-            />
-            <MeasurementTrend title="Weight" unit="kg" points={trends.weight} />
-            <MeasurementTrend
-              title="Hemoglobin"
-              unit="g/dL"
-              points={trends.hb}
-            />
-            {trends.sugar.map((series) => (
-              <MeasurementTrend
-                key={`${series.name}:${series.unit}`}
-                title={series.name}
-                unit={series.unit}
-                points={series.points}
-              />
-            ))}
+          <div
+            role="group"
+            aria-label="Measurement scope"
+            className="flex flex-wrap gap-2"
+          >
+            <Button
+              variant={showOverallMeasurements ? "outline" : "default"}
+              aria-pressed={!showOverallMeasurements}
+              onClick={() => setShowOverallMeasurements(false)}
+            >
+              Selected pregnancy
+            </Button>
+            <Button
+              variant={showOverallMeasurements ? "default" : "outline"}
+              aria-pressed={showOverallMeasurements}
+              onClick={() => setShowOverallMeasurements(true)}
+            >
+              Overall patient history
+            </Button>
           </div>
-        </section>
-      )}
+        </div>
+        {showOverallMeasurements ? (
+          <div data-testid="overall-measurements">
+            <p className="mt-3 text-sm font-semibold">
+              All patient records · not pregnancy-specific
+            </p>
+            <p className="mt-1 text-xs">
+              Includes earlier pregnancies, unassigned records and standalone
+              BP/weight logs. These readings are not attributed to the selected
+              pregnancy or today's check-in.
+            </p>
+            {!recordsReady && (
+              <p role="status" className="mt-3 text-xs">
+                Appointment, consultation or lab sources are incomplete; graphs
+                may be incomplete.
+              </p>
+            )}
+            {measurementLogs.isPending && (
+              <p role="status" className="mt-3 text-xs">
+                Loading standalone BP and weight logs...
+              </p>
+            )}
+            {measurementLogs.isError && (
+              <p role="alert" className="mt-3 text-xs">
+                {measurementLogs.error.message} Standalone BP/weight logs are
+                unavailable; graphs are incomplete.
+                <Button
+                  variant="link"
+                  onClick={() => void measurementLogs.refetch()}
+                >
+                  Retry measurement logs
+                </Button>
+              </p>
+            )}
+            <MeasurementGraphs trends={overallTrends} />
+          </div>
+        ) : selected ? (
+          <div data-testid="episode-measurements">
+            <h3 className="font-serif text-lg font-semibold">
+              Linked measurements · Pregnancy {selected.details.number}
+            </h3>
+            <p className="mt-1 text-xs">
+              No linked readings means no measurement is assumed. Only
+              explicitly assigned records appear here.
+            </p>
+            <MeasurementGraphs trends={trends} />
+          </div>
+        ) : (
+          <p className="mt-3 text-sm">
+            Save a pregnancy episode and link its records to see
+            pregnancy-specific trends. Existing graphs are available in Overall
+            patient history.
+          </p>
+        )}
+      </section>
       {current && !!risk.level && (
         <section className={card}>
           <h3 className="font-semibold text-sm">
