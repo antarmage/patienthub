@@ -53,7 +53,15 @@ export const obstetricInputs = [
   { key: "details", label: "Additional antenatal findings" },
 ] as const;
 
-type ExamKey = typeof obstetricChoices[number]["key"] | typeof obstetricInputs[number]["key"];
+const areaStatuses = [
+  { key: "generalStatus", label: "General examination status" },
+  { key: "abdominalStatus", label: "Abdominal examination status" },
+  { key: "fetalStatus", label: "Fetal assessment status" },
+  { key: "leakageStatus", label: "Leakage assessment status" },
+  { key: "speculumStatus", label: "Speculum examination status" },
+  { key: "pvStatus", label: "PV examination status" },
+] as const;
+type ExamKey = typeof obstetricChoices[number]["key"] | typeof obstetricInputs[number]["key"] | typeof areaStatuses[number]["key"];
 export type ObstetricExamination = Record<ExamKey, string>;
 
 export function examinationRecord(value: unknown): Record<string, unknown> {
@@ -62,7 +70,7 @@ export function examinationRecord(value: unknown): Record<string, unknown> {
 
 export function readObstetricExamination(value: unknown): ObstetricExamination {
   const source = examinationRecord(value);
-  return Object.fromEntries([...obstetricChoices, ...obstetricInputs].map(({ key }) => [
+  return Object.fromEntries([...obstetricChoices, ...obstetricInputs, ...areaStatuses].map(({ key }) => [
     key, typeof source[key] === "string" ? source[key] : "",
   ])) as ObstetricExamination;
 }
@@ -102,6 +110,9 @@ export function obstetricExaminationSummary(value: ObstetricExamination): string
   const exam = relevantObstetricExamination(value);
   const lines = [...obstetricChoices, ...obstetricInputs].flatMap(({ key, label }) =>
     exam[key].trim() ? [`${label.replace(/\?$/, "")}: ${exam[key].trim()}`] : []);
+  for (const { key, label } of areaStatuses) {
+    if (["Abnormal", "Not examined", "Deferred"].includes(exam[key])) lines.push(`${label}: ${exam[key]}`);
+  }
   return lines.length ? `Antenatal assessment:\n${lines.join("\n")}` : "";
 }
 

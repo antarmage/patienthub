@@ -144,3 +144,15 @@ test("examination fields are grouped once under clearly labelled clinical sectio
   }
   assert.ok(html.includes("Cervical findings") && html.includes("Associated symptoms"));
 });
+
+test("body map has six accessible, data-driven markers and a six-area progress count", () => {
+  const exam = { ...readObstetricExamination(null), pallor: "No", edema: "No", uterineActivity: "Irritable", pvPerformed: "Deferred" };
+  const html = renderToStaticMarkup(<ObstetricExamination value={exam} onChange={() => {}} />);
+  for (const label of ["General: Normal", "Abdomen: Abnormal", "Fetal: Not recorded", "Leakage: Not recorded", "Speculum: Not recorded", "PV: Deferred"]) {
+    assert.ok(html.includes(`aria-label="${label}"`));
+  }
+  assert.ok(html.includes("3") && html.includes("of 6 areas documented"));
+  assert.ok(!html.includes("Mark every area normal"));
+  assert.ok(html.includes('aria-label="Note from examination"'));
+  assert.ok(html.includes('hidden=""') && html.includes('aria-label="Examination areas"'));
+});
