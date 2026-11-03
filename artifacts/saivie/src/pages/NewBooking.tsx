@@ -36,6 +36,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { getArrivalState, type ArrivalState } from "@/components/ReceptionDashboard";
+import { bookingPatientCategory, bookingPatientFilters, filterBookingPatients, type BookingPatientFilter } from "@/lib/bookingPatients";
 
 function providerInitials(name: string) {
     return name
@@ -142,8 +143,9 @@ export default function NewBooking() {
         setNewPatient((current) => ({ ...current, [field]: value }));
 
     const [searchQuery, setSearchQuery] = useState("");
+    const [patientFilter, setPatientFilter] = useState<BookingPatientFilter>("All");
 
-    const { data: patientsData } = useQuery({
+    const { data: patientsData, isPending: patientsLoading, isError: patientsError, refetch: retryPatients } = useQuery({
         queryKey: ['/api/patients'],
         queryFn: async () => {
             const res = await fetch('/api/patients');
@@ -152,11 +154,9 @@ export default function NewBooking() {
         }
     });
     const matchedPatients = useMemo(() => {
-        if (!patientsData || !searchQuery) return patientsData || [];
-        return patientsData.filter((p: any) =>
-            p.name?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-    }, [patientsData, searchQuery]);
+        return filterBookingPatients(patientsData || [], searchQuery, patientFilter);
+    }, [patientsData, searchQuery, patientFilter]);
+    const openNewPatient = () => { setPatientType("new"); setSelectedPatientId(null); };
 
     const { data: servicesData } = useQuery({
         queryKey: ['/api/billing-catalog'],
@@ -180,14 +180,17 @@ export default function NewBooking() {
         if (!servicesData) return [];
         const active = servicesData.filter((s: any) => s.isActive !== false);
         const visitItems = active.filter((s: any) => /consult|scan|usg|ultra/i.test(s.category || ''));
-        return (visitItems.length > 0 ? visitItems : active)
+        const selected = patientsData?.find((patient: any) => patient.id === selectedPatientId);
+        const pregnancyFirst = selected && patientType === "existing" && bookingPatientCategory(selected) === "Pregnant";
+        return [...(visitItems.length > 0 ? visitItems : active)]
+            .sort((a, b) => pregnancyFirst ? Number(/pregnan|antenatal|obstetric/i.test(`${b.name} ${b.category}`)) - Number(/pregnan|antenatal|obstetric/i.test(`${a.name} ${a.category}`)) : 0)
             .map((s: any) => ({
                 id: String(s.id),
                 name: s.name,
                 price: Number(s.price) || 0,
                 duration: '',
             }));
-    }, [servicesData]);
+    }, [servicesData, patientsData, selectedPatientId, patientType]);
 
     const selectedPatient = useMemo(
         () => patientsData?.find((patient: any) => patient.id === selectedPatientId) ?? null,
@@ -415,19 +418,19 @@ export default function NewBooking() {
                 </div>
             </header>
 
-            <main className="flex-1 max-w-5xl w-full mx-auto p-6 flex gap-8">
+            <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 flex flex-col lg:flex-row gap-6">
 
                 {/* Left Col - Form Content */}
-                <div className="flex-1 space-y-6">
+                <div className="min-w-0 flex-1 space-y-6">
 
                     {step === 1 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
                             <div className="space-y-1">
-                                <h2 className="text-2xl font-serif font-bold text-saivie-plum">Patient Details</h2>
-                                <p className="text-saivie-plum">Who is this appointment for?</p>
+                                <h2 className="text-2xl font-serif font-bold text-[#1f4a42]">Who is this appointment for?</h2>
+                                <p className="text-sm text-[#52645e]">Search for an existing patient, or add a new one without leaving this step.</p>
                             </div>
 
-                            <RadioGroup defaultValue="existing" value={patientType} onValueChange={(value) => { setPatientType(value); if (value === "new") setSelectedPatientId(null); }} className="grid grid-cols-2 gap-4">
+                            <RadioGroup defaultValue="existing" value={patientType} onValueChange={(value) => { setPatientType(value); if (value === "new") setSelectedPatientId(null); }} className={patientType === "new" ? "grid grid-cols-2 gap-4" : "hidden"}>
                                 <div>
                                     <RadioGroupItem value="existing" id="existing" className="peer sr-only" />
                                     <Label
@@ -452,16 +455,27 @@ export default function NewBooking() {
 
                             {patientType === 'existing' ? (
                                 <div className="space-y-4">
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-3 w-4 h-4 text-saivie-plum" />
-                                        <Input className="pl-9 h-11" placeholder="Search by name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} data-testid="input-patient-search" />
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative min-w-0 flex-1">
+                                            <Search className="absolute left-3 top-3 w-4 h-4 text-[#52645e]" />
+                                            <Input className="rounded-full border-[#a5bfb5] bg-white pl-9 h-11" aria-label="Search patients by name, phone or ID" placeholder="Search by name, phone or ID..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} data-testid="input-patient-search" />
+                                        </div>
+                                        <Button variant="outline" className="h-11 shrink-0 rounded-full border-[#80a89b] bg-white text-[#1f4a42]" onClick={openNewPatient}>+ New patient</Button>
                                     </div>
 
-                                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                                        {matchedPatients.slice(0, 5).map((p: any) => (
-                                            <div
+                                    <div className="flex flex-wrap gap-2" aria-label="Patient categories">
+                                        {bookingPatientFilters.map((filter) => <Button key={filter} type="button" size="sm" variant="outline" aria-pressed={patientFilter === filter} onClick={() => setPatientFilter(filter)} className={`rounded-full ${patientFilter === filter ? "border-[#2d6a5f] bg-[#2d6a5f] text-white hover:bg-[#24574e] hover:text-white" : "border-[#d2dfd9] bg-white text-[#243b35]"}`}>{filter}</Button>)}
+                                    </div>
+                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[#52645e]">{searchQuery.trim() ? "Search results" : patientFilter === "All" ? "Patients" : `${patientFilter} patients`}</p>
+                                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                                        {patientsLoading && <p role="status" className="py-4 text-center text-sm">Loading patients...</p>}
+                                        {patientsError && <p role="alert" className="py-4 text-center text-sm text-rose-700">Could not load patients. <Button variant="link" onClick={() => void retryPatients()}>Retry</Button></p>}
+                                        {!patientsLoading && !patientsError && matchedPatients.map((p: any) => (
+                                            <button
+                                                type="button"
                                                 key={p.id}
-                                                className={`border rounded-lg p-3 flex items-center gap-3 cursor-pointer transition-colors ${selectedPatientId === p.id ? 'border-saivie-teal bg-saivie-surface-muted' : 'border-saivie-border bg-saivie-ivory hover:bg-saivie-surface-muted'}`}
+                                                aria-pressed={selectedPatientId === p.id}
+                                                className={`w-full border rounded-2xl p-3 flex items-center gap-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saivie-teal ${selectedPatientId === p.id ? 'border-[#2d6a5f] bg-[#f0f7f4]' : 'border-[#e0e9e4] bg-white hover:bg-[#f0f7f4]'}`}
                                                 onClick={() => setSelectedPatientId(p.id)}
                                                 data-testid={`patient-result-${p.id}`}
                                             >
@@ -470,14 +484,19 @@ export default function NewBooking() {
                                                 </Avatar>
                                                 <div className="flex-1">
                                                     <p className="font-bold text-saivie-plum text-sm">{p.name}</p>
-                                                    <p className="text-xs text-saivie-plum">{p.type} • ID: #{p.id}</p>
+                                                    <p className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#52645e]"><span className="rounded-full bg-saivie-sage px-2 py-0.5 font-medium text-[#1f4a42]">{bookingPatientCategory(p)}</span> ID #{p.id}</p>
                                                 </div>
-                                                {selectedPatientId === p.id && <CheckCircle2 className="w-5 h-5 text-saivie-teal" />}
-                                            </div>
+                                                {selectedPatientId === p.id ? <CheckCircle2 className="w-5 h-5 shrink-0 text-saivie-teal" /> : <span className="h-5 w-5 shrink-0 rounded-full border border-[#b8cec4]" />}
+                                            </button>
                                         ))}
-                                        {matchedPatients.length === 0 && (
+                                        {!patientsLoading && !patientsError && matchedPatients.length === 0 && (
                                             <p className="text-sm text-saivie-plum text-center py-4">No patients found</p>
                                         )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-[#b8cec4] p-3">
+                                        <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-saivie-sage text-[#1f4a42]">+</span>
+                                        <div className="min-w-0 flex-1"><p className="text-xs font-semibold">Can't find her?</p><p className="text-[11px] text-[#52645e]">Add a new patient here. Complete the required details before booking.</p></div>
+                                        <Button variant="outline" size="sm" className="rounded-full border-[#80a89b] bg-white text-[#1f4a42]" onClick={openNewPatient}>Add new patient</Button>
                                     </div>
                                 </div>
                             ) : (
@@ -767,7 +786,41 @@ export default function NewBooking() {
                 </div>
 
                 {/* Right Col - Summary/Help */}
-                {!receptionist && <div className="w-80 hidden lg:block space-y-6 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
+                <aside className="w-full lg:w-64 lg:shrink-0 space-y-5 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto" aria-label="Booking summary">
+                    <Card className="rounded-2xl border-[#e0e9e4] bg-white shadow-none" data-testid="booking-summary">
+                        <CardHeader className="p-4 pb-2"><CardTitle className="text-[10px] font-semibold uppercase tracking-wide text-[#52645e]">Booking summary</CardTitle></CardHeader>
+                        <CardContent className="p-4 pt-0">
+                            <div className="flex items-center gap-3 border-b border-[#edf1ef] py-3">
+                                <Avatar className="h-10 w-10 shrink-0">
+                                    <AvatarFallback className="bg-saivie-sage text-saivie-teal">{patientType === "existing" ? selectedPatient?.name?.split(" ").map((part: string) => part[0]).slice(0, 2).join("") || "?" : newPatient.firstName[0] || "+"}</AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0">
+                                    <p className="break-words text-sm font-semibold text-[#243b35]">{patientType === "existing" ? selectedPatient?.name || "Select a patient" : [newPatient.firstName, newPatient.lastName].filter(Boolean).join(" ") || "New patient"}</p>
+                                    <p className="text-[10px] text-[#52645e]">{patientType === "existing" && selectedPatient ? `${bookingPatientCategory(selectedPatient)} · ID #${selectedPatient.id}` : patientType === "new" ? "New patient · Not registered yet" : "No patient selected"}</p>
+                                </div>
+                            </div>
+                            <ol>
+                                {[
+                                    { label: "Patient", value: hasPatient ? "Selected" : "" },
+                                    { label: "Service", value: services.find((service: any) => service.id === selectedService)?.name || "" },
+                                    { label: "Doctor", value: providers.find((provider: any) => provider.id === selectedProvider)?.name || "" },
+                                    { label: "Visit", value: step >= 4 ? ({ "in-clinic": "In clinic", "home-visit": "Home visit", telemedicine: "Online" }[visitMode] || visitMode) : "" },
+                                    { label: "Schedule", value: date && selectedTime ? `${date.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} · ${formatAppointmentTime(selectedTime)}` : "" },
+                                    { label: "Review", value: step === 6 ? "Ready to review" : "" },
+                                ].map((item, index) => (
+                                    <li key={item.label} className="flex items-center gap-3 border-b border-[#edf1ef] py-2.5 last:border-0" aria-current={step === index + 1 ? "step" : undefined}>
+                                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] ${item.value && index < step - 1 || index === 0 && hasPatient ? "bg-[#2d6a5f] text-white" : "bg-[#e3ede8] text-[#52645e]"}`}>
+                                            {item.value && index < step - 1 || index === 0 && hasPatient ? <CheckCircle2 className="h-3 w-3" /> : index + 1}
+                                        </span>
+                                        <div className="min-w-0"><p className="text-xs text-[#243b35]">{item.label}</p><p className="break-words text-[10px] text-[#52645e]">{item.value || (index + 1 === step + 1 ? "Next" : "—")}</p></div>
+                                    </li>
+                                ))}
+                            </ol>
+                        </CardContent>
+                    </Card>
+                    {patientType === "existing" && selectedPatient && bookingPatientCategory(selectedPatient) === "Pregnant" && <p className="px-2 text-xs text-[#52645e]">Next step puts pregnancy care first, because this patient is marked pregnant.</p>}
+                    {!receptionist && <details className="space-y-4">
+                    <summary className="cursor-pointer text-xs font-medium text-saivie-teal">Patient history &amp; quick actions</summary>
                     <Card className="bg-saivie-surface-muted border-saivie-border">
                         <CardHeader>
                             <CardTitle className="text-sm font-medium uppercase tracking-wide text-saivie-plum">Quick Actions</CardTitle>
@@ -902,7 +955,8 @@ export default function NewBooking() {
                         </p>
                         <p className="font-mono text-sm bg-saivie-ivory/20 p-2 rounded text-center">Ext. 4049</p>
                     </div>
-                </div>}
+                    </details>}
+                </aside>
 
             </main>
         </div>
