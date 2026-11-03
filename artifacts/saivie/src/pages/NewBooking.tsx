@@ -32,7 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { BookingPatientAvatar } from "@/components/BookingPatientAvatar";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { getArrivalState, type ArrivalState } from "@/components/ReceptionDashboard";
@@ -125,6 +125,7 @@ export default function NewBooking() {
         return Number.isSafeInteger(id) && id > 0 ? id : null;
     });
     const [visitMode, setVisitMode] = useState("in-clinic");
+    const [visitModeConfirmed, setVisitModeConfirmed] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [createdAppointmentId, setCreatedAppointmentId] = useState<number | null>(null);
     const [createdTelemedicineLink, setCreatedTelemedicineLink] = useState<string | null>(null);
@@ -238,7 +239,10 @@ export default function NewBooking() {
         }));
     }, [providersData]);
 
-    const handleNext = () => setStep(step + 1);
+    const handleNext = () => {
+        if (step === 4) setVisitModeConfirmed(true);
+        setStep(step + 1);
+    };
     const handleBack = () => setStep(step - 1);
 
     const mutation = useMutation({
@@ -479,9 +483,7 @@ export default function NewBooking() {
                                                 onClick={() => setSelectedPatientId(p.id)}
                                                 data-testid={`patient-result-${p.id}`}
                                             >
-                                                <Avatar className="h-10 w-10">
-                                                    <AvatarFallback className="bg-saivie-sage text-saivie-teal">{p.avatar || p.name?.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
-                                                </Avatar>
+                                                <BookingPatientAvatar />
                                                 <div className="flex-1">
                                                     <p className="font-bold text-saivie-plum text-sm">{p.name}</p>
                                                     <p className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#52645e]"><span className="rounded-full bg-saivie-sage px-2 py-0.5 font-medium text-[#1f4a42]">{bookingPatientCategory(p)}</span> ID #{p.id}</p>
@@ -618,7 +620,7 @@ export default function NewBooking() {
                                         <button
                                             key={opt.value}
                                             type="button"
-                                            onClick={() => setVisitMode(opt.value)}
+                                            onClick={() => { setVisitMode(opt.value); setVisitModeConfirmed(true); }}
                                             className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col items-center gap-2 text-center ${visitMode === opt.value ? 'border-saivie-teal bg-saivie-surface-muted' : 'border-saivie-border bg-saivie-ivory hover:border-saivie-border'}`}
                                             data-testid={`btn-visit-mode-${opt.value}`}
                                         >
@@ -791,9 +793,7 @@ export default function NewBooking() {
                         <CardHeader className="p-4 pb-2"><CardTitle className="text-[10px] font-semibold uppercase tracking-wide text-[#52645e]">Booking summary</CardTitle></CardHeader>
                         <CardContent className="p-4 pt-0">
                             <div className="flex items-center gap-3 border-b border-[#edf1ef] py-3">
-                                <Avatar className="h-10 w-10 shrink-0">
-                                    <AvatarFallback className="bg-saivie-sage text-saivie-teal">{patientType === "existing" ? selectedPatient?.name?.split(" ").map((part: string) => part[0]).slice(0, 2).join("") || "?" : newPatient.firstName[0] || "+"}</AvatarFallback>
-                                </Avatar>
+                                <BookingPatientAvatar />
                                 <div className="min-w-0">
                                     <p className="break-words text-sm font-semibold text-[#243b35]">{patientType === "existing" ? selectedPatient?.name || "Select a patient" : [newPatient.firstName, newPatient.lastName].filter(Boolean).join(" ") || "New patient"}</p>
                                     <p className="text-[10px] text-[#52645e]">{patientType === "existing" && selectedPatient ? `${bookingPatientCategory(selectedPatient)} · ID #${selectedPatient.id}` : patientType === "new" ? "New patient · Not registered yet" : "No patient selected"}</p>
@@ -804,7 +804,7 @@ export default function NewBooking() {
                                     { label: "Patient", value: hasPatient ? "Selected" : "" },
                                     { label: "Service", value: services.find((service: any) => service.id === selectedService)?.name || "" },
                                     { label: "Doctor", value: providers.find((provider: any) => provider.id === selectedProvider)?.name || "" },
-                                    { label: "Visit", value: step >= 4 ? ({ "in-clinic": "In clinic", "home-visit": "Home visit", telemedicine: "Online" }[visitMode] || visitMode) : "" },
+                                    { label: "Visit", value: step >= 4 || visitModeConfirmed ? ({ "in-clinic": "In clinic", "home-visit": "Home visit", telemedicine: "Online" }[visitMode] || visitMode) : "" },
                                     { label: "Schedule", value: date && selectedTime ? `${date.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} · ${formatAppointmentTime(selectedTime)}` : "" },
                                     { label: "Review", value: step === 6 ? "Ready to review" : "" },
                                 ].map((item, index) => (
