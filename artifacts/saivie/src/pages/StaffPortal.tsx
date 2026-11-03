@@ -3846,6 +3846,14 @@ export default function StaffPortal() {
                   onTranscribePrescription={setPaperPrescriptionPatient}
                   onEditPatient={setEditDetailPatient}
                   appointments={todayAppointments}
+                  upcomingAppointments={appointments
+                    .filter((appointment: any) => {
+                      const appointmentDate = String(appointment.date || "").slice(0, 10);
+                      const state = getArrivalState(appointment);
+                      return appointmentDate > clinicDate() && state !== "cancelled" && state !== "no-show";
+                    })
+                    .sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)) || String(a.time || "").localeCompare(String(b.time || "")))
+                    .slice(0, 2)}
                   patients={patients}
                   tasks={receptionistTasks}
                   followUps={receptionFollowUps}
@@ -3867,6 +3875,7 @@ export default function StaffPortal() {
                   onRegisterPatient={() => setIsRegisterOpen(true)}
                   onUploadReport={() => setActiveView('patients')}
                   onViewSchedule={() => setActiveView('schedule')}
+                  onFindPatient={() => setActiveView('patients')}
                   onViewFollowUps={() => setActiveView('followup')}
                   onCallFollowUp={(id) => {
                     const call = followUpCalls.find((item: any) => item.id === id);

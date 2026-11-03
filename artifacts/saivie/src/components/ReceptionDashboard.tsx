@@ -39,6 +39,7 @@ import { hpvProtection, hpvSurveyAnswer } from "@/lib/hpvProtection";
 import { surveyKindFor } from "@/lib/labSurvey";
 import { HpvBadge } from "@/components/HpvBadge";
 import { ReceptionSurveyBadge, ReceptionSummaryPrint } from "@/components/ReceptionSurveyActions";
+import { TodayAppointmentsEmptyState } from "@/components/TodayAppointmentsEmptyState";
 import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import type { ReceptionTask } from "@/lib/receptionTasks";
 
@@ -82,7 +83,9 @@ interface ReceptionDashboardProps {
   onRegisterPatient: () => void;
   onUploadReport: () => void;
   onViewSchedule: () => void;
+  onFindPatient: () => void;
   onViewFollowUps: () => void;
+  upcomingAppointments: Array<{ date: string; type?: string | null; visitType?: string | null }>;
   onCallFollowUp: (id: number) => void;
 }
 
@@ -163,7 +166,9 @@ export function ReceptionDashboard({
   onRegisterPatient,
   onUploadReport,
   onViewSchedule,
+  onFindPatient,
   onViewFollowUps,
+  upcomingAppointments,
   onCallFollowUp,
 }: ReceptionDashboardProps) {
   const [filter, setFilter] = useState<FlowFilter>("all");
@@ -439,7 +444,14 @@ export function ReceptionDashboard({
               ))}
             </div>
           </CardHeader>
-          <CardContent className="overflow-x-auto p-0">
+          <CardContent className={rows.length === 0 ? "p-4 sm:p-6" : "overflow-x-auto p-0"}>
+            {rows.length === 0 ? (
+              <TodayAppointmentsEmptyState
+                onViewSchedule={onViewSchedule}
+                onFindPatient={onFindPatient}
+                upcomingAppointments={upcomingAppointments}
+              />
+            ) : (
             <table className="w-full text-left text-sm">
               <thead className="border-y border-[#e9e1d2] bg-[#f8f5ed] text-[11px] uppercase tracking-wider text-saivie-plum">
                 <tr>
@@ -513,12 +525,13 @@ export function ReceptionDashboard({
                 {visibleRows.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-5 py-10 text-center text-sm text-saivie-plum">
-                      {rows.length === 0 ? "No appointments scheduled for today" : "No patients in this view"}
+                      No patients in this view
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+            )}
           </CardContent>
         </Card>
 
