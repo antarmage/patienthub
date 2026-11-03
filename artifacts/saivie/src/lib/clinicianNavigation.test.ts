@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { clinicianNavigationSearch, readClinicianNavigation } from "./clinicianNavigation";
+import { clinicianNavigationSearch, readClinicianNavigation } from "./clinicianNavigation.ts";
 
 test("refresh restores the consultation examination and appointment URL", () => {
   const search = clinicianNavigationSearch("", {
@@ -13,6 +13,15 @@ test("refresh restores the consultation examination and appointment URL", () => 
 test("patient links default to summary and invalid sections are not restored", () => {
   assert.deepEqual(readClinicianNavigation("patientId=991&tab=invalid&step=invalid"), {
     view: "patient_detail", tab: "summary", step: "reason",
+  });
+});
+
+test("pregnancy vaccine tab survives refresh in the patient URL", () => {
+  const search = clinicianNavigationSearch("", {
+    view: "patient_detail", patientId: 991, tab: "vaccines", step: "reason",
+  });
+  assert.deepEqual(readClinicianNavigation(search), {
+    view: "patient_detail", tab: "vaccines", step: "reason",
   });
 });
 

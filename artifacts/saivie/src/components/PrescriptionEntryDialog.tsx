@@ -121,12 +121,15 @@ function ExamSelect({ label, value, options, onChange, testId, unit = "" }: {
 
 function demographicsFrom(sourcePatient: any, visit?: any) {
   const vitals = visit?.vitals && typeof visit.vitals === "object" ? visit.vitals : {};
+  const patientType = String(sourcePatient?.pregnancyStatus || "").toLowerCase() === "pregnant"
+    ? "Pregnant"
+    : String(sourcePatient?.type || "General");
   return {
     lmp: String(vitals.lmp || sourcePatient?.lmp || "").slice(0, 10),
     height: vitals.height != null ? String(vitals.height) : sourcePatient?.height != null ? String(sourcePatient.height) : "",
     weight: vitals.weight != null ? String(vitals.weight) : sourcePatient?.weight != null ? String(sourcePatient.weight) : "",
     age: vitals.age != null ? String(vitals.age) : sourcePatient?.age != null ? String(sourcePatient.age) : "",
-    patientType: String(vitals.patientType || sourcePatient?.type || "General"),
+    patientType: String(vitals.patientType || patientType),
   };
 }
 
@@ -492,7 +495,30 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   );
 
   useEffect(() => {
-    if (!appointment) return;
+    if (!appointment) {
+      setFollowUpDateOverride(null);
+      setMedicines([emptyMedicine()]);
+      setTests([]);
+      setChiefComplaint("");
+      setExamination("");
+      setDiagnosis("");
+      setAdvice("");
+      setFollowUp("");
+      setPrescriptionDate("");
+      const demo = demographicsFrom(patient);
+      setLmp(demo.lmp);
+      setHeight(demo.height);
+      setWeight(demo.weight);
+      setAge(demo.age);
+      setPatientType(demo.patientType);
+      const obstetric = obstetricFrom(null, patient);
+      setEod(demo.lmp ? "" : obstetric.eod);
+      setPog(demo.lmp ? "" : obstetric.pog);
+      setGravida(obstetric.gravida);
+      setSurgicalHistory(obstetric.surgicalHistory);
+      setAntenatal(antenatalFrom(null, patient));
+      return;
+    }
     setFollowUpDateOverride(appointment.historical && !appointment.draft ? null
       : existing?.vitals?.followUpDate ?? appointment.draft?.followUpDate ?? appointment.followUpDate ?? null);
     const draft = appointment.draft;
@@ -898,10 +924,6 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
 
   useEffect(() => {
     setStep("patient");
-    if (!appointment) {
-      setEntered(false);
-      return;
-    }
     setEntered(false);
     const frame = requestAnimationFrame(() => setEntered(true));
     return () => cancelAnimationFrame(frame);
@@ -1021,7 +1043,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     }
   };
 
-  if (!appointment) return null;
+  if (!patient) return null;
 
   return (
     <div className={`fixed inset-0 z-[60] flex flex-col bg-background transition-transform duration-300 ease-out ${entered ? "translate-x-0" : "translate-x-full"}`}>
@@ -1038,7 +1060,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
               : editing
               ? "Update this record, then close to return to the list."
               : needsDate
-              ? "Enter the paper prescription. Close returns to the patient list."
+              ? "Enter the prescription date and details. Close returns to the medicine list."
               : `Visit on ${String(appointment.date).slice(0, 10)}. Close returns to the list.`}
           </p>
         </div>
@@ -1350,7 +1372,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           <div className="rounded-lg border bg-muted/30 p-3 text-sm" data-testid="rx-save-summary">
             <p className="font-medium">Ready to save</p>
             <p className="mt-1 text-muted-foreground">
-              {patient?.name} · {prescriptionDate || String(appointment.date).slice(0, 10)} · {patientType}
+              {patient?.name} · {prescriptionDate || String(appointment?.date || "").slice(0, 10)} · {patientType}
             </p>
             <p className="mt-1 text-muted-foreground">
               {medicines.filter((medicine) => medicine.name.trim()).length} medicines

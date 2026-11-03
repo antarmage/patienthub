@@ -42,6 +42,7 @@ import { registerPregnancyEpisodes } from "../pregnancy-episodes";
 import { createPregnancyEpisodeStore } from "../pregnancy-episode-store";
 import { createPregnancyFollowUpStore, registerPregnancyFollowUps } from "../pregnancy-follow-ups";
 import { createPregnancyMedicationReconciliationStore, registerPregnancyMedicationReconciliation } from "../pregnancy-medication-reconciliation";
+import { canManageVaccinationSchedules, canUseVaccinationWorkflow } from "../vaccination-access";
 import { readLabPrescription, sanitizeLabSurvey, surveyKindFor } from "../survey-kind";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
 import { analyseGenome, analyseGenomeFromKey } from "../genome-engine";
@@ -3720,6 +3721,74 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const [ty, tm, td] = to.split("-").map(Number);
     return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86400000);
   };
+  const vaccinationActor = async (req: Request, res: Response, managersOnly = false) => {
+    res.setHeader("Cache-Control", "private, no-store");
+    const actor = await getAccessActor(req, res);
+    if (!actor) {
+      if (!res.headersSent) res.status(401).json({ error: "Authentication required" });
+      return null;
+    }
+    const allowed = managersOnly ? canManageVaccinationSchedules(actor) : canUseVaccinationWorkflow(actor);
+    if (!allowed) {
+      res.status(403).json({ error: managersOnly ? "Doctor or owner access required" : "Doctor or receptionist access required" });
+      return null;
+    }
+    return actor;
+  };
+  const validVaccinationDate = (value: string) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    Number.isFinite(Date.parse(value)) &&
+    new Date(value).toISOString().slice(0, 10) === value &&
+    value <= todayLocal();
+  const recordVaccinationDose = async (
+    patientId: number,
+    scheduleId: number,
+    doseNumber: number,
+    administeredDate: string,
+    requestedEpisodeId?: number,
+  ) => {
+    if (!validVaccinationDate(administeredDate)) throw Object.assign(new Error("Enter a valid administered date that is not in the future"), { status: 400 });
+    const [patient, schedules] = await Promise.all([storage.getPatient(patientId), storage.getVaccinationSchedules()]);
+    if (!patient) throw Object.assign(new Error("Patient not found"), { status: 404 });
+    const schedule = schedules.find((item) => item.id === scheduleId && item.isActive);
+    if (!schedule) throw Object.assign(new Error("Active vaccination schedule not found"), { status: 404 });
+    const doseCount = schedule.eligibility === "pregnancy"
+      ? (Array.isArray(schedule.doseGestationalWeeks) ? schedule.doseGestationalWeeks.length : 0)
+      : (Array.isArray(schedule.doseOffsetsMonths) ? schedule.doseOffsetsMonths.length : 0);
+    if (!Number.isInteger(doseNumber) || doseNumber < 1 || doseNumber > doseCount) {
+      throw Object.assign(new Error("Dose number is outside this schedule"), { status: 400 });
+    }
+    let pregnancyEpisodeId: number | null = null;
+    if (schedule.eligibility === "pregnancy") {
+      const currentEpisode = requestedEpisodeId
+        ? await pool.query<{ id: number; pregnancyStartDate: string | null }>(
+          `SELECT id, COALESCE(details->>'startDate', details->>'lmp') AS "pregnancyStartDate"
+           FROM pregnancy_episodes WHERE id=$1 AND patient_id=$2 AND details->>'status'='current'`,
+          [requestedEpisodeId, patientId],
+        )
+        : await pool.query<{ id: number; pregnancyStartDate: string | null }>(
+          `SELECT id, COALESCE(details->>'startDate', details->>'lmp') AS "pregnancyStartDate"
+           FROM pregnancy_episodes WHERE patient_id=$1 AND details->>'status'='current'`,
+          [patientId],
+        );
+      if (!currentEpisode.rowCount) throw Object.assign(new Error("A saved current pregnancy episode is required to record this dose"), { status: 409 });
+      pregnancyEpisodeId = currentEpisode.rows[0].id;
+      const pregnancyStartDate = currentEpisode.rows[0].pregnancyStartDate?.slice(0, 10);
+      if (pregnancyStartDate && administeredDate < pregnancyStartDate) {
+        throw Object.assign(new Error("The administered date cannot be before this pregnancy"), { status: 400 });
+      }
+    } else if (requestedEpisodeId !== undefined) {
+      throw Object.assign(new Error("Only pregnancy vaccine doses can be linked to a pregnancy"), { status: 400 });
+    }
+    return storage.createVaccinationRecord({
+      patientId,
+      scheduleId,
+      doseNumber,
+      administeredDate,
+      pregnancyEpisodeId,
+      createdAt: new Date().toISOString(),
+    });
+  };
 
   app.get("/api/vaccination-schedules", async (_req, res) => {
     res.json(await storage.getVaccinationSchedules());
@@ -3756,6 +3825,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   };
 
   app.post("/api/vaccination-schedules", async (req, res) => {
+    if (!(await vaccinationActor(req, res, true))) return;
     try {
       res.status(201).json(await storage.createVaccinationSchedule({ ...parseVaccinationSchedule(req.body), isActive: true }));
     } catch (err) {
@@ -3764,6 +3834,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.patch("/api/vaccination-schedules/:id", async (req, res) => {
+    if (!(await vaccinationActor(req, res, true))) return;
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     try {
@@ -3778,6 +3849,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.delete("/api/vaccination-schedules/:id", async (req, res) => {
+    if (!(await vaccinationActor(req, res, true))) return;
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     const deleted = await storage.deleteVaccinationSchedule(id);
@@ -3785,14 +3857,19 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     res.status(204).send();
   });
 
-  app.get("/api/vaccination-reminders", async (_req, res) => {
+  app.get("/api/vaccination-reminders", async (req, res) => {
+    if (!(await vaccinationActor(req, res))) return;
     const [patients, schedules, records] = await Promise.all([
       storage.getPatients(), storage.getVaccinationSchedules(), storage.getVaccinationRecords(),
     ]);
+    const currentEpisodes = await pool.query<{ id: number; patientId: number; lmp: string | null }>(
+      "SELECT id, patient_id AS \"patientId\", details->>'lmp' AS lmp FROM pregnancy_episodes WHERE details->>'status'='current'",
+    );
+    const currentEpisodeByPatient = new Map(currentEpisodes.rows.map((episode) => [episode.patientId, episode]));
     const today = todayLocal();
     const recordsBySeries = new Map<string, typeof records>();
     for (const record of records) {
-      const key = `${record.patientId}:${record.scheduleId}`;
+      const key = `${record.patientId}:${record.scheduleId}:${record.pregnancyEpisodeId ?? "patient"}`;
       recordsBySeries.set(key, [...(recordsBySeries.get(key) || []), record]);
     }
     const reminders: Array<Record<string, unknown>> = [];
@@ -3802,18 +3879,21 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         : (Array.isArray(schedule.doseOffsetsMonths) ? schedule.doseOffsetsMonths.map(Number) : []);
       if (!scheduleDoses.length) continue;
       for (const patient of patients) {
-        const patientRecords = (recordsBySeries.get(`${patient.id}:${schedule.id}`) || []).sort((a, b) => a.doseNumber - b.doseNumber);
-        const nextDose = (patientRecords.at(-1)?.doseNumber || 0) + 1;
-        if (nextDose > scheduleDoses.length) continue;
+        const pregnancyEpisodeId = schedule.eligibility === "pregnancy" ? currentEpisodeByPatient.get(patient.id)?.id : undefined;
+        if (schedule.eligibility === "pregnancy" && !pregnancyEpisodeId) continue;
+        const seriesEpisode = pregnancyEpisodeId ?? "patient";
+        const patientRecords = recordsBySeries.get(`${patient.id}:${schedule.id}:${seriesEpisode}`) || [];
+        const recordedDoses = new Set(patientRecords.map((record) => record.doseNumber));
+        const nextDoseIndex = scheduleDoses.findIndex((_, index) => !recordedDoses.has(index + 1));
+        if (nextDoseIndex < 0) continue;
+        const nextDose = nextDoseIndex + 1;
         let dueDate: string | null = null;
         if (schedule.eligibility === "pregnancy") {
-          if (!patient.lmp) continue;
-          const lmpDate = String(patient.lmp).slice(0, 10);
+          const currentEpisode = currentEpisodeByPatient.get(patient.id);
+          if (!currentEpisode?.lmp) continue;
+          const lmpDate = String(currentEpisode.lmp).slice(0, 10);
           const weeksPregnant = Math.floor(dayDifference(lmpDate, today) / 7);
           if (weeksPregnant < 0 || weeksPregnant > 42) continue;
-          const pregnancyWords = `${patient.type || ""} ${patient.status || ""} ${patient.focus || ""}`.toLowerCase();
-          const pregnancyStatus = String(patient.status || "").toLowerCase();
-          if (pregnancyStatus && !/pregnan|antenatal|obstetric|anc/.test(pregnancyWords)) continue;
           dueDate = addDaysToDate(lmpDate, scheduleDoses[nextDose - 1] * 7);
         } else {
           const age = Number(patient.age);
@@ -3855,31 +3935,78 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.get("/api/vaccination-records", async (req, res) => {
+    const actor = await vaccinationActor(req, res);
+    if (!actor) return;
     const patientId = parseId(typeof req.query.patientId === "string" ? req.query.patientId : "");
     if (!patientId) return res.status(400).json({ error: "Valid patientId is required" });
-    res.json((await storage.getVaccinationRecords()).filter((record) => record.patientId === patientId));
+    const schedules = await storage.getVaccinationSchedules();
+    const pregnancyScheduleIds = new Set(schedules.filter((schedule) => schedule.eligibility === "pregnancy").map((schedule) => schedule.id));
+    const records = (await storage.getVaccinationRecords()).filter((record) => record.patientId === patientId);
+    res.json("role" in actor && ["receptionist", "staff"].includes(actor.role)
+      ? records.filter((record) => pregnancyScheduleIds.has(record.scheduleId))
+      : records);
   });
 
   app.post("/api/vaccination-records", async (req, res) => {
+    if (!(await vaccinationActor(req, res))) return;
     const patientId = parseId(req.body?.patientId);
     const scheduleId = parseId(req.body?.scheduleId);
     const doseNumber = Number(req.body?.doseNumber);
     const administeredDate = String(req.body?.administeredDate || todayLocal());
-    if (!patientId || !scheduleId || !Number.isInteger(doseNumber) || doseNumber < 1 || !/^\d{4}-\d{2}-\d{2}$/.test(administeredDate)) {
+    const requestedEpisodeId = req.body?.episodeId === undefined ? undefined : parseId(req.body.episodeId);
+    if (!patientId || !scheduleId || !Number.isInteger(doseNumber) || doseNumber < 1 || (req.body?.episodeId !== undefined && !requestedEpisodeId)) {
       return res.status(400).json({ error: "Invalid vaccination dose details" });
     }
-    const [patient, schedule] = await Promise.all([storage.getPatient(patientId), storage.getVaccinationSchedules()]);
-    const matchingSchedule = schedule.find((item) => item.id === scheduleId && item.isActive);
-    if (!patient) return res.status(404).json({ error: "Patient not found" });
-    if (!matchingSchedule) return res.status(404).json({ error: "Active vaccination schedule not found" });
-    const doseCount = matchingSchedule.eligibility === "pregnancy"
-      ? (Array.isArray(matchingSchedule.doseGestationalWeeks) ? matchingSchedule.doseGestationalWeeks.length : 0)
-      : (Array.isArray(matchingSchedule.doseOffsetsMonths) ? matchingSchedule.doseOffsetsMonths.length : 0);
-    if (doseNumber > doseCount) return res.status(400).json({ error: "Dose number is outside this schedule" });
     try {
-      res.status(201).json(await storage.createVaccinationRecord({ patientId, scheduleId, doseNumber, administeredDate, createdAt: new Date().toISOString() }));
+      res.status(201).json(await recordVaccinationDose(patientId, scheduleId, doseNumber, administeredDate, requestedEpisodeId ?? undefined));
     } catch (err: any) {
       if (err?.code === "23505") return res.status(409).json({ error: "This dose is already recorded" });
+      const status = err && typeof err === "object" && "status" in err && typeof err.status === "number" ? err.status : 500;
+      if (status !== 500) return res.status(status).json({ error: err.message });
+      throw err;
+    }
+  });
+
+  app.get("/api/patients/:id/pregnancy-vaccines", async (req, res) => {
+    if (!(await vaccinationActor(req, res))) return;
+    const patientId = parseId(req.params.id);
+    if (!patientId) return res.status(400).json({ error: "Invalid patient ID" });
+    if (!(await storage.getPatient(patientId))) return res.status(404).json({ error: "Patient not found" });
+    const [episodeResult, schedules, records] = await Promise.all([
+      pool.query<{ id: number; number: number; status: "current" | "past"; lmp: string | null }>(
+        `SELECT id, (details->>'number')::int AS number, details->>'status' AS status, details->>'lmp' AS lmp
+         FROM pregnancy_episodes WHERE patient_id=$1 ORDER BY (details->>'number')::int DESC, id DESC`,
+        [patientId],
+      ),
+      storage.getVaccinationSchedules(),
+      storage.getVaccinationRecords(),
+    ]);
+    const episodes = episodeResult.rows;
+    res.json({
+      currentEpisode: episodes.find((episode) => episode.status === "current") ?? null,
+      episodes,
+      schedules: schedules.filter((schedule) => schedule.eligibility === "pregnancy"),
+      records: records.filter((record) => record.patientId === patientId && schedules.some((schedule) => schedule.id === record.scheduleId && schedule.eligibility === "pregnancy")),
+    });
+  });
+
+  app.post("/api/patients/:id/pregnancy-vaccines", async (req, res) => {
+    if (!(await vaccinationActor(req, res))) return;
+    const patientId = parseId(req.params.id);
+    const scheduleId = parseId(req.body?.scheduleId);
+    const episodeId = parseId(req.body?.episodeId);
+    const doseNumber = Number(req.body?.doseNumber);
+    const administeredDate = String(req.body?.administeredDate || "");
+    if (!patientId || !scheduleId || !episodeId || !Number.isInteger(doseNumber) || doseNumber < 1) {
+      return res.status(400).json({ error: "Invalid pregnancy vaccine dose details" });
+    }
+    try {
+      const record = await recordVaccinationDose(patientId, scheduleId, doseNumber, administeredDate, episodeId);
+      res.status(201).json(record);
+    } catch (err: any) {
+      if (err?.code === "23505") return res.status(409).json({ error: "This dose is already recorded for this pregnancy" });
+      const status = err && typeof err === "object" && "status" in err && typeof err.status === "number" ? err.status : 500;
+      if (status !== 500) return res.status(status).json({ error: err.message });
       throw err;
     }
   });

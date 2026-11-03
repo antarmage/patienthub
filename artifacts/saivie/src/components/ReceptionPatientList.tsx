@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { CalendarPlus, ChevronRight, Phone, Search, UserPlus } from "lucide-react";
+import { CalendarPlus, ChevronRight, Phone, Search, Syringe, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OnlineConsultationActions } from "@/components/OnlineConsultationActions";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,7 @@ const stageColors: Record<string, string> = {
   "No-show": "bg-[#faf0e7] text-[#92542a]", Cancelled: "bg-[#f2eef0] text-[#705364]",
 };
 
-export function ReceptionPatientList({ patients, providers, patientsLoading, patientsError, onRetryPatients, onRegister, onPayment, onWhatsApp, onTranscribePrescription, onRecordVitals, onCheckIn, onViewPatient, onEditPatient, search, onSearch, canPrintSummary = false }: {
+export function ReceptionPatientList({ patients, providers, patientsLoading, patientsError, onRetryPatients, onRegister, onPayment, onWhatsApp, onTranscribePrescription, onRecordVitals, onCheckIn, onViewPatient, onManageVaccines, onEditPatient, search, onSearch, canPrintSummary = false }: {
   canPrintSummary?: boolean;
   patients: ReceptionPatient[];
   providers: { id: number; name: string }[];
@@ -43,6 +43,7 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
   onRecordVitals: (appointment: ReceptionAppointment) => void;
   onCheckIn: (appointment: ReceptionAppointment) => void;
   onViewPatient?: (patient: ReceptionPatient) => void;
+  onManageVaccines?: (patient: ReceptionPatient) => void;
   onEditPatient: (patient: ReceptionPatient) => void;
   search: string;
   onSearch: (value: string) => void;
@@ -121,6 +122,7 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
         {patient && <Button size="sm" variant="outline" onClick={() => onTranscribePrescription(patient)}>Add / Edit paper prescription</Button>}
         {patient && surveyKindFor(appointment) !== "lab" && appointment.date === today && !closed && stage !== "With doctor" && <Button size="sm" variant="outline" onClick={() => onRecordVitals(appointment)} data-testid={`btn-reception-vitals-${appointment.id}`}>Record vitals</Button>}
         {patient && onViewPatient && <Button size="sm" variant="outline" onClick={() => onViewPatient(patient)} data-testid={`btn-reception-details-${patient.id}`}>View patient details</Button>}
+        {patient && onManageVaccines && <Button size="sm" variant="outline" onClick={() => onManageVaccines(patient)} data-testid={`btn-reception-vaccines-${patient.id}`}><Syringe className="mr-1 h-3 w-3" />Vaccines</Button>}
         {patient && <Button size="sm" variant="outline" onClick={() => onEditPatient(patient)} data-testid={`btn-reception-edit-${patient.id}`}>Edit patient details</Button>}
         {appointment.date === today && stage === "Scheduled" && <Button size="sm" disabled={busy(appointment.id)} data-testid={`reception-checkin-${appointment.id}`} onClick={() => onCheckIn(appointment)}>Check in</Button>}
         {period === "last-week" || closed ? <Button size="sm" variant="outline" asChild><Link href={`/staff/booking?patientId=${appointment.patientId || ""}`}>Rebook</Link></Button> : <>

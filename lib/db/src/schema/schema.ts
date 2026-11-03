@@ -631,11 +631,16 @@ export type InsertVaccinationSchedule = typeof vaccinationSchedules.$inferInsert
 export const vaccinationRecords = pgTable("vaccination_records", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  pregnancyEpisodeId: integer("pregnancy_episode_id"),
   scheduleId: integer("schedule_id").notNull().references(() => vaccinationSchedules.id, { onDelete: "cascade" }),
   doseNumber: integer("dose_number").notNull(),
   administeredDate: date("administered_date").notNull(),
   createdAt: text("created_at").notNull(),
-}, (t) => [uniqueIndex("vaccination_records_patient_schedule_dose_idx").on(t.patientId, t.scheduleId, t.doseNumber)]);
+}, (t) => [
+  uniqueIndex("vaccination_records_patient_schedule_dose_idx").on(t.patientId, t.scheduleId, t.doseNumber).where(sql`${t.pregnancyEpisodeId} IS NULL`),
+  uniqueIndex("vaccination_records_episode_schedule_dose_idx").on(t.patientId, t.pregnancyEpisodeId, t.scheduleId, t.doseNumber).where(sql`${t.pregnancyEpisodeId} IS NOT NULL`),
+  foreignKey({ columns: [t.pregnancyEpisodeId, t.patientId], foreignColumns: [pregnancyEpisodes.id, pregnancyEpisodes.patientId], name: "vaccination_records_episode_patient_fk" }),
+]);
 
 export type VaccinationRecord = typeof vaccinationRecords.$inferSelect;
 export type InsertVaccinationRecord = typeof vaccinationRecords.$inferInsert;

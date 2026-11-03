@@ -216,12 +216,51 @@ export async function ensureSchema(): Promise<void> {
       CREATE TABLE IF NOT EXISTS vaccination_records (
         id serial PRIMARY KEY,
         patient_id integer NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+        pregnancy_episode_id integer,
         schedule_id integer NOT NULL REFERENCES vaccination_schedules(id) ON DELETE CASCADE,
         dose_number integer NOT NULL,
         administered_date date NOT NULL,
         created_at text NOT NULL,
-        CONSTRAINT vaccination_records_patient_schedule_dose_idx UNIQUE (patient_id, schedule_id, dose_number)
+        CONSTRAINT vaccination_records_episode_patient_fk FOREIGN KEY (pregnancy_episode_id, patient_id) REFERENCES pregnancy_episodes(id, patient_id)
       );
+
+      ALTER TABLE vaccination_records ADD COLUMN IF NOT EXISTS pregnancy_episode_id integer;
+      ALTER TABLE vaccination_records DROP CONSTRAINT IF EXISTS vaccination_records_patient_schedule_dose_idx;
+      CREATE UNIQUE INDEX IF NOT EXISTS vaccination_records_episode_schedule_dose_idx
+        ON vaccination_records(patient_id, pregnancy_episode_id, schedule_id, dose_number)
+        WHERE pregnancy_episode_id IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS vaccination_records_patient_schedule_dose_idx
+        ON vaccination_records(patient_id, schedule_id, dose_number)
+        WHERE pregnancy_episode_id IS NULL;
+      DO $vaccination_episode_fk$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'vaccination_records_episode_patient_fk'
+            AND conrelid = 'vaccination_records'::regclass
+        ) THEN
+          ALTER TABLE vaccination_records ADD CONSTRAINT vaccination_records_episode_patient_fk
+            FOREIGN KEY (pregnancy_episode_id, patient_id) REFERENCES pregnancy_episodes(id, patient_id);
+        END IF;
+      END $vaccination_episode_fk$;
+      WITH matching_episodes AS (
+        SELECT r.id, min(e.id) AS episode_id
+        FROM vaccination_records r
+        JOIN vaccination_schedules s ON s.id = r.schedule_id AND s.eligibility = 'pregnancy'
+        JOIN pregnancy_episodes e ON e.patient_id = r.patient_id
+        WHERE r.pregnancy_episode_id IS NULL
+          AND COALESCE(NULLIF(e.details->>'startDate', ''), NULLIF(e.details->>'lmp', '')) IS NOT NULL
+          AND r.administered_date >= COALESCE(NULLIF(e.details->>'startDate', ''), NULLIF(e.details->>'lmp', ''))::date
+          AND r.administered_date <= COALESCE(
+            NULLIF(e.details->>'endDate', ''),
+            NULLIF(e.details->>'dueDate', ''),
+            CASE WHEN e.details->>'status' = 'current' THEN CURRENT_DATE::text END
+          )::date
+        GROUP BY r.id
+        HAVING count(e.id) = 1
+      )
+      UPDATE vaccination_records r SET pregnancy_episode_id = matching_episodes.episode_id
+      FROM matching_episodes WHERE r.id = matching_episodes.id;
 
       INSERT INTO vaccination_schedules
         (vaccine_name, eligibility, min_age, max_age, dose_offsets_months, dose_gestational_weeks, reminder_lead_days, is_active)

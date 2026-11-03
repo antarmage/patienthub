@@ -14,6 +14,7 @@ import { PrescriptionPreview } from "@/components/PrescriptionPreview";
 import { consultationHistoryText } from "@/lib/consultationSurvey";
 import { appointmentLabel, readAppointmentHistory, visitTrail } from "@/lib/visitTrail";
 import { PregnancyOverview } from "@/components/PregnancyOverview";
+import { PregnancyVaccinesPanel } from "@/components/PregnancyVaccines";
 import { patientAge, indiaToday } from "@/lib/pregnancyOverview";
 
 type ClinicalRecord = Record<string, unknown>;
@@ -148,7 +149,7 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
         <Tabs value={tab} onValueChange={setTab} className="mt-4 flex min-h-0 min-w-0 flex-none flex-col sm:flex-1">
         <div className="shrink-0 overflow-x-auto border-b border-saivie-border">
           <TabsList className="h-auto max-w-none justify-start gap-2 rounded-none border-0 bg-transparent p-0">
-            {[["visits", "Visit dates"], ["history", "Patient history"], ["prescriptions", "Medicines"], ["reports", "Reports"], ["pregnancy", "Pregnancy"]].map(([value, label]) => <TabsTrigger key={value} value={value} className="rounded-none border-b-2 border-transparent px-3 py-3 text-xs hover:bg-transparent data-[state=active]:border-saivie-teal data-[state=active]:bg-transparent data-[state=active]:text-saivie-teal data-[state=active]:shadow-none">{label}</TabsTrigger>)}
+            {[["visits", "Visit dates"], ["history", "Patient history"], ["prescriptions", "Medicines"], ["reports", "Reports"], ["pregnancy", "Pregnancy"], ["vaccines", "Vaccines"]].map(([value, label]) => <TabsTrigger key={value} value={value} className="rounded-none border-b-2 border-transparent px-3 py-3 text-xs hover:bg-transparent data-[state=active]:border-saivie-teal data-[state=active]:bg-transparent data-[state=active]:text-saivie-teal data-[state=active]:shadow-none">{label}</TabsTrigger>)}
           </TabsList>
         </div>
         <div className="min-h-0 min-w-0 flex-none pt-3 [overflow-wrap:anywhere] sm:flex-1 sm:overflow-y-auto sm:overscroll-contain" data-testid="reception-details-scroll">
@@ -217,6 +218,9 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
           {pregnancyLabs.isError && <p role="alert" className={cardClass}>{pregnancyLabs.error.message}<Button variant="link" onClick={() => void pregnancyLabs.refetch()}>Retry pregnancy labs</Button></p>}
           <PregnancyOverview key={patient.id} patient={{ ...data.detail, id: patient.id }} appointments={data.appointments} visits={data.visits} labs={pregnancyLabs.data || []} documents={data.documents}
             recordsReady={record.isSuccess && pregnancyLabs.isSuccess} onProfile={onEdit} />
+        </TabsContent>
+        <TabsContent value="vaccines" className="text-sm">
+          <PregnancyVaccinesPanel patientId={patient.id} patientName={patient.name} />
         </TabsContent>
         </div>
       </Tabs></>}

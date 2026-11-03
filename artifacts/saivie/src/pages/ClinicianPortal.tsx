@@ -50,6 +50,7 @@ import { clinicalCareMode } from "@/lib/clinicalCareMode";
 import { clinicianNavigationSearch, readClinicianNavigation, type PatientDetailTab, type ConsultationStep } from "@/lib/clinicianNavigation";
 import { ObstetricExamination } from "@/components/ObstetricExamination";
 import { PregnancyMedicationIllustration } from "@/components/PregnancyMedicationIllustration";
+import { PregnancyVaccinesPanel } from "@/components/PregnancyVaccines";
 import { examinationRecord, readObstetricExamination, relevantObstetricExamination, obstetricExaminationError, obstetricNotes, obstetricObjective, obstetricVisitExamination, type ObstetricExamination as ObstetricExam } from "@/lib/obstetricExamination";
 import { 
   LayoutDashboard, 
@@ -505,40 +506,6 @@ export default function ClinicianPortal() {
   const [fetalHeartRateVal, setFetalHeartRateVal] = useState('');
 
   const queryClient = useQueryClient();
-  const vaccinationSchedulesQuery = useQuery<any[]>({
-    queryKey: ["/api/vaccination-schedules"],
-    queryFn: async () => {
-      const res = await fetch("/api/vaccination-schedules");
-      if (!res.ok) throw new Error("Could not load vaccination schedules");
-      return res.json();
-    },
-  });
-  const patientVaccinationRecordsQuery = useQuery<any[]>({
-    queryKey: ["/api/vaccination-records", selectedPatient?.id],
-    enabled: Boolean(selectedPatient?.id),
-    queryFn: async () => {
-      const res = await fetch(`/api/vaccination-records?patientId=${selectedPatient.id}`);
-      if (!res.ok) throw new Error("Could not load vaccination records");
-      return res.json();
-    },
-  });
-  const recordPatientVaccinationMutation = useMutation({
-    mutationFn: async (dose: { scheduleId: number; doseNumber: number }) => {
-      const res = await fetch("/api/vaccination-records", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId: selectedPatient.id, ...dose }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not record vaccine dose");
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/vaccination-records", selectedPatient?.id] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/vaccination-reminders"] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/hpv-protection"] });
-    },
-  });
-
   const updateAppointmentMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Record<string, unknown> }) => {
       const res = await fetch(`/api/appointments/${id}`, {
@@ -808,11 +775,21 @@ export default function ClinicianPortal() {
     ? savedPregnancyMedicationReconciliation as { status: "no-medicines"; episodeId: number; recordedAt: string }
     : null;
   const previousVisitPrescriptionItems: any[] = Array.isArray(previousVisit?.prescriptions) ? previousVisit.prescriptions : [];
-  const prescriptionMedicineRecords: Array<ReturnType<typeof visitMedicines>[number] & { date: string; visitId: number | string }> = visitHistory.flatMap((visit: any) =>
-    visitMedicines(visit).map((medicine: ReturnType<typeof visitMedicines>[number]) => ({ ...medicine, date: String(visit.date || "").slice(0, 10), visitId: visit.id })),
-  );
-  const activeMedicationRecords = medications.filter((med: any) => String(med.status || "").toLowerCase() === "active");
-  const pastMedicationRecords = medications.filter((med: any) => String(med.status || "").toLowerCase() !== "active");
+  const prescriptionVisitRecords = visitHistory
+    .map((visit: any) => ({
+      visitId: visit.id,
+      appointmentId: visit.appointmentId,
+      date: String(visit.date || "").slice(0, 10),
+      visitType: String(visit.visitType || "Visit"),
+      medicines: visitMedicines(visit),
+    }))
+    .filter((visit: { medicines: ReturnType<typeof visitMedicines> }) => visit.medicines.length > 0)
+    .sort((a: { date: string; visitId: number }, b: { date: string; visitId: number }) =>
+      b.date.localeCompare(a.date) || b.visitId - a.visitId);
+  const prescriptionMedicineCount = prescriptionVisitRecords.reduce((count: number, visit: { medicines: ReturnType<typeof visitMedicines> }) =>
+    count + visit.medicines.length, 0);
+  const activeMedicationRecords = medications.filter((med: any) => String(med.status || "active").toLowerCase() === "active");
+  const pastMedicationRecords = medications.filter((med: any) => String(med.status || "active").toLowerCase() !== "active");
   const datedMedicationRecords = [...medications]
     .filter((med: any) => med.startDate)
     .sort((a: any, b: any) => String(b.startDate).localeCompare(String(a.startDate)));
@@ -1863,10 +1840,36 @@ export default function ClinicianPortal() {
   const medicineListTitle = !showPregnancyContext ? "Medications"
     : medicineFilter === "active" ? "Active medications" : "Past medications";
   const medicineListCount = !showPregnancyContext ? activeMedicationRecords.length : displayedMedications.length;
+  const medicineListCountLabel = showPregnancyContext && medicineFilter === "past" ? "past" : "active";
   const pregnancyMedicineRecordsReady = medicationsQuery.isSuccess && (!showPregnancyContext || visitHistoryQuery.isSuccess);
   const medicationAllergiesKnown = Array.isArray(selectedPatient?.history?.allergies) && selectedPatient.history.allergies.length > 0;
   const medicationBloodGroup = selectedPatient?.bloodGroup || selectedPatient?.history?.obstetric?.bloodGroup || selectedPatient?.history?.bloodGroup;
   const missingMedicationSafetyDetails = !medicationAllergiesKnown || !medicationBloodGroup;
+  const pregnancyNoMedicinesAction = (
+    <>
+      {!pregnancyMedicationReconciliation ? (
+        <Button type="button" size="sm" variant="outline" disabled={!currentPregnancyEpisode || recordNoMedicinesMutation.isPending}
+          onClick={() => setConfirmNoMedicines(true)}>
+          Mark “takes no medicines”
+        </Button>
+      ) : (
+        <p className="rounded-full border border-saivie-border px-3 py-2 text-xs text-saivie-plum" role="status">
+          No medicines reported for Pregnancy {currentPregnancyEpisode?.details.number} · {new Date(pregnancyMedicationReconciliation.recordedAt).toLocaleDateString("en-IN")}
+        </p>
+      )}
+      {!currentPregnancyEpisode && !pregnancyEpisodesQuery.isLoading && <p className="text-xs text-saivie-plum">Confirm a saved current pregnancy episode before recording “takes no medicines.”</p>}
+      {confirmNoMedicines && <div className="w-full rounded-xl border border-saivie-border bg-saivie-surface-muted p-3 text-left" role="alert">
+        <p className="text-xs text-saivie-plum">Confirm that the patient reports taking no medicines during this saved pregnancy. This will be recorded with the clinician and date; it does not prescribe or discontinue anything.</p>
+        <div className="mt-3 flex flex-wrap justify-end gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => setConfirmNoMedicines(false)}>Cancel</Button>
+          <Button type="button" size="sm" disabled={recordNoMedicinesMutation.isPending}
+            onClick={() => recordNoMedicinesMutation.mutate()}>
+            {recordNoMedicinesMutation.isPending ? "Saving…" : "Confirm for this pregnancy"}
+          </Button>
+        </div>
+      </div>}
+    </>
+  );
   const addCustomInvestigation = () => {
     const name = newInvestigationName.trim();
     if (!name) return;
@@ -1886,7 +1889,7 @@ export default function ClinicianPortal() {
       <div className="mb-3">
          <div className="flex items-center justify-between mb-2">
            <span className="text-[10px] text-saivie-plum uppercase font-bold">{medicineListTitle}</span>
-           <Badge className="text-[9px] bg-saivie-sage text-saivie-teal border-saivie-border">{medicineListCount} active</Badge>
+           <Badge className="text-[9px] bg-saivie-sage text-saivie-teal border-saivie-border">{medicineListCount} {medicineListCountLabel}</Badge>
          </div>
          <div className={`border border-saivie-border rounded-md overflow-x-auto ${showAddMedRow || editingMedId !== null ? 'min-h-[420px]' : ''}`}>
             <table className="w-full min-w-[900px] text-xs text-left">
@@ -2018,6 +2021,7 @@ export default function ClinicianPortal() {
 
     {!displayedMedications.length && !showAddMedRow && medicineFilter === "active" && (
       <div className="mb-3">
+        <p className="mb-2 text-center text-sm text-saivie-plum">No active medicines recorded.</p>
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-dashed border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted w-full" onClick={() => setShowAddMedRow(true)} data-testid="button-add-first-med">
           <Plus className="w-3.5 h-3.5" /> Add Medication
         </Button>
@@ -4976,6 +4980,7 @@ export default function ClinicianPortal() {
                 {[
                   { id: 'record' as const, label: 'Record' },
                   { id: 'medicine' as const, label: 'Medicine' },
+                  ...(showPregnancyContext ? [{ id: 'vaccines' as const, label: 'Vaccines' }] : []),
                   { id: 'investigations' as const, label: 'Investigations' },
                   { id: 'postop' as const, label: 'Post-Op' },
                   { id: 'genome' as const, label: 'Genome' },
@@ -5428,7 +5433,7 @@ export default function ClinicianPortal() {
                     <h2 className="font-serif text-2xl font-semibold text-saivie-teal">Medicine</h2>
                     <p className="mt-1 text-xs text-saivie-plum">
                       {showPregnancyContext
-                        ? `Current medicines and prescriptions for ${currentPregnancyEpisode ? `Pregnancy ${currentPregnancyEpisode.details.number}` : "this pregnancy"}${pregnancyContext ? ` · ${pregnancyContext.weeks}w ${pregnancyContext.days}d` : ""}`
+                        ? `Medication history and prescriptions${currentPregnancyEpisode ? ` · Pregnancy ${currentPregnancyEpisode.details.number}` : ""}${pregnancyContext ? ` · ${pregnancyContext.weeks}w ${pregnancyContext.days}d` : ""}`
                         : "Current medicines and prescriptions"}
                     </p>
                   </div>
@@ -5444,7 +5449,7 @@ export default function ClinicianPortal() {
                       {([
                         ["active", `Active · ${activeMedicationRecords.length}`],
                         ["past", `Past · ${pastMedicationRecords.length}`],
-                        ["prescriptions", `Prescriptions · ${prescriptionMedicineRecords.length}`],
+                          ["prescriptions", `Prescriptions · ${prescriptionMedicineCount}`],
                       ] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={medicineFilter === id}
                         onClick={() => { setMedicineFilter(id); if (id !== "active") setShowAddMedRow(false); }}
                         className={`min-h-10 rounded-full border px-4 py-2 text-xs font-semibold ${medicineFilter === id ? "border-saivie-teal bg-saivie-teal text-white" : "border-saivie-border bg-saivie-ivory text-saivie-plum"}`}>
@@ -5452,7 +5457,10 @@ export default function ClinicianPortal() {
                       </button>)}
                     </nav>
                     {pregnancyEpisodesQuery.isError && <p role="alert" className="text-xs text-destructive">{pregnancyEpisodesQuery.error.message}. <button type="button" className="underline" onClick={() => void pregnancyEpisodesQuery.refetch()}>Retry</button></p>}
-                    {!pregnancyMedicineRecordsReady ? null : medications.length === 0 && prescriptionMedicineRecords.length === 0 ? (
+                    {pregnancyMedicineRecordsReady && <p className="text-xs text-saivie-plum">
+                      Active/Past show patient medication records by status. Prescriptions show visit-level records grouped by date.
+                    </p>}
+                    {!pregnancyMedicineRecordsReady ? null : medications.length === 0 && prescriptionMedicineCount === 0 && medicineFilter === "active" && !showAddMedRow ? (
                       <section className="rounded-2xl border border-saivie-border bg-saivie-ivory px-4 py-6 text-center sm:px-7" aria-label="No medicines or prescriptions recorded">
                         <PregnancyMedicationIllustration />
                         <h3 className="mt-2 font-serif text-xl font-semibold text-saivie-teal">No prescriptions or medicines recorded</h3>
@@ -5466,28 +5474,8 @@ export default function ClinicianPortal() {
                           <Button type="button" size="sm" variant="outline" onClick={() => setPrescriptionEntryOpen(true)}>
                             Write prescription
                           </Button>
-                          {!pregnancyMedicationReconciliation ? (
-                            <Button type="button" size="sm" variant="outline" disabled={!currentPregnancyEpisode || recordNoMedicinesMutation.isPending}
-                              onClick={() => setConfirmNoMedicines(true)}>
-                              Mark “takes no medicines”
-                            </Button>
-                          ) : (
-                            <p className="rounded-full border border-saivie-border px-3 py-2 text-xs text-saivie-plum" role="status">
-                              No medicines reported for Pregnancy {currentPregnancyEpisode?.details.number} · {new Date(pregnancyMedicationReconciliation.recordedAt).toLocaleDateString("en-IN")}
-                            </p>
-                          )}
+                          {pregnancyNoMedicinesAction}
                         </div>
-                        {!currentPregnancyEpisode && !pregnancyEpisodesQuery.isLoading && <p className="mt-2 text-xs text-saivie-plum">Confirm a saved current pregnancy episode before recording “takes no medicines.”</p>}
-                        {confirmNoMedicines && <div className="mx-auto mt-4 max-w-xl rounded-xl border border-saivie-border bg-saivie-surface-muted p-3 text-left" role="alert">
-                          <p className="text-xs text-saivie-plum">Confirm that the patient reports taking no medicines during this saved pregnancy. This will be recorded with the clinician and date; it does not prescribe or discontinue anything.</p>
-                          <div className="mt-3 flex flex-wrap justify-end gap-2">
-                            <Button type="button" size="sm" variant="outline" onClick={() => setConfirmNoMedicines(false)}>Cancel</Button>
-                            <Button type="button" size="sm" disabled={recordNoMedicinesMutation.isPending}
-                              onClick={() => recordNoMedicinesMutation.mutate()}>
-                              {recordNoMedicinesMutation.isPending ? "Saving…" : "Confirm for this pregnancy"}
-                            </Button>
-                          </div>
-                        </div>}
                         {missingMedicationSafetyDetails && (
                           <div className="mx-auto mt-5 flex max-w-4xl flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-left text-xs text-amber-950">
                             <p><strong>Before prescribing:</strong> {[...(!medicationAllergiesKnown ? ["allergies"] : []), ...(!medicationBloodGroup ? ["blood group"] : [])].join(" and ")} not recorded. “No medicines recorded” does not mean “takes no medicines.”</p>
@@ -5497,14 +5485,36 @@ export default function ClinicianPortal() {
                       </section>
                     ) : medicineFilter === "prescriptions" ? (
                       <section className="rounded-xl border border-saivie-border bg-saivie-ivory p-4" aria-label="Prescriptions for this patient">
-                        {prescriptionMedicineRecords.length ? <ul className="divide-y divide-saivie-border">
-                          {prescriptionMedicineRecords.map((item, index) => <li key={`${item.visitId}-${index}`} className="py-3 first:pt-0 last:pb-0">
-                            <p className="text-sm font-semibold text-saivie-teal">{item.name}</p>
-                            <p className="mt-1 text-xs text-saivie-plum">{[item.dose, item.frequency, item.duration].filter(Boolean).join(" · ") || "Prescription details not recorded"}{item.date ? ` · ${item.date}` : ""}</p>
-                          </li>)}
-                        </ul> : <p className="py-8 text-center text-sm text-saivie-plum">No prescriptions recorded for this pregnancy.</p>}
+                        {prescriptionVisitRecords.length ? <div className="space-y-4">
+                          {prescriptionVisitRecords.map((visit: { visitId: number; appointmentId: number | null; date: string; visitType: string; medicines: ReturnType<typeof visitMedicines> }) => (
+                            <section key={visit.visitId} className="rounded-lg border border-saivie-border p-3" aria-label={`${visit.visitType} on ${visit.date || "undated"}`}>
+                              <h3 className="text-xs font-semibold text-saivie-teal">
+                                {visit.visitType} · {visit.date || "Date not recorded"}{visit.appointmentId ? ` · Appointment ${visit.appointmentId}` : ""}
+                              </h3>
+                              <ul className="mt-2 divide-y divide-saivie-border">
+                                {visit.medicines.map((item, index) => <li key={`${visit.visitId}-${index}`} className="py-2 first:pt-0 last:pb-0">
+                                  <p className="text-sm font-semibold text-saivie-teal">{item.name}</p>
+                                  <p className="mt-1 text-xs text-saivie-plum">{[item.dose, item.frequency, item.duration].filter(Boolean).join(" · ") || "Prescription details not recorded"}</p>
+                                </li>)}
+                              </ul>
+                            </section>
+                          ))}
+                        </div> : <p className="py-8 text-center text-sm text-saivie-plum">No prescriptions recorded across visits.</p>}
                       </section>
-                    ) : renderMedicineTab()}
+                    ) : (
+                      <>
+                        {medicineFilter === "active" && activeMedicationRecords.length === 0 && (medications.length > 0 || prescriptionMedicineCount > 0) && (
+                          <section className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-saivie-border bg-saivie-ivory p-3" aria-label="No active medicines recorded">
+                            <div>
+                              <p className="text-sm font-semibold text-saivie-teal">No active medicines recorded.</p>
+                              <p className="mt-1 text-xs text-saivie-plum">Past medicines and prescriptions for other visit dates remain in their separate views.</p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">{pregnancyNoMedicinesAction}</div>
+                          </section>
+                        )}
+                        {renderMedicineTab()}
+                      </>
+                    )}
                     {prescriptionEntryOpen && <PrescriptionEntryDialog appointment={activeAppointment || null} patient={selectedPatient}
                       onClose={() => setPrescriptionEntryOpen(false)}
                       onSaved={(patientId) => {
@@ -5515,6 +5525,16 @@ export default function ClinicianPortal() {
                 ) : renderMedicineTab()}
               </section>
             )}
+
+            {patientDetailTab === 'vaccines' && showPregnancyContext && (
+              <section className="flex-1 min-h-0 overflow-auto p-4" aria-label="Patient pregnancy vaccines" data-testid="patient-vaccines-tab">
+                <PregnancyVaccinesPanel patientId={Number(selectedPatient.id)} patientName={selectedPatient.name} />
+              </section>
+            )}
+            {patientDetailTab === 'vaccines' && !showPregnancyContext && (
+              <p role="status" className="p-5 text-sm text-saivie-plum">Pregnancy vaccine records are available only for patients in a pregnancy care context.</p>
+            )}
+
             {patientDetailTab === 'investigations' && (
               <section className="flex-1 min-h-0 overflow-auto p-4 space-y-4" aria-label="Patient investigations" data-testid="patient-investigations-tab">
                 <div className="flex flex-wrap items-center justify-between gap-2">

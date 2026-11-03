@@ -15,7 +15,7 @@ test("patient navigation cannot open the retired detail screen", () => {
     .flatMap((node) => node.arguments.filter(ts.isStringLiteral).map((argument) => argument.text));
   assert.ok(destinations.includes("medicine"));
   assert.ok(destinations.includes("investigations"));
-  assert.ok(destinations.every((destination) => ["summary", "consultation", "record", "medicine", "investigations", "postop", "genome"].includes(destination)));
+  assert.ok(destinations.every((destination) => ["summary", "consultation", "record", "medicine", "vaccines", "investigations", "postop", "genome"].includes(destination)));
   assert.doesNotMatch(source, /openRecordSection|ConsultationOrderDialogs/);
 });
 

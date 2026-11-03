@@ -102,6 +102,7 @@ import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
 import { ReceptionPatientList } from "@/components/ReceptionPatientList";
 import { PaperPrescriptionTranscriptions } from "@/components/PaperPrescriptionTranscriptions";
 import { ReceptionPatientDetails } from "@/components/ReceptionPatientDetails";
+import { PregnancyVaccinesDialog } from "@/components/PregnancyVaccines";
 import { ReceptionPatientEdit } from "@/components/ReceptionPatientEdit";
 import { ReceptionVitalsDialog } from "@/components/ReceptionVitalsDialog";
 import { surveyKindFor } from "@/lib/labSurvey";
@@ -2191,6 +2192,7 @@ export default function StaffPortal() {
   const [prescriptionAppointment, setPrescriptionAppointment] = useState<any | null>(null);
   const [paperPrescriptionPatient, setPaperPrescriptionPatient] = useState<ReceptionPatient | null>(null);
   const [clinicalDetailPatient, setClinicalDetailPatient] = useState<ReceptionPatient | null>(null);
+  const [pregnancyVaccinePatient, setPregnancyVaccinePatient] = useState<ReceptionPatient | null>(null);
   const [editDetailPatient, setEditDetailPatient] = useState<ReceptionPatient | null>(null);
   const [receptionVitalsAppointment, setReceptionVitalsAppointment] = useState<ReceptionAppointment | null>(null);
   const [receptionCheckInAppointment, setReceptionCheckInAppointment] = useState<ReceptionAppointment | null>(null);
@@ -2210,6 +2212,9 @@ export default function StaffPortal() {
       queryClient.removeQueries({ queryKey: ["reception-clinical"] });
     }
   }, [canViewClinical, queryClient]);
+  useEffect(() => {
+    if (!receptionist) setPregnancyVaccinePatient(null);
+  }, [receptionist]);
   const { toast } = useToast();
   const openManualPrescription = (patient: any) => {
     if (!patient?.id) return;
@@ -3884,6 +3889,7 @@ export default function StaffPortal() {
                     onRecordVitals={setReceptionVitalsAppointment}
                     onCheckIn={handleReceptionCheckIn}
                     onViewPatient={canViewClinical ? setClinicalDetailPatient : undefined}
+                    onManageVaccines={setPregnancyVaccinePatient}
                     onTranscribePrescription={setPaperPrescriptionPatient}
                     onEditPatient={setEditDetailPatient}
                     patients={patients}
@@ -5325,6 +5331,7 @@ export default function StaffPortal() {
             />
             <PaperPrescriptionTranscriptions patient={paperPrescriptionPatient} onClose={() => setPaperPrescriptionPatient(null)} />
             {canViewClinical && clinicalDetailPatient && !editDetailPatient && <ReceptionPatientDetails patient={clinicalDetailPatient} onClose={() => setClinicalDetailPatient(null)} onEdit={() => setEditDetailPatient(clinicalDetailPatient)} />}
+            {receptionist && pregnancyVaccinePatient && <PregnancyVaccinesDialog patientId={pregnancyVaccinePatient.id} patientName={pregnancyVaccinePatient.name} onClose={() => setPregnancyVaccinePatient(null)} />}
             {receptionist && editDetailPatient && <ReceptionPatientEdit patient={editDetailPatient} onClose={() => setEditDetailPatient(null)} />}
             {receptionist && receptionVitalsAppointment && <ReceptionVitalsDialog appointment={receptionVitalsAppointment} patient={patients.find((patient: ReceptionPatient) => patient.id === receptionVitalsAppointment.patientId) || { id: receptionVitalsAppointment.patientId!, name: "Patient" }} onClose={() => setReceptionVitalsAppointment(null)} />}
             {receptionist && receptionCheckInAppointment && <ReceptionVitalsDialog key={receptionCheckInAppointment.id} appointment={receptionCheckInAppointment}
