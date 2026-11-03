@@ -789,12 +789,30 @@ export const insertPatientDocumentSchema = createInsertSchema(patientDocuments).
 export type InsertPatientDocument = z.infer<typeof insertPatientDocumentSchema>;
 export type PatientDocument = typeof patientDocuments.$inferSelect;
 
+export const surgeryCareNetwork = pgTable("surgery_care_network", {
+  id: serial("id").primaryKey(),
+  role: text("role").notNull(),
+  name: text("name").notNull(),
+  affiliation: text("affiliation").notNull().default(""),
+  phone: text("phone").notNull().default(""),
+  email: text("email").notNull().default(""),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdBy: varchar("created_by").references(() => users.id).notNull(),
+  updatedBy: varchar("updated_by").references(() => users.id).notNull(),
+});
+
 export const surgeryPlans = pgTable("surgery_plans", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").references(() => patients.id).notNull(),
   procedureName: text("procedure_name").notNull(),
   plannedDate: text("planned_date").notNull(),
   surgeonId: integer("surgeon_id").references(() => providers.id).notNull(),
+  nursingHomeId: integer("nursing_home_id").references(() => surgeryCareNetwork.id),
+  anesthetistId: integer("anesthetist_id").references(() => surgeryCareNetwork.id),
+  pediatricianId: integer("pediatrician_id").references(() => surgeryCareNetwork.id),
+  otAssistantId: integer("ot_assistant_id").references(() => surgeryCareNetwork.id),
   notes: text("notes").notNull().default(""),
   status: text("status").notNull().default("planned"),
   completedAt: text("completed_at"),

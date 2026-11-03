@@ -24,6 +24,7 @@ import { OnlineConsultationActions } from "@/components/OnlineConsultationAction
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
 import { HpvBadge } from "@/components/HpvBadge";
 import { SurgeryPlanningButton } from "@/components/SurgeryPlanning";
+import { SurgeryCareNetwork } from "@/components/SurgeryCareNetwork";
 import { hpvProtection, hpvSurveyAnswer } from "@/lib/hpvProtection";
 import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import { consultationDirectionsByPath, consultationPaths, consultationSurveyForVisit, consultationHistory, consultationHistoryText, readConsultationHistory, effectiveConsultationSurvey, MAX_CONSULTATION_DIRECTIONS, surveyQuestions, toggleConsultationDirection, toggleConsultationPath, type ConsultationSurveyEdits } from "@/lib/consultationSurvey";
@@ -465,9 +466,6 @@ export default function ClinicianPortal() {
   const [notePreviewOpen, setNotePreviewOpen] = useState(false);
   const [copilotExpanded, setCopilotExpanded] = useState(true);
   const [savedConsultationSnapshot, setSavedConsultationSnapshot] = useState<string[] | null>(null);
-  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [bookingType, setBookingType] = useState("surgery");
 
   const clinicianProvider = useMemo(() => {
     try {
@@ -3246,153 +3244,30 @@ export default function ClinicianPortal() {
                        <h3 className="text-sm font-bold text-saivie-plum flex items-center gap-2">
                           <Briefcase className="w-4 h-4 text-saivie-teal" /> Resource & Staff Booking
                        </h3>
-                       <Button size="sm" variant="outline" className="h-7 text-xs bg-saivie-ivory text-saivie-plum hover:text-saivie-teal border-saivie-border">
-                          View All Availability
+                       <Button size="sm" variant="outline" className="h-7 text-xs bg-saivie-ivory text-saivie-plum hover:text-saivie-teal border-saivie-border" onClick={() => { setActiveSettingsTab('network'); setActiveView('settings'); }}>
+                          Care network
                        </Button>
                     </div>
                     
-                    <div className="grid grid-cols-6 gap-3">
-                       {/* Operation Theater Booking (NEW) */}
-                       <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
-                          <DialogTrigger asChild>
-                             <Card className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-red-200 transition-colors cursor-pointer group col-span-1" onClick={() => setBookingType('surgery')}>
-                                <CardContent className="p-3 text-center">
-                                   <div className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-red-100 transition-colors">
-                                      <Activity className="w-4 h-4" />
-                                   </div>
-                                   <p className="text-xs font-bold text-saivie-plum mb-0.5">Schedule OT</p>
-                                   <p className="text-[10px] text-emerald-600 font-medium flex items-center justify-center gap-1">
-                                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> OT-1 Free
-                                   </p>
-                                   <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-saivie-sage text-saivie-plum hover:bg-red-600 hover:text-white border-none shadow-none">Book Slot</Button>
-                                </CardContent>
-                             </Card>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-[425px]">
-                             <DialogHeader>
-                                <DialogTitle>Book Operation Theater</DialogTitle>
-                                <DialogDescription>
-                                   Schedule a Surgery or C-Section procedure.
-                                </DialogDescription>
-                             </DialogHeader>
-                             <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                   <Label htmlFor="procedure-type" className="text-right text-xs">
-                                      Procedure
-                                   </Label>
-                                   <Select defaultValue="c_section">
-                                      <SelectTrigger className="col-span-3 h-8 text-xs">
-                                         <SelectValue placeholder="Select type" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                         <SelectItem value="c_section">C-Section (Elective)</SelectItem>
-                                         <SelectItem value="surgery">Laparoscopy</SelectItem>
-                                         <SelectItem value="hysteroscopy">Hysteroscopy</SelectItem>
-                                         <SelectItem value="erpc">ERPC</SelectItem>
-                                      </SelectContent>
-                                   </Select>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                   <Label htmlFor="patient-select" className="text-right text-xs">
-                                      Patient
-                                   </Label>
-                                   <Select>
-                                      <SelectTrigger className="col-span-3 h-8 text-xs">
-                                         <SelectValue placeholder="Select patient" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                         {patients.map((p: any) => (
-                                            <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
-                                         ))}
-                                      </SelectContent>
-                                   </Select>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                   <Label htmlFor="date-time" className="text-right text-xs">
-                                      Date & Time
-                                   </Label>
-                                   <div className="col-span-3 flex gap-2">
-                                      <DateInput className="h-8 text-xs flex-1" />
-                                      <Select>
-                                         <SelectTrigger className="w-[100px] h-8 text-xs">
-                                            <SelectValue placeholder="Time" />
-                                         </SelectTrigger>
-                                         <SelectContent>
-                                            <SelectItem value="08:00">08:00 AM</SelectItem>
-                                            <SelectItem value="09:00">09:00 AM</SelectItem>
-                                            <SelectItem value="10:00">10:00 AM</SelectItem>
-                                            <SelectItem value="11:00">11:00 AM</SelectItem>
-                                            <SelectItem value="13:00">01:00 PM</SelectItem>
-                                         </SelectContent>
-                                      </Select>
-                                   </div>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                   <Label className="text-right text-xs">
-                                      Team
-                                   </Label>
-                                   <div className="col-span-3 space-y-2">
-                                      <div className="flex items-center space-x-2">
-                                         <Checkbox id="anesthetist" defaultChecked />
-                                         <label htmlFor="anesthetist" className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                            Anesthetist Required
-                                         </label>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                         <Checkbox id="pediatrician" />
-                                         <label htmlFor="pediatrician" className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                            Pediatrician (for C-Sec)
-                                         </label>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                         <Checkbox id="assistant" defaultChecked />
-                                         <label htmlFor="assistant" className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                            Surgical Assistant
-                                         </label>
-                                      </div>
-                                   </div>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                   <Label htmlFor="notes" className="text-right text-xs">
-                                      Notes
-                                   </Label>
-                                   <Input id="notes" placeholder="Special requirements..." className="col-span-3 h-8 text-xs" />
-                                </div>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                       {[
+                         { label: "Schedule OT", icon: Activity, tone: "bg-red-50 text-red-600", action: "Plan surgery" },
+                         { label: "Pediatrician", icon: Baby, tone: "bg-blue-50 text-blue-600", action: "Assign" },
+                         { label: "Anesthetist", icon: Syringe, tone: "bg-saivie-surface-muted text-saivie-teal", action: "Assign" },
+                       ].map((resource) => (
+                         <Card key={resource.label} className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-saivie-border transition-colors group col-span-1">
+                           <CardContent className="p-3 text-center">
+                             <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-2 ${resource.tone}`}>
+                               <resource.icon className="w-4 h-4" />
                              </div>
-                             <DialogFooter>
-                                <Button size="sm" variant="outline" onClick={() => setIsBookingOpen(false)}>Cancel</Button>
-                                <Button size="sm" type="submit" onClick={() => { setIsBookingOpen(false); }}>Confirm Booking</Button>
-                             </DialogFooter>
-                          </DialogContent>
-                       </Dialog>
-
-                       {/* Pediatrician */}
-                       <Card className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-saivie-border transition-colors cursor-pointer group col-span-1">
-                          <CardContent className="p-3 text-center">
-                             <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-2 group-hover:bg-blue-100 transition-colors">
-                                <Baby className="w-4 h-4" />
-                             </div>
-                             <p className="text-xs font-bold text-saivie-plum mb-0.5">Pediatrician</p>
-                             <p className="text-[10px] text-emerald-600 font-medium flex items-center justify-center gap-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Available
-                             </p>
-                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-saivie-sage text-saivie-plum hover:bg-saivie-teal hover:text-white border-none shadow-none">Book</Button>
-                          </CardContent>
-                       </Card>
-
-                       {/* Anesthetist */}
-                       <Card className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-saivie-border transition-colors cursor-pointer group col-span-1">
-                          <CardContent className="p-3 text-center">
-                             <div className="w-8 h-8 rounded-full bg-saivie-surface-muted text-saivie-teal flex items-center justify-center mx-auto mb-2 group-hover:bg-saivie-sage transition-colors">
-                                <Syringe className="w-4 h-4" />
-                             </div>
-                             <p className="text-xs font-bold text-saivie-plum mb-0.5">Anesthetist</p>
-                             <p className="text-[10px] text-amber-600 font-medium flex items-center justify-center gap-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> Limited
-                             </p>
-                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-saivie-sage text-saivie-plum hover:bg-saivie-teal hover:text-white border-none shadow-none">Request</Button>
-                          </CardContent>
-                       </Card>
+                             <p className="text-xs font-bold text-saivie-plum mb-0.5">{resource.label}</p>
+                             <p className="text-[10px] text-saivie-plum">Availability unconfirmed</p>
+                             <SurgeryPlanningButton>
+                               <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-saivie-sage text-saivie-plum hover:bg-saivie-teal hover:text-white border-none shadow-none">{resource.action}</Button>
+                             </SurgeryPlanningButton>
+                           </CardContent>
+                         </Card>
+                       ))}
 
                        {/* Lactation */}
                        <Card className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-saivie-border transition-colors cursor-pointer group col-span-1">
@@ -3408,33 +3283,23 @@ export default function ClinicianPortal() {
                           </CardContent>
                        </Card>
 
-                       {/* Assistant */}
-                       <Card className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-saivie-border transition-colors cursor-pointer group col-span-1">
-                          <CardContent className="p-3 text-center">
-                             <div className="w-8 h-8 rounded-full bg-saivie-surface-muted text-saivie-teal flex items-center justify-center mx-auto mb-2 group-hover:bg-saivie-sage transition-colors">
-                                <Users className="w-4 h-4" />
+                       {[
+                         { label: "Assistant", icon: Users, tone: "bg-saivie-surface-muted text-saivie-teal" },
+                         { label: "Nursing Home", icon: Briefcase, tone: "bg-saivie-sage text-saivie-plum" },
+                       ].map((resource) => (
+                         <Card key={resource.label} className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-saivie-border transition-colors group col-span-1">
+                           <CardContent className="p-3 text-center">
+                             <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-2 ${resource.tone}`}>
+                               <resource.icon className="w-4 h-4" />
                              </div>
-                             <p className="text-xs font-bold text-saivie-plum mb-0.5">Assistant</p>
-                             <p className="text-[10px] text-emerald-600 font-medium flex items-center justify-center gap-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> 3 on Duty
-                             </p>
-                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-saivie-sage text-saivie-plum hover:bg-saivie-teal hover:text-white border-none shadow-none">Assign</Button>
-                          </CardContent>
-                       </Card>
-
-                       {/* Nursing Home / Bed */}
-                       <Card className="border-saivie-border shadow-sm bg-saivie-ivory hover:border-saivie-border transition-colors cursor-pointer group col-span-1">
-                          <CardContent className="p-3 text-center">
-                             <div className="w-8 h-8 rounded-full bg-saivie-sage text-saivie-plum flex items-center justify-center mx-auto mb-2 group-hover:bg-saivie-sage transition-colors">
-                                <Briefcase className="w-4 h-4" />
-                             </div>
-                             <p className="text-xs font-bold text-saivie-plum mb-0.5">Nursing Home</p>
-                             <p className="text-[10px] text-rose-600 font-medium flex items-center justify-center gap-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div> Full (Waitlist)
-                             </p>
-                             <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-saivie-sage text-saivie-plum hover:bg-saivie-plum hover:text-white border-none shadow-none">Waitlist</Button>
-                          </CardContent>
-                       </Card>
+                             <p className="text-xs font-bold text-saivie-plum mb-0.5">{resource.label}</p>
+                             <p className="text-[10px] text-saivie-plum">Availability unconfirmed</p>
+                             <SurgeryPlanningButton>
+                               <Button size="sm" className="w-full h-6 text-[10px] mt-2 bg-saivie-sage text-saivie-plum hover:bg-saivie-teal hover:text-white border-none shadow-none">Assign</Button>
+                             </SurgeryPlanningButton>
+                           </CardContent>
+                         </Card>
+                       ))}
                     </div>
                  </div>
 
@@ -4402,153 +4267,7 @@ export default function ClinicianPortal() {
                       )}
 
                       {activeSettingsTab === 'network' && (
-                          <div className="space-y-6">
-                              <Card className="shadow-sm border-saivie-border">
-                                  <CardHeader className="flex flex-row items-center justify-between">
-                                      <div>
-                                          <CardTitle className="text-base font-bold text-saivie-plum">My Care Network</CardTitle>
-                                          <p className="text-xs text-saivie-plum mt-1">Manage your team of specialists and referral network.</p>
-                                      </div>
-                                      <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
-                                        <DialogTrigger asChild>
-                                            <Button size="sm" className="bg-saivie-teal hover:bg-saivie-teal h-8 text-xs gap-1.5">
-                                                <Plus className="w-3.5 h-3.5" /> Add Team Member
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="sm:max-w-[425px]">
-                                            <DialogHeader>
-                                                <DialogTitle>Add Team Member</DialogTitle>
-                                                <DialogDescription>
-                                                    Add a specialist or facility to your care network.
-                                                </DialogDescription>
-                                            </DialogHeader>
-                                            <div className="grid gap-4 py-4">
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <Label htmlFor="name" className="text-right text-xs">
-                                                        Name
-                                                    </Label>
-                                                    <Input id="name" placeholder="Dr. John Doe" className="col-span-3 h-8 text-xs" />
-                                                </div>
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <Label htmlFor="role" className="text-right text-xs">
-                                                        Role
-                                                    </Label>
-                                                    <Select>
-                                                        <SelectTrigger className="col-span-3 h-8 text-xs">
-                                                            <SelectValue placeholder="Select role" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="pediatrician">Pediatrician</SelectItem>
-                                                            <SelectItem value="anesthetist">Anesthetist</SelectItem>
-                                                            <SelectItem value="nursing_home">Nursing Home</SelectItem>
-                                                            <SelectItem value="nutritionist">Nutritionist</SelectItem>
-                                                            <SelectItem value="other">Other</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <Label htmlFor="affiliation" className="text-right text-xs">
-                                                        Clinic/Facility
-                                                    </Label>
-                                                    <Input id="affiliation" placeholder="City Hospital" className="col-span-3 h-8 text-xs" />
-                                                </div>
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <Label htmlFor="phone" className="text-right text-xs">
-                                                        Phone
-                                                    </Label>
-                                                    <Input id="phone" placeholder="+1 234 567 890" className="col-span-3 h-8 text-xs" />
-                                                </div>
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <Label htmlFor="email" className="text-right text-xs">
-                                                        Email
-                                                    </Label>
-                                                    <Input id="email" placeholder="doctor@example.com" className="col-span-3 h-8 text-xs" />
-                                                </div>
-                                            </div>
-                                            <DialogFooter>
-                                                <Button variant="outline" size="sm" onClick={() => setIsAddMemberOpen(false)}>Cancel</Button>
-                                                <Button size="sm" className="bg-saivie-teal hover:bg-saivie-teal" onClick={() => setIsAddMemberOpen(false)}>Add Member</Button>
-                                            </DialogFooter>
-                                        </DialogContent>
-                                      </Dialog>
-                                  </CardHeader>
-                                  <CardContent className="space-y-4">
-                                      
-                                      {/* Pediatrician */}
-                                      <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-4 flex items-center justify-between group hover:border-blue-200 transition-colors">
-                                          <div className="flex items-center gap-4">
-                                              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                                                  <Baby className="w-6 h-6" />
-                                              </div>
-                                              <div>
-                                                  <h3 className="font-bold text-saivie-plum text-sm">Dr. Sarah Miller</h3>
-                                                  <p className="text-xs text-saivie-plum font-medium">Pediatrician</p>
-                                                  <p className="text-[10px] text-saivie-plum mt-0.5">Children's Health Clinic</p>
-                                              </div>
-                                          </div>
-                                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                              <Button variant="outline" size="sm" className="h-7 text-xs">Edit</Button>
-                                              <Button variant="outline" size="sm" className="h-7 text-xs text-rose-600 hover:bg-rose-50 border-rose-100">Remove</Button>
-                                          </div>
-                                      </div>
-
-                                      {/* Anesthetist */}
-                                      <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-4 flex items-center justify-between group hover:border-saivie-border transition-colors">
-                                          <div className="flex items-center gap-4">
-                                              <div className="w-12 h-12 rounded-full bg-saivie-surface-muted flex items-center justify-center text-saivie-teal">
-                                                  <Syringe className="w-6 h-6" />
-                                              </div>
-                                              <div>
-                                                  <h3 className="font-bold text-saivie-plum text-sm">Dr. James Wilson</h3>
-                                                  <p className="text-xs text-saivie-plum font-medium">Anesthetist</p>
-                                                  <p className="text-[10px] text-saivie-plum mt-0.5">On-Call Associate</p>
-                                              </div>
-                                          </div>
-                                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                              <Button variant="outline" size="sm" className="h-7 text-xs">Edit</Button>
-                                              <Button variant="outline" size="sm" className="h-7 text-xs text-rose-600 hover:bg-rose-50 border-rose-100">Remove</Button>
-                                          </div>
-                                      </div>
-
-                                      {/* Nursing Home */}
-                                      <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-4 flex items-center justify-between group hover:border-emerald-200 transition-colors">
-                                          <div className="flex items-center gap-4">
-                                              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-                                                  <Briefcase className="w-6 h-6" />
-                                              </div>
-                                              <div>
-                                                  <h3 className="font-bold text-saivie-plum text-sm">Sunrise Nursing Home</h3>
-                                                  <p className="text-xs text-saivie-plum font-medium">Inpatient Care Facility</p>
-                                                  <p className="text-[10px] text-saivie-plum mt-0.5">24/7 Service</p>
-                                              </div>
-                                          </div>
-                                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                              <Button variant="outline" size="sm" className="h-7 text-xs">Edit</Button>
-                                              <Button variant="outline" size="sm" className="h-7 text-xs text-rose-600 hover:bg-rose-50 border-rose-100">Remove</Button>
-                                          </div>
-                                      </div>
-
-                                      {/* Nutritionist */}
-                                      <div className="bg-saivie-ivory border border-saivie-border rounded-lg p-4 flex items-center justify-between group hover:border-amber-200 transition-colors">
-                                          <div className="flex items-center gap-4">
-                                              <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
-                                                  <Heart className="w-6 h-6" />
-                                              </div>
-                                              <div>
-                                                  <h3 className="font-bold text-saivie-plum text-sm">Lisa Chen, RD</h3>
-                                                  <p className="text-xs text-saivie-plum font-medium">Clinical Nutritionist</p>
-                                                  <p className="text-[10px] text-saivie-plum mt-0.5">Wellness Partner</p>
-                                              </div>
-                                          </div>
-                                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                              <Button variant="outline" size="sm" className="h-7 text-xs">Edit</Button>
-                                              <Button variant="outline" size="sm" className="h-7 text-xs text-rose-600 hover:bg-rose-50 border-rose-100">Remove</Button>
-                                          </div>
-                                      </div>
-
-                                  </CardContent>
-                              </Card>
-                          </div>
+                          <SurgeryCareNetwork />
                       )}
 
                       {activeSettingsTab === 'medicine-catalog' && (

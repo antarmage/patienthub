@@ -1,6 +1,10 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod/v4";
 import type { AccessActor } from "./clinical-access";
+import {
+  careNetworkDetailsSchema, careNetworkUpdateSchema, surgeryAssignmentsSchema,
+  type CareNetworkDetails, type CareNetworkMember, type SurgeryTeam,
+} from "../../../lib/db/src/surgery-care-network";
 
 export const surgeryStatuses = ["planned", "completed", "cancelled", "discharged"] as const;
 export type SurgeryStatus = typeof surgeryStatuses[number];
@@ -8,6 +12,7 @@ export type SurgeryPlanRecord = {
   id: number; patientId: number; procedureName: string; plannedDate: string;
   surgeonId: number; surgeonName: string; notes: string; status: SurgeryStatus;
   completedAt: string | null; closedAt: string | null; createdAt: string; updatedAt: string;
+  team: SurgeryTeam;
 };
 const calendarDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) =>
   !value.startsWith("0000-") && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value,
@@ -17,6 +22,7 @@ export const surgeryDetailsSchema = z.object({
   plannedDate: calendarDate,
   surgeonId: z.number().int().positive(),
   notes: z.string().trim().max(5000),
+  assignments: surgeryAssignmentsSchema.optional(),
 }).strict();
 export type SurgeryDetails = z.infer<typeof surgeryDetailsSchema>;
 const transitionSchema = z.discriminatedUnion("status", [
@@ -41,6 +47,9 @@ export type RecoveryPatient = {
   surgery: { id: number; procedureName: string; plannedDate: string; completedAt: string; surgeonName: string };
 };
 export interface SurgeryWorkflowStore {
+  listCareNetwork(): Promise<CareNetworkMember[]>;
+  createCareNetworkMember(details: CareNetworkDetails, userId: string): Promise<CareNetworkMember>;
+  updateCareNetworkMember(id: number, details: CareNetworkDetails & { active: boolean }, userId: string): Promise<CareNetworkMember>;
   list(patientId: number): Promise<SurgeryPlanRecord[]>;
   create(patientId: number, details: SurgeryDetails, userId: string): Promise<SurgeryPlanRecord>;
   edit(patientId: number, id: number, details: SurgeryDetails, userId: string): Promise<SurgeryPlanRecord>;
@@ -81,6 +90,26 @@ export function registerSurgeryWorkflow(app: Express, store: SurgeryWorkflowStor
       throw error;
     }
   };
+  app.get("/api/surgery-care-network", handle(async (req, res) => {
+    if (!await authorize(req, res, true)) return;
+    res.json(await store.listCareNetwork());
+  }));
+  app.post("/api/surgery-care-network", handle(async (req, res) => {
+    const userId = await authorize(req, res, true);
+    if (!userId) return;
+    const details = careNetworkDetailsSchema.safeParse(req.body);
+    if (!details.success) return res.status(400).json({ error: details.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ") });
+    res.status(201).json(await store.createCareNetworkMember(details.data, userId));
+  }));
+  app.patch("/api/surgery-care-network/:memberId", handle(async (req, res) => {
+    const userId = await authorize(req, res, true);
+    if (!userId) return;
+    const memberId = id(req.params.memberId);
+    const details = careNetworkUpdateSchema.safeParse(req.body);
+    if (!memberId) return res.status(400).json({ error: "Invalid care-network member ID" });
+    if (!details.success) return res.status(400).json({ error: details.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ") });
+    res.json(await store.updateCareNetworkMember(memberId, details.data, userId));
+  }));
   app.get("/api/patients/:id/surgeries", handle(async (req, res) => {
     if (!await authorize(req, res, true)) return;
     const patientId = id(req.params.id);
@@ -92,7 +121,7 @@ export function registerSurgeryWorkflow(app: Express, store: SurgeryWorkflowStor
     if (!userId) return;
     const patientId = id(req.params.id);
     const details = surgeryDetailsSchema.safeParse(req.body);
-    if (!patientId || !details.success) return res.status(400).json({ error: "Enter procedure name, valid planned date, surgeon and notes" });
+    if (!patientId || !details.success) return res.status(400).json({ error: "Enter procedure name, valid planned date, surgeon, notes and valid team assignments" });
     res.status(201).json(await store.create(patientId, details.data, userId));
   }));
   app.patch("/api/patients/:id/surgeries/:surgeryId", handle(async (req, res) => {
