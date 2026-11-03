@@ -32,6 +32,6 @@ test("empty visit history uses decorative art without changing the message", () 
 test("loading and error states do not show the empty-state artwork", () => {
   for (const props of [{ isLoading: true }, { isError: true }]) {
     const html = renderToStaticMarkup(<PatientVisitTimeline visits={[]} {...props} />);
-    assert.doesNotMatch(html, /viewBox="0 0 320 180"|No visits recorded/);
+    assert.doesNotMatch(html, /data-records-scenario|No visits recorded/);
   }
 });

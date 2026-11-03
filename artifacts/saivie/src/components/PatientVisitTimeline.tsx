@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ChevronRight, FileText } from "lucide-react";
-import { NoRecordsIllustration } from "./NoRecordsIllustration";
+import { RecordScenarioIllustration } from "./RecordScenarioIllustration";
+import { clinicalCareMode } from "@/lib/clinicalCareMode";
 import { consultationHistoryText } from "@/lib/consultationSurvey";
 import { receptionVisitDates } from "@/lib/receptionVisitDates";
 import { appointmentLabel } from "@/lib/visitTrail";
@@ -105,12 +106,14 @@ export function PatientVisitTimeline({
   isLoading,
   isError,
   onRetry,
+  pregnancy = clinicalCareMode(patient || {}) === "pregnancy",
 }: {
   visits: AnyRecord[];
   patient?: Record<string, unknown>;
   isLoading?: boolean;
   isError?: boolean;
   onRetry?: () => void;
+  pregnancy?: boolean;
 }) {
   const sorted = useMemo(() => sortVisitsNewestFirst(visits), [visits]);
   const groups = receptionVisitDates(sorted);
@@ -148,7 +151,7 @@ export function PatientVisitTimeline({
         className="px-6 py-8 text-center text-xs text-saivie-plum"
         data-testid="visit-timeline-empty"
       >
-        <NoRecordsIllustration decorative />
+        <RecordScenarioIllustration scenario="visits" pregnancy={pregnancy} decorative />
         <p className="mt-2">No visits recorded</p>
       </div>
     );
@@ -293,9 +296,12 @@ export function PatientVisitTimeline({
                 value={appointmentLabel(visit.appointment, today)}
               />
               {visit.appointmentOnly ? (
+                <>
+                <RecordScenarioIllustration scenario="notes" pregnancy={pregnancy} decorative />
                 <p className="text-xs text-saivie-plum">
                   Appointment recorded; consultation note unavailable.
                 </p>
+                </>
               ) : (
                 patient && (
                   <PrescriptionPreview patient={patient} visit={visit} />

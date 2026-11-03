@@ -12,6 +12,7 @@ import {
   pregnancyHemoglobinReference,
 } from "@/lib/pregnancyGraphReferences";
 import { PatientVisitTimeline } from "@/components/PatientVisitTimeline";
+import { RecordScenarioIllustration } from "@/components/RecordScenarioIllustration";
 import { receptionRequest } from "@/lib/authenticatedFetch";
 import {
   episodeRecords,
@@ -691,6 +692,7 @@ export function PregnancyOverview({
             Missing information is not a clinical diagnosis or a “Critical” risk
             finding. Patient baseline details apply across pregnancies.
           </p>
+          {recordsReady && !baseline.allergies && <RecordScenarioIllustration pregnancy scenario="allergies" decorative />}
           <p className="mt-3 text-xs">
             Age: {baseline.age ?? "Not recorded"}
             {baseline.age !== null
@@ -765,6 +767,7 @@ export function PregnancyOverview({
           <h3 className="font-serif text-lg font-semibold">
             Today's check-in · {today}
           </h3>
+          {recordsReady && ["bp", "pulse", "weight", "spo2"].every((key) => !historyText(measured[key])) && <RecordScenarioIllustration pregnancy scenario="vitals" decorative />}
           <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {[
               ["Blood pressure", measured.bp, "mmHg"],
@@ -928,6 +931,7 @@ export function PregnancyOverview({
         </div>
         {recordsReady ? (
           <PatientVisitTimeline
+            pregnancy
             key={`${patient.id}:${selected?.id}:${showAllTrail}`}
             visits={trail}
             patient={{

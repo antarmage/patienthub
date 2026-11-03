@@ -14,6 +14,8 @@ import { PrescriptionPreview } from "@/components/PrescriptionPreview";
 import { consultationHistoryText } from "@/lib/consultationSurvey";
 import { appointmentLabel, readAppointmentHistory, visitTrail } from "@/lib/visitTrail";
 import { PregnancyOverview } from "@/components/PregnancyOverview";
+import { RecordScenarioIllustration } from "@/components/RecordScenarioIllustration";
+import { clinicalCareMode } from "@/lib/clinicalCareMode";
 import { PregnancyVaccinesPanel } from "@/components/PregnancyVaccines";
 import { patientAge, indiaToday } from "@/lib/pregnancyOverview";
 
@@ -211,7 +213,10 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
           {data.medicines.map((medicine) => <article key={text(medicine.id)} className={cardClass}><h3 className={`${headingClass} mb-3`}>{text(medicine.name) || "Medicine"}</h3><RecordedDetails value={{ dose: medicine.dose, frequency: medicine.frequency, duration: medicine.duration, instructions: medicine.instructions, status: medicine.status }} /></article>)}
         </TabsContent>
         <TabsContent value="reports" className="space-y-3 text-sm">
-          {!data.documents.length && <p>No reports uploaded.</p>}
+          {!data.documents.length && <>
+            <RecordScenarioIllustration scenario="documents" pregnancy={clinicalCareMode(data.detail) === "pregnancy"} decorative />
+            <p>No reports uploaded.</p>
+          </>}
           {data.documents.map((doc) => <article key={text(doc.id)} className={`${cardClass} space-y-3`}><h3 className={`${headingClass} flex items-center gap-2`}><FileText className="h-4 w-4 shrink-0 text-saivie-teal" />{text(doc.name) || "Report"}</h3><p className="text-xs text-muted-foreground">{dateLabel(doc.date)}</p><RecordedDetails value={doc.description} /><OriginalReport patientId={patient.id} doc={doc} /></article>)}
         </TabsContent>
         <TabsContent value="pregnancy" className="text-sm">

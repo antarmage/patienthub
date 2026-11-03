@@ -43,7 +43,8 @@ import { ConsultationAssessment } from "@/components/ConsultationAssessment";
 import { ConceptionHistory } from "@/components/ConceptionHistory";
 import { conceptionHistory } from "@/lib/conceptionHistory";
 import { assembleEvidence, assessmentText, readAssessment, type AssessmentDraft } from "@/lib/consultationAssessment";
-import { PatientReportsList, ReportViewButton, reportFileLink } from "@/components/PatientReports";
+import { PatientReportsList, ReportViewButton, reportFileLink, reportKind } from "@/components/PatientReports";
+import { RecordScenarioIllustration } from "@/components/RecordScenarioIllustration";
 import { fetchDirectoryAppointments, directoryPatientIds, type DirectoryAppointment } from "@/lib/patientDirectory";
 import { pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
 import { prescriptionTestOptions } from "@/lib/prescriptionTests";
@@ -4751,14 +4752,14 @@ export default function ClinicianPortal() {
             {patientDetailTab === 'record' && (
               <div className="min-h-0 flex-1 overflow-y-auto bg-saivie-surface-muted">
                 <div className="px-3 pt-3">
-                  <PatientReportsList patientId={selectedPatient.id} documents={Array.isArray(patientDocumentsQuery.data) ? patientDocumentsQuery.data : []} isLoading={patientDocumentsQuery.isLoading} isError={patientDocumentsQuery.isError} onRetry={() => { void patientDocumentsQuery.refetch(); }} />
+                  <PatientReportsList pregnancy={showPregnancyContext} patientId={selectedPatient.id} documents={Array.isArray(patientDocumentsQuery.data) ? patientDocumentsQuery.data : []} isLoading={patientDocumentsQuery.isLoading} isError={patientDocumentsQuery.isError} onRetry={() => { void patientDocumentsQuery.refetch(); }} />
                 </div>
-                <PatientVisitTimeline visits={visitTrail(visitHistory, appointmentHistoryQuery.data || [], patientDocumentsQuery.data || [])}
+                <PatientVisitTimeline pregnancy={showPregnancyContext} visits={visitTrail(visitHistory, appointmentHistoryQuery.data || [], patientDocumentsQuery.data || [])}
                   patient={surveyPatient || selectedPatient}
                   isLoading={visitHistoryQuery.isLoading || appointmentHistoryQuery.isLoading || patientDocumentsQuery.isLoading}
                   isError={visitHistoryQuery.isError || appointmentHistoryQuery.isError || patientDocumentsQuery.isError}
                   onRetry={() => { void visitHistoryQuery.refetch(); void appointmentHistoryQuery.refetch(); void patientDocumentsQuery.refetch(); }} />
-                <DiagnosisHistory patientId={selectedPatient.id} />
+                <DiagnosisHistory pregnancy={showPregnancyContext} patientId={selectedPatient.id} />
               </div>
             )}
 
@@ -5267,8 +5268,9 @@ export default function ClinicianPortal() {
                 {soapSavedMsg && <p role={soapSavedMsg.startsWith('Failed') ? 'alert' : 'status'} className="text-xs">{soapSavedMsg}</p>}
                 {labResultsQuery.isLoading && <p role="status" className="text-xs">Loading investigation results...</p>}
                 {labResultsQuery.isError && <p role="alert" className="text-xs text-destructive">Could not load investigation results. <button type="button" className="underline" onClick={() => labResultsQuery.refetch()}>Retry</button></p>}
+                {labResultsQuery.isSuccess && patientDocumentsQuery.isSuccess && !labResults.length && !patientDocumentsQuery.data.some((doc: any) => reportKind(doc) === "Lab") && <RecordScenarioIllustration pregnancy={showPregnancyContext} scenario="labs" decorative />}
                 {renderInvestigationsTab()}
-                <PatientReportsList patientId={selectedPatient.id} documents={patientDocumentsQuery.data || []}
+                <PatientReportsList pregnancy={showPregnancyContext} patientId={selectedPatient.id} documents={patientDocumentsQuery.data || []}
                   isLoading={patientDocumentsQuery.isLoading} isError={patientDocumentsQuery.isError}
                   onRetry={() => patientDocumentsQuery.refetch()} />
               </section>

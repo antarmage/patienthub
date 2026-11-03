@@ -23,6 +23,22 @@ it("shows a patient dashboard with matching survey responses, not an older recor
   assert.ok(!html.includes("Save SOAP"));
 });
 
+it("general summary uses non-pregnant art only for successfully loaded missing vitals and allergies", () => {
+  const empty = renderToStaticMarkup(<PatientSummaryDashboard {...props} />);
+  assert.match(empty, /data-records-scenario="vitals"/);
+  assert.match(empty, /data-records-scenario="allergies"/);
+  assert.match(empty, /data-patient-context="general"/);
+  assert.doesNotMatch(empty, /#3F7F72/);
+  for (const state of [{ loading: true, failed: false }, { loading: false, failed: true }]) {
+    const html = renderToStaticMarkup(<PatientSummaryDashboard {...props} sources={[{ label: "Patient", ...state, retry() {} }]} />);
+    assert.doesNotMatch(html, /data-records-scenario/);
+  }
+  const recorded = renderToStaticMarkup(<PatientSummaryDashboard {...props} checkInVitals={{ bp: "120/80" }} patient={{ name: "Synthetic", history: { allergies: "None known" } }} />);
+  assert.doesNotMatch(recorded, /data-records-scenario="vitals"|data-records-scenario="allergies"/);
+  const survey = renderToStaticMarkup(<PatientSummaryDashboard {...props} patient={{ name: "Synthetic", history: { onboardingAppointmentId: 42, onboarding: { health: { allergies: "Penicillin" } } } }} />);
+  assert.doesNotMatch(survey, /data-records-scenario="allergies"/);
+});
+
 it("does not present another appointment's survey as today's concern or responses", () => {
   const html = renderToStaticMarkup(<PatientSummaryDashboard {...props} appointmentId={43} />);
   assert.ok(!html.includes("Patient concern"));

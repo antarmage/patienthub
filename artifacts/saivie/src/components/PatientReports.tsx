@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ExternalLink, Eye, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { NoRecordsIllustration } from "./NoRecordsIllustration";
+import { RecordScenarioIllustration } from "./RecordScenarioIllustration";
 
 type AnyRecord = Record<string, any>;
 
@@ -63,7 +63,7 @@ export function ReportViewButton({ patientId, doc, className = "" }: { patientId
   );
 }
 
-export function PatientReportsList({ patientId, documents, isLoading, isError, onRetry }: { patientId: number | string | null | undefined; documents: AnyRecord[]; isLoading?: boolean; isError?: boolean; onRetry?: () => void }) {
+export function PatientReportsList({ patientId, documents, isLoading, isError, onRetry, pregnancy = false }: { patientId: number | string | null | undefined; documents: AnyRecord[]; isLoading?: boolean; isError?: boolean; onRetry?: () => void; pregnancy?: boolean }) {
   const reports = documents
     .filter((doc) => reportKind(doc))
     .sort((a, b) => String(b.date || b.createdAt || "").localeCompare(String(a.date || a.createdAt || "")));
@@ -93,7 +93,7 @@ export function PatientReportsList({ patientId, documents, isLoading, isError, o
         </p></td></tr>
       ) : reports.length === 0 ? (
         <tr><td colSpan={4} className="px-4 py-6 text-center" data-testid="reports-empty-state">
-          <NoRecordsIllustration decorative />
+          <RecordScenarioIllustration scenario="scans" pregnancy={pregnancy} decorative />
           <p className="mt-2 text-xs text-saivie-plum">No lab or USG reports uploaded.</p>
         </td></tr>
       ) : (

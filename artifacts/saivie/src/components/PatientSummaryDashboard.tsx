@@ -7,6 +7,8 @@ import { summaryRecord, summaryTrends, type SummaryLab, type SummaryVisit } from
 import { receptionVisitDates } from "@/lib/receptionVisitDates";
 import { appointmentLabel, type TrailRecord } from "@/lib/visitTrail";
 import { PregnancyOverview } from "@/components/PregnancyOverview";
+import { RecordScenarioIllustration } from "@/components/RecordScenarioIllustration";
+import { hasHistoryValue } from "@/lib/receptionPatientHistory";
 
 export function PatientSummaryDashboard({ patient, appointmentId, complaint, checkInVitals, visits, trail, onRecord, labs, bpLogs, weightLogs, medications, pregnancy, pregnancyContext, conceptionSection, sources, onConsultation, pregnancyData, onProfile, onVitals }: {
   patient: { id?: number; name: string; history?: unknown; lmp?: string; cycleLength?: number | string; riskScore?: { level?: string; factors?: { factor: string }[] } };
@@ -40,6 +42,7 @@ export function PatientSummaryDashboard({ patient, appointmentId, complaint, che
   const trailDates = trail ? receptionVisitDates(trail) : undefined;
   const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
   const checkIn = summaryRecord(checkInVitals);
+  const recordsReady = sources.every((source) => !source.loading && !source.failed);
   const text = (value: unknown) => typeof value === "string" && value.trim() ? value : Array.isArray(value) ? value.filter((item) => typeof item === "string").join(", ") || "Not recorded" : "Not recorded";
   if (pregnancy && pregnancyData) return <div className="relative z-0 min-h-0 flex-1 overflow-y-auto bg-saivie-surface-muted p-3 sm:p-5" data-testid="patient-summary-dashboard">
     <div className="mx-auto max-w-[1500px] space-y-4"><div className="flex flex-wrap justify-between gap-2">
@@ -66,10 +69,14 @@ export function PatientSummaryDashboard({ patient, appointmentId, complaint, che
         <div><p className="text-[10px] text-saivie-plum">Recorded risk</p><p className="mt-1 text-sm font-semibold text-saivie-teal">{patient.riskScore?.level || "Not recorded"}</p>{patient.riskScore?.factors?.map((factor, i) => <p key={i} className="mt-1 text-xs">{factor.factor}</p>)}</div>
       </section>
       {pregnancy && conceptionSection}
-      <section className="rounded-lg border border-saivie-border bg-saivie-ivory p-4"><h3 className="text-xs font-semibold text-saivie-teal">Today’s check-in</h3><div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">{[["BP", checkIn.bp, "mmHg"], ["Pulse", checkIn.pulse, "bpm"], ["Weight", checkIn.weight, "kg"], ["SpO₂", checkIn.spo2, "%"]].map(([label, value, unit]) => <div key={String(label)}><p className="text-[10px]">{String(label)}</p><p className="mt-1 text-sm font-semibold">{typeof value === "number" || typeof value === "string" && value.trim() ? `${value} ${unit}` : "Not recorded"}</p></div>)}</div></section>
+      <section className="rounded-lg border border-saivie-border bg-saivie-ivory p-4"><h3 className="text-xs font-semibold text-saivie-teal">Today’s check-in</h3>
+        {recordsReady && ["bp", "pulse", "weight", "spo2"].every((key) => !hasHistoryValue(checkIn[key])) && <RecordScenarioIllustration scenario="vitals" pregnancy={pregnancy} decorative />}
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">{[["BP", checkIn.bp, "mmHg"], ["Pulse", checkIn.pulse, "bpm"], ["Weight", checkIn.weight, "kg"], ["SpO₂", checkIn.spo2, "%"]].map(([label, value, unit]) => <div key={String(label)}><p className="text-[10px]">{String(label)}</p><p className="mt-1 text-sm font-semibold">{typeof value === "number" || typeof value === "string" && value.trim() ? `${value} ${unit}` : "Not recorded"}</p></div>)}</div></section>
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-lg border border-saivie-border bg-saivie-ivory p-4"><h3 className="text-xs font-semibold text-saivie-teal">Today’s concern</h3><p className="mt-2 whitespace-pre-wrap text-sm">{complaint || (currentSurvey ? text(intake.chiefComplaint) : "Not recorded for this visit")}</p>
-          <h3 className="mt-4 text-xs font-semibold text-saivie-teal">Allergies &amp; medical history</h3><p className="mt-2 text-xs">Allergies: {text(history.allergies)}</p><p className="mt-2 text-xs">Medical: {text(history.medical)}</p>
+          <h3 className="mt-4 text-xs font-semibold text-saivie-teal">Allergies &amp; medical history</h3>
+          {recordsReady && !hasHistoryValue(history.allergies) && !(currentSurvey && hasHistoryValue(health.allergies)) && <RecordScenarioIllustration scenario="allergies" pregnancy={pregnancy} decorative />}
+          <p className="mt-2 text-xs">Allergies: {text(history.allergies)}</p><p className="mt-2 text-xs">Medical: {text(history.medical)}</p>
           {currentSurvey && <><p className="mt-2 text-xs">Patient-reported conditions: {text(health.conditions)}</p><p className="mt-2 text-xs">Patient-reported allergies: {text(health.allergies)}</p><p className="mt-2 text-xs">Patient-reported medicines: {text(health.medications)}</p></>}
         </section>
         <section className="rounded-lg border border-saivie-border bg-saivie-ivory p-4"><h3 className="text-xs font-semibold text-saivie-teal">Last visit · {latest?.date || "None recorded"}</h3>{latest ? <dl className="mt-2 space-y-2 text-xs">{[["Concern", latest.chiefComplaint || latest.subjective], ["Assessment", latest.assessment || latest.diagnosis], ["Plan", latest.planNotes], ["Follow-up", latest.followUpPlan]].map(([label, value]) => <div key={label}><dt className="font-semibold">{label}</dt><dd className="mt-1 whitespace-pre-wrap">{value || "Not recorded"}</dd></div>)}</dl> : <p className="mt-2 text-xs">No previous visit history.</p>}</section>

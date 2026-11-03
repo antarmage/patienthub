@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RecordScenarioIllustration } from "@/components/RecordScenarioIllustration";
 import type { DiagnosisEncounter, IcdCatalogEntry, IcdDiagnosis } from "../../../../lib/db/src/icd";
 
 export async function clinicalRequest<T>(url: string, init?: RequestInit): Promise<T> {
@@ -71,7 +72,7 @@ export function IcdDiagnosisEditor({ items, onChange, loading, error, retry }: {
   </section>;
 }
 
-export function DiagnosisHistory({ patientId }: { patientId: number }) {
+export function DiagnosisHistory({ patientId, pregnancy = false }: { patientId: number; pregnancy?: boolean }) {
   const query = usePatientDiagnoses(patientId);
   return <section className="m-3 space-y-2 rounded-xl border border-saivie-border bg-white p-4">
     <h3 className="font-semibold text-saivie-teal">Doctor-confirmed diagnosis history</h3>
@@ -81,6 +82,9 @@ export function DiagnosisHistory({ patientId }: { patientId: number }) {
       <p className="text-xs text-saivie-plum">{new Date(encounter.confirmedAt).toLocaleString()} · {encounter.appointmentId ? `Appointment ${encounter.appointmentId}` : `Visit ${encounter.visitId}`}</p>
       {encounter.diagnoses.map((item) => <p key={item.code}><strong>{item.code}</strong> - {item.title} <span className="text-xs text-saivie-plum">({item.primary ? "Primary" : "Secondary"} · {item.system} {item.release})</span></p>)}
     </div>)}
-    {query.isSuccess && !query.data.some((encounter) => encounter.diagnoses.length) && <p className="text-sm text-saivie-plum">No coded diagnoses recorded. Existing free-text visit history is unchanged.</p>}
+    {query.isSuccess && !query.data.some((encounter) => encounter.diagnoses.length) && <>
+      <RecordScenarioIllustration scenario="diagnoses" pregnancy={pregnancy} decorative />
+      <p className="text-sm text-saivie-plum">No coded diagnoses recorded. Existing free-text visit history is unchanged.</p>
+    </>}
   </section>;
 }

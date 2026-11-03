@@ -95,6 +95,7 @@ function render(
   ready = true,
   fixturePatient: Record<string, unknown> & { id: number } = patient,
   followUp?: PregnancyFollowUp,
+  fixtureRecords = records,
 ) {
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity } },
@@ -109,7 +110,7 @@ function render(
       <QueryClientProvider client={client}>
         <PregnancyOverview
           patient={fixturePatient}
-          {...records}
+          {...fixtureRecords}
           canEdit={canEdit}
           recordsReady={ready}
         />
@@ -119,6 +120,17 @@ function render(
     client.clear();
   }
 }
+test("missing allergy and vitals artwork waits for ready sources and respects recorded values", () => {
+  const missingPatient = { ...patient, history: {} };
+  const emptyRecords = { appointments: [], visits: [], labs: [] };
+  const incomplete = render([current], true, false, missingPatient, undefined, emptyRecords);
+  assert.doesNotMatch(incomplete, /data-records-scenario="allergies"|data-records-scenario="vitals"/);
+  const empty = render([current], true, true, missingPatient, undefined, emptyRecords);
+  assert.match(empty, /data-records-scenario="allergies"/);
+  assert.match(empty, /data-records-scenario="vitals"/);
+  const recorded = render([current]);
+  assert.doesNotMatch(recorded, /data-records-scenario="allergies"|data-records-scenario="vitals"/);
+});
 test("saved tabs default to current, don't leak older pregnancy values, and show explicit information gaps", () => {
   const html = render([past, current]);
   assert.ok(html.includes("Pregnancy 1"));
