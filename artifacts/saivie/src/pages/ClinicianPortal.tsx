@@ -5,6 +5,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PrescriptionPreview } from "@/components/PrescriptionPreview";
+import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
 import { ReceptionPatientEdit } from "@/components/ReceptionPatientEdit";
 import { ReceptionVitalsDialog } from "@/components/ReceptionVitalsDialog";
 import { patientAge, indiaToday } from "@/lib/pregnancyOverview";
@@ -34,7 +35,7 @@ import { ClinicalPatientList } from "@/components/ClinicalPatientList";
 import { calendarDateValue } from "@/lib/calendarDates";
 import { clinicalRequest, DiagnosisHistory, IcdDiagnosisEditor, usePatientDiagnoses } from "@/components/IcdDiagnoses";
 import type { IcdDiagnosis } from "../../../../lib/db/src/icd";
-import { PatientVisitTimeline, visitTests } from "@/components/PatientVisitTimeline";
+import { PatientVisitTimeline, visitMedicines, visitTests } from "@/components/PatientVisitTimeline";
 import { readAppointmentHistory, visitTrail } from "@/lib/visitTrail";
 import { receptionRequest } from "@/lib/authenticatedFetch";
 import { ConsultationAssessment } from "@/components/ConsultationAssessment";
@@ -48,6 +49,7 @@ import { prescriptionTestOptions } from "@/lib/prescriptionTests";
 import { clinicalCareMode } from "@/lib/clinicalCareMode";
 import { clinicianNavigationSearch, readClinicianNavigation, type PatientDetailTab, type ConsultationStep } from "@/lib/clinicianNavigation";
 import { ObstetricExamination } from "@/components/ObstetricExamination";
+import { PregnancyMedicationIllustration } from "@/components/PregnancyMedicationIllustration";
 import { examinationRecord, readObstetricExamination, relevantObstetricExamination, obstetricExaminationError, obstetricNotes, obstetricObjective, obstetricVisitExamination, type ObstetricExamination as ObstetricExam } from "@/lib/obstetricExamination";
 import { 
   LayoutDashboard, 
@@ -769,7 +771,48 @@ export default function ClinicianPortal() {
     enabled: !!selectedPatient
   });
   const medications = medicationsQuery.data || [];
+  const pregnancyEpisodesQuery = useQuery({
+    queryKey: [`/api/patients/${selectedPatient?.id}/pregnancy-episodes`],
+    queryFn: async () => {
+      const res = await fetch(`/api/patients/${selectedPatient?.id}/pregnancy-episodes`);
+      if (!res.ok) throw new Error("Unable to load saved pregnancy episodes");
+      const body: unknown = await res.json();
+      if (!Array.isArray(body)) {
+        throw new Error("Pregnancy episode API returned invalid data");
+      }
+      return body.map((item: unknown) => {
+        if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error("Pregnancy episode API returned invalid data");
+        const record = item as Record<string, unknown>;
+        if (!Number.isSafeInteger(record.id) || !record.details || typeof record.details !== "object" || Array.isArray(record.details)) {
+          throw new Error("Pregnancy episode API returned invalid data");
+        }
+        const details = record.details as Record<string, unknown>;
+        if (!Number.isSafeInteger(details.number) || !["current", "past"].includes(String(details.status))) {
+          throw new Error("Pregnancy episode API returned invalid data");
+        }
+        return { id: record.id as number, details: { number: details.number as number, status: details.status as "current" | "past" } };
+      });
+    },
+    enabled: Boolean(selectedPatient && showPregnancyContext && patientDetailTab === "medicine"),
+    retry: false,
+  });
+  const currentPregnancyEpisode = pregnancyEpisodesQuery.data?.find((episode) => episode.details.status === "current") || null;
+  const savedPregnancyMedicationReconciliation = currentPregnancyEpisode
+    ? selectedPatient?.history?.pregnancyMedicationReconciliations?.[String(currentPregnancyEpisode.id)]
+    : null;
+  const pregnancyMedicationReconciliation = savedPregnancyMedicationReconciliation &&
+    typeof savedPregnancyMedicationReconciliation === "object" &&
+    savedPregnancyMedicationReconciliation.status === "no-medicines" &&
+    savedPregnancyMedicationReconciliation.episodeId === currentPregnancyEpisode?.id &&
+    typeof savedPregnancyMedicationReconciliation.recordedAt === "string"
+    ? savedPregnancyMedicationReconciliation as { status: "no-medicines"; episodeId: number; recordedAt: string }
+    : null;
   const previousVisitPrescriptionItems: any[] = Array.isArray(previousVisit?.prescriptions) ? previousVisit.prescriptions : [];
+  const prescriptionMedicineRecords: Array<ReturnType<typeof visitMedicines>[number] & { date: string; visitId: number | string }> = visitHistory.flatMap((visit: any) =>
+    visitMedicines(visit).map((medicine: ReturnType<typeof visitMedicines>[number]) => ({ ...medicine, date: String(visit.date || "").slice(0, 10), visitId: visit.id })),
+  );
+  const activeMedicationRecords = medications.filter((med: any) => String(med.status || "").toLowerCase() === "active");
+  const pastMedicationRecords = medications.filter((med: any) => String(med.status || "").toLowerCase() !== "active");
   const datedMedicationRecords = [...medications]
     .filter((med: any) => med.startDate)
     .sort((a: any, b: any) => String(b.startDate).localeCompare(String(a.startDate)));
@@ -1120,6 +1163,9 @@ export default function ClinicianPortal() {
   };
 
   const [showAddMedRow, setShowAddMedRow] = useState(false);
+  const [medicineFilter, setMedicineFilter] = useState<"active" | "past" | "prescriptions">("active");
+  const [confirmNoMedicines, setConfirmNoMedicines] = useState(false);
+  const [prescriptionEntryOpen, setPrescriptionEntryOpen] = useState(false);
   const savedEncounterId = React.useRef<number | null>(null);
   const [consultationTests, setConsultationTests] = useState<string[] | null>(null);
   const [newMed, setNewMed] = useState({ name: '', dose: '', frequency: '', duration: '', instructions: '', route: '', startDate: '', status: 'Active', notes: '' });
@@ -1131,6 +1177,7 @@ export default function ClinicianPortal() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...data, startDate: data.startDate || null }),
       });
+
       if (!res.ok) throw new Error('Failed to add medication');
       return res.json();
     },
@@ -1141,6 +1188,42 @@ export default function ClinicianPortal() {
       setNewMed({ name: '', dose: '', frequency: '', duration: '', instructions: '', route: '', startDate: '', status: 'Active', notes: '' });
     },
     onError: (error: Error) => toast({ title: "Could not add medication", description: error.message, variant: "destructive" }),
+  });
+
+  const recordNoMedicinesMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentPregnancyEpisode || !selectedPatient) throw new Error("A saved current pregnancy is required.");
+      const response = await fetch(`/api/patients/${selectedPatient.id}/pregnancy-episodes/${currentPregnancyEpisode.id}/medication-reconciliation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "no-medicines" }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || `Could not save confirmation (HTTP ${response.status}).`);
+      }
+      const body = await response.json();
+      if (!body?.reconciliation || body.reconciliation.episodeId !== currentPregnancyEpisode.id) {
+        throw new Error("Medication reconciliation response did not match the current pregnancy.");
+      }
+      return body.reconciliation;
+    },
+    onSuccess: (reconciliation) => {
+      const episodeId = String(reconciliation.episodeId);
+      setSelectedPatient((patient: any) => patient ? {
+        ...patient,
+        history: {
+          ...(patient.history || {}),
+          pregnancyMedicationReconciliations: {
+            ...(patient.history?.pregnancyMedicationReconciliations || {}),
+            [episodeId]: reconciliation,
+          },
+        },
+      } : patient);
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      setConfirmNoMedicines(false);
+    },
+    onError: (error: Error) => toast({ title: "Could not record medication status", description: error.message, variant: "destructive" }),
   });
 
   const dashboardStatsQuery = useQuery({
@@ -1513,6 +1596,10 @@ export default function ClinicianPortal() {
     setPregnancyProfileOpen(false);
     setPregnancyVitalsOpen(false);
     setCareModeOverride(null);
+    setMedicineFilter("active");
+    setShowAddMedRow(false);
+    setConfirmNoMedicines(false);
+    setPrescriptionEntryOpen(false);
     setSelectedTrailVisitId(null);
     setActiveView("patient_detail");
     setPatientDetailTab('summary');
@@ -1769,7 +1856,17 @@ export default function ClinicianPortal() {
     { label: 'Assessment', done: Boolean(assessmentDraft.impression.trim()) },
     { label: 'Plan', done: Boolean(soapPlanDraft.trim()) },
   ];
-  const openMedicine = () => { setPatientDetailTab('medicine'); setShowAddMedRow(true); };
+  const openMedicine = () => { setPatientDetailTab('medicine'); setMedicineFilter("active"); setShowAddMedRow(true); };
+  const displayedMedications = showPregnancyContext
+    ? medicineFilter === "active" ? activeMedicationRecords : pastMedicationRecords
+    : medications;
+  const medicineListTitle = !showPregnancyContext ? "Medications"
+    : medicineFilter === "active" ? "Active medications" : "Past medications";
+  const medicineListCount = !showPregnancyContext ? activeMedicationRecords.length : displayedMedications.length;
+  const pregnancyMedicineRecordsReady = medicationsQuery.isSuccess && (!showPregnancyContext || visitHistoryQuery.isSuccess);
+  const medicationAllergiesKnown = Array.isArray(selectedPatient?.history?.allergies) && selectedPatient.history.allergies.length > 0;
+  const medicationBloodGroup = selectedPatient?.bloodGroup || selectedPatient?.history?.obstetric?.bloodGroup || selectedPatient?.history?.bloodGroup;
+  const missingMedicationSafetyDetails = !medicationAllergiesKnown || !medicationBloodGroup;
   const addCustomInvestigation = () => {
     const name = newInvestigationName.trim();
     if (!name) return;
@@ -1785,11 +1882,11 @@ export default function ClinicianPortal() {
   const renderMedicineTab = () => (
     <div id="patient-medications" className="scroll-mt-3 rounded-xl border bg-card p-3">
     {/* Dynamic medications table */}
-    {(medications.length > 0 || showAddMedRow) && (
+    {(displayedMedications.length > 0 || showAddMedRow) && medicineFilter !== "prescriptions" && (
       <div className="mb-3">
          <div className="flex items-center justify-between mb-2">
-           <span className="text-[10px] text-saivie-plum uppercase font-bold">Active Medications</span>
-           <Badge className="text-[9px] bg-saivie-sage text-saivie-teal border-saivie-border">{medications.filter((m: any) => m.status === 'Active' || m.status === 'active').length} active</Badge>
+           <span className="text-[10px] text-saivie-plum uppercase font-bold">{medicineListTitle}</span>
+           <Badge className="text-[9px] bg-saivie-sage text-saivie-teal border-saivie-border">{medicineListCount} active</Badge>
          </div>
          <div className={`border border-saivie-border rounded-md overflow-x-auto ${showAddMedRow || editingMedId !== null ? 'min-h-[420px]' : ''}`}>
             <table className="w-full min-w-[900px] text-xs text-left">
@@ -1805,7 +1902,7 @@ export default function ClinicianPortal() {
                   </tr>
                </thead>
                <tbody className="divide-y divide-slate-100">
-                  {medications.map((med: any) => (
+                  {displayedMedications.map((med: any) => (
                     <tr key={med.id}>
                       {editingMedId === med.id ? (
                         <>
@@ -1919,13 +2016,14 @@ export default function ClinicianPortal() {
       </div>
     )}
 
-    {!medications.length && !showAddMedRow && (
+    {!displayedMedications.length && !showAddMedRow && medicineFilter === "active" && (
       <div className="mb-3">
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-dashed border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted w-full" onClick={() => setShowAddMedRow(true)} data-testid="button-add-first-med">
           <Plus className="w-3.5 h-3.5" /> Add Medication
         </Button>
       </div>
     )}
+    {!displayedMedications.length && !showAddMedRow && medicineFilter === "past" && <p className="py-8 text-center text-sm text-saivie-plum">No past medicines recorded.</p>}
     </div>
   );
 
@@ -5326,12 +5424,95 @@ export default function ClinicianPortal() {
             {patientDetailTab === 'medicine' && (
               <section className="flex-1 min-h-0 overflow-auto p-4 space-y-4" aria-label="Patient medicine" data-testid="patient-medicine-tab">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-sm font-semibold">Medicine</h2>
+                  <div>
+                    <h2 className="font-serif text-2xl font-semibold text-saivie-teal">Medicine</h2>
+                    <p className="mt-1 text-xs text-saivie-plum">
+                      {showPregnancyContext
+                        ? `Current medicines and prescriptions for ${currentPregnancyEpisode ? `Pregnancy ${currentPregnancyEpisode.details.number}` : "this pregnancy"}${pregnancyContext ? ` · ${pregnancyContext.weeks}w ${pregnancyContext.days}d` : ""}`
+                        : "Current medicines and prescriptions"}
+                    </p>
+                  </div>
                   <Button type="button" variant="outline" size="sm" onClick={() => setPatientDetailTab('consultation')}>Back to consultation</Button>
                 </div>
                 {medicationsQuery.isLoading && <p role="status" className="text-xs">Loading medicines...</p>}
                 {medicationsQuery.isError && <p role="alert" className="text-xs text-destructive">Could not load medicines. <button type="button" className="underline" onClick={() => medicationsQuery.refetch()}>Retry</button></p>}
-                {renderMedicineTab()}
+                {showPregnancyContext && visitHistoryQuery.isLoading && <p role="status" className="text-xs">Loading prescription history...</p>}
+                {showPregnancyContext && visitHistoryQuery.isError && <p role="alert" className="text-xs text-destructive">Could not load prescription history. <button type="button" className="underline" onClick={() => void visitHistoryQuery.refetch()}>Retry</button></p>}
+                {showPregnancyContext ? (
+                  <>
+                    <nav className="flex flex-wrap gap-2" aria-label="Medicine records">
+                      {([
+                        ["active", `Active · ${activeMedicationRecords.length}`],
+                        ["past", `Past · ${pastMedicationRecords.length}`],
+                        ["prescriptions", `Prescriptions · ${prescriptionMedicineRecords.length}`],
+                      ] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={medicineFilter === id}
+                        onClick={() => { setMedicineFilter(id); if (id !== "active") setShowAddMedRow(false); }}
+                        className={`min-h-10 rounded-full border px-4 py-2 text-xs font-semibold ${medicineFilter === id ? "border-saivie-teal bg-saivie-teal text-white" : "border-saivie-border bg-saivie-ivory text-saivie-plum"}`}>
+                        {label}
+                      </button>)}
+                    </nav>
+                    {pregnancyEpisodesQuery.isError && <p role="alert" className="text-xs text-destructive">{pregnancyEpisodesQuery.error.message}. <button type="button" className="underline" onClick={() => void pregnancyEpisodesQuery.refetch()}>Retry</button></p>}
+                    {!pregnancyMedicineRecordsReady ? null : medications.length === 0 && prescriptionMedicineRecords.length === 0 ? (
+                      <section className="rounded-2xl border border-saivie-border bg-saivie-ivory px-4 py-6 text-center sm:px-7" aria-label="No medicines or prescriptions recorded">
+                        <PregnancyMedicationIllustration />
+                        <h3 className="mt-2 font-serif text-xl font-semibold text-saivie-teal">No prescriptions or medicines recorded</h3>
+                        <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-saivie-plum">
+                          Nothing has been prescribed or recorded for {selectedPatient.name}. Add what she is already taking, or write a prescription for this visit.
+                        </p>
+                        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                          <Button type="button" size="sm" onClick={() => { setMedicineFilter("active"); setShowAddMedRow(true); }}>
+                            + Add what she’s taking
+                          </Button>
+                          <Button type="button" size="sm" variant="outline" onClick={() => setPrescriptionEntryOpen(true)}>
+                            Write prescription
+                          </Button>
+                          {!pregnancyMedicationReconciliation ? (
+                            <Button type="button" size="sm" variant="outline" disabled={!currentPregnancyEpisode || recordNoMedicinesMutation.isPending}
+                              onClick={() => setConfirmNoMedicines(true)}>
+                              Mark “takes no medicines”
+                            </Button>
+                          ) : (
+                            <p className="rounded-full border border-saivie-border px-3 py-2 text-xs text-saivie-plum" role="status">
+                              No medicines reported for Pregnancy {currentPregnancyEpisode?.details.number} · {new Date(pregnancyMedicationReconciliation.recordedAt).toLocaleDateString("en-IN")}
+                            </p>
+                          )}
+                        </div>
+                        {!currentPregnancyEpisode && !pregnancyEpisodesQuery.isLoading && <p className="mt-2 text-xs text-saivie-plum">Confirm a saved current pregnancy episode before recording “takes no medicines.”</p>}
+                        {confirmNoMedicines && <div className="mx-auto mt-4 max-w-xl rounded-xl border border-saivie-border bg-saivie-surface-muted p-3 text-left" role="alert">
+                          <p className="text-xs text-saivie-plum">Confirm that the patient reports taking no medicines during this saved pregnancy. This will be recorded with the clinician and date; it does not prescribe or discontinue anything.</p>
+                          <div className="mt-3 flex flex-wrap justify-end gap-2">
+                            <Button type="button" size="sm" variant="outline" onClick={() => setConfirmNoMedicines(false)}>Cancel</Button>
+                            <Button type="button" size="sm" disabled={recordNoMedicinesMutation.isPending}
+                              onClick={() => recordNoMedicinesMutation.mutate()}>
+                              {recordNoMedicinesMutation.isPending ? "Saving…" : "Confirm for this pregnancy"}
+                            </Button>
+                          </div>
+                        </div>}
+                        {missingMedicationSafetyDetails && (
+                          <div className="mx-auto mt-5 flex max-w-4xl flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-left text-xs text-amber-950">
+                            <p><strong>Before prescribing:</strong> {[...(!medicationAllergiesKnown ? ["allergies"] : []), ...(!medicationBloodGroup ? ["blood group"] : [])].join(" and ")} not recorded. “No medicines recorded” does not mean “takes no medicines.”</p>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setPregnancyProfileOpen(true)}>Record allergies</Button>
+                          </div>
+                        )}
+                      </section>
+                    ) : medicineFilter === "prescriptions" ? (
+                      <section className="rounded-xl border border-saivie-border bg-saivie-ivory p-4" aria-label="Prescriptions for this patient">
+                        {prescriptionMedicineRecords.length ? <ul className="divide-y divide-saivie-border">
+                          {prescriptionMedicineRecords.map((item, index) => <li key={`${item.visitId}-${index}`} className="py-3 first:pt-0 last:pb-0">
+                            <p className="text-sm font-semibold text-saivie-teal">{item.name}</p>
+                            <p className="mt-1 text-xs text-saivie-plum">{[item.dose, item.frequency, item.duration].filter(Boolean).join(" · ") || "Prescription details not recorded"}{item.date ? ` · ${item.date}` : ""}</p>
+                          </li>)}
+                        </ul> : <p className="py-8 text-center text-sm text-saivie-plum">No prescriptions recorded for this pregnancy.</p>}
+                      </section>
+                    ) : renderMedicineTab()}
+                    {prescriptionEntryOpen && <PrescriptionEntryDialog appointment={activeAppointment || null} patient={selectedPatient}
+                      onClose={() => setPrescriptionEntryOpen(false)}
+                      onSaved={(patientId) => {
+                        void queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/medications`] });
+                        void queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/visit-history`] });
+                      }} />}
+                  </>
+                ) : renderMedicineTab()}
               </section>
             )}
             {patientDetailTab === 'investigations' && (

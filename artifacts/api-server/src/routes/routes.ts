@@ -41,6 +41,7 @@ import { createSurgeryStore } from "../surgery-store";
 import { registerPregnancyEpisodes } from "../pregnancy-episodes";
 import { createPregnancyEpisodeStore } from "../pregnancy-episode-store";
 import { createPregnancyFollowUpStore, registerPregnancyFollowUps } from "../pregnancy-follow-ups";
+import { createPregnancyMedicationReconciliationStore, registerPregnancyMedicationReconciliation } from "../pregnancy-medication-reconciliation";
 import { readLabPrescription, sanitizeLabSurvey, surveyKindFor } from "../survey-kind";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
 import { analyseGenome, analyseGenomeFromKey } from "../genome-engine";
@@ -5654,6 +5655,7 @@ Return a JSON object:
   registerSurgeryWorkflow(app, createSurgeryStore(pool), getAccessActor);
   registerPregnancyEpisodes(app, createPregnancyEpisodeStore(pool), getAccessActor);
   registerPregnancyFollowUps(app, createPregnancyFollowUpStore(pool), getAccessActor);
+  registerPregnancyMedicationReconciliation(app, createPregnancyMedicationReconciliationStore(pool), getAccessActor);
 
   app.use("/api", (err: any, _req: any, res: any, _next: any) => {
     console.error("API Error:", err.message);
