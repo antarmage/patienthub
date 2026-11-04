@@ -1,6 +1,7 @@
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CalendarDays } from "lucide-react";
 import { calendarDate, calendarDateValue } from "@/lib/calendarDates";
 
 export interface CalendarAppointment {
@@ -51,7 +52,13 @@ export function AppointmentCalendar({ date, onDate, appointments, patients, onOp
               </div>
             );
           })}
-          {!visits.length && <p className="py-8 text-center text-sm text-[#705364]">No appointments scheduled for this day.</p>}
+          {!visits.length && <div className="flex flex-col items-center rounded-2xl border border-[#e2eae6] bg-white px-5 py-8 text-center sm:py-10" role="status" data-testid="schedule-empty-card">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#e3efea] text-[#2d6a5f]">
+              <CalendarDays className="h-7 w-7" aria-hidden="true" />
+            </span>
+            <h4 className="mt-4 font-serif text-xl font-semibold text-[#1f4a42]">No appointments scheduled for this day.</h4>
+            <p className="mt-2 max-w-sm text-sm text-[#52645e]">Your calendar is clear. Select another date to view its appointments.</p>
+          </div>}
         </div>
       )}
     </section>
