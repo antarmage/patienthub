@@ -1,3 +1,5 @@
+import { validBookingTime } from "./bookingSchedule";
+
 export type NewPatientDraft = {
     firstName: string;
     lastName: string;
@@ -43,6 +45,6 @@ export function missingBookingFields(input: { hasPatient: boolean; date?: Date; 
     const missing: string[] = [];
     if (!input.hasPatient) missing.push("patient");
     if (!input.date) missing.push("date");
-    if (!/^\d{2}:\d{2}$/.test(input.time)) missing.push("time");
+    if (!validBookingTime(input.time)) missing.push("time");
     return missing;
 }

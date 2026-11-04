@@ -7,7 +7,6 @@ import { OnlineConsultationActions } from "@/components/OnlineConsultationAction
 import { OnboardingLink } from "@/components/OnboardingLink";
 import {
     Calendar as CalendarIcon,
-    Clock,
     ChevronRight,
     ArrowLeft,
     User,
@@ -29,12 +28,15 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
+import { BookingScheduleSelection } from "@/components/BookingScheduleSelection";
+import { validBookingTime } from "@/lib/bookingSchedule";
 import { BookingPatientAvatar } from "@/components/BookingPatientAvatar";
 import { BookingServiceSelection } from "@/components/BookingServiceSelection";
+import { BookingDoctorSelection, type BookingDoctor } from "@/components/BookingDoctorSelection";
+import { BookingVisitSelection } from "@/components/BookingVisitSelection";
+import { bookingVisitContext, bookingVisitModeLabel, type BookingVisitReason } from "@/lib/bookingVisit";
 import type { BookingService } from "@/lib/bookingServices";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
 import { getArrivalState, type ArrivalState } from "@/components/ReceptionDashboard";
 import { bookingPatientCategory, bookingPatientFilters, filterBookingPatients, findBookingPhoneMatches, type BookingPatientFilter } from "@/lib/bookingPatients";
 
@@ -118,6 +120,7 @@ export default function NewBooking() {
     // Form State
     const [patientType, setPatientType] = useState("existing");
     const [selectedTime, setSelectedTime] = useState(() => walkIn ? `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}` : "");
+    const [duration, setDuration] = useState(30);
     const [selectedService, setSelectedService] = useState("");
     const [selectedProvider, setSelectedProvider] = useState("");
     const [selectedPatientId, setSelectedPatientId] = useState<number | null>(() => {
@@ -126,6 +129,7 @@ export default function NewBooking() {
     });
     const [visitMode, setVisitMode] = useState("in-clinic");
     const [visitModeConfirmed, setVisitModeConfirmed] = useState(false);
+    const [visitReason, setVisitReason] = useState<BookingVisitReason | "">("");
     const [isSuccess, setIsSuccess] = useState(false);
     const [createdAppointmentId, setCreatedAppointmentId] = useState<number | null>(null);
     const [createdTelemedicineLink, setCreatedTelemedicineLink] = useState<string | null>(null);
@@ -186,7 +190,10 @@ export default function NewBooking() {
         }
     });
 
-    const { data: providersData } = useQuery({
+    const { data: providersData, isPending: providersLoading, isError: providersError, refetch: retryProviders } = useQuery<Array<{
+        id: number; name: string; role?: string | null; specialty?: string | null;
+        photoUrl?: string; photo?: string; image?: string; avatar?: string;
+    }>>({
         queryKey: ['/api/providers'],
         queryFn: async () => {
             const res = await fetch('/api/providers');
@@ -233,13 +240,13 @@ export default function NewBooking() {
         },
     });
 
-    const providers = useMemo(() => {
+    const providers = useMemo<BookingDoctor[]>(() => {
         if (!providersData) return [];
-        return providersData.map((p: any) => ({
-            id: p.name.toLowerCase().replace(/\s+/g, '-').replace(/\./g, ''),
+        return providersData.map((p) => ({
+            id: String(p.id),
             providerId: p.id,
             name: p.name,
-            role: p.role || p.specialty,
+            role: p.specialty || p.role,
             photo: providerPhoto(p),
             initials: providerInitials(p.name || ""),
         }));
@@ -329,7 +336,8 @@ export default function NewBooking() {
             visitType: services.find((s: any) => s.id === selectedService)?.name,
             date: bookingDateKey(date),
             time: formatAppointmentTime(selectedTime),
-            reason: notes.trim() || null,
+            duration,
+            reason: bookingVisitContext(visitReason, notes),
             status: walkIn ? "checked-in" : "scheduled",
             ...(walkIn ? { checkedInAt: new Date().toISOString() } : {}),
             visitMode,
@@ -586,128 +594,23 @@ export default function NewBooking() {
 
                     {step === 3 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
-                            <div className="space-y-1">
-                                <h2 className="text-2xl font-serif font-bold text-saivie-plum">Doctor</h2>
-                                <p className="text-saivie-plum">Who should see this patient?</p>
-                            </div>
-
-                            <div className="space-y-4">
-                                <Label>Select Provider</Label>
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                                    {providers.map((p: any) => (
-                                        <button
-                                            type="button"
-                                            key={p.id}
-                                            onClick={() => setSelectedProvider(p.id)}
-                                            aria-pressed={selectedProvider === p.id}
-                                            className={`overflow-hidden rounded-xl border-2 cursor-pointer transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saivie-teal focus-visible:ring-offset-2 ${selectedProvider === p.id ? 'border-saivie-teal bg-saivie-surface-muted/30' : 'border-saivie-border bg-saivie-ivory hover:border-saivie-border'}`}
-                                        >
-                                            <div className="aspect-[4/3] w-full bg-saivie-sage">
-                                                {p.photo ? (
-                                                    <img src={p.photo} alt="" className="h-full w-full object-cover" />
-                                                ) : (
-                                                    <div className="flex h-full w-full items-center justify-center font-serif text-3xl font-bold text-saivie-teal">
-                                                        {p.initials}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="p-3">
-                                                <p className="font-bold text-saivie-plum text-sm leading-snug">{p.name}</p>
-                                                {p.role && <p className="text-xs text-saivie-plum mt-1">{p.role}</p>}
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
+                            <BookingDoctorSelection doctors={providers} selectedId={selectedProvider} onSelect={setSelectedProvider}
+                                loading={providersLoading} error={providersError} onRetry={() => void retryProviders()} />
                         </div>
                     )}
 
                     {step === 4 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
-                            <div className="space-y-1">
-                                <h2 className="text-2xl font-serif font-bold text-saivie-plum">Visit Mode</h2>
-                                <p className="text-saivie-plum">How will this appointment happen?</p>
-                            </div>
-
-                            <div className="space-y-3">
-                                <Label>Visit Mode</Label>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {[
-                                        { value: "in-clinic", label: "In-Clinic", icon: Building2, desc: "Visit the clinic" },
-                                        { value: "home-visit", label: "Home Visit", icon: Home, desc: "Doctor comes to you" },
-                                        { value: "telemedicine", label: "Video Call", icon: Video, desc: "Online consultation" },
-                                    ].map(opt => (
-                                        <button
-                                            key={opt.value}
-                                            type="button"
-                                            onClick={() => { setVisitMode(opt.value); setVisitModeConfirmed(true); }}
-                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col items-center gap-2 text-center ${visitMode === opt.value ? 'border-saivie-teal bg-saivie-surface-muted' : 'border-saivie-border bg-saivie-ivory hover:border-saivie-border'}`}
-                                            data-testid={`btn-visit-mode-${opt.value}`}
-                                        >
-                                            <opt.icon className={`w-6 h-6 ${visitMode === opt.value ? 'text-saivie-teal' : 'text-saivie-plum'}`} />
-                                            <div>
-                                                <p className={`font-bold text-sm ${visitMode === opt.value ? 'text-saivie-teal' : 'text-saivie-plum'}`}>{opt.label}</p>
-                                                <p className="text-xs text-saivie-plum">{opt.desc}</p>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                                {visitMode === "telemedicine" && (
-                                    <p className="text-xs text-saivie-teal bg-saivie-surface-muted px-3 py-2 rounded-lg flex items-center gap-2">
-                                        <Video className="w-3 h-3" /> A secure video link (Jitsi Meet) will be generated and sent to the patient via WhatsApp.
-                                    </p>
-                                )}
-                                {visitMode === "home-visit" && (
-                                    <p className="text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-lg flex items-center gap-2">
-                                        <Home className="w-3 h-3" /> Ensure patient address is on file. Additional home visit charges may apply.
-                                    </p>
-                                )}
-                            </div>
+                            <BookingVisitSelection mode={visitMode} onModeChange={(mode) => { setVisitMode(mode); setVisitModeConfirmed(true); }}
+                                reason={visitReason} onReasonChange={setVisitReason} notes={notes} onNotesChange={setNotes} />
                         </div>
                     )}
 
                     {step === 5 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
-                            <div className="space-y-1">
-                                <h2 className="text-2xl font-serif font-bold text-saivie-plum">Date & Time</h2>
-                                <p className="text-saivie-plum">When should we schedule this?</p>
-                            </div>
-
-                            <div className="flex flex-col md:flex-row gap-8 items-start">
-                                <div className="w-full min-w-0 border border-saivie-border rounded-xl bg-saivie-ivory p-4 shadow-sm md:w-1/2">
-                                    <Calendar
-                                        mode="single"
-                                        selected={date}
-                                        onSelect={(nextDate) => { if (nextDate && !walkIn) setDate(nextDate); }}
-                                        disabled={walkIn ? (day) => bookingDateKey(day) !== bookingDateKey(new Date()) : undefined}
-                                        className="rounded-md border-0"
-                                    />
-                                </div>
-
-                                <div className="flex-1 w-full">
-                                    <Label htmlFor="appointment-time" className="mb-3 block">Appointment Time</Label>
-                                    <div className="max-w-xs">
-                                        <div className="relative">
-                                            <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-saivie-plum" />
-                                            <Input
-                                                id="appointment-time"
-                                                type="time"
-                                                value={selectedTime}
-                                                onChange={(event) => setSelectedTime(event.target.value)}
-                                                className="pl-10"
-                                                required
-                                            />
-                                        </div>
-                                        <p className="mt-2 text-xs text-saivie-plum">Choose any appointment time; it does not have to match a preset slot.</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="appointment-notes">Notes</Label>
-                                <Textarea id="appointment-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any specific requirements or symptoms..." className="min-h-[100px]" />
-                            </div>
+                            <BookingScheduleSelection date={date} onDateChange={setDate} time={selectedTime} onTimeChange={setSelectedTime}
+                                duration={duration} onDurationChange={setDuration} walkIn={walkIn}
+                                providerId={providers.find((provider) => provider.id === selectedProvider)?.providerId} />
                         </div>
                     )}
 
@@ -753,7 +656,7 @@ export default function NewBooking() {
                                         </div>
                                         <div>
                                             <p className="text-xs text-saivie-teal uppercase font-bold tracking-wide mb-1">Time</p>
-                                            <p className="font-medium text-saivie-plum">{selectedTime ? formatAppointmentTime(selectedTime) : "Not selected"}</p>
+                                            <p className="font-medium text-saivie-plum">{selectedTime ? `${formatAppointmentTime(selectedTime)} · ${duration} min` : "Not selected"}</p>
                                         </div>
                                         <div className="col-span-2">
                                             <p className="text-xs text-saivie-teal uppercase font-bold tracking-wide mb-1">Visit Mode</p>
@@ -763,6 +666,10 @@ export default function NewBooking() {
                                                  <><Building2 className="w-4 h-4 text-saivie-plum" /> In-Clinic</>}
                                             </p>
                                         </div>
+                                        {bookingVisitContext(visitReason, notes) && <div className="col-span-2">
+                                            <p className="text-xs text-saivie-teal uppercase font-bold tracking-wide mb-1">Reason &amp; booking note</p>
+                                            <p className="whitespace-pre-wrap break-words text-sm text-saivie-plum">{bookingVisitContext(visitReason, notes)}</p>
+                                        </div>}
                                     </div>
                                 </CardContent>
                             </Card>
@@ -791,7 +698,7 @@ export default function NewBooking() {
                                 onClick={handleNext}
                                 className="ml-auto bg-saivie-teal hover:bg-saivie-teal text-white min-w-[140px]"
                                 size="lg"
-                                disabled={(step === 1 && !hasPatient) || (step === 2 && !selectedService) || (step === 3 && !selectedProvider) || (step === 5 && (!date || !selectedTime))}
+                                disabled={(step === 1 && !hasPatient) || (step === 2 && !selectedService) || (step === 3 && (providersLoading || providersError || !providers.some((provider) => provider.id === selectedProvider))) || (step === 5 && (!date || !validBookingTime(selectedTime)))}
                             >
                                 Next Step
                             </Button>
@@ -824,9 +731,9 @@ export default function NewBooking() {
                                 {[
                                     { label: "Patient", value: hasPatient ? "Selected" : "" },
                                     { label: "Service", value: services.find((service) => service.id === selectedService)?.name || (step === 2 ? "In progress" : "") },
-                                    { label: "Doctor", value: providers.find((provider: any) => provider.id === selectedProvider)?.name || "" },
-                                    { label: "Visit", value: step >= 4 || visitModeConfirmed ? ({ "in-clinic": "In clinic", "home-visit": "Home visit", telemedicine: "Online" }[visitMode] || visitMode) : "" },
-                                    { label: "Schedule", value: date && selectedTime ? `${date.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} · ${formatAppointmentTime(selectedTime)}` : "" },
+                                    { label: "Doctor", value: providers.find((provider) => provider.id === selectedProvider)?.name || (step === 3 ? "In progress" : "") },
+                                    { label: "Visit", value: step >= 4 || visitModeConfirmed ? [bookingVisitModeLabel(visitMode), visitReason].filter(Boolean).join(" · ") : "" },
+                                    { label: "Schedule", value: date && validBookingTime(selectedTime) ? `${date.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} · ${formatAppointmentTime(selectedTime)} · ${duration} min` : step === 5 ? "In progress" : "" },
                                     { label: "Review", value: step === 6 ? "Ready to review" : "" },
                                 ].map((item, index) => (
                                     <li key={item.label} className="flex items-center gap-3 border-b border-[#edf1ef] py-2.5 last:border-0" aria-current={step === index + 1 ? "step" : undefined}>
