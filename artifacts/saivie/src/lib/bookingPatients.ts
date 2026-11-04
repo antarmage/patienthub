@@ -1,6 +1,17 @@
 export const bookingPatientFilters = ["All", "Recent", "Pregnant", "Fertility", "PCOS", "Gynae"] as const;
 export type BookingPatientFilter = typeof bookingPatientFilters[number];
 
+export function normalizeBookingPhone(value: string): string {
+    const digits = value.replace(/\D/g, "");
+    return digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+}
+
+export function findBookingPhoneMatches<T extends BookingPatient>(patients: T[], phone: string): T[] {
+    const normalized = normalizeBookingPhone(phone);
+    if (normalized.length < 10) return [];
+    return patients.filter((patient) => normalizeBookingPhone(patient.phone || "") === normalized);
+}
+
 export interface BookingPatient {
     id: number;
     name: string;

@@ -30,13 +30,12 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { BookingPatientAvatar } from "@/components/BookingPatientAvatar";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { getArrivalState, type ArrivalState } from "@/components/ReceptionDashboard";
-import { bookingPatientCategory, bookingPatientFilters, filterBookingPatients, type BookingPatientFilter } from "@/lib/bookingPatients";
+import { bookingPatientCategory, bookingPatientFilters, filterBookingPatients, findBookingPhoneMatches, type BookingPatientFilter } from "@/lib/bookingPatients";
 
 function providerInitials(name: string) {
     return name
@@ -131,17 +130,31 @@ export default function NewBooking() {
     const [createdTelemedicineLink, setCreatedTelemedicineLink] = useState<string | null>(null);
     const [createdPatientConsultationUrl, setCreatedPatientConsultationUrl] = useState<string | null>(null);
     const [notificationStatus, setNotificationStatus] = useState("");
+    const [patientReportedLmpWarning, setPatientReportedLmpWarning] = useState<string | null>(null);
     const [newPatient, setNewPatient] = useState<NewPatientDraft>(emptyNewPatientDraft);
+    const [dismissedMatchIds, setDismissedMatchIds] = useState<number[]>([]);
+    const [showNewPatientLmp, setShowNewPatientLmp] = useState(false);
+    const [showNewPatientEmail, setShowNewPatientEmail] = useState(false);
+    const [showNewPatientReferrer, setShowNewPatientReferrer] = useState(false);
     // Reused on retry so a failed appointment save does not register the same new patient twice.
     const [createdPatient, setCreatedPatient] = useState<{ id: number; key: string } | null>(null);
     const [notes, setNotes] = useState(params.get("reason") || "");
     const { toast } = useToast();
 
     const newPatientData = useMemo(() => newPatientPayload(newPatient), [newPatient]);
-    const newPatientKey = JSON.stringify(newPatientData);
+    const newPatientRegistrationData = useMemo(() => newPatientData ? {
+        name: newPatientData.name,
+        age: newPatientData.age,
+        phone: newPatientData.phone,
+        email: newPatientData.email,
+        referredBy: newPatientData.referredBy,
+    } : null, [newPatientData]);
+    const newPatientKey = JSON.stringify(newPatientRegistrationData);
     const hasPatient = patientType === "existing" ? !!selectedPatientId : !!newPatientData;
-    const updateNewPatient = (field: keyof NewPatientDraft, value: string) =>
+    const updateNewPatient = (field: keyof NewPatientDraft, value: string) => {
         setNewPatient((current) => ({ ...current, [field]: value }));
+        if (field === "phone") setDismissedMatchIds([]);
+    };
 
     const [searchQuery, setSearchQuery] = useState("");
     const [patientFilter, setPatientFilter] = useState<BookingPatientFilter>("All");
@@ -157,6 +170,8 @@ export default function NewBooking() {
     const matchedPatients = useMemo(() => {
         return filterBookingPatients(patientsData || [], searchQuery, patientFilter);
     }, [patientsData, searchQuery, patientFilter]);
+    const possibleMatches = useMemo(() => findBookingPhoneMatches(patientsData || [], newPatient.phone)
+        .filter((patient) => !dismissedMatchIds.includes(patient.id)), [patientsData, newPatient.phone, dismissedMatchIds]);
     const openNewPatient = () => { setPatientType("new"); setSelectedPatientId(null); };
 
     const { data: servicesData } = useQuery({
@@ -182,7 +197,9 @@ export default function NewBooking() {
         const active = servicesData.filter((s: any) => s.isActive !== false);
         const visitItems = active.filter((s: any) => /consult|scan|usg|ultra/i.test(s.category || ''));
         const selected = patientsData?.find((patient: any) => patient.id === selectedPatientId);
-        const pregnancyFirst = selected && patientType === "existing" && bookingPatientCategory(selected) === "Pregnant";
+        const pregnancyFirst = patientType === "new"
+            ? newPatient.careArea === "Pregnancy"
+            : selected && bookingPatientCategory(selected) === "Pregnant";
         return [...(visitItems.length > 0 ? visitItems : active)]
             .sort((a, b) => pregnancyFirst ? Number(/pregnan|antenatal|obstetric/i.test(`${b.name} ${b.category}`)) - Number(/pregnan|antenatal|obstetric/i.test(`${a.name} ${a.category}`)) : 0)
             .map((s: any) => ({
@@ -191,7 +208,7 @@ export default function NewBooking() {
                 price: Number(s.price) || 0,
                 duration: '',
             }));
-    }, [servicesData, patientsData, selectedPatientId, patientType]);
+    }, [servicesData, patientsData, selectedPatientId, patientType, newPatient.careArea]);
 
     const selectedPatient = useMemo(
         () => patientsData?.find((patient: any) => patient.id === selectedPatientId) ?? null,
@@ -249,17 +266,14 @@ export default function NewBooking() {
         mutationFn: async (apptData: any) => {
             let patientId = apptData.patientId as number | null;
             if (patientType === "new") {
-                if (!newPatientData) throw new Error("Enter the new patient's name and age.");
+                if (!newPatientRegistrationData) throw new Error("Enter the new patient's name and age.");
                 if (createdPatient?.key === newPatientKey) {
                     patientId = createdPatient.id;
                 } else {
                     const patientRes = await fetch('/api/patients', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            name: newPatientData.name, age: newPatientData.age,
-                            phone: newPatientData.phone, email: newPatientData.email,
-                        }),
+                        body: JSON.stringify(newPatientRegistrationData),
                     });
                     const patient = await patientRes.json().catch(() => ({}));
                     if (!patientRes.ok || !patient.id) throw new Error(patient.error || 'Failed to register patient');
@@ -275,18 +289,32 @@ export default function NewBooking() {
             });
             const body = await readApiResponse(res);
             if (!body || typeof body !== "object" || !("id" in body) || typeof body.id !== "number") throw new Error("The API did not confirm the appointment.");
-            return { ...body, id: body.id };
+            let lmpSaveError: string | null = null;
+            if (patientType === "new" && newPatientData?.lmp) {
+                try {
+                    await readApiResponse(await fetch(`/api/appointments/${body.id}/reception-vitals`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ vitals: null, lmp: newPatientData.lmp }),
+                    }));
+                } catch (error) {
+                    lmpSaveError = error instanceof Error ? error.message : "The patient-reported LMP could not be saved.";
+                }
+            }
+            return { ...body, id: body.id, lmpSaveError };
         },
         onSuccess: (data) => {
+            const lmpWarning = typeof data.lmpSaveError === "string" ? data.lmpSaveError : null;
             queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
             setCreatedAppointmentId(data.id);
             setCreatedTelemedicineLink("telemedicineLink" in data && typeof data.telemedicineLink === "string" ? data.telemedicineLink : null);
             setCreatedPatientConsultationUrl("patientConsultationUrl" in data && typeof data.patientConsultationUrl === "string" ? data.patientConsultationUrl : null);
             setNotificationStatus("notificationStatus" in data && typeof data.notificationStatus === "string" ? data.notificationStatus : "not-sent");
+            setPatientReportedLmpWarning(lmpWarning);
             setIsSuccess(true);
             toast({
-                title: walkIn ? "Walk-in checked in" : "Appointment Booked",
-                description: walkIn ? "The patient has been added to today's doctor queue." : "The appointment has been successfully scheduled.",
+                title: lmpWarning ? "Appointment booked; LMP needs attention" : walkIn ? "Walk-in checked in" : "Appointment Booked",
+                description: lmpWarning ? "The appointment was saved, but the patient-reported LMP was not. Please record it before consultation." : walkIn ? "The patient has been added to today's doctor queue." : "The appointment has been successfully scheduled.",
             });
         },
         onError: (err: Error) => {
@@ -343,6 +371,7 @@ export default function NewBooking() {
                         </div>
 
                         <CardContent className="p-8 space-y-8">
+                            {patientReportedLmpWarning && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">The appointment was saved, but the patient-reported LMP could not be recorded: {patientReportedLmpWarning}. Please record it from reception vitals before consultation.</p>}
                             {createdTelemedicineLink && (
                                 <div className="space-y-3 p-5 bg-saivie-surface-muted border border-saivie-border rounded-xl">
                                     <h3 className="text-base font-bold text-saivie-plum flex items-center gap-2">
@@ -431,31 +460,17 @@ export default function NewBooking() {
                         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
                             <div className="space-y-1">
                                 <h2 className="text-2xl font-serif font-bold text-[#1f4a42]">Who is this appointment for?</h2>
-                                <p className="text-sm text-[#52645e]">Search for an existing patient, or add a new one without leaving this step.</p>
+                                <p className="text-sm text-[#52645e]">{patientType === "new" ? "Start with a name and age. Contact details are optional." : "Search for an existing patient, or add a new one without leaving this step."}</p>
                             </div>
 
-                            <RadioGroup defaultValue="existing" value={patientType} onValueChange={(value) => { setPatientType(value); if (value === "new") setSelectedPatientId(null); }} className={patientType === "new" ? "grid grid-cols-2 gap-4" : "hidden"}>
-                                <div>
-                                    <RadioGroupItem value="existing" id="existing" className="peer sr-only" />
-                                    <Label
-                                        htmlFor="existing"
-                                        className="flex flex-col items-center justify-between rounded-xl border-2 border-saivie-border bg-saivie-ivory p-4 hover:bg-saivie-surface-muted peer-data-[state=checked]:border-saivie-teal [&:has([data-state=checked])]:border-saivie-teal cursor-pointer transition-all"
-                                    >
-                                        <User className="mb-3 h-6 w-6 text-saivie-plum" />
-                                        <span className="font-medium text-saivie-plum">Existing Patient</span>
-                                    </Label>
-                                </div>
-                                <div>
-                                    <RadioGroupItem value="new" id="new" className="peer sr-only" />
-                                    <Label
-                                        htmlFor="new"
-                                        className="flex flex-col items-center justify-between rounded-xl border-2 border-saivie-border bg-saivie-ivory p-4 hover:bg-saivie-surface-muted peer-data-[state=checked]:border-saivie-teal [&:has([data-state=checked])]:border-saivie-teal cursor-pointer transition-all"
-                                    >
-                                        <div className="mb-3 h-6 w-6 rounded-full bg-saivie-sage flex items-center justify-center text-saivie-plum">+</div>
-                                        <span className="font-medium text-saivie-plum">New Patient</span>
-                                    </Label>
-                                </div>
-                            </RadioGroup>
+                            <div className="flex flex-wrap gap-2" role="group" aria-label="Patient type">
+                                {(["existing", "new"] as const).map((type) => <Button key={type} type="button" aria-pressed={patientType === type}
+                                    variant={patientType === type ? "default" : "outline"}
+                                    className={`h-10 rounded-full px-5 ${patientType === type ? "bg-[#2d6a5f] text-white hover:bg-[#24574e]" : "border-[#d2dfd9] bg-white text-[#243b35]"}`}
+                                    onClick={() => { setPatientType(type); if (type === "new") setSelectedPatientId(null); }}>
+                                    {type === "new" && patientType === type ? "✓ " : ""}{type === "existing" ? "Existing patient" : "New patient"}
+                                </Button>)}
+                            </div>
 
                             {patientType === 'existing' ? (
                                 <div className="space-y-4">
@@ -502,28 +517,68 @@ export default function NewBooking() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div className="space-y-2">
                                         <Label htmlFor="new-patient-first-name">First Name *</Label>
-                                        <Input id="new-patient-first-name" placeholder="Jane" value={newPatient.firstName} onChange={(e) => updateNewPatient("firstName", e.target.value)} data-testid="input-new-patient-first-name" />
+                                        <Input id="new-patient-first-name" placeholder="Jane" autoComplete="given-name" className="h-11 rounded-full border-[#a5bfb5] bg-white px-4" value={newPatient.firstName} onChange={(e) => updateNewPatient("firstName", e.target.value)} data-testid="input-new-patient-first-name" />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="new-patient-last-name">Last Name</Label>
-                                        <Input id="new-patient-last-name" placeholder="Doe" value={newPatient.lastName} onChange={(e) => updateNewPatient("lastName", e.target.value)} data-testid="input-new-patient-last-name" />
+                                        <Input id="new-patient-last-name" placeholder="Doe" autoComplete="family-name" className="h-11 rounded-full border-[#a5bfb5] bg-white px-4" value={newPatient.lastName} onChange={(e) => updateNewPatient("lastName", e.target.value)} data-testid="input-new-patient-last-name" />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="new-patient-age">Age *</Label>
-                                        <Input id="new-patient-age" type="number" min={0} max={120} placeholder="30" value={newPatient.age} onChange={(e) => updateNewPatient("age", e.target.value)} data-testid="input-new-patient-age" />
+                                        <Input id="new-patient-age" type="number" min={0} max={120} placeholder="30" className="h-11 rounded-full border-[#a5bfb5] bg-white px-4" value={newPatient.age} onChange={(e) => updateNewPatient("age", e.target.value)} data-testid="input-new-patient-age" />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="new-patient-phone">Phone</Label>
-                                        <Input id="new-patient-phone" type="tel" placeholder="98765 43210" value={newPatient.phone} onChange={(e) => updateNewPatient("phone", e.target.value)} data-testid="input-new-patient-phone" />
+                                        <div className="flex h-11 items-center gap-2 rounded-full border border-[#a5bfb5] bg-white px-4 focus-within:ring-2 focus-within:ring-saivie-teal">
+                                            <span aria-hidden="true" className="rounded-full bg-[#e8f0ec] px-2 py-1 text-[10px] font-semibold text-[#52645e]">+91</span>
+                                            <Input id="new-patient-phone" type="tel" autoComplete="tel-national" placeholder="98765 43210" className="h-9 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0" value={newPatient.phone} onChange={(e) => updateNewPatient("phone", e.target.value)} data-testid="input-new-patient-phone" />
+                                        </div>
                                     </div>
-                                    <div className="col-span-2 space-y-2">
+                                    {patientsError && <p role="alert" className="sm:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Could not check for an existing patient match. <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => void retryPatients()}>Retry</Button></p>}
+                                    {possibleMatches.length > 0 && <section aria-label="Possible existing patient matches" className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:col-span-2" data-testid="possible-patient-matches">
+                                        <h3 className="text-xs font-semibold text-amber-900">Possible match found</h3>
+                                        {possibleMatches.map((match: any) => <div key={match.id} className="flex flex-wrap items-center gap-3">
+                                            <BookingPatientAvatar />
+                                            <div className="min-w-0 flex-1"><p className="text-xs font-semibold text-[#243b35]">{match.name}</p><p className="text-[10px] text-[#52645e]">{bookingPatientCategory(match)} · ID #{match.id} · phone ends {String(match.phone || "").replace(/\D/g, "").slice(-4)}</p></div>
+                                            <Button type="button" size="sm" className="rounded-full bg-[#2d6a5f] text-[10px] text-white hover:bg-[#24574e]" onClick={() => { setPatientType("existing"); setSelectedPatientId(match.id); setPatientFilter("All"); setSearchQuery(""); }}>Use this patient</Button>
+                                            <Button type="button" size="sm" variant="outline" className="rounded-full border-[#80a89b] bg-white text-[10px]" onClick={() => setDismissedMatchIds((current) => [...current, match.id])}>Not her, continue</Button>
+                                        </div>)}
+                                    </section>}
+                                    <fieldset className="space-y-2 sm:col-span-2">
+                                        <legend className="text-xs font-medium text-[#52645e]">Care area <span className="font-normal">(helps prioritize appointment options)</span></legend>
+                                        <div className="flex flex-wrap gap-2">
+                                            {(["Pregnancy", "Fertility", "PCOS", "Gynae", "Other"] as const).map((area) => <Button key={area} type="button" size="sm" variant={newPatient.careArea === area ? "default" : "outline"} aria-pressed={newPatient.careArea === area}
+                                                className={`rounded-full ${newPatient.careArea === area ? "bg-[#2d6a5f] text-white hover:bg-[#24574e]" : "border-[#d2dfd9] bg-white text-[#243b35]"}`}
+                                                onClick={() => { updateNewPatient("careArea", area); if (area !== "Pregnancy") updateNewPatient("lmp", ""); }}>
+                                                {newPatient.careArea === area ? "✓ " : ""}{area}
+                                            </Button>)}
+                                        </div>
+                                    </fieldset>
+                                    <div className="sm:col-span-2">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="mr-1 text-[10px] text-muted-foreground">Optional</span>
+                                            {newPatient.careArea === "Pregnancy" && <Button type="button" size="sm" variant="outline" aria-expanded={showNewPatientLmp} className="rounded-full border-[#d2dfd9] bg-white text-[10px]" onClick={() => setShowNewPatientLmp((open) => !open)}>+ LMP</Button>}
+                                            <Button type="button" size="sm" variant="outline" aria-expanded={showNewPatientEmail} className="rounded-full border-[#d2dfd9] bg-white text-[10px]" onClick={() => setShowNewPatientEmail((open) => !open)}>+ Email</Button>
+                                            <Button type="button" size="sm" variant="outline" aria-expanded={showNewPatientReferrer} className="rounded-full border-[#d2dfd9] bg-white text-[10px]" onClick={() => setShowNewPatientReferrer((open) => !open)}>+ Referred by</Button>
+                                        </div>
+                                    </div>
+                                    {newPatient.careArea === "Pregnancy" && showNewPatientLmp && <div className="space-y-2 sm:col-span-2">
+                                        <Label htmlFor="new-patient-lmp">Last menstrual period (optional)</Label>
+                                        <Input id="new-patient-lmp" type="date" max={bookingDateKey(new Date())} className="h-11 rounded-full border-[#a5bfb5] bg-white px-4" value={newPatient.lmp} onChange={(e) => updateNewPatient("lmp", e.target.value)} data-testid="input-new-patient-lmp" />
+                                        <p className="text-[10px] text-[#52645e]">Saved as patient-reported context for this booking. It does not set confirmed pregnancy dates.</p>
+                                    </div>}
+                                    {showNewPatientEmail && <div className="space-y-2 sm:col-span-2">
                                         <Label htmlFor="new-patient-email">Email</Label>
-                                        <Input id="new-patient-email" type="email" placeholder="jane@example.com" value={newPatient.email} onChange={(e) => updateNewPatient("email", e.target.value)} data-testid="input-new-patient-email" />
-                                    </div>
-                                    <p className="col-span-2 text-xs text-saivie-plum">The patient record is created when you confirm the booking.</p>
+                                        <Input id="new-patient-email" type="email" autoComplete="email" placeholder="jane@example.com" className="h-11 rounded-full border-[#a5bfb5] bg-white px-4" value={newPatient.email} onChange={(e) => updateNewPatient("email", e.target.value)} data-testid="input-new-patient-email" />
+                                    </div>}
+                                    {showNewPatientReferrer && <div className="space-y-2 sm:col-span-2">
+                                        <Label htmlFor="new-patient-referred-by">Referred by</Label>
+                                        <Input id="new-patient-referred-by" placeholder="Provider name, if any" className="h-11 rounded-full border-[#a5bfb5] bg-white px-4" value={newPatient.referredBy} onChange={(e) => updateNewPatient("referredBy", e.target.value)} data-testid="input-new-patient-referred-by" />
+                                    </div>}
+                                    <p className="text-xs text-saivie-plum sm:col-span-2">The patient record is created when you confirm the booking. Care area helps prioritize this booking; your clinical team can update the chart afterward.</p>
                                 </div>
                             )}
                         </div>
@@ -796,7 +851,7 @@ export default function NewBooking() {
                                 <BookingPatientAvatar />
                                 <div className="min-w-0">
                                     <p className="break-words text-sm font-semibold text-[#243b35]">{patientType === "existing" ? selectedPatient?.name || "Select a patient" : [newPatient.firstName, newPatient.lastName].filter(Boolean).join(" ") || "New patient"}</p>
-                                    <p className="text-[10px] text-[#52645e]">{patientType === "existing" && selectedPatient ? `${bookingPatientCategory(selectedPatient)} · ID #${selectedPatient.id}` : patientType === "new" ? "New patient · Not registered yet" : "No patient selected"}</p>
+                                    <p className="text-[10px] text-[#52645e]">{patientType === "existing" && selectedPatient ? `${bookingPatientCategory(selectedPatient)} · ID #${selectedPatient.id}` : patientType === "new" ? `New · Age ${newPatient.age || "—"} · ${newPatient.careArea} · Not registered yet` : "No patient selected"}</p>
                                 </div>
                             </div>
                             <ol>
@@ -818,6 +873,21 @@ export default function NewBooking() {
                             </ol>
                         </CardContent>
                     </Card>
+                    {patientType === "new" && <Card className="rounded-2xl border-[#e0e9e4] bg-white shadow-none" data-testid="new-patient-save-info">
+                        <CardHeader className="p-4 pb-2"><CardTitle className="text-[10px] font-semibold uppercase tracking-wide text-[#52645e]">How a new patient is saved</CardTitle></CardHeader>
+                        <CardContent className="space-y-3 p-4 pt-1">
+                            <p className="text-xs font-medium text-[#243b35]">{[newPatient.firstName, newPatient.lastName].map((part) => part.trim()).filter(Boolean).join(" ") || "Patient name"}{newPatient.age ? ` · Age ${newPatient.age}` : ""}</p>
+                            <p className="text-[10px] text-[#52645e]">{newPatient.careArea} · Not registered yet</p>
+                            {newPatient.phone.trim() && <p className="break-all text-[10px] text-[#52645e]">Phone: {newPatient.phone.trim()}</p>}
+                            {newPatient.email.trim() && <p className="break-all text-[10px] text-[#52645e]">Email: {newPatient.email.trim()}</p>}
+                            {newPatient.referredBy.trim() && <p className="break-words text-[10px] text-[#52645e]">Referred by: {newPatient.referredBy.trim()}</p>}
+                            {newPatient.lmp && <p className="text-[10px] text-[#52645e]">Patient-reported LMP: {newPatient.lmp}</p>}
+                            <div className="space-y-2 border-t border-[#edf1ef] pt-3">
+                                <p className="text-[10px] font-semibold text-[#243b35]">The patient record is created when you confirm the booking.</p>
+                                <p className="text-[10px] leading-relaxed text-[#52645e]">Name and age are required. Contact details are optional. The care area helps put relevant appointment options first; your clinical team can update the chart afterward.</p>
+                            </div>
+                        </CardContent>
+                    </Card>}
                     {patientType === "existing" && selectedPatient && bookingPatientCategory(selectedPatient) === "Pregnant" && <p className="px-2 text-xs text-[#52645e]">Next step puts pregnancy care first, because this patient is marked pregnant.</p>}
                     {!receptionist && <details className="space-y-4">
                     <summary className="cursor-pointer text-xs font-medium text-saivie-teal">Patient history &amp; quick actions</summary>

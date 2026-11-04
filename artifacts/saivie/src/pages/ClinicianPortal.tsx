@@ -23,7 +23,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { OnlineConsultationActions } from "@/components/OnlineConsultationActions";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
 import { HpvBadge } from "@/components/HpvBadge";
-import { SurgeryPlanningButton } from "@/components/SurgeryPlanning";
+import { SurgeryPlanningButton, SurgeryPlanningPage } from "@/components/SurgeryPlanning";
 import { SurgeryCareNetwork } from "@/components/SurgeryCareNetwork";
 import { hpvProtection, hpvSurveyAnswer } from "@/lib/hpvProtection";
 import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
@@ -4586,7 +4586,7 @@ export default function ClinicianPortal() {
                  </div>
 
                  <div className="flex flex-wrap items-center gap-3">
-                    <SurgeryPlanningButton patient={{ id: selectedPatient.id, name: selectedPatient.name }} />
+                    <Button size="sm" className="rounded-full" aria-pressed={patientDetailTab === 'surgery'} onClick={() => setPatientDetailTab('surgery')}>Surgery planning</Button>
                     <Select value={careMode} onValueChange={setCareMode}>
                       <SelectTrigger className="h-8 text-[11px] bg-saivie-ivory border-saivie-border w-[170px] font-semibold text-saivie-teal">
                         <SelectValue placeholder="Select Pathway" />
@@ -4710,6 +4710,16 @@ export default function ClinicianPortal() {
               </nav>
             </header>
 
+            {patientDetailTab === 'surgery' && <SurgeryPlanningPage
+              patient={{ id: selectedPatient.id, name: selectedPatient.name, lmp: selectedPatient.lmp }}
+              pregnancy={showPregnancyContext}
+              onConsultation={() => setPatientDetailTab('consultation')}
+              onRecord={() => setPatientDetailTab('record')}
+              onInvestigations={() => setPatientDetailTab('investigations')}
+              onVitals={() => setPatientDetailTab('consultation')}
+              appointments={appointmentHistoryQuery.data || []}
+              appointmentsReady={appointmentHistoryQuery.isSuccess}
+            />}
             {patientDetailTab === 'summary' && <PatientSummaryDashboard
               patient={surveyPatient}
               appointmentId={activeAppointment?.id || selectedPatient.appointmentId}

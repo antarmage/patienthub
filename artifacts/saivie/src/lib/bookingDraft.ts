@@ -4,9 +4,15 @@ export type NewPatientDraft = {
     age: string;
     phone: string;
     email: string;
+    careArea: "Pregnancy" | "Fertility" | "PCOS" | "Gynae" | "Other";
+    lmp: string;
+    referredBy: string;
 };
 
-export const emptyNewPatientDraft: NewPatientDraft = { firstName: "", lastName: "", age: "", phone: "", email: "" };
+export const emptyNewPatientDraft: NewPatientDraft = {
+    firstName: "", lastName: "", age: "", phone: "", email: "",
+    careArea: "Other", lmp: "", referredBy: "",
+};
 
 export function newPatientPayload(draft: NewPatientDraft) {
     const name = [draft.firstName, draft.lastName].map((part) => part.trim()).filter(Boolean).join(" ");
@@ -17,7 +23,9 @@ export function newPatientPayload(draft: NewPatientDraft) {
         age,
         phone: draft.phone.trim() || null,
         email: draft.email.trim() || null,
-        type: "General",
+        type: draft.careArea === "Pregnancy" ? "Pregnant" : draft.careArea === "Other" ? "General" : draft.careArea,
+        lmp: draft.careArea === "Pregnancy" && draft.lmp ? draft.lmp : null,
+        referredBy: draft.referredBy.trim() || null,
     };
 }
 

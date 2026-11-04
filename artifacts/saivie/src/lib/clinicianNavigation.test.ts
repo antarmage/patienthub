@@ -20,9 +20,18 @@ test("pregnancy vaccine tab survives refresh in the patient URL", () => {
   const search = clinicianNavigationSearch("", {
     view: "patient_detail", patientId: 991, tab: "vaccines", step: "reason",
   });
+
   assert.deepEqual(readClinicianNavigation(search), {
     view: "patient_detail", tab: "vaccines", step: "reason",
   });
+});
+
+test("surgery workspace survives refresh without retaining a consultation step", () => {
+  const search = clinicianNavigationSearch("patientId=991&tab=consultation&step=examine", {
+    view: "patient_detail", patientId: 991, tab: "surgery", step: "examine",
+  });
+  assert.equal(search, "patientId=991&tab=surgery");
+  assert.deepEqual(readClinicianNavigation(search), { view: "patient_detail", tab: "surgery", step: "reason" });
 });
 
 test("leaving patient details removes stale patient navigation without dropping unrelated parameters", () => {

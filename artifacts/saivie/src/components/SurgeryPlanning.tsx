@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from "@/hooks/use-toast";
 import { receptionRequest } from "@/lib/authenticatedFetch";
 import { calendarDateValue } from "@/lib/calendarDates";
+import { pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
+import { appointmentLabel } from "@/lib/visitTrail";
 
 const planSchema = z.object({
   id: z.number().int().positive(), patientId: z.number().int().positive(),
@@ -25,12 +27,45 @@ const planSchema = z.object({
   team: surgeryTeamSchema,
 });
 type Plan = z.infer<typeof planSchema>;
-type Patient = { id: number; name: string };
+type Patient = { id: number; name: string; lmp?: string | null };
 type Details = { procedureName: string; plannedDate: string; surgeonId: string; notes: string; assignments: SurgeryAssignments };
 const emptyDetails: Details = { procedureName: "", plannedDate: "", surgeonId: "", notes: "", assignments: emptySurgeryAssignments };
 const statusLabels = { planned: "Planned", completed: "In recovery", cancelled: "Cancelled", discharged: "Discharged" };
 
-function SurgeryPlanner({ patient }: { patient: Patient }) {
+type Workspace = {
+  pregnancy: boolean;
+  onConsultation: () => void;
+  onRecord: () => void;
+  onInvestigations: () => void;
+  onVitals: () => void;
+  appointments: Record<string, unknown>[];
+  appointmentsReady: boolean;
+};
+
+function ReadinessChecklist({ workspace }: { workspace: Workspace }) {
+  const rows = [
+    { label: "Blood group & Rh", action: "Record", onClick: workspace.onRecord },
+    { label: "Hemoglobin / CBC", action: "Order", onClick: workspace.onInvestigations },
+    { label: "Allergies", action: "Record", onClick: workspace.onRecord },
+    { label: workspace.pregnancy ? "Previous delivery details" : "Previous procedure details", action: "Record", onClick: workspace.onRecord },
+    { label: "Vitals", action: "Record", onClick: workspace.onVitals },
+    { label: "Anaesthesia review", action: "Request" },
+    { label: "Blood availability", action: "Request" },
+    { label: "Consent form", action: "Generate" },
+    { label: "Fasting instructions", action: "Send" },
+  ];
+  return <section className="rounded-2xl border border-saivie-border bg-white p-4" aria-label="Readiness checklist">
+    <h3 className="font-serif font-semibold text-saivie-teal">Readiness checklist</h3>
+    <p className="mt-1 text-[11px] text-muted-foreground">Not assessed · automatic readiness tracking is not available.</p>
+    <ul className="mt-3 divide-y divide-saivie-border">{rows.map((row) => <li key={row.label} className="flex items-center gap-2 py-3">
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full border border-saivie-teal/40" aria-hidden="true" />
+      <div className="min-w-0 flex-1"><p className="text-xs font-medium">{row.label}</p><p className="mt-0.5 text-[10px] text-muted-foreground">{row.onClick ? "Review in patient record" : "Not available yet"}</p></div>
+      <Button type="button" size="sm" variant="outline" className="h-7 rounded-full px-3 text-[10px]" disabled={!row.onClick} onClick={row.onClick}>{row.action}</Button>
+    </li>)}</ul>
+  </section>;
+}
+
+function SurgeryPlanner({ patient, workspace }: { patient: Patient; workspace?: Workspace }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const network = useSurgeryCareNetwork();
@@ -63,12 +98,21 @@ function SurgeryPlanner({ patient }: { patient: Patient }) {
   const openPlan = plans.data?.find((plan) => ["planned", "completed"].includes(plan.status));
   const editingPlan = plans.data?.find((plan) => plan.id === editing);
   const set = (key: Exclude<keyof Details, "assignments">, value: string) => setDetails((current) => ({ ...current, [key]: value }));
-  return <div className="space-y-5" data-testid="surgery-planner">
-    <p className="rounded-xl bg-saivie-sage/50 p-3 text-sm">Plan surgery → Mark completed → Recovery → Discharge. Patients appear in recovery only after the doctor confirms surgery completion.</p>
+  const date = details.plannedDate || openPlan?.plannedDate || "";
+  const lmp = workspace?.pregnancy ? patient.lmp?.slice(0, 10) : undefined;
+  const dating = lmp && date ? pregnancyDatingFromLmp(lmp, date) : null;
+  const editable = (!openPlan || editing !== null) && !confirmation && plans.isSuccess;
+  const upcoming = workspace?.appointments.filter((item) => appointmentLabel(item, calendarDateValue(new Date())).startsWith("Upcoming booking")) || [];
+  const sectionClass = workspace ? "space-y-3 rounded-2xl border border-saivie-border bg-white p-4" : "space-y-3";
+  return <div className={workspace ? "grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_230px]" : ""} data-testid="surgery-planner">
+    <div className="min-w-0 space-y-4">
+    {!workspace && <p className="rounded-xl bg-saivie-sage/50 p-3 text-sm">Plan surgery → Mark completed → Recovery → Discharge. Patients appear in recovery only after the doctor confirms surgery completion.</p>}
     {plans.isPending && <p role="status">Loading surgery history...</p>}
     {plans.isError && <p role="alert">{plans.error.message} <Button variant="link" onClick={() => void plans.refetch()}>Retry</Button></p>}
     {plans.isSuccess && <>
-      {plans.data.map((plan) => <section key={plan.id} className="space-y-2 rounded-xl border p-4" data-testid={`surgery-plan-${plan.id}`}>
+      {plans.data.length > 0 && <details open={openPlan && !editing ? true : undefined} className="rounded-2xl border border-saivie-border bg-white p-4">
+      <summary className="cursor-pointer text-sm font-semibold text-saivie-teal">Saved plans &amp; recovery</summary>
+      <div className="mt-3 space-y-3">{plans.data.map((plan) => <section key={plan.id} className="space-y-2 rounded-xl border p-4" data-testid={`surgery-plan-${plan.id}`}>
         <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{plan.procedureName}</h3><span className="rounded-full bg-saivie-sage px-3 py-1 text-xs">{statusLabels[plan.status]}</span></div>
         <p className="text-sm text-muted-foreground">Planned: {plan.plannedDate} · Surgeon: {plan.surgeonName}</p>
         <details>
@@ -105,8 +149,8 @@ function SurgeryPlanner({ patient }: { patient: Patient }) {
           </>}
           {plan.status === "completed" && <Button size="sm" variant="outline" disabled={mutation.isPending} onClick={() => setConfirmation({ plan, status: "discharged" })}>Discharge from recovery</Button>}
         </div>
-      </section>)}
-      {plans.data.length === 0 && (
+      </section>)}</div></details>}
+      {!workspace && plans.data.length === 0 && (
         <section className="flex flex-col items-center rounded-2xl border border-saivie-border bg-saivie-ivory px-5 py-5 text-center" data-testid="surgery-planning-empty-state">
           <svg
             viewBox="0 0 220 150"
@@ -149,18 +193,54 @@ function SurgeryPlanner({ patient }: { patient: Patient }) {
         {confirmation.status === "completed" && <div className="space-y-1"><Label htmlFor="surgery-completed-date">Actual surgery date</Label><DateInput id="surgery-completed-date" required value={completedDate} max={calendarDateValue(new Date())} onValueChange={setCompletedDate} /></div>}
         <div className="flex gap-2"><Button type="submit" disabled={mutation.isPending || (confirmation.status === "completed" && !completedDate)}>Confirm {confirmation.status === "completed" ? "completion" : confirmation.status === "cancelled" ? "cancellation" : "discharge"}</Button><Button type="button" variant="ghost" disabled={mutation.isPending} onClick={() => setConfirmation(null)}>Back</Button></div>
       </form>}
-      {(!openPlan || editing !== null) && !confirmation && <form className="space-y-3 rounded-xl border p-4" onSubmit={(event) => {
+      {(!openPlan || editing !== null) && !confirmation && <form id={`surgery-plan-form-${patient.id}`} className={workspace ? "space-y-4" : "space-y-3 rounded-xl border p-4"} onSubmit={(event) => {
         event.preventDefault();
         mutation.mutate({ id: editing ?? undefined, body: { ...details, surgeonId: Number(details.surgeonId) } });
       }}>
-        <h3 className="font-semibold">{editing ? "Edit surgery plan" : "Plan surgery"}</h3>
-        <div className="space-y-1"><Label htmlFor="surgery-procedure">Procedure name</Label><Input id="surgery-procedure" required maxLength={200} value={details.procedureName} onChange={(event) => set("procedureName", event.target.value)} /></div>
+        {workspace && <section className="rounded-2xl border border-saivie-border bg-white p-4">
+          <h3 className="font-serif font-semibold text-saivie-teal">What are you planning?</h3>
+          <p className="mt-1 text-[10px] text-muted-foreground">Choose a starting procedure, then complete the details below.</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {[...(workspace.pregnancy ? [{ name: "Delivery", procedure: "Planned caesarean", description: "Caesarean, induction or birth plan" }] : []),
+              { name: "Gynae surgery", procedure: "Gynae surgery", description: "Cerclage, D&C, myomectomy, laparoscopy..." },
+              { name: "Other procedure", procedure: "Other procedure", description: "Anything not listed" }].map((choice) => <button key={choice.name} type="button"
+                aria-pressed={choice.name === "Delivery" ? /caesarean|induction|vaginal birth/i.test(details.procedureName) : details.procedureName === choice.procedure}
+                onClick={() => set("procedureName", choice.procedure)}
+                className="rounded-xl border border-saivie-border p-3 text-left text-xs aria-pressed:border-saivie-teal aria-pressed:bg-saivie-surface-muted">
+                <span className="font-semibold">{choice.name}</span><span className="mt-1 block text-[10px] text-muted-foreground">{choice.description}</span>
+              </button>)}
+          </div>
+        </section>}
+        <div className={workspace ? "grid items-start gap-4 lg:grid-cols-2" : ""}>
+        <div className="min-w-0 space-y-4">
+        {!workspace && <h3 className="font-semibold">{editing ? "Edit surgery plan" : "Plan surgery"}</h3>}
+        {workspace?.pregnancy && /caesarean|induction|vaginal birth/i.test(details.procedureName) && <>
+          <fieldset className={sectionClass}><legend className="px-1 font-serif text-sm font-semibold text-saivie-teal">Mode of delivery</legend><div className="mt-2 grid grid-cols-3 gap-1">
+            {["Planned caesarean", "Induction of labour", "Vaginal birth plan"].map((mode) => <Button key={mode} type="button" size="sm" variant={details.procedureName === mode ? "default" : "outline"} className="h-auto whitespace-normal rounded-xl px-2 py-2 text-[10px]" aria-pressed={details.procedureName === mode} onClick={() => set("procedureName", mode)}>{mode}</Button>)}
+          </div></fieldset>
+          <fieldset disabled className={sectionClass}><legend className="px-1 font-serif text-sm font-semibold text-saivie-teal">Indication</legend><p className="mt-1 text-[10px] text-muted-foreground">Structured indications are not available yet. Record the clinical rationale in Notes.</p><div className="mt-2 flex flex-wrap gap-1">
+            {["Previous caesarean", "Breech / malpresentation", "Placenta praevia", "Fetal concern", "Maternal request", "Medical condition", "+ Other"].map((label) => <Button key={label} type="button" variant="outline" className="h-7 rounded-full px-2 text-[10px]">{label}</Button>)}
+          </div></fieldset>
+        </>}
+        <div className={sectionClass}>
+        {workspace && <h3 className="font-serif text-sm font-semibold text-saivie-teal">Date and procedure</h3>}
         <div className="space-y-1"><Label htmlFor="surgery-planned-date">Planned surgery date</Label><DateInput id="surgery-planned-date" required value={details.plannedDate} onValueChange={(value) => set("plannedDate", value)} /></div>
+        {workspace?.pregnancy && <div>
+          <p className="text-[10px] text-muted-foreground">LMP estimates only, not a recommendation for delivery timing. Confirm dating and timing clinically.</p>
+          {lmp && pregnancyDatingFromLmp(lmp, calendarDateValue(new Date())) && <div className="mt-2 flex flex-wrap gap-1">{[37, 38, 39, 40].map((week) => {
+            const value = new Date(Date.parse(`${lmp}T00:00:00Z`) + week * 7 * 86400000).toISOString().slice(0, 10);
+            return <Button key={week} type="button" size="sm" variant={details.plannedDate === value ? "default" : "outline"} className="h-7 rounded-full text-[10px]" onClick={() => set("plannedDate", value)}>{value} · {week}w 0d</Button>;
+          })}</div>}
+          <p className="mt-2 text-xs text-saivie-teal">{dating ? `${dating.pog} at planned date · EDD ${dating.dueDate} (LMP estimate)` : "Valid LMP and planned date required for a gestation estimate."}</p>
+        </div>}
+        <div className="space-y-1"><Label htmlFor="surgery-procedure">Procedure name</Label><Input id="surgery-procedure" required maxLength={200} value={details.procedureName} onChange={(event) => set("procedureName", event.target.value)} /></div>
+        </div>
+        <div className={sectionClass}>
         <div className="space-y-1"><Label htmlFor="surgery-surgeon">Surgeon</Label><select id="surgery-surgeon" required className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={details.surgeonId} onChange={(event) => set("surgeonId", event.target.value)}><option value="">Select surgeon</option>{providers.data?.map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}</select></div>
         {providers.isError && <p role="alert">{providers.error.message} <Button type="button" variant="link" onClick={() => void providers.refetch()}>Retry surgeons</Button></p>}
         <fieldset className="space-y-3 rounded-xl border p-3" disabled={mutation.isPending || !network.isSuccess}>
           <legend className="px-1 text-sm font-semibold">Team and place (optional)</legend>
-          <p className="text-xs text-muted-foreground">Nothing is assigned automatically. Add contacts using Manage care network above.</p>
+          <p className="text-xs text-muted-foreground">Nothing is assigned automatically. Add contacts using Manage care network.</p>
           <div className="grid gap-3 sm:grid-cols-2">
             {surgeryCareRoles.map((role) => {
               const assigned = editingPlan?.team[role];
@@ -183,9 +263,47 @@ function SurgeryPlanner({ patient }: { patient: Patient }) {
         {network.isError && <p role="alert">{network.error.message} <Button type="button" variant="link" onClick={() => void network.refetch()}>Retry team contacts</Button></p>}
         <div className="space-y-1"><Label htmlFor="surgery-notes">Notes</Label><Textarea id="surgery-notes" maxLength={5000} value={details.notes} onChange={(event) => set("notes", event.target.value)} /></div>
         <div className="flex gap-2"><Button disabled={mutation.isPending || !providers.isSuccess || !network.isSuccess || !details.procedureName.trim() || !details.plannedDate || !details.surgeonId}>{mutation.isPending ? "Saving..." : editing ? "Save changes" : "Save surgery plan"}</Button>{editing && <Button type="button" variant="ghost" onClick={() => { setEditing(null); setDetails(emptyDetails); }}>Stop editing</Button>}</div>
+        </div>
+        </div>
+        {workspace && <ReadinessChecklist workspace={workspace} />}
+        </div>
       </form>}
+      {workspace && !editable && <ReadinessChecklist workspace={workspace} />}
     </>}
+    </div>
+    {workspace && <aside className="space-y-3 xl:sticky xl:top-4" aria-label="Plan summary">
+      <section className="space-y-3 rounded-2xl border border-saivie-border bg-white p-4">
+        <h3 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Plan summary</h3>
+        <p className="text-sm font-semibold">{details.procedureName || openPlan?.procedureName || "Select a procedure"}</p>
+        <p className="text-xs">{date || "Date not selected"}</p>
+        {dating && <p className="text-[10px] text-muted-foreground">{dating.pog} · EDD {dating.dueDate} by LMP</p>}
+        <p className="rounded-xl bg-saivie-surface-muted p-3 text-xs">Readiness not assessed. Saving a plan does not confirm theatre availability or clinical clearance.</p>
+        <Button className="w-full rounded-full text-xs" disabled>Request theatre slot</Button>
+        <p className="text-[10px] text-muted-foreground">Theatre requests are not available yet.</p>
+        {editable && <Button type="submit" form={`surgery-plan-form-${patient.id}`} variant="outline" className="w-full rounded-full text-xs" disabled={mutation.isPending || !providers.isSuccess || !network.isSuccess || !details.procedureName.trim() || !details.plannedDate || !details.surgeonId}>{editing ? "Save changes" : "Save surgery plan"}</Button>}
+        <Button variant="outline" className="w-full rounded-full text-xs" disabled>Save as draft</Button>
+        <p className="text-[10px] text-muted-foreground">Draft saving is not available. Unsaved changes are lost when you leave this page.</p>
+      </section>
+      <section className="rounded-2xl border border-saivie-border bg-white p-4"><h3 className="text-[10px] font-semibold uppercase text-muted-foreground">Already booked</h3>
+        {!workspace.appointmentsReady ? <p className="mt-2 text-xs">Appointment records unavailable or loading.</p> : <div className="mt-2 flex flex-wrap gap-1">
+          {upcoming.map((item) => <span key={String(item.id)} className="rounded-full border px-2 py-1 text-[10px]">{String(item.date)} · {String(item.type || "Appointment")}</span>)}
+          {!upcoming.length && <p className="text-xs text-muted-foreground">No upcoming bookings recorded.</p>}
+        </div>}
+      </section>
+    </aside>}
   </div>;
+}
+
+export function SurgeryPlanningPage({ patient, ...workspace }: { patient: Patient } & Workspace) {
+  return <section className="min-h-0 flex-1 overflow-y-auto bg-[#f4f7f5] p-3 sm:p-5" data-testid="surgery-planning-page">
+    <div className="mx-auto max-w-[1500px] space-y-4">
+      <header className="flex flex-wrap items-center gap-3"><Button variant="outline" size="sm" className="rounded-full" onClick={workspace.onConsultation}>← Consultation</Button>
+        <div><h2 className="font-serif text-xl font-semibold text-saivie-teal">Surgery &amp; delivery planning</h2><p className="text-xs text-muted-foreground">{patient.name} · {workspace.pregnancy ? "Pregnancy care" : "Surgery planning"}</p></div>
+      </header>
+      <SurgeryPlanner key={patient.id} patient={patient} workspace={workspace} />
+      <details className="rounded-2xl border border-saivie-border bg-white p-4"><summary className="cursor-pointer text-sm font-semibold text-saivie-teal">Manage care network</summary><div className="mt-3"><SurgeryCareNetwork /></div></details>
+    </div>
+  </section>;
 }
 
 export function SurgeryPlanningButton({ patient, children }: { patient?: Patient; children?: ReactElement }) {

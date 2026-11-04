@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bookingPatientCategory, filterBookingPatients } from "./bookingPatients";
+import { bookingPatientCategory, filterBookingPatients, findBookingPhoneMatches, normalizeBookingPhone } from "./bookingPatients";
 
 const patients = [
     { id: 313, name: "Synthetic A", phone: "+91 98765 43210", type: "Pregnant", lastVisit: "2026-10-30" },
@@ -24,4 +24,11 @@ test("recent uses valid visit dates and category filters combine with search", (
     assert.equal(bookingPatientCategory({ id: 1, name: "Test", type: "MTP", pregnancyStatus: "Pregnant" }), "MTP");
     assert.equal(bookingPatientCategory({ id: 1, name: "Test", type: "TTC" }), "Fertility");
     assert.equal(bookingPatientCategory({ id: 1, name: "Test", type: "Obstetric" }), "Pregnant");
+});
+
+test("possible patient matches compare complete phone numbers with an optional India country code", () => {
+    assert.equal(normalizeBookingPhone("+91 98765 43210"), "9876543210");
+    assert.deepEqual(findBookingPhoneMatches(patients, "9876543210").map((patient) => patient.id), [313]);
+    assert.deepEqual(findBookingPhoneMatches(patients, "6543210"), []);
+    assert.deepEqual(findBookingPhoneMatches(patients, ""), []);
 });
