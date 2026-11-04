@@ -25,6 +25,8 @@ export type PatientDocumentRow = {
 export type PatientDocumentWrite = Omit<PatientDocumentRow, "id">;
 
 export interface TranscriptionTx {
+  lockAppointment(id: number): Promise<{ id: number; patientId: number | null; date: string } | undefined>;
+  linkedTranscription(appointmentId: number, patientId: number): Promise<VisitRow | undefined>;
   /** Re-reads (and, in Postgres, row-locks) the visit inside the transaction. */
   lockVisit(id: number): Promise<VisitRow | undefined>;
   createVisit(data: VisitWrite & { patientId: number }): Promise<VisitRow>;
@@ -481,7 +483,12 @@ export function registerPrescriptionTranscriptionRoutes(app: Express, deps: Pres
         : undefined;
       if (transcriptionId && !existing) throw new InputError(404, "Paper prescription transcription not found for this patient");
 
-      const appointmentId = positiveId(body.appointmentId, "appointmentId");
+      const previousAppointmentId = existing ? asObject(existing.prescriptions)?.linkedAppointmentId : null;
+      const submittedAppointmentId = positiveId(body.appointmentId, "appointmentId");
+      if (typeof previousAppointmentId === "number" && submittedAppointmentId && submittedAppointmentId !== previousAppointmentId) {
+        throw new InputError(409, "A linked paper prescription cannot be reassigned to another appointment.");
+      }
+      const appointmentId = typeof previousAppointmentId === "number" ? previousAppointmentId : submittedAppointmentId;
       const appointment = appointmentId ? await deps.getAppointment(appointmentId) : undefined;
       if (appointmentId && (!appointment || appointment.patientId !== patientId)) throw new InputError(404, "Appointment not found for this patient");
 
@@ -510,10 +517,23 @@ export function registerPrescriptionTranscriptionRoutes(app: Express, deps: Pres
 
       const at = now.toISOString();
       const result = await deps.transaction(async (tx) => {
+        if (appointmentId) {
+          const lockedAppointment = await tx.lockAppointment(appointmentId);
+          if (!lockedAppointment || lockedAppointment.patientId !== patientId || String(lockedAppointment.date).slice(0, 10) !== String(appointment?.date).slice(0, 10)) {
+            throw new InputError(409, "The appointment changed while saving. Refresh and review the paper prescription.");
+          }
+          const linked = await tx.linkedTranscription(appointmentId, patientId);
+          if (linked && linked.id !== existing?.id && previousAppointmentId !== appointmentId) {
+            throw new InputError(409, "A paper prescription is already recorded for this appointment. Edit the existing transcription instead.");
+          }
+        }
         let locked: VisitRow | undefined;
         if (existing) {
           locked = await tx.lockVisit(existing.id);
           if (!locked || !isPaperTranscription(locked, patientId)) throw new InputError(409, "This transcription changed while saving. Reload and try again.");
+          if (asObject(locked.prescriptions)?.linkedAppointmentId !== asObject(existing?.prescriptions)?.linkedAppointmentId) {
+            throw new InputError(409, "This transcription was linked elsewhere while saving. Refresh and review.");
+          }
           if (!replacement && JSON.stringify(originalMetaOf(locked)) !== JSON.stringify(retainedMeta)) {
             throw new InputError(409, "This transcription changed while saving. Reload and try again.");
           }

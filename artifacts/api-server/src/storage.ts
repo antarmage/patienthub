@@ -520,6 +520,18 @@ export class DatabaseStorage implements IStorage {
 
   async prescriptionTranscriptionTransaction<T>(work: (tx: TranscriptionTx) => Promise<T>): Promise<T> {
     return db.transaction((tx) => work({
+      async lockAppointment(id) {
+        const [row] = await tx.select({ id: appointments.id, patientId: appointments.patientId, date: appointments.date })
+          .from(appointments).where(eq(appointments.id, id)).for("update");
+        return row;
+      },
+      async linkedTranscription(appointmentId, patientId) {
+        const [row] = await tx.select().from(visitHistory).where(and(eq(visitHistory.patientId, patientId),
+          sql`${visitHistory.prescriptions}->>'source' = 'receptionist-paper-transcription'`,
+          sql`${visitHistory.prescriptions}->>'doctorIssuedPaper' = 'true'`,
+          sql`${visitHistory.prescriptions}->>'linkedAppointmentId' = ${String(appointmentId)}`)).limit(1);
+        return row;
+      },
       async lockVisit(id) {
         const [row] = await tx.select().from(visitHistory).where(eq(visitHistory.id, id)).for("update");
         return row ? { ...row, patientId: row.patientId } : undefined;

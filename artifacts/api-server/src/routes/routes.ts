@@ -40,6 +40,7 @@ import { registerSurgeryWorkflow } from "../surgery-workflow";
 import { createSurgeryStore } from "../surgery-store";
 import { registerPregnancyEpisodes } from "../pregnancy-episodes";
 import { createDeliveryStore, registerDeliveries } from "../deliveries";
+import { createPaperWorkStore, registerPaperWork } from "../paper-prescription-work";
 import { createPregnancyEpisodeStore } from "../pregnancy-episode-store";
 import { createPregnancyFollowUpStore, registerPregnancyFollowUps } from "../pregnancy-follow-ups";
 import { createPregnancyMedicationReconciliationStore, registerPregnancyMedicationReconciliation } from "../pregnancy-medication-reconciliation";
@@ -458,6 +459,7 @@ export async function registerRoutes(
     parseCallDate,
     prescriptionDueDate,
   });
+  registerPaperWork(app, createPaperWorkStore(pool), getAccessActor);
 
   registerBillingTemplateRoutes(app, async (req, res) => {
     const id = getStaffUserId(req, res);

@@ -402,7 +402,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     return () => { scanRevision.current++; };
   }, [patientId, appointment?.id, appointment?.transcriptionId]);
   const editing = !!appointment?.edit;
-  const needsDate = !appointment?.id || editing;
+  const needsDate = transcriptionMode || !appointment?.id || editing;
   const recordedVitals = {
     pulse: antenatal.pulse.trim() || null,
     bp: antenatal.bp.trim() || null,
@@ -519,7 +519,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       setAntenatal(antenatalFrom(null, patient));
       return;
     }
-    setFollowUpDateOverride(appointment.historical && !appointment.draft ? null
+    setFollowUpDateOverride(appointment.historical && !appointment.edit && !appointment.draft ? null
       : existing?.vitals?.followUpDate ?? appointment.draft?.followUpDate ?? appointment.followUpDate ?? null);
     const draft = appointment.draft;
     if (draft) {
@@ -548,7 +548,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       setPrescriptionDate(String(draft.prescriptionDate || existing?.date || appointment.date || "").slice(0, 10));
       return;
     }
-    if (appointment.historical) {
+    if (appointment.historical && !appointment.edit) {
       setMedicines([emptyMedicine()]);
       setTests([]);
       setChiefComplaint("");
@@ -556,7 +556,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       setDiagnosis("");
       setAdvice("");
       setFollowUp("");
-      setPrescriptionDate("");
+      setPrescriptionDate(String(appointment.date || "").slice(0, 10));
       setScanned(false);
       setScanReviewed(false);
       setScanWarnings([]);
@@ -598,7 +598,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     setFollowUp(existing?.followUpPlan || "");
     setPrescriptionDate(String(existing?.date || appointment.date || "").slice(0, 10));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appointment, appointment?.historical ? true : isFetched, existing?.id, patient?.id]);
+  }, [appointment, appointment?.historical && !appointment.edit ? true : isFetched, existing?.id, patient?.id]);
 
   const scanFile = async (file: File) => {
     if (!patientId) return;
@@ -1026,6 +1026,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "visit-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/visit-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/paper-prescription-work"] });
       queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
       queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/medications`] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
@@ -1067,6 +1068,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
       </header>
       {transcriptionMode && <div className="border-b bg-amber-50 px-4 py-2 text-xs text-amber-900">
         Copy the doctor's written prescription only. A photo or scan and verification are required. Saving activates the transcribed medicines immediately and records your identity.
+        <p className="mt-1 font-medium">{appointment?.id ? `Linked to appointment #${appointment.id}. Saving marks its paper entry Recorded, without changing consultation status.` : "Unlinked historical prescription: saving does not clear an appointment's pending paper work."}</p>
         {visitsQuery.isError && <p role="alert">{visitsQuery.error.message} <button type="button" className="underline" onClick={() => void visitsQuery.refetch()}>Retry</button></p>}
       </div>}
       <nav aria-label="Prescription entry steps" className="border-b px-4 py-3 sm:px-6">
@@ -1093,8 +1095,8 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           <>
           {needsDate && (
             <div className="space-y-1">
-              <Label>Prescription date</Label>
-              <DateInput value={prescriptionDate} onValueChange={changePrescriptionDate} data-testid="input-rx-date" />
+              <Label htmlFor="rx-prescription-date">Prescription date</Label>
+              <DateInput id="rx-prescription-date" value={prescriptionDate} onValueChange={changePrescriptionDate} data-testid="input-rx-date" />
             </div>
           )}
 

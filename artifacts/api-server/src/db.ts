@@ -5,6 +5,7 @@ import { ensureSurgerySchema } from "./surgery-store";
 import { ensurePregnancyEpisodeSchema } from "./pregnancy-episode-store";
 import { ensurePregnancyFollowUpSchema } from "./pregnancy-follow-ups";
 import { ensureDeliverySchema } from "./deliveries";
+import { ensurePaperWorkSchema } from "./paper-prescription-work";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set.");
@@ -29,6 +30,7 @@ export async function ensureSchema(): Promise<void> {
     await ensurePregnancyEpisodeSchema(client);
     await ensurePregnancyFollowUpSchema(client);
     await ensureDeliverySchema(client);
+    await ensurePaperWorkSchema(client);
     await client.query(`
       CREATE TABLE IF NOT EXISTS local_report_imports (
         import_id uuid PRIMARY KEY,

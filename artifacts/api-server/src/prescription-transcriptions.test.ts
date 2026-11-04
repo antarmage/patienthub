@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import test from "node:test";
 import express from "express";
 import { createServer } from "node:http";
+import { z } from "zod/v4";
 import { registerClinicalAccess, type AccessActor } from "./clinical-access";
 import {
   registerPrescriptionTranscriptionRoutes, TRANSCRIPTION_SOURCE,
@@ -78,6 +79,11 @@ async function harness(run: (ctx: {
       // Mirrors database rollback semantics: all writes in the callback commit together or not at all.
       const draft = structuredClone(state);
       const result = await work({
+        lockAppointment: async (id) => structuredClone(draft.appointments.find((appointment) => appointment.id === id)),
+        linkedTranscription: async (id, patientId) => structuredClone(draft.visits.find((visit) => visit.patientId === patientId &&
+          (visit.prescriptions as Record<string, unknown> | null)?.source === TRANSCRIPTION_SOURCE &&
+          (visit.prescriptions as Record<string, unknown> | null)?.doctorIssuedPaper === true &&
+          (visit.prescriptions as Record<string, unknown> | null)?.linkedAppointmentId === id)),
         lockVisit: async (id) => structuredClone(draft.visits.find((visit) => visit.id === id)),
         createVisit: async (data) => { const row = { ...data, id: nextId++ } as VisitRow; draft.visits.push(row); return structuredClone(row); },
         updateVisit: async (id, data) => {
@@ -368,6 +374,32 @@ test("edits correct the same transcription, synchronize only linked medications 
     assert.equal(list.length, 1, "edits never create duplicate records");
     assert.equal(list[0].prescriptions.originalPrescription.mimeType, "application/pdf");
     assert.equal(list[0].prescriptions.revisionCount, 3);
+  });
+});
+
+test("linked paper entries reject duplicates and reassignment, retain links on edit, and allow explicit historical linking", async () => {
+  await harness(async ({ request, state, setState }) => {
+    setState((current) => { current.appointments.push({ id: 6, patientId: 7, date: "2026-10-30", status: "completed" }); });
+    const responseSchema = z.object({ visit: z.object({ id: z.number(), appointmentId: z.number().nullable() }) });
+    const createdResponse = await request(path, "reception", "POST", validBody({ appointmentId: 4 }));
+    assert.equal(createdResponse.status, 201);
+    const created = responseSchema.parse(await createdResponse.json());
+    const beforeDuplicate = structuredClone(state());
+    const duplicate = await request(path, "reception", "POST", validBody({ appointmentId: 4 }));
+    assert.equal(duplicate.status, 409);
+    assert.deepEqual(state(), beforeDuplicate, "duplicate attempts cannot add evidence, medicines or records");
+    const edit = await request(path, "reception", "POST", validBody({ transcriptionId: created.visit.id, appointmentId: null, originalPrescription: null }));
+    assert.equal(edit.status, 200);
+    assert.equal(responseSchema.parse(await edit.json()).visit.appointmentId, 4, "editing without resending the link retains it");
+    const reassign = await request(path, "reception", "POST", validBody({ transcriptionId: created.visit.id, appointmentId: 6, originalPrescription: null }));
+    assert.equal(reassign.status, 409);
+    const historicalResponse = await request(path, "reception", "POST", validBody());
+    const historical = responseSchema.parse(await historicalResponse.json());
+    assert.equal(historical.visit.appointmentId, null);
+    const link = await request(path, "reception", "POST", validBody({ transcriptionId: historical.visit.id, appointmentId: 6, originalPrescription: null }));
+    assert.equal(link.status, 200);
+    assert.equal(responseSchema.parse(await link.json()).visit.appointmentId, 6);
+    assert.equal(state().appointments.find((appointment) => appointment.id === 4)?.status, "scheduled", "tracking never completes the consultation");
   });
 });
 

@@ -14,6 +14,7 @@ import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import { HpvBadge } from "@/components/HpvBadge";
 import { ReceptionSurveyBadge, ReceptionSummaryPrint } from "@/components/ReceptionSurveyActions";
 import { receptionRequest } from "@/lib/authenticatedFetch";
+import { PaperPrescriptionWork, PaperWorkBadge, PaperWorkStatusAction, usePaperWorkRows, type PaperWorkAppointment } from "@/components/PaperPrescriptionWork";
 import { filterBookingPatients } from "@/lib/bookingPatients";
 import { surveyKindFor } from "@/lib/labSurvey";
 import { calendarDate, calendarDateValue, shiftCalendarDays } from "@/lib/calendarDates";
@@ -40,7 +41,7 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
   onRegister: () => void;
   onPayment: (patientId: number) => void;
   onWhatsApp: (patient: ReceptionPatient, message: string) => void;
-  onTranscribePrescription: (patient: ReceptionPatient) => void;
+  onTranscribePrescription: (patient: ReceptionPatient, appointment?: PaperWorkAppointment) => void;
   onRecordVitals: (appointment: ReceptionAppointment) => void;
   onCheckIn: (appointment: ReceptionAppointment) => void;
   onViewPatient?: (patient: ReceptionPatient) => void;
@@ -73,6 +74,8 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
     refetchInterval: 30_000,
   });
   const appointments = appointmentsQuery.data || [];
+  const paperWork = usePaperWorkRows(from, to);
+  const paperByAppointment = new Map(paperWork.data?.map((row) => [row.appointmentId, row]));
   const hpvStatus = useHpvClinicStatuses(appointments.map((appointment) => appointment.patientId));
   const byPatient = useMemo(() => new Map(patients.map((patient) => [patient.id, patient])), [patients]);
   const searchActive = search.trim().length > 0;
@@ -112,16 +115,18 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
     const closed = ["Done", "No-show", "Cancelled"].includes(stage);
     const late = receptionLate(appointment, now);
     const phone = patient?.phone?.replace(/[^\d+]/g, "");
+    const paperRow = paperByAppointment.get(appointment.id);
     return <div key={appointment.id} data-testid={`reception-patient-row-${appointment.id}`} className="grid gap-3 border-t border-[#eee5d7] bg-white p-4 md:grid-cols-[75px_minmax(150px,1fr)_minmax(130px,1fr)_110px]">
       <p className="text-sm font-semibold text-[#705364]">{appointment.time}</p>
       <div><p className="font-semibold text-saivie-plum">{patient?.name || `Patient #${appointment.patientId ?? "unassigned"}`}</p><HpvBadge status={hpvStatus(appointment.patientId)} className="mt-1" /><p className="mt-1 text-xs text-[#705364]">{patient?.phone || "Phone not recorded"}</p></div>
       <div><p className="text-sm text-saivie-plum">{providers.find((provider) => provider.id === appointment.providerId)?.name || "Doctor not assigned"}</p><p className="mt-1 text-xs text-[#705364]">{appointment.visitType || appointment.type || "Appointment"}</p></div>
-      <div><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${stageColors[stage]}`}>{stage}</span>{late && <p className="mt-1 text-[11px] text-amber-800">Running late</p>}</div>
+      <div className="space-y-2"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${stageColors[stage]}`}>{stage}</span>{late && <p className="mt-1 text-[11px] text-amber-800">Running late</p>}{paperRow && <PaperWorkBadge row={paperRow} />}</div>
       <div className="flex flex-wrap items-center gap-2 md:col-span-4 md:pl-[87px]">
         <ReceptionSurveyBadge appointment={appointment} />
         <ReceptionSummaryPrint appointment={appointment} patientName={patient?.name || "Patient"} canPrint={canPrintSummary} hpvStatus={hpvStatus(appointment.patientId)} />
         {appointment.visitMode === "telemedicine" && <OnlineConsultationActions appointmentId={appointment.id} />}
-        {patient && <Button size="sm" variant="outline" onClick={() => onTranscribePrescription(patient)}>Add / Edit paper prescription</Button>}
+        {patient && <Button size="sm" variant="outline" onClick={() => onTranscribePrescription(patient, { id: appointment.id, date: appointment.date })}>Add / Edit paper prescription</Button>}
+        {paperRow && <PaperWorkStatusAction row={paperRow} />}
         {patient && surveyKindFor(appointment) !== "lab" && appointment.date === today && !closed && stage !== "With doctor" && <Button size="sm" variant="outline" onClick={() => onRecordVitals(appointment)} data-testid={`btn-reception-vitals-${appointment.id}`}>Record vitals</Button>}
         {patient && onViewPatient && <Button size="sm" variant="outline" onClick={() => onViewPatient(patient)} data-testid={`btn-reception-details-${patient.id}`}>View patient details</Button>}
         {patient && onManageVaccines && <Button size="sm" variant="outline" onClick={() => onManageVaccines(patient)} data-testid={`btn-reception-vaccines-${patient.id}`}><Syringe className="mr-1 h-3 w-3" />Vaccines</Button>}
@@ -147,6 +152,7 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
       <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={onRegister}><UserPlus className="mr-2 h-4 w-4" />New patient</Button><Button variant="outline" asChild><Link href="/staff/booking"><CalendarPlus className="mr-2 h-4 w-4" />Book appointment</Link></Button><Button asChild><Link href="/staff/booking?walkIn=1">Walk-in<ChevronRight className="ml-2 h-4 w-4" /></Link></Button></div>
     </div>
     <div className="relative"><Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#875477]" /><Input value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Search by phone number, then name or patient ID" aria-label="Search reception patients" className="h-12 rounded-full border-[#e9e1d2] bg-white pl-12 text-base" /></div>
+    <PaperPrescriptionWork onTranscribe={onTranscribePrescription} />
     {searchActive && <section aria-label="Patient search results" className="overflow-hidden rounded-2xl border border-[#e9e1d2] bg-white">
       <div className="bg-[#fffaf0] px-5 py-3">
         <h3 className="text-sm font-semibold text-saivie-plum">Patient search results</h3>
@@ -179,6 +185,8 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
       </button>;
     })}</div>}
     {(appointmentsQuery.isError || patientsError) && <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{appointmentsQuery.error?.message || "Unable to load patient contacts."} <Button variant="link" onClick={() => { void appointmentsQuery.refetch(); onRetryPatients(); }}>Retry</Button></div>}
+    {paperWork.isPending && <p role="status" className="text-xs text-muted-foreground">Loading timeline paper-entry statuses...</p>}
+    {paperWork.isError && <p role="alert" className="text-sm text-destructive">Timeline paper-entry statuses unavailable. {paperWork.error.message} <Button variant="link" onClick={() => void paperWork.refetch()}>Retry statuses</Button></p>}
     {(appointmentsQuery.isLoading || patientsLoading) && <p role="status" className="text-sm text-[#705364]">Loading appointments and contacts...</p>}
     {!appointmentsQuery.isLoading && !patientsLoading && !appointmentsQuery.isError && !patientsError && <div className="space-y-3">
       {shownDays.map((date) => <details key={`${period}-${date}`} open={date >= today || period === "today" || selectedDay === date} ref={(element) => { if (element) groupRefs.current.set(date, element); else groupRefs.current.delete(date); }} className="scroll-mt-4 rounded-2xl border border-[#e9e1d2] bg-[#fffaf0]">
