@@ -192,7 +192,7 @@ function getMobilePatientId(req: Request, res: Response, expectedPatientId?: num
 }
 
 // ── Staff (Recover) Auth Tokens ───────────────────────────────────────────────
-const STAFF_TOKEN_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
+const STAFF_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 const staffAuthTokens = new Map<string, { userId: string; expiresAt: number }>();
 
 function issueStaffToken(userId: string): string {
