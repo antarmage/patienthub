@@ -1,4 +1,12 @@
-export function authenticatedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+export const STAFF_SESSION_EXPIRED_EVENT = "saivie:staff-session-expired";
+let rejectedStaffToken: string | null = null;
+
+export function isStaffSessionExpired(): boolean {
+  return rejectedStaffToken !== null && typeof sessionStorage !== "undefined"
+    && sessionStorage.getItem("billing_staff_token") === rejectedStaffToken;
+}
+
+export async function authenticatedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const headers = new Headers(input instanceof Request ? input.headers : undefined);
   new Headers(init?.headers).forEach((value, key) => headers.set(key, value));
   const token = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("billing_staff_token") : null;
@@ -6,7 +14,17 @@ export function authenticatedFetch(input: RequestInfo | URL, init?: RequestInit)
     const url = new URL(input instanceof Request ? input.url : String(input), window.location.href);
     if (url.origin === window.location.origin && url.pathname.startsWith("/api/")) headers.set("Authorization", `Bearer ${token}`);
   }
-  return fetch(input, { ...init, headers, credentials: init?.credentials ?? (input instanceof Request ? input.credentials : "same-origin") });
+  const response = await fetch(input, { ...init, headers, credentials: init?.credentials ?? (input instanceof Request ? input.credentials : "same-origin") });
+  if (response.status === 401 && token && typeof window !== "undefined") {
+    const url = new URL(input instanceof Request ? input.url : String(input), window.location.href);
+    if (url.origin === window.location.origin && url.pathname.startsWith("/api/")
+      && !url.pathname.startsWith("/api/auth/") && headers.get("Authorization") === `Bearer ${token}`
+      && sessionStorage.getItem("billing_staff_token") === token && rejectedStaffToken !== token) {
+      rejectedStaffToken = token;
+      window.dispatchEvent(new Event(STAFF_SESSION_EXPIRED_EVENT));
+    }
+  }
+  return response;
 }
 
 export class ApiResponseError extends Error {

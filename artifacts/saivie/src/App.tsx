@@ -1,6 +1,7 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
-import { useEffect } from "react";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { useEffect, useState } from "react";
 import { queryClient } from "./lib/queryClient";
+import { isStaffSessionExpired, STAFF_SESSION_EXPIRED_EVENT } from "./lib/authenticatedFetch";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +20,7 @@ import OwnerPortal from "@/pages/OwnerPortal";
 import VisitSurvey from "@/pages/VisitSurvey";
 import Kiosk from "@/pages/Kiosk";
 import { useBrandFavicon } from "@/components/BrandLogo";
+import { Button } from "@/components/ui/button";
 
 function BrandFavicon() {
   useBrandFavicon();
@@ -33,6 +35,37 @@ function RecoveryPortalRedirect() {
 }
 
 function Router() {
+  const [, setLocation] = useLocation();
+  const [sessionExpired, setSessionExpired] = useState(isStaffSessionExpired);
+  useEffect(() => {
+    const expire = () => {
+      setSessionExpired(true);
+      void queryClient.cancelQueries();
+      queryClient.clear();
+    };
+    window.addEventListener(STAFF_SESSION_EXPIRED_EVENT, expire);
+    if (isStaffSessionExpired()) expire();
+    return () => window.removeEventListener(STAFF_SESSION_EXPIRED_EVENT, expire);
+  }, []);
+
+  if (sessionExpired) return (
+    <main className="flex min-h-screen items-center justify-center bg-saivie-ivory p-6">
+      <section role="alert" className="w-full max-w-lg space-y-4 rounded-2xl border bg-white p-6">
+        <h1 className="font-serif text-2xl text-saivie-plum">Please sign in again</h1>
+        <p className="text-sm text-muted-foreground">Your staff session has expired or is no longer valid. Sessions last one hour, but an API restart also ends them.</p>
+        <p className="text-sm text-muted-foreground">Unsaved changes have not been submitted. Sign in again to continue.</p>
+        <Button onClick={() => {
+          sessionStorage.removeItem("billing_staff_token");
+          localStorage.removeItem("staffUsername");
+          localStorage.removeItem("staffDisplayName");
+          localStorage.removeItem("clinicianProvider");
+          queryClient.clear();
+          setLocation("/", { replace: true });
+          setSessionExpired(false);
+        }}>Sign in again</Button>
+      </section>
+    </main>
+  );
   return (
     <Switch>
       <Route path="/" component={Landing} />
