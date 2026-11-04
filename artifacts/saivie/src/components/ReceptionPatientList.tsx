@@ -14,6 +14,7 @@ import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import { HpvBadge } from "@/components/HpvBadge";
 import { ReceptionSurveyBadge, ReceptionSummaryPrint } from "@/components/ReceptionSurveyActions";
 import { receptionRequest } from "@/lib/authenticatedFetch";
+import { filterBookingPatients } from "@/lib/bookingPatients";
 import { surveyKindFor } from "@/lib/labSurvey";
 import { calendarDate, calendarDateValue, shiftCalendarDays } from "@/lib/calendarDates";
 import { matchesReceptionFilter, receptionLate, receptionStage, receptionTimeMinutes, receptionWeek, type ReceptionAppointment, type ReceptionFilter, type ReceptionPatient, type ReceptionPeriod } from "@/lib/receptionTimeline";
@@ -74,11 +75,12 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
   const appointments = appointmentsQuery.data || [];
   const hpvStatus = useHpvClinicStatuses(appointments.map((appointment) => appointment.patientId));
   const byPatient = useMemo(() => new Map(patients.map((patient) => [patient.id, patient])), [patients]);
+  const searchActive = search.trim().length > 0;
+  const matchingPatients = useMemo(() => filterBookingPatients(patients, search, "All"), [patients, search]);
+  const matchingPatientIds = new Set(matchingPatients.map((patient) => patient.id));
   const matching = appointments.filter((appointment) => {
-    const patient = appointment.patientId != null ? byPatient.get(appointment.patientId) : undefined;
-    const query = search.trim().toLowerCase();
     return (doctor === "all" || String(appointment.providerId) === doctor)
-      && (!query || [patient?.phone, patient?.name, patient?.id].some((value) => String(value ?? "").toLowerCase().includes(query)))
+      && (!searchActive || appointment.patientId != null && matchingPatientIds.has(appointment.patientId))
       && matchesReceptionFilter(appointment, filter, now);
   }).sort((a, b) => a.date.localeCompare(b.date) || receptionTimeMinutes(a.time) - receptionTimeMinutes(b.time));
   const summary = {
@@ -145,6 +147,24 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
       <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={onRegister}><UserPlus className="mr-2 h-4 w-4" />New patient</Button><Button variant="outline" asChild><Link href="/staff/booking"><CalendarPlus className="mr-2 h-4 w-4" />Book appointment</Link></Button><Button asChild><Link href="/staff/booking?walkIn=1">Walk-in<ChevronRight className="ml-2 h-4 w-4" /></Link></Button></div>
     </div>
     <div className="relative"><Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#875477]" /><Input value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Search by phone number, then name or patient ID" aria-label="Search reception patients" className="h-12 rounded-full border-[#e9e1d2] bg-white pl-12 text-base" /></div>
+    {searchActive && <section aria-label="Patient search results" className="overflow-hidden rounded-2xl border border-[#e9e1d2] bg-white">
+      <div className="bg-[#fffaf0] px-5 py-3">
+        <h3 className="text-sm font-semibold text-saivie-plum">Patient search results</h3>
+        <p className="mt-1 text-xs text-[#705364]">Searches all available patients, regardless of appointment date or filters.</p>
+      </div>
+      {patientsLoading ? <p role="status" className="p-5 text-sm text-[#705364]">Searching patients...</p>
+        : patientsError ? <p role="alert" className="p-5 text-sm text-rose-800">Unable to search patients. <Button variant="link" onClick={onRetryPatients}>Retry patient search</Button></p>
+        : matchingPatients.length === 0 ? <p role="status" className="p-5 text-sm text-[#705364]">No patients match your search.</p>
+        : <div className="max-h-96 overflow-y-auto">{matchingPatients.map((patient) => <div key={patient.id} data-testid={`reception-patient-search-${patient.id}`} className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eee5d7] p-4">
+          <div className="min-w-0"><p className="break-words font-semibold text-saivie-plum">{patient.name}</p><p className="mt-1 text-xs text-[#705364]">ID #{patient.id} · {patient.phone || "Phone not recorded"}</p></div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" asChild><Link href={`/staff/booking?patientId=${patient.id}`}>Book appointment</Link></Button>
+            <Button size="sm" variant="outline" onClick={() => onEditPatient(patient)}>Edit patient details</Button>
+            {onViewPatient && <Button size="sm" variant="outline" onClick={() => onViewPatient(patient)}>View patient details</Button>}
+            <Button size="sm" variant="outline" onClick={() => onPayment(patient.id)}>Payment / Print bill</Button>
+          </div>
+        </div>)}</div>}
+    </section>}
     <div className="flex gap-6 border-b border-[#e9e1d2]" role="group" aria-label="Appointment period">
       {([{ value: "today", label: "Today" }, { value: "week", label: "This week" }, { value: "last-week", label: "Last week" }] as const).map((item) => <button key={item.value} type="button" aria-pressed={period === item.value} onClick={() => { setPeriod(item.value); setFilter("all"); setSelectedDay(""); }} className={`border-b-2 pb-3 text-sm font-semibold ${period === item.value ? "border-saivie-plum text-saivie-plum" : "border-transparent text-[#705364]"}`}>{item.label}</button>)}
     </div>
