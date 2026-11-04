@@ -56,3 +56,10 @@ test("reception search distinguishes no matches, loading and contact errors", ()
   assert.ok(!failed.includes("No patients match your search."));
   assert.ok(!renderSearch(" ").includes('aria-label="Patient search results"'));
 });
+
+test("My Patients keeps paper-entry quick actions without embedding the separate work backlog", () => {
+  const html = renderSearch("", {}, [{ id: 11, patientId: 501, providerId: null, date: calendarDateValue(new Date()), time: "09:00" }]);
+  assert.ok(html.includes("Add / Edit paper prescription"));
+  assert.ok(!html.includes('aria-label="Paper prescription work"'));
+  assert.ok(!html.includes("Appointment from (blank = all history)"));
+});

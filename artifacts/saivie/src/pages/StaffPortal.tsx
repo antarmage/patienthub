@@ -101,7 +101,7 @@ import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialog
 import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
 import { ReceptionPatientList } from "@/components/ReceptionPatientList";
 import { PaperPrescriptionTranscriptions } from "@/components/PaperPrescriptionTranscriptions";
-import type { PaperWorkAppointment } from "@/components/PaperPrescriptionWork";
+import { PaperPrescriptionWork, type PaperWorkAppointment } from "@/components/PaperPrescriptionWork";
 import { ReceptionPatientDetails } from "@/components/ReceptionPatientDetails";
 import { PregnancyVaccinesDialog } from "@/components/PregnancyVaccines";
 import { ReceptionPatientEdit } from "@/components/ReceptionPatientEdit";
@@ -2482,6 +2482,16 @@ export default function StaffPortal() {
                     <Users className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
                     {sidebarOpen && "My Patients"}
                  </Button>
+                 {receptionist && <Button
+                    variant={activeView === 'paper-prescriptions' ? 'secondary' : 'ghost'}
+                    aria-label="Paper prescriptions" title="Paper prescriptions"
+                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'paper-prescriptions' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
+                    onClick={() => setActiveView('paper-prescriptions')}
+                    data-testid="tab-paper-prescriptions"
+                 >
+                    <FileText className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
+                    {sidebarOpen && "Paper prescriptions"}
+                 </Button>}
                  <Button 
                     variant={activeView === 'schedule' ? 'secondary' : 'ghost'} 
                     aria-label="Schedule" title="Schedule"
@@ -3918,6 +3928,20 @@ export default function StaffPortal() {
                       setIsWhatsAppOpen(true);
                     }}
                 />
+            )}
+
+            {receptionist && activeView === 'paper-prescriptions' && (
+                <div className="mx-auto max-w-7xl space-y-5" data-testid="reception-paper-prescriptions">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-widest text-[#875477]">Reception workspace</p>
+                        <h2 className="mt-1 font-serif text-4xl font-semibold text-saivie-plum">Paper prescriptions</h2>
+                        <p className="mt-2 text-sm text-[#705364]">Track pending paper entry and review recorded or not-required appointments.</p>
+                    </div>
+                    <PaperPrescriptionWork onTranscribe={(patient, appointment) => {
+                        setPaperPrescriptionAppointment(appointment || null);
+                        setPaperPrescriptionPatient(patient);
+                    }} />
+                </div>
             )}
 
             {/* FOLLOW-UP CALLS TAB (Receptionist only) */}

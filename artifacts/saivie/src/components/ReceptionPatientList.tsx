@@ -14,7 +14,7 @@ import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import { HpvBadge } from "@/components/HpvBadge";
 import { ReceptionSurveyBadge, ReceptionSummaryPrint } from "@/components/ReceptionSurveyActions";
 import { receptionRequest } from "@/lib/authenticatedFetch";
-import { PaperPrescriptionWork, PaperWorkBadge, PaperWorkStatusAction, usePaperWorkRows, type PaperWorkAppointment } from "@/components/PaperPrescriptionWork";
+import { PaperWorkBadge, PaperWorkStatusAction, usePaperWorkRows, type PaperWorkAppointment } from "@/components/PaperPrescriptionWork";
 import { filterBookingPatients } from "@/lib/bookingPatients";
 import { surveyKindFor } from "@/lib/labSurvey";
 import { calendarDate, calendarDateValue, shiftCalendarDays } from "@/lib/calendarDates";
@@ -152,7 +152,6 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
       <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={onRegister}><UserPlus className="mr-2 h-4 w-4" />New patient</Button><Button variant="outline" asChild><Link href="/staff/booking"><CalendarPlus className="mr-2 h-4 w-4" />Book appointment</Link></Button><Button asChild><Link href="/staff/booking?walkIn=1">Walk-in<ChevronRight className="ml-2 h-4 w-4" /></Link></Button></div>
     </div>
     <div className="relative"><Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#875477]" /><Input value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Search by phone number, then name or patient ID" aria-label="Search reception patients" className="h-12 rounded-full border-[#e9e1d2] bg-white pl-12 text-base" /></div>
-    <PaperPrescriptionWork onTranscribe={onTranscribePrescription} />
     {searchActive && <section aria-label="Patient search results" className="overflow-hidden rounded-2xl border border-[#e9e1d2] bg-white">
       <div className="bg-[#fffaf0] px-5 py-3">
         <h3 className="text-sm font-semibold text-saivie-plum">Patient search results</h3>
