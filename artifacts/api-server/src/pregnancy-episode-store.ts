@@ -7,6 +7,7 @@ import {
 } from "./pregnancy-episodes";
 import type { PregnancyEpisode } from "../../../lib/db/src/pregnancy-episodes";
 import { detectPregnancies } from "./pregnancy-detection";
+import { deliveryOutcome, type DeliveryRecord } from "../../../lib/db/src/delivery";
 
 async function insertEpisode(
   client: PoolClient,
@@ -179,6 +180,15 @@ export function createPregnancyEpisodeStore(pool: Pool): PregnancyEpisodeStore {
               409,
               "This pregnancy was updated elsewhere. Refresh and review before saving.",
             );
+          const delivery = (await client.query<DeliveryRecord>(
+            `SELECT delivery_date AS "deliveryDate",delivery_mode AS "deliveryMode",babies FROM deliveries WHERE episode_id=$1`,
+            [episodeId],
+          )).rows[0];
+          if (delivery && (input.details.status !== "past" || input.details.endDate !== delivery.deliveryDate ||
+            input.details.deliveryMode !== delivery.deliveryMode || input.details.outcome !== deliveryOutcome(delivery.babies) ||
+            input.details.fetusCount !== delivery.babies.length)) {
+            throw episodeError(409, "This episode has a delivery record. Its closed status, delivery date, mode, outcome and baby count cannot be changed here.");
+          }
         }
         const conflict = await client.query(
           `SELECT id FROM pregnancy_episodes WHERE patient_id=$1 AND id<>coalesce($2,0)

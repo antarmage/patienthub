@@ -1,4 +1,6 @@
 import type { Pool, PoolClient } from "pg";
+import { isCaesareanProcedure } from "../../../lib/db/src/delivery";
+import { recordDelivery } from "./deliveries";
 import {
   emptySurgeryAssignments, surgeryCareRoles, surgeryCareRoleLabels,
   type CareNetworkMember, type SurgeryAssignments, type SurgeryTeam,
@@ -127,6 +129,22 @@ export function createSurgeryStore(pool: Pool): SurgeryWorkflowStore {
     await lockPatient(client, patientId);
     const current = await plan(client, patientId, id);
     assertSurgeryTransition(current.status, input.status);
+    if (input.status === "completed") {
+      if (input.delivery) {
+        if (isCaesareanProcedure(current.procedureName) && input.delivery.deliveryMode !== "Caesarean") {
+          throw workflowError(400, "Caesarean surgery requires Caesarean delivery mode");
+        }
+        await recordDelivery(client, patientId, input.delivery, userId, id);
+      } else if (isCaesareanProcedure(current.procedureName)) {
+        const existing = await client.query<{ id: number }>(`SELECT id FROM deliveries
+          WHERE patient_id=$1 AND delivery_date=$2 AND delivery_mode='Caesarean' AND surgery_plan_id IS NULL FOR UPDATE`,
+        [patientId, input.completedDate]);
+        if (!existing.rows[0]) throw workflowError(409, "Confirm delivery and record each baby's outcome to complete a caesarean. A current pregnancy episode is required.");
+        await client.query(`UPDATE deliveries SET surgery_plan_id=$2,updated_by=$3::text,updated_at=now(),version=version+1,
+          audit=audit || jsonb_build_array(jsonb_build_object('at',now(),'by',$3::text,'event','surgery linked','surgeryPlanId',$2::int))
+          WHERE id=$1`, [existing.rows[0].id, id, userId]);
+      }
+    }
     const now = new Date().toISOString();
     const completedAt = input.status === "completed" ? `${input.completedDate}T00:00:00+05:30` : current.completedAt;
     await client.query(`UPDATE surgery_plans SET status=$2, completed_at=$3, closed_at=$4, updated_at=$5, updated_by=$6 WHERE id=$1`,

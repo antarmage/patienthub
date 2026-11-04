@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod/v4";
 import type { AccessActor } from "./clinical-access";
+import { deliveryInputSchema } from "../../../lib/db/src/delivery";
 import {
   careNetworkDetailsSchema, careNetworkUpdateSchema, surgeryAssignmentsSchema,
   type CareNetworkDetails, type CareNetworkMember, type SurgeryTeam,
@@ -25,9 +26,12 @@ export const surgeryDetailsSchema = z.object({
   assignments: surgeryAssignmentsSchema.optional(),
 }).strict();
 export type SurgeryDetails = z.infer<typeof surgeryDetailsSchema>;
-const transitionSchema = z.discriminatedUnion("status", [
+export const transitionSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("completed"), completedDate: calendarDate.refine((value) =>
-    value <= new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10), "Surgery completion cannot be in the future") }).strict(),
+    value <= new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10), "Surgery completion cannot be in the future"),
+    delivery: deliveryInputSchema.optional(),
+  }).strict().refine((value) => !value.delivery || value.delivery.deliveryDate === value.completedDate,
+    "Surgery and delivery completion dates must match"),
   z.object({ status: z.literal("cancelled") }).strict(),
   z.object({ status: z.literal("discharged") }).strict(),
 ]);
@@ -131,6 +135,9 @@ export function registerSurgeryWorkflow(app: Express, store: SurgeryWorkflowStor
     if (!patientId || !surgeryId) return res.status(400).json({ error: "Invalid patient or surgery ID" });
     const transition = transitionSchema.safeParse(req.body);
     if (transition.success) return res.json(await store.transition(patientId, surgeryId, transition.data, userId));
+    if (req.body && typeof req.body === "object" && "status" in req.body) {
+      return res.status(400).json({ error: transition.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ") });
+    }
     const details = surgeryDetailsSchema.safeParse(req.body);
     if (details.success) return res.json(await store.edit(patientId, surgeryId, details.data, userId));
     res.status(400).json({ error: "Enter valid surgery details or a valid status change with completion date" });

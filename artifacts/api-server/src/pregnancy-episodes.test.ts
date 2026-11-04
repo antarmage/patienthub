@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { ensureDeliverySchema } from "./deliveries";
 import test from "node:test";
 import express from "express";
 import { createServer } from "node:http";
@@ -280,6 +281,7 @@ test(
     try {
       await pool.query(`CREATE TABLE users(id varchar PRIMARY KEY);
       CREATE TABLE patients(id integer PRIMARY KEY,lmp text,type text,history jsonb,pregnancy_status text);
+      CREATE TABLE surgery_plans(id integer PRIMARY KEY);
       CREATE TABLE appointments(id integer PRIMARY KEY,patient_id integer REFERENCES patients(id),date text,type text,visit_type text,survey_type text,vitals jsonb,status text);
       CREATE TABLE visit_history(id integer PRIMARY KEY,patient_id integer REFERENCES patients(id),appointment_id integer REFERENCES appointments(id),date text,vitals jsonb);
       CREATE TABLE lab_results(id integer PRIMARY KEY,patient_id integer REFERENCES patients(id),date text);
@@ -290,6 +292,7 @@ test(
       INSERT INTO lab_results VALUES (1,1,'2020-02-01'),(2,1,'2020-02-01'),(3,2,'2020-02-01');`);
       await ensurePregnancyEpisodeSchema(pool);
       await ensurePregnancyEpisodeSchema(pool);
+      await ensureDeliverySchema(pool);
       const store = createPregnancyEpisodeStore(pool);
       const current = await store.save(
         1,

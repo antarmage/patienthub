@@ -39,6 +39,7 @@ import { hpvClinicStatuses, registerHpvStatusRoute } from "../hpv-protection";
 import { registerSurgeryWorkflow } from "../surgery-workflow";
 import { createSurgeryStore } from "../surgery-store";
 import { registerPregnancyEpisodes } from "../pregnancy-episodes";
+import { createDeliveryStore, registerDeliveries } from "../deliveries";
 import { createPregnancyEpisodeStore } from "../pregnancy-episode-store";
 import { createPregnancyFollowUpStore, registerPregnancyFollowUps } from "../pregnancy-follow-ups";
 import { createPregnancyMedicationReconciliationStore, registerPregnancyMedicationReconciliation } from "../pregnancy-medication-reconciliation";
@@ -5781,6 +5782,7 @@ Return a JSON object:
   // Pass it via the X-Patient-Id request header instead.
   registerSurgeryWorkflow(app, createSurgeryStore(pool), getAccessActor);
   registerPregnancyEpisodes(app, createPregnancyEpisodeStore(pool), getAccessActor);
+  registerDeliveries(app, createDeliveryStore(pool), getAccessActor);
   registerPregnancyFollowUps(app, createPregnancyFollowUpStore(pool), getAccessActor);
   registerPregnancyMedicationReconciliation(app, createPregnancyMedicationReconciliationStore(pool), getAccessActor);
 

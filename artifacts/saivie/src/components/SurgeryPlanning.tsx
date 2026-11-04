@@ -16,6 +16,8 @@ import { receptionRequest } from "@/lib/authenticatedFetch";
 import { calendarDateValue } from "@/lib/calendarDates";
 import { pregnancyDatingFromLmp } from "@/lib/pregnancyDating";
 import { appointmentLabel } from "@/lib/visitTrail";
+import { DeliveryForm, DeliveryRecords, refreshDeliveryQueries } from "@/components/DeliveryRecords";
+import { isCaesareanProcedure } from "../../../../lib/db/src/delivery";
 
 const planSchema = z.object({
   id: z.number().int().positive(), patientId: z.number().int().positive(),
@@ -73,6 +75,7 @@ function SurgeryPlanner({ patient, workspace }: { patient: Patient; workspace?: 
   const [editing, setEditing] = useState<number | null>(null);
   const [confirmation, setConfirmation] = useState<{ plan: Plan; status: "completed" | "cancelled" | "discharged" } | null>(null);
   const [completedDate, setCompletedDate] = useState(() => calendarDateValue(new Date()));
+  const [recordBirth, setRecordBirth] = useState(false);
   const plans = useQuery({
     queryKey: ["/api/patients", patient.id, "surgeries"],
     queryFn: async ({ signal }) => z.array(planSchema).parse(await receptionRequest(`/api/patients/${patient.id}/surgeries`, { signal })),
@@ -87,10 +90,11 @@ function SurgeryPlanner({ patient, workspace }: { patient: Patient; workspace?: 
       `/api/patients/${patient.id}/surgeries${id ? `/${id}` : ""}`,
       { method: id ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
     )),
-    onSuccess: () => {
+    onSuccess: async () => {
       void queryClient.invalidateQueries({ queryKey: ["/api/patients", patient.id, "surgeries"] });
       void queryClient.invalidateQueries({ queryKey: ["/api/postop/patients"] });
       setEditing(null); setDetails(emptyDetails); setConfirmation(null);
+      await refreshDeliveryQueries(queryClient, patient.id);
       toast({ title: "Surgery workflow updated" });
     },
     onError: (error: Error) => toast({ title: "Could not update surgery", description: error.message, variant: "destructive" }),
@@ -144,7 +148,7 @@ function SurgeryPlanner({ patient, workspace }: { patient: Patient; workspace?: 
                 ot_assistant: plan.team.ot_assistant?.id ?? null,
               },
             }); }}>Edit plan</Button>
-            <Button size="sm" disabled={mutation.isPending} onClick={() => { setCompletedDate(calendarDateValue(new Date())); setConfirmation({ plan, status: "completed" }); }}>Mark surgery completed</Button>
+            <Button size="sm" disabled={mutation.isPending} onClick={() => { setCompletedDate(calendarDateValue(new Date())); setRecordBirth(isCaesareanProcedure(plan.procedureName)); setConfirmation({ plan, status: "completed" }); }}>Mark surgery completed</Button>
             <Button size="sm" variant="outline" disabled={mutation.isPending} onClick={() => setConfirmation({ plan, status: "cancelled" })}>Cancel surgery</Button>
           </>}
           {plan.status === "completed" && <Button size="sm" variant="outline" disabled={mutation.isPending} onClick={() => setConfirmation({ plan, status: "discharged" })}>Discharge from recovery</Button>}
@@ -184,7 +188,15 @@ function SurgeryPlanner({ patient, workspace }: { patient: Patient; workspace?: 
           </p>
         </section>
       )}
-      {confirmation && <form aria-label="Confirm surgery status change" className="space-y-3 rounded-xl border border-saivie-blush bg-saivie-surface-blush p-4" onSubmit={(event) => {
+      {confirmation?.status === "completed" && <div className="space-y-2 rounded-xl border p-3">
+        <Label className="flex items-center gap-2"><input type="checkbox" checked={recordBirth} disabled={mutation.isPending} onChange={(event) => setRecordBirth(event.target.checked)} />Delivery occurred: record baby outcomes and start postpartum care</Label>
+        <p className="text-xs text-muted-foreground">For a caesarean, delivery details are required. If already recorded separately for the same date, untick to link that record. For other procedures, only select this if delivery actually occurred.</p>
+      </div>}
+      {confirmation?.status === "completed" && recordBirth && <DeliveryForm key={confirmation.plan.id}
+        patientId={patient.id} initialDate={completedDate} forcedMode={isCaesareanProcedure(confirmation.plan.procedureName) ? "Caesarean" : undefined}
+        pending={mutation.isPending} onCancel={() => setConfirmation(null)}
+        onSubmit={(delivery) => mutation.mutate({ id: confirmation.plan.id, body: { status: "completed", completedDate: delivery.deliveryDate, delivery } })} />}
+      {confirmation && !(confirmation.status === "completed" && recordBirth) && <form aria-label="Confirm surgery status change" className="space-y-3 rounded-xl border border-saivie-blush bg-saivie-surface-blush p-4" onSubmit={(event) => {
         event.preventDefault();
         mutation.mutate({ id: confirmation.plan.id, body: confirmation.status === "completed" ? { status: "completed", completedDate } : { status: confirmation.status } });
       }}>
@@ -301,6 +313,7 @@ export function SurgeryPlanningPage({ patient, ...workspace }: { patient: Patien
         <div><h2 className="font-serif text-xl font-semibold text-saivie-teal">Surgery &amp; delivery planning</h2><p className="text-xs text-muted-foreground">{patient.name} · {workspace.pregnancy ? "Pregnancy care" : "Surgery planning"}</p></div>
       </header>
       <SurgeryPlanner key={patient.id} patient={patient} workspace={workspace} />
+      <DeliveryRecords key={`delivery-${patient.id}`} patientId={patient.id} />
       <details className="rounded-2xl border border-saivie-border bg-white p-4"><summary className="cursor-pointer text-sm font-semibold text-saivie-teal">Manage care network</summary><div className="mt-3"><SurgeryCareNetwork /></div></details>
     </div>
   </section>;
@@ -325,7 +338,7 @@ export function SurgeryPlanningButton({ patient, children }: { patient?: Patient
         <div className="mt-3"><SurgeryCareNetwork /></div>
       </details>
       {!patient && <div className="space-y-2"><Label htmlFor="surgery-patient">Patient</Label><select id="surgery-patient" className="h-10 w-full rounded-md border bg-background px-3" value={selectedId} onChange={(event) => setSelectedId(event.target.value)}><option value="">Select patient</option>{patients.data?.map((item) => <option key={item.id} value={item.id}>{item.name} · #{item.id}</option>)}</select>{patients.isPending && <p role="status">Loading patients...</p>}{patients.isError && <p role="alert">{patients.error.message} <Button variant="link" onClick={() => void patients.refetch()}>Retry</Button></p>}</div>}
-      {selected && <SurgeryPlanner key={selected.id} patient={selected} />}
+      {selected && <><SurgeryPlanner key={selected.id} patient={selected} /><DeliveryRecords key={`delivery-${selected.id}`} patientId={selected.id} /></>}
     </DialogContent></Dialog>
   </>;
 }

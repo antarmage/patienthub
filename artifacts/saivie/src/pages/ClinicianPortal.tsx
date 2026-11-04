@@ -451,7 +451,7 @@ export default function ClinicianPortal() {
   const [patientDirectoryDateFrom, setPatientDirectoryDateFrom] = useState('');
   const [patientDirectoryDateTo, setPatientDirectoryDateTo] = useState('');
   const [careModeOverride, setCareModeOverride] = useState<{ key: string; mode: string } | null>(null);
-  const careModeKey = `${selectedPatient?.id ?? ''}:${selectedPatient?.appointmentId ?? ''}`;
+  const careModeKey = `${selectedPatient?.id ?? ''}:${selectedPatient?.appointmentId ?? ''}:${selectedPatient?.type ?? ''}:${selectedPatient?.pregnancyStatus ?? ''}`;
   const careMode = careModeOverride?.key === careModeKey ? careModeOverride.mode : clinicalCareMode(selectedPatient || {});
   const setCareMode = (mode: string) => setCareModeOverride({ key: careModeKey, mode });
   const [showPastRecords, setShowPastRecords] = useState(true);
@@ -965,9 +965,11 @@ export default function ClinicianPortal() {
 
   const [riskDialogPatient, setRiskDialogPatient] = useState<any>(null);
   useEffect(() => {
-    const refreshRisk = (previous: { id: number; riskScore?: unknown } | null) => {
+    const refreshRisk = (previous: { id: number; riskScore?: unknown; type?: unknown; pregnancyStatus?: unknown; nextReview?: unknown } | null) => {
       const current = previous && patients.find((patient: Record<string, unknown>) => patient.id === previous.id);
-      return current && current.riskScore !== previous.riskScore ? { ...previous, riskScore: current.riskScore } : previous;
+      return current && (current.riskScore !== previous.riskScore ||
+        (["type", "pregnancyStatus", "nextReview"] as const).some((key) => current[key] !== previous[key]))
+        ? { ...previous, riskScore: current.riskScore, type: current.type, pregnancyStatus: current.pregnancyStatus, nextReview: current.nextReview } : previous;
     };
     setSelectedPatient(refreshRisk);
     setRiskDialogPatient(refreshRisk);
