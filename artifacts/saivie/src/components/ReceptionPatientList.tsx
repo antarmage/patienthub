@@ -125,7 +125,7 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
         <ReceptionSurveyBadge appointment={appointment} />
         <ReceptionSummaryPrint appointment={appointment} patientName={patient?.name || "Patient"} canPrint={canPrintSummary} hpvStatus={hpvStatus(appointment.patientId)} />
         {appointment.visitMode === "telemedicine" && <OnlineConsultationActions appointmentId={appointment.id} />}
-        {patient && <Button size="sm" variant="outline" onClick={() => onTranscribePrescription(patient, { id: appointment.id, date: appointment.date })}>Add / Edit paper prescription</Button>}
+        {patient && !(paperRow?.status === "recorded" && paperRow.transcriptionId === null) && <Button size="sm" variant="outline" onClick={() => onTranscribePrescription(patient, { id: appointment.id, date: appointment.date })}>Add / Edit paper prescription</Button>}
         {paperRow && <PaperWorkStatusAction row={paperRow} />}
         {patient && surveyKindFor(appointment) !== "lab" && appointment.date === today && !closed && stage !== "With doctor" && <Button size="sm" variant="outline" onClick={() => onRecordVitals(appointment)} data-testid={`btn-reception-vitals-${appointment.id}`}>Record vitals</Button>}
         {patient && onViewPatient && <Button size="sm" variant="outline" onClick={() => onViewPatient(patient)} data-testid={`btn-reception-details-${patient.id}`}>View patient details</Button>}

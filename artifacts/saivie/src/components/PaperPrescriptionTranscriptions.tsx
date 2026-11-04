@@ -46,6 +46,8 @@ export function PaperPrescriptionTranscriptions({ patient, appointment, onClose 
   });
   const targetRecord = records.data?.find((record) => String(record.appointmentId) === appointmentId);
   const targetAppointment = appointment || appointmentChoices.data?.rows.find((row) => String(row.appointmentId) === appointmentId);
+  const legacyRecorded = targetAppointment && "status" in targetAppointment
+    && targetAppointment.status === "recorded" && targetAppointment.transcriptionId === null;
   const close = () => { setSelected(null); onClose(); };
   return <>
     {!selected && <Dialog open={Boolean(patient)} onOpenChange={(open) => { if (!open) close(); }}>
@@ -62,7 +64,8 @@ export function PaperPrescriptionTranscriptions({ patient, appointment, onClose 
           {appointmentChoices.isError && <p role="alert" className="text-sm text-destructive">{appointmentChoices.error.message} <Button variant="link" onClick={() => void appointmentChoices.refetch()}>Retry appointments</Button></p>}
           {!!appointmentChoices.data?.total && <div className="flex items-center gap-2"><Button size="sm" variant="outline" disabled={!appointmentPage} onClick={() => { setAppointmentPage((page) => page - 1); setAppointmentId(""); }}>Previous visits</Button><span className="text-xs">Page {appointmentPage + 1}</span><Button size="sm" variant="outline" disabled={(appointmentPage + 1) * 25 >= appointmentChoices.data.total} onClick={() => { setAppointmentPage((page) => page + 1); setAppointmentId(""); }}>Older visits</Button></div>}
         </div>}
-        <Button disabled={!records.isSuccess || !!appointmentId && !targetAppointment} onClick={() => {
+        {legacyRecorded && <p role="status" className="text-sm">An earlier paper prescription is already recorded for this appointment. View it in the patient's visit history; it is not editable in this transcription editor.</p>}
+        <Button disabled={!!legacyRecorded || !records.isSuccess || !!appointmentId && !targetAppointment} onClick={() => {
           if (!patient) return;
           const date = targetRecord?.date || targetAppointment?.date;
           setSelected({ patientId: patient.id, historical: !targetRecord, ...(targetRecord ? { edit: true, transcriptionId: targetRecord.id } : {}),

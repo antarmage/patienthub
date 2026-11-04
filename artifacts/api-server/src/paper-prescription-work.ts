@@ -24,22 +24,42 @@ const completed = `lower(regexp_replace(coalesce(a.status,''),'[ _]','-','g')) N
 const projection = `SELECT a.id AS "appointmentId",a.patient_id AS "patientId",p.name AS "patientName",
   a.provider_id AS "providerId",provider.name AS "providerName",a.date::text AS date,a.time,
   CASE WHEN rx.id IS NOT NULL THEN 'recorded'
-    WHEN ${completed} THEN coalesce(w.status,'pending') ELSE 'not_due' END AS status,
-  rx.id AS "transcriptionId",rx.recorded_at AS "recordedAt",rx.recorded_by AS "recordedBy",
-  w.reason,w.updated_at::text AS "updatedAt",coalesce(editor.display_name,editor.username,w.updated_by) AS "updatedBy",
+    WHEN ${completed} THEN coalesce(w.status,CASE WHEN digital.id IS NOT NULL THEN 'not_required' ELSE 'pending' END)
+    ELSE 'not_due' END AS status,
+  rx.transcription_id AS "transcriptionId",rx.recorded_at AS "recordedAt",rx.recorded_by AS "recordedBy",
+  CASE WHEN rx.id IS NULL AND w.status IS NULL AND digital.id IS NOT NULL AND ${completed}
+    THEN 'Digital prescription already saved for this appointment.' ELSE w.reason END AS reason,
+  w.updated_at::text AS "updatedAt",coalesce(editor.display_name,editor.username,w.updated_by) AS "updatedBy",
   coalesce(w.version,0) AS version
   FROM appointments a JOIN patients p ON p.id=a.patient_id
   LEFT JOIN providers provider ON provider.id=a.provider_id
   LEFT JOIN paper_prescription_work w ON w.appointment_id=a.id AND w.patient_id=a.patient_id
   LEFT JOIN users editor ON editor.id=w.updated_by
   LEFT JOIN LATERAL (
-    SELECT v.id,v.prescriptions->>'enteredAt' AS recorded_at,
+    SELECT v.id,CASE WHEN v.prescriptions->>'source'='${TRANSCRIPTION_SOURCE}' THEN v.id ELSE NULL END AS transcription_id,
+      v.prescriptions->>'enteredAt' AS recorded_at,
       coalesce(u.display_name,u.username,v.prescriptions->'enteredBy'->>'userId') AS recorded_by
     FROM visit_history v LEFT JOIN users u ON u.id=v.prescriptions->'enteredBy'->>'userId'
-    WHERE v.patient_id=a.patient_id AND v.prescriptions->>'source'='${TRANSCRIPTION_SOURCE}'
-      AND v.prescriptions->>'doctorIssuedPaper'='true' AND v.prescriptions->>'linkedAppointmentId'=a.id::text
-    ORDER BY v.id DESC LIMIT 1
-  ) rx ON true`;
+    WHERE v.patient_id=a.patient_id AND (
+      (v.prescriptions->>'source'='${TRANSCRIPTION_SOURCE}' AND v.prescriptions->>'doctorIssuedPaper'='true'
+        AND v.prescriptions->>'linkedAppointmentId'=a.id::text)
+      OR (v.prescriptions->>'source' IN ('paper-transcribed','paper-scanned-reviewed') AND v.appointment_id=a.id))
+    ORDER BY (v.prescriptions->>'source'='${TRANSCRIPTION_SOURCE}') DESC,v.id DESC LIMIT 1
+  ) rx ON true
+  LEFT JOIN LATERAL (
+    SELECT v.id FROM visit_history v
+    WHERE v.patient_id=a.patient_id AND v.appointment_id=a.id
+      AND coalesce(v.prescriptions->>'source','') IN ('','digital')
+      AND coalesce(v.prescriptions->>'doctorIssuedPaper','false')<>'true'
+      AND EXISTS (
+        SELECT 1 FROM jsonb_array_elements(CASE
+          WHEN jsonb_typeof(v.prescriptions)='array' THEN v.prescriptions
+          WHEN jsonb_typeof(v.prescriptions->'medicines')='array' THEN v.prescriptions->'medicines'
+          ELSE '[]'::jsonb END) medicine
+        WHERE (jsonb_typeof(medicine)='object' AND length(trim(medicine->>'name'))>0)
+          OR (jsonb_typeof(medicine)='string' AND length(trim(medicine #>> '{}'))>0))
+    LIMIT 1
+  ) digital ON true`;
 
 const error = (status: number, message: string) => Object.assign(new Error(message), { status });
 export function createPaperWorkStore(pool: Pool) {

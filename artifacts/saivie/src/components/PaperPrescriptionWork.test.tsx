@@ -22,7 +22,7 @@ function render(element: React.ReactNode, work: PaperWorkRow[] = [row]) {
 test("paper backlog starts with all historical pending work, exact visit identity and Not required action", () => {
   const html = render(<PaperPrescriptionWork onTranscribe={() => {}} />);
   assert.match(html, /Paper prescription work/);
-  assert.match(html, /Completed consultations become pending automatically/);
+  assert.match(html, /Completed consultations become pending only when no linked paper or digital prescription is saved/);
   assert.match(html, /blank = all history/);
   assert.match(html, /data-testid="paper-work-4"/);
   assert.match(html, /Synthetic patient.*#4/);
@@ -30,6 +30,14 @@ test("paper backlog starts with all historical pending work, exact visit identit
   assert.match(html, /Paper Rx: Pending/);
   assert.match(html, /Paper entry not required/);
   assert.match(html, /Record paper prescription/);
+});
+test("legacy paper entries show Recorded without offering an incompatible transcription editor", () => {
+  const legacy = { ...row, status: "recorded" as const, recordedAt: "2020-10-02T03:30:00Z" };
+  const html = render(<PaperPrescriptionWork onTranscribe={() => {}} />, [legacy]);
+  assert.match(html, /Paper Rx: Recorded/);
+  assert.match(html, /Earlier paper entry/);
+  assert.match(html, /Entered by Not recorded/);
+  assert.doesNotMatch(html, />Edit paper entry<|>Record paper prescription<|>Reopen paper entry</);
 });
 test("recorded badges expose entry attribution but no status override; exemptions can be reopened", () => {
   const recorded = { ...row, status: "recorded" as const, recordedBy: "Synthetic receptionist", recordedAt: "2020-10-02T03:30:00Z", transcriptionId: 50 };
@@ -42,6 +50,10 @@ test("recorded badges expose entry attribution but no status override; exemption
   assert.match(exemption, /Paper Rx: Not required/);
   assert.match(exemption, /Digital prescription issued/);
   assert.match(exemption, /Reopen paper entry/);
+  const automatic = render(<PaperWorkBadge row={{ ...row, status: "not_required", reason: "Digital prescription already saved for this appointment." }} />);
+  assert.match(automatic, /Paper Rx: Not required/);
+  assert.match(automatic, /Digital prescription already saved/);
+  assert.doesNotMatch(automatic, /Entered by/);
 });
 test("paper work empty state does not invent recorded or pending items", () => {
   const html = render(<PaperPrescriptionWork onTranscribe={() => {}} />, []);

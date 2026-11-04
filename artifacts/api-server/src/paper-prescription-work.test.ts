@@ -8,6 +8,7 @@ import { createPaperWorkStore, ensurePaperWorkSchema, registerPaperWork } from "
 import { paperWorkPageSchema, paperWorkQuerySchema, paperWorkUpdateSchema, type PaperWorkRow } from "../../../lib/db/src/paper-prescription-work";
 import type { AccessActor } from "./clinical-access";
 import { registerClinicalAccess } from "./clinical-access";
+import { TRANSCRIPTION_SOURCE } from "./prescription-transcriptions";
 
 const row: PaperWorkRow = {
   appointmentId: 1, patientId: 7, patientName: "Synthetic patient", providerId: 1, providerName: "Synthetic doctor",
@@ -83,7 +84,8 @@ test("Postgres paper-work tracks completed consultations, exact links, exemption
       CREATE TABLE providers(id integer PRIMARY KEY,name text);
       CREATE TABLE appointments(id integer PRIMARY KEY,patient_id integer REFERENCES patients(id),provider_id integer REFERENCES providers(id),
         date text,time text,status text,completed_at text,type text,visit_type text,survey_type text);
-      CREATE TABLE visit_history(id serial PRIMARY KEY,patient_id integer REFERENCES patients(id),prescriptions jsonb);
+      CREATE TABLE visit_history(id serial PRIMARY KEY,patient_id integer REFERENCES patients(id),
+        appointment_id integer REFERENCES appointments(id),prescriptions jsonb);
       INSERT INTO users VALUES ('reception','desk','Synthetic receptionist'),('doctor','doctor',null);
       INSERT INTO patients VALUES (7,'Synthetic patient'),(8,'Other synthetic patient');
       INSERT INTO providers VALUES(1,'Synthetic doctor');
@@ -163,5 +165,50 @@ test("Postgres paper-work tracks completed consultations, exact links, exemption
     await pool.query("UPDATE appointments SET status='cancelled' WHERE id=9");
     assert.equal((await store.list({ ...query, status: "pending" })).rows.some((item) => item.appointmentId === 9), false);
     assert.equal((await store.list({ ...query, status: "not_required" })).rows.some((item) => item.appointmentId === 9), false);
+
+    await pool.query(`INSERT INTO appointments(id,patient_id,provider_id,date,time,status,type)
+      SELECT id,7,1,'2020-10-01','12:00','completed','Consultation' FROM generate_series(20,33) id;
+      UPDATE appointments SET status='scheduled' WHERE id=30;`);
+    const savedPrescription = async (appointmentId: number | null, prescriptions: unknown, patientId = 7) =>
+      pool.query("INSERT INTO visit_history(patient_id,appointment_id,prescriptions) VALUES($1,$2,$3::jsonb)",
+        [patientId, appointmentId, JSON.stringify(prescriptions)]);
+    await savedPrescription(20, { source: "paper-transcribed", enteredAt: source.enteredAt, medicines: [] });
+    await savedPrescription(21, { source: "paper-scanned-reviewed", medicines: [{ name: "Synthetic medicine" }] });
+    await savedPrescription(22, [{ name: "Synthetic digital medicine" }]);
+    await savedPrescription(23, { medicines: [{ name: "Synthetic digital medicine" }] });
+    await savedPrescription(24, { source: "digital", medicines: ["Synthetic digital medicine"] });
+    await savedPrescription(25, { medicines: [] });
+    await savedPrescription(26, { medicines: [{ name: " " }, {}] });
+    await savedPrescription(27, [{ name: "Other patient's medicine" }], 8);
+    await savedPrescription(null, { source: "paper-transcribed", medicines: ["Unlinked paper"] });
+    await savedPrescription(28, { source: "unknown-import", medicines: ["Unverified source"] });
+    await savedPrescription(29, { source: TRANSCRIPTION_SOURCE, doctorIssuedPaper: false, medicines: ["Unverified paper"] });
+    await savedPrescription(30, [{ name: "Not completed yet" }]);
+    await savedPrescription(31, { medicines: { name: "Malformed medicine list" } });
+    await savedPrescription(32, { medicines: ["Digital first"] });
+    await savedPrescription(32, { source: "paper-transcribed", medicines: [] });
+    await savedPrescription(33, { medicines: ["Digital medicine"] });
+    const allRows = (await store.list({ ...query, status: "all", limit: 100 })).rows;
+    const byId = new Map(allRows.map((item) => [item.appointmentId, paperWorkPageSchema.parse({ rows: [item], total: 1 }).rows[0]]));
+    for (const id of [20, 21, 32]) {
+      assert.equal(byId.get(id)?.status, "recorded", `legacy paper appointment ${id}`);
+      assert.equal(byId.get(id)?.transcriptionId, null, "legacy entries must not open the new transcription editor");
+    }
+    assert.equal(byId.get(20)?.recordedAt, source.enteredAt);
+    assert.equal(byId.get(20)?.recordedBy, null, "legacy entries must not invent an author");
+    for (const id of [22, 23, 24, 33]) {
+      assert.equal(byId.get(id)?.status, "not_required", `digital appointment ${id}`);
+      assert.match(byId.get(id)?.reason || "", /Digital prescription already saved/);
+      assert.equal(byId.get(id)?.updatedBy, null, "automatic exemption must not invent an actor");
+    }
+    for (const id of [25, 26, 27, 28, 29, 31]) assert.equal(byId.get(id)?.status, "pending", `unresolved appointment ${id}`);
+    assert.equal(byId.get(30)?.status, "not_due");
+    const pendingIds = (await store.list({ ...query, status: "pending" })).rows.map((item) => item.appointmentId);
+    for (const id of [20, 21, 22, 23, 24, 30, 32, 33]) assert.equal(pendingIds.includes(id), false, `resolved appointment ${id} is not pending work`);
+    const legacyIds = (await store.list({ ...query, status: "recorded" })).rows.map((item) => item.appointmentId);
+    for (const id of [20, 21, 32]) assert.equal(legacyIds.includes(id), true);
+    await assert.rejects(store.update(20, { status: "pending", reason: "Reopen", version: 0 }, "reception"), /already recorded/);
+    const requestedPaper = await store.update(33, { status: "pending", reason: "Additional handwritten prescription received", version: 0 }, "reception");
+    assert.equal(requestedPaper.status, "pending", "an explicit audited request can require paper entry despite a digital prescription");
   } finally { await pool.end(); await admin.query(`DROP SCHEMA ${schema} CASCADE`); await admin.end(); }
 });
