@@ -5,6 +5,7 @@ import { PregnancyEpisodeEditor } from "@/components/PregnancyEpisodeEditor";
 import { MeasurementTrend } from "@/components/MeasurementTrend";
 import { presentPatientRisk } from "@/lib/riskPresentation";
 import { usePregnancyFollowUps } from "@/hooks/use-pregnancy-follow-ups";
+import { DeliveryRecords } from "@/components/DeliveryRecords";
 import { pregnancyFollowUpLabel } from "@/lib/pregnancyFollowUps";
 import {
   bpReference,
@@ -945,6 +946,7 @@ export function PregnancyOverview({
           </p>
         )}
       </section>
+      {canEdit && <DeliveryRecords key={`delivery-${patient.id}`} patientId={patient.id} />}
       {editor && (
         <PregnancyEpisodeEditor
           patient={patient}

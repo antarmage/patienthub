@@ -13,6 +13,8 @@ export const babySchema = z.object({
   birthTime: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/).nullable(),
   outcome: z.enum(["Live birth", "Stillbirth"]),
   deathDate: pastDate.nullable(),
+  sex: z.enum(["Female", "Male", "Indeterminate", "Not recorded"]).optional(),
+  birthWeightGrams: z.number().int().min(100).max(10000).nullable().optional(),
 }).strict().superRefine((baby, ctx) => {
   if (baby.deathDate && (baby.outcome !== "Live birth" || baby.deathDate < baby.birthDate)) {
     ctx.addIssue({ code: "custom", path: ["deathDate"], message: "A death date is only for a live-born baby and cannot precede birth" });
@@ -29,6 +31,8 @@ export const deliveryInputSchema = z.object({
   deliveryMode: z.enum(["Vaginal", "Caesarean", "Assisted vaginal", "Other"]),
   babies: z.array(babySchema).min(1).max(10),
   postpartumReviewDate: deliveryDateSchema.nullable(),
+  deliveryPlace: z.string().trim().max(300).optional(),
+  complications: z.string().trim().max(2000).optional(),
 }).strict().superRefine((input, ctx) => {
   if (input.babies.some((baby) => baby.birthDate > input.deliveryDate) ||
       !input.babies.some((baby) => baby.birthDate === input.deliveryDate)) {
@@ -54,8 +58,20 @@ export const deliveryRecordSchema = z.object({
   babies: z.array(babySchema).min(1).max(10),
   postpartumReviewDate: deliveryDateSchema.nullable(),
   version: z.number().int().positive(),
+  deliveryPlace: z.string().optional(),
+  complications: z.string().optional(),
 });
 export type DeliveryRecord = z.infer<typeof deliveryRecordSchema>;
+
+export const pregnancyEndInputSchema = z.object({
+  episodeId: z.number().int().positive(),
+  episodeVersion: z.number().int().positive(),
+  outcome: z.enum(["Miscarriage", "Termination", "Other", "Not recorded"]),
+  endDate: pastDate.nullable(),
+  notes: z.string().trim().max(2000),
+}).strict().refine((value) => value.outcome === "Not recorded" || value.endDate !== null,
+  "Record the date for a known pregnancy outcome");
+export type PregnancyEndInput = z.infer<typeof pregnancyEndInputSchema>;
 
 export function deliveryOutcome(babies: Baby[]): "Live birth" | "Stillbirth" | "Other" {
   return babies.every((baby) => baby.outcome === "Live birth") ? "Live birth" :

@@ -6,7 +6,7 @@ import express from "express";
 import pg from "pg";
 import { z } from "zod/v4";
 import {
-  babyAge, babyUpdateSchema, deliveryInputSchema, deliveryOutcome, isCaesareanProcedure,
+  babyAge, babyUpdateSchema, deliveryInputSchema, deliveryOutcome, isCaesareanProcedure, pregnancyEndInputSchema,
   type Baby, type DeliveryInput, type DeliveryRecord,
 } from "../../../lib/db/src/delivery";
 import { createDeliveryStore, ensureDeliverySchema, registerDeliveries } from "./deliveries";
@@ -44,6 +44,13 @@ test("delivery validation requires actual per-baby outcomes and dates without as
   ]) assert.equal(deliveryInputSchema.safeParse(invalid).success, false, JSON.stringify(invalid));
   assert.ok(deliveryInputSchema.safeParse({ ...input, babies: [{ ...baby, birthDate: "2020-09-30" }, baby] }).success);
   assert.ok(babyUpdateSchema.safeParse({ version: 1, babies: [{ ...baby, deathDate: "2020-10-02" }] }).success);
+  assert.ok(deliveryInputSchema.safeParse({ ...input, deliveryPlace: "Synthetic hospital", complications: "None reported",
+    babies: [{ ...baby, sex: "Female", birthWeightGrams: 2800 }] }).success);
+  for (const patch of [{ sex: "invalid" }, { birthWeightGrams: -1 }, { birthWeightGrams: 10001 }, { birthWeightGrams: 2500.5 }]) {
+    assert.equal(deliveryInputSchema.safeParse({ ...input, babies: [{ ...baby, ...patch }] }).success, false);
+  }
+  assert.ok(pregnancyEndInputSchema.safeParse({ episodeId: 1, episodeVersion: 1, outcome: "Not recorded", endDate: null, notes: "" }).success);
+  assert.equal(pregnancyEndInputSchema.safeParse({ episodeId: 1, episodeVersion: 1, outcome: "Miscarriage", endDate: null, notes: "" }).success, false);
   assert.equal(transitionSchema.safeParse({ status: "completed", completedDate: "2020-10-02", delivery: input }).success, false);
   assert.ok(transitionSchema.safeParse({ status: "completed", completedDate: "2020-10-01", delivery: input }).success);
   for (const name of ["Planned caesarean", "Cesarean", "LSCS", "C-section", "ceaseran"]) assert.ok(isCaesareanProcedure(name));
@@ -69,6 +76,7 @@ test("delivery and baby APIs reject non-clinicians, invalid input and stale writ
   const store: ReturnType<typeof createDeliveryStore> = {
     list: async () => { calls++; return [record]; },
     create: async () => { calls++; return record; },
+    endPregnancy: async () => { calls++; return { episodeId: 1, version: 2 }; },
     update: async () => { calls++; throw Object.assign(new Error("Baby records changed elsewhere"), { status: 409 }); },
   };
   registerDeliveries(app, store, async (req): Promise<AccessActor | null> =>
@@ -99,6 +107,14 @@ test("delivery and baby APIs reject non-clinicians, invalid input and stale writ
     assert.equal((await request("PUT", "clinician", { version: 1, babies: [baby] }, "/bad")).status, 400);
     const stale = await request("PUT", "clinician", { version: 1, babies: [baby] }, "/1");
     assert.equal(stale.status, 409); assert.match(z.object({ error: z.string() }).parse(await stale.json()).error, /changed elsewhere/);
+    const outcomeRequest = (role?: string, body: unknown = { episodeId: 1, episodeVersion: 1, outcome: "Miscarriage", endDate: "2020-10-01", notes: "" }) =>
+      fetch(`http://127.0.0.1:${address.port}/api/patients/1/pregnancy-outcome`, {
+        method: "POST", headers: { "Content-Type": "application/json", ...(role ? { Authorization: role } : {}) }, body: JSON.stringify(body),
+      });
+    assert.equal((await outcomeRequest()).status, 401);
+    for (const role of ["patient", "receptionist", "staff", "admin"]) assert.equal((await outcomeRequest(role)).status, 403);
+    assert.equal((await outcomeRequest("clinician", { outcome: "Other" })).status, 400);
+    assert.equal((await outcomeRequest("clinician")).status, 200);
   } finally { await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())); }
 });
 
@@ -194,6 +210,45 @@ test("Postgres delivery atomically closes pregnancy, preserves history, enrolls 
     assert.equal((await pool.query("SELECT type FROM patients WHERE id=7")).rows[0].type, "Pregnant");
     await assert.rejects(deliveries.create(8, { ...input, episodeId: episodes[7].id, babies: [{ ...baby, birthDate: "2019-12-31" }] }, "doctor"), /pregnancy start/);
     await assert.rejects(deliveries.list(99), /Patient not found/);
+
+    const historical = await pregnancies.save(8, episodes[7].id, {
+      details: { ...episodes[7].details, status: "past", endDate: "2020-10-01" }, records: [], version: episodes[7].version,
+    }, "doctor");
+    const newer = await pregnancies.save(8, null, { details: { ...episodeDetails, number: 2, startDate: "2021-01-01",
+      lmp: "2021-01-01", dueDate: "2021-10-08" }, records: [] }, "doctor");
+    await pool.query(`INSERT INTO pregnancy_follow_up_plans(patient_id,plan,updated_by) VALUES(8,'{"episodeId":999,"dueDate":"2021-05-01"}','doctor')`);
+    const before = (await pool.query("SELECT type,pregnancy_status,next_review FROM patients WHERE id=8")).rows[0];
+    await assert.rejects(deliveries.create(8, { ...input, episodeId: historical.id, episodeVersion: historical.version }, "doctor"), /Historical delivery/);
+    const oldDelivery = await deliveries.create(8, { ...input, episodeId: historical.id, episodeVersion: historical.version,
+      postpartumReviewDate: null, deliveryPlace: "Synthetic hospital", complications: "Not known",
+      babies: [{ ...baby, sex: "Female", birthWeightGrams: 2900 }] }, "doctor");
+    assert.equal(oldDelivery.deliveryPlace, "Synthetic hospital"); assert.equal(oldDelivery.complications, "Not known");
+    assert.equal(oldDelivery.babies[0].birthWeightGrams, 2900);
+    assert.deepEqual((await pool.query("SELECT type,pregnancy_status,next_review FROM patients WHERE id=8")).rows[0], before);
+    assert.equal((await pregnancies.list(8)).find((item) => item.id === newer.id)?.details.status, "current");
+    assert.notEqual((await pool.query("SELECT plan FROM pregnancy_follow_up_plans WHERE patient_id=8")).rows[0].plan, null);
+    const appended = await deliveries.update(8, oldDelivery.id, { version: oldDelivery.version,
+      babies: [...oldDelivery.babies, { ...baby, outcome: "Stillbirth", sex: "Male", birthWeightGrams: 2200 }] }, "doctor");
+    assert.equal(appended.babies.length, 2);
+    const oldEpisode = (await pregnancies.list(8)).find((item) => item.id === historical.id);
+    assert.equal(oldEpisode?.details.fetusCount, 2); assert.equal(oldEpisode?.details.outcome, "Other");
+    await assert.rejects(deliveries.endPregnancy(8, { episodeId: historical.id, episodeVersion: oldEpisode!.version,
+      outcome: "Other", endDate: "2020-10-01", notes: "" }, "doctor"), /already recorded/);
+
+    await assert.rejects(deliveries.endPregnancy(3, { episodeId: episodes[2].id, episodeVersion: 1, outcome: "Not recorded", endDate: null, notes: "" }, "doctor"), /unknown outcome/);
+    await deliveries.endPregnancy(3, { episodeId: episodes[2].id, episodeVersion: 1, outcome: "Miscarriage", endDate: "2020-04-01", notes: "Synthetic outcome note" }, "doctor");
+    assert.equal((await pregnancies.list(3))[0].details.outcome, "Miscarriage");
+    assert.equal((await pool.query("SELECT type FROM patients WHERE id=3")).rows[0].type, "Gynecology");
+    assert.equal((await pool.query("SELECT count(*)::int AS n FROM pregnancy_outcome_events")).rows[0].n, 1);
+    await assert.rejects(deliveries.endPregnancy(3, { episodeId: episodes[2].id, episodeVersion: 1, outcome: "Other", endDate: "2020-04-01", notes: "" }, "doctor"), /changed elsewhere/);
+    const unknownPast = await pregnancies.save(4, episodes[3].id, {
+      details: { ...episodes[3].details, status: "past" }, records: [], version: episodes[3].version,
+    }, "doctor");
+    const currentCare = (await pool.query("SELECT type,pregnancy_status,next_review FROM patients WHERE id=4")).rows[0];
+    await deliveries.endPregnancy(4, { episodeId: unknownPast.id, episodeVersion: unknownPast.version, outcome: "Not recorded", endDate: null, notes: "" }, "doctor");
+    assert.deepEqual((await pool.query("SELECT type,pregnancy_status,next_review FROM patients WHERE id=4")).rows[0], currentCare);
+    assert.match((await pregnancies.list(4))[0].details.notes, /explicitly reviewed: not known/);
+    assert.deepEqual(await deliveries.list(4), [], "unknown outcomes never invent a birth or baby");
   } finally {
     await pool.end();
     await admin.query(`DROP SCHEMA ${schema} CASCADE`);

@@ -2,13 +2,14 @@ import type { Express, Request, Response, NextFunction } from "express";
 import type { Pool, PoolClient } from "pg";
 import type { AccessActor } from "./clinical-access";
 import type { PregnancyEpisode } from "../../../lib/db/src/pregnancy-episodes";
-import { babyUpdateSchema, deliveryInputSchema, deliveryOutcome, type DeliveryInput, type DeliveryRecord } from "../../../lib/db/src/delivery";
+import { babyUpdateSchema, deliveryInputSchema, deliveryOutcome, pregnancyEndInputSchema, type PregnancyEndInput, type DeliveryInput, type DeliveryRecord } from "../../../lib/db/src/delivery";
 import { workflowError } from "./surgery-workflow";
 import { episodeDetailsSchema } from "./pregnancy-episodes";
 
 const select = `SELECT id,patient_id AS "patientId",episode_id AS "episodeId",
   surgery_plan_id AS "surgeryPlanId",delivery_date AS "deliveryDate",delivery_mode AS "deliveryMode",
-  babies,postpartum_review_date AS "postpartumReviewDate",version FROM deliveries`;
+  babies,postpartum_review_date AS "postpartumReviewDate",version,
+  delivery_place AS "deliveryPlace",complications FROM deliveries`;
 
 export async function ensureDeliverySchema(client: Pick<PoolClient, "query">) {
   await client.query(`CREATE TABLE IF NOT EXISTS deliveries (
@@ -22,7 +23,14 @@ export async function ensureDeliverySchema(client: Pick<PoolClient, "query">) {
     created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
     audit jsonb NOT NULL DEFAULT '[]'::jsonb,
     FOREIGN KEY(episode_id,patient_id) REFERENCES pregnancy_episodes(id,patient_id)
-  ); CREATE INDEX IF NOT EXISTS deliveries_patient_idx ON deliveries(patient_id);`);
+  ); CREATE INDEX IF NOT EXISTS deliveries_patient_idx ON deliveries(patient_id);
+  ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS delivery_place text NOT NULL DEFAULT '';
+  ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS complications text NOT NULL DEFAULT '';
+  CREATE TABLE IF NOT EXISTS pregnancy_outcome_events (
+    id serial PRIMARY KEY, episode_id integer NOT NULL REFERENCES pregnancy_episodes(id),
+    recorded_by varchar NOT NULL REFERENCES users(id), recorded_at timestamptz NOT NULL DEFAULT now(),
+    before_details jsonb NOT NULL, after_details jsonb NOT NULL
+  );`);
 }
 
 // The caller holds the patient lock and owns the transaction, including surgery completion.
@@ -32,9 +40,18 @@ export async function recordDelivery(client: PoolClient, patientId: number, inpu
     [input.episodeId, patientId],
   )).rows[0];
   if (!episode) throw workflowError(404, "Pregnancy episode not found for this patient");
-  if (episode.version !== input.episodeVersion || episode.details.status !== "current") {
+  if (episode.version !== input.episodeVersion || surgeryId !== null && episode.details.status !== "current"
+    || (await client.query("SELECT id FROM deliveries WHERE episode_id=$1", [episode.id])).rowCount) {
     throw workflowError(409, "Pregnancy changed or delivery was already recorded. Refresh and review.");
   }
+  const historical = episode.details.status === "past";
+  if (historical && (["Miscarriage", "Termination"].includes(episode.details.outcome)
+    || episode.details.endDate && episode.details.endDate !== input.deliveryDate
+    || episode.details.deliveryMode !== "Not recorded" && episode.details.deliveryMode !== input.deliveryMode
+    || ["Live birth", "Stillbirth"].includes(episode.details.outcome) && episode.details.outcome !== deliveryOutcome(input.babies))) {
+    throw workflowError(409, "Delivery conflicts with the saved pregnancy outcome, delivery mode or end date. Review the pregnancy record first.");
+  }
+  if (historical && input.postpartumReviewDate) throw workflowError(400, "Historical delivery must not replace the current review date");
   if (episode.details.fetusCount && episode.details.fetusCount !== input.babies.length) {
     throw workflowError(409, "Baby count differs from the pregnancy's recorded fetus count. Review the pregnancy record first.");
   }
@@ -50,17 +67,19 @@ export async function recordDelivery(client: PoolClient, patientId: number, inpu
   const previousCare = (await client.query(`SELECT type,pregnancy_status AS "pregnancyStatus",next_review AS "nextReview" FROM patients WHERE id=$1`, [patientId])).rows[0];
   const audit = { at: new Date().toISOString(), by: userId, event: "delivery", previousEpisode: episode.details, previousCare, after: input };
   const saved = (await client.query<DeliveryRecord>(`INSERT INTO deliveries
-    (patient_id,episode_id,surgery_plan_id,delivery_date,delivery_mode,babies,postpartum_review_date,created_by,updated_by,audit)
-    VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$8,jsonb_build_array($9::jsonb)) RETURNING id`,
+    (patient_id,episode_id,surgery_plan_id,delivery_date,delivery_mode,babies,postpartum_review_date,created_by,updated_by,audit,delivery_place,complications)
+    VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$8,jsonb_build_array($9::jsonb),$10,$11) RETURNING id`,
   [patientId, input.episodeId, surgeryId, input.deliveryDate, input.deliveryMode, JSON.stringify(input.babies),
-    input.postpartumReviewDate, userId, JSON.stringify(audit)])).rows[0];
+    input.postpartumReviewDate, userId, JSON.stringify(audit), input.deliveryPlace || "", input.complications || ""])).rows[0];
   await client.query(`UPDATE pregnancy_episodes SET details=$2::jsonb,version=version+1,updated_by=$3,updated_at=$4 WHERE id=$1`,
     [input.episodeId, JSON.stringify(details), userId, new Date().toISOString()]);
-  await client.query(`UPDATE patients SET type='Postpartum',pregnancy_status='completed',next_review=$2 WHERE id=$1`,
+  if (!historical) {
+    await client.query(`UPDATE patients SET type='Postpartum',pregnancy_status='completed',next_review=$2 WHERE id=$1`,
     [patientId, input.postpartumReviewDate]);
   await client.query(`UPDATE pregnancy_follow_up_plans SET plan=NULL,updated_by=$2,updated_at=now(),
     audit=audit || jsonb_build_array(jsonb_build_object('at',now(),'by',$2::text,'previous',plan,'after',NULL,'reason','Delivery recorded'))
     WHERE patient_id=$1 AND plan IS NOT NULL`, [patientId, userId]);
+  }
   return (await client.query<DeliveryRecord>(`${select} WHERE id=$1`, [saved.id])).rows[0];
 }
 
@@ -85,26 +104,61 @@ export function createDeliveryStore(pool: Pool) {
       return (await pool.query<DeliveryRecord>(`${select} WHERE patient_id=$1 ORDER BY delivery_date DESC,id DESC`, [patientId])).rows;
     },
     create: (patientId: number, input: DeliveryInput, userId: string) => transaction(pool, patientId, (client) => recordDelivery(client, patientId, input, userId)),
+    endPregnancy: (patientId: number, input: PregnancyEndInput, userId: string) => transaction(pool, patientId, async (client) => {
+      const episode = (await client.query<PregnancyEpisode>("SELECT id,details,version FROM pregnancy_episodes WHERE id=$1 AND patient_id=$2 FOR UPDATE",
+        [input.episodeId, patientId])).rows[0];
+      if (!episode) throw workflowError(404, "Pregnancy episode not found for this patient");
+      if (episode.version !== input.episodeVersion) throw workflowError(409, "Pregnancy changed elsewhere. Refresh before saving.");
+      if ((await client.query("SELECT id FROM deliveries WHERE episode_id=$1", [episode.id])).rowCount) {
+        throw workflowError(409, "A delivery is already recorded for this pregnancy.");
+      }
+      if (episode.details.status === "current" && input.outcome === "Not recorded") {
+        throw workflowError(400, "An unknown outcome cannot close a current pregnancy.");
+      }
+      if (["Live birth", "Stillbirth"].includes(episode.details.outcome)) throw workflowError(409, "A birth outcome is already saved. Record its delivery details instead.");
+      const details = episodeDetailsSchema.safeParse({ ...episode.details, status: "past", endDate: input.endDate,
+        outcome: input.outcome, deliveryMode: "Not recorded",
+        notes: [episode.details.notes, input.notes, input.outcome === "Not recorded" ? "Outcome explicitly reviewed: not known." : ""].filter(Boolean).join("\n") });
+      if (!details.success) throw workflowError(400, details.error.issues.map((issue) => issue.message).join("; "));
+      await client.query("UPDATE pregnancy_episodes SET details=$2::jsonb,version=version+1,updated_by=$3,updated_at=$4 WHERE id=$1",
+        [episode.id, JSON.stringify(details.data), userId, new Date().toISOString()]);
+      await client.query("INSERT INTO pregnancy_outcome_events(episode_id,recorded_by,before_details,after_details) VALUES($1,$2,$3::jsonb,$4::jsonb)",
+        [episode.id, userId, JSON.stringify(episode.details), JSON.stringify(details.data)]);
+      if (episode.details.status === "current") {
+        await client.query("UPDATE patients SET type='Gynecology',pregnancy_status='completed',next_review=NULL WHERE id=$1", [patientId]);
+        await client.query(`UPDATE pregnancy_follow_up_plans SET plan=NULL,updated_by=$2,updated_at=now(),
+          audit=audit || jsonb_build_array(jsonb_build_object('at',now(),'by',$2::text,'previous',plan,'after',NULL,'reason','Pregnancy outcome recorded'))
+          WHERE patient_id=$1 AND plan IS NOT NULL`, [patientId, userId]);
+      }
+      return { episodeId: episode.id, version: episode.version + 1 };
+    }),
     update: (patientId: number, id: number, input: ReturnType<typeof babyUpdateSchema.parse>, userId: string) =>
       transaction(pool, patientId, async (client) => {
         const current = (await client.query<DeliveryRecord>(`${select} WHERE id=$1 AND patient_id=$2 FOR UPDATE`, [id, patientId])).rows[0];
         if (!current) throw workflowError(404, "Delivery not found for this patient");
         if (input.version !== current.version) throw workflowError(409, "Baby records changed elsewhere. Refresh before saving.");
-        if (input.babies.length !== current.babies.length || input.babies.some((baby, index) =>
-          baby.birthDate !== current.babies[index].birthDate || baby.birthTime !== current.babies[index].birthTime || baby.outcome !== current.babies[index].outcome)) {
-          throw workflowError(400, "Birth date, time, birth outcome and baby order are fixed. Only names and subsequent death dates can be updated here.");
+        if (input.babies.length < current.babies.length || current.babies.some((baby, index) =>
+          baby.birthDate !== input.babies[index].birthDate || baby.birthTime !== input.babies[index].birthTime || baby.outcome !== input.babies[index].outcome)) {
+          throw workflowError(400, "Birth date, time, birth outcome and baby order are fixed for existing babies. You may update names, sex, weight or subsequent death dates, or append a missing baby.");
+        }
+        const episode = (await client.query<PregnancyEpisode>("SELECT details FROM pregnancy_episodes WHERE id=$1 FOR UPDATE", [current.episodeId])).rows[0];
+        if (input.babies.some((baby) => baby.birthDate > current.deliveryDate ||
+          [episode.details.startDate, episode.details.lmp].some((date) => date && baby.birthDate < date))) {
+          throw workflowError(400, "Baby birth must fall between the pregnancy start and recorded delivery date.");
         }
         const audit = { at: new Date().toISOString(), by: userId, event: "baby update", before: current.babies, after: input.babies };
         await client.query(`UPDATE deliveries SET babies=$2::jsonb,version=version+1,updated_by=$3,updated_at=now(),
           audit=audit || jsonb_build_array($4::jsonb) WHERE id=$1`,
         [id, JSON.stringify(input.babies), userId, JSON.stringify(audit)]);
+        await client.query(`UPDATE pregnancy_episodes SET details=$2::jsonb,version=version+1,updated_by=$3,updated_at=$4 WHERE id=$1`,
+          [current.episodeId, JSON.stringify({ ...episode.details, fetusCount: input.babies.length, outcome: deliveryOutcome(input.babies) }), userId, new Date().toISOString()]);
         return (await client.query<DeliveryRecord>(`${select} WHERE id=$1`, [id])).rows[0];
       }),
   };
 }
 
 export function registerDeliveries(app: Express, store: ReturnType<typeof createDeliveryStore>, authenticate: (req: Request, res: Response) => Promise<AccessActor | null>) {
-  const handler = (action: "list" | "create" | "update") => async (req: Request, res: Response, next: NextFunction) => {
+  const handler = (action: "list" | "create" | "update" | "outcome") => async (req: Request, res: Response, next: NextFunction) => {
     res.setHeader("Cache-Control", "private, no-store");
     try {
       const actor = await authenticate(req, res);
@@ -116,6 +170,11 @@ export function registerDeliveries(app: Express, store: ReturnType<typeof create
         res.status(400).json({ error: "Invalid patient or delivery ID" }); return;
       }
       if (action === "list") { res.json(await store.list(patientId)); return; }
+      if (action === "outcome") {
+        const input = pregnancyEndInputSchema.safeParse(req.body);
+        if (!input.success) { res.status(400).json({ error: input.error.issues.map((issue) => issue.message).join("; ") }); return; }
+        res.json(await store.endPregnancy(patientId, input.data, actor.userId)); return;
+      }
       if (action === "create") {
         const input = deliveryInputSchema.safeParse(req.body);
         if (!input.success) { res.status(400).json({ error: input.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ") }); return; }
@@ -133,4 +192,5 @@ export function registerDeliveries(app: Express, store: ReturnType<typeof create
   app.get("/api/patients/:id/deliveries", handler("list"));
   app.post("/api/patients/:id/deliveries", handler("create"));
   app.put("/api/patients/:id/deliveries/:deliveryId", handler("update"));
+  app.post("/api/patients/:id/pregnancy-outcome", handler("outcome"));
 }

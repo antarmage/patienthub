@@ -9,9 +9,25 @@ const scenarios = {
   allergies: "allergy information",
   notes: "clinical notes",
   documents: "documents",
+  deliveries: "delivery and baby records",
 };
 
 export type RecordScenario = keyof typeof scenarios;
+
+export function EmptyCradleIllustration({ decorative = false }: { decorative?: boolean }) {
+  const id = useId();
+  return <svg viewBox="0 0 170 150" width="100%" className="block h-auto w-full max-w-[170px]" xmlns="http://www.w3.org/2000/svg"
+    role={decorative ? undefined : "img"} aria-hidden={decorative ? true : undefined}
+    aria-labelledby={decorative ? undefined : `${id}-cradle-title`} focusable="false" data-illustration-part="empty-cradle">
+    {!decorative && <title id={`${id}-cradle-title`}>Empty cradle drawn with a dashed outline</title>}
+    <path d="M20 66 C20 32 62 22 86 32 L86 66 Z" stroke="#2D6A5F" strokeWidth="2" strokeDasharray="5 4" fill="#fff" />
+    <path d="M20 66 H150 C150 106 118 126 85 126 C52 126 20 106 20 66 Z" stroke="#2D6A5F" strokeWidth="2" strokeDasharray="5 4" fill="#fff" />
+    <path d="M30 134 Q85 150 140 134" fill="none" stroke="#2D6A5F" strokeWidth="2" strokeDasharray="5 4" />
+    <path d="M40 84 H130 M46 98 H124" stroke="#BFD3CB" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="128" cy="30" r="16" fill="#fff" stroke="#2D6A5F" strokeWidth="2" strokeDasharray="4 3" />
+    <path d="M128 22 V38 M120 30 H136" stroke="#2D6A5F" strokeWidth="2.5" strokeLinecap="round" />
+  </svg>;
+}
 
 export function RecordScenarioIllustration({ scenario, pregnancy = false, decorative = false, className = "" }: {
   scenario: RecordScenario;
