@@ -13,7 +13,6 @@ import {
     User,
     Search,
     CheckCircle2,
-    Stethoscope,
     CreditCard,
     FileText,
     Copy,
@@ -32,6 +31,8 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { BookingPatientAvatar } from "@/components/BookingPatientAvatar";
+import { BookingServiceSelection } from "@/components/BookingServiceSelection";
+import type { BookingService } from "@/lib/bookingServices";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { getArrivalState, type ArrivalState } from "@/components/ReceptionDashboard";
@@ -174,7 +175,9 @@ export default function NewBooking() {
         .filter((patient) => !dismissedMatchIds.includes(patient.id)), [patientsData, newPatient.phone, dismissedMatchIds]);
     const openNewPatient = () => { setPatientType("new"); setSelectedPatientId(null); };
 
-    const { data: servicesData } = useQuery({
+    const { data: servicesData, isPending: servicesLoading, isError: servicesError, refetch: retryServices } = useQuery<Array<{
+        id: number; name: string; category: string; description?: string | null; price: number; isActive?: boolean;
+    }>>({
         queryKey: ['/api/billing-catalog'],
         queryFn: async () => {
             const res = await fetch('/api/billing-catalog');
@@ -192,23 +195,9 @@ export default function NewBooking() {
         }
     });
 
-    const services = useMemo(() => {
-        if (!servicesData) return [];
-        const active = servicesData.filter((s: any) => s.isActive !== false);
-        const visitItems = active.filter((s: any) => /consult|scan|usg|ultra/i.test(s.category || ''));
-        const selected = patientsData?.find((patient: any) => patient.id === selectedPatientId);
-        const pregnancyFirst = patientType === "new"
-            ? newPatient.careArea === "Pregnancy"
-            : selected && bookingPatientCategory(selected) === "Pregnant";
-        return [...(visitItems.length > 0 ? visitItems : active)]
-            .sort((a, b) => pregnancyFirst ? Number(/pregnan|antenatal|obstetric/i.test(`${b.name} ${b.category}`)) - Number(/pregnan|antenatal|obstetric/i.test(`${a.name} ${a.category}`)) : 0)
-            .map((s: any) => ({
-                id: String(s.id),
-                name: s.name,
-                price: Number(s.price) || 0,
-                duration: '',
-            }));
-    }, [servicesData, patientsData, selectedPatientId, patientType, newPatient.careArea]);
+    const services = useMemo<BookingService[]>(() => (servicesData || [])
+        .filter((item) => item.isActive !== false)
+        .map((item) => ({ ...item, id: String(item.id), price: Number(item.price) || 0 })), [servicesData]);
 
     const selectedPatient = useMemo(
         () => patientsData?.find((patient: any) => patient.id === selectedPatientId) ?? null,
@@ -586,35 +575,12 @@ export default function NewBooking() {
 
                     {step === 2 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
-                            <div className="space-y-1">
-                                <h2 className="text-2xl font-serif font-bold text-saivie-plum">Service</h2>
-                                <p className="text-saivie-plum">What type of appointment is this?</p>
-                            </div>
-
-                            <div className="space-y-4">
-                                <Label>Select Service</Label>
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                                    {services.map((s: any) => (
-                                        <button
-                                            type="button"
-                                            key={s.id}
-                                            onClick={() => setSelectedService(s.id)}
-                                            aria-pressed={selectedService === s.id}
-                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saivie-teal focus-visible:ring-offset-2 ${selectedService === s.id ? 'border-saivie-teal bg-saivie-surface-muted/30' : 'border-saivie-border bg-saivie-ivory hover:border-saivie-border'}`}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className={`p-2 rounded-lg ${selectedService === s.id ? 'bg-saivie-sage text-saivie-teal' : 'bg-saivie-sage text-saivie-plum'}`}>
-                                                    <Stethoscope className="w-5 h-5" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-saivie-plum text-sm">{s.name}</p>
-                                                </div>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
+                            <BookingServiceSelection
+                                key={patientType === "new" ? newPatient.careArea : selectedPatientId}
+                                services={services} selectedId={selectedService} onSelect={setSelectedService}
+                                careArea={patientType === "new" ? newPatient.careArea : selectedPatient ? bookingPatientCategory(selectedPatient) : ""}
+                                loading={servicesLoading} error={servicesError} onRetry={() => void retryServices()}
+                            />
                         </div>
                     )}
 
@@ -857,7 +823,7 @@ export default function NewBooking() {
                             <ol>
                                 {[
                                     { label: "Patient", value: hasPatient ? "Selected" : "" },
-                                    { label: "Service", value: services.find((service: any) => service.id === selectedService)?.name || "" },
+                                    { label: "Service", value: services.find((service) => service.id === selectedService)?.name || (step === 2 ? "In progress" : "") },
                                     { label: "Doctor", value: providers.find((provider: any) => provider.id === selectedProvider)?.name || "" },
                                     { label: "Visit", value: step >= 4 || visitModeConfirmed ? ({ "in-clinic": "In clinic", "home-visit": "Home visit", telemedicine: "Online" }[visitMode] || visitMode) : "" },
                                     { label: "Schedule", value: date && selectedTime ? `${date.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} · ${formatAppointmentTime(selectedTime)}` : "" },
