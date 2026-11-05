@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { authenticatedFetch, receptionRequest } from "@/lib/authenticatedFetch";
 import type { ReceptionPatient } from "@/lib/receptionTimeline";
 import { receptionVisitDates } from "@/lib/receptionVisitDates";
+import { receptionVitals } from "@/lib/receptionVitals";
 import { hasHistoryValue, receptionPatientHistory } from "@/lib/receptionPatientHistory";
 import { calendarDate } from "@/lib/calendarDates";
 import { useToast } from "@/hooks/use-toast";
@@ -173,7 +174,7 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
                 <h4 className={headingClass}>{object(visit.prescriptions).source === "receptionist-paper-transcription" ? "Paper prescription transcription" : text(visit.visitType) || "Consultation"}</h4>
                 <p className="text-xs text-muted-foreground">{appointmentLabel(visit.appointment, today)}</p>
                 {visit.appointmentOnly ? <p className="text-xs text-muted-foreground">Appointment recorded; consultation note unavailable.</p> : <PrescriptionPreview patient={data.detail} visit={visit} />}
-                <HistoryFields fields={{ Complaint: visit.subjective || visit.chiefComplaint, History: consultationHistoryText(object(visit.examination).consultationHistory), Examination: visit.objective || object(visit.examination).findings || visit.examination, Diagnosis: visit.diagnosis, Assessment: visit.assessment, Vitals: visit.vitals }} />
+                <HistoryFields fields={{ Complaint: visit.subjective || visit.chiefComplaint, History: consultationHistoryText(object(visit.examination).consultationHistory), Examination: visit.objective || object(visit.examination).findings || visit.examination, Diagnosis: visit.diagnosis, Assessment: visit.assessment, Vitals: receptionVitals(visit.vitals) }} />
                 {visit.appointment && <HistoryFields fields={{ "Appointment notes": visit.appointment.notes, "Follow-up date": visit.appointment.followUpDate, "Payment status": visit.appointment.paymentStatus, "Billing amount": visit.appointment.billingAmount }} />}
                 <details className="rounded-lg border p-3"><summary className="cursor-pointer font-medium">Prescription & follow-up</summary><div className="mt-3"><RecordedDetails value={{ medicines: object(visit.prescriptions).medicines || (Array.isArray(visit.prescriptions) ? visit.prescriptions : null), advice: visit.planNotes, followUp: visit.followUpPlan, tests: visit.labsOrdered }} /></div></details>
               </article>)}

@@ -165,6 +165,8 @@ This toggle never grants authoring: generic patient/appointment field restrictio
 
 Both methods return `{appointmentId, patientId, vitals, lmp}`. GET contains only that appointment's whitelisted measurement payload and its patient-reported LMP, never patient history, clinical notes, previous-visit measurements, or clinician-confirmed pregnancy dates. It remains available when clinical read access is off.
 
+The authorized patient visit-history and appointment-history responses additionally resolve vitals `recordedBy` to `recordedByName` (display name, then username; null for an unavailable user). The receptionist clinical details view shows this name instead of the internal user ID and formats `recordedAt` in IST. Stored audit IDs and timestamps remain unchanged; this does not widen access to clinical history or user records.
+
 POST accepts the strict body `{vitals: {bp?, pulse?, temp?, spo2?, weight?, height?, bmi?, recordedAt?} | null, lmp: string | null}`. An object must contain at least one measurement. Numeric fields accept finite numbers or numeric decimal strings and persist as numbers:
 
 - `bp`: `systolic/diastolic` string; systolic 50–260, diastolic 30–180, systolic greater than diastolic.

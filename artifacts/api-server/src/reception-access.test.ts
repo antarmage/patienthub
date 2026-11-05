@@ -5,7 +5,7 @@ import { createServer } from "node:http";
 import { registerClinicalAccess, type AccessActor } from "./clinical-access";
 import {
   assertPreconsult, prepareReceptionVitals, receptionMeasurements,
-  receptionVitalsSchema, registerReceptionAccessRoutes,
+  receptionVitalsSchema, registerReceptionAccessRoutes, withVitalsRecorderNames,
 } from "./reception-access";
 
 const actors: Record<string, AccessActor> = {
@@ -195,4 +195,29 @@ test("reception temperature accepts Fahrenheit decimals and exact bounds without
     assert.ok(result.success);
     assert.equal(result.data.vitals?.temp, Number(temp));
   }
+});
+
+test("clinical history resolves vitals recorder names without changing stored audit fields", async () => {
+  const vitals = { bp: "100/60", recordedBy: "desk", recordedAt: "2026-11-05T12:11:59.303Z" };
+  const records = [{ vitals }, { vitals }, { vitals: null }];
+  const calls: string[] = [];
+  const result = await withVitalsRecorderNames(records, async (id) => {
+    calls.push(id);
+    return { displayName: " Reception staff ", username: "desk-login", password: "PRIVATE" };
+  });
+  assert.deepEqual(calls, ["desk"]);
+  assert.deepEqual(result[0].vitals, { ...vitals, recordedByName: "Reception staff" });
+  assert.deepEqual(result[1].vitals, result[0].vitals);
+  assert.equal(result[2].vitals, null);
+  assert.equal("recordedByName" in vitals, false);
+  assert.doesNotMatch(JSON.stringify(result), /PRIVATE|password|desk-login/);
+});
+
+test("vitals recorder lookup handles missing names and propagates database errors", async () => {
+  const records = [{ vitals: { recordedBy: "desk" } }];
+  const [fallback] = await withVitalsRecorderNames(records, async () => ({ displayName: " ", username: "desk-login" }));
+  assert.deepEqual(fallback.vitals, { recordedBy: "desk", recordedByName: "desk-login" });
+  const [missing] = await withVitalsRecorderNames(records, async () => undefined);
+  assert.deepEqual(missing.vitals, { recordedBy: "desk", recordedByName: null });
+  await assert.rejects(withVitalsRecorderNames(records, async () => { throw new Error("Database unavailable"); }), /Database unavailable/);
 });

@@ -44,6 +44,21 @@ export type ReceptionVitalsRecord = {
 };
 export type ReportedLmp = { value: string | null; source: "patient-reported"; recordedAt: string; recordedBy: string };
 
+export async function withVitalsRecorderNames<T extends { vitals?: unknown }>(
+  records: T[],
+  getUser: (id: string) => Promise<{ displayName: string | null; username: string } | undefined>,
+) {
+  const names = new Map<string, Promise<string | null>>();
+  return Promise.all(records.map(async (record) => {
+    if (!record.vitals || typeof record.vitals !== "object" || Array.isArray(record.vitals)) return record;
+    const vitals = record.vitals as Record<string, unknown>;
+    if (typeof vitals.recordedBy !== "string" || !vitals.recordedBy) return record;
+    const id = vitals.recordedBy;
+    if (!names.has(id)) names.set(id, getUser(id).then((user) => user?.displayName?.trim() || user?.username || null));
+    return { ...record, vitals: { ...vitals, recordedByName: await names.get(id) } };
+  }));
+}
+
 export function receptionMeasurements(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const keys = new Set(["bp", "pulse", "temp", "spo2", "weight", "height", "bmi", "recordedAt", "recordedBy"]);

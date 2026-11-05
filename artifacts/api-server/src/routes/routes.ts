@@ -8,7 +8,7 @@ import { storage } from "../storage";
 import { registerIcdRoutes, invoiceDiagnoses } from "../icd";
 import { registerBillingTemplateRoutes } from "../billing-templates";
 import { readAppointmentRange } from "../appointment-range";
-import { registerReceptionAccessRoutes } from "../reception-access";
+import { registerReceptionAccessRoutes, withVitalsRecorderNames } from "../reception-access";
 import { registerReceptionDetailsEditRoutes } from "../reception-details-edit";
 import { registerOnlineConsultationRoutes } from "../online-consultations";
 import { onlineStore } from "../online-consultation-store";
@@ -2130,14 +2130,14 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     const visits = await storage.getVisitHistory(id);
-    res.json(visits);
+    res.json(await withVitalsRecorderNames(visits, (userId) => storage.getUser(userId)));
   });
 
   app.get("/api/patients/:id/appointment-history", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
     if (!await storage.getPatient(id)) return res.status(404).json({ error: "Patient not found" });
-    res.json(await storage.getAppointmentsByPatient(id));
+    res.json(await withVitalsRecorderNames(await storage.getAppointmentsByPatient(id), (userId) => storage.getUser(userId)));
   });
 
   app.post("/api/patients/:id/visit-history", async (req, res) => {
