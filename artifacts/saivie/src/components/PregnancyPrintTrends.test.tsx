@@ -137,5 +137,8 @@ test("repeat questionnaire shows follow-up subjects, preserves baseline and does
   for (const text of ["Menarche", "Partners", "How many pregnancies", "C-sections"]) assert.ok(!html.includes(text), text);
   assert.equal((html.match(/<select /g) || []).length, 5);
   assert.equal((html.match(/<option value="" selected="">/g) || []).length, 5);
+  assert.ok(html.includes('data-testid="pregnancy-journey-card"'));
+  assert.ok(html.indexOf('data-testid="pregnancy-journey-card"') < html.indexOf("<form"));
+  assert.ok(html.includes("Your care team can help confirm your pregnancy dates."));
   client.clear();
 });

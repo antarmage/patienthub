@@ -41,6 +41,41 @@ test("same-day ordering never counts later appointments or ID order as an earlie
   assert.equal(context([{ ...earlier, date: appointment.date, time: "12:00", vitals: { weight: 90, bp: "150/100" } }, appointment]).trends.weight.length, 1);
 });
 
+test("saved current pregnancy establishes follow-up despite missing or stale pre-build intake flags", () => {
+  const selected = { ...appointment, type: "Consultation" };
+  const unlinked = { ...episode, records: [] };
+  for (const history of [{}, { onboarding: { pregnancies: { currentStatus: "No" } } }]) {
+    const result = pregnancyVisitContext({ id: 1, history }, selected, [earlier, selected], [], [], [unlinked]);
+    assert.equal(result.pregnancy, true);
+    assert.equal(result.repeat, true);
+    assert.equal(result.previousAppointmentCount, 1);
+    assert.equal(result.episodeId, episode.id);
+    assert.equal(pregnancyVisitContext({ id: 1, history }, earlier, [earlier, selected], [], [], [unlinked]).repeat, false);
+  }
+  assert.equal(pregnancyVisitContext({ id: 1, pregnancyStatus: "completed" }, selected, [earlier, selected], [], [], [unlinked]).repeat, false);
+});
+
+test("legacy reception LMP supports repeat surveys without rewriting clinical dates or requiring a new intake", () => {
+  const legacyPatient = { ...patient, lmp: null };
+  const reported = { ...earlier, patientReportedLmp: { value: patient.lmp, source: "patient-reported" } };
+  const result = pregnancyVisitContext(legacyPatient, appointment, [reported, appointment], [], [], []);
+  assert.equal(result.repeat, true);
+  assert.equal(result.previousAppointmentCount, 1);
+  assert.equal(result.weightReference?.lmp, patient.lmp);
+  assert.match(result.weightReference?.datingSource || "", /appointments\/consultations/);
+  assert.equal(legacyPatient.lmp, null);
+  for (const row of [
+    { ...reported, patientId: 2 },
+    { ...reported, status: "Cancelled" },
+    { ...reported, date: "2026-07-01" },
+    { ...reported, date: appointment.date, time: "12:00" },
+    { ...reported, date: appointment.date, time: "" },
+    { ...reported, patientReportedLmp: { value: "invalid" } },
+  ]) assert.equal(pregnancyVisitContext(legacyPatient, appointment, [row, appointment], [], [], []).repeat, false);
+  const conflicting = { ...appointment, patientReportedLmp: { value: "2026-03-01" } };
+  assert.equal(pregnancyVisitContext(legacyPatient, conflicting, [reported, conflicting], [], [], []).repeat, false);
+});
+
 test("first or ambiguous pregnancy keeps full intake; established patient-reported dating supports follow-ups", () => {
   assert.equal(context([earlier, appointment], []).repeat, true);
   assert.equal(pregnancyVisitContext({ ...patient, lmp: null }, appointment, [earlier, appointment], [], [], []).repeat, false);
@@ -207,7 +242,7 @@ test("PostgreSQL follow-ups preserve baseline and other visits and roll back app
   try {
     await pool.query(`CREATE TABLE patients(id integer PRIMARY KEY, history jsonb);
       CREATE TABLE appointments(id integer PRIMARY KEY,patient_id integer,chief_complaint text,
-        date text,time text,type text,visit_type text,status text,vitals jsonb);
+        date text,time text,type text,visit_type text,status text,vitals jsonb,patient_reported_lmp jsonb);
       CREATE TABLE visit_history(id integer,patient_id integer,appointment_id integer,date text,visit_type text,vitals jsonb,prescriptions jsonb);
       CREATE TABLE lab_results(id integer,patient_id integer,test_name text,date text,value real,unit text);
       CREATE TABLE bp_logs(patient_id integer,date text,systolic integer,diastolic integer);

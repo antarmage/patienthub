@@ -6,6 +6,7 @@ import { onboardingFetch } from "@/lib/onboardingSession";
 import { readApiResponse } from "@/lib/authenticatedFetch";
 import { getPrintBrandStyles } from "@/lib/brand";
 import { pregnancyPrintHtml } from "./PregnancyPrintTrends";
+import { PregnancyJourneyCard } from "./PregnancyJourneyCard";
 import { followUpLabels, pregnancyFollowUpSchema, type PregnancyFollowUp, type PregnancyVisitContext } from "../../../../lib/db/src/pregnancy-followup";
 
 const choices: Partial<Record<keyof PregnancyFollowUp, readonly string[]>> = {
@@ -45,6 +46,7 @@ export function PregnancyFollowUpSurvey({ appointmentId, name, context }: { appo
   return <main className="min-h-screen bg-saivie-ivory px-4 py-8 text-saivie-plum"><section className="mx-auto max-w-2xl rounded-2xl border border-saivie-border bg-white p-5 sm:p-8">
     <p className="text-xs font-semibold uppercase text-saivie-teal">{context.label} · Follow-up visit</p>
     <h1 className="mt-2 text-2xl font-semibold">{saved ? "Your follow-up has been shared" : `Welcome back, ${name}`}</h1>
+    <PregnancyJourneyCard context={context} />
     {saved ? <><p className="my-4">Your original history is preserved. These updates are saved for this appointment.</p><Button onClick={print}>Print onboarding survey</Button><Button variant="outline" className="ml-2" onClick={() => navigate("/")}>Done</Button>{printError && <p role="alert">Please allow pop-ups to print your survey.</p>}</> :
       <form className="mt-5 space-y-5" onSubmit={(event) => { event.preventDefault(); submission.mutate(); }}>
         <p className="text-sm">Tell your doctor what has changed since your last pregnancy visit. Your previous medical and pregnancy history will not be replaced.</p>

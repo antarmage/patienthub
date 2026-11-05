@@ -16,6 +16,8 @@ const prenatal = (row: Row) => /\b(pregnant|pregnancy|antenatal|anc|obstetric)\b
   && !/\b(postpartum|postnatal|non[- ]?pregnant|not pregnant|mtp|termination|miscarriage)\b/i.test(`${row.type || ""} ${row.visitType || ""}`);
 const linked = (episode: PregnancyEpisode, kind: string, id: unknown) =>
   id != null && episode.records.some((link) => link.kind === kind && String(link.id) === String(id));
+const recordedLmp = (row: Row) => date(object(row.vitals).lmp)
+  || date(object(row.patientReportedLmp).value);
 const timeOf = (value: unknown) => {
   const parts = typeof value === "string" ? value.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/) : null;
   return parts && Number(parts[1]) < 24 && Number(parts[2]) < 60 && Number(parts[3] || 0) < 60
@@ -35,21 +37,27 @@ export function pregnancyVisitContext(patient: Row, appointment: Row, appointmen
   const profilePregnant = !/^(completed|aborted|not_continuing)$/i.test(String(patient.pregnancyStatus || ""))
     && object(intake.pregnancies).currentStatus !== "No"
     && (prenatal(patient) || /^(pregnant|active)$/i.test(String(patient.pregnancyStatus || "")) || object(intake.pregnancies).currentStatus === "Yes");
-  const appointmentLmp = date(object(appointment.vitals).lmp);
-  const episode = explicit || (profilePregnant && current && (!appointmentLmp || !current.details.lmp || appointmentLmp === current.details.lmp) ? current : undefined);
+  const appointmentLmp = recordedLmp(appointment);
+  const appointmentTime = timeOf(appointment.time);
+  const profileEnded = /^(completed|aborted|not_continuing)$/i.test(String(patient.pregnancyStatus || ""));
+  const episode = explicit || (!profileEnded && current && (!appointmentLmp || !current.details.lmp || appointmentLmp === current.details.lmp) ? current : undefined);
+  const recordedLmps = [...new Set([appointment, ...appointments, ...visits]
+    .filter((row) => !cancelled(row) && !!date(row.date) && (String(row.date) < asOf || row === appointment
+      || row.date === asOf && timeOf(row.time) !== null && appointmentTime !== null && timeOf(row.time)! < appointmentTime))
+    .map(recordedLmp).filter((value): value is string => value !== null))];
   const dueDateStart = episode?.details.dueDate ? new Date(Date.parse(episode.details.dueDate) - 280 * 86400000).toISOString().slice(0, 10) : null;
   const start = episode?.details.lmp || episode?.details.startDate || dueDateStart || (!episodes.length && profilePregnant
-    ? date(patient.lmp) || date(object(intake.cycle).lastPeriod) || date(object(history.pregnancyDatingEstimate).estimatedLmp) : null);
+    ? date(patient.lmp) || date(object(intake.cycle).lastPeriod) || date(object(history.pregnancyDatingEstimate).estimatedLmp)
+      || (recordedLmps.length === 1 ? recordedLmps[0] : null) : null);
   const end = episode?.details.endDate || (start ? new Date(Date.parse(start) + 308 * 86400000).toISOString().slice(0, 10) : null);
   const inWindow = (row: Row) => !!date(row.date) && String(row.date) <= asOf && (!start || String(row.date) >= start) && (!end || String(row.date) <= end);
   const claimedElsewhere = (kind: string, id: unknown) => episodes.some((other) => other.id !== episode?.id && linked(other, kind, id));
   const overlapping = (row: Row) => episodes.some((other) => other.id !== episode?.id
     && (other.details.lmp || other.details.startDate) && other.details.endDate
     && String(row.date) >= String(other.details.lmp || other.details.startDate) && String(row.date) <= other.details.endDate!);
-  const appointmentTime = timeOf(appointment.time);
   const notLater = (row: Row) => String(row.date) < asOf || row.id === appointment.id
     || row.date === asOf && timeOf(row.time) !== null && appointmentTime !== null && timeOf(row.time)! <= appointmentTime;
-  const conflictingLmp = (row: Row) => !!start && !!date(object(row.vitals).lmp) && date(object(row.vitals).lmp) !== start;
+  const conflictingLmp = (row: Row) => !!start && !!recordedLmp(row) && recordedLmp(row) !== start;
   const matches = (row: Row, kind: "appointment" | "visit") => {
     if (!inWindow(row) || claimedElsewhere(kind, row.id)) return false;
     if (episode && linked(episode, kind, row.id)) return true;
@@ -57,7 +65,7 @@ export function pregnancyVisitContext(patient: Row, appointment: Row, appointmen
     if (kind === "appointment" && visits.some((visit) => visit.appointmentId === row.id && conflictingLmp(visit))) return false;
     return !!start && !overlapping(row) && !conflictingLmp(row);
   };
-  const pregnancy = !!explicit || !!start && matches(appointment, "appointment") && (profilePregnant || prenatal(appointment));
+  const pregnancy = !!explicit || !!start && matches(appointment, "appointment") && (episode?.details.status === "current" || profilePregnant || prenatal(appointment));
   const selectedAppointments = pregnancy ? appointments.filter((row) => !cancelled(row) && notLater(row) && (matches(row, "appointment") || row.id === appointment.id)) : [];
   const selectedIds = new Set(selectedAppointments.map((row) => row.id));
   const selectedVisits = pregnancy ? visits.filter((row) => inWindow(row) && !claimedElsewhere("visit", row.id)
@@ -110,7 +118,7 @@ export function pregnancyVisitContext(patient: Row, appointment: Row, appointmen
       : ["Ultrasound", "Clinical assessment"].includes(weightReference.datingBasis) && !!date(weightReference.dueDate);
     if (!hasDating) {
       const recordedLmps = [...new Set([...selectedAppointments, ...selectedVisits]
-        .map((row) => date(object(row.vitals).lmp)).filter((value): value is string => value !== null))];
+        .map(recordedLmp).filter((value): value is string => value !== null))];
       const fallbackLmp = date(episode?.details.lmp) || (recordedLmps.length === 1 ? recordedLmps[0] : null)
         || (!episodes.length && profilePregnant ? date(patient.lmp) || date(object(intake.cycle).lastPeriod) : null);
       if (fallbackLmp && recordedLmps.every((lmp) => lmp === fallbackLmp)) {
@@ -139,7 +147,7 @@ export function createPregnancyFollowUpStore(pool: Pool) {
     async context(patient: Row, appointment: Row) {
       const patientId = Number(patient.id);
       const [appointments, visits, labs, episodes, bp, weight] = await Promise.all([
-        pool.query<Row>('SELECT id,patient_id AS "patientId",date::text,time,type,visit_type AS "visitType",status,vitals FROM appointments WHERE patient_id=$1', [patientId]),
+        pool.query<Row>('SELECT id,patient_id AS "patientId",date::text,time,type,visit_type AS "visitType",status,vitals,patient_reported_lmp AS "patientReportedLmp" FROM appointments WHERE patient_id=$1', [patientId]),
         pool.query<Row>('SELECT id,patient_id AS "patientId",appointment_id AS "appointmentId",date::text,visit_type AS "visitType",vitals,prescriptions FROM visit_history WHERE patient_id=$1', [patientId]),
         pool.query<Row>('SELECT id,patient_id AS "patientId",test_name AS "testName",date::text,value,unit FROM lab_results WHERE patient_id=$1', [patientId]),
         createPregnancyEpisodeStore(pool).list(patientId),
