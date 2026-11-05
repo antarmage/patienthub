@@ -95,6 +95,17 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
         assert.ok(html.includes("Thyroid profile"));
         assert.ok(html.includes("Not fasting"));
         assert.ok(html.includes("Allergy: Latex"));
+
+        printPatientSummary(patient, null, null, {
+            pregnancy: true, repeat: true, episodeId: 2, label: "Pregnancy 2", asOf: "2026-05-01",
+            previousAppointmentCount: 1,
+            trends: { bp: [{ date: "2026-04-01", value: 120, secondary: 80, source: "Appointment" }], weight: [], hb: [], sugar: [] },
+            answers: { visitReason: "Current concern", concern: "New nausea", foodHabits: "Small meals",
+                vomitingChange: "Increased", eatingDrinking: "Able to eat and drink", investigations: "Some completed",
+                reports: "Done, awaiting reports", investigationDetails: "Blood tests completed", changes: "" },
+        });
+        for (const text of ["Pregnancy measurements", "Pregnancy 2", "2026-04-01", "120 / 80", "New nausea", "Small meals",
+            "Vomiting since the last visit", "Original intake: Pre-visit survey"]) assert.ok(html.includes(text), text);
     } finally {
         if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
         else Reflect.deleteProperty(globalThis, "window");

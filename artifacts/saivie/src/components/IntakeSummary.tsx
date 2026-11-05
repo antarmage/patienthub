@@ -10,6 +10,10 @@ import { HpvPrintBadge } from "@/components/HpvPrintBadge";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { labSurveyFlags, labSurveyRows, readLabSurvey } from "@/lib/labSurvey";
+import { useQuery } from "@tanstack/react-query";
+import { receptionRequest } from "@/lib/authenticatedFetch";
+import { pregnancyVisitContextSchema, type PregnancyVisitContext } from "../../../../lib/db/src/pregnancy-followup";
+import { pregnancyPrintHtml, PregnancyFollowUpPrint, PregnancyPrintTrends } from "./PregnancyPrintTrends";
 
 type WeightLog = { weight: number; unit: string; date: string; week: number | null };
 type BpLog = { systolic: number; diastolic: number; pulse: number | null; date: string };
@@ -313,7 +317,7 @@ const sectionIcon = (title: string) => {
     return ICONS.notes;
 };
 
-function printSummary(s: Summary) {
+function printSummary(s: Summary, pregnancyContext: PregnancyVisitContext | null = null) {
     const toneColor = (t?: string) => (t === "alert" ? "#b4234a" : t === "watch" ? "#a16207" : "var(--saivie-plum)");
     const levelStyle: Record<Insight["level"], string> = {
         alert: "background:#fdecef;border-color:#f3c0cc;color:#8f1d3d",
@@ -424,6 +428,7 @@ ${reason || presenting ? `<div class="band rose reason"><h3>${ICONS.chat}Present
 ${sectionCards ? `<div class="cards">${sectionCards}</div>` : ""}
 
 ${s.bpRows.length || s.weightRows.length ? `<div class="cards">${s.bpRows.length ? card("Patient-recorded BP", table(["Date", "BP (mmHg)", "Pulse"], s.bpRows), "sage") : ""}${s.weightRows.length ? card("Patient-recorded weight", table(["Date", "Weight"], s.weightRows), "rose") : ""}</div>` : ""}
+${pregnancyPrintHtml(pregnancyContext)}
 
 <div class="notes"><header><span class="ico">${ICONS.notes}</span><h3>Additional notes</h3></header><div class="line"></div><div class="line"></div><div class="line"></div></div>
 
@@ -448,23 +453,46 @@ const insightClass: Record<Insight["level"], string> = {
     info: "border-saivie-border bg-saivie-surface-muted text-saivie-teal",
 };
 
-export function printPatientSummary(patient: any, checkInVitals?: CheckInVitals | null, hpvClinicStatus?: HpvProtection | null) {
-    if (!printSummary(buildSummary(patient, [], [], checkInVitals, hpvClinicStatus))) alert("Please allow pop-ups to print the patient summary.");
+export function printPatientSummary(patient: any, checkInVitals?: CheckInVitals | null, hpvClinicStatus?: HpvProtection | null, pregnancyContext: PregnancyVisitContext | null = null) {
+    if (!printSummary(summaryForAppointment(buildSummary(patient, [], [], checkInVitals, hpvClinicStatus), pregnancyContext), pregnancyContext)) alert("Please allow pop-ups to print the patient summary.");
 }
 
-export function IntakeSummaryActions({ patient, weightLogs, bpLogs, checkInVitals, hpvClinicStatus }: { patient: any; weightLogs: WeightLog[]; bpLogs: BpLog[]; checkInVitals?: CheckInVitals | null; hpvClinicStatus?: HpvProtection | null }) {
+function summaryForAppointment(summary: Summary, context: PregnancyVisitContext | null): Summary {
+    if (!context?.pregnancy) return summary;
+    return { ...summary, visitDate: fmtDate(context.asOf), bpRows: [], weightRows: [],
+        ...(context.repeat ? {
+            hasIntake: summary.hasIntake || context.answers !== null,
+            concerns: context.answers ? [context.answers.visitReason] : [],
+            complaint: context.answers?.concern || (context.answers ? "Routine pregnancy follow-up" : "Follow-up survey not submitted for this appointment."),
+            metrics: summary.metrics.filter((metric) => !["Gestation", "Pain"].includes(metric.label)),
+            insights: summary.insights.map((insight) => ({ ...insight, text: `Original intake / saved history: ${insight.text}` })),
+            sections: summary.sections.map((section) => section.title === "Check-in vitals" ? section : { ...section, title: `Original intake: ${section.title}` }),
+        } : {}) };
+}
+
+export function IntakeSummaryActions({ patient, weightLogs, bpLogs, checkInVitals, hpvClinicStatus, appointmentId }: { patient: any; weightLogs: WeightLog[]; bpLogs: BpLog[]; checkInVitals?: CheckInVitals | null; hpvClinicStatus?: HpvProtection | null; appointmentId?: number }) {
     const [open, setOpen] = useState(false);
-    const summary = buildSummary(patient, weightLogs, bpLogs, checkInVitals, hpvClinicStatus);
+    const pregnancy = useQuery({
+        queryKey: ["pregnancy-print-context", patient.id, appointmentId],
+        queryFn: async ({ signal }) => pregnancyVisitContextSchema.parse(await receptionRequest<unknown>(`/api/patients/${patient.id}/pregnancy-follow-up/${appointmentId}`, { signal })),
+        enabled: appointmentId != null, staleTime: 0, retry: false,
+    });
+    const context = appointmentId != null ? pregnancy.data ?? null : null;
+    const blocked = appointmentId != null && (!pregnancy.isSuccess || pregnancy.isFetching);
+    const summary = summaryForAppointment(buildSummary(patient, weightLogs, bpLogs, checkInVitals, hpvClinicStatus), context);
     const print = () => {
-        if (!printSummary(summary)) alert("Please allow pop-ups to print the intake summary.");
+        if (blocked) return;
+        if (!printSummary(summary, context)) alert("Please allow pop-ups to print the intake summary.");
     };
 
     return (
         <>
+            {appointmentId != null && pregnancy.isFetching && <span role="status" className="text-xs">Loading pregnancy print context...</span>}
+            {appointmentId != null && pregnancy.isError && <span role="alert" className="text-xs">{pregnancy.error.message} <button type="button" className="underline" onClick={() => void pregnancy.refetch()}>Retry print context</button></span>}
             <Button variant="outline" size="sm" className="h-7 gap-1 border-saivie-border text-xs text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setOpen(true)} data-testid="button-preview-intake">
                 <Eye className="h-3 w-3" /> Preview
             </Button>
-            <Button variant="outline" size="sm" className="h-7 gap-1 border-saivie-border text-xs text-saivie-teal hover:bg-saivie-surface-muted" onClick={print} data-testid="button-print-intake">
+            <Button disabled={blocked} variant="outline" size="sm" className="h-7 gap-1 border-saivie-border text-xs text-saivie-teal hover:bg-saivie-surface-muted" onClick={print} data-testid="button-print-intake">
                 <Printer className="h-3 w-3" /> Print
             </Button>
             <Dialog open={open} onOpenChange={setOpen}>
@@ -472,12 +500,14 @@ export function IntakeSummaryActions({ patient, weightLogs, bpLogs, checkInVital
                     <DialogHeader>
                         <DialogTitle className="flex items-center justify-between gap-4 pr-6">
                             <span>Intake summary · {summary.name}</span>
-                            <Button size="sm" className="h-8 gap-1 bg-saivie-teal hover:bg-saivie-teal" onClick={print}><Printer className="h-3.5 w-3.5" /> Print</Button>
+                            <Button disabled={blocked} size="sm" className="h-8 gap-1 bg-saivie-teal hover:bg-saivie-teal" onClick={print}><Printer className="h-3.5 w-3.5" /> Print</Button>
                         </DialogTitle>
                         {summary.meta.length > 0 && <p className="text-xs text-saivie-plum">{summary.meta.join(" · ")}</p>}
                     </DialogHeader>
 
                     {summary.hpv ? <HpvBadge status={summary.hpv} variant="full" /> : <HpvPrintBadge status={summary.hpvVaccination} />}
+                    <PregnancyFollowUpPrint context={context} />
+                    <PregnancyPrintTrends context={context} />
 
                     {!summary.hasIntake && (
                         <p className="rounded-lg border border-dashed border-saivie-border bg-saivie-ivory p-3 text-xs text-saivie-teal">This patient hasn't completed the online intake form yet. Showing clinic records and self-recorded vitals only.</p>

@@ -42,6 +42,8 @@ import { registerPregnancyEpisodes } from "../pregnancy-episodes";
 import { createDeliveryStore, registerDeliveries } from "../deliveries";
 import { createPaperWorkStore, registerPaperWork } from "../paper-prescription-work";
 import { createPregnancyEpisodeStore } from "../pregnancy-episode-store";
+import { createPregnancyFollowUpStore as createPregnancyVisitContextStore, registerPregnancyFollowUpContext } from "../pregnancy-followup-context";
+import { pregnancyFollowUpSchema } from "../../../../lib/db/src/pregnancy-followup";
 import { createPregnancyFollowUpStore, registerPregnancyFollowUps } from "../pregnancy-follow-ups";
 import { createPregnancyMedicationReconciliationStore, registerPregnancyMedicationReconciliation } from "../pregnancy-medication-reconciliation";
 import { canManageVaccinationSchedules, canUseVaccinationWorkflow } from "../vaccination-access";
@@ -391,6 +393,13 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  const pregnancyVisitStore = createPregnancyVisitContextStore(pool);
+  registerPregnancyFollowUpContext(app, {
+    store: pregnancyVisitStore, authenticate: getAccessActor,
+    clinicalVisible: () => storage.getReceptionClinicalDetailsVisible(),
+    patient: (id) => storage.getPatient(id),
+    appointment: async (id) => (await storage.getAppointments()).find((row) => row.id === id),
+  });
   registerClinicalAccess(app, {
     authenticate: getAccessActor,
     appointmentPatientId: async (id) => (await storage.getAppointments()).find((item) => item.id === id)?.patientId ?? null,
@@ -1316,11 +1325,7 @@ export async function registerRoutes(
     if (providerId) {
       appts = appts.filter(a => a.providerId === parseInt(providerId as string));
     }
-    const surveyRows = appts.length ? (await pool.query<{ id: number; completed: boolean }>(
-      `SELECT a.id, coalesce(p.history->>'onboardingAppointmentId' = a.id::text, false) AS completed
-       FROM appointments a LEFT JOIN patients p ON p.id = a.patient_id WHERE a.id = ANY($1::int[])`,
-      [appts.map((appointment) => appointment.id)],
-    )).rows : [];
+    const surveyRows = appts.length ? await pregnancyVisitStore.surveyStatuses(appts.map((appointment) => appointment.id)) : [];
     const surveys = new Map(surveyRows.map((row) => [row.id, row.completed]));
     res.json(appts.map((appointment) => ({ ...appointment, surveyCompleted: surveys.get(appointment.id) ?? false })));
   });
@@ -1507,10 +1512,11 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
     const [vaccineSchedules, vaccineRecords] = await Promise.all([storage.getVaccinationSchedules(), storage.getVaccinationRecords()]);
     const hpvProtection = hpvClinicStatuses([patient.id], vaccineSchedules, vaccineRecords)[patient.id] ?? null;
 
-    // Return only non-sensitive fields — history is restricted to authenticated staff
+    // The appointment-bound link gets derived pregnancy readings, never unrestricted history.
     res.json({
       appointment: { id: appt.id, date: appt.date, time: appt.time, chiefComplaint: appt.chiefComplaint, surveyKind: surveyKindFor(appt) },
-      patient: { id: patient.id, name: patient.name, dob: patient.dob, referredBy: patient.referredBy, hpvProtection }
+      patient: { id: patient.id, name: patient.name, dob: patient.dob, referredBy: patient.referredBy, hpvProtection },
+      pregnancyContext: surveyKindFor(appt) === "lab" ? null : await pregnancyVisitStore.context(patient, appt),
     });
   });
 
@@ -1859,6 +1865,18 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
     const patient = await storage.getPatient(appt.patientId!);
     if (!patient) return res.status(404).json({ error: "Patient not found" });
+
+    if (req.body.pregnancyFollowUp !== undefined) {
+      const parsed = pregnancyFollowUpSchema.safeParse(req.body.pregnancyFollowUp);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.issues.map((issue) => issue.message).join("; ") });
+      const context = await pregnancyVisitStore.context(patient, appt);
+      if (surveyKindFor(appt) === "lab" || !context.repeat)
+        return res.status(409).json({ error: "This appointment no longer qualifies for a pregnancy follow-up survey. Reload your private link." });
+      await pregnancyVisitStore.save(patient.id, appointmentId, parsed.data, context);
+      return res.json({ success: true });
+    }
+    if (surveyKindFor(appt) !== "lab" && (await pregnancyVisitStore.context(patient, appt)).repeat)
+      return res.status(409).json({ error: "Please reload and complete the pregnancy follow-up survey. Your original intake history has not been changed." });
 
     // Lab visits submit a short lab survey (and optional prescription photo) instead of the full intake.
     if (req.body.labSurvey !== undefined) {

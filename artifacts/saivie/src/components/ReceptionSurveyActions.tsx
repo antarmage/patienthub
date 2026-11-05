@@ -8,6 +8,7 @@ import { receptionRequest } from "@/lib/authenticatedFetch";
 import { surveyKindFor } from "@/lib/labSurvey";
 import { printPatientSummary } from "@/components/IntakeSummary";
 import type { HpvProtection } from "@/lib/hpvProtection";
+import { pregnancyVisitContextSchema } from "../../../../lib/db/src/pregnancy-followup";
 
 type Appointment = { id: number; patientId: number | null; surveyCompleted?: boolean; surveyType?: string | null; type?: string | null; visitType?: string | null };
 
@@ -27,9 +28,10 @@ export function ReceptionSummaryPrint({ appointment, patientName, canPrint, hpvS
   const record = useQuery({
     queryKey: ["reception-print-summary", appointment.patientId, appointment.id],
     queryFn: async ({ signal }) => {
-      const [patient, measurements] = await Promise.all([
+      const [patient, measurements, pregnancy] = await Promise.all([
         receptionRequest<unknown>(`/api/patients/${appointment.patientId}`, { signal }),
         receptionRequest<unknown>(`/api/appointments/${appointment.id}/reception-vitals`, { signal }),
+        receptionRequest<unknown>(`/api/patients/${appointment.patientId}/pregnancy-follow-up/${appointment.id}`, { signal }),
       ]);
       if (!patient || typeof patient !== "object" || !("id" in patient) || patient.id !== appointment.patientId ||
           !measurements || typeof measurements !== "object" || !("appointmentId" in measurements) || measurements.appointmentId !== appointment.id ||
@@ -41,7 +43,7 @@ export function ReceptionSummaryPrint({ appointment, patientName, canPrint, hpvS
         spo2: z.unknown().optional(), weight: z.unknown().optional(), height: z.unknown().optional(),
         bmi: z.unknown().optional(), recordedAt: z.unknown().optional(),
       }).nullable().parse(measurements.vitals);
-      return { patient, vitals };
+      return { patient, vitals, pregnancy: pregnancyVisitContextSchema.parse(pregnancy) };
     },
     enabled: open && canPrint && appointment.patientId !== null,
     gcTime: 0, staleTime: 0, retry: false,
@@ -53,9 +55,9 @@ export function ReceptionSummaryPrint({ appointment, patientName, canPrint, hpvS
     </Button>
     <Dialog open={open && canPrint} onOpenChange={setOpen}><DialogContent>
       <DialogHeader><DialogTitle>Print summary · {patientName}</DialogTitle><DialogDescription>Loads this patient's saved history and this appointment's measurements.</DialogDescription></DialogHeader>
-      {record.isPending && <p role="status">Loading patient summary...</p>}
+      {record.isFetching && <p role="status">Loading patient summary...</p>}
       {record.isError && <p role="alert">{record.error.message} <Button variant="link" onClick={() => void record.refetch()}>Retry</Button></p>}
-      {record.isSuccess && <Button onClick={() => printPatientSummary(record.data.patient, record.data.vitals, hpvStatus)}><Printer className="mr-2 h-4 w-4" />Print patient summary</Button>}
+      {record.isSuccess && <Button disabled={record.isFetching} onClick={() => printPatientSummary(record.data.patient, record.data.vitals, hpvStatus, record.data.pregnancy)}><Printer className="mr-2 h-4 w-4" />Print patient summary</Button>}
     </DialogContent></Dialog>
   </>;
 }

@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { authenticatedFetch, readApiResponse } from "./authenticatedFetch";
+import { pregnancyVisitContextSchema } from "../../../../lib/db/src/pregnancy-followup";
 
 export function onboardingFetch(input: string, init?: RequestInit): Promise<Response> {
   const token = window.location.hash.slice(1);
@@ -19,6 +20,7 @@ export function useOnboardingSession(id: string | undefined) {
       return z.object({
         appointment: z.object({ id: z.number(), surveyKind: z.string(), chiefComplaint: z.string().nullable() }),
         patient: z.object({ id: z.number(), name: z.string(), dob: z.string().nullable(), referredBy: z.string().nullable(), hpvProtection: z.enum(["protected", "in-progress"]).nullable() }),
+        pregnancyContext: pregnancyVisitContextSchema.nullable(),
       }).parse(body);
     },
     retry: false,

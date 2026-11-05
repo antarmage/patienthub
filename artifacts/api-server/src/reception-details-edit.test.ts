@@ -134,7 +134,7 @@ test("strict typed validation rejects unknown fields, bad dates, ranges, history
   ];
   for (const key of [
     "receptionDetailsEditAudit", "patientReportedLmp", "patientConception", "conception",
-    "onboardingAppointmentId", "clinician", "assessment", "privateNotes", "auditLog",
+    "onboardingAppointmentId", "pregnancyFollowUps", "clinician", "assessment", "privateNotes", "auditLog",
     "provenance", "recordedBy", "source", "diagnosis", "secretToken", "__proto__", "constructor",
   ]) {
     invalid.push({ history: { [key]: null } }, { history: { obstetric: { [key]: "spoof" } } });

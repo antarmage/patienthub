@@ -6,7 +6,7 @@ import type { AccessActor } from "./clinical-access";
 export const RECEPTION_HISTORY_MAX_BYTES = 100_000;
 const reservedNames = new Set([
   "proto", "prototype", "constructor", "conception", "patientconception",
-  "patientreportedlmp", "onboardingappointmentid", "receptiondetailseditaudit",
+  "patientreportedlmp", "onboardingappointmentid", "pregnancyfollowups", "receptiondetailseditaudit",
   "recordedat", "recordedby", "updatedat", "updatedby", "createdat", "createdby",
   "appointmentid", "source", "diagnosisencounterid", "cliniciannote", "riskscore", "plan",
   "diagnosis", "diagnoses", "diagnosisencounters", "clinicalnotes", "prescriptions", "visithistory",

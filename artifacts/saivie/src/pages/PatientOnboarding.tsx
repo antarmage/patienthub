@@ -16,6 +16,9 @@ import { hpvProtection } from "@/lib/hpvProtection";
 import { HpvBadge } from "@/components/HpvBadge";
 import { hpvPrintBadgeHtml } from "@/components/HpvPrintBadge";
 import type { HpvProtection } from "@/lib/hpvProtection";
+import { PregnancyFollowUpSurvey } from "@/components/PregnancyFollowUpSurvey";
+import { pregnancyPrintHtml } from "@/components/PregnancyPrintTrends";
+import type { PregnancyVisitContext } from "../../../../lib/db/src/pregnancy-followup";
 
 const sections = [
     { key: "about", title: "About you", eyebrow: "First things first" },
@@ -32,7 +35,7 @@ const sections = [
 // "Cervical cancer: a preventable disease" — PAHO/WHO. Override with VITE_CERVICAL_CANCER_VIDEO_ID.
 const cervicalCancerVideoId = import.meta.env.VITE_CERVICAL_CANCER_VIDEO_ID || "pkUmJlvHwQA";
 
-function printOnboardingSummary(form: IntakeForm, clinicStatus?: HpvProtection | null) {
+function printOnboardingSummary(form: IntakeForm, clinicStatus?: HpvProtection | null, pregnancyContext: PregnancyVisitContext | null = null) {
     const printWindow = window.open("", "_blank", "width=800,height=900");
     if (!printWindow) return false;
 
@@ -151,6 +154,7 @@ function printOnboardingSummary(form: IntakeForm, clinicStatus?: HpvProtection |
     <p class="meta">${escapeHtml(form.name || "Patient")} · Printed ${escapeHtml(new Date().toLocaleString())}</p>
     ${hpvPrintBadgeHtml(form.gyn.hpvVaccine, clinicStatus)}
     ${sections.map(([title, content]) => `<section><h2>${escapeHtml(title)}</h2><table><tbody>${content}</tbody></table></section>`).join("")}
+    ${pregnancyPrintHtml(pregnancyContext)}
     <p class="note">Patient-reported information from the onboarding form. Please review and verify with the care team.</p>
     <script>window.onload = function () { window.focus(); window.print(); };</script>
 </body>
@@ -723,6 +727,10 @@ export default function PatientOnboarding() {
         return <div className="flex min-h-screen items-center justify-center bg-saivie-ivory text-sm text-saivie-teal">Preparing your care journey…</div>;
     }
 
+    if (onboardingData?.pregnancyContext?.repeat && id) {
+        return <PregnancyFollowUpSurvey key={id} appointmentId={id} name={onboardingData.patient.name} context={onboardingData.pregnancyContext} />;
+    }
+
     if (submitted) {
         const hpvStatus = hpvProtection(form.gyn.hpvVaccine, onboardingData?.patient?.hpvProtection);
         return (
@@ -757,7 +765,7 @@ export default function PatientOnboarding() {
                             variant="outline"
                             className="mt-3 border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted"
                             onClick={() => {
-                                if (!printOnboardingSummary(answers, onboardingData?.patient?.hpvProtection)) {
+                                if (!printOnboardingSummary(answers, onboardingData?.patient?.hpvProtection, onboardingData?.pregnancyContext)) {
                                     toast({ title: "Unable to print history", description: "Please allow pop-ups to print your onboarding history.", variant: "destructive" });
                                 }
                             }}

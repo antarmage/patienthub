@@ -1,0 +1,49 @@
+import React from "react";
+import assert from "node:assert/strict";
+import test from "node:test";
+import { renderToStaticMarkup } from "react-dom/server";
+import { PregnancyFollowUpSurvey } from "./PregnancyFollowUpSurvey";
+import { pregnancyPrintHtml } from "./PregnancyPrintTrends";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Router } from "wouter";
+import type { PregnancyVisitContext } from "../../../../lib/db/src/pregnancy-followup";
+
+const context: PregnancyVisitContext = {
+  pregnancy: true, repeat: true, episodeId: 1, label: "Pregnancy 2", asOf: "2026-06-10", previousAppointmentCount: 1,
+  trends: { bp: [{ date: "2026-05-01", value: 120, secondary: 80, source: "Appointment" }],
+    weight: [{ date: "2026-05-01", value: 58, source: "Appointment" }, { date: "2026-06-10", value: 60, source: "Consultation" }],
+    hb: [], sugar: [
+      { name: "FBS", unit: "mg/dL", points: [{ date: "2026-05-01", value: 90, source: "Lab result" }] },
+      { name: "PPBS", unit: "mg/dL", points: [{ date: "2026-05-01", value: 130, source: "Lab result" }] },
+    ] }, answers: null,
+};
+
+test("pregnancy prints contain small graphs and every dated reading, separate sugar tests and explicit missing data", () => {
+  const html = pregnancyPrintHtml(context);
+  assert.equal((html.match(/<svg /g) || []).length, 4);
+  for (const text of ["Pregnancy 2", "2026-06-10", "2026-05-01", "Weight", "Hemoglobin", "Blood pressure",
+    "120 / 80", "Sugar · FBS", "Sugar · PPBS", "mg/dL", "No recorded readings", "Consultation"]) assert.ok(html.includes(text), text);
+  assert.ok(html.includes('stroke-dasharray="4 3"'));
+  assert.equal(pregnancyPrintHtml({ ...context, pregnancy: false }), "");
+});
+
+test("pregnancy print safely escapes answer text and lab labels", () => {
+  const html = pregnancyPrintHtml({ ...context, answers: {
+    visitReason: "Current concern", concern: "<script>alert(1)</script>", foodHabits: "<img src=x>",
+    vomitingChange: "Increased", eatingDrinking: "Eating or drinking less", investigations: "Not done yet",
+    reports: "Not available", investigationDetails: "", changes: "",
+  } });
+  assert.ok(html.includes("&lt;script&gt;")); assert.ok(!html.includes("<script>"));
+  assert.ok(html.includes("Current concern")); assert.ok(html.includes("Vomiting since the last visit"));
+});
+
+test("repeat questionnaire shows follow-up subjects, preserves baseline and does not ask initial history again", () => {
+  const client = new QueryClient();
+  const html = renderToStaticMarkup(<QueryClientProvider client={client}><Router ssrPath="/onboarding/20"><PregnancyFollowUpSurvey appointmentId="20" name="Synthetic" context={context} /></Router></QueryClientProvider>);
+  for (const text of ["Welcome back", "Routine check-up", "Current concern", "food habits", "Vomiting since the last visit",
+    "Last advised investigations", "Report availability", "medicines, allergies", "will not be replaced", "cannot keep fluids down"]) assert.ok(html.includes(text), text);
+  for (const text of ["Menarche", "Partners", "How many pregnancies", "C-sections"]) assert.ok(!html.includes(text), text);
+  assert.equal((html.match(/<select /g) || []).length, 5);
+  assert.equal((html.match(/<option value="" selected="">/g) || []).length, 5);
+  client.clear();
+});
