@@ -95,6 +95,43 @@ test("ambiguous legacy LMP is not parsed; multiple earlier episodes are not grou
     0,
   );
 });
+test("invalid legacy profile dates do not mask a valid survey LMP", () => {
+  for (const lmp of ["4/16/2026", "", "2026-02-30", null]) {
+    const result = detectPregnancies({
+      lmp,
+      type: "Pregnant",
+      history: {
+        onboardingAppointmentId: 955,
+        onboarding: {
+          cycle: { lastPeriod: "2026-04-16" },
+          pregnancies: { total: "3", currentStatus: "Yes" },
+        },
+      },
+    }, [
+      { id: 747, date: "2026-06-03", visitType: "Others", type: "Consultation", status: "Completed" },
+      { id: 783, date: "2026-07-10", visitType: "Pregnant", status: "Completed" },
+      { id: 826, date: "2026-08-20", visitType: "Pregnant", status: "Completed" },
+      { id: 853, date: "2026-09-17", visitType: "Pregnant", status: "Completed" },
+      { id: 955, date: "2026-11-05", visitType: "Prenatal Check-up", status: "completed" },
+    ], [], "2026-11-05");
+    const current = result.drafts.find((draft) => draft.details.status === "current")!;
+    assert.equal(current.details.lmp, "2026-04-16");
+    assert.equal(current.details.datingBasis, "LMP");
+    assert.deepEqual(current.records, [783, 826, 853, 955].map((id) => ({ kind: "appointment", id })));
+    assert.ok(result.drafts.filter((draft) => draft.details.status === "past").every((draft) => !draft.records.length));
+  }
+});
+test("valid profile dating keeps precedence and future survey dates still require review", () => {
+  const withSurvey = {
+    ...patient,
+    history: { ...patient.history, onboarding: { ...patient.history.onboarding, cycle: { lastPeriod: "2026-07-01" } } },
+  };
+  assert.equal(detectPregnancies(withSurvey, [], [], "2026-11-05").drafts[1].details.lmp, patient.lmp);
+  assert.equal(detectPregnancies({
+    ...withSurvey, lmp: "",
+    history: { ...withSurvey.history, onboarding: { ...withSurvey.history.onboarding, cycle: { lastPeriod: "2027-01-01" } } },
+  }, [], [], "2026-11-05").drafts.length, 0);
+});
 test("multiple older clusters, conflicting dating, and newer prior pregnancies remain unassigned", () => {
   const old = [
     ...appointments,

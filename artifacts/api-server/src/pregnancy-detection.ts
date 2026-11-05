@@ -78,8 +78,9 @@ export function detectPregnancies(
       reason:
         "The current pregnancy status is not recorded clearly. Confirm it before automatic episode creation.",
     };
-  const rawLmp = patient.lmp ?? record(onboarding.cycle).lastPeriod;
-  const lmp = current ? date(rawLmp) : null;
+  const lmp = current
+    ? date(patient.lmp) ?? date(record(onboarding.cycle).lastPeriod)
+    : null;
   if (lmp && lmp > today)
     return {
       drafts: [],

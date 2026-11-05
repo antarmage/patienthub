@@ -1,5 +1,9 @@
 # Patient logistics and clinical access
 
+## Pregnancy episode date detection
+
+Automatic episode creation validates the profile LMP before using it. An invalid or non-ISO legacy profile value does not mask a valid ISO LMP in the saved intake survey. A valid profile LMP retains precedence; ambiguous legacy strings are never parsed by locale. Existing episodes are not overwritten or relinked automatically when survey answers change. Repairing an already-created undated episode requires explicit review of its survey source and record assignments; patient-reported dating must not be presented as newly clinician-confirmed.
+
 ## Google Meet and private patient consultation pages
 
 - Enable Google Meet REST API in the clinic's Google Cloud project. Configure a Web OAuth client with redirect URI `https://<patient-portal-host>/api/online/google/callback` and scope `https://www.googleapis.com/auth/meetings.space.created`. Complete Google's OAuth publishing/verification requirements as applicable; testing-mode refresh tokens can expire and are not suitable for unattended production booking.
