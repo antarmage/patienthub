@@ -16,7 +16,7 @@ import { hpvProtection } from "@/lib/hpvProtection";
 import { HpvBadge } from "@/components/HpvBadge";
 import { cervicalCancerPreventionHtml, hpvPrintBadgeHtml } from "@/components/HpvPrintBadge";
 import type { HpvProtection } from "@/lib/hpvProtection";
-import { PregnancyFollowUpSurvey } from "@/components/PregnancyFollowUpSurvey";
+import { PregnancyFollowUpSurvey, type PregnancyFollowUpDraft } from "@/components/PregnancyFollowUpSurvey";
 import { pregnancyPrintHtml } from "@/components/PregnancyPrintTrends";
 import type { PregnancyVisitContext } from "../../../../lib/db/src/pregnancy-followup";
 import { patientSummaryOverviewHtml } from "@/components/IntakeSummary";
@@ -527,15 +527,22 @@ export default function PatientOnboarding() {
     const [extra, setExtra] = useState<OptionalHistory>({ cycle: false, gyn: false, pregnancy: false, background: false });
     const questionHeading = useRef<HTMLHeadingElement>(null);
     const [submitted, setSubmitted] = useState(false);
+    const [editingHistory, setEditingHistory] = useState(false);
+    const [followUpDraft, setFollowUpDraft] = useState<PregnancyFollowUpDraft | null>(null);
+    const hydrated = useRef<string | null>(null);
     const [datingAsOf] = useState(() => {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     });
 
-    const { data: onboardingData, isPending: isLoading } = useOnboardingSession(id);
+    const session = useOnboardingSession(id);
+    const { data: onboardingData, isPending: isLoading } = session;
+    const hasSavedIntake = !!onboardingData?.savedIntake;
+    const correcting = hasSavedIntake && (editingHistory || onboardingData?.pregnancyContext?.repeat === true
+        || onboardingData?.savedIntakeAppointmentId === Number(id));
 
-    const questions = getOnboardingQuestions(form, extra);
-    const answers = getRelevantIntake(form, extra);
+    const questions = getOnboardingQuestions(form, extra, hasSavedIntake);
+    const answers = hasSavedIntake ? form : getRelevantIntake(form, extra);
     const datingEstimate = answers.pregnancies.currentStatus === "Yes" && !answers.cycle.lastPeriod
         ? estimatePregnancyDating({
             asOf: datingAsOf,
@@ -563,8 +570,21 @@ export default function PatientOnboarding() {
     }, [step]);
 
     useEffect(() => {
+        setEditingHistory(false);
+        setFollowUpDraft(null);
+        setSubmitted(false);
+        hydrated.current = null;
+    }, [id]);
+
+    useEffect(() => {
         const patient = onboardingData?.patient;
         if (!patient) return;
+        if (onboardingData.savedIntake && hydrated.current !== id) {
+            setForm(onboardingData.savedIntake);
+            setStep("review");
+            hydrated.current = id || null;
+            return;
+        }
         setForm((current) => ({
             ...current,
             name: current.name || patient.name || "",
@@ -607,11 +627,23 @@ export default function PatientOnboarding() {
                         dob: form.dob,
                         referredBy: form.referredBy,
                     },
+                    ...(correcting ? { correctSavedIntake: true, savedIntakeVersion: onboardingData?.savedIntakeVersion } : {}),
                 }),
             });
             return readApiResponse(response);
         },
-        onSuccess: () => {
+        onSuccess: async () => {
+            if (correcting) {
+                const refreshed = await session.refetch();
+                if (refreshed.isError) {
+                    toast({ title: "Corrections saved; reload required", description: refreshed.error.message, variant: "destructive" });
+                    return;
+                }
+                setEditingHistory(false);
+                if (!refreshed.data?.pregnancyContext?.repeat) setSubmitted(true);
+                toast({ title: "Saved survey corrected", description: "Previous answers are retained in the correction history." });
+                return;
+            }
             setSubmitted(true);
             toast({ title: "Intake submitted", description: "Your information has been securely shared with the care team." });
         },
@@ -733,8 +765,9 @@ export default function PatientOnboarding() {
         return <div className="flex min-h-screen items-center justify-center bg-saivie-ivory text-sm text-saivie-teal">Preparing your care journey…</div>;
     }
 
-    if (onboardingData?.pregnancyContext?.repeat && id) {
-        return <PregnancyFollowUpSurvey key={id} appointmentId={id} name={onboardingData.patient.name} context={onboardingData.pregnancyContext} />;
+    if (onboardingData?.pregnancyContext?.repeat && id && !editingHistory) {
+        return <PregnancyFollowUpSurvey key={id} appointmentId={id} name={onboardingData.patient.name} context={onboardingData.pregnancyContext}
+            initialDraft={followUpDraft} onEditHistory={correcting ? (draft) => { setFollowUpDraft(draft); setEditingHistory(true); setStep("review"); } : undefined} />;
     }
 
     if (submitted) {
@@ -882,7 +915,7 @@ export default function PatientOnboarding() {
                     {step !== "review" && (
                         <section key={currentSection.key} className={`${cardClass} min-h-[260px]`} data-testid={`onboarding-section-${currentSection.key}`}>
                             <p className="mb-5 text-xs leading-5 text-saivie-teal">
-                                {currentSection.key === "concern" ? "Choose all that apply. Your next questions will match these concerns." : "Answer what you can. All questions are optional."}
+                                {hasSavedIntake ? "Your saved answers are prefilled. Review and update them as needed; skipped answers remain unanswered." : currentSection.key === "concern" ? "Choose all that apply. Your next questions will match these concerns." : "Answer what you can. All questions are optional."}
                             </p>
                             <div className="space-y-7 divide-y divide-saivie-border">
                                 {sectionQuestions.map((question, index) => <div key={question.id} className={index ? "pt-7" : ""} data-testid={`onboarding-question-${question.id}`}>{questionContent[question.id]}</div>)}
@@ -894,7 +927,7 @@ export default function PatientOnboarding() {
                     {step === "review" && (
                         <section className={cardClass}>
                             <h2 className="font-serif text-lg font-semibold text-saivie-teal">Review your answers</h2>
-                            <p className="mt-1 text-xs text-saivie-teal">Check your answers before sharing. Anything skipped remains unanswered.</p>
+                            <p className="mt-1 text-xs text-saivie-teal">{correcting ? "These are your previously saved survey answers, not a new symptom assessment. Corrections preserve the previous version; any pregnancy follow-up is submitted separately." : hasSavedIntake ? "Your previous answers have been restored. Review and update them for this appointment before submitting." : "Check your answers before sharing. Anything skipped remains unanswered."}</p>
                             <div className="mt-6 space-y-3 border-t border-saivie-border pt-6">
                                 {reviewSections.filter((section) => visibleSections.some((visible) => visible.key === section.key)).map(({ key, title, items: rawItems }) => {
                                     const items = rawItems.filter(Boolean);
@@ -914,6 +947,7 @@ export default function PatientOnboarding() {
                         </section>
                     )}
 
+                    {editingHistory && <Button variant="outline" className="mt-5 h-auto max-w-full whitespace-normal text-center" onClick={() => setEditingHistory(false)}>Back to pregnancy follow-up without saving corrections</Button>}
                     <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                         {sectionIndex > 0 ? (
                             <Button variant="ghost" className="text-xs text-saivie-teal hover:text-saivie-teal" onClick={() => goToSection(-1)}><ArrowLeft className="mr-2 h-3.5 w-3.5" />Back</Button>
@@ -924,7 +958,7 @@ export default function PatientOnboarding() {
                                 <Button className="h-11 rounded-lg bg-saivie-teal px-5 text-xs font-semibold text-white shadow-lg shadow-saivie-teal/15 hover:bg-saivie-teal" onClick={() => goToSection(1)}>Continue<ArrowRight className="ml-2 h-3.5 w-3.5" /></Button>
                             </div>
                         ) : (
-                            <Button className="h-11 rounded-lg bg-saivie-teal px-5 text-xs font-semibold text-white shadow-lg shadow-saivie-teal/15 hover:bg-saivie-teal" disabled={mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Submitting…" : "Submit to care team"}<ArrowRight className="ml-2 h-3.5 w-3.5" /></Button>
+                            <Button className="h-11 rounded-lg bg-saivie-teal px-5 text-xs font-semibold text-white shadow-lg shadow-saivie-teal/15 hover:bg-saivie-teal" disabled={mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Submitting…" : correcting ? "Save survey corrections" : "Submit to care team"}<ArrowRight className="ml-2 h-3.5 w-3.5" /></Button>
                         )}
                     </div>
                     {step !== "review" && <button type="button" onClick={() => setStep("review")} className="mx-auto mt-5 block text-xs font-semibold text-saivie-teal underline underline-offset-4">Finish early and review my answers</button>}

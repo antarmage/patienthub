@@ -5,6 +5,7 @@ import type { PregnancyEpisode } from "../../../lib/db/src/pregnancy-episodes";
 import { summaryRecord as object, summaryTrends, type SummaryLab } from "../../../lib/db/src/patient-summary";
 import { pregnancyFollowUpSchema, followUpRows, type PregnancyVisitContext, type PregnancyWeightContext } from "../../../lib/db/src/pregnancy-followup";
 import { createPregnancyEpisodeStore } from "./pregnancy-episode-store";
+import { correctedIntakeHistory } from "./saved-intake";
 
 type Row = Record<string, unknown>;
 const date = (value: unknown): string | null => {
@@ -137,6 +138,22 @@ export function pregnancyVisitContext(patient: Row, appointment: Row, appointmen
 
 export function createPregnancyFollowUpStore(pool: Pool) {
   return {
+    async correctIntake(patientId: number, appointmentId: number, intake: unknown, expectedVersion: unknown) {
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        const patient = await client.query<{ history: unknown }>("SELECT history FROM patients WHERE id=$1 FOR UPDATE", [patientId]);
+        if (patient.rowCount !== 1) throw new Error("Patient not found");
+        const appointment = await client.query("SELECT id FROM appointments WHERE id=$1 AND patient_id=$2 FOR UPDATE", [appointmentId, patientId]);
+        if (appointment.rowCount !== 1) throw Object.assign(new Error("The appointment's patient changed. Reload your private link."), { status: 409 });
+        const history = correctedIntakeHistory(patient.rows[0].history, intake, expectedVersion, appointmentId);
+        await client.query("UPDATE patients SET history=$2::jsonb WHERE id=$1", [patientId, JSON.stringify(history)]);
+        await client.query("COMMIT");
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally { client.release(); }
+    },
     async surveyStatuses(appointmentIds: number[]) {
       return (await pool.query<{ id: number; completed: boolean }>(
         `SELECT a.id, coalesce(p.history->>'onboardingAppointmentId' = a.id::text, false)

@@ -44,6 +44,8 @@ import { createPaperWorkStore, registerPaperWork } from "../paper-prescription-w
 import { createPregnancyEpisodeStore } from "../pregnancy-episode-store";
 import { createPregnancyFollowUpStore as createPregnancyVisitContextStore, registerPregnancyFollowUpContext } from "../pregnancy-followup-context";
 import { pregnancyFollowUpSchema } from "../../../../lib/db/src/pregnancy-followup";
+import { readSavedIntake, savedIntakeSchema } from "../../../../lib/db/src/saved-intake";
+import { savedIntakeVersion } from "../saved-intake";
 import { createPregnancyFollowUpStore, registerPregnancyFollowUps } from "../pregnancy-follow-ups";
 import { createPregnancyMedicationReconciliationStore, registerPregnancyMedicationReconciliation } from "../pregnancy-medication-reconciliation";
 import { canManageVaccinationSchedules, canUseVaccinationWorkflow } from "../vaccination-access";
@@ -1518,11 +1520,17 @@ Use simple, non-clinical language. End with "_Saivie Reproductive Intelligence_"
     const [vaccineSchedules, vaccineRecords] = await Promise.all([storage.getVaccinationSchedules(), storage.getVaccinationRecords()]);
     const hpvProtection = hpvClinicStatuses([patient.id], vaccineSchedules, vaccineRecords)[patient.id] ?? null;
 
-    // The appointment-bound link gets derived pregnancy readings, never unrestricted history.
+    const savedIntake = readSavedIntake(patient.history);
+    const savedAppointmentId = Number(patient.history && typeof patient.history === "object" && "onboardingAppointmentId" in patient.history
+      ? patient.history.onboardingAppointmentId : null);
+    // Return only patient-entered survey fields, never unrestricted clinical history.
     res.json({
       appointment: { id: appt.id, date: appt.date, time: appt.time, chiefComplaint: appt.chiefComplaint, surveyKind: surveyKindFor(appt) },
       patient: { id: patient.id, name: patient.name, dob: patient.dob, referredBy: patient.referredBy, hpvProtection },
       pregnancyContext: surveyKindFor(appt) === "lab" ? null : await pregnancyVisitStore.context(patient, appt),
+      savedIntake: surveyKindFor(appt) === "lab" ? null : savedIntake,
+      savedIntakeVersion: surveyKindFor(appt) === "lab" ? null : savedIntakeVersion(savedIntake),
+      savedIntakeAppointmentId: surveyKindFor(appt) !== "lab" && Number.isSafeInteger(savedAppointmentId) && savedAppointmentId > 0 ? savedAppointmentId : null,
     });
   });
 
@@ -1871,6 +1879,14 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
     const patient = await storage.getPatient(appt.patientId!);
     if (!patient) return res.status(404).json({ error: "Patient not found" });
+
+    if (req.body.correctSavedIntake === true) {
+      if (surveyKindFor(appt) === "lab") return res.status(409).json({ error: "Use the lab survey for this appointment." });
+      const parsed = savedIntakeSchema.safeParse(req.body.history?.onboarding);
+      if (!parsed.success) return res.status(400).json({ error: "The corrected survey contains invalid answers." });
+      await pregnancyVisitStore.correctIntake(patient.id, appointmentId, parsed.data, req.body.savedIntakeVersion);
+      return res.json({ success: true, savedIntakeVersion: savedIntakeVersion(parsed.data) });
+    }
 
     if (req.body.pregnancyFollowUp !== undefined) {
       const parsed = pregnancyFollowUpSchema.safeParse(req.body.pregnancyFollowUp);

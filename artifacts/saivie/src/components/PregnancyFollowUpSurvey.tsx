@@ -16,12 +16,16 @@ const choices: Partial<Record<keyof PregnancyFollowUp, readonly string[]>> = {
   investigations: ["All completed", "Some completed", "Not done yet", "None advised", "Not sure"],
   reports: ["Available to show the doctor", "Done, awaiting reports", "Not available", "Not applicable"],
 };
-type Draft = Record<keyof PregnancyFollowUp, string>;
+export type PregnancyFollowUpDraft = Record<keyof PregnancyFollowUp, string>;
+type Draft = PregnancyFollowUpDraft;
 const empty: Draft = { visitReason: "", concern: "", foodHabits: "", vomitingChange: "", eatingDrinking: "", investigations: "", reports: "", investigationDetails: "", changes: "" };
 
-export function PregnancyFollowUpSurvey({ appointmentId, name, context }: { appointmentId: string; name: string; context: PregnancyVisitContext }) {
+export function PregnancyFollowUpSurvey({ appointmentId, name, context, onEditHistory, initialDraft }: {
+  appointmentId: string; name: string; context: PregnancyVisitContext;
+  onEditHistory?: (draft: Draft) => void; initialDraft?: Draft | null;
+}) {
   const [, navigate] = useLocation();
-  const [draft, setDraft] = useState<Draft>(context.answers || empty);
+  const [draft, setDraft] = useState<Draft>(initialDraft || context.answers || empty);
   const [saved, setSaved] = useState<PregnancyFollowUp | null>(null);
   const [printError, setPrintError] = useState(false);
   const submission = useMutation({
@@ -47,6 +51,10 @@ export function PregnancyFollowUpSurvey({ appointmentId, name, context }: { appo
     <p className="text-xs font-semibold uppercase text-saivie-teal">{context.label} · Follow-up visit</p>
     <h1 className="mt-2 text-2xl font-semibold">{saved ? "Your follow-up has been shared" : `Welcome back, ${name}`}</h1>
     <PregnancyJourneyCard context={context} />
+    {onEditHistory && <div className="mt-4 rounded-lg border border-saivie-border p-3 text-sm">
+      <p>Your previously submitted survey is saved. Review or correct its selected answers without filling it from scratch.</p>
+      <Button type="button" variant="outline" className="mt-2" onClick={() => onEditHistory(draft)}>Review / correct saved survey</Button>
+    </div>}
     {saved ? <><p className="my-4">Your original history is preserved. These updates are saved for this appointment.</p><Button onClick={print}>Print onboarding survey</Button><Button variant="outline" className="ml-2" onClick={() => navigate("/")}>Done</Button>{printError && <p role="alert">Please allow pop-ups to print your survey.</p>}</> :
       <form className="mt-5 space-y-5" onSubmit={(event) => { event.preventDefault(); submission.mutate(); }}>
         <p className="text-sm">Tell your doctor what has changed since your last pregnancy visit. Your previous medical and pregnancy history will not be replaced.</p>

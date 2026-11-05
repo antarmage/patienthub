@@ -29,7 +29,20 @@ export const initialForm: IntakeForm = {
 
 export type OptionalHistory = { cycle: boolean; gyn: boolean; pregnancy: boolean; background: boolean };
 
-export function getOnboardingQuestions(form: IntakeForm, extra: OptionalHistory) {
+export function getOnboardingQuestions(form: IntakeForm, extra: OptionalHistory, correcting = false) {
+    if (correcting) return [
+        ...Object.entries({
+            about: ["name", "dob", "hpvVaccine"],
+            concern: ["concerns", "chiefComplaint", "painLocation", "painDuration", "painSeverity", "painSymptoms"],
+            cycle: ["lastPeriod", "lateBy", "regularity", "cycleLength", "flow", "cycleSymptoms", "menarcheAge", "cycleDetails", "pregnancyTest"],
+            pregnancy: ["currentStatus", "weeksPregnant", "dueDate", "conceptionMethod", "conceptionDetails", "totalPregnancies", "vaginal", "cesarean", "miscarriages", "terminations", "premature", "pregnancyDetails"],
+            gyn: ["gynConcerns", "sexuallyActive", "birthControl", "lastPap", "firstEncounterAge", "partnerCount", "gynDetails"],
+            health: ["conditions", "mammogram", "colonoscopy", "medicalDetails", "medications", "allergies", "surgeries", "familyHistory"],
+            lifestyle: ["referredBy", "occupation", "smoking", "relationship", "alcohol", "exercise", "lifestyleOther"],
+            survey: ["surveyDirections", ...surveyQuestions(form.consultation.directions).map((question) => `survey:${question}`)],
+            review: ["review"],
+        }).flatMap(([section, ids]) => ids.map((id) => ({ id, section }))),
+    ];
     const has = (...concerns: string[]) => form.concerns.some((concern) => concerns.includes(concern));
     const cycle = has("Missed or late period", "Irregular or heavy bleeding", "Fertility", "Abdominal or pelvic pain");
     const pregnancy = has("Possible pregnancy", "I am pregnant", "Pregnancy care");

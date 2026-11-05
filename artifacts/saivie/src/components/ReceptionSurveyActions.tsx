@@ -24,7 +24,7 @@ export function ReceptionSurveyLink({ appointment, patientName }: { appointment:
       <DialogHeader><DialogTitle>Survey · {patientName}</DialogTitle>
         <DialogDescription>Appointment #{appointment.id}. Create a private link to fill or resubmit this appointment's survey. Share it with the patient or open it to help them.</DialogDescription>
       </DialogHeader>
-      <p className="text-sm text-muted-foreground">Review all answers before submitting. Initial consultation surveys may need to be filled again; pregnancy follow-up surveys reopen their saved answers. Changes are saved only when submitted.</p>
+      <p className="text-sm text-muted-foreground">Saved initial survey answers reopen for review and correction. Pregnancy follow-ups restore this appointment's answers and offer a separate option to correct the original survey. Changes are saved only when submitted.</p>
       <OnboardingLink appointmentId={appointment.id} />
     </DialogContent></Dialog>
   </>;

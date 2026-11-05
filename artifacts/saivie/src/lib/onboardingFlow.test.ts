@@ -9,6 +9,14 @@ const formFor = (...concerns: string[]): IntakeForm => ({ ...structuredClone(ini
 const ids = (form: IntakeForm, extra = short) => getOnboardingQuestions(form, extra).map((question) => question.id);
 
 describe("one-question onboarding", () => {
+    it("saved survey corrections expose all historical fields even when their original concern is no longer selected", () => {
+        const questions = getOnboardingQuestions(formFor(), short, true);
+        const keys = questions.map((question) => question.id);
+        for (const id of ["medications", "allergies", "conditions", "surgeries", "familyHistory", "firstEncounterAge",
+            "miscarriages", "cycleDetails", "smoking", "occupation"]) assert.ok(keys.includes(id), id);
+        assert.equal(new Set(keys).size, keys.length);
+        assert.equal(keys.at(-1), "review");
+    });
     it("keeps the baseline short without unrelated or sensitive follow-ups", () => {
         assert.deepEqual(ids(formFor()), [
             "name", "dob", "hpvVaccine", "concerns", "chiefComplaint", "conditions", "medications",

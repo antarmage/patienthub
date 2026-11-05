@@ -7,6 +7,8 @@ import pg from "pg";
 import { createPregnancyFollowUpStore, pregnancyVisitContext, registerPregnancyFollowUpContext } from "./pregnancy-followup-context";
 import { pregnancyFollowUpSchema, pregnancyVisitContextSchema, type PregnancyFollowUp } from "../../../lib/db/src/pregnancy-followup";
 import type { PregnancyEpisode } from "../../../lib/db/src/pregnancy-episodes";
+import { readSavedIntake } from "../../../lib/db/src/saved-intake";
+import { savedIntakeVersion } from "./saved-intake";
 
 const patient = { id: 1, type: "Pregnancy", pregnancyStatus: "pregnant", lmp: "2026-04-01", history: {} };
 const appointment = { id: 20, patientId: 1, date: "2026-06-10", time: "11:00", type: "Pregnancy", status: "Scheduled", vitals: { weight: 59, bp: "118/78" } };
@@ -272,6 +274,20 @@ test("PostgreSQL follow-ups preserve baseline and other visits and roll back app
     assert.match(completed.chief_complaint, /Vomiting since the last visit: Increased/);
     await assert.rejects(() => store.save(1, 999, answers, result), /patient changed/);
     assert.deepEqual((await pool.query("SELECT history FROM patients WHERE id=1")).rows[0].history, saved);
+    const intake = readSavedIntake(saved);
+    assert.ok(intake);
+    const version = savedIntakeVersion(intake);
+    const corrected = { ...intake, health: { ...intake.health, allergies: "Latex" } };
+    await assert.rejects(() => store.correctIntake(1, 999, corrected, version), /patient changed/);
+    assert.deepEqual((await pool.query("SELECT history FROM patients WHERE id=1")).rows[0].history, saved);
+    await store.correctIntake(1, 20, corrected, version);
+    const revised = (await pool.query("SELECT history FROM patients WHERE id=1")).rows[0].history;
+    assert.equal(revised.onboarding.health.allergies, "Latex");
+    assert.equal(revised.onboardingAppointmentId, 10);
+    assert.deepEqual(revised.onboardingCorrections[0].previous, baseline.onboarding);
+    assert.deepEqual(revised.pregnancyFollowUps, saved.pregnancyFollowUps);
+    await assert.rejects(() => store.correctIntake(1, 20, corrected, version), /saved survey has changed/);
+    assert.deepEqual((await pool.query("SELECT history FROM patients WHERE id=1")).rows[0].history, revised);
   } finally {
     await pool.end(); await admin.query(`DROP SCHEMA "${schema}" CASCADE`); await admin.end();
   }
