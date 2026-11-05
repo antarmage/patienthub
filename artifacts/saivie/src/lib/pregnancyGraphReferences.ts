@@ -55,7 +55,7 @@ export function gestationalWeekAtDate(
   return days >= 0 && days < 43 * 7 ? days / 7 : null;
 }
 
-function trimesterDates(details: PregnancyDating) {
+function trimesterDates(details: PregnancyDating, weeks = [14, 28, 40]) {
   const start =
     details.datingBasis === "LMP"
       ? details.lmp
@@ -66,7 +66,7 @@ function trimesterDates(details: PregnancyDating) {
   const origin =
     Date.parse(start + "T00:00:00Z") -
     (details.datingBasis === "LMP" ? 0 : 280 * 86400000);
-  return [14, 28, 40].map((week) =>
+  return weeks.map((week) =>
     new Date(origin + week * 7 * 86400000).toISOString().slice(0, 10),
   );
 }
@@ -157,18 +157,18 @@ export function pregnancyWeightReference(
   return {
     label: "Illustrative pregnancy weight-gain band",
     source: weightSource,
-    changeDates: trimesterDates(details),
-    explanation: `Pre-pregnancy BMI ${bmi.toFixed(1)} (${category.label}); baseline ${weight} kg, height ${height} cm, singleton. Published total gain: ${category.total} kg. Band starts at week 14 with 0.5-2 kg first-trimester gain, then ${category.lower}-${category.upper} kg/week through week 40. This derived illustration is not a validated centile chart or an individual target; no first-trimester or post-term curve is guessed.`,
+    changeDates: trimesterDates(details, [13, 40]),
+    explanation: `Pre-pregnancy BMI ${bmi.toFixed(1)} (${category.label}); baseline ${weight} kg, height ${height} cm, singleton. Published total gain by term: ${category.total} kg. First-trimester guidance: 0.5-2 kg total, not a weekly target. For this approximate model, cumulative gain = 0.5-2 kg + (gestational weeks - 13) x ${category.lower}-${category.upper} kg/week, from 13w 0d through 40w 0d. Add this gain to pre-pregnancy weight for the reference weight. Fractional weeks use elapsed days. Derived weekly ranges may differ from the separately published total-gain range. This derived illustration is not a validated centile chart or an individual target; no early first-trimester or post-term curve is guessed.`,
     atDate: (date) => {
       const week = gestationalWeekAtDate(details, date);
-      return week === null || week < 14 || week > 40
+      return week === null || week < 13 || week > 40
         ? null
         : {
             lower:
-              Math.round((weight + 0.5 + (week - 14) * category.lower) * 100) /
+              Math.round((weight + 0.5 + (week - 13) * category.lower) * 100) /
               100,
             upper:
-              Math.round((weight + 2 + (week - 14) * category.upper) * 100) /
+              Math.round((weight + 2 + (week - 13) * category.upper) * 100) /
               100,
           };
     },

@@ -45,7 +45,8 @@ const weightReference = {
 test("print compares each dated weight with gestation, baseline gain and the existing BMI-based weekly band", () => {
   const html = pregnancyPrintHtml({ ...context, weightReference });
   for (const text of ["20w 0d", "14w 2d", "BMI 23.4", "baseline 60 kg", "height 160 cm",
-    "Actual gain (kg)", "-2.0", "62.6-65.0 kg", "2.6-5.0 kg", "IOM/NRC 2009", "not a validated centile", "<polygon"]) {
+    "Actual gain (kg)", "-2.0", "63.0-65.5 kg", "3.0-5.5 kg", "IOM/NRC 2009", "not a validated centile", "<polygon",
+    "gestational weeks - 13", "First-trimester guidance: 0.5-2 kg total, not a weekly target"]) {
     assert.ok(html.includes(text), text);
   }
   assert.ok(html.includes("not an automatic diagnosis"));
@@ -60,7 +61,7 @@ test("print never assumes earliest weight is baseline or applies singleton range
     const html = pregnancyPrintHtml({ ...context, weightReference: { ...weightReference, ...change } });
     assert.ok(html.includes("Weight reference unavailable"));
     assert.ok(!html.includes("<polygon"));
-    assert.ok(!html.includes("62.6-65.0 kg"));
+    assert.ok(!html.includes("63.0-65.5 kg"));
   }
 });
 
@@ -72,6 +73,15 @@ test("print respects ultrasound dating and does not invent early, post-term or p
     assert.ok(html.includes("Reference weight: Not available"));
   }
   assert.ok(pregnancyPrintHtml({ ...context, weightReference: { ...weightReference, endDate: "2026-06-01" } }).includes("Gestation at this appointment: Dating unavailable"));
+});
+
+test("first-trimester print states total guidance without a fabricated week-specific reference", () => {
+  const html = pregnancyPrintHtml({ ...context, asOf: "2026-03-18", weightReference,
+    trends: { ...context.trends, weight: [{ date: "2026-03-18", value: 61, source: "Appointment" }] } });
+  assert.ok(html.includes("8w 0d"));
+  assert.ok(html.includes("First-trimester guidance: 0.5-2 kg total, not a weekly target"));
+  assert.ok(html.includes("Reference weight: Not available"));
+  assert.ok(!html.includes("<polygon"));
 });
 
 test("repeat questionnaire shows follow-up subjects, preserves baseline and does not ask initial history again", () => {

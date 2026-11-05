@@ -47,17 +47,34 @@ test("weight band uses unrounded pre-pregnancy BMI categories and exact publishe
       prePregnancyWeightKg: baseline,
     });
     assert.ok(ref.explanation.includes(category));
-    assert.deepEqual(ref.atDate?.(atWeek(20)), {
-      lower: Math.round((baseline + 0.5 + 6 * lower) * 100) / 100,
-      upper: Math.round((baseline + 2 + 6 * upper) * 100) / 100,
-    });
-    assert.deepEqual(ref.atDate?.(atWeek(14)), {
-      lower: Math.round((baseline + 0.5) * 100) / 100,
-      upper: Math.round((baseline + 2) * 100) / 100,
-    });
-    assert.equal(ref.atDate?.(atWeek(13)), null);
+    for (const week of [13, 14, 16, 20, 24, 28, 32, 36, 40, 20 + 3 / 7]) {
+      assert.deepEqual(ref.atDate?.(atWeek(week)), {
+        lower: Math.round((baseline + 0.5 + (week - 13) * lower) * 100) / 100,
+        upper: Math.round((baseline + 2 + (week - 13) * upper) * 100) / 100,
+      });
+    }
+    for (const week of [4, 8, 12, 13 - 1 / 7]) assert.equal(ref.atDate?.(atWeek(week)), null);
+    assert.ok(ref.explanation.includes("First-trimester guidance: 0.5-2 kg total, not a weekly target"));
+    assert.ok(ref.explanation.includes("may differ from the separately published total-gain range"));
+    assert.equal(ref.changeDates?.[0], atWeek(13));
     assert.equal(ref.atDate?.(atWeek(40) + "invalid"), null);
     assert.equal(ref.atDate?.(atWeek(40 + 1 / 7)), null);
+  }
+});
+test("cumulative gain uses the formula rather than rounded CSV values or the published term-total range", () => {
+  for (const [weight, week20, week40] of [
+    [45, [3.58, 6.06], [12.38, 17.66]],
+    [60, [2.95, 5.5], [9.95, 15.5]],
+    [70, [2.11, 4.31], [6.71, 10.91]],
+    [80, [1.69, 3.89], [5.09, 9.29]],
+  ] as const) {
+    const ref = pregnancyWeightReference({ ...details, prePregnancyWeightKg: weight });
+    for (const [week, gain] of [[20, week20], [40, week40]] as const) {
+      assert.deepEqual(ref.atDate?.(atWeek(week)), {
+        lower: Math.round((weight + gain[0]) * 100) / 100,
+        upper: Math.round((weight + gain[1]) * 100) / 100,
+      });
+    }
   }
 });
 test("missing baseline, unsupported multiplicity and unknown dating never produce a guessed curve", () => {
