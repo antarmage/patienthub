@@ -148,6 +148,27 @@ test("print dating uses recorded patient LMP without episodes and linked visit L
   assert.equal(ultrasound.weightReference?.datingBasis, "Ultrasound");
 });
 
+test("print reference reuses scoped recorded cm height, preserves episode priority and never assumes baby count", () => {
+  const measured = { ...earlier, vitals: { height: "160", weight: 60.1 } };
+  const result = pregnancyVisitContext(patient, appointment, [measured, appointment], [], [], [episode]);
+  assert.equal(result.weightReference?.maternalHeightCm, 160);
+  assert.match(result.weightReference?.heightSource || "", /2026-05-10/);
+  assert.equal(result.weightReference?.fetusCount, null);
+  assert.ok(pregnancyVisitContextSchema.safeParse(result).success);
+  const confirmed = pregnancyVisitContext(patient, appointment, [measured, appointment], [], [],
+    [{ ...episode, details: { ...episode.details, maternalHeightCm: 155, fetusCount: 1 } }]);
+  assert.equal(confirmed.weightReference?.maternalHeightCm, 155);
+  assert.equal(confirmed.weightReference?.heightSource, undefined);
+  for (const height of ["1.6 m", "5 ft", 0, "NaN", 251]) {
+    const invalid = pregnancyVisitContext(patient, appointment, [{ ...measured, vitals: { height } }, appointment], [], [], [episode]);
+    assert.equal(invalid.weightReference?.maternalHeightCm, null);
+  }
+  const foreign = pregnancyVisitContext(patient, appointment, [{ ...measured, patientId: 2 }, appointment], [], [], [episode]);
+  assert.equal(foreign.weightReference?.maternalHeightCm, null);
+  const later = pregnancyVisitContext(patient, appointment, [{ ...measured, date: "2026-07-01" }, appointment], [], [], [episode]);
+  assert.equal(later.weightReference?.maternalHeightCm, null);
+});
+
 test("print context API enforces role, permission and patient/appointment ownership", async () => {
   let visible = false, calls = 0;
   const app = express();

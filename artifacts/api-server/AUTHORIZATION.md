@@ -54,6 +54,8 @@ The onboarding GET includes a narrow `pregnancyContext` (null for lab surveys): 
 
 For legacy print dating, `weightReference` may also contain a recorded LMP and `datingSource` without a saved episode. Missing episode dating uses only unambiguous scoped appointment/consultation LMP, or patient/intake LMP when no episodes exist. Valid clinical episode dating takes priority. This read-only fallback does not expose additional records, assume height/baby count or overwrite episode details.
 
+When episode height is absent, `weightReference.maternalHeightCm` can use the latest unambiguous valid cm height from the already scoped appointments/consultations, accompanied by `heightSource`. This does not broaden access or write episode data. Missing baby count remains missing; singleton status is not inferred.
+
 `GET /api/patients/:id/pregnancy-follow-up/:appointmentId` supplies the same narrow context to clinicians/owners and to staff/receptionists only with clinical viewing enabled. Patient sessions, admins, private onboarding capabilities alone and patient/appointment mismatches cannot use this endpoint. Responses are private/no-store. Trends use explicit associations or unambiguous established pregnancy dates, exclude other-pregnancy associations and future appointments, and keep glucose tests/units separate; standalone BP/weight logs require dated pregnancy boundaries. These read-only projections do not author pregnancy links.
 
 Deploy API and frontend together and restart the API for the new table migration. Loading uses one shared query with a 15-second timeout and explicit error/retry UI; failed requests never mount a second form that restarts the loading loop.

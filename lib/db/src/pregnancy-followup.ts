@@ -39,6 +39,7 @@ export const pregnancyWeightContextSchema = z.object({
   prePregnancyWeightKg: z.number().min(20).max(500).nullable(),
   fetusCount: z.number().int().min(1).max(10).nullable(),
   datingSource: z.string().optional(),
+  heightSource: z.string().optional(),
 });
 export type PregnancyWeightContext = z.infer<typeof pregnancyWeightContextSchema>;
 export const pregnancyVisitContextSchema = z.object({

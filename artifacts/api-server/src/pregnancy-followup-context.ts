@@ -92,6 +92,20 @@ export function pregnancyVisitContext(patient: Row, appointment: Row, appointmen
     prePregnancyWeightKg: episode?.details.prePregnancyWeightKg ?? null, fetusCount: episode?.details.fetusCount ?? null,
   } : null;
   if (weightReference) {
+    if (weightReference.maternalHeightCm === null) {
+      const heights = points.flatMap((point) => {
+        const raw = object(point.vitals).height;
+        const value = typeof raw === "number" ? raw
+          : typeof raw === "string" && /^\d+(\.\d+)?$/.test(raw.trim()) ? Number(raw) : NaN;
+        return Number.isFinite(value) && value >= 50 && value <= 250
+          ? [{ date: point.date, value, source: point.source }] : [];
+      }).sort((a, b) => b.date.localeCompare(a.date));
+      const latest = heights[0];
+      if (latest && heights.filter((row) => row.date === latest.date).every((row) => row.value === latest.value)) {
+        weightReference.maternalHeightCm = latest.value;
+        weightReference.heightSource = `${latest.source} on ${latest.date} (recorded height in cm)`;
+      }
+    }
     const hasDating = weightReference.datingBasis === "LMP" ? !!date(weightReference.lmp)
       : ["Ultrasound", "Clinical assessment"].includes(weightReference.datingBasis) && !!date(weightReference.dueDate);
     if (!hasDating) {

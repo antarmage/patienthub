@@ -102,7 +102,7 @@ test("print respects ultrasound dating and does not invent early, post-term or p
   assert.ok(pregnancyPrintHtml({ ...context, weightReference: adjusted }).includes("20w 0d"));
   for (const asOf of ["2026-03-01", "2026-10-29"]) {
     const html = pregnancyPrintHtml({ ...context, asOf, weightReference });
-    assert.ok(html.includes("Reference weight: Not available"));
+    assert.ok(html.includes(asOf === "2026-03-01" ? "First trimester: no weekly target" : "After 40 weeks: clinician review"));
   }
   assert.ok(pregnancyPrintHtml({ ...context, weightReference: { ...weightReference, endDate: "2026-06-01" } }).includes("Gestation at this appointment: Dating unavailable"));
 });
@@ -112,8 +112,21 @@ test("first-trimester print states total guidance without a fabricated week-spec
     trends: { ...context.trends, weight: [{ date: "2026-03-18", value: 61, source: "Appointment" }] } });
   assert.ok(html.includes("8w 0d"));
   assert.ok(html.includes("First-trimester guidance: 0.5-2 kg total, not a weekly target"));
-  assert.ok(html.includes("Reference weight: Not available"));
+  assert.ok(html.includes("Reference weight: First trimester: no weekly target"));
   assert.ok(!html.includes("<polygon"));
+});
+
+test("print explains the missing reference input rather than repeating an unexplained unavailable value", () => {
+  const trends = { ...context.trends, weight: [{ date: "2026-03-18", value: 60.1, source: "Appointment" },
+    { date: context.asOf, value: 62.6, source: "Appointment" }] };
+  const html = pregnancyPrintHtml({ ...context, trends,
+    weightReference: { ...weightReference, prePregnancyWeightKg: null, maternalHeightCm: null, fetusCount: null } });
+  assert.ok(html.includes("Missing: height, baby count"));
+  const withHeight = pregnancyPrintHtml({ ...context, trends,
+    weightReference: { ...weightReference, prePregnancyWeightKg: null, fetusCount: null, heightSource: "Appointment on 2026-06-10 (recorded height in cm)" } });
+  assert.ok(withHeight.includes("Missing: baby count"));
+  assert.ok(!withHeight.includes("Missing: height"));
+  assert.ok(withHeight.includes("Height source: Appointment on 2026-06-10"));
 });
 
 test("repeat questionnaire shows follow-up subjects, preserves baseline and does not ask initial history again", () => {

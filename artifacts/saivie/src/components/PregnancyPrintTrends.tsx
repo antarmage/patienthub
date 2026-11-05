@@ -17,7 +17,18 @@ export function PregnancyPrintTrends({ context }: { context: PregnancyVisitConte
   };
   const rangeText = (date: string, gain = false) => {
     const range = reference?.atDate?.(date);
-    if (!range || range.upper == null || gain && baselineWeight == null) return "Not available";
+    if (!range || range.upper == null || gain && baselineWeight == null) {
+      const week = baseline ? gestationalWeekAtDate(baseline, date) : null;
+      if (week !== null && week < 13) return "First trimester: no weekly target";
+      if (week !== null && week > 40) return "After 40 weeks: clinician review";
+      const missing = [
+        !baseline?.maternalHeightCm && "height",
+        baselineWeight == null && "baseline weight",
+        baseline?.fetusCount == null && "baby count",
+        week === null && "dating",
+      ].filter(Boolean);
+      return missing.length ? `Missing: ${missing.join(", ")}` : baseline?.fetusCount !== 1 ? "Multiple pregnancy: clinician guidance" : "Not available";
+    }
     const offset = gain ? baselineWeight ?? 0 : 0;
     return `${(range.lower - offset).toFixed(1)}-${(range.upper - offset).toFixed(1)} kg`;
   };
@@ -57,6 +68,7 @@ export function PregnancyPrintTrends({ context }: { context: PregnancyVisitConte
     <section style={{ breakInside: "avoid" }}>
       <h3>Week-wise pregnancy weight gain</h3>
       {baseline?.datingSource && <p>Pregnancy dating source: {baseline.datingSource}.</p>}
+      {baseline?.heightSource && <p>Height source: {baseline.heightSource}.</p>}
       {resolvedBaseline?.estimated && <p>Using estimated baseline {resolvedBaseline.weight} kg from {resolvedBaseline.date} ({resolvedBaseline.gestation}, {resolvedBaseline.source}). Gain is estimated; early gain or loss can affect this comparison.</p>}
       <p>Gestation at this appointment: {gestation(context.asOf)}. Reference weight: {rangeText(context.asOf)}; reference gain from {resolvedBaseline?.estimated ? "estimated baseline" : "pre-pregnancy weight"}: {rangeText(context.asOf, true)}.</p>
       <p>{reference ? <><strong>{reference.label}. </strong>{reference.explanation}</> : "Weight reference unavailable. Record maternal height, number of babies and pregnancy dating in this pregnancy episode. Use confirmed pre-pregnancy weight or, if missing, an unambiguous first-trimester weight before 14 weeks as an explicitly estimated baseline. Later pregnancy weights are not used as a pre-pregnancy baseline."}</p>
