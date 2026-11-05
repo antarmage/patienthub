@@ -56,6 +56,8 @@ export function PregnancyPrintTrends({ context }: { context: PregnancyVisitConte
     <p>{context.label} · Through appointment {context.asOf}. Recorded readings only; gaps are not estimated.</p>
     <section style={{ breakInside: "avoid" }}>
       <h3>Week-wise pregnancy weight gain</h3>
+      {baseline?.datingSource && <p>Pregnancy dating source: {baseline.datingSource}.</p>}
+      {resolvedBaseline?.estimated && <p>Using estimated baseline {resolvedBaseline.weight} kg from {resolvedBaseline.date} ({resolvedBaseline.gestation}, {resolvedBaseline.source}). Gain is estimated; early gain or loss can affect this comparison.</p>}
       <p>Gestation at this appointment: {gestation(context.asOf)}. Reference weight: {rangeText(context.asOf)}; reference gain from {resolvedBaseline?.estimated ? "estimated baseline" : "pre-pregnancy weight"}: {rangeText(context.asOf, true)}.</p>
       <p>{reference ? <><strong>{reference.label}. </strong>{reference.explanation}</> : "Weight reference unavailable. Record maternal height, number of babies and pregnancy dating in this pregnancy episode. Use confirmed pre-pregnancy weight or, if missing, an unambiguous first-trimester weight before 14 weeks as an explicitly estimated baseline. Later pregnancy weights are not used as a pre-pregnancy baseline."}</p>
       {reference && <p style={{ fontSize: 11 }}>Source: <a href={reference.source.url}>{reference.source.label}</a></p>}

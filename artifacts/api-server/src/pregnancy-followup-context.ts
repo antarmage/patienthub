@@ -3,7 +3,7 @@ import type { Pool } from "pg";
 import type { AccessActor } from "./clinical-access";
 import type { PregnancyEpisode } from "../../../lib/db/src/pregnancy-episodes";
 import { summaryRecord as object, summaryTrends, type SummaryLab } from "../../../lib/db/src/patient-summary";
-import { pregnancyFollowUpSchema, followUpRows, type PregnancyVisitContext } from "../../../lib/db/src/pregnancy-followup";
+import { pregnancyFollowUpSchema, followUpRows, type PregnancyVisitContext, type PregnancyWeightContext } from "../../../lib/db/src/pregnancy-followup";
 import { createPregnancyEpisodeStore } from "./pregnancy-episode-store";
 
 type Row = Record<string, unknown>;
@@ -86,14 +86,30 @@ export function pregnancyVisitContext(patient: Row, appointment: Row, appointmen
   const savedEntry = object(object(history.pregnancyFollowUps)[String(appointment.id)]);
   const saved = pregnancyFollowUpSchema.safeParse(savedEntry.answers);
   if (Object.keys(savedEntry).length && !saved.success) throw new Error("The saved pregnancy follow-up is invalid. Ask the clinic to review this record.");
+  let weightReference: PregnancyWeightContext | null = pregnancy ? {
+    lmp: episode?.details.lmp ?? null, dueDate: episode?.details.dueDate ?? null, endDate: episode?.details.endDate ?? null,
+    datingBasis: episode?.details.datingBasis ?? "Not recorded", maternalHeightCm: episode?.details.maternalHeightCm ?? null,
+    prePregnancyWeightKg: episode?.details.prePregnancyWeightKg ?? null, fetusCount: episode?.details.fetusCount ?? null,
+  } : null;
+  if (weightReference) {
+    const hasDating = weightReference.datingBasis === "LMP" ? !!date(weightReference.lmp)
+      : ["Ultrasound", "Clinical assessment"].includes(weightReference.datingBasis) && !!date(weightReference.dueDate);
+    if (!hasDating) {
+      const recordedLmps = [...new Set([...selectedAppointments, ...selectedVisits]
+        .map((row) => date(object(row.vitals).lmp)).filter((value): value is string => value !== null))];
+      const fallbackLmp = date(episode?.details.lmp) || (recordedLmps.length === 1 ? recordedLmps[0] : null)
+        || (!episodes.length && profilePregnant ? date(patient.lmp) || date(object(intake.cycle).lastPeriod) : null);
+      if (fallbackLmp && recordedLmps.every((lmp) => lmp === fallbackLmp)) {
+        weightReference = { ...weightReference, lmp: fallbackLmp, datingBasis: "LMP",
+          datingSource: episode?.details.lmp ? "Recorded pregnancy-episode LMP" : recordedLmps.length
+            ? "Recorded LMP from this pregnancy's appointments/consultations" : "Recorded patient/intake LMP (no saved pregnancy episodes)" };
+      }
+    }
+  }
   return { pregnancy, repeat: pregnancy && previousAppointmentCount > 0 && !cancelled(appointment), episodeId: episode?.id || null,
     label: episode ? `Pregnancy ${episode.details.number}` : pregnancy ? "Current pregnancy · recorded dating" : "No pregnancy context established",
     asOf, previousAppointmentCount, trends: { bp: trends.bp, weight: trends.weight, hb: trends.hb, sugar: trends.sugar },
-    weightReference: pregnancy && episode ? {
-      lmp: episode.details.lmp, dueDate: episode.details.dueDate, endDate: episode.details.endDate,
-      datingBasis: episode.details.datingBasis, maternalHeightCm: episode.details.maternalHeightCm ?? null,
-      prePregnancyWeightKg: episode.details.prePregnancyWeightKg ?? null, fetusCount: episode.details.fetusCount ?? null,
-    } : null,
+    weightReference,
     answers: saved.success ? saved.data : null };
 }
 

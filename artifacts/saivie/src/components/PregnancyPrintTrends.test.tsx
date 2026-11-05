@@ -42,6 +42,25 @@ const weightReference = {
   maternalHeightCm: 160, prePregnancyWeightKg: 60, fetusCount: 1,
 };
 
+test("legacy recorded LMP prints gestation and estimated gain even without a saved episode", () => {
+  const appointments = ["2026-06-03", "2026-07-10", "2026-08-20", "2026-09-17"].map((date, index) => ({
+    id: index + 1, patientId: 1, date, time: "10:00", type: "Pregnancy", status: "Completed",
+    vitals: { weight: [60.1, 60.1, 62.6, 63.2][index] },
+  }));
+  const derived: PregnancyVisitContext = { ...context, episodeId: null, asOf: appointments[3].date,
+    weightReference: { ...weightReference, lmp: "2026-04-01", prePregnancyWeightKg: null,
+      maternalHeightCm: null, fetusCount: null, datingSource: "Recorded patient/intake LMP (no saved pregnancy episodes)" },
+    trends: { bp: [], hb: [], sugar: [], weight: appointments.map((row) => ({ date: row.date, value: row.vitals.weight, source: "Appointment" })) } };
+  const html = pregnancyPrintHtml(derived);
+  assert.ok(html.includes("9w 0d"));
+  assert.ok(html.includes("24w 1d"));
+  assert.ok(html.includes("estimated baseline 60.1 kg from 2026-06-03 (9w 0d, Appointment)"));
+  assert.ok(html.includes("Estimated gain (kg)"));
+  assert.ok(!html.includes("Dating unavailable"));
+  assert.ok(html.includes("confirmed maternal height"));
+  assert.ok(html.includes("number of babies"));
+});
+
 test("print compares each dated weight with gestation, baseline gain and the existing BMI-based weekly band", () => {
   const html = pregnancyPrintHtml({ ...context, weightReference });
   for (const text of ["20w 0d", "14w 2d", "BMI 23.4", "baseline 60 kg", "height 160 cm",

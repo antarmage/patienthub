@@ -119,12 +119,33 @@ test("print context supplies only selected episode's confirmed weight inputs and
   });
   assert.ok(pregnancyVisitContextSchema.safeParse(result).success);
   assert.equal(context().weightReference?.prePregnancyWeightKg, null);
-  assert.equal(context([earlier, appointment], []).weightReference, null);
+  assert.equal(context([earlier, appointment], []).weightReference?.lmp, patient.lmp);
   const past = { ...selected, id: 2, details: { ...selected.details, status: "past" as const, lmp: "2025-01-01", prePregnancyWeightKg: 50 } };
   const unlinked = { ...selected, records: [] };
   const historical = pregnancyVisitContext(patient, { ...appointment, date: "2025-06-10" }, [], [], [], [unlinked, past]);
   assert.equal(historical.weightReference?.prePregnancyWeightKg, 50);
   assert.equal(historical.weightReference?.lmp, "2025-01-01");
+});
+
+test("print dating uses recorded patient LMP without episodes and linked visit LMP when episode dating is missing", () => {
+  const legacy = context([earlier, appointment], []);
+  assert.equal(legacy.weightReference?.datingBasis, "LMP");
+  assert.equal(legacy.weightReference?.lmp, patient.lmp);
+  assert.match(legacy.weightReference?.datingSource || "", /patient\/intake LMP/);
+  assert.equal(legacy.weightReference?.prePregnancyWeightKg, null);
+  assert.ok(pregnancyVisitContextSchema.safeParse(legacy).success);
+  const undated: PregnancyEpisode = { ...episode, details: { ...episode.details, lmp: null, dueDate: null, datingBasis: "Not recorded" } };
+  const result = pregnancyVisitContext(patient, appointment, [earlier, appointment],
+    [{ id: 1, patientId: 1, appointmentId: 10, date: earlier.date, vitals: { lmp: patient.lmp } }], [], [undated]);
+  assert.equal(result.weightReference?.lmp, patient.lmp);
+  assert.equal(result.weightReference?.datingBasis, "LMP");
+  const conflict = pregnancyVisitContext(patient, appointment,
+    [{ ...earlier, vitals: { lmp: "2026-03-01" } }, { ...appointment, vitals: { lmp: "2026-04-01" } }], [], [], [undated]);
+  assert.equal(conflict.weightReference?.datingBasis, "Not recorded");
+  const unknown = pregnancyVisitContext(patient, appointment, [earlier, appointment], [], [], [undated]);
+  assert.equal(unknown.weightReference?.datingBasis, "Not recorded");
+  const ultrasound = context([earlier, appointment], [{ ...episode, details: { ...episode.details, datingBasis: "Ultrasound" } }]);
+  assert.equal(ultrasound.weightReference?.datingBasis, "Ultrasound");
 });
 
 test("print context API enforces role, permission and patient/appointment ownership", async () => {
