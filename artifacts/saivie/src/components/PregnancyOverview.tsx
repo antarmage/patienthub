@@ -54,7 +54,7 @@ function MeasurementGraphs({
         title="Weight"
         unit="kg"
         points={trends.weight}
-        reference={details ? pregnancyWeightReference(details) : undefined}
+        reference={details ? pregnancyWeightReference(details, trends.weight) : undefined}
       />
       <MeasurementTrend
         title="Hemoglobin"

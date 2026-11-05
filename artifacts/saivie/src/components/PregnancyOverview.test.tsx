@@ -263,6 +263,13 @@ test("patient risk is kept distinct from missing information and is not silently
   assert.ok(html.includes("Previously recorded risk assessment: High"));
   assert.ok(html.includes("not linked to a saved pregnancy episode"));
 });
+test("selected-pregnancy graph uses its linked first-trimester weight as an estimated baseline", () => {
+  const html = render([{ ...past, details: { ...past.details, maternalHeightCm: 160, fetusCount: 1 } }]);
+  assert.ok(html.includes("estimated baseline 91 kg from 2020-02-01 (4w 3d, Appointment)"));
+  assert.ok(html.includes("Estimated pre-pregnancy BMI"));
+  assert.ok(html.includes("Saved pre-pregnancy weight is unchanged"));
+  assert.ok(!html.includes("estimated baseline 55 kg"));
+});
 test("missing-age-only legacy risk is explicitly marked for review without deleting original evidence", () => {
   const html = render([current], true, true, {
     ...patient,

@@ -2,13 +2,14 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { SummaryPoint } from "@/lib/patientSummary";
 import { followUpRows, type PregnancyVisitContext } from "../../../../lib/db/src/pregnancy-followup";
-import { gestationalWeekAtDate, pregnancyWeightReference } from "@/lib/pregnancyGraphReferences";
+import { gestationalWeekAtDate, pregnancyWeightBaseline, pregnancyWeightReference } from "@/lib/pregnancyGraphReferences";
 
 export function PregnancyPrintTrends({ context }: { context: PregnancyVisitContext | null }) {
   if (!context?.pregnancy) return null;
   const baseline = context.weightReference;
-  const reference = baseline ? pregnancyWeightReference(baseline) : null;
-  const baselineWeight = baseline?.prePregnancyWeightKg;
+  const reference = baseline ? pregnancyWeightReference(baseline, context.trends.weight) : null;
+  const resolvedBaseline = baseline ? pregnancyWeightBaseline(baseline, context.trends.weight) : null;
+  const baselineWeight = resolvedBaseline?.weight;
   const gestation = (date: string) => {
     const week = baseline ? gestationalWeekAtDate(baseline, date) : null;
     const days = week === null ? null : Math.round(week * 7);
@@ -55,14 +56,14 @@ export function PregnancyPrintTrends({ context }: { context: PregnancyVisitConte
     <p>{context.label} · Through appointment {context.asOf}. Recorded readings only; gaps are not estimated.</p>
     <section style={{ breakInside: "avoid" }}>
       <h3>Week-wise pregnancy weight gain</h3>
-      <p>Gestation at this appointment: {gestation(context.asOf)}. Reference weight: {rangeText(context.asOf)}; reference gain from pre-pregnancy weight: {rangeText(context.asOf, true)}.</p>
-      <p>{reference ? <><strong>{reference.label}. </strong>{reference.explanation}</> : "Weight reference unavailable. Record confirmed maternal height, pre-pregnancy weight, number of babies and pregnancy dating in this pregnancy episode. Current or earliest visit weight is not assumed to be pre-pregnancy weight."}</p>
+      <p>Gestation at this appointment: {gestation(context.asOf)}. Reference weight: {rangeText(context.asOf)}; reference gain from {resolvedBaseline?.estimated ? "estimated baseline" : "pre-pregnancy weight"}: {rangeText(context.asOf, true)}.</p>
+      <p>{reference ? <><strong>{reference.label}. </strong>{reference.explanation}</> : "Weight reference unavailable. Record maternal height, number of babies and pregnancy dating in this pregnancy episode. Use confirmed pre-pregnancy weight or, if missing, an unambiguous first-trimester weight before 14 weeks as an explicitly estimated baseline. Later pregnancy weights are not used as a pre-pregnancy baseline."}</p>
       {reference && <p style={{ fontSize: 11 }}>Source: <a href={reference.source.url}>{reference.source.label}</a></p>}
     </section>
     {series.map((row) => <section key={`${row.name}|${row.unit}`} style={{ marginBottom: 16 }}>
       <h3 style={{ marginBottom: 4 }}>{row.name} ({row.unit})</h3>
       {row.points.length ? <>{graph(row.points, row.name)}<table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead><tr><th>Date</th>{row.name === "Weight" && <th>Gestation</th>}<th>Reading</th>{row.name === "Weight" && <><th>Actual gain (kg)</th><th>Reference weight</th><th>Reference gain</th></>}<th>Source</th></tr></thead>
+        <thead><tr><th>Date</th>{row.name === "Weight" && <th>Gestation</th>}<th>Reading</th>{row.name === "Weight" && <><th>{resolvedBaseline?.estimated ? "Estimated gain (kg)" : "Actual gain (kg)"}</th><th>Reference weight</th><th>Reference gain</th></>}<th>Source</th></tr></thead>
         <tbody>{row.points.map((point, index) => <tr key={index} style={{ breakInside: "avoid" }}><td>{point.date}</td>{row.name === "Weight" && <td>{gestation(point.date)}</td>}<td>{point.value}{point.secondary == null ? "" : ` / ${point.secondary}`}</td>{row.name === "Weight" && <><td>{baselineWeight == null ? "Not available" : (point.value - baselineWeight).toFixed(1)}</td><td>{rangeText(point.date)}</td><td>{rangeText(point.date, true)}</td></>}<td>{point.source}</td></tr>)}</tbody>
       </table></> : <p>No recorded readings in this pregnancy.</p>}
       {row.name === "Weight" && reference?.atDate && <p style={{ fontSize: 11 }}>Shaded band: illustrative BMI-based weight range. Readings outside the band need clinician interpretation, not an automatic diagnosis. Before 13w 0d, only the first-trimester total-gain guidance applies; no week-specific weight is estimated. No reference is extrapolated after 40w 0d.</p>}

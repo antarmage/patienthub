@@ -102,11 +102,33 @@ const weightCategories = [
   },
 ];
 
+export function pregnancyWeightBaseline(details: PregnancyWeightDetails, points: SummaryPoint[] = []) {
+  const confirmed = details.prePregnancyWeightKg;
+  if (confirmed != null) {
+    return Number.isFinite(confirmed) && confirmed >= 20 && confirmed <= 500
+      ? { weight: confirmed, estimated: false as const, date: null, gestation: null, source: "Confirmed pre-pregnancy weight" }
+      : null;
+  }
+  const candidates = points.filter((point) => {
+    const week = gestationalWeekAtDate(details, point.date);
+    return week !== null && week < 14 && Number.isFinite(point.value) && point.value >= 20 && point.value <= 500;
+  }).sort((a, b) => a.date.localeCompare(b.date));
+  const first = candidates[0];
+  if (!first || candidates.some((point) => point.date === first.date && point.value !== first.value)) return null;
+  const week = gestationalWeekAtDate(details, first.date);
+  if (week === null) return null;
+  const days = Math.round(week * 7);
+  return { weight: first.value, estimated: true as const, date: first.date,
+    gestation: `${Math.floor(days / 7)}w ${days % 7}d`, source: first.source };
+}
+
 export function pregnancyWeightReference(
   details: PregnancyWeightDetails,
+  points: SummaryPoint[] = [],
 ): GraphReference {
+  const baseline = pregnancyWeightBaseline(details, points);
   const height = details.maternalHeightCm,
-    weight = details.prePregnancyWeightKg;
+    weight = baseline?.weight;
   const missing = [
     !(
       typeof height === "number" &&
@@ -119,7 +141,7 @@ export function pregnancyWeightReference(
       Number.isFinite(weight) &&
       weight >= 20 &&
       weight <= 500
-    ) && "confirmed pre-pregnancy weight",
+    ) && "confirmed pre-pregnancy weight or an unambiguous recorded first-trimester weight before 14 weeks",
     details.fetusCount == null && "number of babies",
     !(details.datingBasis === "LMP"
       ? details.lmp && calendarDate(details.lmp)
@@ -135,7 +157,7 @@ export function pregnancyWeightReference(
     return {
       label: "Weight reference unavailable",
       source: weightSource,
-      explanation: `Record ${missing.join(", ")} in this pregnancy episode. Current or earliest visit weight is not assumed to be pre-pregnancy weight.`,
+      explanation: `Record ${missing.join(", ")} in this pregnancy episode. Later pregnancy weights are not used as a pre-pregnancy baseline.`,
     };
   if (details.fetusCount !== 1)
     return {
@@ -158,10 +180,10 @@ export function pregnancyWeightReference(
     label: "Illustrative pregnancy weight-gain band",
     source: weightSource,
     changeDates: trimesterDates(details, [13, 40]),
-    explanation: `Pre-pregnancy BMI ${bmi.toFixed(1)} (${category.label}); baseline ${weight} kg, height ${height} cm, singleton. Published total gain by term: ${category.total} kg. First-trimester guidance: 0.5-2 kg total, not a weekly target. For this approximate model, cumulative gain = 0.5-2 kg + (gestational weeks - 13) x ${category.lower}-${category.upper} kg/week, from 13w 0d through 40w 0d. Add this gain to pre-pregnancy weight for the reference weight. Fractional weeks use elapsed days. Derived weekly ranges may differ from the separately published total-gain range. This derived illustration is not a validated centile chart or an individual target; no early first-trimester or post-term curve is guessed.`,
+    explanation: `${baseline?.estimated ? `Estimated pre-pregnancy BMI ${bmi.toFixed(1)} (${category.label}); estimated baseline ${weight} kg from ${baseline.date} (${baseline.gestation}, ${baseline.source}). Early gain or loss may affect BMI classification and estimated gain; verify with the clinician. Saved pre-pregnancy weight is unchanged.` : `Pre-pregnancy BMI ${bmi.toFixed(1)} (${category.label}); baseline ${weight} kg`}, height ${height} cm, singleton. Published total gain by term: ${category.total} kg. First-trimester guidance: 0.5-2 kg total, not a weekly target. For this approximate model, cumulative gain = 0.5-2 kg + (gestational weeks - 13) x ${category.lower}-${category.upper} kg/week, from 13w 0d through 40w 0d. Add this gain to ${baseline?.estimated ? "the estimated baseline" : "pre-pregnancy weight"} for the reference weight. Fractional weeks use elapsed days. Derived weekly ranges may differ from the separately published total-gain range. This derived illustration is not a validated centile chart or an individual target; no early first-trimester or post-term curve is guessed.`,
     atDate: (date) => {
       const week = gestationalWeekAtDate(details, date);
-      return week === null || week < 13 || week > 40
+      return week === null || week < 13 || week > 40 || baseline?.estimated && date < baseline.date
         ? null
         : {
             lower:

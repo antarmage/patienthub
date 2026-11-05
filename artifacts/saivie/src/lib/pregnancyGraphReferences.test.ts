@@ -8,6 +8,7 @@ import {
   graphReferenceTimeline,
   pregnancyHemoglobinReference,
   pregnancyWeightReference,
+  pregnancyWeightBaseline,
 } from "./pregnancyGraphReferences";
 
 const details: PregnancyEpisodeDetails = {
@@ -94,6 +95,42 @@ test("missing baseline, unsupported multiplicity and unknown dating never produc
     assert.equal(ref.atDate, undefined);
     assert.ok(ref.explanation.length > 0);
   }
+});
+test("missing pre-pregnancy weight uses the earliest first-trimester reading with explicit provenance", () => {
+  const missing = { ...details, prePregnancyWeightKg: null };
+  const points = [
+    { date: atWeek(20), value: 65, source: "Appointment" },
+    { date: atWeek(13 + 6 / 7), value: 61, source: "Weight log" },
+    { date: atWeek(8), value: 60, source: "Appointment" },
+  ];
+  assert.deepEqual(pregnancyWeightBaseline(missing, points), {
+    weight: 60, estimated: true, date: atWeek(8), gestation: "8w 0d", source: "Appointment",
+  });
+  const ref = pregnancyWeightReference(missing, points);
+  assert.deepEqual(ref.atDate?.(atWeek(20)), { lower: 62.95, upper: 65.5 });
+  for (const text of ["Estimated pre-pregnancy BMI 23.4", atWeek(8), "8w 0d", "Appointment", "Early gain or loss", "Saved pre-pregnancy weight is unchanged"])
+    assert.ok(ref.explanation.includes(text), text);
+  assert.equal(missing.prePregnancyWeightKg, null);
+  assert.equal(pregnancyWeightBaseline(details, points)?.estimated, false);
+  assert.equal(pregnancyWeightBaseline({ ...details, prePregnancyWeightKg: 55 }, points)?.weight, 55);
+  assert.equal(pregnancyWeightBaseline(missing, [points[1]])?.weight, 61);
+});
+test("estimated baseline excludes late, invalid, pre-pregnancy and ambiguously conflicting earliest readings", () => {
+  const missing = { ...details, prePregnancyWeightKg: null };
+  for (const points of [
+    [{ date: atWeek(14), value: 60, source: "Appointment" }],
+    [{ date: "2024-12-31", value: 60, source: "Appointment" }],
+    [{ date: "2025-02-30", value: 60, source: "Appointment" }],
+    [{ date: atWeek(8), value: NaN, source: "Appointment" }],
+    [{ date: atWeek(8), value: 19, source: "Appointment" }],
+    [{ date: atWeek(8), value: 60, source: "Appointment" }, { date: atWeek(8), value: 61, source: "Consultation" }],
+  ]) assert.equal(pregnancyWeightBaseline(missing, points), null);
+  const point = [{ date: atWeek(8), value: 60, source: "Appointment" }];
+  assert.equal(pregnancyWeightBaseline({ ...missing, datingBasis: "Not recorded" }, point), null);
+  assert.equal(pregnancyWeightBaseline({ ...missing, prePregnancyWeightKg: 0 }, point), null);
+  assert.equal(pregnancyWeightReference({ ...missing, fetusCount: 2 }, point).atDate, undefined);
+  const lateFirstTrimester = pregnancyWeightReference(missing, [{ ...point[0], date: atWeek(13 + 6 / 7) }]);
+  assert.equal(lateFirstTrimester.atDate?.(atWeek(13)), null);
 });
 test("references use the selected episode's clinical dating and stop after its recorded end", () => {
   const adjusted = {

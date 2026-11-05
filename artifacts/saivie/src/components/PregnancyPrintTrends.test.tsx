@@ -52,10 +52,10 @@ test("print compares each dated weight with gestation, baseline gain and the exi
   assert.ok(html.includes("not an automatic diagnosis"));
 });
 
-test("print never assumes earliest weight is baseline or applies singleton ranges to twins or unknown dating", () => {
+test("print never uses later-pregnancy weight as baseline or applies singleton ranges to twins or unknown dating", () => {
   const missing = pregnancyPrintHtml(context);
   assert.ok(missing.includes("Weight reference unavailable"));
-  assert.ok(missing.includes("Current or earliest visit weight is not assumed"));
+  assert.ok(missing.includes("Later pregnancy weights are not used"));
   for (const change of [{ prePregnancyWeightKg: null }, { maternalHeightCm: null }, { fetusCount: 2 },
     { datingBasis: "Not recorded" as const }, { lmp: null }]) {
     const html = pregnancyPrintHtml({ ...context, weightReference: { ...weightReference, ...change } });
@@ -63,6 +63,19 @@ test("print never assumes earliest weight is baseline or applies singleton range
     assert.ok(!html.includes("<polygon"));
     assert.ok(!html.includes("63.0-65.5 kg"));
   }
+});
+
+test("print uses first-trimester baseline only as an estimate and retains confirmed baseline priority", () => {
+  const early = { date: "2026-03-18", value: 60, source: "Appointment" };
+  const trends = { ...context.trends, weight: [early, { date: context.asOf, value: 64, source: "Consultation" }] };
+  const html = pregnancyPrintHtml({ ...context, trends, weightReference: { ...weightReference, prePregnancyWeightKg: null } });
+  for (const text of ["Estimated gain (kg)", "estimated baseline 60 kg", "2026-03-18", "8w 0d", "Estimated pre-pregnancy BMI 23.4",
+    "63.0-65.5 kg", "4.0", "Saved pre-pregnancy weight is unchanged"]) assert.ok(html.includes(text), text);
+  const confirmed = pregnancyPrintHtml({ ...context, trends, weightReference: { ...weightReference, prePregnancyWeightKg: 55 } });
+  assert.ok(confirmed.includes("baseline 55 kg"));
+  assert.ok(confirmed.includes("Actual gain (kg)"));
+  assert.ok(!confirmed.includes("Estimated gain (kg)"));
+  assert.ok(confirmed.includes("9.0"));
 });
 
 test("print respects ultrasound dating and does not invent early, post-term or post-episode reference weights", () => {
