@@ -57,6 +57,41 @@ test("saved current pregnancy establishes follow-up despite missing or stale pre
   assert.equal(pregnancyVisitContext({ id: 1, pregnancyStatus: "completed" }, selected, [earlier, selected], [], [], [unlinked]).repeat, false);
 });
 
+test("non-pregnant patients and ended pregnancies do not gain pregnancy context from old dating", () => {
+  const selected = { ...appointment, type: "Consultation" };
+  for (const nonPregnant of [
+    { id: 1, type: "Gynae", lmp: patient.lmp, history: {} },
+    { ...patient, type: "Gynae", pregnancyStatus: "", history: { onboarding: { pregnancies: { currentStatus: "No" } } } },
+    { ...patient, pregnancyStatus: "completed", history: { onboarding: {
+      pregnancies: { currentStatus: "Yes" }, cycle: { lastPeriod: patient.lmp },
+    } } },
+  ]) {
+    const result = pregnancyVisitContext(nonPregnant, selected, [earlier, selected], [], [], []);
+    assert.equal(result.pregnancy, false);
+    assert.equal(result.repeat, false);
+  }
+});
+
+test("MTP and termination visits suppress journey messaging without changing pregnancy context", () => {
+  for (const purpose of [
+    { type: "MTP" }, { visitType: "Medical termination of pregnancy" },
+    { reason: "MTP consultation" }, { chiefComplaint: "Abortion care" },
+  ]) {
+    const result = pregnancyVisitContext(patient, { ...appointment, ...purpose }, [earlier, appointment], [], [], [episode]);
+    assert.equal(result.journeySuppressed, true);
+    assert.equal(result.pregnancy, true);
+    assert.equal(result.repeat, true);
+    assert.equal(result.weightReference?.lmp, episode.details.lmp);
+  }
+  const linkedVisit = { id: 2, patientId: 1, appointmentId: appointment.id, date: appointment.date, visitType: "MTP" };
+  assert.equal(pregnancyVisitContext(patient, appointment, [appointment], [linkedVisit], [], [episode]).journeySuppressed, true);
+  for (const unrelated of [{ ...linkedVisit, patientId: 2 }, { ...linkedVisit, appointmentId: earlier.id }]) {
+    assert.equal(pregnancyVisitContext(patient, appointment, [appointment], [unrelated], [], [episode]).journeySuppressed, false);
+  }
+  const parsed = pregnancyVisitContextSchema.parse(context());
+  assert.equal(parsed.journeySuppressed, false);
+});
+
 test("legacy reception LMP supports repeat surveys without rewriting clinical dates or requiring a new intake", () => {
   const legacyPatient = { ...patient, lmp: null };
   const reported = { ...earlier, patientReportedLmp: { value: patient.lmp, source: "patient-reported" } };

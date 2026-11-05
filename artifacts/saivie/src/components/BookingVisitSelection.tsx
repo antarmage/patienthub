@@ -28,7 +28,7 @@ export function BookingVisitSelection({ mode, onModeChange, reason, onReasonChan
                     { value: "phone-call", label: "Phone call", icon: Phone, description: "Voice-only booking unavailable", disabled: true },
                     { value: "home-visit", label: "Home visit", icon: Home, description: "Doctor comes to her" },
                 ].map((option) => <button key={option.value} type="button" disabled={option.disabled}
-                    aria-pressed={mode === option.value} onClick={() => onModeChange(option.value)}
+                    aria-pressed={mode === option.value} onClick={() => onModeChange(mode === option.value ? "" : option.value)}
                     data-testid={`btn-visit-mode-${option.value}`}
                     className={`flex min-h-20 items-center gap-3 rounded-2xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saivie-teal focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${mode === option.value ? "border-[#2d6a5f] bg-[#f0f7f4] ring-1 ring-[#2d6a5f]" : "border-[#d2dfd9] bg-white hover:bg-[#f0f7f4]"}`}>
                     <option.icon aria-hidden="true" className="h-6 w-6 shrink-0 text-[#2d6a5f]" />

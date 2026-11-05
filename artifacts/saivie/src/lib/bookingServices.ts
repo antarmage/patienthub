@@ -26,13 +26,20 @@ export function suggestedBookingCategory(careArea: string): BookingServiceCatego
     return careArea === "Fertility" || careArea === "Gynae" ? careArea : null;
 }
 
+function pregnancyCheckup(service: BookingService) {
+    return /^(?:(?:general|routine|gynae|gynecology|gynaecology)\s+)?(?:consultation|follow[\s-]?up(?:\s+(?:consultation|visit|check[\s-]?up))?|check[\s-]?up)(?:\s+consultation)?$/i.test(service.name.trim())
+        && ["Other", "Gynae"].includes(bookingServiceCategory(service));
+}
+
 export function groupBookingServices(services: BookingService[], filter: string, suggested: BookingServiceCategory | null) {
+    const pregnancyView = filter === "Pregnancy" || filter === "Suggested" && suggested === "Pregnancy";
     const categories = filter === "Suggested" && suggested
         ? [suggested, ...bookingServiceCategories.filter((category) => category !== suggested)]
         : bookingServiceCategories;
     return categories.map((category) => ({
         category,
         label: filter === "Suggested" && category === suggested ? `Suggested for ${category.toLowerCase()}` : category,
-        services: services.filter((service) => bookingServiceCategory(service) === category),
+        services: services.filter((service) => pregnancyView && pregnancyCheckup(service)
+            ? category === "Pregnancy" : bookingServiceCategory(service) === category),
     })).filter((group) => group.services.length > 0 && (filter === "All" || filter === "Suggested" || filter === group.category));
 }

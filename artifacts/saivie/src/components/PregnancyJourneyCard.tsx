@@ -13,6 +13,7 @@ export function PregnancyJourneyCard({ context }: { context: PregnancyVisitConte
   const dating = context.weightReference;
   const week = dating ? gestationalWeekAtDate(dating, context.asOf) : null;
   const days = week === null ? null : Math.round(week * 7);
+  if (context.journeySuppressed || days === null || days < 14 * 7) return null;
   const trimester = days === null ? null : days < 14 * 7 ? 1 : days < 28 * 7 ? 2 : 3;
   const dueDate = dating?.datingBasis === "LMP" && dating.lmp && calendarDate(dating.lmp)
     ? new Date(Date.parse(`${dating.lmp}T00:00:00Z`) + 280 * 86400000).toISOString().slice(0, 10)

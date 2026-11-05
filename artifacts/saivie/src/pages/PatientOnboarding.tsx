@@ -775,7 +775,7 @@ export default function PatientOnboarding() {
                     <h1 className="font-serif text-3xl font-semibold text-saivie-plum">Your care team is ready</h1>
                     <p className="mt-3 text-sm leading-6 text-saivie-teal">Thanks, {form.name || onboardingData?.patient?.name}. Your answers have been securely shared with the team.</p>
                     <HpvBadge status={hpvStatus} variant="full" className="mt-6" />
-                    <OnboardingPregnancyJourney context={onboardingData?.pregnancyContext ?? null} form={form} />
+                    <OnboardingPregnancyJourney context={onboardingData?.pregnancyContext ?? null} />
                     <div className="mt-7 rounded-2xl border border-saivie-border bg-saivie-ivory p-4 text-left sm:p-5">
                         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-saivie-teal">While you wait</p>
                         <h2 className="mt-1 font-serif text-xl font-semibold text-saivie-plum">Cervical cancer is preventable</h2>
@@ -908,7 +908,7 @@ export default function PatientOnboarding() {
                         <div className="h-full rounded-full bg-saivie-sage transition-all duration-300" style={{ width: `${progress}%` }} />
                     </div>
 
-                    <OnboardingPregnancyJourney context={onboardingData?.pregnancyContext ?? null} form={form} />
+                    <OnboardingPregnancyJourney context={onboardingData?.pregnancyContext ?? null} />
                     {onboardingData?.pregnancyContext?.repeat && id && <div className={currentSection.key === "survey" ? "" : "hidden"}>
                         <PregnancyFollowUpSurvey key={id} appointmentId={id} name={onboardingData.patient.name}
                             context={onboardingData.pregnancyContext} embedded />

@@ -320,6 +320,9 @@ export default function NewBooking() {
 
     const handleConfirm = () => {
         const missing = missingBookingFields({ hasPatient, date, time: selectedTime });
+        if (!services.some((service) => service.id === selectedService)) missing.push("service");
+        if (!providers.some((provider) => provider.id === selectedProvider)) missing.push("doctor");
+        if (!visitMode) missing.push("visit type");
         if (missing.length > 0 || !date) {
             toast({
                 title: "Missing Information",
@@ -492,7 +495,7 @@ export default function NewBooking() {
                                                 key={p.id}
                                                 aria-pressed={selectedPatientId === p.id}
                                                 className={`w-full border rounded-2xl p-3 flex items-center gap-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saivie-teal ${selectedPatientId === p.id ? 'border-[#2d6a5f] bg-[#f0f7f4]' : 'border-[#e0e9e4] bg-white hover:bg-[#f0f7f4]'}`}
-                                                onClick={() => setSelectedPatientId(p.id)}
+                                                onClick={() => setSelectedPatientId(selectedPatientId === p.id ? null : p.id)}
                                                 data-testid={`patient-result-${p.id}`}
                                             >
                                                 <BookingPatientAvatar />
@@ -698,7 +701,7 @@ export default function NewBooking() {
                                 onClick={handleNext}
                                 className="ml-auto bg-saivie-teal hover:bg-saivie-teal text-white min-w-[140px]"
                                 size="lg"
-                                disabled={(step === 1 && !hasPatient) || (step === 2 && !selectedService) || (step === 3 && (providersLoading || providersError || !providers.some((provider) => provider.id === selectedProvider))) || (step === 5 && (!date || !validBookingTime(selectedTime)))}
+                                disabled={(step === 1 && !hasPatient) || (step === 2 && !selectedService) || (step === 3 && (providersLoading || providersError || !providers.some((provider) => provider.id === selectedProvider))) || (step === 4 && !visitMode) || (step === 5 && (!date || !validBookingTime(selectedTime)))}
                             >
                                 Next Step
                             </Button>

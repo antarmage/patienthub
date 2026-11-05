@@ -44,6 +44,7 @@ export const pregnancyWeightContextSchema = z.object({
 export type PregnancyWeightContext = z.infer<typeof pregnancyWeightContextSchema>;
 export const pregnancyVisitContextSchema = z.object({
   pregnancy: z.boolean(),
+  journeySuppressed: z.boolean().optional(),
   repeat: z.boolean(),
   episodeId: z.number().int().positive().nullable(),
   label: z.string(),

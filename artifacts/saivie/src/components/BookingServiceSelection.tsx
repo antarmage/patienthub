@@ -23,12 +23,12 @@ export function BookingServiceSelection({ services, selectedId, onSelect, careAr
     return <div className="space-y-5">
         <div className="space-y-1">
             <h2 className="font-serif text-2xl font-bold text-[#1f4a42]">What does she need?</h2>
-            <p className="text-sm text-[#52645e]">Pick one reason for this appointment. Choose a category, or use All.</p>
+            <p className="text-sm text-[#52645e]">Pick one reason for this appointment. Tap the selected option again to clear it.</p>
         </div>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Service categories">
             {(["Suggested", "All", ...bookingServiceCategories] as const).map((category) => <Button
                 key={category} type="button" variant="outline" aria-pressed={filter === category}
-                onClick={() => setFilter(category)}
+                onClick={() => setFilter(filter === category ? "All" : category)}
                 className={`h-10 rounded-full px-4 ${filter === category ? "border-[#2d6a5f] bg-[#2d6a5f] text-white hover:bg-[#24574e] hover:text-white" : "border-[#d2dfd9] bg-white text-[#243b35]"}`}>
                 {category}
             </Button>)}
@@ -42,7 +42,7 @@ export function BookingServiceSelection({ services, selectedId, onSelect, careAr
                     <h3 className="text-[10px] font-semibold uppercase tracking-wide text-[#52645e]">{group.label}</h3>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {group.services.map((service) => <button key={service.id} type="button"
-                            aria-pressed={selectedId === service.id} onClick={() => onSelect(service.id)}
+                            aria-pressed={selectedId === service.id} onClick={() => onSelect(selectedId === service.id ? "" : service.id)}
                             data-testid={`booking-service-${service.id}`}
                             className={`flex min-h-20 items-center gap-3 rounded-2xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saivie-teal focus-visible:ring-offset-2 ${selectedId === service.id ? "border-[#2d6a5f] bg-[#f0f7f4] ring-1 ring-[#2d6a5f]" : "border-[#d2dfd9] bg-white hover:bg-[#f0f7f4]"}`}>
                             <Icon aria-hidden="true" className="h-6 w-6 shrink-0 text-[#2d6a5f]" />
@@ -54,6 +54,7 @@ export function BookingServiceSelection({ services, selectedId, onSelect, careAr
                     </div>
                 </section>;
             })}
+        {(filter === "Pregnancy" || filter === "Suggested" && suggested === "Pregnancy") && <p className="text-xs text-[#52645e]">For an antenatal check-up, choose the clinic's consultation or follow-up service. Postpartum review is for after delivery. Existing catalog fees are unchanged.</p>}
         <p className="text-[10px] leading-relaxed text-[#52645e]">Options come from your clinic's active service catalog. Suggested ordering follows the patient's care area when available; everything remains available under All.</p>
     </div>;
 }

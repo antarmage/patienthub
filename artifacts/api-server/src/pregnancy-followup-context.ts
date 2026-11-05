@@ -129,7 +129,11 @@ export function pregnancyVisitContext(patient: Row, appointment: Row, appointmen
       }
     }
   }
-  return { pregnancy, repeat: pregnancy && previousAppointmentCount > 0 && !cancelled(appointment), episodeId: episode?.id || null,
+  const terminationVisit = (row: Row) => /\b(mtp|termination|abortion)\b/i.test(
+    [row.type, row.visitType, row.reason, row.chiefComplaint].filter((value) => typeof value === "string").join(" "));
+  const journeySuppressed = terminationVisit(appointment)
+    || visits.some((visit) => visit.appointmentId === appointment.id && terminationVisit(visit));
+  return { pregnancy, journeySuppressed, repeat: pregnancy && previousAppointmentCount > 0 && !cancelled(appointment), episodeId: episode?.id || null,
     label: episode ? `Pregnancy ${episode.details.number}` : pregnancy ? "Current pregnancy · recorded dating" : "No pregnancy context established",
     asOf, previousAppointmentCount, trends: { bp: trends.bp, weight: trends.weight, hb: trends.hb, sugar: trends.sugar },
     weightReference,
@@ -165,7 +169,7 @@ export function createPregnancyFollowUpStore(pool: Pool) {
       const patientId = Number(patient.id);
       const [appointments, visits, labs, episodes, bp, weight] = await Promise.all([
         pool.query<Row>('SELECT id,patient_id AS "patientId",date::text,time,type,visit_type AS "visitType",status,vitals,patient_reported_lmp AS "patientReportedLmp" FROM appointments WHERE patient_id=$1', [patientId]),
-        pool.query<Row>('SELECT id,patient_id AS "patientId",appointment_id AS "appointmentId",date::text,visit_type AS "visitType",vitals,prescriptions FROM visit_history WHERE patient_id=$1', [patientId]),
+        pool.query<Row>('SELECT id,patient_id AS "patientId",appointment_id AS "appointmentId",date::text,visit_type AS "visitType",chief_complaint AS "chiefComplaint",vitals,prescriptions FROM visit_history WHERE patient_id=$1', [patientId]),
         pool.query<Row>('SELECT id,patient_id AS "patientId",test_name AS "testName",date::text,value,unit FROM lab_results WHERE patient_id=$1', [patientId]),
         createPregnancyEpisodeStore(pool).list(patientId),
         pool.query<Row>('SELECT patient_id AS "patientId",date::text,systolic,diastolic FROM bp_logs WHERE patient_id=$1', [patientId]),

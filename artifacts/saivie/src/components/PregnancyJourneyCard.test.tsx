@@ -35,20 +35,24 @@ test("clinical EDD takes priority over LMP without calling reported dates confir
   assert.ok(!html.includes("21 Jan 2027"));
 });
 
-test("trimester boundaries are 14w0d and 28w0d", () => {
-  for (const [asOf, expected] of [["2026-07-22", "Your first trimester"], ["2026-07-23", "Your second trimester"],
+test("journey starts at 14w0d and changes trimester at 28w0d", () => {
+  assert.equal(render({ ...context, asOf: "2026-07-22" }), "");
+  for (const [asOf, expected] of [["2026-07-23", "Your second trimester"],
     ["2026-10-28", "Your second trimester"], ["2026-10-29", "Your third trimester"]]) {
     assert.ok(render({ ...context, asOf }).includes(expected), asOf);
   }
 });
 
-test("missing, invalid, pre-pregnancy and ended dating never produce guessed weeks or due dates", () => {
+test("missing, invalid, pre-pregnancy and ended dating hide the journey", () => {
   for (const weightReference of [null, { ...context.weightReference!, lmp: "invalid" },
     { ...context.weightReference!, lmp: "2027-01-01" }, { ...context.weightReference!, endDate: "2026-11-01" },
     { ...context.weightReference!, datingBasis: "Not recorded" as const }]) {
     const html = render({ ...context, weightReference });
-    assert.ok(html.includes("Every visit is part of your journey"));
-    assert.ok(html.includes("Not established"));
-    assert.ok(!html.includes("Your third trimester"));
+    assert.equal(html, "");
   }
+});
+
+test("MTP suppression hides the entire journey even after 14 weeks", () => {
+  assert.equal(render({ ...context, journeySuppressed: true }), "");
+  assert.ok(render({ ...context, journeySuppressed: false }).includes("29 weeks, 0 days"));
 });
