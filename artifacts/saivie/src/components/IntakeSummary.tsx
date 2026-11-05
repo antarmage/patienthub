@@ -6,7 +6,7 @@ import { getPrintBrandStyles } from "@/lib/brand";
 import { readConsultationSurvey } from "@/lib/consultationSurvey";
 import { hpvProtection, hpvVaccinationStatus, type HpvProtection, type HpvVaccinationStatus } from "@/lib/hpvProtection";
 import { HpvBadge } from "@/components/HpvBadge";
-import { HpvPrintBadge } from "@/components/HpvPrintBadge";
+import { CervicalCancerPrevention, HpvPrintBadge } from "@/components/HpvPrintBadge";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { labSurveyFlags, labSurveyRows, readLabSurvey } from "@/lib/labSurvey";
@@ -429,6 +429,7 @@ ${sectionCards ? `<div class="cards">${sectionCards}</div>` : ""}
 
 ${s.bpRows.length || s.weightRows.length ? `<div class="cards">${s.bpRows.length ? card("Patient-recorded BP", table(["Date", "BP (mmHg)", "Pulse"], s.bpRows), "sage") : ""}${s.weightRows.length ? card("Patient-recorded weight", table(["Date", "Weight"], s.weightRows), "rose") : ""}</div>` : ""}
 ${pregnancyPrintHtml(pregnancyContext)}
+${renderToStaticMarkup(<CervicalCancerPrevention status={s.hpvVaccination} />)}
 
 <div class="notes"><header><span class="ico">${ICONS.notes}</span><h3>Additional notes</h3></header><div class="line"></div><div class="line"></div><div class="line"></div></div>
 
@@ -571,6 +572,7 @@ export function IntakeSummaryActions({ patient, weightLogs, bpLogs, checkInVital
                             </div>
                         ))}
                     </div>
+                    <CervicalCancerPrevention status={summary.hpvVaccination} />
                 </DialogContent>
             </Dialog>
         </>

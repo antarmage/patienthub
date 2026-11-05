@@ -29,3 +29,32 @@ export function HpvPrintBadge({ status }: { status: HpvVaccinationStatus }) {
 export function hpvPrintBadgeHtml(surveyAnswer?: string | null, clinicStatus?: HpvProtection | null): string {
     return renderToStaticMarkup(<HpvPrintBadge status={hpvVaccinationStatus(surveyAnswer, clinicStatus)} />);
 }
+
+export function CervicalCancerPrevention({ status }: { status: HpvVaccinationStatus }) {
+    if (status === "protected") return null;
+    const vaccination = status === "not-vaccinated"
+        ? "Patient reports no HPV vaccination. Without vaccination, protection against vaccine-covered HPV types is missing."
+        : status === "in-progress"
+            ? "HPV vaccination has started, but completion is not documented. Ask the care team to review previous doses and complete the appropriate schedule."
+            : "HPV vaccination status is unknown or not recorded. Check vaccination records before deciding whether vaccination is needed; missing information does not mean unvaccinated.";
+    return <section data-testid={`cervical-cancer-prevention-${status}`} style={{
+        marginTop: 20, marginBottom: 16, padding: "12px 16px", border: "1px solid #9aafa8",
+        borderRadius: 12, color: "#55344F", fontSize: 12, lineHeight: 1.5, breakInside: "avoid",
+    }}>
+        <h2 style={{ margin: "0 0 8px", fontSize: 16 }}>Cervical cancer prevention: risk and options</h2>
+        <p>{vaccination}</p>
+        <p>Persistent infection with high-risk HPV causes almost all cervical cancers. Most HPV infections clear naturally. Not being vaccinated does not mean you have HPV or cancer, and vaccination status alone cannot determine your personal cancer risk.</p>
+        <ul style={{ paddingLeft: 20 }}>
+            <li><strong>Vaccination:</strong> Discuss starting or completing an HPV vaccine course. Eligibility, vaccine choice and number of doses depend on age, earlier doses, immune status, local guidance and availability. Vaccines prevent new infections; they do not treat existing HPV or cervical disease. HPV vaccination is deferred during pregnancy; discuss starting or resuming after pregnancy.</li>
+            <li><strong>Cervical screening:</strong> Ask whether HPV testing, a Pap smear or visual inspection with acetic acid (VIA) is appropriate and available. Starting age and intervals depend on local guidance, prior results and health history. Screening is still needed after vaccination.</li>
+            <li><strong>Follow-up:</strong> An abnormal screening result is not a cancer diagnosis. Follow the recommended repeat testing, colposcopy or biopsy; confirmed precancerous changes can often be treated before cancer develops.</li>
+            <li><strong>Other prevention:</strong> Avoid tobacco. Condoms reduce, but do not eliminate, HPV transmission.</li>
+        </ul>
+        <p>Seek prompt medical assessment for bleeding after sex, between periods or after menopause, unusual persistent discharge or persistent pelvic pain. Symptoms need assessment rather than waiting for routine screening.</p>
+        <p style={{ fontSize: 10 }}>General education, not a diagnosis or individual risk score. Discuss a personal plan with your clinician. Sources: <a href="https://www.who.int/news-room/fact-sheets/detail/cervical-cancer">WHO: cervical cancer</a>; <a href="https://www.cdc.gov/hpv/hcp/vaccination-considerations/">CDC: HPV vaccination considerations</a>.</p>
+    </section>;
+}
+
+export function cervicalCancerPreventionHtml(surveyAnswer?: string | null, clinicStatus?: HpvProtection | null): string {
+    return renderToStaticMarkup(<CervicalCancerPrevention status={hpvVaccinationStatus(surveyAnswer, clinicStatus)} />);
+}

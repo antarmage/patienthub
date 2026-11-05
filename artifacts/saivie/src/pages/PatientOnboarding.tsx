@@ -14,7 +14,7 @@ import { patientSurveyPrompt, surveyDirectionLabels, surveyDirectionsForConcerns
 import { conceptionMethods } from "@/lib/conceptionHistory";
 import { hpvProtection } from "@/lib/hpvProtection";
 import { HpvBadge } from "@/components/HpvBadge";
-import { hpvPrintBadgeHtml } from "@/components/HpvPrintBadge";
+import { cervicalCancerPreventionHtml, hpvPrintBadgeHtml } from "@/components/HpvPrintBadge";
 import type { HpvProtection } from "@/lib/hpvProtection";
 import { PregnancyFollowUpSurvey } from "@/components/PregnancyFollowUpSurvey";
 import { pregnancyPrintHtml } from "@/components/PregnancyPrintTrends";
@@ -155,6 +155,7 @@ function printOnboardingSummary(form: IntakeForm, clinicStatus?: HpvProtection |
     ${hpvPrintBadgeHtml(form.gyn.hpvVaccine, clinicStatus)}
     ${sections.map(([title, content]) => `<section><h2>${escapeHtml(title)}</h2><table><tbody>${content}</tbody></table></section>`).join("")}
     ${pregnancyPrintHtml(pregnancyContext)}
+    ${cervicalCancerPreventionHtml(form.gyn.hpvVaccine, clinicStatus)}
     <p class="note">Patient-reported information from the onboarding form. Please review and verify with the care team.</p>
     <script>window.onload = function () { window.focus(); window.print(); };</script>
 </body>

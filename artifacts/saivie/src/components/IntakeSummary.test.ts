@@ -82,6 +82,9 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
         printPatientSummary(patient);
         assert.ok(html.includes('data-testid="hpv-print-badge-not-vaccinated"'));
         assert.ok(html.includes("Patient reports no HPV vaccination"));
+        assert.ok(html.includes('data-testid="cervical-cancer-prevention-not-vaccinated"'));
+        assert.ok(html.includes("Cervical cancer prevention: risk and options"));
+        assert.ok(html.indexOf("Cervical cancer prevention: risk and options") > html.indexOf('<div class="cards">'));
         printPatientSummary(patient, null, "in-progress");
         assert.ok(html.includes('data-testid="hpv-print-badge-in-progress"'));
         assert.ok(!html.includes('data-testid="hpv-print-badge-not-vaccinated"'));
@@ -89,6 +92,7 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
         assert.ok(html.includes("All doses reported or recorded"));
         assert.ok(!html.includes("discuss vaccination"));
         assert.ok(!html.includes('data-testid="hpv-print-badge-not-vaccinated"'));
+        assert.ok(!html.includes("Cervical cancer prevention: risk and options"));
 
         printPatientSummary({ name: "Lab Patient", history: { labSurvey: { tests: "Thyroid profile", lastMeal: "Less than 2 hours ago", allergies: ["Latex"], appointmentId: 7 } } });
         assert.ok(html.includes("Lab visit survey"));
