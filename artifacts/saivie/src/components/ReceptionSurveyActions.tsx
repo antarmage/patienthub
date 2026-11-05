@@ -9,8 +9,26 @@ import { surveyKindFor } from "@/lib/labSurvey";
 import { printPatientSummary } from "@/components/IntakeSummary";
 import type { HpvProtection } from "@/lib/hpvProtection";
 import { pregnancyVisitContextSchema } from "../../../../lib/db/src/pregnancy-followup";
+import { OnboardingLink } from "./OnboardingLink";
 
 type Appointment = { id: number; patientId: number | null; surveyCompleted?: boolean; surveyType?: string | null; type?: string | null; visitType?: string | null };
+
+export function ReceptionSurveyLink({ appointment, patientName }: { appointment: Appointment; patientName: string }) {
+  const [open, setOpen] = useState(false);
+  return <>
+    <Button size="sm" variant="outline" disabled={appointment.patientId === null}
+      data-testid={`btn-refill-survey-${appointment.id}`} onClick={() => setOpen(true)}>
+      <ClipboardList className="mr-1 h-3 w-3" />Fill / correct survey
+    </Button>
+    <Dialog open={open} onOpenChange={setOpen}><DialogContent>
+      <DialogHeader><DialogTitle>Survey · {patientName}</DialogTitle>
+        <DialogDescription>Appointment #{appointment.id}. Create a private link to fill or resubmit this appointment's survey. Share it with the patient or open it to help them.</DialogDescription>
+      </DialogHeader>
+      <p className="text-sm text-muted-foreground">Review all answers before submitting. Initial consultation surveys may need to be filled again; pregnancy follow-up surveys reopen their saved answers. Changes are saved only when submitted.</p>
+      <OnboardingLink appointmentId={appointment.id} />
+    </DialogContent></Dialog>
+  </>;
+}
 
 export function ReceptionSurveyBadge({ appointment }: { appointment: Appointment }) {
   const known = typeof appointment.surveyCompleted === "boolean";

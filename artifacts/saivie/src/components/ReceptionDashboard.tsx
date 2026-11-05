@@ -38,7 +38,7 @@ import { hasVisitSurvey } from "@/lib/consultationSurvey";
 import { hpvProtection, hpvSurveyAnswer } from "@/lib/hpvProtection";
 import { surveyKindFor } from "@/lib/labSurvey";
 import { HpvBadge } from "@/components/HpvBadge";
-import { ReceptionSurveyBadge, ReceptionSummaryPrint } from "@/components/ReceptionSurveyActions";
+import { ReceptionSurveyBadge, ReceptionSummaryPrint, ReceptionSurveyLink } from "@/components/ReceptionSurveyActions";
 import { TodayAppointmentsEmptyState } from "@/components/TodayAppointmentsEmptyState";
 import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import type { ReceptionTask } from "@/lib/receptionTasks";
@@ -505,8 +505,9 @@ export function ReceptionDashboard({
                         <Badge variant="outline" className={`text-[11px] font-medium ${badge.className}`}>{badge.label}</Badge>
                       </td>
                       <td className="px-3 py-3">
-                        <div className="flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-1">
                           {logisticsOnly ? renderReceptionActions(apt, state, "flow") : renderAction(apt, state)}
+                          {state !== "cancelled" && state !== "no-show" && <ReceptionSurveyLink appointment={apt} patientName={apt.patient || patient?.name || "Patient"} />}
                           {logisticsOnly && <ReceptionSummaryPrint appointment={apt} patientName={apt.patient || patient?.name || "Patient"} canPrint={clinicalDetailsVisible} hpvStatus={hpvStatusFor(apt)} />}
                           {!logisticsOnly && <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-saivie-plum hover:text-saivie-teal" data-testid={`btn-print-summary-${apt.id}`}
                             title="Print patient summary" aria-label={`Print summary for ${apt.patient}`}
