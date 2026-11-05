@@ -142,3 +142,19 @@ test("repeat questionnaire shows follow-up subjects, preserves baseline and does
   assert.ok(html.includes("Your care team can help confirm your pregnancy dates."));
   client.clear();
 });
+
+test("embedded follow-up fits alongside editable saved questionnaire without a duplicate journey or page heading", () => {
+  const client = new QueryClient();
+  try {
+    const html = renderToStaticMarkup(<QueryClientProvider client={client}><Router ssrPath="/onboarding/20">
+      <PregnancyFollowUpSurvey appointmentId="20" name="Synthetic" context={context} embedded />
+    </Router></QueryClientProvider>);
+    assert.ok(html.includes('data-testid="embedded-pregnancy-follow-up"'));
+    for (const text of ["food habits", "Vomiting since the last visit", "Last advised investigations", "Report availability", "Share with my care team"])
+      assert.ok(html.includes(text), text);
+    assert.ok(!html.includes("<main"));
+    assert.ok(!html.includes("<h1"));
+    assert.ok(!html.includes('data-testid="pregnancy-journey-card"'));
+    assert.equal((html.match(/<select /g) || []).length, 5);
+  } finally { client.clear(); }
+});

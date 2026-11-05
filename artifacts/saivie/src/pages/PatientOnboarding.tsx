@@ -16,7 +16,8 @@ import { hpvProtection } from "@/lib/hpvProtection";
 import { HpvBadge } from "@/components/HpvBadge";
 import { cervicalCancerPreventionHtml, hpvPrintBadgeHtml } from "@/components/HpvPrintBadge";
 import type { HpvProtection } from "@/lib/hpvProtection";
-import { PregnancyFollowUpSurvey, type PregnancyFollowUpDraft } from "@/components/PregnancyFollowUpSurvey";
+import { PregnancyFollowUpSurvey } from "@/components/PregnancyFollowUpSurvey";
+import { OnboardingPregnancyJourney } from "@/components/OnboardingPregnancyJourney";
 import { pregnancyPrintHtml } from "@/components/PregnancyPrintTrends";
 import type { PregnancyVisitContext } from "../../../../lib/db/src/pregnancy-followup";
 import { patientSummaryOverviewHtml } from "@/components/IntakeSummary";
@@ -527,8 +528,6 @@ export default function PatientOnboarding() {
     const [extra, setExtra] = useState<OptionalHistory>({ cycle: false, gyn: false, pregnancy: false, background: false });
     const questionHeading = useRef<HTMLHeadingElement>(null);
     const [submitted, setSubmitted] = useState(false);
-    const [editingHistory, setEditingHistory] = useState(false);
-    const [followUpDraft, setFollowUpDraft] = useState<PregnancyFollowUpDraft | null>(null);
     const hydrated = useRef<string | null>(null);
     const [datingAsOf] = useState(() => {
         const now = new Date();
@@ -538,7 +537,7 @@ export default function PatientOnboarding() {
     const session = useOnboardingSession(id);
     const { data: onboardingData, isPending: isLoading } = session;
     const hasSavedIntake = !!onboardingData?.savedIntake;
-    const correcting = hasSavedIntake && (editingHistory || onboardingData?.pregnancyContext?.repeat === true
+    const correcting = hasSavedIntake && (onboardingData?.pregnancyContext?.repeat === true
         || onboardingData?.savedIntakeAppointmentId === Number(id));
 
     const questions = getOnboardingQuestions(form, extra, hasSavedIntake);
@@ -570,8 +569,6 @@ export default function PatientOnboarding() {
     }, [step]);
 
     useEffect(() => {
-        setEditingHistory(false);
-        setFollowUpDraft(null);
         setSubmitted(false);
         hydrated.current = null;
     }, [id]);
@@ -581,7 +578,7 @@ export default function PatientOnboarding() {
         if (!patient) return;
         if (onboardingData.savedIntake && hydrated.current !== id) {
             setForm(onboardingData.savedIntake);
-            setStep("review");
+            setStep(onboardingData.pregnancyContext?.repeat ? "surveyDirections" : "review");
             hydrated.current = id || null;
             return;
         }
@@ -639,7 +636,6 @@ export default function PatientOnboarding() {
                     toast({ title: "Corrections saved; reload required", description: refreshed.error.message, variant: "destructive" });
                     return;
                 }
-                setEditingHistory(false);
                 if (!refreshed.data?.pregnancyContext?.repeat) setSubmitted(true);
                 toast({ title: "Saved survey corrected", description: "Previous answers are retained in the correction history." });
                 return;
@@ -765,9 +761,8 @@ export default function PatientOnboarding() {
         return <div className="flex min-h-screen items-center justify-center bg-saivie-ivory text-sm text-saivie-teal">Preparing your care journey…</div>;
     }
 
-    if (onboardingData?.pregnancyContext?.repeat && id && !editingHistory) {
-        return <PregnancyFollowUpSurvey key={id} appointmentId={id} name={onboardingData.patient.name} context={onboardingData.pregnancyContext}
-            initialDraft={followUpDraft} onEditHistory={correcting ? (draft) => { setFollowUpDraft(draft); setEditingHistory(true); setStep("review"); } : undefined} />;
+    if (onboardingData?.pregnancyContext?.repeat && id && !hasSavedIntake) {
+        return <PregnancyFollowUpSurvey key={id} appointmentId={id} name={onboardingData.patient.name} context={onboardingData.pregnancyContext} />;
     }
 
     if (submitted) {
@@ -780,6 +775,7 @@ export default function PatientOnboarding() {
                     <h1 className="font-serif text-3xl font-semibold text-saivie-plum">Your care team is ready</h1>
                     <p className="mt-3 text-sm leading-6 text-saivie-teal">Thanks, {form.name || onboardingData?.patient?.name}. Your answers have been securely shared with the team.</p>
                     <HpvBadge status={hpvStatus} variant="full" className="mt-6" />
+                    <OnboardingPregnancyJourney context={onboardingData?.pregnancyContext ?? null} form={form} />
                     <div className="mt-7 rounded-2xl border border-saivie-border bg-saivie-ivory p-4 text-left sm:p-5">
                         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-saivie-teal">While you wait</p>
                         <h2 className="mt-1 font-serif text-xl font-semibold text-saivie-plum">Cervical cancer is preventable</h2>
@@ -912,8 +908,16 @@ export default function PatientOnboarding() {
                         <div className="h-full rounded-full bg-saivie-sage transition-all duration-300" style={{ width: `${progress}%` }} />
                     </div>
 
+                    <OnboardingPregnancyJourney context={onboardingData?.pregnancyContext ?? null} form={form} />
+                    {onboardingData?.pregnancyContext?.repeat && id && <div className={currentSection.key === "survey" ? "" : "hidden"}>
+                        <PregnancyFollowUpSurvey key={id} appointmentId={id} name={onboardingData.patient.name}
+                            context={onboardingData.pregnancyContext} embedded />
+                    </div>}
+                    {hasSavedIntake && currentSection.key === "survey" && form.pregnancies.currentStatus === "Yes" && !onboardingData?.pregnancyContext?.repeat &&
+                        <p role="status" className="my-4 rounded-lg border border-saivie-border p-3 text-sm text-saivie-teal">Your saved answers are restored. The clinic still needs to confirm this appointment's link to earlier visits in the same pregnancy before the pregnancy follow-up can be submitted. You can review your saved answers without entering them again.</p>}
                     {step !== "review" && (
                         <section key={currentSection.key} className={`${cardClass} min-h-[260px]`} data-testid={`onboarding-section-${currentSection.key}`}>
+                            {hasSavedIntake && currentSection.key === "survey" && <h3 className="mb-3 font-serif text-lg font-semibold">Previously saved questionnaire</h3>}
                             <p className="mb-5 text-xs leading-5 text-saivie-teal">
                                 {hasSavedIntake ? "Your saved answers are prefilled. Review and update them as needed; skipped answers remain unanswered." : currentSection.key === "concern" ? "Choose all that apply. Your next questions will match these concerns." : "Answer what you can. All questions are optional."}
                             </p>
@@ -928,6 +932,7 @@ export default function PatientOnboarding() {
                         <section className={cardClass}>
                             <h2 className="font-serif text-lg font-semibold text-saivie-teal">Review your answers</h2>
                             <p className="mt-1 text-xs text-saivie-teal">{correcting ? "These are your previously saved survey answers, not a new symptom assessment. Corrections preserve the previous version; any pregnancy follow-up is submitted separately." : hasSavedIntake ? "Your previous answers have been restored. Review and update them for this appointment before submitting." : "Check your answers before sharing. Anything skipped remains unanswered."}</p>
+                            {onboardingData?.pregnancyContext?.repeat && <Button variant="outline" className="mt-3" onClick={() => setStep("surveyDirections")}>Complete pregnancy follow-up</Button>}
                             <div className="mt-6 space-y-3 border-t border-saivie-border pt-6">
                                 {reviewSections.filter((section) => visibleSections.some((visible) => visible.key === section.key)).map(({ key, title, items: rawItems }) => {
                                     const items = rawItems.filter(Boolean);
@@ -947,7 +952,6 @@ export default function PatientOnboarding() {
                         </section>
                     )}
 
-                    {editingHistory && <Button variant="outline" className="mt-5 h-auto max-w-full whitespace-normal text-center" onClick={() => setEditingHistory(false)}>Back to pregnancy follow-up without saving corrections</Button>}
                     <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                         {sectionIndex > 0 ? (
                             <Button variant="ghost" className="text-xs text-saivie-teal hover:text-saivie-teal" onClick={() => goToSection(-1)}><ArrowLeft className="mr-2 h-3.5 w-3.5" />Back</Button>

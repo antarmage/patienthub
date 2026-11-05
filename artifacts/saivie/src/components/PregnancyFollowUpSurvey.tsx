@@ -20,9 +20,9 @@ export type PregnancyFollowUpDraft = Record<keyof PregnancyFollowUp, string>;
 type Draft = PregnancyFollowUpDraft;
 const empty: Draft = { visitReason: "", concern: "", foodHabits: "", vomitingChange: "", eatingDrinking: "", investigations: "", reports: "", investigationDetails: "", changes: "" };
 
-export function PregnancyFollowUpSurvey({ appointmentId, name, context, onEditHistory, initialDraft }: {
+export function PregnancyFollowUpSurvey({ appointmentId, name, context, onEditHistory, initialDraft, embedded = false }: {
   appointmentId: string; name: string; context: PregnancyVisitContext;
-  onEditHistory?: (draft: Draft) => void; initialDraft?: Draft | null;
+  onEditHistory?: (draft: Draft) => void; initialDraft?: Draft | null; embedded?: boolean;
 }) {
   const [, navigate] = useLocation();
   const [draft, setDraft] = useState<Draft>(initialDraft || context.answers || empty);
@@ -47,15 +47,15 @@ export function PregnancyFollowUpSurvey({ appointmentId, name, context, onEditHi
     win.document.write(`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Pregnancy follow-up</title><style>${getPrintBrandStyles()}body{font:13px/1.5 Arial,sans-serif;padding:24px;color:#243b35}th,td{text-align:left;padding:6px;border-bottom:1px solid #cfe0d8}h2,h3{break-after:avoid}@page{margin:18mm}</style></head><body>${heading.outerHTML}${pregnancyPrintHtml({ ...context, answers: saved })}<script>window.onload=function(){window.focus();window.print();}</script></body></html>`);
     win.document.close(); setPrintError(false);
   };
-  return <main className="min-h-screen bg-saivie-ivory px-4 py-8 text-saivie-plum"><section className="mx-auto max-w-2xl rounded-2xl border border-saivie-border bg-white p-5 sm:p-8">
+  const content = <>
     <p className="text-xs font-semibold uppercase text-saivie-teal">{context.label} · Follow-up visit</p>
-    <h1 className="mt-2 text-2xl font-semibold">{saved ? "Your follow-up has been shared" : `Welcome back, ${name}`}</h1>
-    <PregnancyJourneyCard context={context} />
+    {embedded ? <h3 className="mt-2 text-xl font-semibold">{saved ? "Your follow-up has been shared" : "Updates since your last pregnancy visit"}</h3>
+      : <><h1 className="mt-2 text-2xl font-semibold">{saved ? "Your follow-up has been shared" : `Welcome back, ${name}`}</h1><PregnancyJourneyCard context={context} /></>}
     {onEditHistory && <div className="mt-4 rounded-lg border border-saivie-border p-3 text-sm">
       <p>Your previously submitted survey is saved. Review or correct its selected answers without filling it from scratch.</p>
       <Button type="button" variant="outline" className="mt-2" onClick={() => onEditHistory(draft)}>Review / correct saved survey</Button>
     </div>}
-    {saved ? <><p className="my-4">Your original history is preserved. These updates are saved for this appointment.</p><Button onClick={print}>Print onboarding survey</Button><Button variant="outline" className="ml-2" onClick={() => navigate("/")}>Done</Button>{printError && <p role="alert">Please allow pop-ups to print your survey.</p>}</> :
+    {saved ? <><p className="my-4">Your original history is preserved. These updates are saved for this appointment.</p><Button onClick={print}>Print onboarding survey</Button>{!embedded && <Button variant="outline" className="ml-2" onClick={() => navigate("/")}>Done</Button>}{printError && <p role="alert">Please allow pop-ups to print your survey.</p>}</> :
       <form className="mt-5 space-y-5" onSubmit={(event) => { event.preventDefault(); submission.mutate(); }}>
         <p className="text-sm">Tell your doctor what has changed since your last pregnancy visit. Your previous medical and pregnancy history will not be replaced.</p>
         {(Object.keys(followUpLabels) as (keyof PregnancyFollowUp)[]).map((key) => <label key={key} className="block text-sm font-medium">
@@ -67,5 +67,7 @@ export function PregnancyFollowUpSurvey({ appointmentId, name, context, onEditHi
         {submission.isError && <p role="alert" className="text-sm text-red-700">{submission.error.message}</p>}
         <Button type="submit" disabled={submission.isPending}>{submission.isPending ? "Sharing..." : "Share with my care team"}</Button>
       </form>}
-  </section></main>;
+  </>;
+  return embedded ? <section data-testid="embedded-pregnancy-follow-up" className="mb-6 rounded-xl border border-saivie-border p-4">{content}</section>
+    : <main className="min-h-screen bg-saivie-ivory px-4 py-8 text-saivie-plum"><section className="mx-auto max-w-2xl rounded-2xl border border-saivie-border bg-white p-5 sm:p-8">{content}</section></main>;
 }
