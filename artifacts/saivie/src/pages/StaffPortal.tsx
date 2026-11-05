@@ -110,7 +110,7 @@ import { surveyKindFor } from "@/lib/labSurvey";
 import { useReceptionAccess } from "@/lib/receptionAccess";
 import type { ReceptionAppointment } from "@/lib/receptionTimeline";
 import type { ReceptionPatient } from "@/lib/receptionTimeline";
-import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
+import { authenticatedFetch as fetch, readApiResponse } from "@/lib/authenticatedFetch";
 import { ReportViewButton } from "@/components/PatientReports";
 import { usePatientDiagnoses } from "@/components/IcdDiagnoses";
 
@@ -2157,11 +2157,11 @@ export default function StaffPortal() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error('Failed to update appointment');
-      return res.json();
+      return readApiResponse(res);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/paper-prescription-work'] });
     },
     onError: (err: Error) => alert(err.message),
   });

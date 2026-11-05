@@ -99,7 +99,7 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
     mutationFn: ({ id, data }: { id: number; data: Record<string, unknown> }) => receptionRequest(`/api/appointments/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
     }),
-    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["/api/appointments"] }); setEdit(null); },
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["/api/appointments"] }); void queryClient.invalidateQueries({ queryKey: ["/api/paper-prescription-work"] }); setEdit(null); },
     onError: (error: Error) => toast({ title: "Unable to update appointment", description: error.message, variant: "destructive" }),
   });
   const busy = (id: number) => update.isPending && update.variables?.id === id;
@@ -132,6 +132,10 @@ export function ReceptionPatientList({ patients, providers, patientsLoading, pat
         {patient && onManageVaccines && <Button size="sm" variant="outline" onClick={() => onManageVaccines(patient)} data-testid={`btn-reception-vaccines-${patient.id}`}><Syringe className="mr-1 h-3 w-3" />Vaccines</Button>}
         {patient && <Button size="sm" variant="outline" onClick={() => onEditPatient(patient)} data-testid={`btn-reception-edit-${patient.id}`}>Edit patient details</Button>}
         {appointment.date === today && stage === "Scheduled" && <Button size="sm" disabled={busy(appointment.id)} data-testid={`reception-checkin-${appointment.id}`} onClick={() => onCheckIn(appointment)}>Check in</Button>}
+        {appointment.date <= today && ["Arrived", "With doctor"].includes(stage) && <Button size="sm" variant="outline" disabled={busy(appointment.id)} data-testid={`reception-complete-${appointment.id}`}
+          onClick={() => { if (confirm(`Has ${patient?.name || "this patient"}'s consultation finished? This does not mark the paper prescription as recorded.`)) update.mutate({ id: appointment.id, data: { status: "completed" } }); }}>
+          Mark consultation complete
+        </Button>}
         {period === "last-week" || closed ? <Button size="sm" variant="outline" asChild><Link href={`/staff/booking?patientId=${appointment.patientId || ""}`}>Rebook</Link></Button> : <>
           {stage === "Scheduled" && <Button size="sm" variant="outline" onClick={() => openReschedule(appointment)} disabled={busy(appointment.id)}>Reschedule</Button>}
           <Button size="sm" variant="ghost" onClick={() => { if (confirm(`Cancel ${patient?.name || "this patient"}'s appointment?`)) update.mutate({ id: appointment.id, data: { status: "cancelled" } }); }} disabled={busy(appointment.id)}>Cancel</Button>

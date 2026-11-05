@@ -90,6 +90,22 @@ function isClinician(actor: AccessActor): boolean {
   return "role" in actor && ["clinician", "owner"].includes(actor.role);
 }
 
+export function receptionCompletion(
+  appointment: { date: string; status?: string | null; checkedInAt?: string | null; seenAt?: string | null; completedAt?: string | null },
+  now = new Date(),
+): { error: string } | { status: "completed"; completedAt: string } {
+  const status = String(appointment.status || "").toLowerCase().replace(/[\s_]/g, "-");
+  const today = new Date(now.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(appointment.date) || appointment.date > today)
+    return { error: "Future appointments cannot be marked complete." };
+  if (["cancelled", "canceled", "no-show"].includes(status))
+    return { error: "Cancelled or no-show appointments cannot be marked complete." };
+  if (!appointment.completedAt && status !== "completed" && !appointment.checkedInAt && !appointment.seenAt
+    && !["checked-in", "arrived", "seen", "in-consultation", "in-progress", "with-doctor"].includes(status))
+    return { error: "Check in the patient before marking the consultation complete." };
+  return { status: "completed", completedAt: appointment.completedAt || now.toISOString() };
+}
+
 function isStaff(actor: AccessActor): actor is Extract<AccessActor, { role: string }> {
   return "role" in actor && ["staff", "receptionist", "admin", "owner", "clinician"].includes(actor.role);
 }
@@ -244,7 +260,12 @@ export function registerClinicalAccess(app: Express, dependencies: ClinicalAcces
       if (!read && !clinician && appointment && !path.endsWith("/telemedicine")) {
         const status = req.body?.status;
         const normalizedStatus = status == null ? null : String(status).toLowerCase();
-        if (normalizedStatus != null && !["scheduled", "booked", "confirmed", "checked-in", "cancelled", "no-show"].includes(normalizedStatus)) {
+        const receptionCompleting = isReceptionReader(actor) && req.method === "PATCH" && normalizedStatus === "completed";
+        if (receptionCompleting && (Object.keys(req.body).length !== 1 || !/^\/api\/(?:desk\/)?appointments\/\d+\/?$/.test(path))) {
+          res.status(403).json({ error: "Submit consultation completion separately from other appointment changes" });
+          return;
+        }
+        if (normalizedStatus != null && !receptionCompleting && !["scheduled", "booked", "confirmed", "checked-in", "cancelled", "no-show"].includes(normalizedStatus)) {
           res.status(403).json({ error: "Only clinicians may record clinical appointment states" });
           return;
         }

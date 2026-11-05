@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import express from "express";
 import { createServer } from "node:http";
-import { checkInIsToday, registerClinicalAccess, rescheduledLogistics, type AccessActor } from "./clinical-access";
+import { checkInIsToday, receptionCompletion, registerClinicalAccess, rescheduledLogistics, type AccessActor } from "./clinical-access";
 
 const patient = {
   id: 7, name: "Test Patient", phone: "0000000000", age: 28, dob: "1998-01-01",
@@ -217,11 +217,12 @@ test("receptionists retain booking/check-in/reschedule/billing logistics but can
       { status: "checked-in", checkedInAt: new Date().toISOString() },
       { date: "2026-11-02", time: "11:00", providerId: 3 },
       { status: "no-show" }, { status: "cancelled" }, { paymentStatus: "paid", billingAmount: 600 },
+      { status: "completed" },
     ]) assert.equal((await request("/api/appointments/4", "reception", "PATCH", body)).status, 200);
     for (const body of [
       { notes: "Rx" }, { vitals: { bp: "120/80" } }, { chiefComplaint: "Diagnosis" },
       { seenAt: new Date().toISOString() }, { completedAt: new Date().toISOString() },
-      { status: "completed" }, { status: "seen" }, { status: "in-consultation" },
+      { status: "completed", date: "2026-11-02" }, { status: "seen" }, { status: "in-consultation" },
     ]) assert.equal((await request("/api/appointments/4", "reception", "PATCH", body)).status, 403);
     const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
     const created = await request("/api/appointments", "reception", "POST", {
@@ -236,12 +237,27 @@ test("receptionists retain booking/check-in/reschedule/billing logistics but can
     assert.equal((await request("/api/appointments", "reception", "POST", { date: "2000-01-01", status: "checked-in" })).status, 400);
     assert.equal((await request("/api/appointments/4", "reception", "PATCH", { checkedInAt: "invalid" })).status, 400);
     assert.equal((await request("/api/appointments/4", "patient", "PATCH", { status: "completed" })).status, 403);
-    assert.equal(writes(), 6);
+    assert.equal((await request("/api/appointments", "reception", "POST", { status: "completed" })).status, 403);
+    assert.equal(writes(), 7);
     // Unrelated intended billing and patient self-tracking routes remain outside this scoped policy.
     assert.equal((await request("/api/invoices", "reception", "POST", { patientId: 7 })).status, 201);
     assert.equal((await request("/api/patient-protocols", "reception", "POST", { patientId: 7 })).status, 201);
     assert.equal((await request("/api/mobile/patients/7/medications", "patient", "POST", { name: "Self-tracked" })).status, 201);
   });
+
+});
+
+test("reception completion requires attendance, excludes future/closed bookings and preserves a recorded completion time", () => {
+    const now = new Date("2026-11-05T05:00:00Z");
+    const base = { date: "2026-11-05", status: "checked-in" };
+    assert.deepEqual(receptionCompletion(base, now), { status: "completed", completedAt: now.toISOString() });
+    for (const patch of [
+      { date: "2026-11-06" }, { status: "cancelled" }, { status: "no-show" }, { status: "scheduled" },
+    ]) assert.ok("error" in receptionCompletion({ ...base, ...patch }, now));
+    assert.ok(!("error" in receptionCompletion({ ...base, status: "in-consultation", seenAt: now.toISOString() }, now)));
+    assert.ok(!("error" in receptionCompletion({ ...base, date: "2026-11-01" }, now)));
+    const completedAt = "2026-11-05T04:00:00Z";
+    assert.deepEqual(receptionCompletion({ ...base, status: "completed", completedAt }, now), { status: "completed", completedAt });
 });
 
 test("rescheduling clears stale arrival state without changing unchanged bookings or payment updates", () => {

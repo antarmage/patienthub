@@ -90,12 +90,12 @@ interface ReceptionDashboardProps {
 }
 
 export function getArrivalState(apt: any): ArrivalState {
-  const status = String(apt.status || "").toLowerCase();
+  const status = String(apt.status || "").toLowerCase().replace(/[\s_]/g, "-");
   if (status.includes("cancel")) return "cancelled";
   if (status.replace(/[\s_]/g, "-") === "no-show") return "no-show";
   if (apt.completedAt || String(apt.status || "").toLowerCase() === "completed") return "completed";
-  if (apt.seenAt) return "in-consultation";
-  if (apt.checkedInAt || String(apt.status || "").toLowerCase() === "checked-in") return "waiting";
+  if (apt.seenAt || ["seen", "in-consultation", "in-progress", "with-doctor"].includes(status)) return "in-consultation";
+  if (apt.checkedInAt || ["checked-in", "arrived"].includes(status)) return "waiting";
   if (String(apt.status || "").toLowerCase() === "late") return "late";
   return "upcoming";
 }
@@ -174,6 +174,7 @@ export function ReceptionDashboard({
   const [filter, setFilter] = useState<FlowFilter>("all");
   const [onlineAppointmentId, setOnlineAppointmentId] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const today = new Date(now + 5.5 * 3600000).toISOString().slice(0, 10);
   const [referRequest, setReferRequest] = useState<ReferralRequest | null>(null);
   const clearReferRequest = useCallback(() => setReferRequest(null), []);
   useEffect(() => {
@@ -359,6 +360,8 @@ export function ReceptionDashboard({
       {scheduled ? <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" disabled={isPending(apt.id)} onClick={() => onCheckIn(apt)} data-testid={`btn-checkin-${apt.id}`}>
         {isPending(apt.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : "Check in"}
       </Button> : state === "cancelled" || state === "no-show" ? renderAction(apt, state) : <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" disabled={!patient} onClick={() => patient && onOpenPatient(patient)} aria-label={`${clinicalDetailsVisible ? "View patient details" : "View appointments"} for ${apt.patient}`}>View</Button>}
+      {["waiting", "in-consultation"].includes(state) && apt.date <= today && <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" disabled={isPending(apt.id)} data-testid={`${location}-reception-complete-${apt.id}`}
+        onClick={() => { if (window.confirm(`Has ${apt.patient}'s consultation finished? This does not mark the paper prescription as recorded.`)) onUpdateAppointment(apt.id, { status: "completed" }); }}>Mark consultation complete</Button>}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button size="sm" variant="ghost" className="h-8 w-8 shrink-0 p-0" aria-label={`More actions for ${apt.patient}`} data-testid={`${location}-reception-actions-${apt.id}`}><MoreVertical className="h-4 w-4" /></Button>

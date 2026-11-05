@@ -63,3 +63,15 @@ test("My Patients keeps paper-entry quick actions without embedding the separate
   assert.ok(!html.includes('aria-label="Paper prescription work"'));
   assert.ok(!html.includes("Appointment from (blank = all history)"));
 });
+
+test("reception completion is available for arrived and in-consultation patients, not scheduled or closed bookings", () => {
+  const base = { id: 11, patientId: 501, providerId: null, date: calendarDateValue(new Date()), time: "09:00" };
+  for (const status of ["checked-in", "in-consultation"]) {
+    const html = renderSearch("", {}, [{ ...base, status }]);
+    assert.ok(html.includes('data-testid="reception-complete-11"'), status);
+    assert.ok(html.includes("Mark consultation complete"));
+  }
+  for (const status of ["scheduled", "completed", "cancelled", "no-show"]) {
+    assert.ok(!renderSearch("", {}, [{ ...base, status }]).includes('data-testid="reception-complete-11"'), status);
+  }
+});

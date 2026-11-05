@@ -35,7 +35,7 @@ export function receptionStage(appointment: ReceptionAppointment): ReceptionStag
   if (status.includes("cancel")) return "Cancelled";
   if (status === "no-show") return "No-show";
   if (appointment.completedAt || status === "completed") return "Done";
-  if (appointment.seenAt || ["in-consultation", "with-doctor"].includes(status)) return "With doctor";
+  if (appointment.seenAt || ["seen", "in-consultation", "in-progress", "with-doctor"].includes(status)) return "With doctor";
   if (appointment.checkedInAt || ["checked-in", "arrived"].includes(status)) return "Arrived";
   return "Scheduled";
 }

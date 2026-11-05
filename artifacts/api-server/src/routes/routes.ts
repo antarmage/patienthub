@@ -14,7 +14,7 @@ import { registerOnlineConsultationRoutes } from "../online-consultations";
 import { onlineStore } from "../online-consultation-store";
 import { OnlineConsultationError } from "../google-meet";
 import { buildMedicineSuggestions } from "../medicine-suggestions";
-import { checkInIsToday, registerClinicalAccess, registrationFields, rescheduledLogistics, type AccessActor } from "../clinical-access";
+import { checkInIsToday, receptionCompletion, registerClinicalAccess, registrationFields, rescheduledLogistics, type AccessActor } from "../clinical-access";
 import { knownRateCard, parseRateCardText } from "../referral-rate-cards";
 import { synchronizeFollowUpCalls } from "../follow-up-calls";
 import { registerReceptionFollowUpRoutes } from "../reception-follow-up";
@@ -1422,13 +1422,19 @@ export async function registerRoutes(
     if (!["clinician", "owner"].includes(res.locals.accessRole)) {
       const existing = (await storage.getAppointments()).find((item) => item.id === id);
       if (!existing) return res.status(404).json({ error: "Appointment not found" });
-      if ((existing.seenAt || existing.completedAt || ["seen", "completed", "in-consultation", "in-progress"].includes(String(existing.status).toLowerCase())) &&
-          ["date", "time", "providerId", "status", "checkedInAt"].some((key) => patch[key] !== undefined)) {
-        return res.status(403).json({ error: "Clinician access required to change an appointment after consultation has begun" });
-      }
-      patch = rescheduledLogistics(existing, patch);
-      if (!checkInIsToday(existing, patch)) {
-        return res.status(400).json({ error: "Appointments can only be checked in on their booked date" });
+      if (["staff", "receptionist"].includes(res.locals.accessRole) && String(patch.status).toLowerCase() === "completed") {
+        const completion = receptionCompletion(existing);
+        if ("error" in completion) return res.status(409).json(completion);
+        patch = completion;
+      } else {
+        if ((existing.seenAt || existing.completedAt || ["seen", "completed", "in-consultation", "in-progress"].includes(String(existing.status).toLowerCase())) &&
+            ["date", "time", "providerId", "status", "checkedInAt"].some((key) => patch[key] !== undefined)) {
+          return res.status(403).json({ error: "Clinician access required to change an appointment after consultation has begun" });
+        }
+        patch = rescheduledLogistics(existing, patch);
+        if (!checkInIsToday(existing, patch)) {
+          return res.status(400).json({ error: "Appointments can only be checked in on their booked date" });
+        }
       }
     }
     const updated = await storage.updateAppointment(id, patch);
