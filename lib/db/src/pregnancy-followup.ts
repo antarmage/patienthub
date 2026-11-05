@@ -30,6 +30,16 @@ export const pregnancyTrendSchema = z.object({
   sugar: z.array(z.object({ name: z.string(), unit: z.string(), points: z.array(point) })),
 });
 export type PregnancyTrends = z.infer<typeof pregnancyTrendSchema>;
+export const pregnancyWeightContextSchema = z.object({
+  lmp: z.iso.date().nullable(),
+  dueDate: z.iso.date().nullable(),
+  endDate: z.iso.date().nullable(),
+  datingBasis: z.enum(["LMP", "Ultrasound", "Clinical assessment", "Not recorded"]),
+  maternalHeightCm: z.number().min(50).max(250).nullable(),
+  prePregnancyWeightKg: z.number().min(20).max(500).nullable(),
+  fetusCount: z.number().int().min(1).max(10).nullable(),
+});
+export type PregnancyWeightContext = z.infer<typeof pregnancyWeightContextSchema>;
 export const pregnancyVisitContextSchema = z.object({
   pregnancy: z.boolean(),
   repeat: z.boolean(),
@@ -38,6 +48,7 @@ export const pregnancyVisitContextSchema = z.object({
   asOf: z.iso.date(),
   previousAppointmentCount: z.number().int().nonnegative(),
   trends: pregnancyTrendSchema,
+  weightReference: pregnancyWeightContextSchema.nullable().optional(),
   answers: pregnancyFollowUpSchema.nullable(),
 });
 export type PregnancyVisitContext = z.infer<typeof pregnancyVisitContextSchema>;

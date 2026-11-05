@@ -15,6 +15,8 @@ const weightSource = {
   label: "IOM/NRC 2009, Table S-1 (CDC-recommended guidance)",
   url: "https://www.nationalacademies.org/read/12584/chapter/2",
 };
+type PregnancyDating = Pick<PregnancyEpisodeDetails, "lmp" | "dueDate" | "endDate" | "datingBasis">;
+type PregnancyWeightDetails = PregnancyDating & Pick<PregnancyEpisodeDetails, "maternalHeightCm" | "prePregnancyWeightKg" | "fetusCount">;
 const hbSource = {
   label: "CDC, Recommendations to Prevent and Control Iron Deficiency, Table 6",
   url: "https://www.cdc.gov/mmwr/preview/mmwrhtml/00051880.htm#00003038.htm",
@@ -34,7 +36,7 @@ export const bpReference: GraphReference = {
 };
 
 export function gestationalWeekAtDate(
-  details: PregnancyEpisodeDetails,
+  details: PregnancyDating,
   date: string,
 ): number | null {
   if (!calendarDate(date) || (details.endDate && date > details.endDate))
@@ -53,7 +55,7 @@ export function gestationalWeekAtDate(
   return days >= 0 && days < 43 * 7 ? days / 7 : null;
 }
 
-function trimesterDates(details: PregnancyEpisodeDetails) {
+function trimesterDates(details: PregnancyDating) {
   const start =
     details.datingBasis === "LMP"
       ? details.lmp
@@ -101,7 +103,7 @@ const weightCategories = [
 ];
 
 export function pregnancyWeightReference(
-  details: PregnancyEpisodeDetails,
+  details: PregnancyWeightDetails,
 ): GraphReference {
   const height = details.maternalHeightCm,
     weight = details.prePregnancyWeightKg;

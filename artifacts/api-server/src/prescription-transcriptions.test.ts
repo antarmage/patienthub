@@ -42,6 +42,7 @@ async function harness(run: (ctx: {
   request: (path: string, actor?: string, method?: string, body?: unknown) => Promise<Response>;
   state: () => State;
   failNextMedicationCreate: () => void;
+  failSecondOriginalUpload: () => void;
   discarded: () => number;
   setState: (mutate: (state: State) => void) => void;
 }) => Promise<void>) {
@@ -58,6 +59,8 @@ async function harness(run: (ctx: {
   let state = seed();
   let nextId = 1000;
   let failMedicationCreate = false;
+  let failUpload = false;
+  let uploaded = 0;
   let discarded = 0;
   const app = express();
   app.use(express.json({ limit: "15mb" }));
@@ -70,7 +73,11 @@ async function harness(run: (ctx: {
     listVisits: async (patientId) => structuredClone(state.visits.filter((visit) => visit.patientId === patientId)),
     getPatientDocument: async (id) => structuredClone(state.documents.find((doc) => doc.id === id)),
     readStoredFile: async (doc) => doc.fileData ? Buffer.from(doc.fileData, "base64") : null,
-    putOriginalFile: async (_patientId, bytes) => ({ fileData: bytes.toString("base64"), s3Key: null }),
+    putOriginalFile: async (_patientId, bytes) => {
+      uploaded++;
+      if (failUpload && uploaded === 2) throw new Error("simulated attachment upload failure");
+      return { fileData: bytes.toString("base64"), s3Key: null };
+    },
     discardOriginalFile: async () => { discarded++; },
     parseCallDate: (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && new Date(`${value}T00:00:00Z`).toISOString().startsWith(value) ? value : null,
     prescriptionDueDate: (instructions, date) => /after 7 days/i.test(instructions) ? new Date(Date.parse(`${date}T00:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10) : null,
@@ -132,6 +139,7 @@ async function harness(run: (ctx: {
       request,
       state: () => state,
       failNextMedicationCreate: () => { failMedicationCreate = true; },
+      failSecondOriginalUpload: () => { failUpload = true; },
       discarded: () => discarded,
       setState: (mutate) => mutate(state),
     });
@@ -437,6 +445,131 @@ test("failed saves roll back the visit, medications and source document together
     assert.match((await response.json() as { error: string }).error, /No changes were saved/);
     assert.deepEqual(state(), before);
     assert.equal(discarded(), 1, "staged original upload is discarded");
+  });
+});
+
+test("multiple originals save together in page order, reload, append, view and delete individual files without duplicating retained evidence", async () => {
+  await harness(async ({ request, state }) => {
+    const first = original(png, "image/png", "page-1.png");
+    const second = original(pdf, "application/pdf", "page-2.pdf");
+    const third = original(jpeg, "image/jpeg", "page-3.jpg");
+    const response = await request(path, "desk", "POST", validBody({
+      appointmentId: 4, originalPrescription: undefined, originalPrescriptions: [first, second],
+    }));
+    assert.equal(response.status, 201, await response.clone().text());
+    const created = await response.json() as { visit: { id: number; appointmentId: number; prescriptions: { originalPrescriptions: { name: string; mimeType: string; fileData: string; available: boolean }[] } } };
+    const { visit } = created;
+    assert.equal(visit.appointmentId, 4);
+    assert.deepEqual(visit.prescriptions.originalPrescriptions.map((file) => file.name), ["page-1.png", "page-2.pdf"]);
+    assert.equal(visit.prescriptions.originalPrescriptions[1].fileData, pdf.toString("base64"));
+    assert.ok(visit.prescriptions.originalPrescriptions.every((file) => file.available));
+    const list = await (await request(path, "reception")).json() as typeof created.visit[];
+    assert.deepEqual(list[0].prescriptions.originalPrescriptions, visit.prescriptions.originalPrescriptions);
+    assert.equal(state().documents.filter((doc) => doc.patientId === 7).length, 2);
+
+    for (const originalPrescription of [null, first]) {
+      assert.equal((await request(path, "reception", "POST", validBody({ transcriptionId: visit.id, originalPrescription }))).status, 409,
+        "old editors cannot silently discard additional pages");
+    }
+    const appended = await request(path, "desk", "POST", validBody({
+      transcriptionId: visit.id, originalPrescription: undefined, originalPrescriptions: [first, second, third],
+    }));
+    assert.equal(appended.status, 200);
+    assert.equal(state().documents.filter((doc) => doc.patientId === 7).length, 3, "retained files are not uploaded twice");
+    const deleted = await request(path, "desk", "POST", validBody({
+      transcriptionId: visit.id, originalPrescription: undefined, originalPrescriptions: [third, first],
+    }));
+    assert.equal(deleted.status, 200);
+    const active = await deleted.json() as typeof created;
+    assert.deepEqual(active.visit.prescriptions.originalPrescriptions.map((file) => file.name), ["page-3.jpg", "page-1.png"]);
+    assert.equal(active.visit.appointmentId, 4);
+    assert.equal(state().documents.filter((doc) => doc.patientId === 7).length, 3, "removed source remains as audited evidence");
+    const rx = state().visits.find((row) => row.id === visit.id)?.prescriptions as {
+      revisions: { previous: { prescriptions: { originalPrescriptions: { name: string }[] } } }[];
+    };
+    assert.deepEqual(rx.revisions[1].previous.prescriptions.originalPrescriptions.map((file) => file.name),
+      ["page-1.png", "page-2.pdf", "page-3.jpg"]);
+    assert.equal((await request(path, "desk", "POST", validBody({
+      transcriptionId: visit.id, originalPrescription: undefined, originalPrescriptions: [],
+    }))).status, 400, "last original cannot be removed on save");
+  });
+});
+
+test("multi-file validation rejects excessive totals, file counts, bad pages and ambiguous payloads before any writes", async () => {
+  await harness(async ({ request, state }) => {
+    const before = structuredClone(state());
+    const largePdf = Buffer.concat([pdf, Buffer.alloc(4 * 1024 * 1024)]);
+    for (const originalPrescriptions of [
+      [], Array(11).fill(original()), "not-an-array", [original(), original(png, "application/pdf", "wrong.pdf")],
+      [original(largePdf, "application/pdf", "first.pdf"), original(largePdf, "application/pdf", "second.pdf")],
+      [original(), { ...original(), patientDocumentId: 900 }],
+    ]) {
+      const response = await request(path, "desk", "POST", validBody({ originalPrescription: undefined, originalPrescriptions }));
+      assert.equal(response.status, 400, await response.clone().text());
+      assert.deepEqual(state(), before);
+    }
+    assert.equal((await request(path, "desk", "POST", validBody({ originalPrescriptions: [original()] }))).status, 400);
+    assert.deepEqual(state(), before);
+  });
+});
+
+test("failed multi-file save rolls back every document and discards all staged uploads", async () => {
+  await harness(async ({ request, state, failNextMedicationCreate, discarded }) => {
+    const before = structuredClone(state());
+    failNextMedicationCreate();
+    assert.equal((await request(path, "desk", "POST", validBody({
+      originalPrescription: undefined, originalPrescriptions: [original(), original(pdf, "application/pdf", "page-2.pdf")],
+    }))).status, 500);
+    assert.deepEqual(state(), before);
+    assert.equal(discarded(), 2);
+  });
+});
+
+test("partial staging failures discard earlier uploads without saving any prescription changes", async () => {
+  await harness(async ({ request, state, failSecondOriginalUpload, discarded }) => {
+    const before = structuredClone(state());
+    failSecondOriginalUpload();
+    assert.equal((await request(path, "desk", "POST", validBody({
+      originalPrescription: undefined, originalPrescriptions: [original(), original(pdf, "application/pdf", "page-2.pdf")],
+    }))).status, 500);
+    assert.deepEqual(state(), before);
+    assert.equal(discarded(), 1);
+  });
+});
+
+test("multi-file endpoint accepts exactly 10 files and exactly 8 MB total", async () => {
+  await harness(async ({ request }) => {
+    const response = await request(path, "desk", "POST", validBody({
+      originalPrescription: undefined,
+      originalPrescriptions: Array.from({ length: 10 }, (_, index) => original(pdf, "application/pdf", `page-${index + 1}.pdf`)),
+    }));
+    assert.equal(response.status, 201);
+    const body = await response.json() as { visit: { prescriptions: { originalPrescriptions: unknown[] } } };
+    assert.equal(body.visit.prescriptions.originalPrescriptions.length, 10);
+    const exactLimit = Buffer.concat([pdf, Buffer.alloc(8 * 1024 * 1024 - pdf.length)]);
+    const atLimit = await request(path, "desk", "POST", validBody({
+      originalPrescription: undefined, originalPrescriptions: [original(exactLimit, "application/pdf", "eight-mb.pdf")],
+    }));
+    assert.equal(atLimit.status, 201);
+    await atLimit.arrayBuffer();
+  });
+});
+
+test("a missing additional page is explicitly unavailable without losing the remaining attachment", async () => {
+  await harness(async ({ request, state, setState }) => {
+    const response = await request(path, "desk", "POST", validBody({
+      originalPrescription: undefined, originalPrescriptions: [original(), original(pdf, "application/pdf", "page-2.pdf")],
+    }));
+    const body = await response.json() as { visit: { id: number } };
+    const rx = state().visits.find((visit) => visit.id === body.visit.id)?.prescriptions as { originalPrescriptions: { patientDocumentId: number }[] };
+    setState((current) => { current.documents = current.documents.filter((doc) => doc.id !== rx.originalPrescriptions[1].patientDocumentId); });
+    const list = await (await request(path, "desk")).json() as { prescriptions: { originalAvailable: boolean; originalPrescriptions: { name: string; fileData: string | null; available: boolean }[] } }[];
+    assert.equal(list[0].prescriptions.originalAvailable, false);
+    assert.equal(list[0].prescriptions.originalPrescriptions.length, 2);
+    assert.equal(list[0].prescriptions.originalPrescriptions[0].available, true);
+    assert.equal(list[0].prescriptions.originalPrescriptions[1].available, false);
+    assert.equal(list[0].prescriptions.originalPrescriptions[1].name, "page-2.pdf");
+    assert.equal(list[0].prescriptions.originalPrescriptions[1].fileData, null);
   });
 });
 

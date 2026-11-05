@@ -15,6 +15,8 @@ import { MedicineDoseInput } from "@/components/MedicineDoseInput";
 import { MedicineFrequencyInput } from "@/components/MedicineFrequencyInput";
 import { parseCallDate, prescriptionDueDate } from "../../../../lib/db/src/follow-up";
 import { MedicineAutocomplete } from "@/components/MedicineAutocomplete";
+import { PrescriptionAttachments, type DisplayPrescriptionAttachment } from "@/components/PrescriptionAttachments";
+import { prescriptionAttachmentBytes, validatePrescriptionAttachmentLimits, type PrescriptionAttachment } from "../../../../lib/db/src/prescription-attachments";
 
 interface Medicine {
   name: string;
@@ -376,6 +378,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   const [scanWarnings, setScanWarnings] = useState<string[]>([]);
   const [scanText, setScanText] = useState("");
   const [scanSource, setScanSource] = useState<{ fileData: string; mimeType: string; name: string; provider: string; sourcePages: { pageNumber: number; text: string }[] } | null>(null);
+  const [attachedOriginals, setAttachedOriginals] = useState<DisplayPrescriptionAttachment[] | null>(null);
   const sourceSaved = useRef(false);
   const scanRevision = useRef(0);
   const [entered, setEntered] = useState(false);
@@ -393,6 +396,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   useEffect(() => {
     scanRevision.current++;
     setScanSource(null);
+    setAttachedOriginals(null);
     setScanned(false);
     setScanning(false);
     setScanWarnings([]);
@@ -478,7 +482,11 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   const existing = (transcriptionMode
     ? visits.find((v: any) => v.id === appointment?.transcriptionId)
     : visits.find((v: any) => v.appointmentId === appointment?.id)) || null;
-  const originalPrescription = scanSource || (transcriptionMode ? existing?.prescriptions?.originalPrescription : null);
+  const originals: DisplayPrescriptionAttachment[] = transcriptionMode ? attachedOriginals ?? (
+    Array.isArray(existing?.prescriptions?.originalPrescriptions) ? existing.prescriptions.originalPrescriptions :
+      existing?.prescriptions?.originalPrescription ? [existing.prescriptions.originalPrescription] : []
+  ) : [];
+  const originalsReady = originals.length > 0 && originals.every((file) => !!file.fileData);
 
   const billedTests: TestLine[] = (transcriptionMode ? [] : invoices)
     .filter((inv: any) => inv.appointmentId === appointment?.id || String(inv.date).slice(0, 10) === String(appointment?.date).slice(0, 10))
@@ -600,6 +608,31 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointment, appointment?.historical && !appointment.edit ? true : isFetched, existing?.id, patient?.id]);
 
+  const attachFiles = async (files: File[]) => {
+    const limitError = validatePrescriptionAttachmentLimits([
+      ...originals.map((file) => ({ size: file.fileData ? prescriptionAttachmentBytes({ ...file, fileData: file.fileData }) : 0, type: file.mimeType })),
+      ...files.map((file) => ({ size: file.size, type: file.type })),
+    ]);
+    if (limitError) { toast({ title: "Unable to attach files", description: limitError, variant: "destructive" }); return; }
+    setScanning(true);
+    const revision = ++scanRevision.current;
+    try {
+      const additions = await Promise.all(files.map((file) => new Promise<PrescriptionAttachment>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ name: file.name, mimeType: file.type, fileData: String(reader.result).split(",")[1] });
+        reader.onerror = () => reject(new Error(`Could not read ${file.name}. No selected files were attached.`));
+        reader.onabort = () => reject(new Error(`Reading ${file.name} was cancelled. No selected files were attached.`));
+        reader.readAsDataURL(file);
+      })));
+      if (revision !== scanRevision.current) return;
+      setAttachedOriginals([...originals, ...additions]);
+      setScanReviewed(false);
+      toast({ title: `${additions.length} prescription file${additions.length === 1 ? "" : "s"} attached`, description: "Review all pages against the entered instructions before saving." });
+    } catch (error) {
+      if (revision === scanRevision.current) toast({ title: "Unable to attach files", description: error instanceof Error ? error.message : "Could not read selected files.", variant: "destructive" });
+    } finally { if (revision === scanRevision.current) setScanning(false); }
+  };
+
   const scanFile = async (file: File) => {
     if (!patientId) return;
     const maxMegabytes = transcriptionMode ? 8 : 10;
@@ -617,15 +650,6 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      if (transcriptionMode) {
-        if (revision !== scanRevision.current) return;
-        if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type)) throw new Error("Use a JPEG, PNG, WebP photo or PDF scan.");
-        setScanSource({ fileData: base64, mimeType: file.type, name: file.name, provider: "manual-transcription", sourcePages: [] });
-        setScanned(false);
-        setScanWarnings([]);
-        toast({ title: "Original prescription attached", description: "Type the doctor's written instructions and verify them against this copy." });
-        return;
-      }
       const res = await fetch(`/api/patients/${patientId}/parse-prescription`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -930,7 +954,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
   }, [appointment]);
 
   const save = async () => {
-    if (transcriptionMode && (!originalPrescription || !scanReviewed)) {
+    if (transcriptionMode && (!originalsReady || !scanReviewed)) {
       toast({ title: "Original and review required", description: "Attach the doctor's prescription and verify the transcribed fields before saving.", variant: "destructive" });
       return;
     }
@@ -1000,11 +1024,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
           scanReviewed,
           ...(transcriptionMode ? {
             transcriptionId: appointment?.transcriptionId,
-            originalPrescription: originalPrescription ? {
-              name: originalPrescription.name,
-              mimeType: originalPrescription.mimeType,
-              fileData: originalPrescription.fileData,
-            } : null,
+            originalPrescriptions: originals.map((file) => ({ name: file.name, mimeType: file.mimeType, fileData: file.fileData })),
             sourceReviewed: scanReviewed,
           } : {}),
         }),
@@ -1181,21 +1201,21 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
             </div>
           )}
           <div className="rounded-lg border border-dashed border-saivie-border bg-saivie-surface-muted/50 p-3">
-            <input ref={fileRef} type="file" accept={transcriptionMode ? "image/jpeg,image/png,image/webp,application/pdf" : "image/*,application/pdf"} className="hidden" data-testid="input-rx-file"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) scanFile(f); }} />
+            <input ref={fileRef} type="file" multiple={transcriptionMode} accept={transcriptionMode ? "image/jpeg,image/png,image/webp,application/pdf" : "image/*,application/pdf"} className="hidden" data-testid="input-rx-file"
+              onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ""; if (files.length) { if (transcriptionMode) void attachFiles(files); else void scanFile(files[0]); } }} />
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm text-saivie-plum">
-                {transcriptionMode ? originalPrescription ? `Original attached: ${originalPrescription.name}. Enter the doctor's instructions below.` : "Required: attach a photo or scan of the doctor's handwritten prescription, then transcribe it below." : scanned ? "Filled from the photo — review and correct below." : "Have a photo of the paper prescription? Upload it and the fields below are filled in for you to check."}
+                {transcriptionMode ? `${originals.length} original file${originals.length === 1 ? "" : "s"} attached. Upload all pages of this prescription (up to 10 files, 8 MB combined), then transcribe the doctor's instructions below.` : scanned ? "Filled from the photo — review and correct below." : "Have a photo of the paper prescription? Upload it and the fields below are filled in for you to check."}
               </p>
-              <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={scanning} onClick={() => fileRef.current?.click()} data-testid="btn-rx-scan">
+              <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={scanning || saving} onClick={() => fileRef.current?.click()} data-testid="btn-rx-scan">
                 {scanning ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />}
-                {scanning ? transcriptionMode ? "Attaching..." : "Reading..." : "Upload photo"}
+                {scanning ? transcriptionMode ? "Attaching..." : "Reading..." : transcriptionMode ? "Add files" : "Upload photo"}
               </Button>
             </div>
-            {transcriptionMode && originalPrescription && <div className="mt-3">
-              {originalPrescription.mimeType.startsWith("image/") && <img className="max-h-72 max-w-full rounded border object-contain" alt="Doctor's original handwritten prescription" src={`data:${originalPrescription.mimeType};base64,${originalPrescription.fileData}`} />}
-              <a className="mt-2 inline-block text-xs text-saivie-teal underline" href={`data:${originalPrescription.mimeType};base64,${originalPrescription.fileData}`} download={originalPrescription.name}>Download original prescription</a>
-            </div>}
+            {transcriptionMode && <PrescriptionAttachments files={originals} disabled={scanning || saving} onDelete={(index) => {
+              setAttachedOriginals(originals.filter((_, position) => position !== index));
+              setScanReviewed(false);
+            }} />}
           </div>
 
           </>
@@ -1403,7 +1423,7 @@ export function PrescriptionEntryDialog({ appointment, patient, onClose, onSaved
         ) : (
         <>
         {(scanned || transcriptionMode) && <label className="flex items-start gap-2 text-xs"><input type="checkbox" className="mt-0.5" checked={scanReviewed} onChange={(event) => setScanReviewed(event.target.checked)} data-testid="checkbox-review-prescription" />I verified all entered fields against the doctor's original prescription.</label>}
-        <Button type="button" onClick={save} disabled={saving || scanning || (scanned && !scanReviewed) || (transcriptionMode && (!originalPrescription || !scanReviewed || visitsQuery.isError || visitsQuery.isLoading)) || (needsDate && !prescriptionDate)} data-testid="btn-rx-save">
+        <Button type="button" onClick={save} disabled={saving || scanning || (scanned && !scanReviewed) || (transcriptionMode && (!originalsReady || !scanReviewed || visitsQuery.isError || visitsQuery.isLoading)) || (needsDate && !prescriptionDate)} data-testid="btn-rx-save">
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {editing ? "Update prescription" : "Save prescription"}
         </Button>

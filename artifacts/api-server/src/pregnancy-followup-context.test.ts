@@ -110,6 +110,23 @@ test("follow-up validation requires explicit choices and concern details without
   assert.ok(pregnancyFollowUpSchema.safeParse({ ...answers, visitReason: "Current concern", concern: "Nausea" }).success);
 });
 
+test("print context supplies only selected episode's confirmed weight inputs and never profile or visit weight", () => {
+  const selected = { ...episode, details: { ...episode.details, maternalHeightCm: 160, prePregnancyWeightKg: 55, fetusCount: 1 } };
+  const result = pregnancyVisitContext({ ...patient, weight: 99, height: 190 }, appointment, [earlier, appointment], [], [], [selected]);
+  assert.deepEqual(result.weightReference, {
+    lmp: "2026-04-01", dueDate: "2027-01-06", endDate: null, datingBasis: "LMP",
+    maternalHeightCm: 160, prePregnancyWeightKg: 55, fetusCount: 1,
+  });
+  assert.ok(pregnancyVisitContextSchema.safeParse(result).success);
+  assert.equal(context().weightReference?.prePregnancyWeightKg, null);
+  assert.equal(context([earlier, appointment], []).weightReference, null);
+  const past = { ...selected, id: 2, details: { ...selected.details, status: "past" as const, lmp: "2025-01-01", prePregnancyWeightKg: 50 } };
+  const unlinked = { ...selected, records: [] };
+  const historical = pregnancyVisitContext(patient, { ...appointment, date: "2025-06-10" }, [], [], [], [unlinked, past]);
+  assert.equal(historical.weightReference?.prePregnancyWeightKg, 50);
+  assert.equal(historical.weightReference?.lmp, "2025-01-01");
+});
+
 test("print context API enforces role, permission and patient/appointment ownership", async () => {
   let visible = false, calls = 0;
   const app = express();

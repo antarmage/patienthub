@@ -37,6 +37,43 @@ test("pregnancy print safely escapes answer text and lab labels", () => {
   assert.ok(html.includes("Current concern")); assert.ok(html.includes("Vomiting since the last visit"));
 });
 
+const weightReference = {
+  lmp: "2026-01-21", dueDate: null, endDate: null, datingBasis: "LMP" as const,
+  maternalHeightCm: 160, prePregnancyWeightKg: 60, fetusCount: 1,
+};
+
+test("print compares each dated weight with gestation, baseline gain and the existing BMI-based weekly band", () => {
+  const html = pregnancyPrintHtml({ ...context, weightReference });
+  for (const text of ["20w 0d", "14w 2d", "BMI 23.4", "baseline 60 kg", "height 160 cm",
+    "Actual gain (kg)", "-2.0", "62.6-65.0 kg", "2.6-5.0 kg", "IOM/NRC 2009", "not a validated centile", "<polygon"]) {
+    assert.ok(html.includes(text), text);
+  }
+  assert.ok(html.includes("not an automatic diagnosis"));
+});
+
+test("print never assumes earliest weight is baseline or applies singleton ranges to twins or unknown dating", () => {
+  const missing = pregnancyPrintHtml(context);
+  assert.ok(missing.includes("Weight reference unavailable"));
+  assert.ok(missing.includes("Current or earliest visit weight is not assumed"));
+  for (const change of [{ prePregnancyWeightKg: null }, { maternalHeightCm: null }, { fetusCount: 2 },
+    { datingBasis: "Not recorded" as const }, { lmp: null }]) {
+    const html = pregnancyPrintHtml({ ...context, weightReference: { ...weightReference, ...change } });
+    assert.ok(html.includes("Weight reference unavailable"));
+    assert.ok(!html.includes("<polygon"));
+    assert.ok(!html.includes("62.6-65.0 kg"));
+  }
+});
+
+test("print respects ultrasound dating and does not invent early, post-term or post-episode reference weights", () => {
+  const adjusted = { ...weightReference, datingBasis: "Ultrasound" as const, lmp: "2020-01-01", dueDate: "2026-10-28" };
+  assert.ok(pregnancyPrintHtml({ ...context, weightReference: adjusted }).includes("20w 0d"));
+  for (const asOf of ["2026-03-01", "2026-10-29"]) {
+    const html = pregnancyPrintHtml({ ...context, asOf, weightReference });
+    assert.ok(html.includes("Reference weight: Not available"));
+  }
+  assert.ok(pregnancyPrintHtml({ ...context, weightReference: { ...weightReference, endDate: "2026-06-01" } }).includes("Gestation at this appointment: Dating unavailable"));
+});
+
 test("repeat questionnaire shows follow-up subjects, preserves baseline and does not ask initial history again", () => {
   const client = new QueryClient();
   const html = renderToStaticMarkup(<QueryClientProvider client={client}><Router ssrPath="/onboarding/20"><PregnancyFollowUpSurvey appointmentId="20" name="Synthetic" context={context} /></Router></QueryClientProvider>);

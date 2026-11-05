@@ -1,3 +1,5 @@
+import { prescriptionAttachmentBytes } from "../../../lib/db/src/prescription-attachments";
+
 export type SurveyKind = "consultation" | "lab";
 
 const LAB_PATTERN = /\b(lab|labs|laboratory|blood\s*(test|work|draw|sample)|pathology|sample\s*collection|phlebotomy)\b/i;
@@ -46,7 +48,7 @@ export function readLabPrescription(input: unknown): { base64: string; mimeType:
   if (!LAB_PRESCRIPTION_TYPES.includes(type)) return { error: "Prescription must be a photo (JPG, PNG, WebP) or PDF" };
   const base64 = fileData.replace(/^data:[^;]+;base64,/, "");
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) return { error: "Prescription file is not valid" };
-  if (Math.floor((base64.length * 3) / 4) > LAB_PRESCRIPTION_MAX_BYTES) return { error: "Prescription file must be under 8 MB" };
+  if (prescriptionAttachmentBytes({ fileData: base64 }) > LAB_PRESCRIPTION_MAX_BYTES) return { error: "Prescription file must be 8 MB or less" };
   const name = String(fileName || "lab-prescription").replace(/[^\w.\- ]+/g, "_").slice(0, 120) || "lab-prescription";
   return { base64, mimeType: type, fileName: name };
 }

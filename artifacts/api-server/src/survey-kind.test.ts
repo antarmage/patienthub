@@ -27,3 +27,11 @@ it("accepts small images/PDFs and rejects other uploads", () => {
   assert.ok("error" in (readLabPrescription({ fileData: "aGVsbG8=", mimeType: "text/html" }) as object));
   assert.ok("error" in (readLabPrescription({ fileData: "A".repeat(12 * 1024 * 1024), mimeType: "image/jpeg" }) as object));
 });
+
+it("uses decoded file size at the exact 8 MB limit, including base64 padding", () => {
+  const fileData = Buffer.alloc(8 * 1024 * 1024).toString("base64");
+  const accepted = readLabPrescription({ fileData, mimeType: "application/pdf" });
+  assert.ok(accepted && !("error" in accepted));
+  const oversized = readLabPrescription({ fileData: Buffer.alloc(8 * 1024 * 1024 + 1).toString("base64"), mimeType: "application/pdf" });
+  assert.ok(oversized && "error" in oversized);
+});

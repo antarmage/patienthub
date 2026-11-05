@@ -89,6 +89,11 @@ export function pregnancyVisitContext(patient: Row, appointment: Row, appointmen
   return { pregnancy, repeat: pregnancy && previousAppointmentCount > 0 && !cancelled(appointment), episodeId: episode?.id || null,
     label: episode ? `Pregnancy ${episode.details.number}` : pregnancy ? "Current pregnancy · recorded dating" : "No pregnancy context established",
     asOf, previousAppointmentCount, trends: { bp: trends.bp, weight: trends.weight, hb: trends.hb, sugar: trends.sugar },
+    weightReference: pregnancy && episode ? {
+      lmp: episode.details.lmp, dueDate: episode.details.dueDate, endDate: episode.details.endDate,
+      datingBasis: episode.details.datingBasis, maternalHeightCm: episode.details.maternalHeightCm ?? null,
+      prePregnancyWeightKg: episode.details.prePregnancyWeightKg ?? null, fetusCount: episode.details.fetusCount ?? null,
+    } : null,
     answers: saved.success ? saved.data : null };
 }
 

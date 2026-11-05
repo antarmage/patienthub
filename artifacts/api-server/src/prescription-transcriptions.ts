@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
 import type { AccessActor } from "./clinical-access";
 import { LAB_PRESCRIPTION_MAX_BYTES, readLabPrescription } from "./survey-kind";
+import { MAX_PRESCRIPTION_FILES, validatePrescriptionAttachmentLimits } from "../../../lib/db/src/prescription-attachments";
 
 export const TRANSCRIPTION_SOURCE = "receptionist-paper-transcription";
 export const TRANSCRIPTION_ORIGINAL_DOC_TYPE = "prescription";
@@ -168,6 +169,21 @@ function originalMetaOf(visit: VisitRow): OriginalMeta | null {
   return meta && Number.isSafeInteger(meta.patientDocumentId) && typeof meta.sha256 === "string" ? meta as unknown as OriginalMeta : null;
 }
 
+function originalMetasOf(visit: VisitRow): OriginalMeta[] {
+  const rx = asObject(visit.prescriptions);
+  if (Array.isArray(rx?.originalPrescriptions)) {
+    return rx.originalPrescriptions.map((value) => {
+      const meta = asObject(value);
+      if (!meta || !Number.isSafeInteger(meta.patientDocumentId) || typeof meta.sha256 !== "string"
+        || typeof meta.name !== "string" || typeof meta.mimeType !== "string" || typeof meta.sizeBytes !== "number")
+        throw new InputError(409, "Prescription attachment metadata is invalid. Ask the clinic to review this record.");
+      return meta as OriginalMeta;
+    });
+  }
+  const legacy = originalMetaOf(visit);
+  return legacy ? [legacy] : [];
+}
+
 async function loadRetainedOriginal(deps: PrescriptionTranscriptionDependencies, patientId: number, meta: OriginalMeta | null): Promise<Buffer | null> {
   if (!meta) return null;
   const doc = await deps.getPatientDocument(meta.patientDocumentId);
@@ -177,10 +193,15 @@ async function loadRetainedOriginal(deps: PrescriptionTranscriptionDependencies,
   return crypto.createHash("sha256").update(bytes).digest("hex") === meta.sha256 ? bytes : null;
 }
 
-function present(visit: VisitRow, original: Buffer | null) {
+function present(visit: VisitRow, originals: (Buffer | null)[]) {
   const rx = asObject(visit.prescriptions) ?? {};
-  const meta = originalMetaOf(visit);
-  const { revisions, medicationIds: _ids, originalPrescription: _meta, linkedAppointmentId, ...publicRx } = rx;
+  const metas = originalMetasOf(visit);
+  const files = metas.map((meta, index) => ({
+    name: meta.name, mimeType: meta.mimeType, fileData: originals[index]?.toString("base64") ?? null,
+    sizeBytes: meta.sizeBytes, sha256: meta.sha256, uploadedAt: meta.uploadedAt, uploadedBy: meta.uploadedBy,
+    available: !!originals[index],
+  }));
+  const { revisions, medicationIds: _ids, originalPrescription: _meta, originalPrescriptions: _metas, linkedAppointmentId, ...publicRx } = rx;
   return {
     id: visit.id,
     patientId: visit.patientId,
@@ -201,11 +222,9 @@ function present(visit: VisitRow, original: Buffer | null) {
       ...publicRx,
       medicines: Array.isArray(rx.medicines) ? rx.medicines : [],
       revisionCount: Array.isArray(revisions) ? revisions.length : 0,
-      originalPrescription: meta && original ? {
-        name: meta.name, mimeType: meta.mimeType, fileData: original.toString("base64"),
-        sizeBytes: meta.sizeBytes, sha256: meta.sha256, uploadedAt: meta.uploadedAt, uploadedBy: meta.uploadedBy,
-      } : null,
-      originalAvailable: !!(meta && original),
+      originalPrescription: files[0]?.available ? files[0] : null,
+      originalPrescriptions: files,
+      originalAvailable: files.length > 0 && files.every((file) => file.available),
     },
   };
 }
@@ -214,7 +233,7 @@ const allowedKeys = new Set([
   "appointmentId", "prescriptionDate", "chiefComplaint", "examination", "lmp", "height", "weight", "age",
   "patientType", "vitals", "datingEstimate", "eod", "pog", "gravida", "surgicalHistory", "antenatal",
   "diagnosis", "advice", "followUp", "followUpDate", "medicines", "tests", "scanned", "scanReviewed",
-  "transcriptionId", "originalPrescription", "sourceReviewed",
+  "transcriptionId", "originalPrescription", "originalPrescriptions", "sourceReviewed",
 ]);
 
 function text(value: unknown, field: string, max = MAX_TEXT): string | null {
@@ -454,7 +473,8 @@ export function registerPrescriptionTranscriptionRoutes(app: Express, deps: Pres
       const visits = (await deps.listVisits(access.patientId)).filter((visit) => isPaperTranscription(visit, access.patientId));
       visits.sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.id - a.id);
       const records = [];
-      for (const visit of visits) records.push(present(visit, await loadRetainedOriginal(deps, access.patientId, originalMetaOf(visit))));
+      for (const visit of visits) records.push(present(visit, await Promise.all(
+        originalMetasOf(visit).map((meta) => loadRetainedOriginal(deps, access.patientId, meta)))));
       res.setHeader("Cache-Control", "private, no-store");
       res.json(records);
     } catch (error) {
@@ -463,7 +483,7 @@ export function registerPrescriptionTranscriptionRoutes(app: Express, deps: Pres
   });
 
   app.post(route, async (req, res) => {
-    let stagedFile: { fileData: string | null; s3Key: string | null } | null = null;
+    const stagedFiles: { fileData: string | null; s3Key: string | null }[] = [];
     try {
       const access = await authorize(req, res, deps);
       if (!access) return;
@@ -495,24 +515,47 @@ export function registerPrescriptionTranscriptionRoutes(app: Express, deps: Pres
       const now = deps.now?.() ?? new Date();
       const content = normalizeContent(body, deps, appointment?.date ?? null, clinicToday(now));
 
-      const submitted = body.originalPrescription === undefined || body.originalPrescription === null
-        ? null : validateOriginalPrescription(body.originalPrescription);
-      const retainedMeta = existing ? originalMetaOf(existing) : null;
-      let original: Buffer | null = null;
-      let replacement: ValidatedOriginal | null = null;
-      if (!existing) {
-        if (!submitted) throw new InputError(422, "Attach a photo or scan of the doctor's original paper prescription.", ["originalPrescription"]);
-        replacement = submitted;
-      } else if (submitted && submitted.sha256 !== retainedMeta?.sha256) {
-        replacement = submitted;
+      if (body.originalPrescriptions !== undefined && body.originalPrescription != null)
+        throw new InputError(400, "Submit originalPrescriptions or originalPrescription, not both.");
+      const retainedMetas = existing ? originalMetasOf(existing) : [];
+      if (retainedMetas.length > 1 && body.originalPrescription != null)
+        throw new InputError(409, "Reload the multi-file transcription before editing it. Use originalPrescriptions to keep or explicitly remove pages.");
+      const hasSubmitted = body.originalPrescriptions !== undefined || body.originalPrescription != null;
+      if (body.originalPrescriptions !== undefined && !Array.isArray(body.originalPrescriptions))
+        throw new InputError(400, "originalPrescriptions must be an array.");
+      const inputs = body.originalPrescriptions ?? (body.originalPrescription != null ? [body.originalPrescription] : []);
+      if (hasSubmitted && (!inputs.length || inputs.length > MAX_PRESCRIPTION_FILES))
+        throw new InputError(400, "Attach between 1 and 10 prescription files.");
+      if (!hasSubmitted && !retainedMetas.length)
+        throw new InputError(422, "Attach a photo or scan of the doctor's original paper prescription.", ["originalPrescription"]);
+      if (!hasSubmitted && retainedMetas.length > 1)
+        throw new InputError(409, "Reload the multi-file transcription before editing it. All prescription pages must be retained or explicitly removed.");
+      const submitted: ValidatedOriginal[] = hasSubmitted ? inputs.map(validateOriginalPrescription) : [];
+      const limits = validatePrescriptionAttachmentLimits(hasSubmitted
+        ? submitted.map((file) => ({ size: file.bytes.length, type: file.mimeType }))
+        : retainedMetas.map((meta) => ({ size: meta.sizeBytes, type: meta.mimeType })));
+      if (limits) throw new InputError(400, limits);
+      const originals: Buffer[] = [];
+      const sources: { retained?: OriginalMeta; replacement?: ValidatedOriginal; stored?: { fileData: string | null; s3Key: string | null } }[] = [];
+      if (hasSubmitted) {
+        for (const file of submitted) {
+          const retained = retainedMetas.find((meta) => meta.sha256 === file.sha256 && meta.mimeType === file.mimeType && meta.name === file.name);
+          const bytes = retained ? await loadRetainedOriginal(deps, patientId, retained) : null;
+          originals.push(file.bytes);
+          if (retained && bytes) sources.push({ retained });
+          else {
+            const stored = await deps.putOriginalFile(patientId, file.bytes, file.mimeType);
+            stagedFiles.push(stored);
+            sources.push({ replacement: file, stored });
+          }
+        }
       } else {
-        original = await loadRetainedOriginal(deps, patientId, retainedMeta);
-        if (!original && submitted) replacement = submitted;
-        else if (!original) throw new InputError(409, "The original paper prescription for this transcription is unavailable. Attach the original again.", ["originalPrescription"]);
-      }
-      if (replacement) {
-        original = replacement.bytes;
-        stagedFile = await deps.putOriginalFile(patientId, replacement.bytes, replacement.mimeType);
+        for (const retained of retainedMetas) {
+          const bytes = await loadRetainedOriginal(deps, patientId, retained);
+          if (!bytes) throw new InputError(409, "The original paper prescription for this transcription is unavailable. Attach the original again.", ["originalPrescription"]);
+          originals.push(bytes);
+          sources.push({ retained });
+        }
       }
 
       const at = now.toISOString();
@@ -534,20 +577,23 @@ export function registerPrescriptionTranscriptionRoutes(app: Express, deps: Pres
           if (asObject(locked.prescriptions)?.linkedAppointmentId !== asObject(existing?.prescriptions)?.linkedAppointmentId) {
             throw new InputError(409, "This transcription was linked elsewhere while saving. Refresh and review.");
           }
-          if (!replacement && JSON.stringify(originalMetaOf(locked)) !== JSON.stringify(retainedMeta)) {
+          if (JSON.stringify(originalMetasOf(locked)) !== JSON.stringify(retainedMetas)) {
             throw new InputError(409, "This transcription changed while saving. Reload and try again.");
           }
         }
-        let originalMeta = retainedMeta;
-        if (replacement && stagedFile) {
+        const originalMetas: OriginalMeta[] = [];
+        for (const source of sources) {
+          if (source.retained) { originalMetas.push(source.retained); continue; }
+          if (!source.replacement || !source.stored) throw new Error("Prescription attachment staging is incomplete");
+          const { replacement, stored } = source;
           const doc = await tx.createPatientDocument({
-            patientId, fileName: replacement.name, fileData: stagedFile.fileData, s3Key: stagedFile.s3Key,
+            patientId, fileName: replacement.name, fileData: stored.fileData, s3Key: stored.s3Key,
             mimeType: replacement.mimeType, docType: TRANSCRIPTION_ORIGINAL_DOC_TYPE, label: TRANSCRIPTION_ORIGINAL_LABEL, uploadedAt: at,
           });
-          originalMeta = {
+          originalMetas.push({
             patientDocumentId: doc.id, name: replacement.name, mimeType: replacement.mimeType,
             sizeBytes: replacement.bytes.length, sha256: replacement.sha256, uploadedAt: at, uploadedBy: actor,
-          };
+          });
         }
         const previousRx = asObject(locked?.prescriptions) ?? {};
         const revisions = Array.isArray(previousRx.revisions) ? previousRx.revisions : [];
@@ -561,7 +607,8 @@ export function registerPrescriptionTranscriptionRoutes(app: Express, deps: Pres
           enteredAt: previousRx.enteredAt ?? at,
           updatedBy: actor,
           updatedAt: at,
-          originalPrescription: originalMeta,
+          originalPrescription: originalMetas[0],
+          originalPrescriptions: originalMetas,
           medicines: content.medicines,
           medicationIds,
           revisions: locked
@@ -577,14 +624,17 @@ export function registerPrescriptionTranscriptionRoutes(app: Express, deps: Pres
         if (!saved) throw new Error("Transcription visit disappeared during save");
         return { visit: saved, medications };
       });
-      stagedFile = null;
+      stagedFiles.length = 0;
       res.status(existing ? 200 : 201).json({
-        visit: present(result.visit, original),
+        visit: present(result.visit, originals),
         medications: result.medications,
         created: !existing,
       });
     } catch (error) {
-      if (stagedFile) await deps.discardOriginalFile(stagedFile).catch(() => undefined);
+      for (const file of stagedFiles) {
+        try { await deps.discardOriginalFile(file); }
+        catch (cleanupError) { console.error("Could not discard staged prescription attachment", cleanupError); }
+      }
       sendError(res, error);
     }
   });
