@@ -5,13 +5,16 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReceptionDashboard, getArrivalState } from "./ReceptionDashboard";
 
-test("receptionist dashboard exposes completion in patient flow and waiting queue without clinical visibility", () => {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+for (const logisticsOnly of [true, false]) test(`reception dashboard keeps survey actions and appointment-context printing in ${logisticsOnly ? "logistics" : "clinical"} layout`, () => {
+  const client = new QueryClient({ defaultOptions: { queries: {
+    retry: false,
+    queryFn: async () => { throw new Error("Unexpected network request during static dashboard rendering"); },
+  } } });
   const noop = () => {};
   const today = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
   try {
     const html = renderToStaticMarkup(<QueryClientProvider client={client}><ReceptionDashboard
-      logisticsOnly clinicalDetailsVisible={false}
+      logisticsOnly={logisticsOnly} clinicalDetailsVisible={false}
       appointments={[{ id: 11, patientId: 1, patient: "Synthetic", date: today, time: "09:00", status: "checked-in" },
         { id: 12, patientId: 1, patient: "Synthetic", date: today, time: "10:00", status: "in-consultation" },
         { id: 13, patientId: 1, patient: "Synthetic", date: today, time: "11:00", status: "scheduled" },
@@ -25,10 +28,16 @@ test("receptionist dashboard exposes completion in patient flow and waiting queu
       onOpenTask={noop} onOpenPatient={noop} onRegisterPatient={noop} onUploadReport={noop}
       onViewSchedule={noop} onFindPatient={noop} onViewFollowUps={noop} upcomingAppointments={[]} onCallFollowUp={noop}
     /></QueryClientProvider>);
-    assert.ok(html.includes('data-testid="flow-reception-complete-11"'));
-    assert.ok(html.includes('data-testid="queue-reception-complete-11"'));
-    assert.ok(html.includes('data-testid="flow-reception-complete-12"'));
-    assert.ok(!html.includes('data-testid="flow-reception-complete-13"'));
+    if (logisticsOnly) {
+      assert.ok(html.includes('data-testid="flow-reception-complete-11"'));
+      assert.ok(html.includes('data-testid="queue-reception-complete-11"'));
+      assert.ok(html.includes('data-testid="flow-reception-complete-12"'));
+      assert.ok(!html.includes('data-testid="flow-reception-complete-13"'));
+      assert.match(html, /Doctor permission is required to print clinical details/);
+    } else {
+      assert.ok(html.includes('data-testid="queue-print-summary-11"'));
+    }
+    assert.ok(html.includes('data-testid="btn-print-summary-11"'));
     for (const id of [11, 12, 13, 14]) assert.ok(html.includes(`data-testid="btn-refill-survey-${id}"`));
     for (const id of [15, 16]) assert.ok(!html.includes(`data-testid="btn-refill-survey-${id}"`));
     assert.ok(html.includes("Fill / correct survey"));

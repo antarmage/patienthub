@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { receptionRequest } from "@/lib/authenticatedFetch";
 import { pregnancyVisitContextSchema, type PregnancyVisitContext } from "../../../../lib/db/src/pregnancy-followup";
 import { pregnancyPrintHtml, PregnancyFollowUpPrint, PregnancyPrintTrends } from "./PregnancyPrintTrends";
+import { PatientSummaryOverview, summaryOverviewStyles } from "./PatientSummaryOverview";
 
 type WeightLog = { weight: number; unit: string; date: string; week: number | null };
 type BpLog = { systolic: number; diastolic: number; pulse: number | null; date: string };
@@ -22,7 +23,7 @@ type Insight = { level: "alert" | "watch" | "info"; text: string };
 type Metric = { label: string; value: string; hint?: string; tone?: "alert" | "watch" | "ok" };
 type Section = { title: string; rows: [string, string][] };
 
-type Summary = {
+export type Summary = {
     name: string;
     meta: string[];
     age: string;
@@ -407,9 +408,21 @@ table{width:100%;border-collapse:collapse}
 .disclaimer{background:var(--saivie-surface-blush);border-radius:10px;padding:8px 14px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--saivie-plum);font-size:10px;margin-bottom:14px}
 .disclaimer svg{width:16px;height:16px;color:var(--saivie-rose)}
 .printed{text-align:right;color:var(--saivie-plum);font-size:9px;margin-top:6px}
-@page{size:A4;margin:42mm 10mm 12mm}
+${summaryOverviewStyles}
+.summary-detail-title{margin:0 0 10px}.cards{display:block}
+.cards .card{margin-bottom:10px;display:block;width:100%;break-inside:auto;overflow:visible}
+.cards .card header{break-after:avoid}.cards .split{display:block}
+.card .ico,.mico,.avatar{display:none}.card header{padding:7px 10px}.card .body{padding:6px 10px}
+.card h3{letter-spacing:.04em}.patient{grid-template-columns:2fr 1fr 1fr 1fr;padding:10px}
+.summary-overview h2,.summary-overview h3{break-after:avoid}.summary-overview p{margin:4px 0}
+.summary-overview h1{margin:0 0 4px}.summary-detail-title{break-after:avoid}
+thead{display:table-header-group}tr{break-inside:avoid}td,th{overflow-wrap:anywhere}
+@page{size:A4;margin:12mm 12mm 14mm}
 @media print{body{padding:0;background:#fff}.page{max-width:none}}
 </style></head><body><div class="page">
+${renderToStaticMarkup(<PatientSummaryOverview summary={s} context={pregnancyContext} />)}
+<h2 class="summary-detail-title">Detailed survey, history and recorded measurements</h2>
+<p class="summary-continuation">${esc(s.name)} | ${esc(s.patientId)} | Selected visit: ${esc(s.visitDate)}. Original intake and appointment-specific updates are labelled separately.</p>
 <div class="band rose patient">
   <div class="who"><span class="avatar">${ICONS.user}</span><div><div class="fl">Patient</div><div class="name">${esc(s.name)}</div>${details.length || s.phone ? `<div class="det">${esc([s.phone, ...details].filter(Boolean).join(" · "))}</div>` : ""}</div></div>
   <div>${field(ICONS.calendar, "Age", s.age)}</div>
@@ -456,6 +469,11 @@ const insightClass: Record<Insight["level"], string> = {
 
 export function printPatientSummary(patient: any, checkInVitals?: CheckInVitals | null, hpvClinicStatus?: HpvProtection | null, pregnancyContext: PregnancyVisitContext | null = null) {
     if (!printSummary(summaryForAppointment(buildSummary(patient, [], [], checkInVitals, hpvClinicStatus), pregnancyContext), pregnancyContext)) alert("Please allow pop-ups to print the patient summary.");
+}
+
+export function patientSummaryOverviewHtml(patient: unknown, hpvClinicStatus: HpvProtection | null, context: PregnancyVisitContext | null) {
+    const summary = summaryForAppointment(buildSummary(patient, [], [], null, hpvClinicStatus), context);
+    return renderToStaticMarkup(<PatientSummaryOverview summary={summary} context={context} />);
 }
 
 function summaryForAppointment(summary: Summary, context: PregnancyVisitContext | null): Summary {

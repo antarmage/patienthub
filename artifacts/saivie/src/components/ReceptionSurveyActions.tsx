@@ -39,8 +39,8 @@ export function ReceptionSurveyBadge({ appointment }: { appointment: Appointment
   </span>;
 }
 
-export function ReceptionSummaryPrint({ appointment, patientName, canPrint, hpvStatus }: {
-  appointment: Appointment; patientName: string; canPrint: boolean; hpvStatus: HpvProtection | null;
+export function ReceptionSummaryPrint({ appointment, patientName, canPrint, hpvStatus, testId }: {
+  appointment: Appointment; patientName: string; canPrint: boolean; hpvStatus: HpvProtection | null; testId?: string;
 }) {
   const [open, setOpen] = useState(false);
   const record = useQuery({
@@ -67,7 +67,7 @@ export function ReceptionSummaryPrint({ appointment, patientName, canPrint, hpvS
     gcTime: 0, staleTime: 0, retry: false,
   });
   return <>
-    <Button size="sm" variant="outline" data-testid={`btn-print-summary-${appointment.id}`} disabled={!canPrint || appointment.patientId === null}
+    <Button size="sm" variant="outline" data-testid={testId || `btn-print-summary-${appointment.id}`} disabled={!canPrint || appointment.patientId === null}
       title={canPrint ? "Print patient summary" : "Doctor permission is required to print clinical details"} onClick={() => setOpen(true)}>
       <Printer className="mr-1 h-3 w-3" />Print summary
     </Button>

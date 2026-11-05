@@ -19,6 +19,8 @@ import type { HpvProtection } from "@/lib/hpvProtection";
 import { PregnancyFollowUpSurvey } from "@/components/PregnancyFollowUpSurvey";
 import { pregnancyPrintHtml } from "@/components/PregnancyPrintTrends";
 import type { PregnancyVisitContext } from "../../../../lib/db/src/pregnancy-followup";
+import { patientSummaryOverviewHtml } from "@/components/IntakeSummary";
+import { summaryOverviewStyles } from "@/components/PatientSummaryOverview";
 
 const sections = [
     { key: "about", title: "About you", eyebrow: "First things first" },
@@ -35,7 +37,7 @@ const sections = [
 // "Cervical cancer: a preventable disease" — PAHO/WHO. Override with VITE_CERVICAL_CANCER_VIDEO_ID.
 const cervicalCancerVideoId = import.meta.env.VITE_CERVICAL_CANCER_VIDEO_ID || "pkUmJlvHwQA";
 
-function printOnboardingSummary(form: IntakeForm, clinicStatus?: HpvProtection | null, pregnancyContext: PregnancyVisitContext | null = null) {
+function printOnboardingSummary(form: IntakeForm, clinicStatus?: HpvProtection | null, pregnancyContext: PregnancyVisitContext | null = null, patientId?: number) {
     const printWindow = window.open("", "_blank", "width=800,height=900");
     if (!printWindow) return false;
 
@@ -146,11 +148,14 @@ function printOnboardingSummary(form: IntakeForm, clinicStatus?: HpvProtection |
         th, td { padding: 7px 9px; border-bottom: 1px solid var(--saivie-border); text-align: left; vertical-align: top; }
         th { width: 34%; color: var(--saivie-plum); font-weight: 600; }
         .note { margin-top: 24px; padding-top: 10px; border-top: 1px solid var(--saivie-border); color: var(--saivie-plum); font-size: 11px; }
-        @page { margin: 42mm 18mm 18mm; }
+        ${summaryOverviewStyles}
+        @page { size: A4; margin: 12mm 12mm 14mm; }
         @media print { body { padding: 0; } }
     </style>
 </head>
 <body>
+    ${patientSummaryOverviewHtml({ id: patientId, name: form.name, dob: form.dob, history: { onboarding: form } }, clinicStatus ?? null, pregnancyContext)}
+    <h2>Detailed survey and history</h2>
     <p class="meta">${escapeHtml(form.name || "Patient")} · Printed ${escapeHtml(new Date().toLocaleString())}</p>
     ${hpvPrintBadgeHtml(form.gyn.hpvVaccine, clinicStatus)}
     ${sections.map(([title, content]) => `<section><h2>${escapeHtml(title)}</h2><table><tbody>${content}</tbody></table></section>`).join("")}
@@ -766,7 +771,7 @@ export default function PatientOnboarding() {
                             variant="outline"
                             className="mt-3 border-saivie-border text-saivie-teal hover:bg-saivie-surface-muted"
                             onClick={() => {
-                                if (!printOnboardingSummary(answers, onboardingData?.patient?.hpvProtection, onboardingData?.pregnancyContext)) {
+                                if (!printOnboardingSummary(answers, onboardingData?.patient?.hpvProtection, onboardingData?.pregnancyContext, onboardingData?.patient.id)) {
                                     toast({ title: "Unable to print history", description: "Please allow pop-ups to print your onboarding history.", variant: "destructive" });
                                 }
                             }}

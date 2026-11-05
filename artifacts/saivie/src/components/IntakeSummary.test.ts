@@ -30,6 +30,10 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
         form.pregnancies.total = "2";
         const patient = { name: "Demo Patient", history: { onboarding: form } };
         printPatientSummary(patient);
+        assert.ok(html.includes('data-testid="summary-clinician-overview"'));
+        assert.ok(html.includes('data-testid="summary-logo-space"'));
+        assert.ok(html.includes("Detailed survey, history and recorded measurements"));
+        assert.ok(html.includes("break-after:page"));
         assert.ok(html.includes(">G2</div>"));
         assert.ok(!html.includes("G2 P0 A0"));
         assert.ok(html.includes("Birth/loss history not fully reported"));

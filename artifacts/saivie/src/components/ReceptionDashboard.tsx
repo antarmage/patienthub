@@ -16,7 +16,6 @@ import {
   Loader2,
   MoreVertical,
   Phone,
-  Printer,
   RefreshCw,
   Syringe,
   UserCheck,
@@ -33,7 +32,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getPregnancyReminders } from "@/lib/pregnancyMilestones";
 import { getInventoryAlerts, getStockStatus, getExpiryStatus, useInventory } from "@/components/InventoryManager";
 import { ReferralsCard, type ReferralRequest } from "@/components/ReferralsCard";
-import { printPatientSummary } from "@/components/IntakeSummary";
 import { hasVisitSurvey } from "@/lib/consultationSurvey";
 import { hpvProtection, hpvSurveyAnswer } from "@/lib/hpvProtection";
 import { surveyKindFor } from "@/lib/labSurvey";
@@ -508,12 +506,7 @@ export function ReceptionDashboard({
                         <div className="flex flex-wrap items-center gap-1">
                           {logisticsOnly ? renderReceptionActions(apt, state, "flow") : renderAction(apt, state)}
                           {state !== "cancelled" && state !== "no-show" && <ReceptionSurveyLink appointment={apt} patientName={apt.patient || patient?.name || "Patient"} />}
-                          {logisticsOnly && <ReceptionSummaryPrint appointment={apt} patientName={apt.patient || patient?.name || "Patient"} canPrint={clinicalDetailsVisible} hpvStatus={hpvStatusFor(apt)} />}
-                          {!logisticsOnly && <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-saivie-plum hover:text-saivie-teal" data-testid={`btn-print-summary-${apt.id}`}
-                            title="Print patient summary" aria-label={`Print summary for ${apt.patient}`}
-                            onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals, hpvClinicStatus(apt.patientId))}>
-                            <Printer className="h-4 w-4" />
-                          </Button>}
+                          <ReceptionSummaryPrint appointment={apt} patientName={apt.patient || patient?.name || "Patient"} canPrint={!logisticsOnly || clinicalDetailsVisible} hpvStatus={hpvStatusFor(apt)} />
                         </div>
                       </td>
                       <td className="pr-4">
@@ -577,11 +570,7 @@ export function ReceptionDashboard({
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1.5">
                         {logisticsOnly ? renderReceptionActions(apt, getArrivalState(apt), "queue") : <>
-                        <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" data-testid={`queue-print-summary-${apt.id}`}
-                          title="Print history & check-in vitals for the doctor"
-                          onClick={() => printPatientSummary(findPatient(apt) ?? { name: apt.patient }, apt.vitals, hpvClinicStatus(apt.patientId))}>
-                          <Printer className="mr-1 h-3 w-3" /> Print
-                        </Button>
+                        <ReceptionSummaryPrint appointment={apt} patientName={apt.patient || "Patient"} canPrint hpvStatus={hpvStatusFor(apt)} testId={`queue-print-summary-${apt.id}`} />
                         <Select value="" onValueChange={(value) => handleWaitingStatus(apt, value)} disabled={isPending(apt.id)}>
                           <SelectTrigger className="h-8 w-36 border-saivie-border bg-saivie-surface-muted text-xs text-saivie-teal" data-testid={`select-status-${apt.id}`}>
                             <SelectValue placeholder="Update status" />

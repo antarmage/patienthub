@@ -71,7 +71,7 @@ function trimesterDates(details: PregnancyDating, weeks = [14, 28, 40]) {
   );
 }
 
-const weightCategories = [
+export const weightCategories = [
   {
     ceiling: 18.5,
     label: "Underweight",
@@ -101,6 +101,14 @@ const weightCategories = [
     total: "5-9",
   },
 ];
+
+export function pregnancyCumulativeGain(week: number, category: typeof weightCategories[number], baseline = 0) {
+  if (!Number.isFinite(week) || week < 13 || week > 40) return null;
+  return {
+    lower: Math.round((baseline + 0.5 + (week - 13) * category.lower) * 100) / 100,
+    upper: Math.round((baseline + 2 + (week - 13) * category.upper) * 100) / 100,
+  };
+}
 
 export function pregnancyWeightBaseline(details: PregnancyWeightDetails, points: SummaryPoint[] = []) {
   const confirmed = details.prePregnancyWeightKg;
@@ -183,16 +191,10 @@ export function pregnancyWeightReference(
     explanation: `${baseline?.estimated ? `Estimated pre-pregnancy BMI ${bmi.toFixed(1)} (${category.label}); estimated baseline ${weight} kg from ${baseline.date} (${baseline.gestation}, ${baseline.source}). Early gain or loss may affect BMI classification and estimated gain; verify with the clinician. Saved pre-pregnancy weight is unchanged.` : `Pre-pregnancy BMI ${bmi.toFixed(1)} (${category.label}); baseline ${weight} kg`}, height ${height} cm, singleton. Published total gain by term: ${category.total} kg. First-trimester guidance: 0.5-2 kg total, not a weekly target. For this approximate model, cumulative gain = 0.5-2 kg + (gestational weeks - 13) x ${category.lower}-${category.upper} kg/week, from 13w 0d through 40w 0d. Add this gain to ${baseline?.estimated ? "the estimated baseline" : "pre-pregnancy weight"} for the reference weight. Fractional weeks use elapsed days. Derived weekly ranges may differ from the separately published total-gain range. This derived illustration is not a validated centile chart or an individual target; no early first-trimester or post-term curve is guessed.`,
     atDate: (date) => {
       const week = gestationalWeekAtDate(details, date);
-      return week === null || week < 13 || week > 40 || baseline?.estimated && date < baseline.date
+      const gain = week === null ? null : pregnancyCumulativeGain(week, category, weight);
+      return !gain || baseline?.estimated && date < baseline.date
         ? null
-        : {
-            lower:
-              Math.round((weight + 0.5 + (week - 13) * category.lower) * 100) /
-              100,
-            upper:
-              Math.round((weight + 2 + (week - 13) * category.upper) * 100) /
-              100,
-          };
+        : gain;
     },
   };
 }
