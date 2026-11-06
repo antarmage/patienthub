@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { getOnboardingQuestions, getRelevantIntake, initialForm, isOnboardingStep, type IntakeForm, type OptionalHistory } from "./onboardingFlow.ts";
-import { guidedQuestionsByDirection, surveyDirectionsForConcerns } from "./consultationSurvey.ts";
+import { guidedQuestionsByDirection, surveyDirectionsForConcerns, unsureVisitConcern } from "./consultationSurvey.ts";
 
 const short: OptionalHistory = { cycle: false, gyn: false, pregnancy: false, background: false };
 const all: OptionalHistory = { cycle: true, gyn: true, pregnancy: true, background: true };
@@ -9,6 +9,29 @@ const formFor = (...concerns: string[]): IntakeForm => ({ ...structuredClone(ini
 const ids = (form: IntakeForm, extra = short) => getOnboardingQuestions(form, extra).map((question) => question.id);
 
 describe("one-question onboarding", () => {
+    it("asks period history for midlife symptoms without assuming pregnancy or enabling a care pathway", () => {
+        const form = formFor("Menopause");
+        form.cycle.lastPeriod = "2026-10-01";
+        form.cycle.regularity = "Often irregular";
+        const questions = ids(form);
+        for (const id of ["lastPeriod", "regularity", "cycleSymptoms", "medications"]) assert.ok(questions.includes(id), id);
+        for (const id of ["currentStatus", "weeksPregnant", "pregnancyTest"]) assert.ok(!questions.includes(id), id);
+        const saved = getRelevantIntake(form, short);
+        assert.deepEqual(saved.concerns, ["Menopause"]);
+        assert.equal(saved.cycle.lastPeriod, form.cycle.lastPeriod);
+        assert.equal(saved.cycle.regularity, form.cycle.regularity);
+        assert.deepEqual(saved.consultation.directions, []);
+    });
+    it("keeps uncertain concerns open-ended without selecting menopause or unrelated period questions", () => {
+        const form = formFor(unsureVisitConcern);
+        form.chiefComplaint = "I want to discuss trouble sleeping";
+        assert.ok(ids(form).includes("chiefComplaint"));
+        assert.ok(!ids(form).includes("lastPeriod"));
+        const saved = getRelevantIntake(form, short);
+        assert.deepEqual(saved.concerns, [unsureVisitConcern]);
+        assert.equal(saved.chiefComplaint, form.chiefComplaint);
+        assert.deepEqual(saved.consultation.directions, []);
+    });
     it("saved survey corrections expose all historical fields even when their original concern is no longer selected", () => {
         const questions = getOnboardingQuestions(formFor(), short, true);
         const keys = questions.map((question) => question.id);

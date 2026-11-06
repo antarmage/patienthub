@@ -1,3 +1,18 @@
+export const unsureVisitConcern = "I'm not sure - I'd like to discuss my symptoms";
+export const patientConcernLabels: Record<string, string> = {
+    Menopause: "Changes in periods, hot flushes or other midlife concerns",
+};
+export const patientConcernDescriptions: Record<string, string> = {
+    Menopause: "Periods becoming irregular or stopping, sudden feelings of heat, night sweats, sleep problems or vaginal dryness. You do not need to know whether this is menopause.",
+    [unsureVisitConcern]: "Describe what you have noticed in your own words. Your doctor can help you understand it.",
+};
+export const concernOptions = [
+    "Missed or late period", "Possible pregnancy", "I am pregnant", "Pregnancy care",
+    "Abdominal or pelvic pain", "Vaginal discharge or infection", "Menopause",
+    "Breast problem", "Gut / bowel problems", "Irregular or heavy bleeding",
+    "Fertility", "Birth control", "Routine checkup", unsureVisitConcern, "Other",
+];
+
 export const consultationDirectionsByPath: Record<string, string[]> = {
     "Fertility evaluation": ["Ovulatory timing", "Tubal or uterine factors", "Partner evaluation"],
     "Menstrual concern": ["Cycle pattern and timing", "Bleeding impact", "Hormonal or structural context"],

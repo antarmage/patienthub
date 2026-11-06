@@ -44,7 +44,7 @@ export function getOnboardingQuestions(form: IntakeForm, extra: OptionalHistory,
         }).flatMap(([section, ids]) => ids.map((id) => ({ id, section }))),
     ];
     const has = (...concerns: string[]) => form.concerns.some((concern) => concerns.includes(concern));
-    const cycle = has("Missed or late period", "Irregular or heavy bleeding", "Fertility", "Abdominal or pelvic pain");
+    const cycle = has("Missed or late period", "Irregular or heavy bleeding", "Fertility", "Abdominal or pelvic pain", "Menopause");
     const pregnancy = has("Possible pregnancy", "I am pregnant", "Pregnancy care");
     const gyn = cycle || has("Birth control", "Routine checkup");
     const questions: { id: string; section: string }[] = [];

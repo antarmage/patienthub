@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getOnboardingQuestions, getRelevantIntake, initialForm, isOnboardingStep, type IntakeForm, type OptionalHistory } from "@/lib/onboardingFlow";
 import { getPrintBrandStyles } from "@/lib/brand";
 import { estimatePregnancyDating } from "@/lib/pregnancyDating";
-import { patientSurveyPrompt, surveyDirectionLabels, surveyDirectionsForConcerns, surveyQuestions } from "@/lib/consultationSurvey";
+import { concernOptions, patientConcernLabels, patientConcernDescriptions, patientSurveyPrompt, surveyDirectionLabels, surveyDirectionsForConcerns, surveyQuestions } from "@/lib/consultationSurvey";
 import { conceptionMethods } from "@/lib/conceptionHistory";
 import { hpvProtection } from "@/lib/hpvProtection";
 import { HpvBadge } from "@/components/HpvBadge";
@@ -65,7 +65,7 @@ function printOnboardingSummary(form: IntakeForm, clinicStatus?: HpvProtection |
             ["Occupation", form.occupation],
         ])],
         ["Visit concerns", rows([
-            ["Concerns selected", form.concerns],
+            ["Concerns selected", form.concerns.map((concern) => patientConcernLabels[concern] || concern)],
             ["Main concern / additional details", form.chiefComplaint],
             ["Pain location", form.pain.location],
             ["Pain duration", form.pain.duration],
@@ -169,23 +169,6 @@ function printOnboardingSummary(form: IntakeForm, clinicStatus?: HpvProtection |
     printWindow.document.close();
     return true;
 }
-
-const concernOptions = [
-    "Missed or late period",
-    "Possible pregnancy",
-    "I am pregnant",
-    "Pregnancy care",
-    "Abdominal or pelvic pain",
-    "Vaginal discharge or infection",
-    "Menopause",
-    "Breast problem",
-    "Gut / bowel problems",
-    "Irregular or heavy bleeding",
-    "Fertility",
-    "Birth control",
-    "Routine checkup",
-    "Other",
-];
 
 const conditions = [
     "Allergies", "Anemia", "Anxiety", "Asthma / lung disease", "ADHD", "Cancer",
@@ -492,8 +475,9 @@ function ChoiceGroup({ label, options, value, onChange }: {
     );
 }
 
-function CheckGrid({ label, options, value, onChange, exclusiveOption }: {
+function CheckGrid({ label, options, value, onChange, exclusiveOption, optionLabels = {}, optionDescriptions = {} }: {
     label: string; options: string[]; value: string[]; onChange: (value: string[]) => void; exclusiveOption?: string;
+    optionLabels?: Record<string, string>; optionDescriptions?: Record<string, string>;
 }) {
     const toggle = (option: string) => {
         if (value.includes(option)) {
@@ -511,7 +495,9 @@ function CheckGrid({ label, options, value, onChange, exclusiveOption }: {
                 {options.map((option) => (
                     <label key={option} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${value.includes(option) ? "border-saivie-border bg-saivie-surface-muted text-saivie-teal" : "border-saivie-border bg-saivie-ivory text-saivie-teal"}`}>
                         <input type="checkbox" checked={value.includes(option)} onChange={() => toggle(option)} className="accent-saivie-teal" />
-                        {option}
+                        <span>{optionLabels[option] || option}
+                            {optionDescriptions[option] && <span className="mt-1 block font-normal">{optionDescriptions[option]}</span>}
+                        </span>
                     </label>
                 ))}
             </div>
@@ -670,7 +656,7 @@ export default function PatientOnboarding() {
     const questionContent: Record<string, React.ReactNode> = {
         name: <TextInput label="What is your full name?" value={form.name} onChange={(value) => update("name", value)} placeholder="Your full name" />,
         dob: <TextInput label="What is your date of birth?" value={form.dob} onChange={(value) => update("dob", value)} type="date" />,
-        concerns: <CheckGrid label="What brings you in today?" options={concernOptions} value={form.concerns} onChange={(value) => update("concerns", value)} />,
+        concerns: <CheckGrid label="What brings you in today?" options={concernOptions} optionLabels={patientConcernLabels} optionDescriptions={patientConcernDescriptions} value={form.concerns} onChange={(value) => update("concerns", value)} />,
         chiefComplaint: <TextArea label="Anything you would like your doctor to know about your concern?" value={form.chiefComplaint} onChange={(value) => update("chiefComplaint", value)} placeholder="A few words are enough. You may skip this." />,
         surveyDirections: (
             <fieldset>
@@ -833,7 +819,7 @@ export default function PatientOnboarding() {
     };
     const reviewSections: { key: string; title: string; items: string[] }[] = [
         { key: "about", title: "About you", items: [answers.name, answers.dob, answers.gyn.hpvVaccine && `HPV vaccine: ${answers.gyn.hpvVaccine}`] },
-        { key: "concern", title: "Your concern", items: [...answers.concerns, answers.chiefComplaint, ...answers.pain.location, answers.pain.duration, answers.pain.severity, ...answers.pain.relatedSymptoms] },
+        { key: "concern", title: "Your concern", items: [...answers.concerns.map((concern) => patientConcernLabels[concern] || concern), answers.chiefComplaint, ...answers.pain.location, answers.pain.duration, answers.pain.severity, ...answers.pain.relatedSymptoms] },
         { key: "survey", title: "Pre-visit survey", items: [
             ...answers.consultation.directions.map((direction) => surveyDirectionLabels[direction]),
             ...surveyQuestions(answers.consultation.directions).filter((question) => answers.consultation.answers[question]?.trim())

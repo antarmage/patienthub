@@ -4,7 +4,17 @@ import {
     consultationDirectionsByPath, consultationSurveyForVisit, guidedQuestionsByDirection, hasVisitSurvey,
     patientSurveyPrompt, readConsultationSurvey, surveyDirectionLabels, surveyDirectionsForConcerns, surveyQuestions,
     consultationHistory, consultationHistoryText, readConsultationHistory, effectiveConsultationSurvey,
+    concernOptions, patientConcernLabels, patientConcernDescriptions, unsureVisitConcern,
 } from "./consultationSurvey.ts";
+
+it("uses symptom-first concern wording without changing legacy saved values or diagnosing uncertain concerns", () => {
+    assert.ok(concernOptions.includes("Menopause"));
+    assert.match(patientConcernLabels.Menopause, /Changes in periods, hot flushes/);
+    assert.match(patientConcernDescriptions.Menopause, /night sweats, sleep problems or vaginal dryness/);
+    assert.ok(concernOptions.includes(unsureVisitConcern));
+    assert.deepEqual(surveyDirectionsForConcerns([unsureVisitConcern]), consultationDirectionsByPath.Other);
+    assert.deepEqual(surveyDirectionsForConcerns(["Menopause"]), consultationDirectionsByPath.Menopause);
+});
 
 it("routes all former doctor directions into patient-friendly survey topics", () => {
     for (const directions of Object.values(consultationDirectionsByPath)) {
