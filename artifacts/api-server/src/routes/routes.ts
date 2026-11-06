@@ -48,6 +48,7 @@ import { readSavedIntake, savedIntakeSchema } from "../../../../lib/db/src/saved
 import { savedIntakeVersion } from "../saved-intake";
 import { createPregnancyFollowUpStore, registerPregnancyFollowUps } from "../pregnancy-follow-ups";
 import { createPregnancyMedicationReconciliationStore, registerPregnancyMedicationReconciliation } from "../pregnancy-medication-reconciliation";
+import { createMenopauseStore, registerMenopauseCare } from "../menopause";
 import { canManageVaccinationSchedules, canUseVaccinationWorkflow } from "../vaccination-access";
 import { readLabPrescription, sanitizeLabSurvey, surveyKindFor } from "../survey-kind";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
@@ -5827,6 +5828,7 @@ Return a JSON object:
   registerDeliveries(app, createDeliveryStore(pool), getAccessActor);
   registerPregnancyFollowUps(app, createPregnancyFollowUpStore(pool), getAccessActor);
   registerPregnancyMedicationReconciliation(app, createPregnancyMedicationReconciliationStore(pool), getAccessActor);
+  registerMenopauseCare(app, createMenopauseStore(pool), getAccessActor);
 
   app.use("/api", (err: any, _req: any, res: any, _next: any) => {
     console.error("API Error:", err.message);

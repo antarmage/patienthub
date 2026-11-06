@@ -31,6 +31,7 @@ import { consultationDirectionsByPath, consultationPaths, consultationSurveyForV
 import { VitalsSparklineGrid } from "@/components/VitalsSparklineGrid";
 import { ConsultationVitalsTrends } from "@/components/ConsultationVitalsTrends";
 import { PatientSummaryDashboard } from "@/components/PatientSummaryDashboard";
+import { MenopauseCare } from "@/components/MenopauseCare";
 import { DoctorDashboard } from "@/components/DoctorDashboard";
 import { ClinicalPatientList } from "@/components/ClinicalPatientList";
 import { calendarDateValue } from "@/lib/calendarDates";
@@ -4704,6 +4705,7 @@ export default function ClinicianPortal() {
                 {[
                   { id: 'record' as const, label: 'Record' },
                   { id: 'medicine' as const, label: 'Medicine' },
+                  { id: 'menopause' as const, label: 'Menopause' },
                   ...(showPregnancyContext ? [{ id: 'vaccines' as const, label: 'Vaccines' }] : []),
                   { id: 'investigations' as const, label: 'Investigations' },
                   { id: 'postop' as const, label: 'Post-Op' },
@@ -4714,6 +4716,12 @@ export default function ClinicianPortal() {
               </nav>
             </header>
 
+            {patientDetailTab === 'menopause' && <div className="min-h-0 flex-1 overflow-y-auto bg-saivie-surface-muted p-3 sm:p-5">
+              <MenopauseCare key={`${selectedPatient.id}:${activeAppointment?.id || selectedPatient.appointmentId || ''}`} patientId={selectedPatient.id}
+                patientName={selectedPatient.name} audience="doctor" appointmentId={activeAppointment?.id || selectedPatient.appointmentId}
+                appointmentDate={activeAppointment?.date || selectedPatient.appointmentDate}
+                onConsultation={() => setPatientDetailTab('consultation')} />
+            </div>}
             {patientDetailTab === 'surgery' && <SurgeryPlanningPage
               patient={{ id: selectedPatient.id, name: selectedPatient.name, lmp: selectedPatient.lmp }}
               pregnancy={showPregnancyContext}

@@ -4,6 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import type { PregnancyEpisodeDetails } from "../pregnancy-episodes";
 import type { PregnancyFollowUp } from "../pregnancy-follow-up";
+import type { MenopauseRecord } from "../menopause";
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -304,6 +305,29 @@ export const pregnancyFollowUpPlans = pgTable("pregnancy_follow_up_plans", {
   updatedBy: text("updated_by").notNull(),
   audit: jsonb("audit").notNull().default(sql`'[]'::jsonb`),
 });
+
+export const menopauseCare = pgTable("menopause_care", {
+  patientId: integer("patient_id").primaryKey().references(() => patients.id),
+  enabled: boolean("enabled").notNull().default(false),
+  version: integer("version").notNull().default(0),
+  audit: jsonb("audit").notNull().default(sql`'[]'::jsonb`),
+});
+
+export const menopauseEntries = pgTable("menopause_entries", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => menopauseCare.patientId),
+  date: date("date").notNull(),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
+  record: jsonb("record").$type<MenopauseRecord>().notNull(),
+  approvedStage: text("approved_stage"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  actorId: text("actor_id").notNull(),
+  recordedBy: text("recorded_by").notNull(),
+  source: text("source").notNull(),
+}, (table) => [
+  check("menopause_entries_source_check", sql`${table.source} IN ('Patient','Clinician')`),
+  index("menopause_entries_patient_date_idx").on(table.patientId, table.date, table.id),
+]);
 
 export const pregnancyEpisodeRecords = pgTable("pregnancy_episode_records", {
   id: serial("id").primaryKey(),

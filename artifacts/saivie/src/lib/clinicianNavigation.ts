@@ -1,4 +1,4 @@
-const detailTabs = ["summary", "consultation", "record", "medicine", "vaccines", "investigations", "surgery", "postop", "genome"] as const;
+const detailTabs = ["summary", "consultation", "record", "medicine", "vaccines", "investigations", "surgery", "postop", "genome", "menopause"] as const;
 const consultationSteps = ["reason", "explore", "examine", "evidence", "plan"] as const;
 const views = ["dashboard", "patient_list", "schedule", "analytics", "revenue", "settings", "patient_detail"] as const;
 

@@ -46,6 +46,7 @@ import softCardBg from "../assets/images/soft-card-bg.png";
 import BiologyTab from "@/components/BiologyTab";
 import InsightsTab from "@/components/InsightsTab";
 import PregnancyTrackersTab from "@/components/PregnancyTrackersTab";
+import { PatientMenopauseCare } from "@/components/MenopauseCare";
 
 export default function PatientPortal() {
   const [activeTab, setActiveTab] = useState("home");
@@ -321,6 +322,7 @@ export default function PatientPortal() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8 flex-1">
           
           <TabsContent value="home" className="space-y-10 animate-in fade-in duration-700">
+            {patient?.id && <PatientMenopauseCare key={patient.id} patientId={patient.id} patientName={patient.name} />}
             
             {mode === 'pregnancy' ? (
               <>
