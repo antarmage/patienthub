@@ -602,6 +602,22 @@ export const insertBillingCatalogSchema = createInsertSchema(billingCatalog).omi
 export type InsertBillingCatalog = z.infer<typeof insertBillingCatalogSchema>;
 export type BillingCatalog = typeof billingCatalog.$inferSelect;
 
+export const bookingCategories = pgTable("booking_categories", {
+  id: serial("id").primaryKey(), name: text("name").notNull(), sortOrder: integer("sort_order").notNull(),
+  isActive: boolean("is_active").notNull(), careArea: text("care_area").notNull().default(""),
+  description: text("description").notNull().default(""), version: integer("version").notNull().default(1),
+}, (table) => [uniqueIndex("booking_categories_name_idx").on(sql`lower(${table.name})`)]);
+export const bookingServiceAssignments = pgTable("booking_service_assignments", {
+  serviceId: integer("service_id").primaryKey().references(() => billingCatalog.id, { onDelete: "cascade" }),
+  categoryIds: jsonb("category_ids").$type<number[]>().notNull().default(sql`'[]'::jsonb`),
+  version: integer("version").notNull().default(1),
+});
+export const bookingCatalogMigrations = pgTable("booking_catalog_migrations", { name: text("name").primaryKey() });
+export const bookingCatalogAudit = pgTable("booking_catalog_audit", {
+  id: serial("id").primaryKey(), actorId: text("actor_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(), change: jsonb("change").notNull(),
+});
+
 export const inventoryItems = pgTable("inventory_items", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),

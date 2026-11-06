@@ -33,3 +33,15 @@ test("loading and errors do not display selectable stale options", () => {
     assert.ok(failed.includes("Retry services"));
     assert.ok(!failed.includes('data-testid="booking-service-'));
 });
+
+test("booking tabs and guidance come from the database without static category fallback", () => {
+    const html = renderToStaticMarkup(<BookingServiceSelection services={[{ id: "1", name: "Unmatched service", category: "Custom", price: 600, bookingCategoryIds: [42] }]}
+        categories={[{ id: 42, name: "Custom midlife care", isActive: true, sortOrder: 1, careArea: "Menopause", description: "Clinic guidance", version: 1 },
+            { id: 43, name: "Hidden category", isActive: false, sortOrder: 0, careArea: "", description: "", version: 1 }]}
+        selectedId="" careArea="Menopause" loading={false} error={false} onRetry={() => {}} onSelect={() => {}} />);
+    assert.match(html, /Custom midlife care/);
+    assert.match(html, /Suggested for custom midlife care/);
+    assert.match(html, /Clinic guidance/);
+    assert.doesNotMatch(html, /Hidden category|>Pregnancy<|>Fertility</);
+    assert.match(html, /booking-service-1/);
+});

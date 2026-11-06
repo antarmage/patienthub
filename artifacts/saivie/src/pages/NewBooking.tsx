@@ -32,6 +32,8 @@ import { BookingScheduleSelection } from "@/components/BookingScheduleSelection"
 import { validBookingTime } from "@/lib/bookingSchedule";
 import { BookingPatientAvatar } from "@/components/BookingPatientAvatar";
 import { BookingServiceSelection } from "@/components/BookingServiceSelection";
+import { bookingCatalogSchema } from "../../../../lib/db/src/booking-catalog";
+import { receptionRequest } from "@/lib/authenticatedFetch";
 import { BookingDoctorSelection, type BookingDoctor } from "@/components/BookingDoctorSelection";
 import { BookingVisitSelection } from "@/components/BookingVisitSelection";
 import { bookingVisitContext, bookingVisitModeLabel, type BookingVisitReason } from "@/lib/bookingVisit";
@@ -202,9 +204,15 @@ export default function NewBooking() {
         }
     });
 
+    const bookingCatalogQuery = useQuery({
+        queryKey: ["/api/booking-catalog"],
+        queryFn: async ({ signal }) => bookingCatalogSchema.parse(await receptionRequest("/api/booking-catalog", { signal })),
+        retry: false,
+    });
     const services = useMemo<BookingService[]>(() => (servicesData || [])
         .filter((item) => item.isActive !== false)
-        .map((item) => ({ ...item, id: String(item.id), price: Number(item.price) || 0 })), [servicesData]);
+        .map((item) => ({ ...item, id: String(item.id), price: Number(item.price) || 0,
+            bookingCategoryIds: bookingCatalogQuery.data?.assignments.find((assignment) => assignment.serviceId === item.id)?.categoryIds || [] })), [servicesData, bookingCatalogQuery.data]);
 
     const selectedPatient = useMemo(
         () => patientsData?.find((patient: any) => patient.id === selectedPatientId) ?? null,
@@ -589,8 +597,10 @@ export default function NewBooking() {
                             <BookingServiceSelection
                                 key={patientType === "new" ? newPatient.careArea : selectedPatientId}
                                 services={services} selectedId={selectedService} onSelect={setSelectedService}
+                                categories={bookingCatalogQuery.data?.categories || []}
                                 careArea={patientType === "new" ? newPatient.careArea : selectedPatient ? bookingPatientCategory(selectedPatient) : ""}
-                                loading={servicesLoading} error={servicesError} onRetry={() => void retryServices()}
+                                loading={servicesLoading || bookingCatalogQuery.isPending} error={servicesError || bookingCatalogQuery.isError}
+                                onRetry={() => { void retryServices(); void bookingCatalogQuery.refetch(); }}
                             />
                         </div>
                     )}

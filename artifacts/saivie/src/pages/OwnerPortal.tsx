@@ -5,6 +5,7 @@ import { ReferralsManager } from "@/components/ReferralsManager";
 import { InventoryManager, getInventoryAlerts, useInventory } from "@/components/InventoryManager";
 import { UnlockCostsButton, formatCost, useOwnerCosts } from "@/components/OwnerCosts";
 import { CatalogImportButton } from "@/components/CatalogImport";
+import { BookingCatalogManager } from "@/components/BookingCatalogManager";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
@@ -1165,6 +1166,7 @@ export default function OwnerPortal() {
 
             {activeView === "catalog" && (
               <div className="space-y-6">
+                <OwnerAuthGate>{({ token }) => <BookingCatalogManager token={token} services={catalogItems} />}</OwnerAuthGate>
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-catalog-title">Service Catalog</h2>
