@@ -212,7 +212,10 @@ export function DeliveryRecords({ patientId }: { patientId: number }) {
         </> : <>
           <div className="grid items-center gap-5 sm:grid-cols-[minmax(180px,280px)_1fr]">
             <div className="mx-auto flex w-full max-w-[300px] items-end gap-2">
-              <div className="min-w-0 flex-1"><RecordScenarioIllustration scenario="deliveries" pregnancy={current} decorative /></div>
+              <div className="min-w-0 flex-1"><RecordScenarioIllustration scenario="deliveries" pregnancy={current} decorative
+                onAdd={() => { if (canDeliver) { mutation.reset(); setCreating(episode); } else { outcomeMutation.reset(); setOutcomeEpisode(episode); } }}
+                actionLabel={canDeliver ? "Record delivery / babies" : "Record pregnancy outcome"}
+                actionDisabled={busy || !!editing || !!creating || !!outcomeEpisode} /></div>
               <div className="min-w-0 flex-1 pb-2"><EmptyCradleIllustration decorative /></div>
             </div>
             <div className="space-y-3"><h5 className="font-serif text-2xl font-semibold text-saivie-teal">{episode.details.outcome === "Not recorded" ? "No delivery recorded" : `Outcome: ${episode.details.outcome}`}</h5>

@@ -1,8 +1,9 @@
 import React, { useId } from "react";
+import { IllustrationAction } from "./RecordScenarioIllustration";
 
-export function PregnancyMedicationIllustration() {
+export function PregnancyMedicationIllustration({ onAdd }: { onAdd?: () => void }) {
   const id = useId();
-  return <svg viewBox="0 0 360 380" width="100%" role="img"
+  return <IllustrationAction onAdd={onAdd} label="Add current medicine" className="max-w-[220px]" x={80} y={112 / 380 * 100}><svg viewBox="0 0 360 380" width="100%" role="img"
     aria-labelledby={`${id}-title ${id}-desc`} xmlns="http://www.w3.org/2000/svg"
     className="mx-auto block h-auto w-full max-w-[220px]">
     <title id={`${id}-title`}>Clinician holding a medicine bottle</title>
@@ -34,5 +35,5 @@ export function PregnancyMedicationIllustration() {
     <circle cx="110" cy="96" r="3" fill="#9FB8AE" />
     <circle cx="252" cy="64" r="3" fill="#9FB8AE" />
     <circle cx="70" cy="226" r="3" fill="#9FB8AE" />
-  </svg>;
+  </svg></IllustrationAction>;
 }

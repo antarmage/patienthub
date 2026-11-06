@@ -2,7 +2,8 @@ import React from "react";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { RecordScenarioIllustration, type RecordScenario } from "./RecordScenarioIllustration";
+import { IllustrationAction, RecordScenarioIllustration, type RecordScenario } from "./RecordScenarioIllustration";
+import { PregnancyMedicationIllustration } from "./PregnancyMedicationIllustration";
 import { PatientReportsList } from "./PatientReports";
 import { PatientVisitTimeline } from "./PatientVisitTimeline";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -26,6 +27,33 @@ test("all eight scenarios use distinct symbols and accessible responsive SVGs", 
   assert.equal(labels.length, 2);
   assert.notEqual(labels[0][1], labels[1][1]);
   for (const label of labels) for (const id of label[1].split(" ")) assert.ok(html.includes(`id="${id}"`));
+});
+
+test("illustration plus is a labelled native button that invokes the new-record action", () => {
+  let opened = 0;
+  const element = IllustrationAction({ children: <svg />, label: "Start new consultation", onAdd: () => { opened++; } });
+  const button = element.props.children[1];
+  assert.equal(button.type, "button");
+  assert.equal(button.props.type, "button");
+  assert.equal(button.props["aria-label"], "Start new consultation");
+  button.props.onClick();
+  assert.equal(opened, 1);
+  const html = renderToStaticMarkup(<RecordScenarioIllustration scenario="notes" decorative onAdd={() => {}} actionLabel="Start new consultation" />);
+  assert.match(html, /<button[^>]+aria-label="Start new consultation"/);
+  assert.match(html, /focus-visible:ring-2/);
+  assert.doesNotMatch(html, /<svg[^>]*role="button"/);
+  assert.doesNotMatch(renderToStaticMarkup(<RecordScenarioIllustration scenario="notes" decorative />), /<button/);
+  assert.match(renderToStaticMarkup(<RecordScenarioIllustration scenario="deliveries" onAdd={() => {}} actionDisabled />), /<button[^>]*disabled=""/);
+  assert.match(renderToStaticMarkup(<PregnancyMedicationIllustration onAdd={() => {}} />), /aria-label="Add current medicine"/);
+});
+
+test("empty visit and missing-note plus buttons open consultation only when an action is supplied", () => {
+  for (const visits of [[], [{ id: 1, date: "2026-11-03", appointmentOnly: true }]]) {
+    const html = renderToStaticMarkup(<PatientVisitTimeline visits={visits} onNewRecord={() => {}} />);
+    assert.match(html, /<button[^>]+aria-label="Start new consultation"/);
+    const readOnly = renderToStaticMarkup(<PatientVisitTimeline visits={visits} />);
+    assert.doesNotMatch(readOnly, /aria-label="Start new consultation"/);
+  }
 });
 
 test("pregnancy report and visit empties use decorative scenario art without changing messages", () => {

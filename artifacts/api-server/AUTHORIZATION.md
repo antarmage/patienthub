@@ -1,5 +1,7 @@
 # Patient logistics and clinical access
 
+Empty-state illustration plus symbols use native, keyboard-accessible buttons when the host screen supplies an allowed record-entry action. Notes/visit history open the current consultation, not an edit of the historical appointment; medicine, allergy, vitals, diagnosis and delivery illustrations reuse their existing entry flows and disabled guards. Read-only contexts without an entry action do not expose an interactive button. This does not grant additional write permissions.
+
 ## Pregnancy episode date detection
 
 Automatic episode creation validates the profile LMP before using it. An invalid or non-ISO legacy profile value does not mask a valid ISO LMP in the saved intake survey. A valid profile LMP retains precedence; ambiguous legacy strings are never parsed by locale. Existing episodes are not overwritten or relinked automatically when survey answers change. Repairing an already-created undated episode requires explicit review of its survey source and record assignments; patient-reported dating must not be presented as newly clinician-confirmed.

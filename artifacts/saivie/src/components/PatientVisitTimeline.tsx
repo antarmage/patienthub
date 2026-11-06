@@ -107,6 +107,7 @@ export function PatientVisitTimeline({
   isLoading,
   isError,
   onRetry,
+  onNewRecord,
   pregnancy = clinicalCareMode(patient || {}) === "pregnancy",
 }: {
   visits: AnyRecord[];
@@ -114,6 +115,7 @@ export function PatientVisitTimeline({
   isLoading?: boolean;
   isError?: boolean;
   onRetry?: () => void;
+  onNewRecord?: () => void;
   pregnancy?: boolean;
 }) {
   const sorted = useMemo(() => sortVisitsNewestFirst(visits), [visits]);
@@ -152,7 +154,7 @@ export function PatientVisitTimeline({
         className="px-6 py-8 text-center text-xs text-saivie-plum"
         data-testid="visit-timeline-empty"
       >
-        <RecordScenarioIllustration scenario="visits" pregnancy={pregnancy} decorative />
+        <RecordScenarioIllustration scenario="visits" pregnancy={pregnancy} decorative onAdd={onNewRecord} actionLabel="Start new consultation" />
         <p className="mt-2">No visits recorded</p>
       </div>
     );
@@ -298,7 +300,7 @@ export function PatientVisitTimeline({
               />
               {visit.appointmentOnly ? (
                 <>
-                <RecordScenarioIllustration scenario="notes" pregnancy={pregnancy} decorative />
+                <RecordScenarioIllustration scenario="notes" pregnancy={pregnancy} decorative onAdd={onNewRecord} actionLabel="Start new consultation" />
                 <p className="text-xs text-saivie-plum">
                   Appointment recorded; consultation note unavailable.
                 </p>

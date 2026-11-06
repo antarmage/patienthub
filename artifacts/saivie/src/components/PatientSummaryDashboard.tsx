@@ -70,12 +70,12 @@ export function PatientSummaryDashboard({ patient, appointmentId, complaint, che
       </section>
       {pregnancy && conceptionSection}
       <section className="rounded-lg border border-saivie-border bg-saivie-ivory p-4"><h3 className="text-xs font-semibold text-saivie-teal">Today’s check-in</h3>
-        {recordsReady && ["bp", "pulse", "weight", "spo2"].every((key) => !hasHistoryValue(checkIn[key])) && <RecordScenarioIllustration scenario="vitals" pregnancy={pregnancy} decorative />}
+        {recordsReady && ["bp", "pulse", "weight", "spo2"].every((key) => !hasHistoryValue(checkIn[key])) && <RecordScenarioIllustration scenario="vitals" pregnancy={pregnancy} decorative onAdd={onVitals} actionLabel="Record vital signs" />}
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">{[["BP", checkIn.bp, "mmHg"], ["Pulse", checkIn.pulse, "bpm"], ["Weight", checkIn.weight, "kg"], ["SpO₂", checkIn.spo2, "%"]].map(([label, value, unit]) => <div key={String(label)}><p className="text-[10px]">{String(label)}</p><p className="mt-1 text-sm font-semibold">{typeof value === "number" || typeof value === "string" && value.trim() ? `${value} ${unit}` : "Not recorded"}</p></div>)}</div></section>
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-lg border border-saivie-border bg-saivie-ivory p-4"><h3 className="text-xs font-semibold text-saivie-teal">Today’s concern</h3><p className="mt-2 whitespace-pre-wrap text-sm">{complaint || (currentSurvey ? text(intake.chiefComplaint) : "Not recorded for this visit")}</p>
           <h3 className="mt-4 text-xs font-semibold text-saivie-teal">Allergies &amp; medical history</h3>
-          {recordsReady && !hasHistoryValue(history.allergies) && !(currentSurvey && hasHistoryValue(health.allergies)) && <RecordScenarioIllustration scenario="allergies" pregnancy={pregnancy} decorative />}
+          {recordsReady && !hasHistoryValue(history.allergies) && !(currentSurvey && hasHistoryValue(health.allergies)) && <RecordScenarioIllustration scenario="allergies" pregnancy={pregnancy} decorative onAdd={onProfile} actionLabel="Record allergies" />}
           <p className="mt-2 text-xs">Allergies: {text(history.allergies)}</p><p className="mt-2 text-xs">Medical: {text(history.medical)}</p>
           {currentSurvey && <><p className="mt-2 text-xs">Patient-reported conditions: {text(health.conditions)}</p><p className="mt-2 text-xs">Patient-reported allergies: {text(health.allergies)}</p><p className="mt-2 text-xs">Patient-reported medicines: {text(health.medications)}</p></>}
         </section>

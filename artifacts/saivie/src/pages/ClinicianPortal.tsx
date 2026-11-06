@@ -4769,11 +4769,12 @@ export default function ClinicianPortal() {
                   <PatientReportsList pregnancy={showPregnancyContext} patientId={selectedPatient.id} documents={Array.isArray(patientDocumentsQuery.data) ? patientDocumentsQuery.data : []} isLoading={patientDocumentsQuery.isLoading} isError={patientDocumentsQuery.isError} onRetry={() => { void patientDocumentsQuery.refetch(); }} />
                 </div>
                 <PatientVisitTimeline pregnancy={showPregnancyContext} visits={visitTrail(visitHistory, appointmentHistoryQuery.data || [], patientDocumentsQuery.data || [])}
+                  onNewRecord={() => setPatientDetailTab('consultation')}
                   patient={surveyPatient || selectedPatient}
                   isLoading={visitHistoryQuery.isLoading || appointmentHistoryQuery.isLoading || patientDocumentsQuery.isLoading}
                   isError={visitHistoryQuery.isError || appointmentHistoryQuery.isError || patientDocumentsQuery.isError}
                   onRetry={() => { void visitHistoryQuery.refetch(); void appointmentHistoryQuery.refetch(); void patientDocumentsQuery.refetch(); }} />
-                <DiagnosisHistory pregnancy={showPregnancyContext} patientId={selectedPatient.id} />
+                <DiagnosisHistory pregnancy={showPregnancyContext} patientId={selectedPatient.id} onAdd={() => setPatientDetailTab('consultation')} />
               </div>
             )}
 
@@ -5197,7 +5198,7 @@ export default function ClinicianPortal() {
                     </p>}
                     {!pregnancyMedicineRecordsReady ? null : medications.length === 0 && prescriptionMedicineCount === 0 && medicineFilter === "active" && !showAddMedRow ? (
                       <section className="rounded-2xl border border-saivie-border bg-saivie-ivory px-4 py-6 text-center sm:px-7" aria-label="No medicines or prescriptions recorded">
-                        <PregnancyMedicationIllustration />
+                        <PregnancyMedicationIllustration onAdd={() => { setMedicineFilter("active"); setShowAddMedRow(true); }} />
                         <h3 className="mt-2 font-serif text-xl font-semibold text-saivie-teal">{hasReportedMedicationHistory ? "No structured medicines or prescriptions recorded" : "No prescriptions or medicines recorded"}</h3>
                         <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-saivie-plum">
                           {hasReportedMedicationHistory

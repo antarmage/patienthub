@@ -1,4 +1,21 @@
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
+
+export function IllustrationAction({ children, onAdd, label, disabled = false, className = "", x = 84.67, y = 21.21 }: {
+  children: ReactNode;
+  onAdd?: () => void;
+  label: string;
+  disabled?: boolean;
+  className?: string;
+  x?: number;
+  y?: number;
+}) {
+  return <div className={`relative mx-auto w-full ${className}`}>
+    {children}
+    {onAdd && <button type="button" onClick={onAdd} disabled={disabled} aria-label={label} title={label}
+      style={{ left: `${x}%`, top: `${y}%` }}
+      className="absolute h-11 w-11 -translate-x-1/2 -translate-y-1/2 rounded-full bg-transparent hover:bg-saivie-teal/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saivie-teal focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />}
+  </div>;
+}
 
 const scenarios = {
   labs: "lab results",
@@ -29,20 +46,23 @@ export function EmptyCradleIllustration({ decorative = false }: { decorative?: b
   </svg>;
 }
 
-export function RecordScenarioIllustration({ scenario, pregnancy = false, decorative = false, className = "" }: {
+export function RecordScenarioIllustration({ scenario, pregnancy = false, decorative = false, className = "", onAdd, actionLabel, actionDisabled }: {
   scenario: RecordScenario;
   pregnancy?: boolean;
   decorative?: boolean;
   className?: string;
+  onAdd?: () => void;
+  actionLabel?: string;
+  actionDisabled?: boolean;
 }) {
   const id = useId();
   return (
-    <svg
+    <IllustrationAction onAdd={onAdd} label={actionLabel || `Add ${scenarios[scenario]}`} disabled={actionDisabled} className={`max-w-44 ${className}`}><svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="30 40 300 330"
       width="100%"
       preserveAspectRatio="xMidYMid meet"
-      className={`mx-auto block h-auto w-full max-w-44 ${className}`}
+      className="block h-auto w-full"
       role={decorative ? undefined : "img"}
       aria-hidden={decorative ? true : undefined}
       aria-labelledby={decorative ? undefined : `${id}-title ${id}-desc`}
@@ -135,6 +155,6 @@ export function RecordScenarioIllustration({ scenario, pregnancy = false, decora
         </>}
       </g>
       {pregnancy ? <circle cx="238" cy="226" r="8" fill="#C98F6B" /> : <circle cx="220" cy="214" r="7" fill="#D9A27E" />}
-    </svg>
+    </svg></IllustrationAction>
   );
 }
