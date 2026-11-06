@@ -78,3 +78,21 @@ it("shows report-only dates without a consultation or prescription", () => {
   assert.match(html, /Historical report/);
   assert.doesNotMatch(html, /visit-prescription/);
 });
+
+it("visit details show survey medicines on their exact appointment, including appointment-only records", () => {
+  const patient = { id: 7, history: {
+    onboardingAppointmentId: 942,
+    onboarding: { health: { medications: "Folic acid\nThyroid tablet" } },
+    drug: ["Unassigned medicine"],
+  } };
+  const original = visitTrail([], [{ id: 942, date: "2026-10-31", status: "Completed" }]);
+  const html = renderToStaticMarkup(<PatientVisitTimeline patient={patient} visits={original} />);
+  assert.match(html, /Folic acid/);
+  assert.match(html, /Thyroid tablet/);
+  assert.match(html, /Appointment recorded; consultation note unavailable/);
+  assert.doesNotMatch(html, /Unassigned medicine/);
+  const later = visitTrail([], [{ id: 946, date: "2026-11-07", status: "scheduled" }]);
+  assert.doesNotMatch(renderToStaticMarkup(<PatientVisitTimeline patient={patient} visits={later} />), /Folic acid|Thyroid tablet/);
+  const sameDayOther = visitTrail([], [{ id: 947, date: "2026-10-31", status: "Completed" }]);
+  assert.doesNotMatch(renderToStaticMarkup(<PatientVisitTimeline patient={patient} visits={sameDayOther} />), /Folic acid/);
+});

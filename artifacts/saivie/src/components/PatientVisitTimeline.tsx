@@ -7,6 +7,7 @@ import { receptionVisitDates } from "@/lib/receptionVisitDates";
 import { appointmentLabel } from "@/lib/visitTrail";
 import { PrescriptionPreview } from "@/components/PrescriptionPreview";
 import { ReportViewButton } from "@/components/PatientReports";
+import { ReportedMedicationHistory } from "./ReportedMedicationHistory";
 
 type AnyRecord = Record<string, any>;
 
@@ -307,6 +308,7 @@ export function PatientVisitTimeline({
                   <PrescriptionPreview patient={patient} visit={visit} />
                 )
               )}
+              {patient && <ReportedMedicationHistory history={patient.history} appointmentId={visit.appointmentId ?? visit.appointment?.id ?? null} />}
               <div className="space-y-1.5">
                 <Row label="Vitals" value={vitalsLine} />
                 <Row

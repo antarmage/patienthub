@@ -19,6 +19,8 @@ import { RecordScenarioIllustration } from "@/components/RecordScenarioIllustrat
 import { clinicalCareMode } from "@/lib/clinicalCareMode";
 import { PregnancyVaccinesPanel } from "@/components/PregnancyVaccines";
 import { patientAge, indiaToday } from "@/lib/pregnancyOverview";
+import { ReportedMedicationHistory } from "./ReportedMedicationHistory";
+import { visitMedicines } from "./PatientVisitTimeline";
 
 type ClinicalRecord = Record<string, unknown>;
 function object(value: unknown): ClinicalRecord {
@@ -174,6 +176,14 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
                 <h4 className={headingClass}>{object(visit.prescriptions).source === "receptionist-paper-transcription" ? "Paper prescription transcription" : text(visit.visitType) || "Consultation"}</h4>
                 <p className="text-xs text-muted-foreground">{appointmentLabel(visit.appointment, today)}</p>
                 {visit.appointmentOnly ? <p className="text-xs text-muted-foreground">Appointment recorded; consultation note unavailable.</p> : <PrescriptionPreview patient={data.detail} visit={visit} />}
+                <ReportedMedicationHistory history={data.detail.history} appointmentId={visit.appointmentId ?? visit.appointment?.id ?? null} />
+                {!!visitMedicines(visit).length && <section aria-label="Medicines prescribed for this visit">
+                  <h5 className="text-xs font-semibold text-saivie-teal">Medicines prescribed for this visit</h5>
+                  <ul className="mt-2 space-y-2">{visitMedicines(visit).map((medicine, index) => <li key={index}>
+                    <p className="font-medium">{medicine.name}</p>
+                    <p className="text-xs text-muted-foreground">{[medicine.dose, medicine.frequency, medicine.duration, medicine.instructions].filter(Boolean).join(" · ") || "Prescription details not recorded"}</p>
+                  </li>)}</ul>
+                </section>}
                 <HistoryFields fields={{ Complaint: visit.subjective || visit.chiefComplaint, History: consultationHistoryText(object(visit.examination).consultationHistory), Examination: visit.objective || object(visit.examination).findings || visit.examination, Diagnosis: visit.diagnosis, Assessment: visit.assessment, Vitals: receptionVitals(visit.vitals) }} />
                 {visit.appointment && <HistoryFields fields={{ "Appointment notes": visit.appointment.notes, "Follow-up date": visit.appointment.followUpDate, "Payment status": visit.appointment.paymentStatus, "Billing amount": visit.appointment.billingAmount }} />}
                 <details className="rounded-lg border p-3"><summary className="cursor-pointer font-medium">Prescription & follow-up</summary><div className="mt-3"><RecordedDetails value={{ medicines: object(visit.prescriptions).medicines || (Array.isArray(visit.prescriptions) ? visit.prescriptions : null), advice: visit.planNotes, followUp: visit.followUpPlan, tests: visit.labsOrdered }} /></div></details>
@@ -209,7 +219,8 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
           </div>
         </TabsContent>
         <TabsContent value="prescriptions" className="space-y-3 text-sm">
-          {!data.visits.length && !data.medicines.length && <p>No prescriptions or medicines recorded.</p>}
+          <ReportedMedicationHistory history={data.detail.history} />
+          {!data.visits.length && !data.medicines.length && <p>No structured medicines or prescriptions recorded. Any saved survey or history answers are shown separately.</p>}
           <p className="text-muted-foreground">Visit prescriptions and follow-up instructions are under Visit dates.</p>
           {data.medicines.map((medicine) => <article key={text(medicine.id)} className={cardClass}><h3 className={`${headingClass} mb-3`}>{text(medicine.name) || "Medicine"}</h3><RecordedDetails value={{ dose: medicine.dose, frequency: medicine.frequency, duration: medicine.duration, instructions: medicine.instructions, status: medicine.status }} /></article>)}
         </TabsContent>

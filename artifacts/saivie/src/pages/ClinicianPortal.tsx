@@ -52,6 +52,7 @@ import { clinicalCareMode } from "@/lib/clinicalCareMode";
 import { clinicianNavigationSearch, readClinicianNavigation, type PatientDetailTab, type ConsultationStep } from "@/lib/clinicianNavigation";
 import { ObstetricExamination } from "@/components/ObstetricExamination";
 import { PregnancyMedicationIllustration } from "@/components/PregnancyMedicationIllustration";
+import { ReportedMedicationHistory, reportedMedicationHistory } from "@/components/ReportedMedicationHistory";
 import { PregnancyVaccinesPanel } from "@/components/PregnancyVaccines";
 import { examinationRecord, readObstetricExamination, relevantObstetricExamination, obstetricExaminationError, obstetricNotes, obstetricObjective, obstetricVisitExamination, type ObstetricExamination as ObstetricExam } from "@/lib/obstetricExamination";
 import { 
@@ -1843,6 +1844,7 @@ export default function ClinicianPortal() {
   const medicineListCount = !showPregnancyContext ? activeMedicationRecords.length : displayedMedications.length;
   const medicineListCountLabel = showPregnancyContext && medicineFilter === "past" ? "past" : "active";
   const pregnancyMedicineRecordsReady = medicationsQuery.isSuccess && (!showPregnancyContext || visitHistoryQuery.isSuccess);
+  const hasReportedMedicationHistory = reportedMedicationHistory(selectedPatient?.history).length > 0;
   const medicationAllergiesKnown = Array.isArray(selectedPatient?.history?.allergies) && selectedPatient.history.allergies.length > 0;
   const medicationBloodGroup = selectedPatient?.bloodGroup || selectedPatient?.history?.obstetric?.bloodGroup || selectedPatient?.history?.bloodGroup;
   const missingMedicationSafetyDetails = !medicationAllergiesKnown || !medicationBloodGroup;
@@ -5175,6 +5177,7 @@ export default function ClinicianPortal() {
                 {medicationsQuery.isError && <p role="alert" className="text-xs text-destructive">Could not load medicines. <button type="button" className="underline" onClick={() => medicationsQuery.refetch()}>Retry</button></p>}
                 {showPregnancyContext && visitHistoryQuery.isLoading && <p role="status" className="text-xs">Loading prescription history...</p>}
                 {showPregnancyContext && visitHistoryQuery.isError && <p role="alert" className="text-xs text-destructive">Could not load prescription history. <button type="button" className="underline" onClick={() => void visitHistoryQuery.refetch()}>Retry</button></p>}
+                <ReportedMedicationHistory history={selectedPatient.history} />
                 {showPregnancyContext ? (
                   <>
                     <nav className="flex flex-wrap gap-2" aria-label="Medicine records">
@@ -5195,9 +5198,11 @@ export default function ClinicianPortal() {
                     {!pregnancyMedicineRecordsReady ? null : medications.length === 0 && prescriptionMedicineCount === 0 && medicineFilter === "active" && !showAddMedRow ? (
                       <section className="rounded-2xl border border-saivie-border bg-saivie-ivory px-4 py-6 text-center sm:px-7" aria-label="No medicines or prescriptions recorded">
                         <PregnancyMedicationIllustration />
-                        <h3 className="mt-2 font-serif text-xl font-semibold text-saivie-teal">No prescriptions or medicines recorded</h3>
+                        <h3 className="mt-2 font-serif text-xl font-semibold text-saivie-teal">{hasReportedMedicationHistory ? "No structured medicines or prescriptions recorded" : "No prescriptions or medicines recorded"}</h3>
                         <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-saivie-plum">
-                          Nothing has been prescribed or recorded for {selectedPatient.name}. Add what she is already taking, or write a prescription for this visit.
+                          {hasReportedMedicationHistory
+                            ? "Saved medication history is shown above. Review those answers and add confirmed current medicines, or write a prescription for this visit."
+                            : `No structured medication or prescription records are available for ${selectedPatient.name}. Add what she is already taking, or write a prescription for this visit.`}
                         </p>
                         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                           <Button type="button" size="sm" onClick={() => { setMedicineFilter("active"); setShowAddMedRow(true); }}>
