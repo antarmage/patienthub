@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getOnboardingQuestions, getRelevantIntake, initialForm, isOnboardingStep, type IntakeForm, type OptionalHistory } from "@/lib/onboardingFlow";
 import { getPrintBrandStyles } from "@/lib/brand";
 import { estimatePregnancyDating } from "@/lib/pregnancyDating";
-import { concernOptions, patientConcernLabels, patientConcernDescriptions, patientSurveyPrompt, surveyDirectionLabels, surveyDirectionsForConcerns, surveyQuestions } from "@/lib/consultationSurvey";
+import { concernOptions, patientConcernLabels, patientSurveyPrompt, surveyDirectionLabels, surveyDirectionsForConcerns, surveyQuestions } from "@/lib/consultationSurvey";
 import { conceptionMethods } from "@/lib/conceptionHistory";
 import { hpvProtection } from "@/lib/hpvProtection";
 import { HpvBadge } from "@/components/HpvBadge";
@@ -475,9 +475,9 @@ function ChoiceGroup({ label, options, value, onChange }: {
     );
 }
 
-function CheckGrid({ label, options, value, onChange, exclusiveOption, optionLabels = {}, optionDescriptions = {} }: {
+function CheckGrid({ label, options, value, onChange, exclusiveOption, optionLabels = {} }: {
     label: string; options: string[]; value: string[]; onChange: (value: string[]) => void; exclusiveOption?: string;
-    optionLabels?: Record<string, string>; optionDescriptions?: Record<string, string>;
+    optionLabels?: Record<string, string>;
 }) {
     const toggle = (option: string) => {
         if (value.includes(option)) {
@@ -495,9 +495,7 @@ function CheckGrid({ label, options, value, onChange, exclusiveOption, optionLab
                 {options.map((option) => (
                     <label key={option} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${value.includes(option) ? "border-saivie-border bg-saivie-surface-muted text-saivie-teal" : "border-saivie-border bg-saivie-ivory text-saivie-teal"}`}>
                         <input type="checkbox" checked={value.includes(option)} onChange={() => toggle(option)} className="accent-saivie-teal" />
-                        <span>{optionLabels[option] || option}
-                            {optionDescriptions[option] && <span className="mt-1 block font-normal">{optionDescriptions[option]}</span>}
-                        </span>
+                        {optionLabels[option] || option}
                     </label>
                 ))}
             </div>
@@ -656,7 +654,7 @@ export default function PatientOnboarding() {
     const questionContent: Record<string, React.ReactNode> = {
         name: <TextInput label="What is your full name?" value={form.name} onChange={(value) => update("name", value)} placeholder="Your full name" />,
         dob: <TextInput label="What is your date of birth?" value={form.dob} onChange={(value) => update("dob", value)} type="date" />,
-        concerns: <CheckGrid label="What brings you in today?" options={concernOptions} optionLabels={patientConcernLabels} optionDescriptions={patientConcernDescriptions} value={form.concerns} onChange={(value) => update("concerns", value)} />,
+        concerns: <CheckGrid label="What brings you in today?" options={concernOptions} optionLabels={patientConcernLabels} value={form.concerns} onChange={(value) => update("concerns", value)} />,
         chiefComplaint: <TextArea label="Anything you would like your doctor to know about your concern?" value={form.chiefComplaint} onChange={(value) => update("chiefComplaint", value)} placeholder="A few words are enough. You may skip this." />,
         surveyDirections: (
             <fieldset>

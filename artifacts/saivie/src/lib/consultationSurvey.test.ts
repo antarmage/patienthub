@@ -4,13 +4,18 @@ import {
     consultationDirectionsByPath, consultationSurveyForVisit, guidedQuestionsByDirection, hasVisitSurvey,
     patientSurveyPrompt, readConsultationSurvey, surveyDirectionLabels, surveyDirectionsForConcerns, surveyQuestions,
     consultationHistory, consultationHistoryText, readConsultationHistory, effectiveConsultationSurvey,
-    concernOptions, patientConcernLabels, patientConcernDescriptions, unsureVisitConcern,
+    concernOptions, patientConcernLabels, unsureVisitConcern,
 } from "./consultationSurvey.ts";
 
-it("uses symptom-first concern wording without changing legacy saved values or diagnosing uncertain concerns", () => {
+it("offers short symptom options without changing legacy saved values or diagnosing menopause", () => {
     assert.ok(concernOptions.includes("Menopause"));
-    assert.match(patientConcernLabels.Menopause, /Changes in periods, hot flushes/);
-    assert.match(patientConcernDescriptions.Menopause, /night sweats, sleep problems or vaginal dryness/);
+    for (const symptom of ["Hot flashes", "Night sweats", "Sleep problems", "Mood changes", "Vaginal dryness"]) {
+        assert.ok(concernOptions.includes(symptom));
+        assert.ok(!surveyDirectionsForConcerns([symptom]).includes("Bleeding after menopause"));
+    }
+    assert.deepEqual(surveyDirectionsForConcerns(["Hot flashes", "Night sweats", "Vaginal dryness"]), consultationDirectionsByPath["Symptom review"]);
+    assert.deepEqual(surveyDirectionsForConcerns(["Sleep problems", "Mood changes"]), consultationDirectionsByPath.Other);
+    assert.equal(patientConcernLabels[unsureVisitConcern], "Not sure");
     assert.ok(concernOptions.includes(unsureVisitConcern));
     assert.deepEqual(surveyDirectionsForConcerns([unsureVisitConcern]), consultationDirectionsByPath.Other);
     assert.deepEqual(surveyDirectionsForConcerns(["Menopause"]), consultationDirectionsByPath.Menopause);

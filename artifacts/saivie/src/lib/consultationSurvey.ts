@@ -1,14 +1,11 @@
 export const unsureVisitConcern = "I'm not sure - I'd like to discuss my symptoms";
 export const patientConcernLabels: Record<string, string> = {
-    Menopause: "Changes in periods, hot flushes or other midlife concerns",
-};
-export const patientConcernDescriptions: Record<string, string> = {
-    Menopause: "Periods becoming irregular or stopping, sudden feelings of heat, night sweats, sleep problems or vaginal dryness. You do not need to know whether this is menopause.",
-    [unsureVisitConcern]: "Describe what you have noticed in your own words. Your doctor can help you understand it.",
+    [unsureVisitConcern]: "Not sure",
 };
 export const concernOptions = [
     "Missed or late period", "Possible pregnancy", "I am pregnant", "Pregnancy care",
     "Abdominal or pelvic pain", "Vaginal discharge or infection", "Menopause",
+    "Hot flashes", "Night sweats", "Sleep problems", "Mood changes", "Vaginal dryness",
     "Breast problem", "Gut / bowel problems", "Irregular or heavy bleeding",
     "Fertility", "Birth control", "Routine checkup", unsureVisitConcern, "Other",
 ];
@@ -20,6 +17,7 @@ export const consultationDirectionsByPath: Record<string, string[]> = {
     "Vaginal discharge or infection": ["Discharge pattern and duration", "Exposure and infection risk", "Previous treatment response"],
     "Pregnancy-related concern": ["Gestational timing", "Maternal symptoms", "Fetal wellbeing"],
     "Menopause": ["Vasomotor or genitourinary symptoms", "Bleeding after menopause", "Bone and cardiometabolic context"],
+    "Symptom review": ["Vasomotor or genitourinary symptoms", "Symptom timeline", "Relevant medical history"],
     "Routine gynecology": ["Preventive care due", "Current symptoms", "Screening and contraception"],
     "Other": ["Symptom timeline", "Related symptoms", "Relevant medical history"],
 };
@@ -88,6 +86,9 @@ const concernPaths: Record<string, string> = {
     "I am pregnant": "Pregnancy-related concern",
     "Pregnancy care": "Pregnancy-related concern",
     "Menopause": "Menopause",
+    "Hot flashes": "Symptom review",
+    "Night sweats": "Symptom review",
+    "Vaginal dryness": "Symptom review",
     "Birth control": "Routine gynecology",
     "Routine checkup": "Routine gynecology",
 };
