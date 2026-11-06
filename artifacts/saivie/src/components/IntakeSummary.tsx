@@ -14,7 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { receptionRequest } from "@/lib/authenticatedFetch";
 import { pregnancyVisitContextSchema, type PregnancyVisitContext } from "../../../../lib/db/src/pregnancy-followup";
 import { pregnancyPrintHtml, PregnancyFollowUpPrint, PregnancyPrintTrends } from "./PregnancyPrintTrends";
-import { PatientSummaryOverview, summaryOverviewStyles } from "./PatientSummaryOverview";
+import { PatientSummaryOverview, PatientSummaryPrint, summaryOverviewStyles } from "./PatientSummaryOverview";
 
 type WeightLog = { weight: number; unit: string; date: string; week: number | null };
 type BpLog = { systolic: number; diastolic: number; pulse: number | null; date: string };
@@ -417,9 +417,10 @@ ${summaryOverviewStyles}
 .summary-overview h2,.summary-overview h3{break-after:avoid}.summary-overview p{margin:4px 0}
 .summary-overview h1{margin:0 0 4px}.summary-detail-title{break-after:avoid}
 thead{display:table-header-group}tr{break-inside:avoid}td,th{overflow-wrap:anywhere}
-@page{size:A4;margin:12mm 12mm 14mm}
+@page{size:A4;margin:30mm 12mm 20mm}
 @media print{body{padding:0;background:#fff}.page{max-width:none}}
 </style></head><body><div class="page">
+${pregnancyContext?.pregnancy ? renderToStaticMarkup(<PatientSummaryPrint summary={s} context={pregnancyContext} />) : `
 ${renderToStaticMarkup(<PatientSummaryOverview summary={s} context={pregnancyContext} />)}
 <h2 class="summary-detail-title">Detailed survey, history and recorded measurements</h2>
 <p class="summary-continuation">${esc(s.name)} | ${esc(s.patientId)} | Selected visit: ${esc(s.visitDate)}. Original intake and appointment-specific updates are labelled separately.</p>
@@ -446,8 +447,7 @@ ${renderToStaticMarkup(<CervicalCancerPrevention status={s.hpvVaccination} />)}
 
 <div class="notes"><header><span class="ico">${ICONS.notes}</span><h3>Additional notes</h3></header><div class="line"></div><div class="line"></div><div class="line"></div></div>
 
-<div class="disclaimer">${ICONS.info}<span>Patient-reported information collected before the visit. Verify clinically before acting.</span></div>
-<div class="printed">Printed ${esc(new Date().toLocaleString("en-IN"))}</div>
+`}
 </div>
 <script>window.onload=function(){window.focus();window.print();}</script>
 </body></html>`;
@@ -524,6 +524,15 @@ export function IntakeSummaryActions({ patient, weightLogs, bpLogs, checkInVital
                         {summary.meta.length > 0 && <p className="text-xs text-saivie-plum">{summary.meta.join(" · ")}</p>}
                     </DialogHeader>
 
+                    {context?.pregnancy ? <div className="overflow-x-auto">
+                        <style>{summaryOverviewStyles}{`
+                            .summary-print-preview{width:210mm;background:white}
+                            .summary-print-preview *{box-sizing:border-box}
+                            .summary-print-preview .summary-overview{padding:30mm 12mm 20mm;min-height:297mm}
+                            .summary-print-preview .summary-overview+.summary-overview{border-top:1px solid #d5e0dc}
+                        `}</style>
+                        <div className="summary-print-preview"><PatientSummaryPrint summary={summary} context={context} /></div>
+                    </div> : <>
                     {summary.hpv ? <HpvBadge status={summary.hpv} variant="full" /> : <HpvPrintBadge status={summary.hpvVaccination} />}
                     <PregnancyFollowUpPrint context={context} />
                     <PregnancyPrintTrends context={context} />
@@ -591,6 +600,7 @@ export function IntakeSummaryActions({ patient, weightLogs, bpLogs, checkInVital
                         ))}
                     </div>
                     <CervicalCancerPrevention status={summary.hpvVaccination} />
+                    </>}
                 </DialogContent>
             </Dialog>
         </>

@@ -27,7 +27,7 @@ const context: PregnancyVisitContext = {
 test("reference-style overview reserves blank logo space and identifies appointment-specific dates and old measurements", () => {
   const html = patientSummaryOverviewHtml(patient, null, context);
   for (const text of ['data-testid="summary-logo-space"', "Reserved space for clinic logo", "Antenatal pre-visit summary",
-    "Synthetic &lt;patient&gt;", "SV-00007", "29w 0d", "2027-01-21", "For clinician attention",
+    "Synthetic &lt;patient&gt;", "SV-00007", "29w 0d", "21 Jan 2027", "For clinician attention",
     "Follow-up survey not submitted", "original intake is not today", "2026-09-17",
     "no weight recorded for the selected visit date", "No hemoglobin results", "No blood sugar results",
     "Visit 29w", "Gestational weeks", "Doctor&#x27;s notes"]) assert.ok(html.includes(text), text);
