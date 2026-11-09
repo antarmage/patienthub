@@ -163,6 +163,9 @@ export async function ensureSchema(): Promise<void> {
       ALTER TABLE invoices ADD COLUMN IF NOT EXISTS template_snapshot jsonb;
       ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount_total real NOT NULL DEFAULT 0;
       ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount_details jsonb;
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS created_at timestamptz;
+      ALTER TABLE invoices ALTER COLUMN created_at SET DEFAULT now();
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS created_by text;
 
       CREATE TABLE IF NOT EXISTS prime_pricing_rules (
         id integer PRIMARY KEY DEFAULT 1,

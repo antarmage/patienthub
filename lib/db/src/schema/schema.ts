@@ -435,6 +435,8 @@ export type PrimePricingRules = typeof primePricingRules.$inferSelect;
 
 export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  createdBy: text("created_by"),
   patientId: integer("patient_id").references(() => patients.id),
   appointmentId: integer("appointment_id").references(() => appointments.id),
   date: date("date").notNull(),

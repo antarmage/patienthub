@@ -15,6 +15,13 @@ test("lists every patient's invoices newest first without mutating the source", 
     assert.equal(invoiceRows(invoices, patients, "")[0].patientName, "Patient #99");
 });
 
+test("a newly created backdated bill is ordered by bill date, not its later invoice number", () => {
+    const backdated = { id: 100, patientId: 1, date: "2026-04-01", total: 750 };
+    const rows = invoiceRows([...invoices, backdated], patients, "");
+    assert.deepEqual(rows.map((row) => row.invoice.id), [55, 54, 53, 100]);
+    assert.equal(rows.at(-1)?.invoice.date, "2026-04-01");
+});
+
 test("searches patient names and exact invoice numbers in all supported formats", () => {
     for (const search of ["test patient", "53", "#53", " SAI-53 "]) {
         assert.deepEqual(invoiceRows(invoices, patients, search).map((row) => row.invoice.id), [53]);

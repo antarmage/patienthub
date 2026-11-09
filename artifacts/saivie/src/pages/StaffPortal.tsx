@@ -1,4 +1,5 @@
 import { DateInput } from "@/components/ui/date-input";
+import { invoiceDateBounds, invoiceDateError } from "../../../../lib/db/src/invoice-date";
 import { AppointmentCalendar, type CalendarAppointment } from "@/components/AppointmentCalendar";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -1762,6 +1763,9 @@ export default function StaffPortal() {
   const [billingItems, setBillingItems] = useState<{catalogItemId?: number; inventoryItemId?: number; name: string; price: number; quantity: number; taxRate: number; isEstimated?: boolean}[]>([]);
   const [billingPaymentMethod, setBillingPaymentMethod] = useState("cash");
   const [billingNotes, setBillingNotes] = useState("");
+  const [billingDate, setBillingDate] = useState(() => invoiceDateBounds().today);
+  const billingDateLimits = invoiceDateBounds();
+  const billingDateValidation = invoiceDateError(billingDate);
   const [billingIsEstimate, setBillingIsEstimate] = useState(false);
   const [billingEstimateSource, setBillingEstimateSource] = useState("");
   const [isInvoicePreviewOpen, setIsInvoicePreviewOpen] = useState(false);
@@ -1922,13 +1926,15 @@ export default function StaffPortal() {
   }, [billingPatientId, billingCatalogItems, patients, appointments, getAutoEstimate]);
 
   const createInvoiceMutation = useMutation({
-    mutationFn: async (data: { patientId: number; items: { catalogItemId?: number; inventoryItemId?: number; quantity: number }[]; paymentMethod: string; notes: string; diagnosisEncounterId?: number }) => {
+    mutationFn: async (data: { patientId: number; date: string; items: { catalogItemId?: number; inventoryItemId?: number; quantity: number }[]; paymentMethod: string; notes: string; diagnosisEncounterId?: number }) => {
+      const error = invoiceDateError(data.date);
+      if (error) throw new Error(error);
       const res = await fetch(`/api/patients/${data.patientId}/invoices`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(data.diagnosisEncounterId ? { Authorization: `Bearer ${sessionStorage.getItem("billing_staff_token") || ""}` } : {}) },
         body: JSON.stringify({
           patientId: data.patientId,
-          date: new Date().toISOString().split("T")[0],
+          date: data.date,
           items: data.items,
           paymentMethod: data.paymentMethod,
           notes: data.notes,
@@ -1953,6 +1959,7 @@ export default function StaffPortal() {
       setBillingPatientId(null);
       setBillingDiagnosisSource(null);
       setBillingNotes("");
+      setBillingDate(invoiceDateBounds().today);
       setBillingPaymentMethod("cash");
       setBillingIsEstimate(false);
       setBillingEstimateSource("");
@@ -4200,6 +4207,7 @@ export default function StaffPortal() {
                           const todayPatients = todayPatientIds.map(id => patients.find((p: any) => p.id === id)).filter(Boolean);
                           const selectPatient = (id: number) => {
                             prevBillingPatientRef.current = null;
+                            setBillingDate(invoiceDateBounds().today);
                             setBillingPatientId(id);
                             setBillingDiagnosisSource(null);
                             setBillingItems([]);
@@ -4563,6 +4571,13 @@ export default function StaffPortal() {
                               </div>
 
                               <div>
+                                <Label htmlFor="billing-date" className="text-xs font-medium text-saivie-plum">Bill date</Label>
+                                <DateInput id="billing-date" aria-label="Bill date" value={billingDate} onValueChange={setBillingDate} onInput={(event) => setBillingDate(event.currentTarget.value)}
+                                  min={billingDateLimits.earliest} max={billingDateLimits.today} required data-testid="input-billing-date" />
+                                <p className="mt-1 text-xs text-saivie-plum">New bills can use a past date within the current financial year (from 1 April). The actual creation time is retained for audit.</p>
+                                {billingDateValidation && <p role="alert" className="mt-1 text-xs text-rose-700">{billingDateValidation}</p>}
+                              </div>
+                              <div>
                                 <Label className="text-xs font-medium text-saivie-plum">Payment Method</Label>
                                 <Select value={billingPaymentMethod} onValueChange={setBillingPaymentMethod}>
                                   <SelectTrigger className="mt-1" data-testid="select-payment-method">
@@ -4596,7 +4611,7 @@ export default function StaffPortal() {
 
                               <Button
                                 className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold"
-                                disabled={!billingPatientId || billingItems.length === 0 || !quote || billingQuoteQuery.isFetching || invoiceTemplateQuery.isLoading || invoiceTemplateQuery.isError}
+                                disabled={!billingPatientId || billingItems.length === 0 || !!billingDateValidation || !quote || billingQuoteQuery.isFetching || invoiceTemplateQuery.isLoading || invoiceTemplateQuery.isError}
                                 onClick={() => {
                                   setIsIssuedInvoicePreview(false);
                                   setIsInvoicePreviewOpen(true);
@@ -4679,7 +4694,7 @@ export default function StaffPortal() {
                             discountTotal={previewDiscountTotal}
                             discountDetails={previewDiscountDetails}
                             total={previewTotal}
-                            date={issuedInvoice?.date}
+                            date={issuedInvoice?.date || billingDate}
                             paymentMethod={issuedInvoice?.paymentMethod || billingPaymentMethod}
                             paymentStatus={issuedInvoice?.paymentStatus}
                             notes={issuedInvoice?.notes ?? billingNotes}
@@ -4704,9 +4719,10 @@ export default function StaffPortal() {
                             ) : (
                               <Button
                                 className="bg-emerald-700 hover:bg-emerald-800"
-                                disabled={!billingPatientId || billingItems.length === 0 || !previewQuote || billingQuoteQuery.isFetching || createInvoiceMutation.isPending}
+                                disabled={!billingPatientId || billingItems.length === 0 || !!billingDateValidation || !previewQuote || billingQuoteQuery.isFetching || createInvoiceMutation.isPending}
                                 onClick={() => createInvoiceMutation.mutate({
                                   patientId: billingPatientId!,
+                                  date: billingDate,
                                   items: requestedBillingItems,
                                   paymentMethod: billingPaymentMethod,
                                   notes: billingNotes,

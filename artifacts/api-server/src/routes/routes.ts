@@ -9,6 +9,7 @@ import { registerIcdRoutes, invoiceDiagnoses } from "../icd";
 import { registerBillingTemplateRoutes } from "../billing-templates";
 import { readAppointmentRange } from "../appointment-range";
 import { registerReceptionAccessRoutes, withVitalsRecorderNames } from "../reception-access";
+import { resolveInvoiceDate } from "../../../../lib/db/src/invoice-date";
 import { registerReceptionDetailsEditRoutes } from "../reception-details-edit";
 import { registerOnlineConsultationRoutes } from "../online-consultations";
 import { onlineStore } from "../online-consultation-store";
@@ -2522,6 +2523,12 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.post("/api/patients/:id/invoices", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid patient ID" });
+    const userId = getStaffUserId(req, res);
+    if (!userId) return;
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(403).json({ error: "Billing access required" });
+    const billDate = resolveInvoiceDate(req.body.date, user.role || "");
+    if ("error" in billDate) return res.status(billDate.status).json({ error: billDate.error });
     const patient = await storage.getPatient(id);
     if (!patient) return res.status(404).json({ error: "Patient not found" });
     const [catalog, inventory] = await Promise.all([storage.getBillingCatalog(), storage.getInventoryItems()]);
@@ -2538,18 +2545,17 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       return res.status(400).json({ error: err.message || "Could not calculate invoice" });
     }
     const templateSnapshot = await storage.getInvoiceTemplateSettings() || defaultInvoiceTemplate;
-    if (req.body.diagnosisEncounterId != null) {
-      const userId = getStaffUserId(req, res);
-      if (!userId) return;
-      const user = await storage.getUser(userId);
-      if (!user || !["clinician", "owner"].includes(user.role || "")) return res.status(403).json({ error: "Clinical access required to include diagnoses" });
+    if (req.body.diagnosisEncounterId != null && !["clinician", "owner"].includes(user.role || "")) {
+      return res.status(403).json({ error: "Clinical access required to include diagnoses" });
     }
     const diagnoses = await invoiceDiagnoses(id, req.body.diagnosisEncounterId);
     try {
       const inv = await storage.createInvoiceWithStock({
         patientId: id,
         diagnoses,
-        date: req.body.date || new Date().toISOString().split("T")[0],
+        date: billDate.date,
+        createdAt: new Date(),
+        createdBy: userId,
         items: quote.items,
         subtotal: quote.subtotal,
         tax: quote.tax,
@@ -2713,6 +2719,9 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.patch("/api/invoices/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID" });
+    if (["date", "createdAt", "createdBy", "created_at", "created_by"].some((key) => req.body?.[key] !== undefined)) {
+      return res.status(400).json({ error: "Issued bill dates and creation audit fields cannot be changed. Backdating is available for new bills only." });
+    }
     if (req.body?.diagnoses !== undefined || req.body?.diagnosisEncounterId !== undefined) return res.status(400).json({ error: "Issued invoice diagnoses are immutable. Create a new invoice to change them." });
     const updated = await storage.updateInvoice(id, req.body);
     if (!updated) return res.status(404).json({ error: "Invoice not found" });

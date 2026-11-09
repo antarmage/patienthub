@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { invoiceDateBounds } from "../../../../lib/db/src/invoice-date";
 import type { IcdDiagnosis } from "../../../../lib/db/src/icd";
 
 export interface InvoiceTemplateData {
@@ -78,7 +79,7 @@ function InvoiceArticle({
   discountTotal = 0,
   discountDetails = [],
   total,
-  date = new Date().toISOString().slice(0, 10),
+  date = invoiceDateBounds().today,
   paymentMethod,
   paymentStatus,
   notes,
