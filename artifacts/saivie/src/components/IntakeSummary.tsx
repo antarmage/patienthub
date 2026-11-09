@@ -470,8 +470,8 @@ const insightClass: Record<Insight["level"], string> = {
     info: "border-saivie-border bg-saivie-surface-muted text-saivie-teal",
 };
 
-export function printPatientSummary(patient: any, checkInVitals?: CheckInVitals | null, hpvClinicStatus?: HpvProtection | null, pregnancyContext: PregnancyVisitContext | null = null) {
-    if (!printSummary(summaryForAppointment(buildSummary(patient, [], [], checkInVitals, hpvClinicStatus), pregnancyContext), pregnancyContext)) alert("Please allow pop-ups to print the patient summary.");
+export function printPatientSummary(patient: any, checkInVitals?: CheckInVitals | null, hpvClinicStatus?: HpvProtection | null, pregnancyContext: PregnancyVisitContext | null = null, printWindow?: Window) {
+    if (!printSummary(summaryForAppointment(buildSummary(patient, [], [], checkInVitals, hpvClinicStatus), pregnancyContext), pregnancyContext, printWindow)) alert("Please allow pop-ups to print the patient summary.");
 }
 
 export function patientSummaryOverviewHtml(patient: unknown, hpvClinicStatus: HpvProtection | null, context: PregnancyVisitContext | null) {

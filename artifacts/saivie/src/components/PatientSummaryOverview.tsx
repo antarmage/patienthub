@@ -148,6 +148,7 @@ export function PatientSummaryOverview({ summary: s, context, printLayout = fals
   const latestWeight = pregnancy?.trends.weight.at(-1), latestBp = pregnancy?.trends.bp.at(-1);
   const metric = (label: string, value: string, hint?: string) => <div className="summary-metric" key={label}><span className="summary-label">{label}</span><strong>{value}</strong>{hint && <small>{hint}</small>}</div>;
   const findSection = (name: string) => s.sections.find((section) => section.title.replace(/^Original intake: /, "") === name);
+  const checkIn = findSection("Check-in vitals");
   const surveyRows = (findSection("Pre-visit survey (patient-reported)")?.rows || [])
     .map(([label, value]): [string, string] => [printLayout ? antenatalLabels[label] || label : label, value]);
   const todayRows: [string, string][] = pregnancy?.repeat
@@ -184,6 +185,9 @@ export function PatientSummaryOverview({ summary: s, context, printLayout = fals
       {metric("Gestation", gestation, week === null ? "Dating unavailable" : `${week < 14 ? "1st" : week < 28 ? "2nd" : "3rd"} trimester`)}
       {metric("Obstetric", s.metrics.find((row) => row.label === "Obstetric")?.value || "Not recorded", s.metrics.find((row) => row.label === "Obstetric")?.hint)}
     </> : s.metrics.map((row) => metric(row.label, row.value, row.hint))}</div>
+    {!pregnancy && <section data-testid="summary-check-in-vitals"><h3>Check-in vitals (clinic-recorded)</h3>
+      {checkIn ? kv(checkIn.rows) : <p>No check-in vitals recorded for this appointment.</p>}
+    </section>}
     <section className="summary-attention"><h2>For clinician attention</h2>{s.insights.length || missing.length ? <ul>{s.insights.map((row, index) => <li key={`insight-${index}`}>{row.text}</li>)}{missing.map((value) => <li key={value}>{value}</li>)}</ul> : <p>No automated attention items derived. This is not a clinical risk assessment.</p>}</section>
     <div className="summary-columns"><section><h3>{pregnancy?.repeat ? "This visit (patient-reported)" : "Today's visit (patient-reported)"}</h3>{kv(todayRows)}{pregnancy?.repeat && <p className="summary-caption">Original intake is historical, not today's symptom assessment.</p>}</section><section><h3>Medical background</h3>{kv(background)}</section></div>
     {pregnancy && <><section className="summary-trends"><h3>Trends (recorded readings only)</h3><div className="summary-charts"><TrendChart name="Weight" unit="kg" points={pregnancy.trends.weight} context={pregnancy} /><TrendChart name="Blood pressure" unit="mmHg" points={pregnancy.trends.bp} context={pregnancy} /></div><p className="summary-caption">Visit marker is the selected appointment, not the print date. No readings are extrapolated. All dated values, sources, hemoglobin and separate sugar tests continue on the following pages.</p></section>

@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { ClipboardCheck, ClipboardList, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { receptionRequest } from "@/lib/authenticatedFetch";
+import { fetchCheckInVitals } from "@/lib/receptionVitals";
 import { surveyKindFor } from "@/lib/labSurvey";
 import { printPatientSummary } from "@/components/IntakeSummary";
 import type { HpvProtection } from "@/lib/hpvProtection";
@@ -12,6 +12,19 @@ import { pregnancyVisitContextSchema } from "../../../../lib/db/src/pregnancy-fo
 import { OnboardingLink } from "./OnboardingLink";
 
 type Appointment = { id: number; patientId: number | null; surveyCompleted?: boolean; surveyType?: string | null; type?: string | null; visitType?: string | null };
+
+export async function loadReceptionPrintRecord(appointment: Appointment, signal?: AbortSignal) {
+  if (appointment.patientId == null) throw new Error("A patient is required to print this appointment's summary.");
+  const [patient, vitals, pregnancy] = await Promise.all([
+    receptionRequest<unknown>(`/api/patients/${appointment.patientId}`, { signal }),
+    fetchCheckInVitals(appointment.id, appointment.patientId, signal),
+    receptionRequest<unknown>(`/api/patients/${appointment.patientId}/pregnancy-follow-up/${appointment.id}`, { signal }),
+  ]);
+  if (!patient || typeof patient !== "object" || !("id" in patient) || patient.id !== appointment.patientId) {
+    throw new Error("The summary API returned an invalid patient record.");
+  }
+  return { patient, vitals, pregnancy: pregnancyVisitContextSchema.parse(pregnancy) };
+}
 
 export function ReceptionSurveyLink({ appointment, patientName }: { appointment: Appointment; patientName: string }) {
   const [open, setOpen] = useState(false);
@@ -43,26 +56,10 @@ export function ReceptionSummaryPrint({ appointment, patientName, canPrint, hpvS
   appointment: Appointment; patientName: string; canPrint: boolean; hpvStatus: HpvProtection | null; testId?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const record = useQuery({
     queryKey: ["reception-print-summary", appointment.patientId, appointment.id],
-    queryFn: async ({ signal }) => {
-      const [patient, measurements, pregnancy] = await Promise.all([
-        receptionRequest<unknown>(`/api/patients/${appointment.patientId}`, { signal }),
-        receptionRequest<unknown>(`/api/appointments/${appointment.id}/reception-vitals`, { signal }),
-        receptionRequest<unknown>(`/api/patients/${appointment.patientId}/pregnancy-follow-up/${appointment.id}`, { signal }),
-      ]);
-      if (!patient || typeof patient !== "object" || !("id" in patient) || patient.id !== appointment.patientId ||
-          !measurements || typeof measurements !== "object" || !("appointmentId" in measurements) || measurements.appointmentId !== appointment.id ||
-          !("patientId" in measurements) || measurements.patientId !== appointment.patientId || !("vitals" in measurements)) {
-        throw new Error("The summary API returned an invalid patient or appointment record");
-      }
-      const vitals = z.object({
-        bp: z.unknown().optional(), pulse: z.unknown().optional(), temp: z.unknown().optional(),
-        spo2: z.unknown().optional(), weight: z.unknown().optional(), height: z.unknown().optional(),
-        bmi: z.unknown().optional(), recordedAt: z.unknown().optional(),
-      }).nullable().parse(measurements.vitals);
-      return { patient, vitals, pregnancy: pregnancyVisitContextSchema.parse(pregnancy) };
-    },
+    queryFn: ({ signal }) => loadReceptionPrintRecord(appointment, signal),
     enabled: open && canPrint && appointment.patientId !== null,
     gcTime: 0, staleTime: 0, retry: false,
   });
@@ -75,7 +72,36 @@ export function ReceptionSummaryPrint({ appointment, patientName, canPrint, hpvS
       <DialogHeader><DialogTitle>Print summary · {patientName}</DialogTitle><DialogDescription>Loads this patient's saved history and this appointment's measurements.</DialogDescription></DialogHeader>
       {record.isFetching && <p role="status">Loading patient summary...</p>}
       {record.isError && <p role="alert">{record.error.message} <Button variant="link" onClick={() => void record.refetch()}>Retry</Button></p>}
-      {record.isSuccess && <Button disabled={record.isFetching} onClick={() => printPatientSummary(record.data.patient, record.data.vitals, hpvStatus, record.data.pregnancy)}><Printer className="mr-2 h-4 w-4" />Print patient summary</Button>}
+      {record.isSuccess && <>
+        <p className="text-xs">Appointment #{appointment.id}</p>
+        <section className="rounded-lg border p-3 text-sm"><h3 className="font-semibold">Saved check-in vitals</h3>
+          {record.data.vitals && Object.entries(record.data.vitals).some(([key, value]) => key !== "recordedAt" && value != null && value !== "")
+            ? <dl>{[
+              ["Blood pressure (mmHg)", record.data.vitals.bp], ["Pulse (bpm)", record.data.vitals.pulse],
+              ["Temperature (°F)", record.data.vitals.temp], ["SpO₂ (%)", record.data.vitals.spo2],
+              ["Weight (kg)", record.data.vitals.weight], ["Height (cm)", record.data.vitals.height],
+              ["BMI", record.data.vitals.bmi],
+            ].filter(([, value]) => value != null && value !== "").map(([label, value]) =>
+              <div key={label} className="flex justify-between gap-4"><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+            : <p>No check-in vitals recorded for this appointment. Verify the appointment used when saving the measurements.</p>}
+        </section>
+        <Button disabled={record.isFetching || printing} onClick={async () => {
+          const printWindow = window.open("", "_blank", "width=900,height=1000");
+          if (!printWindow) { alert("Please allow pop-ups to print the patient summary."); return; }
+          setPrinting(true);
+          try {
+            const fresh = await record.refetch();
+            if (!fresh.isSuccess) {
+              printWindow.close();
+              alert(fresh.error?.message || "Unable to load current check-in vitals. Please retry.");
+              return;
+            }
+            printPatientSummary(fresh.data.patient, fresh.data.vitals, hpvStatus, fresh.data.pregnancy, printWindow);
+          } finally {
+            setPrinting(false);
+          }
+        }}><Printer className="mr-2 h-4 w-4" />{printing ? "Loading current measurements..." : "Print patient summary"}</Button>
+      </>}
     </DialogContent></Dialog>
   </>;
 }
