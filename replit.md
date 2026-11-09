@@ -72,6 +72,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Clinical document reading
 
+- Reception Patient details > Medicines shows a read-only "No medicines recorded" card only when both patient medication records and parsed visit prescriptions are absent. A visit without medicines does not suppress the empty state. Patient-reported medication history remains separate; missing records never imply that the patient takes no medicines.
+
 - `OCR_PROVIDER=glm-ocr` enables an opt-in self-hosted GLM-OCR gateway plus a separate self-hosted text-structuring model. Without this setting, document reading uses the existing Gemini provider.
 - Staff prescription/lab/USG uploads and both prescription-reading endpoints share schema validation and never silently fall back to a hosted provider when local OCR fails.
 - Extraction is read-only. Staff and prescription-entry screens require review before save; clinician Read Reports is explicit and returns editable lab results instead of automatically saving on patient opening.
