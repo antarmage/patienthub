@@ -59,6 +59,7 @@ export function ReceptionVitalsDialog({ appointment, patient, onClose, onCheckIn
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
       void queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      void queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/appointment-history`] });
       toast({ title: onCheckIn ? "Patient checked in" : "Vitals recorded" });
       onClose();
     },

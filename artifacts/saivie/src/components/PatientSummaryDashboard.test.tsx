@@ -66,6 +66,17 @@ it("summary trail includes appointment-only dates without counting them as saved
   assert.ok(!html.includes("Saved clinical encounter"));
 });
 
+it("general trends include check-in BP, weight and pulse before a consultation is saved", () => {
+  const html = renderToStaticMarkup(<PatientSummaryDashboard {...props}
+    checkInVitals={{ bp: "118/76", weight: 61, pulse: 82 }}
+    trail={visitTrail([], [{ id: 42, date: "2026-11-09", vitals: { bp: "118/76", weight: 61, pulse: 82 } }])} />);
+  for (const value of ['data-testid="summary-trend-Blood pressure"', 'data-testid="summary-trend-Weight"',
+    'data-testid="summary-trend-Pulse"', "118/76", "61", "82", "2026-11-09", "Check-in"]) {
+    assert.ok(html.includes(value), value);
+  }
+  assert.ok(html.includes("0 recorded visits"));
+});
+
 it("doctor pregnancy summary uses saved-episode overview rather than global historical readings", () => {
   const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
   client.setQueryData(["/api/patients", 1, "pregnancy-episodes"], []);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { summaryTrends } from "./patientSummary.ts";
+import { clinicalVitalTrends, summaryTrends } from "./patientSummary.ts";
 
 it("merges visit and home readings chronologically without duplicating identical readings", () => {
   const result = summaryTrends([
@@ -44,4 +44,48 @@ it("rejects missing, invalid, qualitative and ambiguous measurements rather than
   assert.deepEqual(result.weight, []);
   assert.deepEqual(result.hb, []);
   assert.deepEqual(result.sugar, []);
+});
+
+it("includes reception check-in before a consultation exists and merges linked records without duplicate readings", () => {
+  const appointments = [
+    { id: 10, date: "2026-11-08", vitals: { bp: "110/70", weight: 60, pulse: 76 } },
+    { id: 20, date: "2026-11-09", vitals: { bp: "118/76", weight: 61, pulse: 82 } },
+  ];
+  const bpLogs = [{ date: "2026-11-08", systolic: 110, diastolic: 70 }];
+  const before = clinicalVitalTrends([], appointments, bpLogs, [], []);
+  assert.deepEqual(before.bp.map((point) => [point.date, point.value, point.secondary]), [
+    ["2026-11-08", 110, 70], ["2026-11-09", 118, 76],
+  ]);
+  assert.equal(before.bp.at(-1)?.source, "Check-in");
+  assert.equal(before.weight.at(-1)?.value, 61);
+  assert.equal(before.pulse.at(-1)?.value, 82);
+
+  const after = clinicalVitalTrends([{ id: 1, appointmentId: 20, date: "2026-11-09", vitals: { bp: "118/76" } }], appointments, bpLogs, [], []);
+  assert.equal(after.bp.length, 2);
+  assert.equal(after.weight.length, 2);
+  assert.equal(after.pulse.length, 2);
+  assert.equal(after.weight.at(-1)?.value, 61);
+  assert.equal(after.bp.at(-1)?.source, "Visit");
+});
+
+it("keeps different same-day check-in measurements and uses clinician revisions for linked appointments", () => {
+  const appointments = [
+    { id: 10, date: "2026-11-09", vitals: { bp: "110/70", weight: 60 } },
+    { id: 20, date: "2026-11-09", vitals: { bp: "118/76", weight: 61 } },
+  ];
+  const separate = clinicalVitalTrends([], appointments, [], [], []);
+  assert.equal(separate.bp.length, 2);
+  assert.equal(separate.weight.length, 2);
+  const revised = clinicalVitalTrends([{ id: 1, appointmentId: 20, date: "2026-11-09", vitals: { bp: "122/80" } }], appointments, [], [], []);
+  assert.deepEqual(revised.bp.map((point) => point.value).sort(), [110, 122]);
+  assert.equal(revised.weight.length, 2);
+});
+
+it("orders same-day readings by actual check-in time rather than appointment ID or reversed trail order", () => {
+  const result = clinicalVitalTrends([], [
+    { id: 9, date: "2026-11-09", vitals: { bp: "118/76", weight: 61, recordedAt: "2026-11-09T09:00:00Z" } },
+    { id: 42, date: "2026-11-09", vitals: { bp: "110/70", weight: 60, recordedAt: "2026-11-09T08:00:00Z" } },
+  ], [], [], []);
+  assert.deepEqual(result.bp.map((point) => point.value), [110, 118]);
+  assert.deepEqual(result.weight.map((point) => point.value), [60, 61]);
 });

@@ -67,6 +67,16 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
         assert.ok(html.includes("Pulse"));
         assert.ok(html.includes("61 kg"));
 
+        printPatientSummary(patient, { bp: "118/76", pulse: "82", temp: "98.6", spo2: "98", weight: "61", height: "160", recordedAt: "2026-11-09T09:30:00.000Z" });
+        const overview = html.slice(html.indexOf('data-testid="summary-clinician-overview"'), html.indexOf("Detailed survey, history and recorded measurements"));
+        for (const value of ["118/76", "Pulse", "82", "Temperature", "98.6", "SpO₂", "98%", "61 kg", "Height", "160 cm", "BMI", "23.8", "Check-in"]) {
+            assert.ok(overview.includes(value), value);
+        }
+        assert.ok(overview.includes("Patient pre-visit summary"));
+        assert.ok(!overview.includes("Antenatal pre-visit summary"));
+        assert.ok(html.includes(">160 cm</div>"));
+        assert.ok(html.includes(">23.8</div>"));
+
         assert.ok(!html.includes("All doses reported or recorded"));
         assert.ok(html.includes('data-testid="hpv-print-badge-not-recorded"'));
         form.gyn.hpvVaccine = "Yes, all doses";

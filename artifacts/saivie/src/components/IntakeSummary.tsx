@@ -115,7 +115,9 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], ch
     }
     const cvWeight = num(cv.weight);
     if (cvWeight !== null) metrics.push({ label: "Weight", value: `${cvWeight} kg`, hint: cvTime });
-    const cvBmi = num(cv.bmi);
+    const cvHeight = num(cv.height);
+    if (cvHeight !== null) metrics.push({ label: "Height", value: `${cvHeight} cm`, hint: cvTime });
+    const cvBmi = num(cv.bmi) ?? (cvWeight !== null && cvHeight !== null && cvHeight > 0 ? cvWeight / (cvHeight / 100) ** 2 : null);
     if (cvBmi !== null) metrics.push({ label: "BMI", value: cvBmi.toFixed(1), hint: cvBmi >= 30 ? "Obese range" : cvBmi >= 25 ? "Overweight" : cvBmi < 18.5 ? "Underweight" : "Normal", tone: cvBmi >= 30 || cvBmi < 18.5 ? "watch" : "ok" });
 
     // Patient self-recorded vitals (mobile app logs, newest first)
@@ -213,7 +215,7 @@ function buildSummary(patient: any, weightLogs: WeightLog[], bpLogs: BpLog[], ch
         section("Lab visit survey", [...labSurveyRows(labSurvey), ...(labSubmitted ? [["Submitted", labSubmitted] as [string, string]] : [])]),
         section("Check-in vitals", [
             row("Blood pressure (mmHg)", cv.bp), row("Pulse (bpm)", cv.pulse), row("Temperature (°F)", cv.temp), row("SpO₂ (%)", cv.spo2),
-            row("Weight (kg)", cv.weight), row("Height (cm)", cv.height), row("BMI", cv.bmi),
+            row("Weight (kg)", cv.weight), row("Height (cm)", cv.height), row("BMI", cvBmi?.toFixed(1)),
             row("Recorded", text(cv.recordedAt) && new Date(text(cv.recordedAt)).toLocaleString("en-IN")),
         ]),
         section("Presenting complaint", [

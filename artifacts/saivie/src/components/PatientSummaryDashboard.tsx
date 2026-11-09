@@ -3,7 +3,7 @@ import { MeasurementTrend as Trend } from "@/components/MeasurementTrend";
 import { Button } from "@/components/ui/button";
 import { consultationSurveyForVisit, surveyQuestions } from "@/lib/consultationSurvey";
 import { recordedLabValue } from "@/lib/labReading";
-import { summaryRecord, summaryTrends, type SummaryLab, type SummaryVisit } from "@/lib/patientSummary";
+import { summaryRecord, summaryTrends, trailMeasurements, type SummaryLab, type SummaryVisit } from "@/lib/patientSummary";
 import { receptionVisitDates } from "@/lib/receptionVisitDates";
 import { appointmentLabel, type TrailRecord } from "@/lib/visitTrail";
 import { PregnancyOverview } from "@/components/PregnancyOverview";
@@ -30,7 +30,8 @@ export function PatientSummaryDashboard({ patient, appointmentId, complaint, che
   pregnancyData?: { patient: Record<string, unknown> & { id: number }; appointments: Record<string, unknown>[]; visits: Record<string, unknown>[]; labs: Record<string, unknown>[]; documents?: Record<string, unknown>[]; ready: boolean };
   onProfile?: () => void; onVitals?: () => void;
 }) {
-  const trends = summaryTrends(visits, bpLogs, weightLogs, labs);
+  const readings = trail ? trailMeasurements(trail) : visits;
+  const trends = summaryTrends(readings, bpLogs, weightLogs, labs);
   const history = summaryRecord(patient.history);
   const intake = summaryRecord(history.onboarding);
   const currentSurvey = appointmentId != null && String(history.onboardingAppointmentId) === String(appointmentId);

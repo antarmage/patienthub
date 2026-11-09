@@ -27,6 +27,8 @@ export interface SummaryPoint {
   source: string;
 }
 
+export type SummaryMeasurement = Pick<SummaryVisit, "date" | "vitals" | "source"> & { id?: number | string };
+
 export function summaryRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
@@ -45,7 +47,7 @@ function dateKey(value: string): string | null {
 }
 
 export function summaryTrends(
-  visits: SummaryVisit[],
+  visits: SummaryMeasurement[],
   bpLogs: { date?: string; systolic: number; diastolic: number }[],
   weightLogs: { date?: string; weight: number; unit?: string }[],
   labs: SummaryLab[],

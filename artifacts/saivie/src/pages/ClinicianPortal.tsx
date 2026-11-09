@@ -39,6 +39,7 @@ import { clinicalRequest, DiagnosisHistory, IcdDiagnosisEditor, usePatientDiagno
 import type { IcdDiagnosis } from "../../../../lib/db/src/icd";
 import { PatientVisitTimeline, visitMedicines, visitTests } from "@/components/PatientVisitTimeline";
 import { readAppointmentHistory, visitTrail } from "@/lib/visitTrail";
+import { clinicalVitalTrends } from "@/lib/patientSummary";
 import { receptionRequest } from "@/lib/authenticatedFetch";
 import { ConsultationAssessment } from "@/components/ConsultationAssessment";
 import { ConceptionHistory } from "@/components/ConceptionHistory";
@@ -1266,20 +1267,26 @@ export default function ClinicianPortal() {
   const activeAppointment = useMemo(() => {
     if (!selectedPatient) return null;
     if ((selectedPatient as any).appointmentId) {
-      const found = appointments.find((a: any) => a.id === (selectedPatient as any).appointmentId);
+      const found = appointments.find((a: any) => a.id === (selectedPatient as any).appointmentId)
+        || appointmentHistoryQuery.data?.find((a) => a.id === selectedPatient.appointmentId);
       if (found) return found;
     }
-    const todayStr = new Date().toISOString().slice(0, 10);
-    return appointments.find((a: any) => a.patientId === selectedPatient.id && a.date === todayStr && a.status !== 'cancelled' && a.status !== 'Cancelled') || null;
-  }, [selectedPatient, appointments]);
+    const todayStr = indiaToday();
+    return [...appointments, ...(appointmentHistoryQuery.data || [])].find((a) => a.patientId === selectedPatient.id && a.date === todayStr && a.status !== 'cancelled' && a.status !== 'Cancelled') || null;
+  }, [selectedPatient, appointments, appointmentHistoryQuery.data]);
 
-  const surveyVitals = useMemo(() => {
-    if (activeAppointment?.vitals) return activeAppointment.vitals;
-    if (!selectedPatient) return null;
-    return [...appointments]
-      .filter((a: any) => a.patientId === selectedPatient.id && a?.vitals)
-      .sort((a: any, b: any) => String(b.vitals?.recordedAt || b.date || "").localeCompare(String(a.vitals?.recordedAt || a.date || "")))[0]?.vitals || null;
-  }, [activeAppointment, selectedPatient, appointments]);
+  const measurementAppointments = useMemo(() => {
+    const history = appointmentHistoryQuery.data || [];
+    if (!activeAppointment) return history;
+    return [...history.filter((appointment) => appointment.id !== activeAppointment.id), activeAppointment];
+  }, [appointmentHistoryQuery.data, activeAppointment]);
+  const vitalTrends = useMemo(() => clinicalVitalTrends(visitHistory, measurementAppointments, bpLogsData, weightLogs, []),
+    [visitHistory, measurementAppointments, bpLogsData, weightLogs]);
+  const trendBpLogs = vitalTrends.bp.flatMap((point) => point.secondary == null ? [] : [{
+    date: point.date, systolic: point.value, diastolic: point.secondary,
+    pulse: bpLogsData.find((log) => log.date.slice(0, 10) === point.date && log.systolic === point.value && log.diastolic === point.secondary)?.pulse,
+  }]);
+  const trendWeightLogs = vitalTrends.weight.map((point) => ({ date: point.date, weight: point.value, unit: "kg" }));
 
   const surveyPatient = patients.find((patient: any) => patient.id === selectedPatient?.id) || selectedPatient;
   const displayedPatientAge = patientAge(surveyPatient || {}, indiaToday(), [...visitHistory, ...(appointmentHistoryQuery.data || [])]);
@@ -4529,7 +4536,7 @@ export default function ClinicianPortal() {
                   {(selectedPatient.riskScore?.summary || selectedPatient.riskScore?.factors?.[0]?.factor) && <span className="mt-1 block text-[10px] line-clamp-3">{selectedPatient.riskScore.summary || selectedPatient.riskScore.factors[0].factor}</span>}
                 </button>
                 <Card className="mb-3 rounded-lg border-saivie-border bg-saivie-ivory p-3 shadow-none">
-                  <VitalsSparklineGrid vitals={activeAppointment?.vitals || selectedPatient.appointmentVitals || null} bpLogs={bpLogsData} weightLogs={weightLogs} onAdoptVitals={(summary) => {
+                  <VitalsSparklineGrid vitals={activeAppointment?.vitals || selectedPatient.appointmentVitals || null} bpLogs={[...trendBpLogs].reverse()} weightLogs={[...trendWeightLogs].reverse()} onAdoptVitals={(summary) => {
                     setSoapObjectiveDraft((current) => [current, summary].filter(Boolean).join('\n'));
                     toast({ title: 'Vitals added to examination' });
                   }} />
@@ -4745,7 +4752,7 @@ export default function ClinicianPortal() {
                 !activeAppointment?.seenAt && !activeAppointment?.completedAt &&
                 ["scheduled", "booked", "confirmed", "checked-in"].includes(String(activeAppointment?.status).toLowerCase()) &&
                 !/lab|usg|ultrasound/i.test(String(activeAppointment?.type)) ? () => setPregnancyVitalsOpen(true) : undefined}
-              trail={visitTrail(visitHistory, appointmentHistoryQuery.data || [], patientDocumentsQuery.data || [])}
+              trail={visitTrail(visitHistory, measurementAppointments, patientDocumentsQuery.data || [])}
               onRecord={() => setPatientDetailTab('record')}
               labs={labResults}
               bpLogs={bpLogsData}
@@ -4801,7 +4808,7 @@ export default function ClinicianPortal() {
                       <p className="text-xs text-saivie-plum">Allergies: {selectedPatient.history?.allergies?.join(', ') || 'Not recorded'}</p>
                       <p className="text-xs text-saivie-plum">Risk: {selectedPatient.riskScore?.level || (selectedPatient.status === 'High Risk' ? 'High' : 'Not recorded')}</p>
                       {showPregnancyContext && <p className="text-xs text-saivie-plum">{pregnancyContext ? `${pregnancyContext.weeks}w ${pregnancyContext.days}d · EDD ${pregnancyContext.dueDate} (LMP estimate)` : 'Valid LMP required for pregnancy dating'}</p>}
-                      <VitalsSparklineGrid vitals={activeAppointment?.vitals || selectedPatient.appointmentVitals || null} bpLogs={bpLogsData} weightLogs={weightLogs} onAdoptVitals={(summary) => setSoapObjectiveDraft((current) => [current, summary].filter(Boolean).join('\n'))} />
+                      <VitalsSparklineGrid vitals={activeAppointment?.vitals || selectedPatient.appointmentVitals || null} bpLogs={[...trendBpLogs].reverse()} weightLogs={[...trendWeightLogs].reverse()} onAdoptVitals={(summary) => setSoapObjectiveDraft((current) => [current, summary].filter(Boolean).join('\n'))} />
                       <IntakeSummaryActions patient={surveyPatient} appointmentId={activeAppointment?.id} weightLogs={weightLogs} bpLogs={bpLogsData} checkInVitals={activeAppointment?.vitals} hpvClinicStatus={selectedHpvClinicStatus} />
                     </div>
                   </details>
@@ -5018,7 +5025,7 @@ export default function ClinicianPortal() {
                         </Button>
                       </div>
                       <div id="consultation-vitals-trends" className="border-t border-saivie-border bg-saivie-surface-muted/30 p-3">
-                        {bpLogsQuery.isError ? <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800" role="alert">Unable to load blood pressure trends. <button type="button" className="ml-1 underline" onClick={() => void bpLogsQuery.refetch()}>Retry</button></div> : bpLogsQuery.isLoading ? <p role="status" className="p-4 text-xs text-saivie-plum">Loading blood pressure trends…</p> : <ConsultationVitalsTrends logs={bpLogsData} />}
+                        {bpLogsQuery.isError || appointmentHistoryQuery.isError || visitHistoryQuery.isError ? <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800" role="alert">Unable to load blood pressure trends. <button type="button" className="ml-1 underline" onClick={() => { void bpLogsQuery.refetch(); void appointmentHistoryQuery.refetch(); void visitHistoryQuery.refetch(); }}>Retry</button></div> : bpLogsQuery.isLoading || appointmentHistoryQuery.isLoading || visitHistoryQuery.isLoading ? <p role="status" className="p-4 text-xs text-saivie-plum">Loading blood pressure trends…</p> : <ConsultationVitalsTrends logs={trendBpLogs} />}
                       </div>
                     </div>
                   </section>
