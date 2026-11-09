@@ -26,6 +26,7 @@ const scenarios = {
   allergies: "allergy information",
   notes: "clinical notes",
   documents: "documents",
+  medicines: "medicines",
   deliveries: "delivery and baby records",
 };
 
@@ -121,6 +122,15 @@ export function RecordScenarioIllustration({ scenario, pregnancy = false, decora
           <rect x="-7" y="-46" width="14" height="44" rx="7" strokeDasharray="5 4" />
           <path d="M-7 -38 H7" />
           <rect x="9" y="-44" width="14" height="42" rx="7" strokeDasharray="5 4" transform="rotate(16 16 -2)" />
+        </>}
+        {scenario === "medicines" && <>
+          <rect x="-14" y="-42" width="28" height="40" rx="6" strokeDasharray="5 4" />
+          <rect x="-12" y="-50" width="24" height="10" rx="3" fill="#B9D6CB" />
+          <path d="M-7 -26 H7 M-7 -18 H3" stroke="#9FB8AE" strokeLinecap="round" />
+          <g transform="rotate(25 27 -21)">
+            <rect x="20" y="-40" width="14" height="34" rx="7" strokeDasharray="4 3" />
+            <path d="M20 -23 H34" />
+          </g>
         </>}
         {scenario === "scans" && <>
           <rect x="-22" y="-54" width="44" height="52" rx="4" strokeDasharray="5 4" />

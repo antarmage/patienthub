@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, FileText, LockKeyhole, Pill } from "lucide-react";
+import { ArrowLeft, CalendarDays, FileText, LockKeyhole } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -34,20 +34,20 @@ function list(value: unknown): ClinicalRecord[] {
   return value.map(object);
 }
 
-export function ReceptionMedicinesEmptyState({ medicines, visits, onVisitDates }: {
+export function ReceptionMedicinesEmptyState({ medicines, visits, onVisitDates, pregnancy = false }: {
   medicines: ClinicalRecord[];
   visits: ClinicalRecord[];
   onVisitDates: () => void;
+  pregnancy?: boolean;
 }) {
   if (medicines.length || visits.some((visit) => visitMedicines(visit).length > 0)) return null;
-  return <section className="rounded-2xl border border-saivie-border bg-saivie-ivory px-6 py-10 text-center" aria-label="No medicines recorded">
-    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-saivie-teal/10">
-      <Pill className="h-6 w-6 text-saivie-teal" aria-hidden="true" />
-    </div>
-    <h3 className="mt-4 font-serif text-xl font-semibold text-saivie-teal">No medicines recorded</h3>
+  return <section className="rounded-2xl border border-saivie-border bg-white px-6 py-8 text-center" aria-label="No medicines recorded">
+    <p className="text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Medicines</p>
+    <RecordScenarioIllustration scenario="medicines" pregnancy={pregnancy} decorative className="mt-4 max-w-[260px]" />
+    <h3 className="mt-4 font-serif text-2xl font-semibold text-saivie-teal">No medicines recorded</h3>
     <p className="mx-auto mt-2 max-w-md text-sm text-saivie-plum">No structured medicines or visit prescriptions have been recorded. This does not confirm that the patient takes no medicines.</p>
     <p className="mx-auto mt-2 max-w-md text-xs text-muted-foreground">Any patient-reported medicines from the survey or history are shown separately.</p>
-    <Button variant="outline" size="sm" className="mt-5" onClick={onVisitDates}>View visit dates</Button>
+    <Button className="mt-5 rounded-full bg-saivie-teal px-6 text-white hover:bg-saivie-teal/90" onClick={onVisitDates}>View visit dates</Button>
   </section>;
 }
 
@@ -238,7 +238,7 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
         </TabsContent>
         <TabsContent value="prescriptions" className="space-y-3 text-sm">
           <ReportedMedicationHistory history={data.detail.history} />
-          <ReceptionMedicinesEmptyState medicines={data.medicines} visits={data.visits} onVisitDates={() => setTab("visits")} />
+          <ReceptionMedicinesEmptyState medicines={data.medicines} visits={data.visits} pregnancy={clinicalCareMode(data.detail) === "pregnancy"} onVisitDates={() => setTab("visits")} />
           <p className="text-muted-foreground">Visit prescriptions and follow-up instructions are under Visit dates.</p>
           {data.medicines.map((medicine) => <article key={text(medicine.id)} className={cardClass}><h3 className={`${headingClass} mb-3`}>{text(medicine.name) || "Medicine"}</h3><RecordedDetails value={{ dose: medicine.dose, frequency: medicine.frequency, duration: medicine.duration, instructions: medicine.instructions, status: medicine.status }} /></article>)}
         </TabsContent>

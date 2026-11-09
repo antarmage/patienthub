@@ -12,8 +12,17 @@ test("reception medicines uses a read-only empty card even when non-prescribing 
     assert.ok(html.includes("does not confirm that the patient takes no medicines"));
     assert.ok(html.includes("patient-reported medicines"));
     assert.ok(html.includes("View visit dates"));
+    assert.ok(html.includes('data-records-scenario="medicines"'));
+    assert.ok(html.includes('data-patient-context="general"'));
+    assert.ok(html.includes('data-illustration-part="woman"'));
     assert.ok(!html.includes("Add medicine"));
   }
+});
+
+test("reception medicine artwork follows the patient's pregnancy context", () => {
+  const html = renderToStaticMarkup(<ReceptionMedicinesEmptyState medicines={[]} visits={[]} pregnancy onVisitDates={() => {}} />);
+  assert.ok(html.includes('data-patient-context="pregnancy"'));
+  assert.ok(html.includes('data-illustration-part="medicines"'));
 });
 
 test("reception medicines does not show the empty card for medicines or either prescription format", () => {
