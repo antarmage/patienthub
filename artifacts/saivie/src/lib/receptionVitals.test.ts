@@ -1,7 +1,38 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { receptionVitals } from "./receptionVitals";
+import { fetchCheckInVitals, receptionVitals } from "./receptionVitals";
 import { visitTrail } from "./visitTrail";
+
+test("summary loads saved check-in vitals for the exact appointment and refreshes changed readings", async (t) => {
+  let pulse = 82;
+  t.mock.method(globalThis, "fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+    assert.equal(input, "/api/appointments/20/reception-vitals");
+    assert.equal(init?.signal, signal);
+    return Response.json({ appointmentId: 20, patientId: 7, vitals: { bp: "118/76", pulse, height: "160", weight: "61", recordedBy: "staff" } });
+  });
+  const signal = new AbortController().signal;
+  assert.deepEqual(await fetchCheckInVitals(20, 7, signal), { bp: "118/76", pulse: 82, height: "160", weight: "61" });
+  pulse = 88;
+  assert.equal((await fetchCheckInVitals(20, 7, signal))?.pulse, 88);
+});
+
+test("summary rejects mismatched records, missing vitals and API failures instead of using stale props", async (t) => {
+  for (const body of [
+    { appointmentId: 21, patientId: 7, vitals: { bp: "118/76" } },
+    { appointmentId: 20, patientId: 8, vitals: { bp: "118/76" } },
+    { appointmentId: 20, patientId: 7 },
+    { appointmentId: 20, patientId: 7, vitals: [] },
+  ]) {
+    const mock = t.mock.method(globalThis, "fetch", async () => Response.json(body));
+    await assert.rejects(fetchCheckInVitals(20, 7), /invalid or mismatched/);
+    mock.mock.restore();
+  }
+  const failure = t.mock.method(globalThis, "fetch", async () => Response.json({ error: "Measurements unavailable" }, { status: 503 }));
+  await assert.rejects(fetchCheckInVitals(20, 7), /Measurements unavailable/);
+  failure.mock.restore();
+  t.mock.method(globalThis, "fetch", async () => Response.json({ appointmentId: 20, patientId: 7, vitals: null }));
+  assert.equal(await fetchCheckInVitals(20, 7), null);
+});
 
 test("vitals show the recorder's name and a readable IST time, not raw audit values", () => {
   const vitals = {

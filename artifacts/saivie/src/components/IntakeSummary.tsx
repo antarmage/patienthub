@@ -12,6 +12,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { labSurveyFlags, labSurveyRows, readLabSurvey } from "@/lib/labSurvey";
 import { useQuery } from "@tanstack/react-query";
 import { receptionRequest } from "@/lib/authenticatedFetch";
+import { fetchCheckInVitals } from "@/lib/receptionVitals";
 import { pregnancyVisitContextSchema, type PregnancyVisitContext } from "../../../../lib/db/src/pregnancy-followup";
 import { pregnancyPrintHtml, PregnancyFollowUpPrint, PregnancyPrintTrends } from "./PregnancyPrintTrends";
 import { PatientSummaryOverview, PatientSummaryPrint, summaryOverviewStyles } from "./PatientSummaryOverview";
@@ -320,7 +321,7 @@ const sectionIcon = (title: string) => {
     return ICONS.notes;
 };
 
-function printSummary(s: Summary, pregnancyContext: PregnancyVisitContext | null = null) {
+function printSummary(s: Summary, pregnancyContext: PregnancyVisitContext | null = null, printWindow?: Window) {
     const toneColor = (t?: string) => (t === "alert" ? "#b4234a" : t === "watch" ? "#a16207" : "var(--saivie-plum)");
     const levelStyle: Record<Insight["level"], string> = {
         alert: "background:#fdecef;border-color:#f3c0cc;color:#8f1d3d",
@@ -454,7 +455,7 @@ ${renderToStaticMarkup(<CervicalCancerPrevention status={s.hpvVaccination} />)}
 <script>window.onload=function(){window.focus();window.print();}</script>
 </body></html>`;
 
-    const win = window.open("", "_blank", "width=900,height=1000");
+    const win = printWindow ?? window.open("", "_blank", "width=900,height=1000");
     if (!win) return false;
     win.document.open();
     win.document.write(html);
@@ -493,24 +494,58 @@ function summaryForAppointment(summary: Summary, context: PregnancyVisitContext 
 
 export function IntakeSummaryActions({ patient, weightLogs, bpLogs, checkInVitals, hpvClinicStatus, appointmentId }: { patient: any; weightLogs: WeightLog[]; bpLogs: BpLog[]; checkInVitals?: CheckInVitals | null; hpvClinicStatus?: HpvProtection | null; appointmentId?: number }) {
     const [open, setOpen] = useState(false);
+    const [printing, setPrinting] = useState(false);
+    const measurements = useQuery({
+        queryKey: ["/api/appointments", appointmentId, "reception-vitals", patient.id, "summary"],
+        queryFn: ({ signal }) => {
+            if (appointmentId == null) throw new Error("An appointment is required to load check-in vitals.");
+            return fetchCheckInVitals(appointmentId, patient.id, signal);
+        },
+        enabled: appointmentId != null, staleTime: 0, retry: false, refetchInterval: 30_000,
+    });
     const pregnancy = useQuery({
         queryKey: ["pregnancy-print-context", patient.id, appointmentId],
         queryFn: async ({ signal }) => pregnancyVisitContextSchema.parse(await receptionRequest<unknown>(`/api/patients/${patient.id}/pregnancy-follow-up/${appointmentId}`, { signal })),
         enabled: appointmentId != null, staleTime: 0, retry: false,
     });
     const context = appointmentId != null ? pregnancy.data ?? null : null;
-    const blocked = appointmentId != null && (!pregnancy.isSuccess || pregnancy.isFetching);
-    const summary = summaryForAppointment(buildSummary(patient, weightLogs, bpLogs, checkInVitals, hpvClinicStatus), context);
-    const print = () => {
+    const blocked = printing || appointmentId != null && (!pregnancy.isSuccess || pregnancy.isFetching || !measurements.isSuccess || measurements.isFetching);
+    const currentVitals = appointmentId != null ? measurements.data ?? null : checkInVitals;
+    const summary = summaryForAppointment(buildSummary(patient, weightLogs, bpLogs, currentVitals, hpvClinicStatus), context);
+    const print = async () => {
         if (blocked) return;
-        if (!printSummary(summary, context)) alert("Please allow pop-ups to print the intake summary.");
+        if (appointmentId == null) {
+            if (!printSummary(summary, context)) alert("Please allow pop-ups to print the intake summary.");
+            return;
+        }
+        const printWindow = window.open("", "_blank", "width=900,height=1000");
+        if (!printWindow) { alert("Please allow pop-ups to print the intake summary."); return; }
+        setPrinting(true);
+        try {
+            const [freshMeasurements, freshPregnancy] = await Promise.all([measurements.refetch(), pregnancy.refetch()]);
+            if (!freshMeasurements.isSuccess || !freshPregnancy.isSuccess) {
+                printWindow.close();
+                alert(freshMeasurements.error?.message || freshPregnancy.error?.message || "Unable to load the current appointment summary. Please retry.");
+                return;
+            }
+            const freshContext = freshPregnancy.data;
+            const freshSummary = summaryForAppointment(buildSummary(patient, weightLogs, bpLogs, freshMeasurements.data, hpvClinicStatus), freshContext);
+            printSummary(freshSummary, freshContext, printWindow);
+        } finally {
+            setPrinting(false);
+        }
     };
 
     return (
         <>
             {appointmentId != null && pregnancy.isFetching && <span role="status" className="text-xs">Loading pregnancy print context...</span>}
             {appointmentId != null && pregnancy.isError && <span role="alert" className="text-xs">{pregnancy.error.message} <button type="button" className="underline" onClick={() => void pregnancy.refetch()}>Retry print context</button></span>}
-            <Button variant="outline" size="sm" className="h-7 gap-1 border-saivie-border text-xs text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => setOpen(true)} data-testid="button-preview-intake">
+            {appointmentId != null && measurements.isFetching && <span role="status" className="text-xs">Loading current check-in vitals...</span>}
+            {appointmentId != null && measurements.isError && <span role="alert" className="text-xs">{measurements.error.message} <button type="button" className="underline" onClick={() => void measurements.refetch()}>Retry check-in vitals</button></span>}
+            <Button variant="outline" size="sm" className="h-7 gap-1 border-saivie-border text-xs text-saivie-teal hover:bg-saivie-surface-muted" onClick={() => {
+                setOpen(true);
+                if (appointmentId != null) { void measurements.refetch(); void pregnancy.refetch(); }
+            }} data-testid="button-preview-intake">
                 <Eye className="h-3 w-3" /> Preview
             </Button>
             <Button disabled={blocked} variant="outline" size="sm" className="h-7 gap-1 border-saivie-border text-xs text-saivie-teal hover:bg-saivie-surface-muted" onClick={print} data-testid="button-print-intake">
@@ -526,6 +561,9 @@ export function IntakeSummaryActions({ patient, weightLogs, bpLogs, checkInVital
                         {summary.meta.length > 0 && <p className="text-xs text-saivie-plum">{summary.meta.join(" · ")}</p>}
                     </DialogHeader>
 
+                    {appointmentId != null && measurements.isFetching && <p role="status" className="text-xs">Loading current check-in vitals...</p>}
+                    {appointmentId != null && measurements.isError && <p role="alert" className="text-xs">{measurements.error.message} <button type="button" className="underline" onClick={() => void measurements.refetch()}>Retry check-in vitals</button></p>}
+                    {appointmentId != null && measurements.isSuccess && !measurements.isFetching && measurements.data === null && <p className="text-xs">No check-in vitals recorded for this appointment.</p>}
                     {context?.pregnancy ? <div className="overflow-x-auto">
                         <style>{summaryOverviewStyles}{`
                             .summary-print-preview{width:210mm;background:white}

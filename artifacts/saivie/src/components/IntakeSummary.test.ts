@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { printPatientSummary } from "./IntakeSummary.tsx";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { IntakeSummaryActions, printPatientSummary } from "./IntakeSummary.tsx";
+import { fetchCheckInVitals } from "../lib/receptionVitals";
 import { initialForm } from "../lib/onboardingFlow.ts";
 
-it("prints skipped history as unknown, not negative or zero, and preserves explicit answers", () => {
+it("prints skipped history as unknown, not negative or zero, and preserves explicit answers", async (t) => {
     const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
     const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
     const originalGetComputedStyle = Object.getOwnPropertyDescriptor(globalThis, "getComputedStyle");
@@ -67,7 +71,13 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
         assert.ok(html.includes("Pulse"));
         assert.ok(html.includes("61 kg"));
 
-        printPatientSummary(patient, { bp: "118/76", pulse: "82", temp: "98.6", spo2: "98", weight: "61", height: "160", recordedAt: "2026-11-09T09:30:00.000Z" });
+        t.mock.method(globalThis, "fetch", async (input: RequestInfo | URL) => {
+            assert.equal(input, "/api/appointments/20/reception-vitals");
+            return Response.json({ appointmentId: 20, patientId: 7, vitals: {
+                bp: "118/76", pulse: "82", temp: "98.6", spo2: "98", weight: "61", height: "160", recordedAt: "2026-11-09T09:30:00.000Z",
+            } });
+        });
+        printPatientSummary(patient, await fetchCheckInVitals(20, 7));
         const overview = html.slice(html.indexOf('data-testid="summary-clinician-overview"'), html.indexOf("Detailed survey, history and recorded measurements"));
         for (const value of ["118/76", "Pulse", "82", "Temperature", "98.6", "SpO₂", "98%", "61 kg", "Height", "160 cm", "BMI", "23.8", "Check-in"]) {
             assert.ok(overview.includes(value), value);
@@ -122,6 +132,7 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
                 vomitingChange: "Increased", eatingDrinking: "Able to eat and drink", investigations: "Some completed",
                 reports: "Done, awaiting reports", investigationDetails: "Blood tests completed", changes: "" },
         });
+
         for (const text of ["Pregnancy measurements", "Pregnancy 2", "2026-04-01", "120 / 80", "New nausea", "Small meals",
             "Vomiting since the last visit", "Original intake: Pre-visit survey"]) assert.ok(html.includes(text), text);
     } finally {
@@ -131,5 +142,31 @@ it("prints skipped history as unknown, not negative or zero, and preserves expli
         else Reflect.deleteProperty(globalThis, "document");
         if (originalGetComputedStyle) Object.defineProperty(globalThis, "getComputedStyle", originalGetComputedStyle);
         else Reflect.deleteProperty(globalThis, "getComputedStyle");
+    }
+});
+
+it("clinician print waits for the appointment measurement query even when cached parent vitals exist", () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, retryOnMount: false, refetchOnMount: false } } });
+    const key = ["/api/appointments", 20, "reception-vitals", 7, "summary"];
+    client.setQueryData(["pregnancy-print-context", 7, 20], { pregnancy: false });
+    const render = () => renderToStaticMarkup(React.createElement(QueryClientProvider, { client },
+        React.createElement(IntakeSummaryActions, { patient: { id: 7, name: "Synthetic" }, appointmentId: 20,
+            weightLogs: [], bpLogs: [], checkInVitals: { bp: "150/100" } })));
+    const printDisabled = (html: string) => /<button[^>]*disabled=""[^>]*data-testid="button-print-intake"/.test(html);
+    try {
+        assert.ok(printDisabled(render()));
+        client.setQueryData(key, { bp: "118/76", pulse: 82 });
+        assert.ok(!printDisabled(render()));
+        client.setQueryData(key, null);
+        assert.ok(!printDisabled(render()));
+        const query = client.getQueryCache().find({ queryKey: key });
+        assert.ok(query);
+        query.setState({ status: "error", error: new Error("Measurements unavailable") });
+        const failure = render();
+        assert.ok(printDisabled(failure));
+        assert.ok(failure.includes("Measurements unavailable"));
+        assert.ok(failure.includes("Retry check-in vitals"));
+    } finally {
+        client.clear();
     }
 });
