@@ -2,7 +2,24 @@ import React from "react";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ReceptionMedicinesEmptyState } from "./ReceptionPatientDetails";
+import { ReceptionMedicinesEmptyState, ReceptionPatientDetailsTabs } from "./ReceptionPatientDetails";
+import { Tabs } from "./ui/tabs";
+import { clinicalCareMode } from "@/lib/clinicalCareMode";
+
+test("non-pregnant patient details omit Pregnancy while retaining the other tabs", () => {
+  for (const type of ["General", "Gynecology", "PCOS", "Fertility", "IVF", "Postpartum", "MTP"]) {
+    const html = renderToStaticMarkup(<Tabs defaultValue="visits"><ReceptionPatientDetailsTabs pregnancy={clinicalCareMode({ type }) === "pregnancy"} /></Tabs>);
+    assert.ok(!html.includes(">Pregnancy<"), type);
+    for (const label of ["Visit dates", "Patient history", "Medicines", "Reports", "Vaccines"]) assert.ok(html.includes(`>${label}<`), `${type}: ${label}`);
+  }
+});
+
+test("pregnant patient details retain the Pregnancy tab", () => {
+  for (const patient of [{ type: "Pregnancy" }, { type: "Antenatal" }, { type: "General", pregnancyStatus: "Pregnant" }]) {
+    const html = renderToStaticMarkup(<Tabs defaultValue="visits"><ReceptionPatientDetailsTabs pregnancy={clinicalCareMode(patient) === "pregnancy"} /></Tabs>);
+    assert.ok(html.includes(">Pregnancy<"));
+  }
+});
 
 test("reception medicines uses a read-only empty card even when non-prescribing visits exist", () => {
   for (const visits of [[], [{ id: 1 }], [{ id: 1, prescriptions: [] }], [{ prescriptions: { medicines: [{ name: "" }] } }]]) {

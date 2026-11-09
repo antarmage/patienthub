@@ -34,6 +34,13 @@ function list(value: unknown): ClinicalRecord[] {
   return value.map(object);
 }
 
+export function ReceptionPatientDetailsTabs({ pregnancy }: { pregnancy: boolean }) {
+  const tabs = [["visits", "Visit dates"], ["history", "Patient history"], ["prescriptions", "Medicines"], ["reports", "Reports"], ...(pregnancy ? [["pregnancy", "Pregnancy"]] : []), ["vaccines", "Vaccines"]];
+  return <TabsList className="h-auto max-w-none justify-start gap-2 rounded-none border-0 bg-transparent p-0">
+    {tabs.map(([value, label]) => <TabsTrigger key={value} value={value} className="rounded-none border-b-2 border-transparent px-3 py-3 text-xs hover:bg-transparent data-[state=active]:border-saivie-teal data-[state=active]:bg-transparent data-[state=active]:text-saivie-teal data-[state=active]:shadow-none">{label}</TabsTrigger>)}
+  </TabsList>;
+}
+
 export function ReceptionMedicinesEmptyState({ medicines, visits, onVisitDates, pregnancy = false }: {
   medicines: ClinicalRecord[];
   visits: ClinicalRecord[];
@@ -123,8 +130,13 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
     retry: false,
     refetchInterval: 15_000,
   });
+  const pregnancy = record.isSuccess && clinicalCareMode(record.data.detail) === "pregnancy";
+  const activeTab = tab === "pregnancy" && !pregnancy ? "visits" : tab;
+  useEffect(() => {
+    if (!pregnancy && tab === "pregnancy") setTab("visits");
+  }, [pregnancy, tab]);
   const pregnancyLabs = useQuery({
-    queryKey: ["reception-pregnancy-labs", patient.id], enabled: record.isSuccess && tab === "pregnancy",
+    queryKey: ["reception-pregnancy-labs", patient.id], enabled: pregnancy && activeTab === "pregnancy",
     queryFn: async ({ signal }) => {
       const response = await receptionRequest<unknown>(`/api/patients/${patient.id}/lab-results`, { signal });
       if (!Array.isArray(response)) throw new Error("The lab API returned an invalid result list.");
@@ -169,11 +181,9 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
             {[["Earliest recorded visit", datedVisits.at(-1)?.label], ["Latest recorded visit", datedVisits[0]?.label]].map(([label, value]) => <div key={label}><dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</dt><dd className="mt-1">{value || "Not recorded"}</dd></div>)}
           </dl>
         </section>
-        <Tabs value={tab} onValueChange={setTab} className="mt-4 flex min-h-0 min-w-0 flex-none flex-col sm:flex-1">
+        <Tabs value={activeTab} onValueChange={setTab} className="mt-4 flex min-h-0 min-w-0 flex-none flex-col sm:flex-1">
         <div className="shrink-0 overflow-x-auto border-b border-saivie-border">
-          <TabsList className="h-auto max-w-none justify-start gap-2 rounded-none border-0 bg-transparent p-0">
-            {[["visits", "Visit dates"], ["history", "Patient history"], ["prescriptions", "Medicines"], ["reports", "Reports"], ["pregnancy", "Pregnancy"], ["vaccines", "Vaccines"]].map(([value, label]) => <TabsTrigger key={value} value={value} className="rounded-none border-b-2 border-transparent px-3 py-3 text-xs hover:bg-transparent data-[state=active]:border-saivie-teal data-[state=active]:bg-transparent data-[state=active]:text-saivie-teal data-[state=active]:shadow-none">{label}</TabsTrigger>)}
-          </TabsList>
+          <ReceptionPatientDetailsTabs pregnancy={pregnancy} />
         </div>
         <div className="min-h-0 min-w-0 flex-none pt-3 [overflow-wrap:anywhere] sm:flex-1 sm:overflow-y-auto sm:overscroll-contain" data-testid="reception-details-scroll">
         <TabsContent value="visits" className="mt-0 space-y-4 text-sm">
@@ -249,11 +259,11 @@ export function ReceptionPatientDetails({ patient, onClose, onEdit }: { patient:
           </>}
           {data.documents.map((doc) => <article key={text(doc.id)} className={`${cardClass} space-y-3`}><h3 className={`${headingClass} flex items-center gap-2`}><FileText className="h-4 w-4 shrink-0 text-saivie-teal" />{text(doc.name) || "Report"}</h3><p className="text-xs text-muted-foreground">{dateLabel(doc.date)}</p><RecordedDetails value={doc.description} /><OriginalReport patientId={patient.id} doc={doc} /></article>)}
         </TabsContent>
-        <TabsContent value="pregnancy" className="text-sm">
+        {pregnancy && <TabsContent value="pregnancy" className="text-sm">
           {pregnancyLabs.isError && <p role="alert" className={cardClass}>{pregnancyLabs.error.message}<Button variant="link" onClick={() => void pregnancyLabs.refetch()}>Retry pregnancy labs</Button></p>}
           <PregnancyOverview key={patient.id} patient={{ ...data.detail, id: patient.id }} appointments={data.appointments} visits={data.visits} labs={pregnancyLabs.data || []} documents={data.documents}
             recordsReady={record.isSuccess && pregnancyLabs.isSuccess} onProfile={onEdit} />
-        </TabsContent>
+        </TabsContent>}
         <TabsContent value="vaccines" className="text-sm">
           <PregnancyVaccinesPanel patientId={patient.id} patientName={patient.name} />
         </TabsContent>
