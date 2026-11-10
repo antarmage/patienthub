@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, serial, integer, real, date, jsonb, boolean, uniqueIndex, uuid, timestamp, foreignKey, check, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, integer, real, numeric, date, jsonb, boolean, uniqueIndex, uuid, timestamp, foreignKey, check, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import type { PregnancyEpisodeDetails } from "../pregnancy-episodes";
@@ -747,10 +747,15 @@ export type Attendance = typeof attendance.$inferSelect;
 
 export const expenses = pgTable("expenses", {
   id: serial("id").primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow(),
+  createdBy: text("created_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }),
+  updatedBy: text("updated_by"),
+  receiptName: text("receipt_name"),
   date: date("date").notNull(),
   category: text("category").notNull(),
   description: text("description"),
-  amount: real("amount").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2, mode: "number" }).notNull(),
   vendor: text("vendor"),
   paymentMethod: text("payment_method"),
   approvedBy: text("approved_by"),
@@ -760,6 +765,12 @@ export const expenses = pgTable("expenses", {
 export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true });
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
+
+export const expenseReceipts = pgTable("expense_receipts", {
+  expenseId: integer("expense_id").primaryKey().references(() => expenses.id, { onDelete: "cascade" }),
+  mimeType: text("mime_type").notNull(),
+  fileData: text("file_data").notNull(),
+});
 
 export const servicePackages = pgTable("service_packages", {
   id: serial("id").primaryKey(),

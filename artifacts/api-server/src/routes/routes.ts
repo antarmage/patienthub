@@ -7,6 +7,8 @@ import path from "path";
 import { storage } from "../storage";
 import { registerIcdRoutes, invoiceDiagnoses } from "../icd";
 import { registerBillingTemplateRoutes } from "../billing-templates";
+import { registerExpenseRoutes } from "../expenses";
+import { expenseStore } from "../expense-store";
 import { readAppointmentRange } from "../appointment-range";
 import { registerReceptionAccessRoutes, withVitalsRecorderNames } from "../reception-access";
 import { resolveInvoiceDate } from "../../../../lib/db/src/invoice-date";
@@ -398,6 +400,13 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  registerExpenseRoutes(app, async (req, res) => {
+    const id = getStaffUserId(req, res);
+    if (!id) return null;
+    const user = await storage.getUser(id);
+    if (!user) { res.status(403).json({ error: "Staff account not found." }); return null; }
+    return { userId: id, role: user.role || "" };
+  }, expenseStore);
   const pregnancyVisitStore = createPregnancyVisitContextStore(pool);
   registerPregnancyFollowUpContext(app, {
     store: pregnancyVisitStore, authenticate: getAccessActor,
@@ -5067,25 +5076,6 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.post("/api/owner/attendance", async (req: any, res: any) => {
     try {
       const record = await storage.createAttendance(req.body);
-      res.json(record);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.get("/api/owner/expenses", async (req: any, res: any) => {
-    try {
-      const { startDate, endDate } = req.query;
-      const records = await storage.getExpenses(startDate, endDate);
-      res.json(records);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post("/api/owner/expenses", async (req: any, res: any) => {
-    try {
-      const record = await storage.createExpense(req.body);
       res.json(record);
     } catch (err: any) {
       res.status(500).json({ error: err.message });

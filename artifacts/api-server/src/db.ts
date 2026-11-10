@@ -45,6 +45,23 @@ export async function ensureSchema(): Promise<void> {
       );
 
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email text;
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS created_at timestamptz;
+      ALTER TABLE expenses ALTER COLUMN created_at SET DEFAULT now();
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS created_by text;
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS updated_at timestamptz;
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS updated_by text;
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS receipt_name text;
+      DO $expense_amount$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'expenses' AND column_name = 'amount' AND data_type = 'real') THEN
+          ALTER TABLE expenses ALTER COLUMN amount TYPE numeric(12,2) USING amount::numeric(12,2);
+        END IF;
+      END $expense_amount$;
+      CREATE TABLE IF NOT EXISTS expense_receipts (
+        expense_id integer PRIMARY KEY REFERENCES expenses(id) ON DELETE CASCADE,
+        mime_type text NOT NULL,
+        file_data text NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS onboarding_links (
         appointment_id integer PRIMARY KEY REFERENCES appointments(id),
         patient_id integer NOT NULL REFERENCES patients(id),

@@ -5,6 +5,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { BrandLogo } from "@/components/BrandLogo";
 import { AllInvoices } from "@/components/AllInvoices";
 import { BillingTemplates } from "@/components/BillingTemplates";
+import { Expenses } from "@/components/Expenses";
 import { ClinicalReadingEditor } from "@/components/ClinicalReadingEditor";
 import { exactLabNumber } from "@/lib/labReading";
 import { pendingReceptionTasks, type ReceptionTask } from "@/lib/receptionTasks";
@@ -2540,6 +2541,9 @@ export default function StaffPortal() {
                     {sidebarOpen && "Prime Members"}
                  </Button>
                  )}
+                 {receptionist && <Button variant={activeView === "expenses" ? "secondary" : "ghost"} aria-label="Expenses" title="Expenses"
+                   className={`w-full ${sidebarOpen ? "justify-start" : "justify-center px-2"} ${activeView === "expenses" ? "bg-saivie-sage text-saivie-plum" : "text-saivie-plum"}`}
+                   onClick={() => setActiveView("expenses")}><Receipt className={`h-4 w-4 ${sidebarOpen ? "mr-3" : ""}`} />{sidebarOpen && "Expenses"}</Button>}
                  {activeRole === 'receptionist' && (
                  <Button 
                     variant={activeView === 'billing' ? 'secondary' : 'ghost'} 
@@ -3850,6 +3854,7 @@ export default function StaffPortal() {
             )}
 
             {/* 6. RECEPTIONIST VIEW */}
+            {receptionist && activeView === "expenses" && <Expenses />}
             {activeRole === 'receptionist' && activeView === 'dashboard' && (
               <>
                 <section className="mb-6" aria-label="Welcome" data-testid="receptionist-greeting">

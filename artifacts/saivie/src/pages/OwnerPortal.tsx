@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { OwnerAuthGate } from "@/components/OwnerAuthGate";
+import { Expenses } from "@/components/Expenses";
 import { ReferralsManager } from "@/components/ReferralsManager";
 import { InventoryManager, getInventoryAlerts, useInventory } from "@/components/InventoryManager";
 import { UnlockCostsButton, formatCost, useOwnerCosts } from "@/components/OwnerCosts";
@@ -107,6 +108,7 @@ export default function OwnerPortal() {
 
   const today = new Date().toISOString().split("T")[0];
   const monthStart = `${today.slice(0, 7)}-01`;
+  const expenseToken = sessionStorage.getItem("desk_token");
 
   const dashboardQuery = useQuery<any>({
     queryKey: ["/api/owner/dashboard"],
@@ -124,9 +126,10 @@ export default function OwnerPortal() {
   const attendance = attendanceQuery.data || [];
 
   const expensesQuery = useQuery<any[]>({
-    queryKey: ["/api/owner/expenses", monthStart, today],
+    queryKey: ["/api/owner/expenses", expenseToken, monthStart, today],
+    enabled: !!expenseToken,
     queryFn: async () => {
-      const res = await fetch(`/api/owner/expenses?startDate=${monthStart}&endDate=${today}`);
+      const res = await fetch(`/api/owner/expenses?startDate=${monthStart}&endDate=${today}`, { headers: { Authorization: `Bearer ${expenseToken}` } });
       if (!res.ok) throw new Error("Failed to fetch expenses");
       return res.json();
     },
@@ -358,6 +361,7 @@ export default function OwnerPortal() {
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "attendance", label: "Attendance", icon: UserCheck },
     { id: "finance", label: "Finance", icon: IndianRupee },
+    { id: "expenses", label: "Expenses", icon: Receipt },
     { id: "alerts", label: "Alerts", icon: AlertTriangle },
     { id: "performance", label: "Performance", icon: BarChart3 },
     { id: "catalog", label: "Service Catalog", icon: Package },
@@ -466,6 +470,7 @@ export default function OwnerPortal() {
         <ScrollArea className="flex-1">
           <div className="p-6 max-w-7xl mx-auto">
 
+            {activeView === "expenses" && <OwnerAuthGate>{({ token }) => <Expenses owner token={token} />}</OwnerAuthGate>}
             {activeView === "overview" && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-overview-title">Business Overview</h2>
@@ -727,6 +732,8 @@ export default function OwnerPortal() {
                       </div>
                     </CardHeader>
                     <CardContent>
+                      {!expenseToken && <p className="mb-3 text-sm">Sign in on the <Button variant="link" onClick={() => setActiveView("expenses")}>Expenses tab</Button> to view and manage expense records.</p>}
+                      {expensesQuery.isError && <p role="alert" className="mb-3 text-sm text-rose-700">{expensesQuery.error.message} <Button variant="link" onClick={() => void expensesQuery.refetch()}>Retry</Button></p>}
                       <div className="rounded-lg border border-saivie-border overflow-hidden">
                         <Table>
                           <TableHeader>
