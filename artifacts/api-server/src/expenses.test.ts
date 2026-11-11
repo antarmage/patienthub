@@ -13,8 +13,20 @@ test("expense validation requires positive amounts, real nonfuture dates and exp
   }
 });
 
+test("itemized purchases and monthly usage require complete item details and calculate totals", () => {
+  const draft = { date: "2026-04-01", amount: 1, category: "Supplies", description: "Monthly usage", paymentMethod: "cash", itemName: "Tea", unit: "packs", quantity: "3.5", unitPrice: "120.00" };
+  assert.equal(expenseDraftSchema.parse(draft).amount, 420);
+  assert.equal(expenseDraftSchema.parse({ ...draft, entryType: "daily_purchase", date: "2026-04-02" }).date, "2026-04-02");
+  assert.equal(expenseDraftSchema.parse({ ...draft, entryType: "daily_purchase" }).entryType, "daily_purchase");
+  assert.equal(expenseDraftSchema.parse(draft).entryType, "general");
+  assert.equal(expenseDraftSchema.safeParse({ ...draft, entryType: "unexpected" }).success, false);
+  for (const changes of [{ unit: undefined }, { quantity: "0" }, { unitPrice: "1.239" }, { itemName: " " }]) {
+    assert.equal(expenseDraftSchema.safeParse({ ...draft, ...changes }).success, false, JSON.stringify(changes));
+  }
+});
+
 test("daily and range totals use paise and are ordered by expense date", () => {
-  const base: ExpenseRecord = { id: 1, date: "2026-04-02", amount: 0.1, category: "Other", description: "", paymentMethod: "cash", receiptName: null, createdAt: null, createdBy: null };
+  const base: ExpenseRecord = { id: 1, date: "2026-04-02", amount: 0.1, category: "Other", entryType: "general", description: "", paymentMethod: "cash", receiptName: null, createdAt: null, createdBy: null };
   assert.deepEqual(expenseTotals([base, { ...base, id: 2, amount: 0.2 }, { ...base, id: 3, date: "2026-04-01", amount: 10 }]), {
     total: 10.3, daily: [{ date: "2026-04-02", amount: 0.3 }, { date: "2026-04-01", amount: 10 }],
   });

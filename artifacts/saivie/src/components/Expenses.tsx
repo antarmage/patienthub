@@ -9,14 +9,22 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { DateInput } from "./ui/date-input";
 
-const blankDraft = (): ExpenseDraft => ({ date: clinicDate(), amount: 0, category: "", description: "", paymentMethod: "cash" });
+type ExpenseFormDraft = Omit<ExpenseDraft, "entryType" | "itemName" | "unit" | "quantity" | "unitPrice"> & {
+  itemName: string;
+  unit: string;
+  quantity: string;
+  unitPrice: string;
+};
+const monthStart = () => `${clinicDate().slice(0, 7)}-01`;
+const blankDraft = (): ExpenseFormDraft => ({ date: clinicDate(), amount: 0, category: "", description: "", paymentMethod: "cash", itemName: "", unit: "", quantity: "", unitPrice: "" });
 const money = (amount: number) => amount.toLocaleString("en-IN", { style: "currency", currency: "INR" });
 
 export function Expenses({ owner = false, token }: { owner?: boolean; token?: string }) {
   const queryClient = useQueryClient();
-  const [start, setStart] = useState(clinicDate);
+  const [start, setStart] = useState(monthStart);
   const [end, setEnd] = useState(clinicDate);
   const [draft, setDraft] = useState(blankDraft);
+  const [entryType, setEntryType] = useState<"general" | "daily_purchase" | "monthly_usage">("general");
   const [editing, setEditing] = useState<number | null>(null);
   const [receipt, setReceipt] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -38,12 +46,29 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
   };
   const reset = () => {
     setDraft(blankDraft()); setEditing(null); setReceipt(null);
+    setEntryType("general");
     if (fileInput.current) fileInput.current.value = "";
     setError("");
   };
   const save = useMutation({
     mutationFn: async () => {
-      const parsed = expenseDraftSchema.safeParse(draft);
+      const { itemName, unit, quantity, unitPrice, ...generalDraft } = draft;
+      const entry = entryType === "general" ? {
+        ...draft,
+        entryType,
+      } : {
+        ...generalDraft,
+        date: entryType === "monthly_usage" ? `${draft.date.slice(0, 7)}-01` : draft.date,
+        amount: Number(quantity) * Number(unitPrice),
+        category: "Supplies",
+        description: `${entryType === "monthly_usage" ? "Monthly usage" : "Purchase"}: ${quantity} ${unit} of ${itemName}`,
+        entryType,
+        itemName,
+        unit,
+        quantity,
+        unitPrice,
+      };
+      const parsed = expenseDraftSchema.safeParse(entry);
       if (!parsed.success) throw new Error(parsed.error.issues.map((issue) => issue.message).join("; "));
       if (receipt && (receipt.size > 5 * 1024 * 1024 || !["application/pdf", "image/jpeg", "image/png"].includes(receipt.type))) {
         throw new Error("Choose a PDF, JPG or PNG receipt up to 5 MB.");
@@ -54,7 +79,8 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
       await readApiResponse(await request(`/api/expenses${editing === null ? "" : `/${editing}`}`, { method: editing === null ? "POST" : "PATCH", body }));
     },
     onSuccess: async () => {
-      setStart(draft.date); setEnd(draft.date);
+      const savedDate = entryType === "monthly_usage" ? `${draft.date.slice(0, 7)}-01` : draft.date;
+      setStart(savedDate); setEnd(savedDate);
       reset();
       await refresh();
     },
@@ -81,20 +107,47 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
     finally { setDownloading(null); }
   };
   const totals = expenseTotals(records.data || []);
+  const itemUsage = new Map<string, { month: string; itemName: string; unit: string; quantity: number; amount: number }>();
+  for (const record of records.data || []) {
+    if (record.entryType !== "monthly_usage" || !record.itemName || !record.unit || record.quantity == null) continue;
+    const month = record.date.slice(0, 7);
+    const key = `${month}\u0000${record.itemName.trim().toLocaleLowerCase()}\u0000${record.unit.trim().toLocaleLowerCase()}`;
+    const existing = itemUsage.get(key);
+    if (existing) {
+      existing.quantity = Math.round((existing.quantity + record.quantity) * 1000) / 1000;
+      existing.amount = Math.round((existing.amount + record.amount) * 100) / 100;
+    } else {
+      itemUsage.set(key, { month, itemName: record.itemName, unit: record.unit, quantity: record.quantity, amount: record.amount });
+    }
+  }
+  const monthlyItems = [...itemUsage.values()].sort((a, b) => b.month.localeCompare(a.month) || a.itemName.localeCompare(b.itemName));
   return <section className="space-y-5" aria-label="Daily expenses">
-    <header><h2 className="font-serif text-2xl font-bold text-saivie-plum">Expenses</h2><p className="mt-1 text-sm text-muted-foreground">Record daily clinic spending and track expenses by date. Only owners can edit or delete saved entries.</p></header>
+    <header><h2 className="font-serif text-2xl font-bold text-saivie-plum">Expenses</h2><p className="mt-1 text-sm text-muted-foreground">Record clinic spending, including monthly quantities used for supplies such as tea, coffee, biscuits and tissues. Only owners can edit or delete saved entries.</p></header>
     {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
     <form className="space-y-4 rounded-2xl border border-saivie-border bg-white p-5" onSubmit={(event) => { event.preventDefault(); setError(""); save.mutate(); }}>
       <h3 className="font-semibold">{editing === null ? "Add expense" : `Edit expense #${editing}`}</h3>
+      <div className="max-w-sm"><Label htmlFor="expense-entry-type">Entry type</Label><select id="expense-entry-type" className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={entryType} onChange={(event) => setEntryType(event.target.value === "daily_purchase" || event.target.value === "monthly_usage" ? event.target.value : "general")}>
+        <option value="general">General expense</option><option value="daily_purchase">Daily item purchase</option><option value="monthly_usage">Monthly item usage</option>
+      </select></div>
       <fieldset disabled={save.isPending || remove.isPending} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div><Label htmlFor="expense-date">Date</Label><DateInput id="expense-date" value={draft.date} onValueChange={(date) => setDraft({ ...draft, date })} onInput={(event) => setDraft({ ...draft, date: event.currentTarget.value })} max={clinicDate()} required /></div>
-        <div><Label htmlFor="expense-amount">Amount (INR)</Label><Input id="expense-amount" type="number" step="0.01" min="0.01" max="100000000" value={draft.amount || ""} onChange={(event) => setDraft({ ...draft, amount: Number(event.target.value) })} required /></div>
-        <div><Label htmlFor="expense-category">Category</Label><Input id="expense-category" list="expense-categories" value={draft.category} maxLength={100} onChange={(event) => setDraft({ ...draft, category: event.target.value })} required /><datalist id="expense-categories">{["Supplies", "Utilities", "Rent", "Maintenance", "Travel", "Staff welfare", "Other"].map((category) => <option key={category} value={category} />)}</datalist></div>
+        <div><Label htmlFor="expense-date">{entryType === "monthly_usage" ? "Usage month" : "Date"}</Label>{entryType === "monthly_usage"
+          ? <Input id="expense-date" type="month" value={draft.date.slice(0, 7)} max={clinicDate().slice(0, 7)} onChange={(event) => setDraft({ ...draft, date: `${event.target.value}-01` })} required />
+          : <DateInput id="expense-date" value={draft.date} onValueChange={(date) => setDraft({ ...draft, date })} onInput={(event) => setDraft({ ...draft, date: event.currentTarget.value })} max={clinicDate()} required />}</div>
+        {entryType !== "general" ? <>
+          <div><Label htmlFor="expense-item-name">Item</Label><Input id="expense-item-name" value={draft.itemName} maxLength={100} placeholder="e.g. Tea" onChange={(event) => setDraft({ ...draft, itemName: event.target.value })} required /></div>
+          <div><Label htmlFor="expense-item-unit">Unit</Label><Input id="expense-item-unit" value={draft.unit} maxLength={40} placeholder="e.g. packets, cups, boxes" onChange={(event) => setDraft({ ...draft, unit: event.target.value })} required /></div>
+          <div><Label htmlFor="expense-item-quantity">{entryType === "daily_purchase" ? "Quantity purchased" : "Quantity used this month"}</Label><Input id="expense-item-quantity" type="number" step="0.001" min="0.001" max="1000000" value={draft.quantity} onChange={(event) => setDraft({ ...draft, quantity: event.target.value })} required /></div>
+          <div><Label htmlFor="expense-item-price">Price per unit (INR)</Label><Input id="expense-item-price" type="number" step="0.01" min="0.01" max="100000000" value={draft.unitPrice} onChange={(event) => setDraft({ ...draft, unitPrice: event.target.value })} required /></div>
+          <div><Label htmlFor="expense-amount">Total (INR)</Label><Input id="expense-amount" type="text" value={money(Number(draft.quantity || 0) * Number(draft.unitPrice || 0))} readOnly aria-readonly="true" /></div>
+        </> : <>
+          <div><Label htmlFor="expense-amount">Amount (INR)</Label><Input id="expense-amount" type="number" step="0.01" min="0.01" max="100000000" value={draft.amount || ""} onChange={(event) => setDraft({ ...draft, amount: Number(event.target.value) })} required /></div>
+          <div><Label htmlFor="expense-category">Category</Label><Input id="expense-category" list="expense-categories" value={draft.category} maxLength={100} onChange={(event) => setDraft({ ...draft, category: event.target.value })} required /><datalist id="expense-categories">{["Supplies", "Utilities", "Rent", "Maintenance", "Travel", "Staff welfare", "Other"].map((category) => <option key={category} value={category} />)}</datalist></div>
+        </>}
         <div><Label htmlFor="expense-payment">Payment method</Label><select id="expense-payment" className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.paymentMethod} onChange={(event) => {
           const paymentMethod = expenseDraftSchema.shape.paymentMethod.parse(event.target.value);
           setDraft({ ...draft, paymentMethod });
         }}>{[["cash", "Cash"], ["card", "Card"], ["upi", "UPI"], ["bank_transfer", "Bank transfer"], ["other", "Other"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
-        <div className="sm:col-span-2"><Label htmlFor="expense-description">Description</Label><Textarea id="expense-description" value={draft.description} maxLength={2000} onChange={(event) => setDraft({ ...draft, description: event.target.value })} required /></div>
+        {entryType === "general" && <div className="sm:col-span-2"><Label htmlFor="expense-description">Description</Label><Textarea id="expense-description" value={draft.description} maxLength={2000} onChange={(event) => setDraft({ ...draft, description: event.target.value })} required /></div>}
         <div className="sm:col-span-2"><Label htmlFor="expense-receipt">Receipt (optional)</Label><Input ref={fileInput} id="expense-receipt" type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => setReceipt(event.target.files?.[0] || null)} /><p className="mt-1 text-xs text-muted-foreground">PDF, JPG or PNG, up to 5 MB.{editing !== null && " Leave empty to keep the current receipt; selecting a file replaces it."}</p></div>
       </fieldset>
       <div className="flex gap-2"><Button type="submit" disabled={save.isPending || remove.isPending}>{save.isPending ? "Saving..." : editing === null ? "Save expense" : "Save changes"}</Button>{editing !== null && <Button type="button" variant="outline" disabled={save.isPending} onClick={reset}>Cancel edit</Button>}</div>
@@ -112,13 +165,22 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
       {filterValid && records.isSuccess && <>
         <p className="text-lg font-semibold">Total: {money(totals.total)} <span className="text-sm font-normal text-muted-foreground">({records.data.length} entries)</span></p>
         <div className="flex flex-wrap gap-2" aria-label="Daily totals">{totals.daily.map((day) => <p key={day.date} className="rounded-lg bg-saivie-sage/40 px-3 py-2 text-sm">{day.date}: <strong>{money(day.amount)}</strong></p>)}</div>
-        {!records.data.length ? <p className="py-6 text-center text-muted-foreground">No expenses recorded for these dates.</p> : <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b">{["Date", "Category", "Description", "Amount", "Payment", "Receipt", ...(owner ? ["Actions"] : [])].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
+        {owner && <section className="space-y-3 rounded-xl bg-saivie-sage/20 p-4" aria-label="Monthly item usage">
+          <h3 className="font-semibold text-saivie-plum">Monthly item usage</h3>
+          {!monthlyItems.length ? <p className="text-sm text-muted-foreground">No item usage recorded for these dates.</p> : <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b">{["Month", "Item", "Quantity used", "Avg. price per unit", "Total"].map((heading) => <th key={heading} className="p-2">{heading}</th>)}</tr></thead><tbody>
+            {monthlyItems.map((item) => <tr key={`${item.month}-${item.itemName}-${item.unit}`} className="border-b">
+              <td className="whitespace-nowrap p-2">{item.month}</td><td className="p-2">{item.itemName}</td><td className="p-2">{item.quantity.toLocaleString("en-IN")} {item.unit}</td><td className="p-2">{money(item.amount / item.quantity)}</td><td className="p-2 font-semibold">{money(item.amount)}</td>
+            </tr>)}
+          </tbody></table></div>}
+        </section>}
+        {!records.data.length ? <p className="py-6 text-center text-muted-foreground">No expenses recorded for these dates.</p> : <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b">{["Date", "Category", "Description / item", "Amount", "Payment", "Receipt", ...(owner ? ["Actions"] : [])].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
           {records.data.map((record) => <tr key={record.id} className="border-b align-top">
-            <td className="whitespace-nowrap p-3">{record.date}</td><td className="p-3">{record.category}</td><td className="max-w-sm whitespace-pre-wrap break-words p-3">{record.description}</td><td className="whitespace-nowrap p-3 font-semibold">{money(record.amount)}</td><td className="p-3">{record.paymentMethod?.replace(/_/g, " ") || "Not recorded"}</td>
+            <td className="whitespace-nowrap p-3">{record.date}</td><td className="p-3">{record.category}</td><td className="max-w-sm whitespace-pre-wrap break-words p-3">{record.itemName ? <><div className="font-medium">{record.itemName}</div><div className="text-xs text-muted-foreground">{record.quantity} {record.unit} x {money(record.unitPrice || 0)} per unit</div></> : record.description}</td><td className="whitespace-nowrap p-3 font-semibold">{money(record.amount)}</td><td className="p-3">{record.paymentMethod?.replace(/_/g, " ") || "Not recorded"}</td>
             <td className="p-3">{record.receiptName ? <Button variant="link" disabled={downloading !== null} onClick={() => void download(record)}>{downloading === record.id ? "Loading..." : "Download receipt"}</Button> : "No receipt"}</td>
             {owner && <td className="p-3"><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={save.isPending || remove.isPending} onClick={() => {
               const payment = expenseDraftSchema.shape.paymentMethod.safeParse(record.paymentMethod?.toLowerCase().replace(/ /g, "_"));
-              setDraft({ date: record.date, amount: record.amount, category: record.category, description: record.description || "", paymentMethod: payment.success ? payment.data : "other" });
+              setEntryType(record.entryType || (record.itemName ? "monthly_usage" : "general"));
+              setDraft({ date: record.date, amount: record.amount, category: record.category, description: record.description || "", paymentMethod: payment.success ? payment.data : "other", itemName: record.itemName || "", unit: record.unit || "", quantity: record.quantity?.toString() || "", unitPrice: record.unitPrice?.toString() || "" });
               setEditing(record.id); setReceipt(null); setError(payment.success ? "" : "The original payment method is missing or not a supported option. Select the correct method before saving."); if (fileInput.current) fileInput.current.value = "";
             }}>Edit</Button>{deleting === record.id ? <><Button variant="destructive" disabled={remove.isPending} onClick={() => { setError(""); remove.mutate(record.id); }}>Confirm delete</Button><Button variant="outline" onClick={() => setDeleting(null)}>Cancel</Button></> : <Button variant="outline" disabled={save.isPending || remove.isPending} onClick={() => setDeleting(record.id)}>Delete</Button>}</div></td>}
           </tr>)}

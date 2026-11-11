@@ -9,7 +9,14 @@ export const expenseStore: ExpenseStore = {
   },
   async save(draft, userId, receipt, id) {
     return db.transaction(async (tx) => {
-      const changes = { ...draft, ...(receipt ? { receiptName: receipt.name } : {}) };
+      const changes = {
+        ...draft,
+        itemName: draft.itemName ?? null,
+        unit: draft.unit ?? null,
+        quantity: draft.quantity ?? null,
+        unitPrice: draft.unitPrice ?? null,
+        ...(receipt ? { receiptName: receipt.name } : {}),
+      };
       const [saved] = id === undefined
         ? await tx.insert(expenses).values({ ...changes, createdBy: userId }).returning()
         : await tx.update(expenses).set({ ...changes, updatedAt: new Date().toISOString(), updatedBy: userId }).where(eq(expenses.id, id)).returning();

@@ -51,6 +51,11 @@ export async function ensureSchema(): Promise<void> {
       ALTER TABLE expenses ADD COLUMN IF NOT EXISTS updated_at timestamptz;
       ALTER TABLE expenses ADD COLUMN IF NOT EXISTS updated_by text;
       ALTER TABLE expenses ADD COLUMN IF NOT EXISTS receipt_name text;
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS entry_type text NOT NULL DEFAULT 'general';
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS item_name text;
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS unit text;
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS quantity numeric(12,3);
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS unit_price numeric(12,2);
       DO $expense_amount$
       BEGIN
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'expenses' AND column_name = 'amount' AND data_type = 'real') THEN

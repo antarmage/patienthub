@@ -14,15 +14,39 @@ export const expenseDraftSchema = z.object({
   category: z.string().trim().min(1).max(100),
   description: z.string().trim().min(1).max(2000),
   paymentMethod: z.enum(["cash", "card", "upi", "bank_transfer", "other"]),
-}).strict();
+  entryType: z.enum(["general", "daily_purchase", "monthly_usage"]).default("general"),
+  itemName: z.string().trim().min(1).max(100).optional(),
+  unit: z.string().trim().min(1).max(40).optional(),
+  quantity: z.union([z.number(), z.string().regex(/^\d+(?:\.\d{1,3})?$/, "Enter a quantity with at most three decimal places.")]).transform(Number).pipe(
+    z.number().positive().max(1_000_000),
+  ).optional(),
+  unitPrice: z.union([z.number(), z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a unit price with at most two decimal places.")]).transform(Number).pipe(
+    z.number().positive().max(100_000_000).refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 0.00001, "Use at most two decimal places."),
+  ).optional(),
+}).strict().superRefine((draft, context) => {
+  const itemFields = [draft.itemName, draft.unit, draft.quantity, draft.unitPrice];
+  if (itemFields.some((value) => value !== undefined) && itemFields.some((value) => value === undefined)) {
+    context.addIssue({ code: "custom", message: "Item name, unit, quantity and unit price must all be provided together." });
+  }
+  if (draft.entryType !== "general" && itemFields.some((value) => value === undefined)) {
+    context.addIssue({ code: "custom", message: "Item purchases and monthly usage require item name, unit, quantity and unit price." });
+  }
+}).transform((draft) => draft.itemName && draft.quantity !== undefined && draft.unitPrice !== undefined
+  ? { ...draft, amount: Math.round(draft.quantity * draft.unitPrice * 100) / 100 }
+  : draft);
 export type ExpenseDraft = z.infer<typeof expenseDraftSchema>;
 export const expenseRecordSchema = z.object({
   id: z.number().int().positive(),
   date: expenseDateSchema,
   amount: z.number().finite(),
   category: z.string(),
+  entryType: z.enum(["general", "daily_purchase", "monthly_usage"]).default("general"),
   description: z.string().nullable(),
   paymentMethod: z.string().nullable(),
+  itemName: z.string().nullable().optional(),
+  unit: z.string().nullable().optional(),
+  quantity: z.number().positive().nullable().optional(),
+  unitPrice: z.number().positive().nullable().optional(),
   receiptName: z.string().nullable(),
   createdBy: z.string().nullable(),
   createdAt: z.string().nullable(),
