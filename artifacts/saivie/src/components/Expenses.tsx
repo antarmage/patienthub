@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authenticatedFetch, readApiResponse } from "@/lib/authenticatedFetch";
 import { clinicDate } from "../../../../lib/db/src/follow-up";
-import { expenseDateSchema, expenseDraftSchema, expenseRecordSchema, expenseTotals, type ExpenseDraft, type ExpenseRecord } from "../../../../lib/db/src/expenses";
+import { expenseDateSchema, expenseDraftSchema, expensePaymentMethodSchema, expenseRecordSchema, expenseTotals, type ExpenseDraft, type ExpenseRecord } from "../../../../lib/db/src/expenses";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -144,7 +144,7 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
           <div><Label htmlFor="expense-category">Category</Label><Input id="expense-category" list="expense-categories" value={draft.category} maxLength={100} onChange={(event) => setDraft({ ...draft, category: event.target.value })} required /><datalist id="expense-categories">{["Supplies", "Utilities", "Rent", "Maintenance", "Travel", "Staff welfare", "Other"].map((category) => <option key={category} value={category} />)}</datalist></div>
         </>}
         <div><Label htmlFor="expense-payment">Payment method</Label><select id="expense-payment" className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.paymentMethod} onChange={(event) => {
-          const paymentMethod = expenseDraftSchema.shape.paymentMethod.parse(event.target.value);
+          const paymentMethod = expensePaymentMethodSchema.parse(event.target.value);
           setDraft({ ...draft, paymentMethod });
         }}>{[["cash", "Cash"], ["card", "Card"], ["upi", "UPI"], ["bank_transfer", "Bank transfer"], ["other", "Other"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
         {entryType === "general" && <div className="sm:col-span-2"><Label htmlFor="expense-description">Description</Label><Textarea id="expense-description" value={draft.description} maxLength={2000} onChange={(event) => setDraft({ ...draft, description: event.target.value })} required /></div>}
@@ -178,7 +178,7 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
             <td className="whitespace-nowrap p-3">{record.date}</td><td className="p-3">{record.category}</td><td className="max-w-sm whitespace-pre-wrap break-words p-3">{record.itemName ? <><div className="font-medium">{record.itemName}</div><div className="text-xs text-muted-foreground">{record.quantity} {record.unit} x {money(record.unitPrice || 0)} per unit</div></> : record.description}</td><td className="whitespace-nowrap p-3 font-semibold">{money(record.amount)}</td><td className="p-3">{record.paymentMethod?.replace(/_/g, " ") || "Not recorded"}</td>
             <td className="p-3">{record.receiptName ? <Button variant="link" disabled={downloading !== null} onClick={() => void download(record)}>{downloading === record.id ? "Loading..." : "Download receipt"}</Button> : "No receipt"}</td>
             {owner && <td className="p-3"><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={save.isPending || remove.isPending} onClick={() => {
-              const payment = expenseDraftSchema.shape.paymentMethod.safeParse(record.paymentMethod?.toLowerCase().replace(/ /g, "_"));
+              const payment = expensePaymentMethodSchema.safeParse(record.paymentMethod?.toLowerCase().replace(/ /g, "_"));
               setEntryType(record.entryType || (record.itemName ? "monthly_usage" : "general"));
               setDraft({ date: record.date, amount: record.amount, category: record.category, description: record.description || "", paymentMethod: payment.success ? payment.data : "other", itemName: record.itemName || "", unit: record.unit || "", quantity: record.quantity?.toString() || "", unitPrice: record.unitPrice?.toString() || "" });
               setEditing(record.id); setReceipt(null); setError(payment.success ? "" : "The original payment method is missing or not a supported option. Select the correct method before saving."); if (fileInput.current) fileInput.current.value = "";

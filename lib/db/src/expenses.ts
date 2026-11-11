@@ -6,6 +6,8 @@ export const expenseDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YY
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }, "Enter a valid calendar date.");
 
+export const expensePaymentMethodSchema = z.enum(["cash", "card", "upi", "bank_transfer", "other"]);
+
 export const expenseDraftSchema = z.object({
   date: expenseDateSchema.refine((value) => value <= clinicDate(), "Expense date cannot be in the future."),
   amount: z.union([z.number(), z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter an amount with at most two decimal places.")]).transform(Number).pipe(
@@ -13,7 +15,7 @@ export const expenseDraftSchema = z.object({
   ),
   category: z.string().trim().min(1).max(100),
   description: z.string().trim().min(1).max(2000),
-  paymentMethod: z.enum(["cash", "card", "upi", "bank_transfer", "other"]),
+  paymentMethod: expensePaymentMethodSchema,
   entryType: z.enum(["general", "daily_purchase", "monthly_usage"]).default("general"),
   itemName: z.string().trim().min(1).max(100).optional(),
   unit: z.string().trim().min(1).max(40).optional(),
