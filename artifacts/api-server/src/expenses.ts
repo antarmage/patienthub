@@ -10,7 +10,7 @@ export interface ExpenseStore {
   receipt(id: number): Promise<ExpenseReceipt | undefined>;
 }
 type Actor = { userId: string; role: string };
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 5 } }).single("receipt");
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 10 } }).single("receipt");
 
 export function registerExpenseRoutes(app: Express, authenticate: (req: Request, res: Response) => Promise<Actor | null>, store: ExpenseStore) {
   for (const base of ["/api/expenses", "/api/owner/expenses"]) {

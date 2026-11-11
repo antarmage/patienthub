@@ -82,9 +82,28 @@ test("expense API authorizes before uploads, persists validated entries and rest
     const created = expenseRecordSchema.parse(await createdResponse.json());
     assert.equal(created.amount, 123.45);
     assert.equal(created.createdBy, "user-receptionist");
+    const monthlyUsage = new FormData();
+    for (const [key, value] of Object.entries({
+      date: "2026-04-01",
+      amount: "1",
+      category: "Supplies",
+      description: "Monthly usage: 3.5 packs of Tea",
+      paymentMethod: "cash",
+      entryType: "monthly_usage",
+      itemName: "Tea",
+      unit: "packs",
+      quantity: "3.5",
+      unitPrice: "120.00",
+    })) monthlyUsage.set(key, value);
+    const monthlyResponse = await request("/api/expenses", "staff", "POST", monthlyUsage);
+    assert.equal(monthlyResponse.status, 201);
+    const monthlyRecord = expenseRecordSchema.parse(await monthlyResponse.json());
+    assert.equal(monthlyRecord.entryType, "monthly_usage");
+    assert.equal(monthlyRecord.amount, 420);
+    assert.equal(monthlyRecord.quantity, 3.5);
     for (const role of ["receptionist", "staff", "owner"]) {
       assert.equal((await request(`/api/expenses${range}`, role)).status, 200);
-      assert.equal(expenseRecordSchema.array().parse(await (await request(`/api/expenses${range}`, role)).json()).length, 1);
+      assert.equal(expenseRecordSchema.array().parse(await (await request(`/api/expenses${range}`, role)).json()).length, 2);
     }
     assert.equal(expenseRecordSchema.array().parse(await (await request("/api/expenses?startDate=2026-05-01&endDate=2026-05-31", "owner")).json()).length, 0);
     for (const path of ["/api/expenses", "/api/expenses?startDate=2026-02-30&endDate=2026-04-30", "/api/expenses?startDate=2026-05-01&endDate=2026-04-01"]) {
