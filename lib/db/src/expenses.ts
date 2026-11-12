@@ -16,7 +16,7 @@ export const expenseDraftSchema = z.object({
   category: z.string().trim().min(1).max(100),
   description: z.string().trim().min(1).max(2000),
   paymentMethod: expensePaymentMethodSchema,
-  entryType: z.enum(["general", "daily_purchase", "monthly_usage"]).default("general"),
+  entryType: z.enum(["general", "daily_purchase", "monthly_usage", "monthly_expense"]).default("general"),
   itemName: z.string().trim().min(1).max(100).optional(),
   unit: z.string().trim().min(1).max(40).optional(),
   quantity: z.union([z.number(), z.string().regex(/^\d+(?:\.\d{1,3})?$/, "Enter a quantity with at most three decimal places.")]).transform(Number).pipe(
@@ -30,8 +30,11 @@ export const expenseDraftSchema = z.object({
   if (itemFields.some((value) => value !== undefined) && itemFields.some((value) => value === undefined)) {
     context.addIssue({ code: "custom", message: "Item name, unit, quantity and unit price must all be provided together." });
   }
-  if (draft.entryType !== "general" && itemFields.some((value) => value === undefined)) {
+  if ((draft.entryType === "daily_purchase" || draft.entryType === "monthly_usage") && itemFields.some((value) => value === undefined)) {
     context.addIssue({ code: "custom", message: "Item purchases and monthly usage require item name, unit, quantity and unit price." });
+  }
+  if (draft.entryType === "monthly_expense" && itemFields.some((value) => value !== undefined)) {
+    context.addIssue({ code: "custom", message: "Monthly expenses are recorded as a total amount, without item quantities." });
   }
 }).transform((draft) => draft.itemName && draft.quantity !== undefined && draft.unitPrice !== undefined
   ? { ...draft, amount: Math.round(draft.quantity * draft.unitPrice * 100) / 100 }
@@ -42,7 +45,7 @@ export const expenseRecordSchema = z.object({
   date: expenseDateSchema,
   amount: z.number().finite(),
   category: z.string(),
-  entryType: z.enum(["general", "daily_purchase", "monthly_usage"]).default("general"),
+  entryType: z.enum(["general", "daily_purchase", "monthly_usage", "monthly_expense"]).default("general"),
   description: z.string().nullable(),
   paymentMethod: z.string().nullable(),
   itemName: z.string().nullable().optional(),
@@ -57,9 +60,15 @@ export type ExpenseRecord = z.infer<typeof expenseRecordSchema>;
 
 export function expenseTotals(records: ExpenseRecord[]) {
   const daily = new Map<string, number>();
-  for (const record of records) daily.set(record.date, (daily.get(record.date) || 0) + Math.round(record.amount * 100));
+  let total = 0;
+  for (const record of records) {
+    const amount = Math.round(record.amount * 100);
+    total += amount;
+    if (record.entryType === "monthly_expense") continue;
+    daily.set(record.date, (daily.get(record.date) || 0) + amount);
+  }
   return {
-    total: [...daily.values()].reduce((sum, amount) => sum + amount, 0) / 100,
+    total: total / 100,
     daily: [...daily.entries()].sort(([a], [b]) => b.localeCompare(a)).map(([date, amount]) => ({ date, amount: amount / 100 })),
   };
 }

@@ -24,21 +24,23 @@ test("receptionists can enter all expense fields and see totals and receipts, bu
 });
 
 test("owners can correct or delete expenses in the shared tracking view", () => {
-  const html = render(true, [expense, { ...expense, id: 2, entryType: "monthly_usage", itemName: "Tea", unit: "packs", quantity: 2, unitPrice: 60.25 }]);
+  const html = render(true, [expense, { ...expense, id: 2, date: `${clinicDate().slice(0, 7)}-01`, entryType: "monthly_expense", category: "Utilities", description: "Electricity bill", amount: 2500 }]);
   assert.ok(html.includes(">Edit<"));
   assert.ok(html.includes(">Delete<"));
   assert.ok(html.includes("Office stationery"));
-  assert.ok(html.includes("Monthly item usage"));
-  assert.ok(html.includes("Tea"));
-  assert.ok(html.includes("2 packs"));
+  assert.ok(html.includes("Monthly expense"));
+  assert.ok(html.includes("Electricity bill"));
+  assert.ok(html.includes(clinicDate().slice(0, 7)));
+  assert.ok(!html.includes("Quantity used this month"));
+  assert.ok(!html.includes("Monthly item usage"));
 });
 
-test("daily item purchases keep their purchase date and stay out of monthly usage totals", () => {
+test("daily item purchases keep their purchase date and show purchased quantities", () => {
   const html = render(true, [{ ...expense, entryType: "daily_purchase", itemName: "Coffee", unit: "boxes", quantity: 2, unitPrice: 75 }]);
   assert.ok(html.includes("Daily item purchase"));
   assert.ok(html.includes("Coffee"));
   assert.ok(html.includes("2 boxes x"));
-  assert.ok(html.includes("No item usage recorded for these dates."));
+  assert.ok(!html.includes("Quantity used this month"));
 });
 
 test("empty daily ledger is explicit and shows a zero total", () => {

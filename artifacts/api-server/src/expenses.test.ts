@@ -13,12 +13,16 @@ test("expense validation requires positive amounts, real nonfuture dates and exp
   }
 });
 
-test("itemized purchases and monthly usage require complete item details and calculate totals", () => {
+test("daily purchases and monthly expenses validate their distinct amount models", () => {
   const draft = { date: "2026-04-01", amount: 1, category: "Supplies", description: "Monthly usage", paymentMethod: "cash", itemName: "Tea", unit: "packs", quantity: "3.5", unitPrice: "120.00" };
   assert.equal(expenseDraftSchema.parse(draft).amount, 420);
   assert.equal(expenseDraftSchema.parse({ ...draft, entryType: "daily_purchase", date: "2026-04-02" }).date, "2026-04-02");
   assert.equal(expenseDraftSchema.parse({ ...draft, entryType: "daily_purchase" }).entryType, "daily_purchase");
   assert.equal(expenseDraftSchema.parse(draft).entryType, "general");
+  const monthlyExpense = { date: "2026-04-01", amount: "2500.00", category: "Utilities", description: "Electricity bill", paymentMethod: "upi", entryType: "monthly_expense" };
+  assert.equal(expenseDraftSchema.parse(monthlyExpense).amount, 2500);
+  assert.equal(expenseDraftSchema.safeParse({ ...monthlyExpense, itemName: "Tea" }).success, false);
+  assert.equal(expenseDraftSchema.safeParse({ ...draft, entryType: "monthly_usage" }).success, true);
   assert.equal(expenseDraftSchema.safeParse({ ...draft, entryType: "unexpected" }).success, false);
   for (const changes of [{ unit: undefined }, { quantity: "0" }, { unitPrice: "1.239" }, { itemName: " " }]) {
     assert.equal(expenseDraftSchema.safeParse({ ...draft, ...changes }).success, false, JSON.stringify(changes));
@@ -30,6 +34,7 @@ test("daily and range totals use paise and are ordered by expense date", () => {
   assert.deepEqual(expenseTotals([base, { ...base, id: 2, amount: 0.2 }, { ...base, id: 3, date: "2026-04-01", amount: 10 }]), {
     total: 10.3, daily: [{ date: "2026-04-02", amount: 0.3 }, { date: "2026-04-01", amount: 10 }],
   });
+  assert.deepEqual(expenseTotals([{ ...base, amount: 2500, entryType: "monthly_expense" }]), { total: 2500, daily: [] });
   assert.deepEqual(expenseTotals([]), { total: 0, daily: [] });
 });
 
@@ -101,9 +106,24 @@ test("expense API authorizes before uploads, persists validated entries and rest
     assert.equal(monthlyRecord.entryType, "monthly_usage");
     assert.equal(monthlyRecord.amount, 420);
     assert.equal(monthlyRecord.quantity, 3.5);
+    const monthlyExpense = new FormData();
+    for (const [key, value] of Object.entries({
+      date: "2026-04-01",
+      amount: "2500.00",
+      category: "Utilities",
+      description: "Electricity bill",
+      paymentMethod: "upi",
+      entryType: "monthly_expense",
+    })) monthlyExpense.set(key, value);
+    const monthlyExpenseResponse = await request("/api/expenses", "staff", "POST", monthlyExpense);
+    assert.equal(monthlyExpenseResponse.status, 201);
+    const monthlyExpenseRecord = expenseRecordSchema.parse(await monthlyExpenseResponse.json());
+    assert.equal(monthlyExpenseRecord.entryType, "monthly_expense");
+    assert.equal(monthlyExpenseRecord.amount, 2500);
+    assert.equal(monthlyExpenseRecord.itemName, undefined);
     for (const role of ["receptionist", "staff", "owner"]) {
       assert.equal((await request(`/api/expenses${range}`, role)).status, 200);
-      assert.equal(expenseRecordSchema.array().parse(await (await request(`/api/expenses${range}`, role)).json()).length, 2);
+      assert.equal(expenseRecordSchema.array().parse(await (await request(`/api/expenses${range}`, role)).json()).length, 3);
     }
     assert.equal(expenseRecordSchema.array().parse(await (await request("/api/expenses?startDate=2026-05-01&endDate=2026-05-31", "owner")).json()).length, 0);
     for (const path of ["/api/expenses", "/api/expenses?startDate=2026-02-30&endDate=2026-04-30", "/api/expenses?startDate=2026-05-01&endDate=2026-04-01"]) {

@@ -756,7 +756,7 @@ export const expenses = pgTable("expenses", {
   category: text("category").notNull(),
   description: text("description"),
   amount: numeric("amount", { precision: 12, scale: 2, mode: "number" }).notNull(),
-  entryType: text("entry_type").$type<"general" | "daily_purchase" | "monthly_usage">().notNull().default("general"),
+  entryType: text("entry_type").$type<"general" | "daily_purchase" | "monthly_usage" | "monthly_expense">().notNull().default("general"),
   itemName: text("item_name"),
   unit: text("unit"),
   quantity: numeric("quantity", { precision: 12, scale: 3, mode: "number" }),
@@ -768,7 +768,7 @@ export const expenses = pgTable("expenses", {
 });
 
 export const insertExpenseSchema = createInsertSchema(expenses, {
-  entryType: z.enum(["general", "daily_purchase", "monthly_usage"]).optional(),
+  entryType: z.enum(["general", "daily_purchase", "monthly_usage", "monthly_expense"]).optional(),
 }).omit({ id: true });
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
