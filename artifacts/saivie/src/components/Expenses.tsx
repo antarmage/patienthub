@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authenticatedFetch, readApiResponse } from "@/lib/authenticatedFetch";
 import { clinicDate } from "../../../../lib/db/src/follow-up";
 import { expenseDateSchema, expenseDraftSchema, expensePaymentMethodSchema, expenseRecordSchema, expenseTotals, type ExpenseDraft, type ExpenseRecord } from "../../../../lib/db/src/expenses";
 import { Button } from "./ui/button";
+import { Card, CardContent } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
@@ -111,9 +112,84 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
     finally { setDownloading(null); }
   };
   const totals = expenseTotals(records.data || []);
+  const expensesByCategory = Object.entries((records.data || []).reduce<Record<string, number>>((categories, record) => {
+    categories[record.category] = (categories[record.category] || 0) + record.amount;
+    return categories;
+  }, {})).map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount);
+  const monthlyExpenses = (records.data || []).filter((record) => record.entryType === "monthly_expense").reduce((sum, record) => sum + record.amount, 0);
+  const dayToDayExpenses = totals.total - monthlyExpenses;
+  const periodDays = filterValid
+    ? Math.max(1, Math.floor((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000) + 1)
+    : 1;
+  const spendTrend = totals.daily.slice(0, 14).reverse();
+  const highestDailySpend = Math.max(0, ...spendTrend.map((day) => day.amount));
   return <section className="space-y-5" aria-label="Expense tracking">
     <header><h2 className="font-serif text-2xl font-bold text-saivie-plum">Expenses</h2><p className="mt-1 text-sm text-muted-foreground">Record clinic spending, including daily item purchases and total expenses by month. Only owners can edit or delete saved entries.</p></header>
     {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
+    <section className="flex flex-wrap items-end gap-3 rounded-2xl border border-saivie-border bg-white p-4" aria-label="Expense reporting period">
+      <div><Label htmlFor="expense-from">From</Label><DateInput id="expense-from" value={start} onValueChange={setStart} onInput={(event) => setStart(event.currentTarget.value)} required /></div>
+      <div><Label htmlFor="expense-to">To</Label><DateInput id="expense-to" value={end} onValueChange={setEnd} onInput={(event) => setEnd(event.currentTarget.value)} required /></div>
+      <Button variant="outline" onClick={() => { setStart(clinicDate()); setEnd(clinicDate()); }}>Today</Button>
+      <Button variant="outline" disabled={!filterValid || records.isFetching} onClick={() => void records.refetch()}>Refresh</Button>
+      {!filterValid && <p role="alert" className="w-full text-sm text-rose-700">Choose a valid date range with the start on or before the end.</p>}
+    </section>
+    {owner && records.isSuccess && <>
+      <section className="space-y-4" aria-label="Clinic expense dashboard" data-testid="expense-dashboard">
+        <header>
+          <h3 className="font-serif text-xl font-bold text-saivie-plum">Clinic expense dashboard</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Understand total outflow, recurring monthly bills and day-to-day spending for the selected period.</p>
+        </header>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: "Total expenses", amount: totals.total, color: "text-saivie-plum", testId: "expense-total" },
+            { label: "Monthly bills", amount: monthlyExpenses, color: "text-amber-700", testId: "expense-monthly-total" },
+            { label: "Day-to-day spend", amount: dayToDayExpenses, color: "text-saivie-teal", testId: "expense-day-to-day-total" },
+            { label: "Period average / day", amount: totals.total / periodDays, color: "text-blue-700", testId: "expense-daily-average" },
+          ].map((metric) => (
+            <Card key={metric.label} className="border-saivie-border shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{metric.label}</p>
+                <p className={`mt-2 text-xl font-bold ${metric.color}`} data-testid={metric.testId}>{money(metric.amount)}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <section className="rounded-2xl border border-saivie-border bg-white p-5" aria-label="Expense categories">
+            <h4 className="font-semibold text-saivie-plum">Where the money goes</h4>
+            {expensesByCategory.length === 0 ? <p className="py-6 text-sm text-muted-foreground">No expenses recorded for this period.</p> : (
+              <ul className="mt-4 space-y-4">
+                {expensesByCategory.map(({ category, amount }) => (
+                  <li key={category}>
+                    <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+                      <span className="truncate text-saivie-plum">{category}</span>
+                      <span className="shrink-0 font-semibold text-saivie-plum">{money(amount)} <span className="font-normal text-muted-foreground">({totals.total > 0 ? Math.round((amount / totals.total) * 100) : 0}%)</span></span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-saivie-sage/50" role="presentation">
+                      <div className="h-full rounded-full bg-saivie-teal" style={{ width: `${totals.total > 0 ? (amount / totals.total) * 100 : 0}%` }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section className="rounded-2xl border border-saivie-border bg-white p-5" aria-label="Daily expense trend">
+            <h4 className="font-semibold text-saivie-plum">Daily spend trend</h4>
+            <p className="mt-1 text-xs text-muted-foreground">Latest 14 spending days; monthly bills are excluded from this trend.</p>
+            {spendTrend.length === 0 ? <p className="py-6 text-sm text-muted-foreground">No day-to-day spending recorded for this period.</p> : (
+              <div className="mt-5 flex min-h-36 items-end gap-2 overflow-x-auto pb-1" role="img" aria-label={`Daily spending amounts for latest spending days: ${spendTrend.map((day) => `${day.date}, ${money(day.amount)}`).join("; ")}`}>
+                {spendTrend.map((day) => (
+                  <div key={day.date} className="flex min-w-8 flex-1 flex-col items-center justify-end gap-2" title={`${day.date}: ${money(day.amount)}`}>
+                    <div className="w-full rounded-t bg-saivie-teal/80" style={{ height: `${Math.max(4, (day.amount / highestDailySpend) * 96)}px` }} />
+                    <span className="text-[10px] text-muted-foreground">{day.date.slice(8)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </section>
+    </>}
     <form className="space-y-4 rounded-2xl border border-saivie-border bg-white p-5" onSubmit={(event) => { event.preventDefault(); setError(""); save.mutate(); }}>
       <h3 className="font-semibold">{editing === null ? "Add expense" : `Edit expense #${editing}`}</h3>
       <div className="max-w-sm"><Label htmlFor="expense-entry-type">Entry type</Label><select id="expense-entry-type" className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={entryType} onChange={(event) => setEntryType(event.target.value === "daily_purchase" ? event.target.value : event.target.value === "monthly_expense" ? event.target.value : "general")}>
@@ -143,13 +219,6 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
       <div className="flex gap-2"><Button type="submit" disabled={save.isPending || remove.isPending}>{save.isPending ? "Saving..." : editing === null ? "Save expense" : "Save changes"}</Button>{editing !== null && <Button type="button" variant="outline" disabled={save.isPending} onClick={reset}>Cancel edit</Button>}</div>
     </form>
     <section className="space-y-4 rounded-2xl border border-saivie-border bg-white p-5" aria-label="Expense tracking">
-      <div className="flex flex-wrap items-end gap-3">
-        <div><Label htmlFor="expense-from">From</Label><DateInput id="expense-from" value={start} onValueChange={setStart} onInput={(event) => setStart(event.currentTarget.value)} required /></div>
-        <div><Label htmlFor="expense-to">To</Label><DateInput id="expense-to" value={end} onValueChange={setEnd} onInput={(event) => setEnd(event.currentTarget.value)} required /></div>
-        <Button variant="outline" onClick={() => { setStart(clinicDate()); setEnd(clinicDate()); }}>Today</Button>
-        <Button variant="outline" disabled={!filterValid || records.isFetching} onClick={() => void records.refetch()}>Refresh</Button>
-      </div>
-      {!filterValid && <p role="alert" className="text-sm text-rose-700">Choose a valid date range with the start on or before the end.</p>}
       {filterValid && records.isPending && <p role="status">Loading expenses...</p>}
       {filterValid && records.isError && <p role="alert" className="text-rose-700">{records.error.message}</p>}
       {filterValid && records.isSuccess && <>

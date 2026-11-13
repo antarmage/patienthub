@@ -19,12 +19,14 @@ const expense: ExpenseRecord = { id: 1, date: clinicDate(), category: "Supplies"
 test("receptionists can enter all expense fields and see totals and receipts, but no edit/delete actions", () => {
   const html = render(false, [expense]);
   for (const label of ["Add expense", "Amount (INR)", "Category", "Description", "Payment method", "Receipt (optional)", "Save expense", "Office stationery", "Download receipt", "Daily totals", "From", "To", "120.50"]) assert.ok(html.includes(label), label);
+  assert.ok(!html.includes("Clinic expense dashboard"));
   assert.ok(!html.includes(">Edit<"));
   assert.ok(!html.includes(">Delete<"));
 });
 
-test("owners can correct or delete expenses in the shared tracking view", () => {
+test("owners can understand expense totals and breakdowns and correct or delete expenses", () => {
   const html = render(true, [expense, { ...expense, id: 2, date: `${clinicDate().slice(0, 7)}-01`, entryType: "monthly_expense", category: "Utilities", description: "Electricity bill", amount: 2500 }]);
+  for (const label of ["Clinic expense dashboard", "Total expenses", "Monthly bills", "Day-to-day spend", "Period average / day", "Where the money goes", "Daily spend trend", "Latest 14 spending days", "₹2,620.50", "₹2,500.00"]) assert.ok(html.includes(label), label);
   assert.ok(html.includes(">Edit<"));
   assert.ok(html.includes(">Delete<"));
   assert.ok(html.includes("Office stationery"));
