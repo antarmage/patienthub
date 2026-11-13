@@ -4,13 +4,14 @@ import { authenticatedFetch, readApiResponse } from "@/lib/authenticatedFetch";
 import { clinicDate } from "../../../../lib/db/src/follow-up";
 import { expenseDateSchema, expenseDraftSchema, expensePaymentMethodSchema, expenseRecordSchema, expenseTotals, type ExpenseDraft, type ExpenseRecord } from "../../../../lib/db/src/expenses";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 import { Card, CardContent } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { DateInput } from "./ui/date-input";
 
-type ExpenseFormDraft = Omit<ExpenseDraft, "entryType" | "itemName" | "unit" | "quantity" | "unitPrice"> & {
+type ExpenseFormDraft = Omit<ExpenseDraft, "entryType" | "reimbursementRequested" | "itemName" | "unit" | "quantity" | "unitPrice"> & {
   itemName: string;
   unit: string;
   quantity: string;
@@ -26,6 +27,7 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
   const [end, setEnd] = useState(clinicDate);
   const [draft, setDraft] = useState(blankDraft);
   const [entryType, setEntryType] = useState<"general" | "daily_purchase" | "monthly_expense">("general");
+  const [reimbursementRequested, setReimbursementRequested] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
   const [receipt, setReceipt] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -47,6 +49,7 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
   };
   const reset = () => {
     setDraft(blankDraft()); setEditing(null); setReceipt(null);
+    setReimbursementRequested(false);
     setEntryType("general");
     if (fileInput.current) fileInput.current.value = "";
     setError("");
@@ -77,6 +80,7 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
       }
       const body = new FormData();
       for (const [key, value] of Object.entries(parsed.data)) body.append(key, String(value));
+      body.set("reimbursementRequested", String(reimbursementRequested));
       if (receipt) body.append("receipt", receipt);
       await readApiResponse(await request(`/api/expenses${editing === null ? "" : `/${editing}`}`, { method: editing === null ? "POST" : "PATCH", body }));
     },
@@ -89,6 +93,11 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
       reset();
       await refresh();
     },
+    onError: (cause) => setError(cause.message),
+  });
+  const markReimbursementPaid = useMutation({
+    mutationFn: async (id: number) => readApiResponse(await request(`/api/expenses/${id}/reimbursement`, { method: "PATCH" })),
+    onSuccess: refresh,
     onError: (cause) => setError(cause.message),
   });
   const remove = useMutation({
@@ -214,6 +223,10 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
           setDraft({ ...draft, paymentMethod });
         }}>{[["cash", "Cash"], ["card", "Card"], ["upi", "UPI"], ["bank_transfer", "Bank transfer"], ["other", "Other"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
         {entryType !== "daily_purchase" && <div className="sm:col-span-2"><Label htmlFor="expense-description">Description</Label><Textarea id="expense-description" value={draft.description} maxLength={2000} onChange={(event) => setDraft({ ...draft, description: event.target.value })} required /></div>}
+        {!owner && <label className="flex items-start gap-3 rounded-xl border border-saivie-border bg-saivie-surface-muted/40 p-3 text-sm sm:col-span-2">
+          <input type="checkbox" className="mt-1 h-4 w-4 accent-saivie-teal" checked={reimbursementRequested} onChange={(event) => setReimbursementRequested(event.target.checked)} />
+          <span><span className="font-medium text-saivie-plum">Request reimbursement from clinic</span><span className="mt-1 block text-xs text-muted-foreground">The owner will see this expense as unpaid until reimbursement is made.</span></span>
+        </label>}
         <div className="sm:col-span-2"><Label htmlFor="expense-receipt">Receipt (optional)</Label><Input ref={fileInput} id="expense-receipt" type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => setReceipt(event.target.files?.[0] || null)} /><p className="mt-1 text-xs text-muted-foreground">PDF, JPG or PNG, up to 5 MB.{editing !== null && " Leave empty to keep the current receipt; selecting a file replaces it."}</p></div>
       </fieldset>
       <div className="flex gap-2"><Button type="submit" disabled={save.isPending || remove.isPending}>{save.isPending ? "Saving..." : editing === null ? "Save expense" : "Save changes"}</Button>{editing !== null && <Button type="button" variant="outline" disabled={save.isPending} onClick={reset}>Cancel edit</Button>}</div>
@@ -224,17 +237,21 @@ export function Expenses({ owner = false, token }: { owner?: boolean; token?: st
       {filterValid && records.isSuccess && <>
         <p className="text-lg font-semibold">Total: {money(totals.total)} <span className="text-sm font-normal text-muted-foreground">({records.data.length} entries)</span></p>
         <div className="flex flex-wrap gap-2" aria-label="Daily totals">{totals.daily.map((day) => <p key={day.date} className="rounded-lg bg-saivie-sage/40 px-3 py-2 text-sm">{day.date}: <strong>{money(day.amount)}</strong></p>)}</div>
-          {!records.data.length ? <p className="py-6 text-center text-muted-foreground">No expenses recorded for these dates.</p> : <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b">{["Date / month", "Category", "Description / item", "Amount", "Payment", "Receipt", ...(owner ? ["Actions"] : [])].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
+          {!records.data.length ? <p className="py-6 text-center text-muted-foreground">No expenses recorded for these dates.</p> : <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b">{["Date / month", "Category", "Description / item", "Amount", "Payment", "Receipt", "Reimbursement", ...(owner ? ["Actions"] : [])].map((heading) => <th key={heading} className="p-3">{heading}</th>)}</tr></thead><tbody>
           {records.data.map((record) => <tr key={record.id} className="border-b align-top">
               <td className="whitespace-nowrap p-3">{record.entryType === "monthly_expense" ? record.date.slice(0, 7) : record.date}</td><td className="p-3">{record.category}</td><td className="max-w-sm whitespace-pre-wrap break-words p-3">{record.itemName ? <><div className="font-medium">{record.itemName}</div><div className="text-xs text-muted-foreground">{record.quantity} {record.unit} x {money(record.unitPrice || 0)} per unit</div></> : record.description}</td><td className="whitespace-nowrap p-3 font-semibold">{money(record.amount)}</td><td className="p-3">{record.paymentMethod?.replace(/_/g, " ") || "Not recorded"}</td>
             <td className="p-3">{record.receiptName ? <Button variant="link" disabled={downloading !== null} onClick={() => void download(record)}>{downloading === record.id ? "Loading..." : "Download receipt"}</Button> : "No receipt"}</td>
+            <td className="whitespace-nowrap p-3">{record.reimbursementRequested
+              ? <Badge className={record.reimbursementPaidAt ? "border-emerald-200 bg-emerald-100 text-emerald-800" : "border-amber-200 bg-amber-100 text-amber-800"}>{record.reimbursementPaidAt ? "Paid" : "Unpaid"}</Badge>
+              : <span className="text-muted-foreground">—</span>}</td>
             {owner && <td className="p-3"><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={save.isPending || remove.isPending} onClick={() => {
               const payment = expensePaymentMethodSchema.safeParse(record.paymentMethod?.toLowerCase().replace(/ /g, "_"));
               const editType = record.entryType === "daily_purchase" ? "daily_purchase" : record.entryType === "monthly_usage" || record.entryType === "monthly_expense" ? "monthly_expense" : "general";
               setEntryType(editType);
+              setReimbursementRequested(record.reimbursementRequested);
               setDraft({ date: record.date, amount: record.amount, category: record.category, description: record.description || "", paymentMethod: payment.success ? payment.data : "other", itemName: editType === "daily_purchase" ? record.itemName || "" : "", unit: editType === "daily_purchase" ? record.unit || "" : "", quantity: editType === "daily_purchase" ? record.quantity?.toString() || "" : "", unitPrice: editType === "daily_purchase" ? record.unitPrice?.toString() || "" : "" });
               setEditing(record.id); setReceipt(null); setError(payment.success ? "" : "The original payment method is missing or not a supported option. Select the correct method before saving."); if (fileInput.current) fileInput.current.value = "";
-            }}>Edit</Button>{deleting === record.id ? <><Button variant="destructive" disabled={remove.isPending} onClick={() => { setError(""); remove.mutate(record.id); }}>Confirm delete</Button><Button variant="outline" onClick={() => setDeleting(null)}>Cancel</Button></> : <Button variant="outline" disabled={save.isPending || remove.isPending} onClick={() => setDeleting(record.id)}>Delete</Button>}</div></td>}
+            }}>Edit</Button>{record.reimbursementRequested && !record.reimbursementPaidAt && <Button variant="outline" disabled={markReimbursementPaid.isPending} onClick={() => { setError(""); markReimbursementPaid.mutate(record.id); }}>{markReimbursementPaid.isPending && markReimbursementPaid.variables === record.id ? "Marking paid..." : "Mark paid"}</Button>}{deleting === record.id ? <><Button variant="destructive" disabled={remove.isPending} onClick={() => { setError(""); remove.mutate(record.id); }}>Confirm delete</Button><Button variant="outline" onClick={() => setDeleting(null)}>Cancel</Button></> : <Button variant="outline" disabled={save.isPending || remove.isPending} onClick={() => setDeleting(record.id)}>Delete</Button>}</div></td>}
           </tr>)}
         </tbody></table></div>}
       </>}

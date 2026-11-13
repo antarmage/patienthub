@@ -765,6 +765,9 @@ export const expenses = pgTable("expenses", {
   paymentMethod: text("payment_method"),
   approvedBy: text("approved_by"),
   notes: text("notes"),
+  reimbursementRequested: boolean("reimbursement_requested").notNull().default(false),
+  reimbursementPaidAt: timestamp("reimbursement_paid_at", { withTimezone: true, mode: "string" }),
+  reimbursementPaidBy: text("reimbursement_paid_by"),
 });
 
 export const insertExpenseSchema = createInsertSchema(expenses, {

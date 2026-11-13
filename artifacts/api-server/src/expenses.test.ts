@@ -8,6 +8,8 @@ import { expenseDraftSchema, expenseRecordSchema, expenseTotals, type ExpenseRec
 test("expense validation requires positive amounts, real nonfuture dates and explicit payment details", () => {
   const draft = { date: "2026-04-01", amount: "12.34", category: "Supplies", description: "Office stationery", paymentMethod: "cash" };
   assert.equal(expenseDraftSchema.parse(draft).amount, 12.34);
+  assert.equal(expenseDraftSchema.parse({ ...draft, reimbursementRequested: "true" }).reimbursementRequested, true);
+  assert.equal(expenseDraftSchema.parse(draft).reimbursementRequested, false);
   for (const changes of [{ amount: true }, { amount: "" }, { amount: 0 }, { amount: -1 }, { amount: 1.234 }, { amount: Infinity }, { date: "2026-02-30" }, { date: "2099-01-01" }, { description: " " }, { category: "" }, { paymentMethod: "invalid" }, { createdBy: "someone-else" }, { receiptName: "untrusted.pdf" }]) {
     assert.equal(expenseDraftSchema.safeParse({ ...draft, ...changes }).success, false, JSON.stringify(changes));
   }
@@ -30,7 +32,7 @@ test("daily purchases and monthly expenses validate their distinct amount models
 });
 
 test("daily and range totals use paise and are ordered by expense date", () => {
-  const base: ExpenseRecord = { id: 1, date: "2026-04-02", amount: 0.1, category: "Other", entryType: "general", description: "", paymentMethod: "cash", receiptName: null, createdAt: null, createdBy: null };
+  const base: ExpenseRecord = { id: 1, date: "2026-04-02", amount: 0.1, category: "Other", entryType: "general", description: "", paymentMethod: "cash", reimbursementRequested: false, receiptName: null, createdAt: null, createdBy: null };
   assert.deepEqual(expenseTotals([base, { ...base, id: 2, amount: 0.2 }, { ...base, id: 3, date: "2026-04-01", amount: 10 }]), {
     total: 10.3, daily: [{ date: "2026-04-02", amount: 0.3 }, { date: "2026-04-01", amount: 10 }],
   });
@@ -50,6 +52,13 @@ test("expense API authorizes before uploads, persists validated entries and rest
       const record = { ...draft, id: id ?? nextId++, createdAt: previous?.createdAt || new Date().toISOString(), createdBy: previous?.createdBy || userId, receiptName: receipt?.name || previous?.receiptName || null };
       rows.set(record.id, record);
       if (receipt) receipts.set(record.id, receipt);
+      return record;
+    },
+    async markReimbursementPaid(id, userId) {
+      const previous = rows.get(id);
+      if (!previous?.reimbursementRequested) return undefined;
+      const record = previous.reimbursementPaidAt ? previous : { ...previous, reimbursementPaidAt: new Date().toISOString(), reimbursementPaidBy: userId };
+      rows.set(id, record);
       return record;
     },
     async remove(id) { receipts.delete(id); return rows.delete(id); },
@@ -87,6 +96,12 @@ test("expense API authorizes before uploads, persists validated entries and rest
     const created = expenseRecordSchema.parse(await createdResponse.json());
     assert.equal(created.amount, 123.45);
     assert.equal(created.createdBy, "user-receptionist");
+    assert.equal(created.reimbursementRequested, false);
+    const reimbursementResponse = await request("/api/expenses", "receptionist", "POST", { ...draft, reimbursementRequested: true });
+    assert.equal(reimbursementResponse.status, 201);
+    const reimbursement = expenseRecordSchema.parse(await reimbursementResponse.json());
+    assert.equal(reimbursement.reimbursementRequested, true);
+    assert.equal(reimbursement.reimbursementPaidAt, undefined);
     const monthlyUsage = new FormData();
     for (const [key, value] of Object.entries({
       date: "2026-04-01",
@@ -123,7 +138,7 @@ test("expense API authorizes before uploads, persists validated entries and rest
     assert.equal(monthlyExpenseRecord.itemName, undefined);
     for (const role of ["receptionist", "staff", "owner"]) {
       assert.equal((await request(`/api/expenses${range}`, role)).status, 200);
-      assert.equal(expenseRecordSchema.array().parse(await (await request(`/api/expenses${range}`, role)).json()).length, 3);
+      assert.equal(expenseRecordSchema.array().parse(await (await request(`/api/expenses${range}`, role)).json()).length, 4);
     }
     assert.equal(expenseRecordSchema.array().parse(await (await request("/api/expenses?startDate=2026-05-01&endDate=2026-05-31", "owner")).json()).length, 0);
     for (const path of ["/api/expenses", "/api/expenses?startDate=2026-02-30&endDate=2026-04-30", "/api/expenses?startDate=2026-05-01&endDate=2026-04-01"]) {
@@ -132,15 +147,24 @@ test("expense API authorizes before uploads, persists validated entries and rest
     for (const role of ["staff", "receptionist"]) {
       assert.equal((await request(`/api/expenses/${created.id}`, role, "PATCH", draft)).status, 403);
       assert.equal((await request(`/api/expenses/${created.id}`, role, "DELETE")).status, 403);
+      assert.equal((await request(`/api/expenses/${reimbursement.id}/reimbursement`, role, "PATCH")).status, 403);
       assert.equal((await request(`/api/owner/expenses${range}`, role)).status, 403);
       assert.equal((await request("/api/owner/expenses", role, "POST", draft)).status, 403);
     }
     assert.equal((await request(`/api/expenses/${created.id}`, "owner", "PATCH", { ...draft, amount: 150 })).status, 200);
     assert.equal(rows.get(created.id)?.amount, 150);
     assert.equal(rows.get(created.id)?.createdBy, "user-receptionist");
+    const paidResponse = await request(`/api/expenses/${reimbursement.id}/reimbursement`, "owner", "PATCH");
+    assert.equal(paidResponse.status, 200);
+    const paid = expenseRecordSchema.parse(await paidResponse.json());
+    assert.ok(paid.reimbursementPaidAt);
+    assert.equal(paid.reimbursementPaidBy, "user-owner");
+    assert.equal((await request(`/api/expenses/${reimbursement.id}/reimbursement`, "owner", "PATCH")).status, 200);
+    assert.equal((await request(`/api/expenses/${created.id}/reimbursement`, "owner", "PATCH")).status, 404);
     const fileBody = (bytes: string, name = "receipt.pdf", type = "application/pdf") => {
       const form = new FormData();
       for (const [key, value] of Object.entries(draft)) form.set(key, String(value));
+      form.set("reimbursementRequested", "true");
       form.set("receipt", new Blob([bytes], { type }), name);
       return form;
     };
@@ -153,6 +177,7 @@ test("expense API authorizes before uploads, persists validated entries and rest
     assert.ok(!("data" in rawReceipt));
     const withReceipt = expenseRecordSchema.parse(rawReceipt);
     assert.equal(withReceipt.receiptName, "receipt.pdf");
+    assert.equal(withReceipt.reimbursementRequested, true);
     assert.equal((await request(`/api/expenses/${withReceipt.id}/receipt`)).status, 401);
     const download = await request(`/api/expenses/${withReceipt.id}/receipt`, "receptionist");
     assert.equal(download.status, 200);

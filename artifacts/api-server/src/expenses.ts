@@ -6,11 +6,12 @@ export interface ExpenseReceipt { name: string; mimeType: string; data: Buffer }
 export interface ExpenseStore {
   list(start: string, end: string): Promise<ExpenseRecord[]>;
   save(draft: ExpenseDraft, userId: string, receipt?: ExpenseReceipt, id?: number): Promise<ExpenseRecord | undefined>;
+  markReimbursementPaid(id: number, userId: string): Promise<ExpenseRecord | undefined>;
   remove(id: number): Promise<boolean>;
   receipt(id: number): Promise<ExpenseReceipt | undefined>;
 }
 type Actor = { userId: string; role: string };
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 10 } }).single("receipt");
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 11 } }).single("receipt");
 
 export function registerExpenseRoutes(app: Express, authenticate: (req: Request, res: Response) => Promise<Actor | null>, store: ExpenseStore) {
   for (const base of ["/api/expenses", "/api/owner/expenses"]) {
@@ -62,6 +63,15 @@ export function registerExpenseRoutes(app: Express, authenticate: (req: Request,
     };
     app.post(base, parseUpload, save);
     app.patch(`${base}/:id`, parseUpload, save);
+    app.patch(`${base}/:id/reimbursement`, async (req, res) => {
+      const actor: Actor = res.locals.expenseActor;
+      if (actor.role !== "owner") { res.status(403).json({ error: "Only owners can mark reimbursements paid." }); return; }
+      const id = Number(req.params.id);
+      if (!Number.isSafeInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid expense ID." }); return; }
+      const record = await store.markReimbursementPaid(id, actor.userId);
+      if (!record) { res.status(404).json({ error: "Expense not found or reimbursement was not requested." }); return; }
+      res.json(record);
+    });
     app.delete(`${base}/:id`, async (req, res) => {
       const id = Number(req.params.id);
       if (!Number.isSafeInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid expense ID." }); return; }

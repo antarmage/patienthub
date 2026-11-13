@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte } from "drizzle-orm";
 import { expenses, expenseReceipts } from "@workspace/db";
 import { db } from "./db";
 import type { ExpenseStore } from "./expenses";
@@ -25,6 +25,24 @@ export const expenseStore: ExpenseStore = {
         .onConflictDoUpdate({ target: expenseReceipts.expenseId, set: { mimeType: receipt.mimeType, fileData: receipt.data.toString("base64") } });
       return saved;
     });
+  },
+  async markReimbursementPaid(id, userId) {
+    const [saved] = await db.update(expenses).set({
+      reimbursementPaidAt: new Date().toISOString(),
+      reimbursementPaidBy: userId,
+      updatedAt: new Date().toISOString(),
+      updatedBy: userId,
+    }).where(and(
+      eq(expenses.id, id),
+      eq(expenses.reimbursementRequested, true),
+      isNull(expenses.reimbursementPaidAt),
+    )).returning();
+    if (saved) return saved;
+    const [existing] = await db.select().from(expenses).where(and(
+      eq(expenses.id, id),
+      eq(expenses.reimbursementRequested, true),
+    ));
+    return existing;
   },
   async remove(id) {
     return (await db.delete(expenses).where(eq(expenses.id, id)).returning({ id: expenses.id })).length > 0;

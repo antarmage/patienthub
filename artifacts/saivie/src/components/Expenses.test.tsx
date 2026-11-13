@@ -14,19 +14,20 @@ function render(owner: boolean, rows: ExpenseRecord[]) {
   try { return renderToStaticMarkup(<QueryClientProvider client={client}><Expenses owner={owner} /></QueryClientProvider>); }
   finally { client.clear(); }
 }
-const expense: ExpenseRecord = { id: 1, date: clinicDate(), category: "Supplies", entryType: "general", description: "Office stationery", amount: 120.5, paymentMethod: "cash", receiptName: "receipt.pdf", createdAt: null, createdBy: "staff" };
+const expense: ExpenseRecord = { id: 1, date: clinicDate(), category: "Supplies", entryType: "general", description: "Office stationery", amount: 120.5, paymentMethod: "cash", reimbursementRequested: true, reimbursementPaidAt: null, reimbursementPaidBy: null, receiptName: "receipt.pdf", createdAt: null, createdBy: "staff" };
 
 test("receptionists can enter all expense fields and see totals and receipts, but no edit/delete actions", () => {
   const html = render(false, [expense]);
-  for (const label of ["Add expense", "Amount (INR)", "Category", "Description", "Payment method", "Receipt (optional)", "Save expense", "Office stationery", "Download receipt", "Daily totals", "From", "To", "120.50"]) assert.ok(html.includes(label), label);
+  for (const label of ["Add expense", "Amount (INR)", "Category", "Description", "Payment method", "Request reimbursement from clinic", "Unpaid", "Receipt (optional)", "Save expense", "Office stationery", "Download receipt", "Daily totals", "From", "To", "120.50"]) assert.ok(html.includes(label), label);
   assert.ok(!html.includes("Clinic expense dashboard"));
+  assert.ok(!html.includes("Mark paid"));
   assert.ok(!html.includes(">Edit<"));
   assert.ok(!html.includes(">Delete<"));
 });
 
 test("owners can understand expense totals and breakdowns and correct or delete expenses", () => {
   const html = render(true, [expense, { ...expense, id: 2, date: `${clinicDate().slice(0, 7)}-01`, entryType: "monthly_expense", category: "Utilities", description: "Electricity bill", amount: 2500 }]);
-  for (const label of ["Clinic expense dashboard", "Total expenses", "Monthly bills", "Day-to-day spend", "Period average / day", "Where the money goes", "Daily spend trend", "Latest 14 spending days", "₹2,620.50", "₹2,500.00"]) assert.ok(html.includes(label), label);
+  for (const label of ["Clinic expense dashboard", "Total expenses", "Monthly bills", "Day-to-day spend", "Period average / day", "Where the money goes", "Daily spend trend", "Latest 14 spending days", "₹2,620.50", "₹2,500.00", "Unpaid", "Mark paid"]) assert.ok(html.includes(label), label);
   assert.ok(html.includes(">Edit<"));
   assert.ok(html.includes(">Delete<"));
   assert.ok(html.includes("Office stationery"));
@@ -43,6 +44,12 @@ test("daily item purchases keep their purchase date and show purchased quantitie
   assert.ok(html.includes("Coffee"));
   assert.ok(html.includes("2 boxes x"));
   assert.ok(!html.includes("Quantity used this month"));
+});
+
+test("owners see paid status without a mark-paid action after reimbursement", () => {
+  const html = render(true, [{ ...expense, reimbursementPaidAt: clinicDate(), reimbursementPaidBy: "owner" }]);
+  assert.ok(html.includes(">Paid<"));
+  assert.ok(!html.includes("Mark paid"));
 });
 
 test("empty daily ledger is explicit and shows a zero total", () => {
