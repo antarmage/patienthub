@@ -22,7 +22,7 @@ test("receptionists can manage their own weekly attendance and status, but not a
   app.use(express.json());
   registerStaffAttendanceRoutes(app, async (req, res) => {
     const role = req.headers["x-test-role"];
-    if (typeof role !== "string") { res.status(401).json({ error: "Sign in." }); return null; }
+    if (typeof role !== "string") return null;
     return { userId: String(req.headers["x-test-user"] || role), role };
   }, store, async (userId) => `Receptionist ${userId}`);
   const server = createServer(app);
@@ -42,7 +42,16 @@ test("receptionists can manage their own weekly attendance and status, but not a
     ...(action ? { body: JSON.stringify({ action, date }) } : {}),
   });
   try {
-    assert.equal((await request(`/api/staff/attendance?startDate=${week.start}&endDate=${week.end}`)).status, 401);
+    const unauthenticated = await request(`/api/staff/attendance?startDate=${week.start}&endDate=${week.end}`);
+    assert.equal(unauthenticated.status, 401);
+    assert.match(unauthenticated.headers.get("content-type") || "", /application\/json/);
+    assert.deepEqual(await unauthenticated.json(), { error: "Sign in to record your attendance." });
+    const staffResponse = await request(`/api/staff/attendance?startDate=${week.start}&endDate=${week.end}`, "staff", undefined, today, "legacy-staff");
+    assert.equal(staffResponse.status, 200);
+    assert.match(staffResponse.headers.get("content-type") || "", /application\/json/);
+    assert.deepEqual(await staffResponse.json(), []);
+    assert.equal((await request("/api/staff/attendance", "staff", "leave", today, "legacy-staff")).status, 200);
+    assert.equal(rows.get(`legacy-staff:${today}`)?.status, "leave");
     assert.equal((await request(`/api/staff/attendance?startDate=${week.start}&endDate=${week.end}`, "owner")).status, 403);
     const anotherReceptionistRows: unknown = await (await request(`/api/staff/attendance?startDate=${week.start}&endDate=${week.end}`, "receptionist", undefined, today, "another-receptionist")).json();
     assert.ok(Array.isArray(anotherReceptionistRows));

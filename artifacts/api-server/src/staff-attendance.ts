@@ -3,6 +3,7 @@ import { z } from "zod/v4";
 import { clinicDate } from "../../../lib/db/src/follow-up";
 import type { Attendance, InsertAttendance } from "../../../lib/db/src/schema/schema";
 import type { AccessActor } from "./clinical-access";
+import { isReceptionReader } from "./reception-access";
 
 type Actor = Extract<AccessActor, { userId: string }>;
 type AttendanceAction = "clock_in" | "clock_out" | "regular_day_off" | "leave" | "work_day";
@@ -37,12 +38,11 @@ export function registerStaffAttendanceRoutes(
 ) {
   app.use("/api/staff/attendance", async (req, res, next) => {
     const actor = await authenticate(req, res);
-    if (!actor) return;
-    if (!("userId" in actor)) {
-      res.status(403).json({ error: "Receptionist attendance access required." });
+    if (!actor) {
+      if (!res.headersSent) res.status(401).json({ error: "Sign in to record your attendance." });
       return;
     }
-    if (actor.role !== "receptionist") {
+    if (!isReceptionReader(actor)) {
       res.status(403).json({ error: "Receptionist attendance access required." });
       return;
     }

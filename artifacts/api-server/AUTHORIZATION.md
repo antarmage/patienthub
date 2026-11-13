@@ -146,6 +146,10 @@ Staff/receptionists may additionally PATCH an existing appointment with only `{"
 
 Walk-ins may atomically POST `status: "checked-in"` plus an ISO `checkedInAt`; the date must be today in the clinic's India timezone. Changing a receptionist appointment's date, time, or provider resets `status` to `scheduled` and clears `checkedInAt`. Once a consultation has begun, nonclinical staff cannot change its schedule or arrival/consultation state except for the narrow completion action above; billing updates remain allowed. Receptionist completion does not trigger automatic clinical-summary authoring. Existing appointment persistence does **not** enforce overlapping-slot availability; clients must not claim that it does.
 
+## Staff self-service attendance
+
+Staff self-service attendance at `/api/staff/attendance` accepts authenticated `staff` and `receptionist` accounts using the shared `isReceptionReader` guard. Records are scoped to the authenticated user and current week; clock-in/out is restricted to today. Missing authentication returns JSON with HTTP 401, including when the authentication helper returns no actor without sending a response.
+
 ## Immediate receptionist patient-details editing
 
 `GET` and `PATCH /api/patients/:id/reception-details-edit` independently authenticate the persisted roles `staff`, `receptionist`, `clinician`, and `owner`. Admins, patients (including the corresponding patient), and unknown roles return 403; missing/invalid authentication returns 401. This explicit editing permission is available immediately, **regardless of `clinicalDetailsVisible`**, with no separate doctor switch. It does not change generic patient/desk or clinical middleware permissions.
