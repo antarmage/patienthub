@@ -2726,15 +2726,21 @@ export default function ClinicianPortal() {
                         <CardContent className="p-0">
                            {filteredQueuePatients.length === 0 ? (
                               <div className="py-12 px-4 text-center space-y-3">
-                                 <p className="text-saivie-plum text-sm">
-                                   {queueStatusFilter === "waiting"
-                                     ? "🎉 Waiting room is clear! No patients currently waiting."
-                                     : queueStatusFilter === "in-consultation"
+                                 {queueStatusFilter === "waiting" ? (
+                                   <div data-testid="waiting-queue-empty" className="mx-auto max-w-md rounded-xl border border-dashed border-saivie-border bg-saivie-surface-muted/50 px-6 py-8">
+                                     <CheckCircle2 className="mx-auto mb-3 h-8 w-8 text-saivie-teal" aria-hidden="true" />
+                                     <p className="font-semibold text-saivie-plum">No patients are waiting right now</p>
+                                     <p className="mt-1 text-sm text-saivie-plum">New checked-in patients will appear here.</p>
+                                   </div>
+                                 ) : (
+                                   <p className="text-saivie-plum text-sm">
+                                     {queueStatusFilter === "in-consultation"
                                      ? "No active consultation currently in progress."
                                      : queueStatusFilter === "completed"
                                      ? "No consultations completed yet today."
                                      : "No patients found for this view."}
-                                 </p>
+                                   </p>
+                                 )}
                                  {queueStatusFilter === "waiting" && scheduledPatientsCount > 0 && (
                                    <Button
                                      variant="outline"
