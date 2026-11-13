@@ -70,7 +70,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { InvoiceTemplateEditor } from "@/components/InvoiceTemplateEditor";
 import { PrimePricingRulesEditor } from "@/components/PrimePricingRulesEditor";
-import { SurgeryPlanningButton } from "@/components/SurgeryPlanning";
 
 function formatINR(amount: number): string {
   if (amount === undefined || amount === null || isNaN(amount)) return "₹0";
@@ -459,7 +458,6 @@ export default function OwnerPortal() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <SurgeryPlanningButton />
             <Button variant="outline" size="icon" className="h-9 w-9 rounded-full border-saivie-border relative" data-testid="btn-notifications">
               <Bell className="w-4 h-4 text-saivie-plum" />
               {highRiskPatients.length > 0 && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white" />}
