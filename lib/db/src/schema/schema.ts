@@ -731,6 +731,7 @@ export type InsertDiagnosticReferral = typeof diagnosticReferrals.$inferInsert;
 
 export const attendance = pgTable("attendance", {
   id: serial("id").primaryKey(),
+  employeeId: text("employee_id"),
   employeeName: text("employee_name").notNull(),
   role: text("role"),
   date: date("date").notNull(),
@@ -739,7 +740,9 @@ export const attendance = pgTable("attendance", {
   status: text("status").default("present"),
   hoursWorked: real("hours_worked"),
   notes: text("notes"),
-});
+}, (table) => ({
+  employeeDateUnique: uniqueIndex("attendance_employee_date_idx").on(table.employeeId, table.date),
+}));
 
 export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: true });
 export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;

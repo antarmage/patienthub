@@ -195,6 +195,8 @@ export interface IStorage {
 
   getAttendance(startDate?: string, endDate?: string): Promise<Attendance[]>;
   createAttendance(record: InsertAttendance): Promise<Attendance>;
+  getStaffAttendance(employeeId: string, startDate: string, endDate: string): Promise<Attendance[]>;
+  saveStaffAttendance(record: InsertAttendance): Promise<Attendance>;
 
   getExpenses(startDate?: string, endDate?: string): Promise<Expense[]>;
   createExpense(expense: InsertExpense): Promise<Expense>;
@@ -880,6 +882,30 @@ export class DatabaseStorage implements IStorage {
   async createAttendance(record: InsertAttendance): Promise<Attendance> {
     const [created] = await db.insert(attendance).values(record).returning();
     return created;
+  }
+
+  async getStaffAttendance(employeeId: string, startDate: string, endDate: string): Promise<Attendance[]> {
+    return db.select().from(attendance).where(and(
+      eq(attendance.employeeId, employeeId),
+      gte(attendance.date, startDate),
+      lte(attendance.date, endDate),
+    )).orderBy(desc(attendance.date));
+  }
+
+  async saveStaffAttendance(record: InsertAttendance): Promise<Attendance> {
+    const [saved] = await db.insert(attendance).values(record).onConflictDoUpdate({
+      target: [attendance.employeeId, attendance.date],
+      set: {
+        employeeName: record.employeeName,
+        role: record.role,
+        clockIn: record.clockIn,
+        clockOut: record.clockOut,
+        status: record.status,
+        hoursWorked: record.hoursWorked,
+        notes: record.notes,
+      },
+    }).returning();
+    return saved;
   }
 
   async getExpenses(startDate?: string, endDate?: string): Promise<Expense[]> {

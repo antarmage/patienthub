@@ -45,6 +45,8 @@ export async function ensureSchema(): Promise<void> {
       );
 
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email text;
+      ALTER TABLE attendance ADD COLUMN IF NOT EXISTS employee_id text;
+      CREATE UNIQUE INDEX IF NOT EXISTS attendance_employee_date_idx ON attendance(employee_id, date);
       ALTER TABLE expenses ADD COLUMN IF NOT EXISTS created_at timestamptz;
       ALTER TABLE expenses ALTER COLUMN created_at SET DEFAULT now();
       ALTER TABLE expenses ADD COLUMN IF NOT EXISTS created_by text;

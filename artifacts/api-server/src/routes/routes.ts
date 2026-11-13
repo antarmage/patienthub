@@ -9,6 +9,7 @@ import { registerIcdRoutes, invoiceDiagnoses } from "../icd";
 import { registerBillingTemplateRoutes } from "../billing-templates";
 import { registerExpenseRoutes } from "../expenses";
 import { expenseStore } from "../expense-store";
+import { registerStaffAttendanceRoutes } from "../staff-attendance";
 import { readAppointmentRange } from "../appointment-range";
 import { registerReceptionAccessRoutes, withVitalsRecorderNames } from "../reception-access";
 import { resolveInvoiceDate } from "../../../../lib/db/src/invoice-date";
@@ -407,6 +408,21 @@ export async function registerRoutes(
     if (!user) { res.status(403).json({ error: "Staff account not found." }); return null; }
     return { userId: id, role: user.role || "" };
   }, expenseStore);
+  registerStaffAttendanceRoutes(app, async (req, res) => {
+    const actor = await getAccessActor(req, res);
+    if (actor && "patientId" in actor) {
+      res.status(403).json({ error: "Receptionist attendance access required." });
+      return null;
+    }
+    return actor;
+  }, {
+    list: (employeeId, startDate, endDate) => storage.getStaffAttendance(employeeId, startDate, endDate),
+    save: (record) => storage.saveStaffAttendance(record),
+  }, async (userId) => {
+    const user = await storage.getUser(userId);
+    if (!user) throw new Error("Receptionist account not found.");
+    return user.displayName?.trim() || user.username;
+  });
   const pregnancyVisitStore = createPregnancyVisitContextStore(pool);
   registerPregnancyFollowUpContext(app, {
     store: pregnancyVisitStore, authenticate: getAccessActor,

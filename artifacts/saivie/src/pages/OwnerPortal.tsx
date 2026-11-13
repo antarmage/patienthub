@@ -87,6 +87,14 @@ function formatINR(amount: number): string {
   return `${isNegative ? "-" : ""}₹${result}`;
 }
 
+function formatAttendanceTime(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) || !value.includes("T")
+    ? value
+    : date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+}
+
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: (i: number) => ({
@@ -107,6 +115,11 @@ export default function OwnerPortal() {
 
   const today = new Date().toISOString().split("T")[0];
   const monthStart = `${today.slice(0, 7)}-01`;
+  const attendanceWeekEnd = (() => {
+    const date = new Date(`${today}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + 6 - ((date.getUTCDay() + 6) % 7));
+    return date.toISOString().slice(0, 10);
+  })();
   const expenseToken = sessionStorage.getItem("desk_token");
 
   const dashboardQuery = useQuery<any>({
@@ -115,9 +128,9 @@ export default function OwnerPortal() {
   const dashboard = dashboardQuery.data || {};
 
   const attendanceQuery = useQuery<any[]>({
-    queryKey: ["/api/owner/attendance", monthStart, today],
+    queryKey: ["/api/owner/attendance", monthStart, attendanceWeekEnd],
     queryFn: async () => {
-      const res = await fetch(`/api/owner/attendance?startDate=${monthStart}&endDate=${today}`);
+      const res = await fetch(`/api/owner/attendance?startDate=${monthStart}&endDate=${attendanceWeekEnd}`);
       if (!res.ok) throw new Error("Failed to fetch attendance");
       return res.json();
     },
@@ -379,6 +392,8 @@ export default function OwnerPortal() {
     if (s === "present") return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200" data-testid={`badge-status-${s}`}>Present</Badge>;
     if (s === "absent") return <Badge className="bg-rose-100 text-rose-700 border-rose-200" data-testid={`badge-status-${s}`}>Absent</Badge>;
     if (s === "leave") return <Badge className="bg-amber-100 text-amber-700 border-amber-200" data-testid={`badge-status-${s}`}>Leave</Badge>;
+    if (s === "regular_day_off") return <Badge className="bg-blue-100 text-blue-700 border-blue-200" data-testid={`badge-status-${s}`}>Regular day off</Badge>;
+    if (s === "scheduled") return <Badge variant="outline" data-testid={`badge-status-${s}`}>Work day</Badge>;
     if (s === "half-day") return <Badge className="bg-blue-100 text-blue-700 border-blue-200" data-testid={`badge-status-${s}`}>Half-day</Badge>;
     return <Badge variant="outline" data-testid={`badge-status-${s}`}>{status}</Badge>;
   };
@@ -651,8 +666,8 @@ export default function OwnerPortal() {
                                 <TableCell className="font-medium text-saivie-plum text-sm">{record.employeeName}</TableCell>
                                 <TableCell className="text-sm text-saivie-plum">{record.role}</TableCell>
                                 <TableCell className="text-sm text-saivie-plum">{record.date}</TableCell>
-                                <TableCell className="text-sm text-saivie-plum">{record.clockIn || "—"}</TableCell>
-                                <TableCell className="text-sm text-saivie-plum">{record.clockOut || "—"}</TableCell>
+                                <TableCell className="text-sm text-saivie-plum">{formatAttendanceTime(record.clockIn)}</TableCell>
+                                <TableCell className="text-sm text-saivie-plum">{formatAttendanceTime(record.clockOut)}</TableCell>
                                 <TableCell className="text-sm text-saivie-plum">{record.hoursWorked ? `${record.hoursWorked}h` : "—"}</TableCell>
                                 <TableCell>{statusBadge(record.status)}</TableCell>
                               </TableRow>

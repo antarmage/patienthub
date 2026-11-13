@@ -98,6 +98,7 @@ import { printPatientSummary } from "@/components/IntakeSummary";
 import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import { ReceptionDashboard, getArrivalState, type ReceptionFollowUp } from "@/components/ReceptionDashboard";
 import { ReceptionFollowUpPatients } from "@/components/ReceptionFollowUpPatients";
+import { StaffAttendance } from "@/components/StaffAttendance";
 import { useToast } from "@/hooks/use-toast";
 import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialogs";
 import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
@@ -2481,6 +2482,16 @@ export default function StaffPortal() {
                     <Activity className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
                     {sidebarOpen && "Dashboard"}
                  </Button>
+                 {activeRole === 'receptionist' && <Button
+                    variant={activeView === 'attendance' ? 'secondary' : 'ghost'}
+                    aria-label="My Attendance" title="My Attendance"
+                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'attendance' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
+                    onClick={() => setActiveView('attendance')}
+                    data-testid="nav-my-attendance"
+                 >
+                    <CalendarCheck className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
+                    {sidebarOpen && "My Attendance"}
+                 </Button>}
                  <Button 
                     variant={activeView === 'patients' ? 'secondary' : 'ghost'} 
                     aria-label="My Patients" title="My Patients"
@@ -2690,6 +2701,7 @@ export default function StaffPortal() {
 
         {/* Dashboard Content */}
         <div className={`flex-1 overflow-y-auto p-4 md:p-6 ${activeRole === 'receptionist' && ['dashboard', 'patients'].includes(activeView) ? 'bg-[#faf5e6]' : ''}`}>
+          {activeRole === 'receptionist' && activeView === 'attendance' && <StaffAttendance />}
           {receptionist && ['dashboard', 'patients'].includes(activeView) && <div className="mb-3 rounded-xl border border-[#e9e1d2] bg-white px-4 py-2 text-xs text-[#705364]">
             {receptionAccess.isError ? <p role="alert">Could not load doctor permissions: {receptionAccess.error.message} <button type="button" className="underline" onClick={() => void receptionAccess.refetch()}>Retry</button></p>
               : receptionAccess.isPending ? "Loading doctor permissions..."
