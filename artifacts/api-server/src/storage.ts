@@ -1,5 +1,6 @@
 import { eq, desc, sql, gte, lte, and, inArray } from "drizzle-orm";
 import type { TranscriptionTx } from "./prescription-transcriptions";
+import type { StaffAttendanceStore } from "./staff-attendance";
 import { assertPreconsult, prepareReceptionVitals, receptionMeasurements, type ReceptionVitalsInput, type ReceptionVitalsRecord } from "./reception-access";
 import { commitReceptionDetailsEdit, type ReceptionDetailsEditInput, type ReceptionDetailsEditActor } from "./reception-details-edit";
 import { db } from "./db";
@@ -884,16 +885,26 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getStaffAttendance(employeeId: string, startDate: string, endDate: string): Promise<Attendance[]> {
-    return db.select().from(attendance).where(and(
+  async withStaffAttendanceLock<T>(employeeId: string, work: (store: Pick<StaffAttendanceStore, "list" | "save">) => Promise<T>): Promise<T> {
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`staff-attendance:${employeeId}`}))`);
+      return work({
+        list: (id, start, end) => this.getStaffAttendance(id, start, end, tx),
+        save: (record) => this.saveStaffAttendance(record, tx),
+      });
+    });
+  }
+
+  async getStaffAttendance(employeeId: string, startDate: string, endDate: string, client: Pick<typeof db, "select" | "insert"> = db): Promise<Attendance[]> {
+    return client.select().from(attendance).where(and(
       eq(attendance.employeeId, employeeId),
       gte(attendance.date, startDate),
       lte(attendance.date, endDate),
     )).orderBy(desc(attendance.date));
   }
 
-  async saveStaffAttendance(record: InsertAttendance): Promise<Attendance> {
-    const [saved] = await db.insert(attendance).values(record).onConflictDoUpdate({
+  async saveStaffAttendance(record: InsertAttendance, client: Pick<typeof db, "select" | "insert"> = db): Promise<Attendance> {
+    const [saved] = await client.insert(attendance).values(record).onConflictDoUpdate({
       target: [attendance.employeeId, attendance.date],
       set: {
         employeeName: record.employeeName,

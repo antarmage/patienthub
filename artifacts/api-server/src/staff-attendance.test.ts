@@ -6,7 +6,13 @@ import { clinicDate } from "../../../lib/db/src/follow-up";
 import type { Attendance, InsertAttendance } from "../../../lib/db/src/schema/schema";
 import { attendanceWeek, registerStaffAttendanceRoutes, type StaffAttendanceStore } from "./staff-attendance";
 
-test("receptionists can manage their own weekly attendance and status, but not another role's records", async () => {
+test("receptionists can manage their own weekly attendance and status, but not another role's records", async (t) => {
+  const previous = process.env.STAFF_FACE_ATTENDANCE_ENABLED;
+  process.env.STAFF_FACE_ATTENDANCE_ENABLED = "false";
+  t.after(() => {
+    if (previous === undefined) delete process.env.STAFF_FACE_ATTENDANCE_ENABLED;
+    else process.env.STAFF_FACE_ATTENDANCE_ENABLED = previous;
+  });
   const rows = new Map<string, Attendance>();
   const store: StaffAttendanceStore = {
     async list(employeeId, start, end) {
@@ -17,6 +23,7 @@ test("receptionists can manage their own weekly attendance and status, but not a
       rows.set(`${record.employeeId}:${record.date}`, saved as Attendance);
       return saved as Attendance;
     },
+    async withLock(_employeeId, work) { return work(store); },
   };
   const app = express();
   app.use(express.json());
@@ -67,6 +74,18 @@ test("receptionists can manage their own weekly attendance and status, but not a
     }
     assert.equal((await request("/api/staff/attendance", "receptionist", "work_day")).status, 200);
     assert.equal(rows.get(`receptionist-1:${today}`)?.status, "scheduled");
+    const scheduled = rows.get(`receptionist-1:${today}`);
+    assert.ok(scheduled);
+    rows.set(`receptionist-1:${today}`, { ...scheduled, status: "pending_approval" });
+    for (const action of ["work_day", "leave", "regular_day_off", "clock_in", "clock_out"]) {
+      assert.equal((await request("/api/staff/attendance", "receptionist", action)).status, 409);
+      assert.equal(rows.get(`receptionist-1:${today}`)?.status, "pending_approval");
+    }
+    rows.set(`receptionist-1:${today}`, scheduled);
+    process.env.STAFF_FACE_ATTENDANCE_ENABLED = "true";
+    assert.equal((await request("/api/staff/attendance", "receptionist", "clock_in")).status, 409);
+    assert.equal(rows.get(`receptionist-1:${today}`)?.status, "scheduled");
+    process.env.STAFF_FACE_ATTENDANCE_ENABLED = "false";
     assert.equal((await request("/api/staff/attendance", "receptionist", "clock_in")).status, 200);
     assert.equal((await request("/api/staff/attendance", "receptionist", "clock_in")).status, 409);
     assert.equal((await request("/api/staff/attendance", "receptionist", "clock_out")).status, 200);

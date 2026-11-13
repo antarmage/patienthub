@@ -48,6 +48,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "@vladmandic/face-api": "1.7.15",
     "@workspace/api-client-react": "workspace:*",
     "@workspace/api-zod": "workspace:*",
     "class-variance-authority": "catalog:",

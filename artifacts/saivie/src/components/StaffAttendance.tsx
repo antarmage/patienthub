@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarCheck, Clock3 } from "lucide-react";
 import { z } from "zod/v4";
@@ -7,6 +7,7 @@ import { authenticatedFetch, readApiResponse } from "@/lib/authenticatedFetch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AttendanceCamera, useAttendanceFaceState } from "./AttendanceCamera";
 
 type AttendanceRecord = {
   id: number;
@@ -32,7 +33,13 @@ const clockTime = (value: string | null) => value
 
 export function StaffAttendance() {
   const queryClient = useQueryClient();
-  const today = clinicDate();
+  const face = useAttendanceFaceState();
+  const staffToken = typeof sessionStorage === "undefined" ? null : sessionStorage.getItem("billing_staff_token");
+  const [today, setToday] = useState(() => clinicDate());
+  useEffect(() => {
+    const timer = setInterval(() => setToday(clinicDate()), 30000);
+    return () => clearInterval(timer);
+  }, []);
   const week = useMemo(() => {
     const monday = new Date(`${today}T00:00:00Z`);
     monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
@@ -44,11 +51,12 @@ export function StaffAttendance() {
   }, [today]);
   const [error, setError] = useState("");
   const records = useQuery<AttendanceRecord[]>({
-    queryKey: ["/api/staff/attendance", week[0], week[6]],
+    queryKey: ["/api/staff/attendance", staffToken, week[0], week[6]],
     queryFn: async () => {
       const response = await authenticatedFetch(`/api/staff/attendance?startDate=${week[0]}&endDate=${week[6]}`);
       return z.array(attendanceRecordSchema).parse(await readApiResponse(response));
     },
+    refetchInterval: 30000,
   });
   const update = useMutation({
     mutationFn: async ({ date, action }: { date: string; action: AttendanceAction }) => {
@@ -72,6 +80,8 @@ export function StaffAttendance() {
     leave: "Leave",
     regular_day_off: "Regular day off",
     scheduled: "Work day",
+    pending_approval: "Pending owner approval",
+    rejected: "Attendance request rejected",
   }[status || ""] || "Not recorded");
   const badgeStyle = (status: string | null | undefined) => status === "present"
     ? "border-emerald-200 bg-emerald-100 text-emerald-800"
@@ -82,10 +92,12 @@ export function StaffAttendance() {
         : "border-saivie-border bg-saivie-surface-muted text-saivie-plum";
 
   return <section className="mx-auto max-w-5xl space-y-5" aria-label="My attendance">
-    <header>
-      <h2 className="font-serif text-2xl font-bold text-saivie-plum">My Attendance</h2>
+    <header className="flex flex-wrap items-center justify-between gap-3">
+      <h2 className="flex items-center gap-3 font-serif text-2xl font-bold text-saivie-plum sm:text-3xl"><CalendarCheck className="h-8 w-8 text-saivie-teal" />My Attendance</h2>
+      <span className="rounded-full bg-saivie-sage/45 px-5 py-3 text-sm text-saivie-plum">{week[0]} to {week[6]}</span>
       <p className="mt-1 text-sm text-muted-foreground">Clock in and out today, and record your regular day off or leave for this week.</p>
     </header>
+    <AttendanceCamera status={byDate.get(today)?.status} ready={records.isSuccess} />
     <Card className="border-saivie-border">
       <CardHeader className="flex flex-row items-center gap-3 space-y-0">
         <CalendarCheck className="h-5 w-5 text-saivie-teal" />
@@ -99,7 +111,7 @@ export function StaffAttendance() {
           const record = byDate.get(date);
           const isToday = date === today;
           const isPast = date < today;
-          const canSetStatus = !isPast && !record?.clockIn;
+          const canSetStatus = !isPast && !record?.clockIn && record?.status !== "pending_approval";
           const hasOtherDayOff = (records.data || []).some((item) => item.date !== date && item.status === "regular_day_off");
           return <article key={date} className="flex flex-col gap-3 rounded-xl border border-saivie-border p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-40">
@@ -109,7 +121,7 @@ export function StaffAttendance() {
             {isToday ? <div className="flex flex-wrap items-center gap-2">
               {record?.clockIn && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" /> In {clockTime(record.clockIn)}</span>}
               {record?.clockOut && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" /> Out {clockTime(record.clockOut)}</span>}
-              {!record?.clockIn && !["leave", "regular_day_off"].includes(record?.status || "") && <Button size="sm" disabled={update.isPending || !canSetStatus} onClick={() => update.mutate({ date, action: "clock_in" })}>Clock in</Button>}
+              {face.isSuccess && !face.data.enabled && !record?.clockIn && !["leave", "regular_day_off", "pending_approval"].includes(record?.status || "") && <Button size="sm" disabled={update.isPending || !canSetStatus} onClick={() => update.mutate({ date, action: "clock_in" })}>Clock in</Button>}
               {record?.clockIn && !record.clockOut && <Button size="sm" variant="outline" disabled={update.isPending} onClick={() => update.mutate({ date, action: "clock_out" })}>Clock out</Button>}
               {canSetStatus && <><Button size="sm" variant="outline" disabled={update.isPending} onClick={() => update.mutate({ date, action: "regular_day_off" })}>Regular day off</Button><Button size="sm" variant="outline" disabled={update.isPending} onClick={() => update.mutate({ date, action: "leave" })}>Leave</Button></>}
               {["leave", "regular_day_off"].includes(record?.status || "") && <Button size="sm" variant="ghost" disabled={update.isPending} onClick={() => update.mutate({ date, action: "work_day" })}>Set work day</Button>}

@@ -10,6 +10,8 @@ import { registerBillingTemplateRoutes } from "../billing-templates";
 import { registerExpenseRoutes } from "../expenses";
 import { expenseStore } from "../expense-store";
 import { registerStaffAttendanceRoutes } from "../staff-attendance";
+import { createFaceAttendanceStore, registerFaceAttendanceRoutes } from "../face-attendance";
+import { clinicDate } from "../../../../lib/db/src/follow-up";
 import { readAppointmentRange } from "../appointment-range";
 import { registerReceptionAccessRoutes, withVitalsRecorderNames } from "../reception-access";
 import { resolveInvoiceDate } from "../../../../lib/db/src/invoice-date";
@@ -401,6 +403,7 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  registerFaceAttendanceRoutes(app, getAccessActor, createFaceAttendanceStore(pool));
   registerExpenseRoutes(app, async (req, res) => {
     const id = getStaffUserId(req, res);
     if (!id) return null;
@@ -418,6 +421,7 @@ export async function registerRoutes(
   }, {
     list: (employeeId, startDate, endDate) => storage.getStaffAttendance(employeeId, startDate, endDate),
     save: (record) => storage.saveStaffAttendance(record),
+    withLock: (employeeId, work) => storage.withStaffAttendanceLock(employeeId, work),
   }, async (userId) => {
     const user = await storage.getUser(userId);
     if (!user) throw new Error("Receptionist account not found.");
@@ -5091,6 +5095,9 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
   app.post("/api/owner/attendance", async (req: any, res: any) => {
     try {
+      const actor = await getAccessActor(req, res);
+      if (!actor) { if (!res.headersSent) res.status(401).json({ error: "Owner sign-in required." }); return; }
+      if (!("userId" in actor) || actor.role !== "owner") { res.status(403).json({ error: "Owner access required." }); return; }
       const record = await storage.createAttendance(req.body);
       res.json(record);
     } catch (err: any) {
@@ -5107,9 +5114,10 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       const allAttendance = await storage.getAttendance();
       const allLabResults = await storage.getAllDocuments();
 
-      const today = new Date().toISOString().split("T")[0];
+      const today = clinicDate();
       const todayAttendance = allAttendance.filter(a => a.date === today);
       const presentToday = todayAttendance.filter(a => a.status === "present" || a.status === "half-day").length;
+      const nonAbsentToday = todayAttendance.filter(a => ["leave", "regular_day_off", "pending_approval", "rejected"].includes(a.status || "")).length;
       const totalStaff = new Set(allAttendance.map(a => a.employeeName)).size;
 
       const totalRevenue = allInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
@@ -5178,7 +5186,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         totalPatients: allPatients.length,
         totalStaff,
         presentToday,
-        absentToday: totalStaff - presentToday,
+        absentToday: Math.max(0, totalStaff - presentToday - nonAbsentToday),
         totalRevenue,
         totalExpenses: totalExpensesAmt,
         monthlyRevenue,

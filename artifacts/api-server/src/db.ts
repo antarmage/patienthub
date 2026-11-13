@@ -8,6 +8,7 @@ import { ensureDeliverySchema } from "./deliveries";
 import { ensurePaperWorkSchema } from "./paper-prescription-work";
 import { ensureMenopauseSchema } from "./menopause";
 import { ensureBookingCatalogSchema } from "./booking-catalog";
+import { ensureFaceAttendanceSchema } from "./face-attendance";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set.");
@@ -441,6 +442,7 @@ export async function ensureSchema(): Promise<void> {
 
       ALTER TABLE providers ADD COLUMN IF NOT EXISTS photo_url text;
     `);
+    await ensureFaceAttendanceSchema(client);
   } finally {
     client.release();
   }

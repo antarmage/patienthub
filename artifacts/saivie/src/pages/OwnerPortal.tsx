@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { OwnerAuthGate } from "@/components/OwnerAuthGate";
+import { OwnerFaceAttendance } from "@/components/OwnerFaceAttendance";
+import { clinicDate } from "../../../../lib/db/src/follow-up";
 import { Expenses } from "@/components/Expenses";
 import { ReferralsManager } from "@/components/ReferralsManager";
 import { InventoryManager, getInventoryAlerts, useInventory } from "@/components/InventoryManager";
@@ -113,7 +115,7 @@ export default function OwnerPortal() {
   const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
   const [aiInsightsTab, setAiInsightsTab] = useState<"weekly" | "optimisation-history">("weekly");
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = clinicDate();
   const monthStart = `${today.slice(0, 7)}-01`;
   const attendanceWeekEnd = (() => {
     const date = new Date(`${today}T00:00:00Z`);
@@ -134,6 +136,7 @@ export default function OwnerPortal() {
       if (!res.ok) throw new Error("Failed to fetch attendance");
       return res.json();
     },
+    refetchInterval: 30000,
   });
   const attendance = attendanceQuery.data || [];
 
@@ -327,6 +330,7 @@ export default function OwnerPortal() {
   const presentCount = todayAttendance.filter((a: any) => a.status === "present").length;
   const absentCount = todayAttendance.filter((a: any) => a.status === "absent").length;
   const leaveCount = todayAttendance.filter((a: any) => a.status === "leave").length;
+  const pendingCount = todayAttendance.filter((a: any) => a.status === "pending_approval").length;
 
   const expenseCategories = useMemo(() => {
     const cats: Record<string, number> = {};
@@ -394,6 +398,8 @@ export default function OwnerPortal() {
     if (s === "leave") return <Badge className="bg-amber-100 text-amber-700 border-amber-200" data-testid={`badge-status-${s}`}>Leave</Badge>;
     if (s === "regular_day_off") return <Badge className="bg-blue-100 text-blue-700 border-blue-200" data-testid={`badge-status-${s}`}>Regular day off</Badge>;
     if (s === "scheduled") return <Badge variant="outline" data-testid={`badge-status-${s}`}>Work day</Badge>;
+    if (s === "pending_approval") return <Badge className="border-amber-200 bg-amber-100 text-amber-800">Pending owner approval</Badge>;
+    if (s === "rejected") return <Badge className="border-rose-200 bg-rose-100 text-rose-800">Request rejected</Badge>;
     if (s === "half-day") return <Badge className="bg-blue-100 text-blue-700 border-blue-200" data-testid={`badge-status-${s}`}>Half-day</Badge>;
     return <Badge variant="outline" data-testid={`badge-status-${s}`}>{status}</Badge>;
   };
@@ -614,12 +620,14 @@ export default function OwnerPortal() {
             {activeView === "attendance" && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-attendance-title">Staff Attendance</h2>
+                <OwnerAuthGate>{({ token }) => <OwnerFaceAttendance token={token} />}</OwnerAuthGate>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
                     { label: "Present Today", value: presentCount, icon: UserCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
                     { label: "Absent Today", value: absentCount, icon: UserX, color: "text-rose-600", bg: "bg-rose-50" },
                     { label: "On Leave Today", value: leaveCount, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
+                    { label: "Pending Approval Today", value: pendingCount, icon: Clock, color: "text-saivie-teal", bg: "bg-saivie-surface-muted" },
                   ].map((stat, i) => (
                     <motion.div key={stat.label} custom={i} variants={cardVariants} initial="hidden" animate="visible">
                       <Card className="border-saivie-border shadow-sm" data-testid={`card-attendance-stat-${i}`}>
