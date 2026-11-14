@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 import type { PregnancyEpisodeDetails } from "../pregnancy-episodes";
 import type { PregnancyFollowUp } from "../pregnancy-follow-up";
 import type { MenopauseRecord } from "../menopause";
+import type { DietChartDetails } from "../diet-chart";
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -529,6 +530,7 @@ export const patientProtocols = pgTable("patient_protocols", {
   primaryGoal: text("primary_goal"),
   dietaryStrategy: text("dietary_strategy"),
   weeklyPlan: jsonb("weekly_plan"),
+  chartDetails: jsonb("chart_details").$type<DietChartDetails>(),
   notes: text("notes"),
   savedBy: text("saved_by"),
   savedAt: text("saved_at"),

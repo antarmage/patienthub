@@ -384,6 +384,8 @@ export default function StaffPatientProtocol() {
           primaryGoal,
           dietaryStrategy,
           weeklyPlan,
+          chartDetails: existingProtocol?.chartDetails ?? null,
+          notes: existingProtocol?.notes ?? null,
           savedBy: staffUsername,
           savedAt: new Date().toISOString(),
         }),
