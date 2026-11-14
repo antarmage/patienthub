@@ -24,8 +24,19 @@ test("shared navigation preserves named destinations, active state, badges, foot
   assert.ok(html.includes('aria-label="Collapse navigation"'));
   assert.ok(html.includes('aria-label="Open staff navigation"'));
   assert.equal((html.match(/aria-current="page"/g) || []).length, 1);
+  assert.equal((html.match(/class="portal-navigation-highlight"/g) || []).length, 1);
   assert.equal(navigationPreferenceKey, "saivie.navigation.expanded");
   client.clear();
+});
+
+test("highlight and connector move together with easing and respect reduced motion", () => {
+  const source = readFileSync(new URL("./PortalNavigation.tsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("./portal-navigation.css", import.meta.url), "utf8");
+  assert.ok(source.includes("const navigationId = useId()"));
+  assert.ok(source.includes("const reducedMotion = useReducedMotion()"));
+  assert.ok(source.includes('${navigationId}-${mobile ? "mobile" : "desktop"}-highlight'));
+  assert.ok(source.includes('duration: reducedMotion ? 0 : 0.3, ease: "easeInOut"'));
+  assert.match(css, /\.portal-navigation-desktop \.portal-navigation-highlight::after/);
 });
 
 test("focused clinical view can hide primary navigation", () => {

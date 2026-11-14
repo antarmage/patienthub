@@ -32,6 +32,8 @@ All `/staff` routes require a staff session token before their pages mount. Miss
 
 Collapsed portal navigation displays the fixed `/favicon.svg` Saivie mark; expanded navigation and the mobile drawer retain the clinic's full uploaded logo.
 
+The active navigation highlight and its curved desktop connector glide together between destinations with a 300 ms ease-in-out transition. Reduced-motion preferences disable this movement; desktop and mobile highlights animate independently.
+
 All receptionist main-content views share the dashboard's warm ivory page, cream/white surfaces, warm borders, teal actions and pastel accents through scoped `receptionist-content` brand-token overrides. Attendance cards use the same palette while retaining the teal check-in hero and semantic status colors. The receptionist navigation's active item and desktop connector match the warm ivory page, including in the collapsed sidebar and mobile drawer. Other sidebar colors, content overlays, other staff roles, owner and clinician palettes are unchanged.
 
 Arrival vitals prefill patient-reported LMP from the saved onboarding survey (`cycle.lastPeriod`) when this appointment has no saved LMP decision. An explicitly saved unknown LMP remains unknown. Height defaults to the patient record, then the latest valid earlier appointment/visit measurement; current-appointment measurements take priority. The minimal vitals endpoint supplies these defaults without exposing full clinical history. Prefilled values remain editable and are not persisted until Save.

@@ -51,9 +51,17 @@
 .portal-navigation-item:focus-visible { outline: 2px solid var(--saivie-teal); outline-offset: -3px; }
 .portal-navigation-desktop[data-highlight="receptionist"],
 .portal-navigation-drawer[data-highlight="receptionist"] { --portal-navigation-highlight: #faf5e6; }
-.portal-navigation-item[aria-current="page"] { background: var(--portal-navigation-highlight, var(--saivie-sage)); color: var(--saivie-teal); font-weight: 600; }
+.portal-navigation-item[aria-current="page"] { color: var(--saivie-teal); font-weight: 600; }
+.portal-navigation-highlight {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: var(--portal-navigation-highlight, var(--saivie-sage));
+}
 .portal-navigation-desktop .portal-navigation-item { width: calc(100% - 48px); margin-right: 48px; }
-.portal-navigation-desktop .portal-navigation-item[aria-current="page"]::after {
+.portal-navigation-desktop .portal-navigation-highlight::after {
   content: "";
   position: absolute;
   z-index: -1;
@@ -65,7 +73,7 @@
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' preserveAspectRatio='none'%3E%3Cpath d='M0 8C20 8 12 30 36 30H40C58 30 64 16 64 0V64C64 48 58 34 40 34H36C12 34 20 56 0 56Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
 }
 .portal-navigation-desktop[data-expanded="false"] .portal-navigation-item { width: calc(100% - 24px); margin-right: 24px; justify-content: center; padding: 12px; }
-.portal-navigation-desktop[data-expanded="false"] .portal-navigation-item[aria-current="page"]::after { right: -24px; width: 40px; }
+.portal-navigation-desktop[data-expanded="false"] .portal-navigation-highlight::after { right: -24px; width: 40px; }
 .portal-navigation-footer { flex-shrink: 0; padding: 16px 12px 0 4px; border-top: 1px solid var(--saivie-border); }
 .portal-navigation-mobile-trigger { display: none; }
 .portal-navigation-drawer { display: flex; flex-direction: column; width: min(300px, 88vw); padding: 20px 12px; background: var(--saivie-ivory); }

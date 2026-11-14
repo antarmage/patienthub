@@ -1,4 +1,5 @@
-import React, { useEffect, useState, type ReactNode } from "react";
+import React, { useEffect, useId, useState, type ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Menu, PanelLeftClose, PanelLeftOpen, type LucideIcon } from "lucide-react";
 import { BrandLogo } from "./BrandLogo";
 import { Button } from "./ui/button";
@@ -24,6 +25,8 @@ export function PortalNavigation({ label, items, footer, hidden = false, highlig
   hidden?: boolean;
   highlight?: "default" | "receptionist";
 }) {
+  const navigationId = useId();
+  const reducedMotion = useReducedMotion();
   const [expanded, setExpanded] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [storageError, setStorageError] = useState("");
@@ -56,6 +59,10 @@ export function PortalNavigation({ label, items, footer, hidden = false, highlig
         const button = <button type="button" className="portal-navigation-item" aria-label={item.label}
           aria-current={item.active ? "page" : undefined} data-testid={item.testId}
           onClick={() => { item.onSelect(); if (mobile) setMobileOpen(false); }}>
+          {item.active && <motion.span aria-hidden="true" className="portal-navigation-highlight"
+            layoutId={`${navigationId}-${mobile ? "mobile" : "desktop"}-highlight`}
+            initial={false}
+            transition={{ layout: { duration: reducedMotion ? 0 : 0.3, ease: "easeInOut" } }} />}
           <item.icon className="h-5 w-5 shrink-0" strokeWidth={1.6} />
           {open && <><span className="min-w-0 flex-1 truncate text-left">{item.label}</span>{item.badge}</>}
         </button>;
