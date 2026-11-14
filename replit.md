@@ -32,6 +32,8 @@ Owner, staff (all roles), and clinician primary sidebars use `PortalNavigation` 
 
 Desktop expansion is remembered on this origin/device under `saivie.navigation.expanded`; only the UI preference is stored. Below 768px, a menu button opens a labelled Radix modal sheet with focus trapping, Escape/backdrop dismissal, and focus restoration. Choosing a destination closes the sheet; resizing to desktop closes it without changing the saved desktop preference. Reduced-motion preferences disable navigation animation.
 
+The sidebar and mobile drawer use ivory; the active item and curved connector use sage. The right-side workspace panel remains ivory, and workspace headers, content wrappers, and cards retain their existing surfaces.
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages

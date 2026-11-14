@@ -2,7 +2,7 @@
   display: flex;
   height: 100dvh;
   overflow: hidden;
-  background: var(--saivie-sage);
+  background: var(--saivie-ivory);
   color: var(--saivie-plum);
 }
 
@@ -47,9 +47,9 @@
   font-size: 14px;
   cursor: pointer;
 }
-.portal-navigation-item:hover { background: rgb(255 255 255 / 35%); }
+.portal-navigation-item:hover { background: var(--saivie-surface-muted); }
 .portal-navigation-item:focus-visible { outline: 2px solid var(--saivie-teal); outline-offset: -3px; }
-.portal-navigation-item[aria-current="page"] { background: var(--saivie-ivory); color: var(--saivie-teal); font-weight: 600; }
+.portal-navigation-item[aria-current="page"] { background: var(--saivie-sage); color: var(--saivie-teal); font-weight: 600; }
 .portal-navigation-desktop .portal-navigation-item { width: calc(100% - 48px); margin-right: 48px; }
 .portal-navigation-desktop .portal-navigation-item[aria-current="page"]::after {
   content: "";
@@ -59,14 +59,14 @@
   top: -8px;
   width: 64px;
   height: calc(100% + 16px);
-  background: var(--saivie-ivory);
+  background: var(--saivie-sage);
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' preserveAspectRatio='none'%3E%3Cpath d='M0 8C20 8 12 30 36 30H40C58 30 64 16 64 0V64C64 48 58 34 40 34H36C12 34 20 56 0 56Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
 }
 .portal-navigation-desktop[data-expanded="false"] .portal-navigation-item { width: calc(100% - 24px); margin-right: 24px; justify-content: center; padding: 12px; }
 .portal-navigation-desktop[data-expanded="false"] .portal-navigation-item[aria-current="page"]::after { right: -24px; width: 40px; }
 .portal-navigation-footer { flex-shrink: 0; padding: 16px 12px 0 4px; border-top: 1px solid var(--saivie-border); }
 .portal-navigation-mobile-trigger { display: none; }
-.portal-navigation-drawer { display: flex; flex-direction: column; width: min(300px, 88vw); padding: 20px 12px; background: var(--saivie-sage); }
+.portal-navigation-drawer { display: flex; flex-direction: column; width: min(300px, 88vw); padding: 20px 12px; background: var(--saivie-ivory); }
 .portal-navigation-drawer .portal-navigation-brand { padding-right: 32px; }
 .portal-navigation-drawer .portal-navigation-item { width: 100%; margin-right: 0; }
 
