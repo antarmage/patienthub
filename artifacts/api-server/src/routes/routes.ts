@@ -26,6 +26,7 @@ import { OnlineConsultationError } from "../google-meet";
 import { buildMedicineSuggestions } from "../medicine-suggestions";
 import { checkInIsToday, receptionCompletion, registerClinicalAccess, registrationFields, rescheduledLogistics, type AccessActor } from "../clinical-access";
 import { createNutritionAccessStore, registerNutritionAccess } from "../nutrition-access";
+import { dietChartDetailsSchema } from "../../../../lib/db/src/diet-chart";
 import { knownRateCard, parseRateCardText } from "../referral-rate-cards";
 import { synchronizeFollowUpCalls } from "../follow-up-calls";
 import { registerReceptionFollowUpRoutes } from "../reception-follow-up";
@@ -3065,6 +3066,11 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   });
 
   app.post("/api/patient-protocols", async (req, res) => {
+    if (req.body?.chartDetails != null) {
+      const chart = dietChartDetailsSchema.safeParse(req.body.chartDetails);
+      if (!chart.success) return res.status(400).json({ error: "Invalid diet chart details", issues: chart.error.issues });
+      req.body.chartDetails = chart.data;
+    }
     const protocol = await storage.savePatientProtocol(req.body);
     res.json(protocol);
   });

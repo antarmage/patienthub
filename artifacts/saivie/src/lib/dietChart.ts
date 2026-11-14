@@ -2,8 +2,10 @@ import { z } from "zod/v4";
 import { dietChartDetailsSchema } from "../../../../lib/db/src/diet-chart";
 
 const mealSchema = z.object({
+  id: z.number().optional(),
   time: z.string().optional(), name: z.string().optional(), item: z.string().optional(),
   qty: z.string().optional(), macros: z.string().optional(),
+  components: z.array(z.object({ id: z.number(), name: z.string(), qty: z.string() })).optional(),
 });
 export const savedDietProtocolSchema = z.object({
   id: z.number().int().positive(), patientId: z.number().int().positive(),
@@ -39,7 +41,8 @@ export function generateDietChartHTML(patient: DietChartPatient, input: unknown,
   const height = Number(patient.height), weight = Number(patient.weight);
   const bmi = Number.isFinite(height) && height >= 30 && height <= 250 &&
     Number.isFinite(weight) && weight > 0 && weight <= 500 ? (weight / (height / 100) ** 2).toFixed(1) : null;
-  const plannedDays = days.filter((day) => protocol.weeklyPlan[day]?.some((meal) => meal.item?.trim()));
+  const plannedDays = (details?.dailySampleMenu ? ["Daily sample menu"] : days)
+    .filter((day) => protocol.weeklyPlan[day]?.some((meal) => meal.item?.trim()));
   if (!plannedDays.length) throw new Error("The saved protocol has no recorded meals. Save a meal plan before printing.");
   const advice = [protocol.primaryGoal ? goals[protocol.primaryGoal] || protocol.primaryGoal : null,
     protocol.dietaryStrategy ? strategies[protocol.dietaryStrategy] || protocol.dietaryStrategy : null].filter(Boolean).join(" · ");
@@ -52,6 +55,8 @@ export function generateDietChartHTML(patient: DietChartPatient, input: unknown,
       body { margin: 0; color: #000; background: #fff; font: 12pt Montserrat, Arial, sans-serif; line-height: 1.4; }
       .page { width: 100%; max-width: 192mm; min-height: 273mm; margin: 24px auto; padding: 0; }
       .cover { display: flex; flex-direction: column; gap: 8mm; }
+      .complete .cover { gap: 6mm; } .complete .nutrients { padding-top: 8mm; padding-bottom: 8mm; }
+      .complete table { width: 100%; margin: 0; } li { overflow-wrap: anywhere; }
       .brand { display: block; width: 112mm; max-width: 90%; height: auto; margin: 0 auto 2mm; }
       h2 { margin: 0 0 4mm; font-size: 12pt; font-weight: 700; color: #000; }
       p, td { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -77,7 +82,7 @@ export function generateDietChartHTML(patient: DietChartPatient, input: unknown,
       button { display: block; margin: 20px auto; padding: 12px 20px; cursor: pointer; }
       @media screen and (max-width: 760px) { .page { padding: 12px; min-height: auto; } }
       @media print { .page { margin: 0; padding: 0; break-after: page; } .page:last-child { break-after: auto; } .no-print { display: none; } }
-    </style></head><body><button class="no-print" onclick="window.print()">Print / Save as PDF</button>
+    </style></head><body${details ? ' class="complete"' : ""}><button class="no-print" onclick="window.print()">Print / Save as PDF</button>
     <section class="page cover"><img class="brand" src="${escape(assetOrigin)}/diet-chart-brand.png" alt="Saivie complete women care · Lifestyle">
       <div class="panel rounded patient-details"><p><strong>Name:</strong> ${escape(patient.name)}</p><p><strong>Age:</strong> ${recorded(patient.age)}${patient.age != null ? " years" : ""}</p>
       <div class="meta"><div><strong>Height:</strong> ${recorded(patient.height)} cm</div>

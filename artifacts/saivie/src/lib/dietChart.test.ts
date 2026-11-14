@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { generateDietChartHTML, type SavedDietProtocol } from "./dietChart";
+import { generateDietChartHTML, savedDietProtocolSchema, type SavedDietProtocol } from "./dietChart";
 
 const patient = { id: 7, name: "Synthetic <Patient>", age: 30, height: "160", weight: "64", condition: "Recorded condition" };
 const protocol: SavedDietProtocol = {
@@ -63,7 +63,42 @@ test("print is connected to the saved query rather than the unsaved editor and s
   const source = readFileSync(new URL("../pages/StaffPatientProtocol.tsx", import.meta.url), "utf8");
   assert.ok(source.includes("openDietChart(patient, protocolQuery.data)"));
   assert.ok(source.includes("await protocolQuery.refetch()"));
+  assert.ok(source.includes("chartDetails: existingProtocol?.chartDetails ?? null"));
+  assert.ok(source.includes("notes: existingProtocol?.notes ?? null"));
   assert.ok(source.includes('data-testid="button-print-diet-chart"'));
   const storage = readFileSync(new URL("../../../api-server/src/storage.ts", import.meta.url), "utf8");
   assert.ok(storage.includes(".orderBy(desc(patientProtocols.id)).limit(1)"));
+});
+
+test("complete authored daily plan prints targets, requirements and snapshot without inventing weekdays", () => {
+  const details = {
+    source: "Synthetic plan.pdf", patientSnapshot: { name: "Snapshot patient", age: 26, heightCm: 168, weightKg: 65.1 },
+    consultant: { name: "Synthetic consultant", qualifications: "Recorded qualification", phone: "Synthetic contact" },
+    advice: "Recorded advice", medicalHistory: "", duration: "", dailySampleMenu: true,
+    nutrients: { energyKcal: 1800, proteinGrams: 70, carbohydrateGrams: 270, fatGrams: 48 },
+    dailyRequirements: Array.from({ length: 13 }, (_, i) => `Recorded requirement ${i + 1} & quantity`),
+    foodsToTake: "", foodsToRestrict: "", foodsToAvoid: "Recorded avoidance <food>",
+  };
+  const saved = { ...protocol, chartDetails: details,
+    weeklyPlan: { "Daily sample menu": Array.from({ length: 6 }, (_, i) => ({
+      id: i + 1, time: ["09:00", "10:00", "12:30", "14:00", "18:00", "21:30"][i],
+      item: `Recorded option ${i + 1}\nOr, recorded alternative`, components: [{ id: 10, name: "component", qty: "1" }],
+    })) } };
+  const html = generateDietChartHTML(patient, saved);
+  for (const text of ["Snapshot patient", "26 years", "168", "65.1", "Synthetic consultant", "Recorded qualification",
+    "Synthetic contact", "Recorded advice", "1800 kcal/day", "70 g/day", "270 g/day", "48 g/day",
+    "Daily sample menu", "Measurement of uncooked weight per day", "21:30", "Plan duration: Not recorded",
+    "Recorded avoidance &lt;food&gt;"])
+    assert.ok(html.includes(text), text);
+  for (const requirement of details.dailyRequirements) assert.ok(html.includes(requirement.replace("&", "&amp;")));
+  assert.equal((html.match(/<tr><td>/g) || []).length, 6);
+  assert.equal((html.match(/<section class="page(?: [^"]+)?">/g) || []).length, 4);
+  assert.ok(!html.includes("Monday"));
+  assert.ok(!html.includes("Synthetic &lt;Patient&gt;"));
+  assert.equal(patient.age, 30);
+  const parsed = savedDietProtocolSchema.parse(saved);
+  assert.equal(parsed.weeklyPlan["Daily sample menu"][0].id, 1);
+  assert.deepEqual(parsed.weeklyPlan["Daily sample menu"][0].components, [{ id: 10, name: "component", qty: "1" }]);
+  assert.throws(() => generateDietChartHTML(patient, { ...saved, chartDetails: { ...details, nutrients: { ...details.nutrients, energyKcal: -1 } } }));
+  assert.throws(() => generateDietChartHTML({ ...patient, id: 8 }, saved), /another patient/);
 });

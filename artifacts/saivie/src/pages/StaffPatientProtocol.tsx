@@ -217,7 +217,8 @@ export default function StaffPatientProtocol() {
 
   const [selectedDay, setSelectedDay] = useState("Monday");
   const [isCustomMealOpen, setIsCustomMealOpen] = useState(false);
-  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const days = existingProtocol?.chartDetails?.dailySampleMenu ? ["Daily sample menu"] :
+    ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   const [weeklyPlan, setWeeklyPlan] = useState<Record<string, any[]>>({
     "Monday": [
@@ -233,6 +234,11 @@ export default function StaffPatientProtocol() {
     if (existingProtocol && !protocolLoaded) {
       if (existingProtocol.weeklyPlan) {
         setWeeklyPlan(existingProtocol.weeklyPlan as Record<string, any[]>);
+      }
+      if (existingProtocol.chartDetails?.dailySampleMenu) {
+        setSelectedDay("Daily sample menu");
+        setPrimaryGoal(existingProtocol.primaryGoal ?? "");
+        setDietaryStrategy(existingProtocol.dietaryStrategy ?? "");
       }
       if (existingProtocol.primaryGoal) {
         setPrimaryGoal(existingProtocol.primaryGoal);
@@ -381,8 +387,8 @@ export default function StaffPatientProtocol() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patientId: patient.id,
-          primaryGoal,
-          dietaryStrategy,
+          primaryGoal: primaryGoal || null,
+          dietaryStrategy: dietaryStrategy || null,
           weeklyPlan,
           chartDetails: existingProtocol?.chartDetails ?? null,
           notes: existingProtocol?.notes ?? null,
@@ -406,7 +412,7 @@ export default function StaffPatientProtocol() {
       return sum + (match ? parseInt(match[1]) : 0);
     }, 0);
   }, [weeklyPlan, selectedDay]);
-  const targetCalories = (patient?.meta?.tdee || 1800) - 300;
+  const targetCalories = existingProtocol?.chartDetails?.nutrients.energyKcal ?? ((patient?.meta?.tdee || 1800) - 300);
 
   const handlePrintDietChart = () => {
     try {
@@ -689,19 +695,19 @@ export default function StaffPatientProtocol() {
              <CardHeader className="py-0 px-0 border-b border-saivie-border bg-saivie-ivory">
                 <div className="flex items-center justify-between p-4 border-b border-saivie-border bg-saivie-surface-muted/50">
                     <div>
-                        <CardTitle className="text-lg font-bold text-saivie-plum font-serif">Weekly Meal Plan</CardTitle>
-                        <p className="text-xs text-saivie-plum mt-0.5">Plan meals for the entire week.</p>
+                        <CardTitle className="text-lg font-bold text-saivie-plum font-serif">{existingProtocol?.chartDetails?.dailySampleMenu ? "Daily sample menu" : "Weekly Meal Plan"}</CardTitle>
+                        <p className="text-xs text-saivie-plum mt-0.5">{existingProtocol?.chartDetails?.dailySampleMenu ? "Authored sample menu; not a weekday-specific prescription." : "Plan meals for the entire week."}</p>
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="text-right">
                             <p className="text-[10px] uppercase font-bold text-saivie-plum">Planned</p>
                             <p className={`text-sm font-bold ${totalCalories > targetCalories ? 'text-amber-600' : 'text-saivie-plum'}`}>
-                                {totalCalories} / {targetCalories} kcal
+                                {existingProtocol?.chartDetails && !totalCalories ? "Not recorded" : totalCalories} / {targetCalories} kcal
                             </p>
                         </div>
-                        <Button size="sm" variant="outline" className="bg-saivie-ivory text-saivie-plum border-saivie-border" onClick={copyToAllDays}>
+                        {days.length > 1 && <Button size="sm" variant="outline" className="bg-saivie-ivory text-saivie-plum border-saivie-border" onClick={copyToAllDays}>
                             <Calendar className="w-4 h-4 mr-2" /> Copy {selectedDay} to All
-                        </Button>
+                        </Button>}
                     </div>
                 </div>
                 
