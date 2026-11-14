@@ -11,7 +11,7 @@ test("recovery passcode login identifies unique staff, rejects ambiguous/nonstaf
     usersForPasscode: async (passcode) => passcode === "unique-test" ? [{ id: "nurse", username: "nurse.test", role: "staff" }] :
       passcode === "duplicate-test" ? [{ id: "a", username: "a", role: "staff" }, { id: "b", username: "b", role: "staff" }] :
       passcode === "patient-test" ? [{ id: "patient", username: "patient", role: "patient" }] : [],
-    issueToken: () => { issued++; return "synthetic-session"; },
+    issueToken: async () => { issued++; return "synthetic-session"; },
   });
   const server = createServer(app); await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address(); assert.ok(address && typeof address !== "string");

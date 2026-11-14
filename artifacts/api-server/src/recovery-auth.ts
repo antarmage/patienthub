@@ -5,7 +5,7 @@ type RecoveryUser = { id: string; username: string; role: string | null };
 
 export function registerRecoveryPasscodeLogin(app: Express, dependencies: {
   usersForPasscode(passcode: string): Promise<RecoveryUser[]>;
-  issueToken(userId: string): string;
+  issueToken(userId: string): string | Promise<string>;
 }) {
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: "draft-8", legacyHeaders: false,
@@ -19,6 +19,6 @@ export function registerRecoveryPasscodeLogin(app: Express, dependencies: {
     if (matches.length !== 1) return res.status(401).json({ error: "Passcode could not identify a staff account. Check the passcode or ask your administrator to assign a unique one." });
     const user = matches[0];
     if (!user.role || !["staff", "receptionist", "admin", "clinician", "owner"].includes(user.role)) return res.status(403).json({ error: "Staff access required" });
-    res.json({ staffToken: dependencies.issueToken(user.id), user });
+    res.json({ staffToken: await dependencies.issueToken(user.id), user });
   });
 }

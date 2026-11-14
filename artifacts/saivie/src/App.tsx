@@ -21,6 +21,7 @@ import VisitSurvey from "@/pages/VisitSurvey";
 import Kiosk from "@/pages/Kiosk";
 import { useBrandFavicon } from "@/components/BrandLogo";
 import { Button } from "@/components/ui/button";
+import { startStaffSessionRenewal } from "./lib/staffSessionRenewal";
 
 function BrandFavicon() {
   useBrandFavicon();
@@ -35,7 +36,9 @@ function RecoveryPortalRedirect() {
 }
 
 function Router() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const [renewalError, setRenewalError] = useState("");
+  useEffect(() => startStaffSessionRenewal(setRenewalError), [location]);
   const [sessionExpired, setSessionExpired] = useState(isStaffSessionExpired);
   useEffect(() => {
     const expire = () => {
@@ -52,7 +55,7 @@ function Router() {
     <main className="flex min-h-screen items-center justify-center bg-saivie-ivory p-6">
       <section role="alert" className="w-full max-w-lg space-y-4 rounded-2xl border bg-white p-6">
         <h1 className="font-serif text-2xl text-saivie-plum">Please sign in again</h1>
-        <p className="text-sm text-muted-foreground">Your staff session has expired or is no longer valid. Sessions last one hour, but an API restart also ends them.</p>
+        <p className="text-sm text-muted-foreground">Your staff session has expired or is no longer valid. Sessions stay signed in during clinic hours (8:30 AM–8:30 PM IST) and renew while this tab is visible outside those hours.</p>
         <p className="text-sm text-muted-foreground">Unsaved changes have not been submitted. Sign in again to continue.</p>
         <Button onClick={() => {
           sessionStorage.removeItem("billing_staff_token");
@@ -67,6 +70,8 @@ function Router() {
     </main>
   );
   return (
+    <>
+    {renewalError && <div role="alert" className="fixed bottom-4 left-4 right-4 z-50 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{renewalError}</div>}
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/kiosk" component={Kiosk} />
@@ -84,6 +89,7 @@ function Router() {
       <Route path={/^\/recover\/?$/} component={RecoveryPortalRedirect} />
       <Route component={NotFound} />
     </Switch>
+    </>
   );
 }
 

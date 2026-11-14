@@ -37,6 +37,7 @@ import { OcrError } from "../replit_integrations/ocr/document";
 import { registerLocalReportRoutes } from "../local-reports";
 import { createLocalReportStore } from "../local-report-store";
 import { pool } from "../db";
+import { createStaffSessions, registerStaffSessionRenewal } from "../staff-sessions";
 import { antenatalFromBody, registerPrescriptionTranscriptionRoutes } from "../prescription-transcriptions";
 import { getUncachableGoogleSheetClient } from "../google-sheets";
 import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../google-drive";
@@ -128,7 +129,7 @@ async function presentInvoiceTemplate(template: any) {
 }
 
 async function requireInvoiceTemplateOwner(req: Request, res: Response): Promise<boolean> {
-  const userId = getStaffUserId(req, res);
+  const userId = await getStaffUserId(req, res);
   if (!userId) return false;
   const user = await storage.getUser(userId);
   if (user?.role !== "owner") {
@@ -209,34 +210,9 @@ function getMobilePatientId(req: Request, res: Response, expectedPatientId?: num
 }
 
 // ── Staff (Recover) Auth Tokens ───────────────────────────────────────────────
-const STAFF_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
-const staffAuthTokens = new Map<string, { userId: string; expiresAt: number }>();
-
-function issueStaffToken(userId: string): string {
-  const token = crypto.randomBytes(32).toString("hex");
-  staffAuthTokens.set(token, { userId, expiresAt: Date.now() + STAFF_TOKEN_TTL_MS });
-  return token;
-}
-
-function getStaffUserId(req: Request, res: Response): string | null {
-  const auth = (req.headers["authorization"] ?? "") as string;
-  if (!auth.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Staff token required" });
-    return null;
-  }
-  const token = auth.slice(7);
-  const entry = staffAuthTokens.get(token);
-  if (!entry) {
-    res.status(401).json({ error: "Invalid staff token" });
-    return null;
-  }
-  if (entry.expiresAt < Date.now()) {
-    staffAuthTokens.delete(token);
-    res.status(401).json({ error: "Staff token expired, please log in again" });
-    return null;
-  }
-  return entry.userId;
-}
+const staffSessions = createStaffSessions(pool);
+const issueStaffToken = staffSessions.issue;
+const getStaffUserId = staffSessions.authenticate;
 
 async function getAccessActor(req: Request, res: Response): Promise<AccessActor | null> {
   const auth = req.headers.authorization;
@@ -249,7 +225,7 @@ async function getAccessActor(req: Request, res: Response): Promise<AccessActor 
     }
     // Keep the legacy appointment header, but apply the same expiration and user-role checks.
     if (!auth && typeof legacyToken === "string") req.headers.authorization = `Bearer ${legacyToken}`;
-    const userId = getStaffUserId(req, res);
+    const userId = await getStaffUserId(req, res);
     if (!userId) return null;
     const user = await storage.getUser(userId);
     return user ? { userId, role: user.role || "" } : null;
@@ -417,7 +393,7 @@ export async function registerRoutes(
     ).map((user) => ({ id: user.id, name: user.displayName?.trim() || user.username })),
   });
   registerExpenseRoutes(app, async (req, res) => {
-    const id = getStaffUserId(req, res);
+    const id = await getStaffUserId(req, res);
     if (!id) return null;
     const user = await storage.getUser(id);
     if (!user) { res.status(403).json({ error: "Staff account not found." }); return null; }
@@ -481,7 +457,7 @@ export async function registerRoutes(
       if (!res.headersSent) res.status(actor ? 403 : 401).json({ error: "Clinician or own-patient access required" });
       return null;
     }
-    const id = getStaffUserId(req, res);
+    const id = await getStaffUserId(req, res);
     if (!id) return null;
     const user = await storage.getUser(id);
     if (!user || (clinicianOnly ? !["clinician", "owner"].includes(user.role || "") : !["staff", "clinician", "owner"].includes(user.role || ""))) {
@@ -517,7 +493,7 @@ export async function registerRoutes(
   registerPaperWork(app, createPaperWorkStore(pool), getAccessActor);
 
   registerBillingTemplateRoutes(app, async (req, res) => {
-    const id = getStaffUserId(req, res);
+    const id = await getStaffUserId(req, res);
     if (!id) return null;
     const user = await storage.getUser(id);
     if (!user || user.role !== "staff") {
@@ -2564,7 +2540,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   app.post("/api/patients/:id/invoices", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid patient ID" });
-    const userId = getStaffUserId(req, res);
+    const userId = await getStaffUserId(req, res);
     if (!userId) return;
     const user = await storage.getUser(userId);
     if (!user) return res.status(403).json({ error: "Billing access required" });
@@ -3021,7 +2997,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       username: user.username,
       displayName: user.displayName ?? null,
       id: user.id,
-      staffToken: ["staff", "receptionist", "admin", "owner", "clinician"].includes(user.role || "") ? issueStaffToken(user.id) : undefined,
+      staffToken: ["staff", "receptionist", "admin", "owner", "clinician"].includes(user.role || "") ? await issueStaffToken(user.id) : undefined,
       provider: providerInfo ? { id: providerInfo.id, name: providerInfo.name, specialty: providerInfo.specialty, role: providerInfo.role } : null,
     });
   });
@@ -3077,7 +3053,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
   // patientId must NOT appear in the URL (CodeQL js/sensitive-get-query).
   // Pass it via the X-Patient-Id request header instead.
   app.get("/api/patient-protocols", async (req, res) => {
-    if (!getStaffUserId(req, res)) return;
+    if (!await getStaffUserId(req, res)) return;
     const patientId = parseId((req.headers["x-patient-id"] as string) ?? "");
     if (!patientId) return res.status(400).json({ error: "Missing or invalid X-Patient-Id header" });
     const protocol = await storage.getPatientProtocol(patientId);
@@ -5592,7 +5568,7 @@ Only include appointments that should move. If schedule is already optimal, retu
 
   // Staff accounts management — list all users and their phone status (owner only)
   app.get("/api/owner/staff-accounts", async (req: any, res: any) => {
-    const callerId = getStaffUserId(req, res);
+    const callerId = await getStaffUserId(req, res);
     if (!callerId) return;
     const caller = await storage.getUser(callerId);
     if (!caller || caller.role !== "owner") {
@@ -5619,7 +5595,7 @@ Only include appointments that should move. If schedule is already optimal, retu
   });
 
   app.patch("/api/owner/staff-accounts/:id/name", async (req, res) => {
-    const callerId = getStaffUserId(req, res);
+    const callerId = await getStaffUserId(req, res);
     if (!callerId) return;
     const caller = await storage.getUser(callerId);
     if (!caller || caller.role !== "owner") {
@@ -5638,7 +5614,7 @@ Only include appointments that should move. If schedule is already optimal, retu
     res.json({ id: updated.id, displayName: updated.displayName ?? null });
   });
   app.patch("/api/owner/staff-accounts/:id/provider", async (req, res) => {
-    const callerId = getStaffUserId(req, res);
+    const callerId = await getStaffUserId(req, res);
     if (!callerId) return;
     if ((await storage.getUser(callerId))?.role !== "owner") return res.status(403).json({ error: "Owner access required" });
     const user = await storage.getUser(req.params.id);
@@ -5657,7 +5633,7 @@ Only include appointments that should move. If schedule is already optimal, retu
 
   // Update a staff account's phone number (owner only)
   app.patch("/api/owner/staff-accounts/:id/phone", async (req: any, res: any) => {
-    const callerId = getStaffUserId(req, res);
+    const callerId = await getStaffUserId(req, res);
     if (!callerId) return;
     const caller = await storage.getUser(callerId);
     if (!caller || caller.role !== "owner") {
@@ -5684,7 +5660,7 @@ Only include appointments that should move. If schedule is already optimal, retu
 
   // Update a staff account's OTP fallback email (owner only)
   app.patch("/api/owner/staff-accounts/:id/email", async (req: any, res: any) => {
-    const callerId = getStaffUserId(req, res);
+    const callerId = await getStaffUserId(req, res);
     if (!callerId) return;
     const caller = await storage.getUser(callerId);
     if (!caller || caller.role !== "owner") {
@@ -5828,6 +5804,7 @@ Return a JSON object:
     usersForPasscode: async (passcode) => (await pool.query<{ id: string; username: string; role: string | null }>("SELECT id, username, role FROM users WHERE password = $1 LIMIT 2", [passcode])).rows,
     issueToken: issueStaffToken,
   });
+  registerStaffSessionRenewal(app, staffSessions);
 
   // Staff login: authenticate using username+password stored in users table
   app.post("/api/postop/auth/login", async (req, res) => {
@@ -5852,7 +5829,7 @@ Return a JSON object:
         return res.status(401).json({ error: "Invalid or expired verification code" });
       }
     }
-    const staffToken = issueStaffToken(user.id);
+    const staffToken = await issueStaffToken(user.id);
     res.json({ staffToken, user: { id: user.id, username: user.username, role: user.role } });
   });
 
@@ -5879,7 +5856,7 @@ Return a JSON object:
 
 // Helper: validate desk staff token AND verify receptionist/admin role
 async function getDeskStaffUserId(req: Request, res: Response): Promise<string | null> {
-  const userId = getStaffUserId(req, res);
+  const userId = await getStaffUserId(req, res);
   if (!userId) return null;
   const user = await storage.getUser(userId);
   if (!user || !["staff", "receptionist", "admin", "owner"].includes(user.role || "")) {
@@ -5934,7 +5911,7 @@ async function handleDeskAuth(req: Request, res: Response) {
         return res.status(401).json({ error: "Invalid or expired verification code" });
       }
     }
-    const staffToken = issueStaffToken(user.id);
+    const staffToken = await issueStaffToken(user.id);
     res.json({ staffToken, user: { id: user.id, username: user.username, role: user.role } });
   } catch (err: unknown) {
     res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
@@ -5943,7 +5920,7 @@ async function handleDeskAuth(req: Request, res: Response) {
 
 export async function registerDeskRoutes(app: Express) {
   registerLocalReportRoutes(app, async (req, res, next) => {
-    const id = getStaffUserId(req, res);
+    const id = await getStaffUserId(req, res);
     if (!id) return;
     try {
       const user = await storage.getUser(id);
@@ -6320,7 +6297,8 @@ export async function registerGenomeRoutes(app: Express): Promise<void> {
   // Access requires: valid staff Bearer token OR a clinician-role session user.
   app.get("/api/genome/results/patient", genomeLimiter, async (req: Request, res: Response) => {
     const auth = (req.headers["authorization"] ?? "") as string;
-    const hasStaffToken = auth.startsWith("Bearer ") && staffAuthTokens.has(auth.slice(7));
+    const hasStaffToken = auth ? !!await getStaffUserId(req, res) : false;
+    if (auth && !hasStaffToken) return;
     const sessionPatientId = ((req as any).session)?.patientId as number | undefined;
     if (!hasStaffToken && !sessionPatientId) {
       res.status(401).json({ error: "Authentication required" });

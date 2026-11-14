@@ -11,6 +11,7 @@ import { ensureBookingCatalogSchema } from "./booking-catalog";
 import { ensureFaceAttendanceSchema } from "./face-attendance";
 import { ensureStaffProfileSchema } from "./staff-profile";
 import { ensureAttendanceShiftSchema } from "./attendance-shifts";
+import { ensureStaffSessionSchema } from "./staff-sessions";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set.");
@@ -31,6 +32,7 @@ export const db = drizzle(pool, { schema });
 export async function ensureSchema(): Promise<void> {
   const client = await pool.connect();
   try {
+    await ensureStaffSessionSchema(client);
     await ensureSurgerySchema(client);
     await ensurePregnancyEpisodeSchema(client);
     await ensurePregnancyFollowUpSchema(client);
