@@ -16,7 +16,7 @@ const protocol: SavedDietProtocol = {
 
 test("diet chart follows reference sections with recorded weekday meals and saved attribution", () => {
   const html = generateDietChartHTML(patient, protocol);
-  for (const text of ["Saivie complete women care · Lifestyle", "Diagnosis:", "Advice:", "Medical history:", "Nutrient",
+  for (const text of ["Saivie complete women care · Lifestyle", "Diagnosis / Advice:", "Medical history:", "Nutrient",
     "Monday · Meal plan", "Tuesday · Meal plan", "Foods to be taken", "Foods to be restricted", "Foods to be avoided",
     "1 bowl", "100 g", "300 kcal", "Synthetic nutritionist", "Saved protocol:</strong> #3", "25.0"])
     assert.ok(html.includes(text), text);
@@ -26,6 +26,22 @@ test("diet chart follows reference sections with recorded weekday meals and save
   assert.equal((html.match(/<section class="page(?: [^"]+)?">/g) || []).length, 4);
   assert.ok(html.includes("@page { size: A4"));
   assert.ok(html.includes("break-after: page"));
+});
+
+test("A4 preview keeps reference proportions and omits empty meal metadata", () => {
+  const html = generateDietChartHTML(patient, { ...protocol, weeklyPlan: {
+    Monday: [{ time: "09:00", item: "Recorded meal" }],
+  } });
+  for (const css of ["width: 210mm", "min-height: 297mm", "padding: 12mm 9mm",
+    "width: 118mm", "grid-template-columns: 1fr 1.4fr 2fr", "font-size: 11pt", "text-align: right"])
+    assert.ok(html.includes(css), css);
+  assert.ok(!html.includes("Quantity: Not recorded"));
+  assert.ok(!html.includes("Nutrition: Not recorded"));
+  assert.ok(!html.includes('<span class="meal-name">Not recorded'));
+  const cover = html.match(/<section class="page cover">([\s\S]*?)<\/section>/)?.[1];
+  assert.ok(cover?.includes('class="signoff-details"'));
+  assert.ok(!cover?.includes("Saved protocol:"));
+  assert.ok(!cover?.includes("Plan duration:"));
 });
 
 test("patient and saved meal content are escaped and absent clinical guidance is not invented", () => {
@@ -94,6 +110,8 @@ test("complete authored daily plan prints targets, requirements and snapshot wit
   assert.equal((html.match(/<tr><td>/g) || []).length, 6);
   assert.equal((html.match(/<section class="page(?: [^"]+)?">/g) || []).length, 4);
   assert.ok(!html.includes("Monday"));
+  assert.ok(html.indexOf('class="page daily-menu"') < html.indexOf('class="page guidance requirements"'));
+  assert.ok(html.includes(".daily-menu table { height: 225mm; }"));
   assert.ok(!html.includes("Synthetic &lt;Patient&gt;"));
   assert.equal(patient.age, 30);
   const parsed = savedDietProtocolSchema.parse(saved);

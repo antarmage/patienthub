@@ -52,35 +52,40 @@ export function generateDietChartHTML(patient: DietChartPatient, input: unknown,
       @font-face { font-family: Montserrat; font-weight: 700; src: url("${escape(assetOrigin)}/diet-chart-montserrat-bold.ttf") format("truetype"); }
       @page { size: A4; margin: 12mm 9mm; }
       * { box-sizing: border-box; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-      body { margin: 0; color: #000; background: #fff; font: 12pt Montserrat, Arial, sans-serif; line-height: 1.4; }
-      .page { width: 100%; max-width: 192mm; min-height: 273mm; margin: 24px auto; padding: 0; }
-      .cover { display: flex; flex-direction: column; gap: 8mm; }
-      .complete .cover { gap: 6mm; } .complete .nutrients { padding-top: 8mm; padding-bottom: 8mm; }
-      .complete table { width: 100%; margin: 0; } li { overflow-wrap: anywhere; }
-      .brand { display: block; width: 112mm; max-width: 90%; height: auto; margin: 0 auto 2mm; }
+      body { margin: 0; color: #000; background: #fff; font: 12pt Montserrat, Arial, sans-serif; line-height: 1.35; }
+      .page { width: 192mm; min-height: 273mm; margin: 24px auto; padding: 0; }
+      .cover { display: flex; flex-direction: column; gap: 8.5mm; }
+      li { overflow-wrap: anywhere; }
+      .brand { display: block; width: 118mm; height: auto; margin: 0 auto; }
       h2 { margin: 0 0 4mm; font-size: 12pt; font-weight: 700; color: #000; }
       p, td { white-space: pre-wrap; overflow-wrap: anywhere; }
-      .panel { background: #faebf6; border: 0.25mm solid #e8b8da; padding: 7mm; }
-      .rounded { border-radius: 5mm; } .patient-details p { margin: 0 0 6mm; }
+      .panel { background: #faebf6; border: 0.25mm solid #e8b8da; padding: 7.5mm; }
+      .rounded { border-radius: 5mm; } .patient-details p { margin: 0 0 6.5mm; }
       .patient-details p:last-child { margin-bottom: 0; }
-      .meta { display: flex; flex-wrap: wrap; gap: 3mm 8mm; margin-bottom: 6mm; }
-      .nutrients { padding-top: 12mm; padding-bottom: 12mm; } .nutrients ul { margin: 0; padding-left: 7mm; }
+      .meta { display: grid; grid-template-columns: 1fr 1.4fr 2fr; gap: 3mm; margin-bottom: 6.5mm; }
+      .nutrients { padding-top: 14mm; padding-bottom: 14mm; } .nutrients ul { margin: 0; padding-left: 7mm; }
       .nutrients li { margin: 0 0 2mm; } .nutrients li:last-child { margin: 0; }
       .note { color: #444; font-size: 8pt; margin: 2mm 0; }
-      .signoff { margin-top: auto; padding-top: 5mm; } .signoff strong { display: block; border-bottom: 0.25mm solid #000; padding-bottom: 3mm; }
-      .signoff p { margin: 4mm 0 0; } .saved { font-size: 8pt; }
-      .meal-heading { font-size: 9pt; font-weight: 400; margin: 0 2mm 3mm; }
-      table { width: calc(100% + 4mm); margin: 0 -2mm; border-collapse: separate; border-spacing: 2mm 3mm; table-layout: fixed; }
+      .signoff { margin-top: auto; padding: 0 2.5mm 2mm; }
+      .signoff > strong { display: block; border-bottom: 0.25mm solid #000; padding-bottom: 3mm; }
+      .signoff-details { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; padding-top: 4mm; }
+      .signoff-details p { margin: 0; font-size: 11pt; } .saved { font-size: 8pt; }
+      .meal-heading { font-size: 9pt; font-weight: 400; margin: 0 0 2mm; }
+      table { width: 100%; margin: 0; border-collapse: separate; border-spacing: 2mm 3mm; table-layout: fixed; font-size: 11pt; }
+      .daily-menu table { height: 225mm; }
       th, td { padding: 4mm 3mm; text-align: left; vertical-align: middle; }
       th:first-child, td:first-child { width: 22%; background: #e6c3db; border: 0; text-align: center; }
       th:last-child, td:last-child { background: #faebf6; border: 0.25mm solid #e8b8da; }
-      td { height: 25mm; } tr { break-inside: avoid; } thead { display: table-header-group; }
+      td:first-child { text-align: right; } td { height: 25mm; } tr { break-inside: avoid; } thead { display: table-header-group; }
       .meal-name, .meal-meta { display: block; font-size: 9pt; margin: 1mm 0; }
       .guidance h2 { text-transform: uppercase; margin-top: 6mm; } .guidance h2:first-child { margin-top: 0; }
-      .guidance .panel { min-height: 30mm; margin-bottom: 6mm; padding: 4mm 3mm; }
+      .guidance .panel { margin-bottom: 6mm; padding: 4mm 3mm; font-size: 11pt; }
       .guidance .panel p { margin: 0; }
+      .requirements ol { margin: 0; padding-left: 6mm; } .requirements li { margin-bottom: 4mm; }
+      .protocol-notes { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 9pt; }
       button { display: block; margin: 20px auto; padding: 12px 20px; cursor: pointer; }
-      @media screen and (max-width: 760px) { .page { padding: 12px; min-height: auto; } }
+      @media screen { body { background: #eee; padding: 0 24px 24px; min-width: 240mm; }
+        .page { background: #fff; width: 210mm; min-height: 297mm; padding: 12mm 9mm; box-shadow: 0 2px 16px #0001; } }
       @media print { .page { margin: 0; padding: 0; break-after: page; } .page:last-child { break-after: auto; } .no-print { display: none; } }
     </style></head><body${details ? ' class="complete"' : ""}><button class="no-print" onclick="window.print()">Print / Save as PDF</button>
     <section class="page cover"><img class="brand" src="${escape(assetOrigin)}/diet-chart-brand.png" alt="Saivie complete women care · Lifestyle">
@@ -88,7 +93,7 @@ export function generateDietChartHTML(patient: DietChartPatient, input: unknown,
       <div class="meta"><div><strong>Height:</strong> ${recorded(patient.height)} cm</div>
       <div><strong>Weight:</strong> ${recorded(patient.weight)} kg</div><div><strong>BMI (kg/m²):</strong> ${recorded(bmi)}</div></div>
       <p><strong>Consultant:</strong> ${recorded(details?.consultant.name || protocol.savedBy)}</p>
-      <p><strong>Diagnosis:</strong> ${recorded(patient.condition)}<br><strong>Advice:</strong> ${recorded(details?.advice || advice)}</p>
+      <p><strong>Diagnosis / Advice:</strong> ${recorded([patient.condition, details?.advice || advice].filter(Boolean).join(" · "))}</p>
       <p><strong>Medical history:</strong> ${details ? recorded(details.medicalHistory) : "Not recorded in the saved nutrition protocol"}</p></div>
       <div class="panel rounded nutrients"><h2>Nutrient Requirement Remarks</h2><ul>
         ${details ? [
@@ -96,21 +101,23 @@ export function generateDietChartHTML(patient: DietChartPatient, input: unknown,
           ["Carbohydrate", details.nutrients.carbohydrateGrams, "g/day"], ["Fat", details.nutrients.fatGrams, "g/day"],
         ].map(([name, value, unit]) => `<li>${name}: <strong>${value} ${unit}</strong></li>`).join("") :
           ["Energy", "Protein", "Carbohydrate", "Fat"].map((name) => `<li>${name}: <strong>Not recorded</strong></li>`).join("")}</ul></div>
-      <div class="signoff"><strong>Lifestyle planned by:</strong><p>${recorded(details?.consultant.name || protocol.savedBy)}
-        ${details ? `<br>${recorded(details.consultant.qualifications)}<br>${recorded(details.consultant.phone)}` : ""}</p>
-        <p class="saved"><strong style="display:inline;border:0;padding:0">Saved protocol:</strong> #${protocol.id} · ${recorded(protocol.savedAt)}<br>Plan duration: ${recorded(details?.duration)}</p>
-        <p class="note">${details ? `Measurements and nutrient targets transcribed from ${escape(details.source)}.` : "BMI is calculated from saved height/weight. Nutrient targets require clinician confirmation."}</p></div>
+      <div class="signoff"><strong>Lifestyle planned by:</strong><div class="signoff-details">
+        <p>${recorded(details?.consultant.name || protocol.savedBy)}</p>
+        ${details ? `<p>${recorded(details.consultant.qualifications)}<br>${recorded(details.consultant.phone)}</p>` : ""}
+      </div></div>
     </section>
-    ${details?.dailyRequirements.length ? `<section class="page guidance"><h2>Measurement of uncooked weight per day</h2><div class="panel"><ol>
-      ${details.dailyRequirements.map((requirement) => `<li>${escape(requirement)}</li>`).join("")}</ol></div></section>` : ""}
-    ${plannedDays.map((day) => `<section class="page"><h2 class="meal-heading">${details?.dailySampleMenu ? "Daily sample menu" : `${day} · Meal plan`} · ${escape(patient.name)}</h2>
+    ${plannedDays.map((day) => `<section class="page${details?.dailySampleMenu ? " daily-menu" : ""}"><h2 class="meal-heading">${details?.dailySampleMenu ? "Daily sample menu" : `${day} · Meal plan`} · ${escape(patient.name)}</h2>
       <table><thead><tr><th>Time</th><th>Recipe</th></tr></thead><tbody>
-        ${protocol.weeklyPlan[day].filter((meal) => meal.item?.trim()).map((meal) => `<tr><td>${recorded(meal.time)}</td><td><span class="meal-name">${recorded(meal.name)}</span>${recorded(meal.item)}<span class="meal-meta">Quantity: ${recorded(meal.qty)} · Nutrition: ${recorded(meal.macros)}</span></td></tr>`).join("")}
+        ${protocol.weeklyPlan[day].filter((meal) => meal.item?.trim()).map((meal) => `<tr><td>${recorded(meal.time)}${meal.name?.trim() ? `<span class="meal-name">${escape(meal.name)}</span>` : ""}</td><td>${recorded(meal.item)}${meal.qty?.trim() || meal.macros?.trim() ? `<span class="meal-meta">${[meal.qty?.trim() ? `Quantity: ${escape(meal.qty)}` : "", meal.macros?.trim() ? `Nutrition: ${escape(meal.macros)}` : ""].filter(Boolean).join(" · ")}</span>` : ""}</td></tr>`).join("")}
       </tbody></table></section>`).join("")}
+    ${details?.dailyRequirements.length ? `<section class="page guidance requirements"><h2>Measurement of uncooked weight per day</h2><div class="panel"><ol>
+      ${details.dailyRequirements.map((requirement) => `<li>${escape(requirement)}</li>`).join("")}</ol></div></section>` : ""}
     <section class="page guidance">
       ${[["Foods to be taken", details?.foodsToTake], ["Foods to be restricted", details?.foodsToRestrict], ["Foods to be avoided", details?.foodsToAvoid]]
         .map(([heading, value]) => `<h2>${heading}</h2><div class="panel"><p>${value ? escape(value) : "Not recorded in the saved nutrition protocol."}</p></div>`).join("")}
-      <h2>Saved protocol notes</h2><div class="panel"><p>${recorded(protocol.notes)}</p></div>
+      <h2>Saved protocol notes</h2><div class="protocol-notes">${recorded(protocol.notes)}</div>
+      <p class="saved"><strong>Saved protocol:</strong> #${protocol.id} · ${recorded(protocol.savedAt)}<br>Plan duration: ${recorded(details?.duration)}</p>
+      <p class="note">${details ? `Measurements and nutrient targets transcribed from ${escape(details.source)}.` : "BMI is calculated from saved height/weight. Nutrient targets require clinician confirmation."}</p>
       <p class="note">${escape(patient.name)} · Saved protocol #${protocol.id}. Only recorded guidance is included.</p>
     </section></body></html>`;
 }
