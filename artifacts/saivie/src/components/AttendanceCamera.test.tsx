@@ -81,3 +81,14 @@ test("main attendance card offers clock-out only after a clock-in and before clo
   assert.ok(saving.includes("Could not record clock-out"));
   assert.ok(saving.includes("disabled="));
 });
+
+test("checked-in card displays clinic-local time and truthful status in the reference layout", () => {
+  const html = render(<AttendanceCamera ready clockIn="2026-11-14T05:16:00Z" onClockOut={() => {}} />, false);
+  for (const text of ["Check-in Time", "10:46 am", "14 Nov", "Attendance saved", "Clock out when your shift ends", ">Clock Out<", "lg:grid-cols-"]) assert.ok(html.includes(text), text);
+  assert.ok(!html.includes("Face recognition active"));
+  assert.ok(!html.includes("No manual action needed"));
+  const done = render(<AttendanceCamera ready clockIn="2026-11-14T05:16:00Z" clockOut="2026-11-14T12:00:00Z" />, true);
+  for (const text of ["Check-in Time", "Check-out Time", "05:30 pm", "Shift completed"]) assert.ok(done.includes(text), text);
+  const loading = render(<AttendanceCamera ready={false} clockIn="2026-11-14T05:16:00Z" onClockOut={() => {}} />, true);
+  assert.ok(loading.includes("disabled="));
+});

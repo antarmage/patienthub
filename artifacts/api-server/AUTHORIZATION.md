@@ -152,6 +152,8 @@ Staff self-service attendance at `/api/staff/attendance` accepts authenticated `
 
 After today's clock-in, the main attendance card prominently offers **Clock Out**, as does today's weekly row. Both use the same mutation and pending guard; no camera is required for clock-out. Once recorded, the card shows **You are checked out!**, timing details, and no further clock-out action. Pending owner approval alone does not offer clock-out.
 
+The recorded-attendance card uses a responsive horizontal portrait, status, and time-panel layout, stacking on smaller screens. Recorded times and dates use the clinic's Asia/Kolkata time zone. The status confirms saved attendance, not biometric verification, since an owner-approved or ordinary clock-in can also mark a staff member present.
+
 ### Optional camera check-in and owner review
 
 - **My Attendance** has a consent-first camera check-in card plus the existing current-week leave, regular-day-off and clock-out controls. Camera access requires HTTPS (localhost is supported for development), browser permission and a same-origin camera policy; the self-hosted nginx example allows `camera=(self)`. Stop/cancel, navigation and unmount release camera tracks, including camera permission granted after cancellation. No camera/photo images are uploaded.
