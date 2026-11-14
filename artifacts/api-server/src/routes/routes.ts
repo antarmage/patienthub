@@ -25,6 +25,7 @@ import { onlineStore } from "../online-consultation-store";
 import { OnlineConsultationError } from "../google-meet";
 import { buildMedicineSuggestions } from "../medicine-suggestions";
 import { checkInIsToday, receptionCompletion, registerClinicalAccess, registrationFields, rescheduledLogistics, type AccessActor } from "../clinical-access";
+import { createNutritionAccessStore, registerNutritionAccess } from "../nutrition-access";
 import { knownRateCard, parseRateCardText } from "../referral-rate-cards";
 import { synchronizeFollowUpCalls } from "../follow-up-calls";
 import { registerReceptionFollowUpRoutes } from "../reception-follow-up";
@@ -229,7 +230,7 @@ async function getAccessActor(req: Request, res: Response): Promise<AccessActor 
     const userId = await getStaffUserId(req, res);
     if (!userId) return null;
     const user = await storage.getUser(userId);
-    return user ? { userId, role: user.role || "" } : null;
+    return user ? { userId, role: user.role || "", username: user.username } : null;
   }
   const patientId = (req as Request & { session?: { patientId?: number } }).session?.patientId;
   return typeof patientId === "number" && Number.isSafeInteger(patientId) && patientId > 0 ? { patientId } : null;
@@ -383,6 +384,7 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  registerNutritionAccess(app, getAccessActor, createNutritionAccessStore(pool));
   registerFaceAttendanceRoutes(app, getAccessActor, createFaceAttendanceStore(pool));
   registerStaffProfileRoutes(app, getAccessActor, createStaffProfileStore(pool));
   registerAttendanceShiftRoutes(app, getAccessActor, createAttendanceShiftStore(pool));

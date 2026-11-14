@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { isReceptionReader } from "./reception-access";
 
-export type AccessActor = { userId: string; role: string } | { patientId: number };
+export type AccessActor = { userId: string; role: string; username?: string } | { patientId: number };
 export interface ClinicalAccessDependencies {
   authenticate(req: Request, res: Response): Promise<AccessActor | null>;
   appointmentPatientId(id: number): Promise<number | null>;
@@ -162,7 +162,8 @@ export function registerClinicalAccess(app: Express, dependencies: ClinicalAcces
         return;
       }
       const clinician = isClinician(actor);
-      const staff = isStaff(actor);
+      const nutritionRead = read && res.locals.nutritionRead === true;
+      const staff = isStaff(actor) || nutritionRead;
       const receptionRead = read && isReceptionReader(actor) && await dependencies.clinicalDetailsVisible?.() === true;
       if (read) res.setHeader("Cache-Control", "private, no-store");
       const deny = () => res.status(403).json({ error: "Clinician access required" });
@@ -175,7 +176,7 @@ export function registerClinicalAccess(app: Express, dependencies: ClinicalAcces
           deny();
           return;
         }
-        if (staff) res.locals.accessRole = actor.role;
+        if (staff && "role" in actor) res.locals.accessRole = actor.role;
         if (staff && !clinician) {
           const json = res.json.bind(res);
           res.json = ((body: unknown) => json(res.statusCode >= 400 ? body : invoiceLogistics(body))) as Response["json"];
@@ -184,6 +185,20 @@ export function registerClinicalAccess(app: Express, dependencies: ClinicalAcces
       }
       if (clinicalPatient || clinicalCollection || clinicianTool) {
         if (clinician) return next();
+        if (res.locals.nutritionReferralWrite === true) return next();
+        if (nutritionRead && !clinicianTool) {
+          if (path.includes("/clinical-notes")) {
+            const json = res.json.bind(res);
+            res.json = ((body: unknown) => {
+              if (res.statusCode >= 400) return json(body);
+              if (Array.isArray(body)) return json(body.filter((note) => note?.isPrivate !== 1 && note?.isPrivate !== true));
+              if (body && typeof body === "object" && "isPrivate" in body && (body.isPrivate === 1 || body.isPrivate === true))
+                return res.status(403).json({ error: "Private clinical notes are not accessible." });
+              return json(body);
+            }) as Response["json"];
+          }
+          return next();
+        }
         if (receptionRead && !clinicianTool) {
           res.locals.receptionClinicalRead = true;
           if (path.includes("/clinical-notes")) {
@@ -247,7 +262,7 @@ export function registerClinicalAccess(app: Express, dependencies: ClinicalAcces
         res.status(403).json({ error: "Staff access required" });
         return;
       }
-      res.locals.accessRole = actor.role;
+      if ("role" in actor) res.locals.accessRole = actor.role;
       if (!clinician && !receptionRead && path.includes("/by-category/") &&
           !["all", "all-patients", "today-appointments"].includes(path.split("/").filter(Boolean).at(-1) || "")) {
         deny();
@@ -283,7 +298,7 @@ export function registerClinicalAccess(app: Express, dependencies: ClinicalAcces
       }
 
       const json = res.json.bind(res);
-      if (!clinician && (patientRecord || patientListAlias || primeMutation)) {
+      if (!clinician && !nutritionRead && (patientRecord || patientListAlias || primeMutation)) {
         const patientResponse = (body: unknown) => path === "/api/postop/patients" ? recoveryPatientProjection(body) : receptionRead ? project(body, patientClinicalFields) : patientLogistics(body);
         res.json = ((body: unknown) => {
           if (res.statusCode >= 400) return json(body);

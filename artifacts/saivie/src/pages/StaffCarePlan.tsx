@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { Link, useRoute } from "wouter";
 import { 
@@ -67,10 +67,7 @@ export default function StaffCarePlan() {
   const nutritionPlans = nutritionPlansQuery.data || [];
   const workouts = workoutsQuery.data || [];
 
-  const functionalMedicinePatients = useMemo(
-    () => allPatients.filter((p: any) => p.genomics != null),
-    [allPatients]
-  );
+  const functionalMedicinePatients = allPatients;
   const [match, params] = useRoute("/staff/create-plan/:id?");
   const patientId = params?.id ? parseInt(params.id) : null;
   const initialPatient = patientId ? functionalMedicinePatients.find((p: any) => p.id === patientId) : null;
@@ -105,6 +102,9 @@ export default function StaffCarePlan() {
 
   return (
     <div className="min-h-screen bg-saivie-surface-muted flex flex-col font-sans text-saivie-plum">
+      {patientsQuery.isError && <p role="alert" className="m-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+        Could not load accessible patients: {patientsQuery.error.message} <button className="underline" onClick={() => void patientsQuery.refetch()}>Retry</button>
+      </p>}
       
       {/* Header */}
       <header className="bg-saivie-ivory border-b border-saivie-border px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">

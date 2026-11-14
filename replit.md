@@ -28,6 +28,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Portal navigation
 
+Nutritionist accounts (server role `nutritionist`, or staff accounts whose saved username identifies a nutritionist) may read only patients with active Nutrition/dietitian referrals, including referrals to providers with those roles/specialties. Pending, referred, scheduled, active, accepted and in-progress referrals grant access; cancelled/completed referrals do not. The API filters patient and appointment/record collections and rejects unassigned direct IDs and unrelated endpoints. Doctors/owners retain existing referral controls; receptionists can create Nutrition referrals and update their status/notes or remove them. Nutritionists cannot assign themselves patients. Clinical private notes remain hidden. Existing nutrition protocol saving is retained only for referred patients; other clinical authoring permissions are not expanded.
+
 Doctor dashboard-level tabs (Dashboard, Patients, Schedule, Analytics, Revenue and Profile & Settings) share the receptionist's warm ivory/cream brand tokens and active navigation highlight. The scope is removed in patient-detail views, preserving their existing clinical palette. Semantic status colors and portaled content overlays are unchanged.
 
 All `/staff` routes require a staff session token before their pages mount. Missing sessions redirect to the landing sign-in page; saved usernames alone do not grant access. Rejected tokens retain the existing session-expired sign-in prompt.

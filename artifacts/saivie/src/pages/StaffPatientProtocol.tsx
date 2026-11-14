@@ -135,14 +135,14 @@ export default function StaffPatientProtocol() {
   const patients = allPatients;
   const [match, params] = useRoute("/staff/protocol/:id");
   const patientId = params?.id ? parseInt(params.id) : null;
-  const patient = patients.find((p: any) => p.id === patientId) || patients[0];
+  const patient = patients.find((p: any) => p.id === patientId);
 
   const visitHistoryQuery = useQuery({
     queryKey: ['/api/patients', patientId, 'visit-history'],
     queryFn: async () => {
       if (!patientId) return [];
       const res = await fetch(`/api/patients/${patientId}/visit-history`);
-      if (!res.ok) return [];
+      if (!res.ok) throw new Error("Could not load this patient's visit history");
       return res.json();
     },
     enabled: !!patientId,
@@ -408,7 +408,11 @@ export default function StaffPatientProtocol() {
     return (
       <div className="min-h-screen bg-saivie-surface-muted flex items-center justify-center">
         <div className="text-center space-y-3">
-          <p className="text-saivie-plum">Loading patient data...</p>
+          <p role={patientsQuery.isError ? "alert" : "status"} className="text-saivie-plum">
+            {patientsQuery.isPending ? "Loading patient data..." : patientsQuery.isError
+              ? `Could not load accessible patients: ${patientsQuery.error.message}` : "This patient is not accessible or has no active nutrition referral."}
+          </p>
+          {patientsQuery.isError && <Button variant="outline" size="sm" onClick={() => void patientsQuery.refetch()}>Retry</Button>}
           <Link href="/staff">
             <Button variant="outline" size="sm">Back to Staff Portal</Button>
           </Link>

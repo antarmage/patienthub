@@ -2561,6 +2561,12 @@ export default function StaffPortal() {
 
         {/* Dashboard Content */}
         <div className={`flex-1 overflow-y-auto p-4 md:p-6 ${receptionist ? "bg-saivie-page" : ""}`}>
+          {patientsQuery.isError && <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+            Could not load accessible patients. {patientsQuery.error.message} <button type="button" className="underline" onClick={() => void patientsQuery.refetch()}>Retry</button>
+          </p>}
+          {activeRole === "nutritionist" && patientsQuery.isSuccess && patients.length === 0 && <p role="status" className="mb-4 rounded-xl border border-saivie-border bg-saivie-ivory p-3 text-sm">
+            No active nutrition referrals. A doctor, owner or receptionist can refer a patient to Nutrition.
+          </p>}
           {activeRole === 'receptionist' && activeView === 'attendance' && <StaffAttendance />}
           {receptionist && ['dashboard', 'patients'].includes(activeView) && <div className="mb-3 rounded-xl border border-[#e9e1d2] bg-white px-4 py-2 text-xs text-[#705364]">
             {receptionAccess.isError ? <p role="alert">Could not load doctor permissions: {receptionAccess.error.message} <button type="button" className="underline" onClick={() => void receptionAccess.refetch()}>Retry</button></p>
@@ -2948,7 +2954,7 @@ export default function StaffPortal() {
                                 <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5" />
                                 <div>
                                     <p className="font-bold text-emerald-900 text-sm">Active Patients</p>
-                                    <p className="text-xs text-emerald-700 mt-1">{patients.length} patients in the system</p>
+                                    <p className="text-xs text-emerald-700 mt-1">{patients.length} patients referred to nutrition</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -3354,7 +3360,18 @@ export default function StaffPortal() {
                     </div>
 
                     <div className="grid gap-6">
-                        {functionalMedicinePatients.map((patient: any) => (
+                        {patients.map((patient: any) => (
+                          !patient.genomics?.mthfr || !patient.genomics?.caffeine || !patient.functional?.gut ||
+                          !patient.functional?.inflammation || !patient.functional?.nutrient || !patient.functional?.hormone ?
+                            <Card key={patient.id} className="border-saivie-border shadow-sm">
+                              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
+                                <div><h3 className="font-bold text-saivie-plum">{patient.name}</h3>
+                                  <p className="mt-1 text-sm text-muted-foreground">Referred to nutrition · {patient.condition || patient.type || "Care details not recorded"}</p>
+                                  <p className="mt-1 text-xs text-muted-foreground">Genomic or functional marker details are incomplete.</p>
+                                </div>
+                                <Button variant="outline" onClick={() => setLocation(`/staff/protocol/${patient.id}`)}>Full Profile</Button>
+                              </CardContent>
+                            </Card> :
                             <Card key={patient.id} className="shadow-sm border-saivie-border overflow-hidden group hover:shadow-md transition-shadow">
                                 <div className="grid grid-cols-12 divide-x divide-slate-100">
                                     
