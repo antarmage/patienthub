@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { OwnerAuthGate } from "@/components/OwnerAuthGate";
 import { OwnerFaceAttendance } from "@/components/OwnerFaceAttendance";
+import { OwnerStaffProfilePhoto } from "@/components/StaffProfilePhoto";
 import { clinicDate } from "../../../../lib/db/src/follow-up";
 import { Expenses } from "@/components/Expenses";
 import { ReferralsManager } from "@/components/ReferralsManager";
@@ -2175,6 +2176,7 @@ function StaffAccountsView() {
               <TableRow className="bg-saivie-surface-muted">
                 <TableHead className="text-xs font-semibold text-saivie-plum w-40">Username</TableHead>
                 <TableHead className="text-xs font-semibold text-saivie-plum">Personal name</TableHead>
+                <TableHead className="text-xs font-semibold text-saivie-plum">Profile photo</TableHead>
                 <TableHead className="text-xs font-semibold text-saivie-plum w-28">Role</TableHead>
                 <TableHead className="text-xs font-semibold text-saivie-plum">Phone Number</TableHead>
                 <TableHead className="text-xs font-semibold text-saivie-plum">Fallback Email</TableHead>
@@ -2196,6 +2198,7 @@ function StaffAccountsView() {
                       <span className="text-sm text-saivie-plum">{user.displayName || <span className="italic">Not set</span>}</span>
                     )}
                   </TableCell>
+                  <TableCell>{authToken && <OwnerStaffProfilePhoto employeeId={user.id} name={user.displayName || user.username} token={authToken} />}</TableCell>
                   <TableCell>{roleBadge(user.role)}</TableCell>
                   <TableCell>
                     {editingId === user.id ? (

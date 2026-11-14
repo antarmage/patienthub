@@ -99,6 +99,7 @@ import { useHpvClinicStatuses } from "@/hooks/use-hpv-protection";
 import { ReceptionDashboard, getArrivalState, type ReceptionFollowUp } from "@/components/ReceptionDashboard";
 import { ReceptionFollowUpPatients } from "@/components/ReceptionFollowUpPatients";
 import { StaffAttendance } from "@/components/StaffAttendance";
+import { StaffProfileAvatar, useStaffProfile } from "@/components/StaffProfilePhoto";
 import { useToast } from "@/hooks/use-toast";
 import { VitalsDialog, AfterVisitDialog } from "@/components/VisitWorkflowDialogs";
 import { PrescriptionEntryDialog } from "@/components/PrescriptionEntryDialog";
@@ -1350,6 +1351,7 @@ function toIsoDate(value: unknown): string {
 }
 
 export default function StaffPortal() {
+  const staffProfile = useStaffProfile();
   const [_, setLocation] = useLocation();
   const staffUsername = typeof window !== 'undefined' ? localStorage.getItem("staffUsername") || "" : "";
   const staffDisplayName = typeof window !== 'undefined' ? localStorage.getItem("staffDisplayName")?.trim() || staffUsername : staffUsername;
@@ -2584,12 +2586,11 @@ export default function StaffPortal() {
 
         <div className="mt-auto p-4 border-t border-saivie-border">
              <div className={`flex items-center gap-3 ${sidebarOpen ? '' : 'justify-center'}`}>
-                <Avatar className="h-9 w-9 border border-saivie-border">
-                    <AvatarFallback className="bg-saivie-sage text-saivie-plum">ST</AvatarFallback>
-                </Avatar>
+                <StaffProfileAvatar name={staffProfile.data?.name || staffDisplayName || "Staff"} photo={staffProfile.data?.photo} className="h-9 w-9 border border-saivie-border" />
                 {sidebarOpen && (
                     <div className="overflow-hidden">
                         <p className="text-sm font-medium text-saivie-plum truncate">{currentRole?.label || 'Staff'}</p>
+                        {staffProfile.isError && <p role="alert" className="text-xs text-rose-700">{staffProfile.error.message} <button onClick={() => void staffProfile.refetch()} className="underline">Retry photo</button></p>}
                         <button onClick={() => { localStorage.removeItem("staffUsername"); localStorage.removeItem("staffDisplayName"); sessionStorage.removeItem("billing_staff_token"); queryClient.removeQueries({ queryKey: ["/api/billing-templates"] }); setLocation("/"); }} className="text-xs text-rose-500 hover:text-rose-700 truncate text-left block w-full">Sign Out</button>
                     </div>
                 )}

@@ -8,6 +8,7 @@ import { describeAttendanceFace } from "@/lib/faceAttendance";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
+import { StaffProfileAvatar, useStaffProfile } from "./StaffProfilePhoto";
 
 const faceStateSchema = z.object({
   enabled: z.boolean(),
@@ -26,6 +27,7 @@ export function useAttendanceFaceState() {
 }
 
 export function AttendanceCamera({ status, ready }: { status?: string | null; ready: boolean }) {
+  const staffProfile = useStaffProfile();
   const queryClient = useQueryClient();
   const video = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -116,10 +118,11 @@ export function AttendanceCamera({ status, ready }: { status?: string | null; re
       {cameraOpen ? <div className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-saivie-plum">
         <video ref={video} autoPlay playsInline muted onLoadedData={() => setVideoReady(true)} onError={() => { stopCamera(); setError("Camera preview failed. Reopen it or request owner approval."); }} className="aspect-[4/3] w-full -scale-x-100 object-cover" aria-label="Live camera preview" />
         <div className="pointer-events-none absolute inset-6 rounded-[40%] border-2 border-white/80" />
-      </div> : <div className="flex h-36 w-36 items-center justify-center rounded-full bg-saivie-sage/45 text-saivie-teal sm:h-44 sm:w-44">
+      </div> : staffProfile.data?.photo ? <StaffProfileAvatar name={staffProfile.data.name} photo={staffProfile.data.photo} className="h-36 w-36 border-4 border-saivie-sage sm:h-44 sm:w-44" /> : <div className="flex h-36 w-36 items-center justify-center rounded-full bg-saivie-sage/45 text-saivie-teal sm:h-44 sm:w-44">
         {present ? <CheckCircle2 className="h-20 w-20" strokeWidth={1.3} /> : <ScanFace className="h-24 w-24" strokeWidth={1.1} />}
       </div>}
-      <h3 className="mt-6 font-serif text-3xl font-bold text-saivie-plum sm:text-4xl">{present ? "You are checked in!" : pending ? "Awaiting owner approval" : "Welcome!"}</h3>
+      <h3 className="mt-6 font-serif text-3xl font-bold text-saivie-plum sm:text-4xl">{present ? "You are checked in!" : pending ? "Awaiting owner approval" : staffProfile.data?.name ? `Welcome, ${staffProfile.data.name}!` : "Welcome!"}</h3>
+      {staffProfile.isError && <p role="alert" className="mt-3 text-sm text-rose-700">Profile photo could not load: {staffProfile.error.message} <Button variant="link" onClick={() => void staffProfile.refetch()}>Retry photo</Button></p>}
       <p className="mt-3 text-base text-muted-foreground sm:text-lg">{present ? "Your attendance has been recorded for today." : pending ? "Your request is saved. You will be marked present only after the owner approves it." : off ? "Today is marked as leave or a regular day off." : "Look at the camera to check in for today."}</p>
       {face.isPending && <p role="status" className="mt-4 text-sm">Loading face check-in settings...</p>}
       {face.isError && <p role="alert" className="mt-4 text-sm text-rose-700">{face.error.message} <Button variant="link" onClick={() => void face.refetch()}>Retry</Button></p>}

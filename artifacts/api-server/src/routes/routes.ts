@@ -11,6 +11,7 @@ import { registerExpenseRoutes } from "../expenses";
 import { expenseStore } from "../expense-store";
 import { registerStaffAttendanceRoutes } from "../staff-attendance";
 import { createFaceAttendanceStore, registerFaceAttendanceRoutes } from "../face-attendance";
+import { createStaffProfileStore, registerStaffProfileRoutes } from "../staff-profile";
 import { clinicDate } from "../../../../lib/db/src/follow-up";
 import { readAppointmentRange } from "../appointment-range";
 import { registerReceptionAccessRoutes, withVitalsRecorderNames } from "../reception-access";
@@ -404,6 +405,7 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   registerFaceAttendanceRoutes(app, getAccessActor, createFaceAttendanceStore(pool));
+  registerStaffProfileRoutes(app, getAccessActor, createStaffProfileStore(pool));
   registerExpenseRoutes(app, async (req, res) => {
     const id = getStaffUserId(req, res);
     if (!id) return null;
