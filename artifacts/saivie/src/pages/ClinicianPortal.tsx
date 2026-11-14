@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSettings";
 import { ReceptionAccessSettings } from "@/components/ReceptionAccessSettings";
 import { GoogleMeetSettings } from "@/components/GoogleMeetSettings";
-import { BrandLogo } from "@/components/BrandLogo";
+import { PortalNavigation } from "@/components/PortalNavigation";
 import { OnlineConsultationActions } from "@/components/OnlineConsultationActions";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
 import { HpvBadge } from "@/components/HpvBadge";
@@ -68,7 +68,6 @@ import {
   Eye,
   Search, 
   Bell, 
-  Menu,
   AlertCircle, 
   CheckCircle2, 
   TrendingUp, 
@@ -445,10 +444,6 @@ export default function ClinicianPortal() {
       ? { patientId: initialLocation.patientId, tab: initialLocation.tab, step: initialLocation.step } : null,
   );
   const [activeView, setActiveView] = useState<string>(initialLocation.view);
-  const [sidebarPinned, setSidebarPinned] = useState(false);
-  const [sidebarHovered, setSidebarHovered] = useState(false);
-  const [sidebarFocused, setSidebarFocused] = useState(false);
-  const sidebarOpen = sidebarPinned || sidebarHovered || sidebarFocused;
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [patientDirectorySearch, setPatientDirectorySearch] = useState('');
   const [patientDirectoryDateFrom, setPatientDirectoryDateFrom] = useState('');
@@ -2366,63 +2361,24 @@ export default function ClinicianPortal() {
   );
 
   return (
-    <div className="min-h-screen bg-saivie-surface-muted flex font-sans text-saivie-plum overflow-hidden">
-      
-      {/* Sidebar */}
-      <aside
-        aria-label="Clinician navigation"
-        onPointerEnter={(event) => { if (event.pointerType === 'mouse') setSidebarHovered(true); }}
-        onPointerLeave={() => setSidebarHovered(false)}
-        onFocusCapture={() => setSidebarFocused(true)}
-        onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSidebarFocused(false); }}
-        className={`relative text-saivie-plum ${activeView === 'patient_detail' && isPatientOverview ? 'hidden' : 'flex'} shrink-0 z-20 transition-[width] duration-200 motion-reduce:transition-none ${sidebarPinned ? "w-64 max-sm:w-16" : "w-16"}`}
-      >
-        <div className={`absolute inset-y-0 left-0 flex flex-col border-r border-saivie-border bg-saivie-ivory transition-[width,box-shadow] duration-200 motion-reduce:transition-none ${sidebarOpen ? 'w-64 max-sm:w-16 shadow-lg' : 'w-16'}`}>
-        <div className="p-2 border-b border-saivie-border flex items-center justify-between gap-2 max-sm:justify-center">
-          <BrandLogo fallback="S" className={`${sidebarOpen ? 'w-36 h-16 max-sm:w-12 max-sm:h-12' : 'w-12 h-12 mx-auto'} shrink-0 text-2xl`} />
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`h-8 w-8 text-saivie-plum hover:text-saivie-plum hover:bg-saivie-sage shrink-0 max-sm:hidden ${sidebarOpen ? '' : 'hidden'}`}
-            onClick={() => setSidebarPinned(!sidebarPinned)}
-            aria-label={sidebarPinned ? "Unpin sidebar" : "Pin sidebar open"}
-            aria-pressed={sidebarPinned}
-          >
-            <Menu className="w-4 h-4" />
-          </Button>
-        </div>
-        
-        <nav className="flex-1 px-2 py-3 space-y-1">
-          {[
+    <div className="portal-shell font-sans">
+      <PortalNavigation label="Clinician navigation" hidden={activeView === 'patient_detail' && isPatientOverview}
+        items={[
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { id: 'patient_list', label: 'Patients', icon: Users },
             { id: 'schedule', label: 'Schedule', icon: CalendarIcon },
             { id: 'analytics', label: 'Analytics', icon: Activity },
             { id: 'revenue', label: 'Revenue', icon: Briefcase },
             { id: 'settings', label: 'Profile & Settings', icon: Settings },
-          ].map(({ id, label, icon: Icon }) => (
-            <Button
-              key={id}
-              variant={activeView === id ? 'secondary' : 'ghost'}
-              aria-label={label}
-              title={label}
-              className={`w-full max-sm:justify-center ${sidebarOpen ? 'justify-start' : 'justify-center'} ${activeView === id || (id === 'patient_list' && activeView === 'patient_detail') ? 'bg-saivie-surface-muted text-saivie-teal hover:bg-saivie-surface-muted' : 'text-saivie-plum hover:text-saivie-plum hover:bg-saivie-surface-muted'}`}
-              onClick={() => setActiveView(id)}
-            >
-              <Icon className={`${sidebarOpen ? 'mr-3 max-sm:mr-0' : 'mr-0'} h-4 w-4`} />
-              <span className="max-sm:hidden">{sidebarOpen && label}</span>
-            </Button>
-          ))}
-        </nav>
-
-        <div className="p-2 border-t border-saivie-border bg-saivie-ivory">
-          <div className={`flex max-sm:flex-col max-sm:items-center max-sm:gap-2 ${sidebarOpen ? 'items-center gap-3' : 'flex-col items-center gap-2'}`}>
+          ].map((item) => ({ ...item,
+            active: activeView === item.id || (item.id === 'patient_list' && activeView === 'patient_detail'),
+            onSelect: () => setActiveView(item.id),
+          }))} footer={(sidebarOpen) => <div className={`flex ${sidebarOpen ? 'items-center gap-3' : 'flex-col items-center gap-2'}`}>
             <Avatar className="h-9 w-9 border border-saivie-border shrink-0">
               <AvatarFallback className="bg-saivie-surface-muted text-saivie-teal">{providerInitials}</AvatarFallback>
             </Avatar>
             {sidebarOpen && (
-              <div className="text-sm flex-1 min-w-0 max-sm:hidden">
+              <div className="text-sm flex-1 min-w-0">
                 <p className="text-saivie-plum font-medium truncate">{providerName}</p>
                 <p className="text-xs text-saivie-plum truncate">{providerSpecialty}</p>
               </div>
@@ -2436,13 +2392,10 @@ export default function ClinicianPortal() {
             >
               <LogOut className="w-4 h-4" />
             </button>
-          </div>
-        </div>
-        </div>
-      </aside>
+          </div>} />
 
       {/* Main Content */}
-      <main className="min-w-0 flex-1 flex flex-col h-screen overflow-hidden relative bg-saivie-surface-muted">
+      <main className="portal-panel flex flex-col relative bg-saivie-surface-muted">
         
         {/* NEW DASHBOARD VIEW */}
         {activeView === 'dashboard' && (

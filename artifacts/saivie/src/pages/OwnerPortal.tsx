@@ -13,7 +13,7 @@ import { InventoryManager, getInventoryAlerts, useInventory } from "@/components
 import { UnlockCostsButton, formatCost, useOwnerCosts } from "@/components/OwnerCosts";
 import { CatalogImportButton } from "@/components/CatalogImport";
 import { BookingCatalogManager } from "@/components/BookingCatalogManager";
-import { BrandLogo } from "@/components/BrandLogo";
+import { PortalNavigation } from "@/components/PortalNavigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
@@ -25,7 +25,6 @@ import {
   AlertTriangle,
   BarChart3,
   ArrowLeft,
-  Menu,
   TrendingUp,
   TrendingDown,
   Clock,
@@ -113,7 +112,6 @@ const cardVariants = {
 export default function OwnerPortal() {
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState("overview");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [aiInsights, setAiInsights] = useState<any>(null);
   const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
@@ -422,36 +420,12 @@ export default function OwnerPortal() {
   };
 
   return (
-    <div className="min-h-screen bg-saivie-surface-muted flex font-sans text-saivie-plum overflow-hidden">
-      <aside aria-label="Owner navigation" className={`bg-saivie-ivory border-r border-saivie-border flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? "w-64" : "w-20"}`}>
-        <div className={`p-3 border-b border-saivie-border flex items-center gap-2 ${sidebarOpen ? 'justify-between' : 'flex-col'}`}>
-          <BrandLogo fallback="S" className={`${sidebarOpen ? 'w-36 h-16' : 'w-12 h-12'} shrink-0 text-2xl`} />
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-saivie-plum" aria-label={sidebarOpen ? "Collapse navigation" : "Expand navigation"} title={sidebarOpen ? "Collapse navigation" : "Expand navigation"} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(!sidebarOpen)} data-testid="btn-toggle-sidebar">
-            <Menu className="w-4 h-4" />
-          </Button>
-        </div>
-
-        <div className="p-4 space-y-1">
-          {navItems.map((item) => (
-            <Button
-              key={item.id}
-              variant={activeView === item.id ? "secondary" : "ghost"}
-              aria-label={item.label}
-              title={item.label}
-              className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === item.id ? "bg-saivie-sage text-saivie-plum" : "text-saivie-plum hover:text-saivie-plum"}`}
-              onClick={() => setActiveView(item.id)}
-              data-testid={`nav-${item.id}`}
-            >
-              <item.icon className={`w-4 h-4 ${sidebarOpen ? "mr-3" : ""}`} />
-              {sidebarOpen && item.label}
-              {sidebarOpen && item.id === "inventory" && inventoryAlertCount > 0 && (
-                <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700" data-testid="badge-inventory-alerts">{inventoryAlertCount}</span>
-              )}
-            </Button>
-          ))}
-        </div>
-
-        <div className="mt-auto p-4 border-t border-saivie-border space-y-2">
+    <div className="portal-shell font-sans">
+      <PortalNavigation label="Owner navigation" items={navItems.map((item) => ({
+        ...item, active: activeView === item.id, onSelect: () => setActiveView(item.id), testId: `nav-${item.id}`,
+        badge: item.id === "inventory" && inventoryAlertCount > 0
+          ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700" data-testid="badge-inventory-alerts">{inventoryAlertCount}</span> : undefined,
+      }))} footer={(sidebarOpen) => <div className="space-y-3">
           <Link href="/">
             <Button variant="ghost" aria-label="Back to Home" title="Back to Home" className={`w-full text-saivie-plum hover:text-saivie-plum ${sidebarOpen ? 'justify-start' : 'justify-center px-2'}`} data-testid="btn-back-home">
               <ArrowLeft className={`w-4 h-4 ${sidebarOpen ? "mr-3" : ""}`} />
@@ -469,10 +443,9 @@ export default function OwnerPortal() {
               </div>
             )}
           </div>
-        </div>
-      </aside>
+        </div>} />
 
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-saivie-surface-muted/50">
+      <main className="portal-panel flex flex-col bg-saivie-surface-muted/50">
         <header className="h-16 bg-saivie-ivory border-b border-saivie-border px-6 flex items-center justify-between shrink-0 z-10">
           <div className="flex items-center gap-4">
             <div className="p-2 rounded-lg bg-saivie-surface-muted">

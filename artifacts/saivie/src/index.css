@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../../../lib/brand/saivie.css";
+@import "./components/portal-navigation.css";
 
 @custom-variant dark (&:is(.dark *));
 

@@ -3,6 +3,7 @@ import { invoiceDateBounds, invoiceDateError } from "../../../../lib/db/src/invo
 import { AppointmentCalendar, type CalendarAppointment } from "@/components/AppointmentCalendar";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { PortalNavigation } from "@/components/PortalNavigation";
 import { AllInvoices } from "@/components/AllInvoices";
 import { BillingTemplates } from "@/components/BillingTemplates";
 import { Expenses } from "@/components/Expenses";
@@ -26,7 +27,7 @@ import {
   Bell,
   Calendar,
   UserPlus,
-  Menu,
+  LogOut,
   Apple,
   Heart,
   AlertCircle,
@@ -1673,7 +1674,6 @@ export default function StaffPortal() {
   const [optimiseResult, setOptimiseResult] = useState<any>(null);
   const [showOptimiseDialog, setShowOptimiseDialog] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isAdjustProtocolOpen, setIsAdjustProtocolOpen] = useState(false);
   const [selectedPatientForAdjust, setSelectedPatientForAdjust] = useState<any>(null);
   const [isCreatePlanOpen, setIsCreatePlanOpen] = useState(false);
@@ -2462,144 +2462,39 @@ export default function StaffPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-saivie-surface-muted flex font-sans text-saivie-plum overflow-hidden">
+    <div className="portal-shell font-sans">
       
       {/* Sidebar - Logged In State */}
-      <aside aria-label="Staff navigation" className={`bg-saivie-ivory border-r border-saivie-border flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
-        <div className={`p-3 border-b border-saivie-border flex items-center gap-2 ${sidebarOpen ? 'justify-between' : 'flex-col'}`}>
-          <BrandLogo fallback="S" className={`${sidebarOpen ? 'w-36 h-16' : 'w-12 h-12'} shrink-0 text-2xl`} />
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-saivie-plum" aria-label={sidebarOpen ? "Collapse navigation" : "Expand navigation"} title={sidebarOpen ? "Collapse navigation" : "Expand navigation"} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(!sidebarOpen)}>
-             <Menu className="w-4 h-4" />
-          </Button>
-        </div>
-
-        <div className="p-4">
-            <div className="space-y-1">
-                 <Button 
-                    variant={activeView === 'dashboard' ? 'secondary' : 'ghost'} 
-                    aria-label="Dashboard" title="Dashboard"
-                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'dashboard' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                    onClick={() => setActiveView('dashboard')}
-                 >
-                    <Activity className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
-                    {sidebarOpen && "Dashboard"}
-                 </Button>
-                 {activeRole === 'receptionist' && <Button
-                    variant={activeView === 'attendance' ? 'secondary' : 'ghost'}
-                    aria-label="My Attendance" title="My Attendance"
-                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'attendance' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                    onClick={() => setActiveView('attendance')}
-                    data-testid="nav-my-attendance"
-                 >
-                    <CalendarCheck className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
-                    {sidebarOpen && "My Attendance"}
-                 </Button>}
-                 <Button 
-                    variant={activeView === 'patients' ? 'secondary' : 'ghost'} 
-                    aria-label="My Patients" title="My Patients"
-                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'patients' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                    onClick={() => setActiveView('patients')}
-                 >
-                    <Users className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
-                    {sidebarOpen && "My Patients"}
-                 </Button>
-                 {receptionist && <Button
-                    variant={activeView === 'paper-prescriptions' ? 'secondary' : 'ghost'}
-                    aria-label="Paper prescriptions" title="Paper prescriptions"
-                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'paper-prescriptions' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                    onClick={() => setActiveView('paper-prescriptions')}
-                    data-testid="tab-paper-prescriptions"
-                 >
-                    <FileText className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
-                    {sidebarOpen && "Paper prescriptions"}
-                 </Button>}
-                 <Button 
-                    variant={activeView === 'schedule' ? 'secondary' : 'ghost'} 
-                    aria-label="Schedule" title="Schedule"
-                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'schedule' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                    onClick={() => setActiveView('schedule')}
-                 >
-                    <CalendarCheck className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
-                    {sidebarOpen && "Schedule"}
-                 </Button>
-                 {!receptionist && <Button
-                    variant={activeView === 'reports' ? 'secondary' : 'ghost'} 
-                    aria-label="Notes & Reports" title="Notes & Reports"
-                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'reports' ? 'bg-saivie-sage text-saivie-plum' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                    onClick={() => setActiveView('reports')}
-                 >
-                    <FileText className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
-                    {sidebarOpen && "Notes & Reports"}
-                 </Button>}
-                 {activeRole === 'receptionist' && (
-                 <Button 
-                    variant={activeView === 'followup' ? 'secondary' : 'ghost'} 
-                    aria-label="Follow-Up Calls" title="Follow-Up Calls"
-                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'followup' ? 'bg-orange-50 text-orange-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                    onClick={() => setActiveView('followup')}
-                 >
-                    <Phone className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
-                    {sidebarOpen && "Follow-Up Calls"}
-                 </Button>
-                 )}
-                 {activeRole === 'receptionist' && (
-                 <Button 
-                    variant={activeView === 'prime' ? 'secondary' : 'ghost'} 
-                    aria-label="Prime Members" title="Prime Members"
-                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'prime' ? 'bg-amber-50 text-amber-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                    onClick={() => setActiveView('prime')}
-                    data-testid="btn-prime-members"
-                 >
-                    <Star className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
-                    {sidebarOpen && "Prime Members"}
-                 </Button>
-                 )}
-                 {receptionist && <Button variant={activeView === "expenses" ? "secondary" : "ghost"} aria-label="Expenses" title="Expenses"
-                   className={`w-full ${sidebarOpen ? "justify-start" : "justify-center px-2"} ${activeView === "expenses" ? "bg-saivie-sage text-saivie-plum" : "text-saivie-plum"}`}
-                   onClick={() => setActiveView("expenses")}><Receipt className={`h-4 w-4 ${sidebarOpen ? "mr-3" : ""}`} />{sidebarOpen && "Expenses"}</Button>}
-                 {activeRole === 'receptionist' && (
-                 <Button 
-                    variant={activeView === 'billing' ? 'secondary' : 'ghost'} 
-                    aria-label="Billing" title="Billing"
-                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'billing' ? 'bg-emerald-50 text-emerald-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                    onClick={() => setActiveView('billing')}
-                    data-testid="btn-billing"
-                 >
-                    <IndianRupee className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
-                    {sidebarOpen && "Billing"}
-                 </Button>
-                 )}
-                 {activeRole === 'receptionist' && (
-                 <Button 
-                    variant={activeView === 'sync' ? 'secondary' : 'ghost'} 
-                    aria-label="Sync & Import" title="Sync & Import"
-                    className={`w-full ${sidebarOpen ? 'justify-start' : 'justify-center px-2'} ${activeView === 'sync' ? 'bg-blue-50 text-blue-900' : 'text-saivie-plum hover:text-saivie-plum'}`}
-                    onClick={() => setActiveView('sync')}
-                    data-testid="btn-sync-import"
-                 >
-                    <RefreshCw className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
-                    {sidebarOpen && "Sync & Import"}
-                 </Button>
-                 )}
-            </div>
-        </div>
-
-        <div className="mt-auto p-4 border-t border-saivie-border">
+      <PortalNavigation label="Staff navigation" items={[
+        { id: "dashboard", label: "Dashboard", icon: Activity },
+        ...(receptionist ? [{ id: "attendance", label: "My Attendance", icon: CalendarCheck, testId: "nav-my-attendance" }] : []),
+        { id: "patients", label: "My Patients", icon: Users },
+        ...(receptionist ? [{ id: "paper-prescriptions", label: "Paper prescriptions", icon: FileText, testId: "tab-paper-prescriptions" }] : []),
+        { id: "schedule", label: "Schedule", icon: CalendarCheck },
+        ...(!receptionist ? [{ id: "reports", label: "Notes & Reports", icon: FileText }] : []),
+        ...(receptionist ? [
+          { id: "followup", label: "Follow-Up Calls", icon: Phone },
+          { id: "prime", label: "Prime Members", icon: Star, testId: "btn-prime-members" },
+          { id: "expenses", label: "Expenses", icon: Receipt },
+          { id: "billing", label: "Billing", icon: IndianRupee, testId: "btn-billing" },
+          { id: "sync", label: "Sync & Import", icon: RefreshCw, testId: "btn-sync-import" },
+        ] : []),
+      ].map((item) => ({ ...item, active: activeView === item.id, onSelect: () => setActiveView(item.id) }))}
+        footer={(sidebarOpen) => <div>
              <div className={`flex items-center gap-3 ${sidebarOpen ? '' : 'justify-center'}`}>
                 <StaffProfileAvatar name={staffProfile.data?.name || staffDisplayName || "Staff"} photo={staffProfile.data?.photo} className="h-9 w-9 border border-saivie-border" />
                 {sidebarOpen && (
                     <div className="overflow-hidden">
                         <p className="text-sm font-medium text-saivie-plum truncate">{currentRole?.label || 'Staff'}</p>
                         {staffProfile.isError && <p role="alert" className="text-xs text-rose-700">{staffProfile.error.message} <button onClick={() => void staffProfile.refetch()} className="underline">Retry photo</button></p>}
-                        <button onClick={() => { localStorage.removeItem("staffUsername"); localStorage.removeItem("staffDisplayName"); sessionStorage.removeItem("billing_staff_token"); queryClient.removeQueries({ queryKey: ["/api/billing-templates"] }); setLocation("/"); }} className="text-xs text-rose-500 hover:text-rose-700 truncate text-left block w-full">Sign Out</button>
                     </div>
                 )}
              </div>
-        </div>
-      </aside>
+             <button aria-label="Sign Out" title="Sign Out" onClick={() => { localStorage.removeItem("staffUsername"); localStorage.removeItem("staffDisplayName"); sessionStorage.removeItem("billing_staff_token"); queryClient.removeQueries({ queryKey: ["/api/billing-templates"] }); setLocation("/"); }} className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg p-2 text-xs text-rose-700 hover:bg-white/40"><LogOut className="h-4 w-4" />{sidebarOpen && "Sign Out"}</button>
+        </div>} />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-saivie-surface-muted/50">
+      <main className="portal-panel flex flex-col bg-saivie-surface-muted/50">
         
         {/* Top Header */}
         {!receptionist && <header className="h-16 bg-saivie-ivory border-b border-saivie-border px-6 flex items-center justify-between shrink-0 z-10">

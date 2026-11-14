@@ -26,6 +26,12 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **`artifacts/api-server/`** — Backend API server (Express 5, preview path: `/api`)
 - **`artifacts/mockup-sandbox/`** — Design/mockup canvas (pre-existing)
 
+## Portal navigation
+
+Owner, staff (all roles), and clinician primary sidebars use `PortalNavigation` with `portal-shell` / `portal-panel` layout classes. It supplies Saivie-colored expanded navigation, a collapsed icon rail with hover/focus tooltips, a rounded active item adjoining the content panel through a narrow curved connector, and an independently scrollable menu with a fixed account footer. Existing role permissions, actions, alert badges, and clinician focused patient overview remain unchanged. Public pages, onboarding steps, consultation context rails, and apps without primary sidebars are not migrated.
+
+Desktop expansion is remembered on this origin/device under `saivie.navigation.expanded`; only the UI preference is stored. Below 768px, a menu button opens a labelled Radix modal sheet with focus trapping, Escape/backdrop dismissal, and focus restoration. Choosing a destination closes the sheet; resizing to desktop closes it without changing the saved desktop preference. Reduced-motion preferences disable navigation animation.
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
