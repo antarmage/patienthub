@@ -2,7 +2,7 @@ import { eq, desc, sql, gte, lte, and, inArray } from "drizzle-orm";
 import type { TranscriptionTx } from "./prescription-transcriptions";
 import type { StaffAttendanceStore } from "./staff-attendance";
 import { attendanceTiming } from "../../../lib/db/src/attendance-timing";
-import { assertPreconsult, prepareReceptionVitals, receptionMeasurements, type ReceptionVitalsInput, type ReceptionVitalsRecord } from "./reception-access";
+import { assertPreconsult, prepareReceptionVitals, receptionMeasurements, receptionVitalsPrefill, type ReceptionVitalsInput, type ReceptionVitalsRecord } from "./reception-access";
 import { commitReceptionDetailsEdit, type ReceptionDetailsEditInput, type ReceptionDetailsEditActor } from "./reception-details-edit";
 import { db } from "./db";
 import {
@@ -722,12 +722,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getReceptionVitals(id: number): Promise<ReceptionVitalsRecord> {
-    const [row] = await db.select({ appointment: appointments }).from(appointments)
+    const [row] = await db.select({ appointment: appointments, patient: patients }).from(appointments)
       .innerJoin(patients, eq(appointments.patientId, patients.id)).where(eq(appointments.id, id));
     if (!row) throw Object.assign(new Error("Appointment or associated patient not found"), { status: 404 });
+    const historical = await db.execute(sql`
+      SELECT height FROM (
+        SELECT vitals->>'height' AS height,date::text AS recorded_date,id
+        FROM appointments WHERE patient_id=${row.patient.id} AND id<>${id} AND date<=${row.appointment.date}
+        UNION ALL
+        SELECT vitals->>'height' AS height,date::text AS recorded_date,id
+        FROM visit_history WHERE patient_id=${row.patient.id} AND date<=${row.appointment.date}::date
+      ) readings WHERE height IS NOT NULL AND height ~ '^[0-9]+([.][0-9]+)?$'
+        AND CASE WHEN height ~ '^[0-9]+([.][0-9]+)?$' THEN height::numeric BETWEEN 30 AND 250 ELSE false END
+      ORDER BY recorded_date DESC,id DESC LIMIT 1
+    `);
     return {
       appointmentId: id, patientId: row.appointment.patientId!,
       vitals: receptionMeasurements(row.appointment.vitals), lmp: row.appointment.patientReportedLmp?.value ?? null,
+      prefill: receptionVitalsPrefill(row.patient, row.appointment.patientReportedLmp, historical.rows[0]?.height),
     };
   }
 

@@ -1,6 +1,6 @@
 import { DateInput } from "@/components/ui/date-input";
 import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,14 +12,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { gestationalWeeks, parseLmp } from "@/lib/pregnancyMilestones";
 import { useToast } from "@/hooks/use-toast";
 import { calendarDateValue } from "@/lib/calendarDates";
+import { emptyVitals, validateVitalsLmp, validateVitalsStep, vitalsEntryPayload, vitalsSteps } from "@/lib/vitalsEntry";
 
 const localDate = (offsetDays = 0) => {
   const d = new Date();
   d.setDate(d.getDate() + offsetDays);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
-
-const emptyVitals = { systolic: "", diastolic: "", pulse: "", temp: "", spo2: "", weight: "", height: "" };
 
 interface VitalsDialogProps {
   recordingOnly?: boolean;
@@ -32,113 +31,116 @@ interface VitalsDialogProps {
 }
 
 export function VitalsDialog({ appointment, patient, saving, onClose, onSave, recordingOnly = false, initialVitals }: VitalsDialogProps) {
-  const { toast } = useToast();
   const [form, setForm] = useState(emptyVitals);
   const [lmp, setLmp] = useState("");
+  const [step, setStep] = useState(0);
+  const [error, setError] = useState("");
+  const inputArea = useRef<HTMLDivElement>(null);
+  const appointmentId = appointment?.id;
+  const patientId = patient?.id;
+  const patientHeight = patient?.height;
+  const patientLmp = patient?.lmp;
 
   useEffect(() => {
-    if (appointment) {
+    if (appointmentId != null) {
       const [systolic = "", diastolic = ""] = String(initialVitals?.bp || "").split("/");
       setForm({
         ...emptyVitals, systolic, diastolic,
         pulse: String(initialVitals?.pulse || ""), temp: String(initialVitals?.temp || ""),
         spo2: String(initialVitals?.spo2 || ""), weight: String(initialVitals?.weight || ""),
-        height: String(initialVitals?.height || patient?.height || ""),
+        height: String(initialVitals?.height || patientHeight || ""),
       });
-      const parsed = parseLmp(patient?.lmp);
+      const parsed = parseLmp(patientLmp);
       setLmp(parsed ? `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}` : "");
+      setStep(0);
+      setError("");
     }
-  }, [appointment, patient, initialVitals]);
+  }, [appointmentId, patientId, patientHeight, patientLmp, initialVitals]);
 
-  const set = (key: keyof typeof emptyVitals) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  useEffect(() => {
+    inputArea.current?.querySelector("input")?.focus();
+  }, [step]);
+
+  const set = (key: keyof typeof emptyVitals) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(""); setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  };
 
   const bmi =
     form.height && form.weight ? Number(form.weight) / Math.pow(Number(form.height) / 100, 2) : null;
-  const hasAny = Object.values(form).some((v) => v.trim() !== "");
 
   const weeks = gestationalWeeks(lmp);
   const lmpValue = lmp || null;
 
   const submit = () => {
-    if (form.temp && (!Number.isFinite(Number(form.temp)) || Number(form.temp) < 86 || Number(form.temp) > 113)) {
-      toast({ title: "Check the temperature", description: "Enter temperature in °F, between 86 and 113 (for example, 98.6).", variant: "destructive" });
-      return;
+    for (let index = 0; index < vitalsSteps.length; index++) {
+      const issue = validateVitalsStep(form, index);
+      if (issue) { setStep(index); setError(issue); return; }
     }
-    if (Boolean(form.systolic) !== Boolean(form.diastolic) ||
-        Object.values(form).some((value) => value !== "" && (!Number.isFinite(Number(value)) || Number(value) <= 0)) ||
-        (form.spo2 && Number(form.spo2) > 100)) {
-      toast({ title: "Check the vitals", description: "Enter positive measurements, SpO2 no greater than 100%, and both BP values.", variant: "destructive" });
-      return;
-    }
-    onSave(
-      hasAny
-        ? {
-            bp: form.systolic && form.diastolic ? `${form.systolic}/${form.diastolic}` : undefined,
-            pulse: form.pulse || undefined,
-            temp: form.temp || undefined,
-            spo2: form.spo2 || undefined,
-            weight: form.weight || undefined,
-            height: form.height || undefined,
-            bmi: bmi && Number.isFinite(bmi) ? Number(bmi.toFixed(1)) : undefined,
-            recordedAt: new Date().toISOString(),
-          }
-        : null,
-      lmpValue,
-    );
+    const lmpError = validateVitalsLmp(lmp);
+    if (lmpError) { setStep(vitalsSteps.length); setError(lmpError); return; }
+    onSave(vitalsEntryPayload(form), lmpValue);
   };
+  const next = () => {
+    const issue = step === vitalsSteps.length ? validateVitalsLmp(lmp) : validateVitalsStep(form, step);
+    if (issue) { setError(issue); return; }
+    setError(""); setStep((value) => value + 1);
+  };
+  const entry = vitalsSteps[step];
+  const lmpStep = step === vitalsSteps.length;
+  const review = step === vitalsSteps.length + 1;
 
   return (
-    <Dialog open={!!appointment} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
+    <Dialog open={!!appointment} onOpenChange={(open) => !open && !saving && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto" onEscapeKeyDown={(event) => { if (saving) event.preventDefault(); }}>
         <DialogHeader>
           <DialogTitle>{recordingOnly ? "Record vitals" : "Check in"} · {patient?.name || "Patient"}</DialogTitle>
           <DialogDescription>{recordingOnly ? "Record arrival measurements and patient-reported LMP. This does not change the consultation or queue status." : "Record vitals as the patient arrives, then add them to the waiting queue."}</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label>BP systolic</Label>
-            <Input type="number" value={form.systolic} onChange={set("systolic")} placeholder="120" data-testid="input-vitals-systolic" />
-          </div>
-          <div className="space-y-1">
-            <Label>BP diastolic</Label>
-            <Input type="number" value={form.diastolic} onChange={set("diastolic")} placeholder="80" data-testid="input-vitals-diastolic" />
-          </div>
-          <div className="space-y-1">
-            <Label>Pulse (bpm)</Label>
-            <Input type="number" value={form.pulse} onChange={set("pulse")} data-testid="input-vitals-pulse" />
-          </div>
-          <div className="space-y-1">
-            <Label>Temperature (°F)</Label>
-            <Input type="number" min={86} max={113} step="0.1" placeholder="98.6" value={form.temp} onChange={set("temp")} data-testid="input-vitals-temperature" />
-          </div>
-          <div className="space-y-1">
-            <Label>SpO₂ (%)</Label>
-            <Input type="number" value={form.spo2} onChange={set("spo2")} />
-          </div>
-          <div className="space-y-1">
-            <Label>Weight (kg)</Label>
-            <Input type="number" value={form.weight} onChange={set("weight")} data-testid="input-vitals-weight" />
-          </div>
-          <div className="space-y-1">
-            <Label>Height (cm)</Label>
-            <Input type="number" value={form.height} onChange={set("height")} />
-          </div>
-          <div className="flex items-end pb-2 text-sm text-saivie-plum">
-            BMI: <span className="ml-1 font-semibold">{bmi && Number.isFinite(bmi) ? bmi.toFixed(1) : "--"}</span>
-          </div>
-          <div className="col-span-2 space-y-1">
-            <Label>LMP (last menstrual period)</Label>
-            <DateInput value={lmp} max={calendarDateValue(new Date())} onValueChange={(value) => setLmp(value)} data-testid="input-vitals-lmp" />
-            {weeks !== null && <p className="text-xs text-saivie-plum">Gestational age: {weeks} weeks</p>}
-          </div>
-        </div>
-        <DialogFooter className="gap-2">
-          {!recordingOnly && <Button variant="ghost" onClick={() => onSave(null, lmpValue)} disabled={saving}>Skip vitals</Button>}
-          <Button onClick={submit} disabled={saving || (!hasAny && !lmpValue)} data-testid="button-save-vitals">
+        <p role="status" className="text-xs text-muted-foreground">Step {step + 1} of {vitalsSteps.length + 2} · {review ? "Review" : lmpStep ? "LMP" : entry.title} {!review && (lmpStep || entry.optional ? "· Optional" : "· Required")}</p>
+        {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
+        <form onSubmit={(event) => { event.preventDefault(); if (!saving) { if (review) submit(); else next(); } }}>
+        <fieldset disabled={saving} className="space-y-4">
+        {lmpStep ? <div key={step} ref={inputArea} className="space-y-2">
+          <Label htmlFor="vitals-lmp">LMP (last menstrual period)</Label>
+          <DateInput id="vitals-lmp" value={lmp} max={calendarDateValue(new Date())} onValueChange={(value) => { setError(""); setLmp(value); }} data-testid="input-vitals-lmp" />
+          <p className="text-xs text-muted-foreground">First day of the last period, as reported by the patient.</p>
+          {weeks !== null && <p className="text-xs text-saivie-plum">Gestational age: {weeks} weeks</p>}
+        </div> : !review ? <div key={step} ref={inputArea} className="grid grid-cols-2 gap-3">
+          {entry.fields.map((field) => <div key={field} className={entry.fields.length === 1 ? "col-span-2 space-y-2" : "space-y-2"}>
+            <Label htmlFor={`vitals-${field}`}>{field === "systolic" ? "Systolic" : field === "diastolic" ? "Diastolic" : entry.title}</Label>
+            <Input id={`vitals-${field}`} type="number" step={["weight", "height", "temp"].includes(field) ? "any" : "1"}
+              value={form[field]} onChange={set(field)} className="h-14 text-xl" aria-invalid={!!error}
+              data-testid={`input-vitals-${field === "temp" ? "temperature" : field}`} />
+          </div>)}
+          {step === 1 && <p className="col-span-2 text-sm">BMI: {bmi && Number.isFinite(bmi) ? bmi.toFixed(1) : "--"}</p>}
+        </div> : <div className="space-y-4">
+          <dl className="space-y-2 rounded-xl border p-3">
+            {vitalsSteps.map((item, index) => <div key={item.title} className="flex items-center justify-between gap-2">
+              <dt className="text-sm">{item.title}</dt>
+              <dd className="flex items-center gap-2 text-sm">
+                {index === 2 ? `${form.systolic}/${form.diastolic}` : form[item.fields[0]] || "Not measured"}
+                <Button type="button" size="sm" variant="ghost" aria-label={`Edit ${item.title}`} onClick={() => { setError(""); setStep(index); }}>Edit</Button>
+              </dd>
+            </div>)}
+            <div className="flex justify-between text-sm"><dt>BMI</dt><dd>{bmi && Number.isFinite(bmi) ? bmi.toFixed(1) : "--"}</dd></div>
+            <div className="flex items-center justify-between gap-2 text-sm"><dt>LMP</dt><dd className="flex items-center gap-2">
+              {lmp || "Not known"}<Button type="button" size="sm" variant="ghost" aria-label="Edit LMP" onClick={() => { setError(""); setStep(vitalsSteps.length); }}>Edit</Button>
+            </dd></div>
+          </dl>
+        </div>}
+        <DialogFooter className="gap-2 pt-4">
+          {step > 0 && <Button type="button" variant="outline" onClick={() => { setError(""); setStep((value) => value - 1); }}>Back</Button>}
+          {!review && (lmpStep || entry.optional) && <Button type="button" variant="ghost" onClick={() => {
+            if (lmpStep) setLmp("");
+            else setForm((previous) => ({ ...previous, [entry.fields[0]]: "" }));
+            setError(""); setStep((value) => value + 1);
+          }}>{lmpStep ? "Not known" : "Not measured"}</Button>}
+          {review ? <Button type="submit" data-testid="button-save-vitals">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : recordingOnly ? "Save vitals" : "Save & check in"}
-          </Button>
+          </Button> : <Button type="submit">Next</Button>}
         </DialogFooter>
+        </fieldset>
+        </form>
       </DialogContent>
     </Dialog>
   );

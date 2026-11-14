@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { receptionRequest } from "@/lib/authenticatedFetch";
 import { useToast } from "@/hooks/use-toast";
 import type { ReceptionAppointment, ReceptionPatient } from "@/lib/receptionTimeline";
+import { z } from "zod/v4";
 
 interface ReceptionVitals {
   appointmentId: number;
   patientId: number;
   vitals: Record<string, unknown> | null;
   lmp: string | null;
+  prefill?: { lmp: string | null; height: number | null };
 }
 
 export function ReceptionVitalsDialog({ appointment, patient, onClose, onCheckIn }: {
@@ -33,12 +35,16 @@ export function ReceptionVitalsDialog({ appointment, patient, onClose, onCheckIn
           !("lmp" in body) || (body.lmp !== null && typeof body.lmp !== "string")) {
         throw new Error("The vitals API returned an invalid appointment record.");
       }
+      if ("prefill" in body) z.object({ lmp: z.string().nullable(), height: z.number().nullable() }).parse(body.prefill);
       return body as ReceptionVitals;
     },
     gcTime: 0,
     staleTime: Infinity,
   });
-  const measuredPatient = useMemo(() => ({ ...patient, lmp: record.data?.lmp }), [patient, record.data?.lmp]);
+  const measuredPatient = useMemo(() => ({ ...patient,
+    lmp: record.data?.prefill ? record.data.prefill.lmp : record.data?.lmp,
+    height: record.data?.prefill?.height,
+  }), [patient, record.data?.lmp, record.data?.prefill]);
   const save = useMutation({
     mutationFn: async ({ vitals, lmp }: { vitals: Record<string, unknown> | null; lmp: string | null }) => {
       if (!onCheckIn || vitals || lmp !== record.data?.lmp) {

@@ -5,7 +5,7 @@ import { createServer } from "node:http";
 import { registerClinicalAccess, type AccessActor } from "./clinical-access";
 import {
   assertPreconsult, prepareReceptionVitals, receptionMeasurements,
-  receptionVitalsSchema, registerReceptionAccessRoutes, withVitalsRecorderNames,
+  receptionVitalsSchema, receptionVitalsPrefill, registerReceptionAccessRoutes, withVitalsRecorderNames,
 } from "./reception-access";
 
 const actors: Record<string, AccessActor> = {
@@ -14,6 +14,15 @@ const actors: Record<string, AccessActor> = {
   admin: { userId: "admin", role: "admin" }, patient: { patientId: 7 },
   unknown: { userId: "unknown", role: "unknown" },
 };
+
+test("vitals prefill uses survey LMP and historical height without replacing appointment dates or inventing values", () => {
+  const patient = { history: { onboarding: { cycle: { lastPeriod: "2026-09-04" } } }, height: "152" };
+  assert.deepEqual(receptionVitalsPrefill(patient, null, "160"), { lmp: "2026-09-04", height: 152 });
+  assert.equal(receptionVitalsPrefill(patient, { value: "2026-10-01", source: "patient-reported", recordedAt: "", recordedBy: "" }).lmp, "2026-10-01");
+  assert.equal(receptionVitalsPrefill(patient, { value: null, source: "patient-reported", recordedAt: "", recordedBy: "" }).lmp, null);
+  assert.deepEqual(receptionVitalsPrefill({ history: {}, height: null }, null, "160"), { lmp: null, height: 160 });
+  assert.deepEqual(receptionVitalsPrefill({ history: { onboarding: { cycle: { lastPeriod: "2026-02-30" } } }, height: "0" }, null, "bad"), { lmp: null, height: null });
+});
 const patient = {
   id: 7, name: "Patient", history: { onboarding: { lastPeriod: "2026-01-01" } },
   condition: "Clinical", lmp: "2026-01-01", clinicianNote: "PRIVATE", futureSecret: "PRIVATE",
@@ -184,9 +193,26 @@ test("measurement validation rejects provenance, clinical fields, impossible dat
     assert.throws(() => assertPreconsult({ status, seenAt: null, completedAt: null }), /before consultation/);
   }
   assert.throws(() => assertPreconsult({ status: "scheduled", seenAt: null, completedAt: "2026-01-01" }));
-  const update = prepareReceptionVitals({ bp: "110/70", pulse: 72 }, { vitals: { pulse: 80, recordedAt: "spoof" }, lmp: null }, "reception", "2026-01-01T00:00:00Z");
-  assert.deepEqual(update.vitals, { bp: "110/70", pulse: 80, recordedAt: "2026-01-01T00:00:00Z", recordedBy: "reception" });
+  const update = prepareReceptionVitals({ bp: "110/70", pulse: 72, weight: 60, height: 165 }, { vitals: { pulse: 80, recordedAt: "spoof" }, lmp: null }, "reception", "2026-01-01T00:00:00Z");
+  assert.deepEqual(update.vitals, { bp: "110/70", pulse: 80, weight: 60, height: 165, bmi: 22, recordedAt: "2026-01-01T00:00:00Z", recordedBy: "reception" });
   assert.deepEqual(update.patientReportedLmp, { value: null, source: "patient-reported", recordedAt: "2026-01-01T00:00:00Z", recordedBy: "reception" });
+});
+
+test("saving requires weight, height and both BP values, including attempts to skip measurements", async () => {
+  const complete = { bp: "120/75", weight: 60, height: 165 };
+  for (const omitted of ["bp", "weight", "height"] as const) {
+    const partial = { ...complete, [omitted]: undefined };
+    assert.throws(() => prepareReceptionVitals(null, { vitals: partial, lmp: null }, "reception"), /required/);
+  }
+  assert.throws(() => prepareReceptionVitals(null, { vitals: null, lmp: null }, "reception"), /required/);
+  assert.deepEqual(prepareReceptionVitals(complete, { vitals: null, lmp: null }, "reception").vitals, complete);
+  const cleared = prepareReceptionVitals({ ...complete, pulse: 80, temp: 98.6, spo2: 99 },
+    { vitals: { ...complete, pulse: null, temp: null, spo2: null }, lmp: null }, "reception").vitals as Record<string, unknown>;
+  for (const key of ["pulse", "temp", "spo2"]) assert.equal(key in cleared, false);
+  await harness(freshStore(), async (request) => {
+    assert.equal((await request("/api/appointments/4/reception-vitals", "reception", "POST", { vitals: { weight: 60, height: 165 }, lmp: null })).status, 409);
+    assert.equal((await request("/api/appointments/4/reception-vitals", "reception", "POST", { vitals: complete, lmp: null })).status, 200);
+  });
 });
 
 test("reception temperature accepts Fahrenheit decimals and exact bounds without changing stored units", () => {

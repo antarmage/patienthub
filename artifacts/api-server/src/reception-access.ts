@@ -1,27 +1,16 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod/v4";
 import type { AccessActor } from "./clinical-access";
+import { requiredVitalsSchema, vitalsMeasurementSchema } from "../../../lib/db/src/vitals-measurements";
 
 export function isReceptionReader(actor: AccessActor): actor is { userId: string; role: string } {
   return "role" in actor && ["staff", "receptionist"].includes(actor.role);
 }
 
-const numericMeasurement = (minimum: number, maximum: number) => z.union([
-  z.number(),
-  z.string().regex(/^\d+(?:\.\d+)?$/).transform(Number),
-]).pipe(z.number().min(minimum).max(maximum));
-
-const measurementSchema = z.object({
-  bp: z.string().regex(/^\d{2,3}\/\d{2,3}$/).refine((value) => {
-    const [systolic, diastolic] = value.split("/").map(Number);
-    return systolic >= 50 && systolic <= 260 && diastolic >= 30 && diastolic <= 180 && systolic > diastolic;
-  }, "Invalid blood pressure"),
-  pulse: numericMeasurement(20, 250),
-  temp: numericMeasurement(86, 113),
-  spo2: numericMeasurement(50, 100),
-  weight: numericMeasurement(0.1, 500),
-  height: numericMeasurement(30, 250),
-  bmi: numericMeasurement(0.1, 150).optional(),
+const measurementSchema = vitalsMeasurementSchema.extend({
+  pulse: vitalsMeasurementSchema.shape.pulse.nullable(),
+  temp: vitalsMeasurementSchema.shape.temp.nullable(),
+  spo2: vitalsMeasurementSchema.shape.spo2.nullable(),
   // Accepted for compatibility, but the server always supplies the timestamp.
   recordedAt: z.string().max(100).optional(),
 }).partial().strict().refine((value) => Object.keys(value).some((key) => key !== "recordedAt"), "Enter at least one measurement");
@@ -41,7 +30,18 @@ export type ReceptionVitalsRecord = {
   patientId: number;
   vitals: unknown;
   lmp: string | null;
+  prefill?: { lmp: string | null; height: number | null };
 };
+export function receptionVitalsPrefill(patient: { history: unknown; height: string | null }, savedLmp: ReportedLmp | null, historicalHeight?: unknown) {
+  const history = patient.history && typeof patient.history === "object" && !Array.isArray(patient.history)
+    ? patient.history as Record<string, unknown> : {};
+  const onboarding = history.onboarding && typeof history.onboarding === "object" ? history.onboarding as Record<string, unknown> : {};
+  const cycle = onboarding.cycle && typeof onboarding.cycle === "object" ? onboarding.cycle as Record<string, unknown> : {};
+  const candidate = savedLmp ? savedLmp.value : cycle.lastPeriod;
+  const lmp = typeof candidate === "string" && receptionVitalsSchema.shape.lmp.safeParse(candidate).success ? candidate : null;
+  const height = [patient.height, historicalHeight].map((value) => vitalsMeasurementSchema.shape.height.safeParse(value)).find((result) => result.success);
+  return { lmp, height: height?.success ? height.data : null };
+}
 export type ReportedLmp = { value: string | null; source: "patient-reported"; recordedAt: string; recordedBy: string };
 
 export async function withVitalsRecorderNames<T extends { vitals?: unknown }>(
@@ -82,6 +82,18 @@ export function prepareReceptionVitals(
   const vitals = input.vitals === null ? currentVitals : {
     ...current, ...measurements, recordedAt: now, recordedBy: userId,
   };
+  if (input.vitals !== null && vitals && typeof vitals === "object") {
+    for (const key of ["pulse", "temp", "spo2"] as const) {
+      if (input.vitals[key] === null) Reflect.deleteProperty(vitals, key);
+    }
+  }
+  const required = requiredVitalsSchema.safeParse(vitals);
+  if (!required.success) {
+    throw Object.assign(new Error("Weight, height, and both blood pressure values are required before saving vitals or checking in."), { status: 409 });
+  }
+  if (input.vitals !== null && vitals && typeof vitals === "object") {
+    Object.assign(vitals, { bmi: Number((required.data.weight / (required.data.height / 100) ** 2).toFixed(1)) });
+  }
   const patientReportedLmp: ReportedLmp = { value: input.lmp, source: "patient-reported", recordedAt: now, recordedBy: userId };
   return { vitals, patientReportedLmp };
 }
