@@ -1360,7 +1360,7 @@ export default function StaffPortal() {
     : staffUsername.includes("nurse") ? "phlebotomist"
     : staffUsername.includes("nutritionist") ? "nutritionist"
     : "nutritionist";
-  const [activeRole, setActiveRole] = useState(defaultRole);
+  const [activeRole] = useState(defaultRole);
   const receptionist = activeRole === "receptionist";
   const receptionAccess = useReceptionAccess(receptionist);
   const canViewClinical = receptionist && receptionAccess.isSuccess && receptionAccess.data.clinicalDetailsVisible;
@@ -1673,7 +1673,6 @@ export default function StaffPortal() {
   const [optimiseLoading, setOptimiseLoading] = useState(false);
   const [optimiseResult, setOptimiseResult] = useState<any>(null);
   const [showOptimiseDialog, setShowOptimiseDialog] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [isAdjustProtocolOpen, setIsAdjustProtocolOpen] = useState(false);
   const [selectedPatientForAdjust, setSelectedPatientForAdjust] = useState<any>(null);
   const [isCreatePlanOpen, setIsCreatePlanOpen] = useState(false);
@@ -2426,46 +2425,11 @@ export default function StaffPortal() {
 
   const currentRole = roles.find(r => r.id === activeRole);
 
-  const handleLogin = (roleId: string) => {
-    setActiveRole(roleId);
-    setIsLoggedIn(true);
-  };
-
-  if (!isLoggedIn) {
-    return (
-        <div className="min-h-screen bg-saivie-surface-muted flex items-center justify-center p-6">
-            <Card className="max-w-md w-full shadow-lg border-saivie-border">
-                <CardHeader className="text-center pb-2">
-                    <div className="mx-auto mb-4 w-fit"><BrandLogo fallback="S" className="w-14 h-14 text-2xl" /></div>
-                    <CardTitle className="text-2xl font-serif text-saivie-plum">Saivie Staff Portal</CardTitle>
-                    <p className="text-saivie-plum text-sm">Select your role to access the care workspace.</p>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-4">
-                    <div className="grid grid-cols-2 gap-3">
-                        {roles.map(role => (
-                            <button
-                                key={role.id}
-                                onClick={() => handleLogin(role.id)}
-                                className="flex flex-col items-center justify-center p-4 rounded-lg border border-saivie-border hover:border-blue-400 hover:bg-blue-50 transition-all bg-saivie-ivory group"
-                            >
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 group-hover:bg-saivie-ivory transition-colors ${role.bg}`}>
-                                    <role.icon className={`w-5 h-5 ${role.color}`} />
-                                </div>
-                                <span className="text-xs font-bold text-saivie-plum group-hover:text-blue-700">{role.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-    );
-  }
-
   return (
     <div className="portal-shell font-sans">
       
       {/* Sidebar - Logged In State */}
-      <PortalNavigation label="Staff navigation" items={[
+      <PortalNavigation label="Staff navigation" highlight={receptionist ? "receptionist" : "default"} items={[
         { id: "dashboard", label: "Dashboard", icon: Activity },
         ...(receptionist ? [{ id: "attendance", label: "My Attendance", icon: CalendarCheck, testId: "nav-my-attendance" }] : []),
         { id: "patients", label: "My Patients", icon: Users },
@@ -2494,7 +2458,7 @@ export default function StaffPortal() {
         </div>} />
 
       {/* Main Content Area */}
-      <main className="portal-panel flex flex-col bg-saivie-surface-muted/50">
+      <main className={`portal-panel flex flex-col bg-saivie-surface-muted/50 ${receptionist ? "receptionist-content" : ""}`}>
         
         {/* Top Header */}
         {!receptionist && <header className="h-16 bg-saivie-ivory border-b border-saivie-border px-6 flex items-center justify-between shrink-0 z-10">
@@ -2596,7 +2560,7 @@ export default function StaffPortal() {
         </header>}
 
         {/* Dashboard Content */}
-        <div className={`flex-1 overflow-y-auto p-4 md:p-6 ${activeRole === 'receptionist' && ['dashboard', 'patients'].includes(activeView) ? 'bg-[#faf5e6]' : receptionist && activeView === 'attendance' ? 'bg-[#f4f7f4]' : ''}`}>
+        <div className={`flex-1 overflow-y-auto p-4 md:p-6 ${receptionist ? "bg-saivie-page" : ""}`}>
           {activeRole === 'receptionist' && activeView === 'attendance' && <StaffAttendance />}
           {receptionist && ['dashboard', 'patients'].includes(activeView) && <div className="mb-3 rounded-xl border border-[#e9e1d2] bg-white px-4 py-2 text-xs text-[#705364]">
             {receptionAccess.isError ? <p role="alert">Could not load doctor permissions: {receptionAccess.error.message} <button type="button" className="underline" onClick={() => void receptionAccess.refetch()}>Retry</button></p>

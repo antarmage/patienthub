@@ -1,0 +1,21 @@
+.receptionist-content {
+  --saivie-page: #faf5e6;
+  --saivie-ivory: #fffaf0;
+  --saivie-surface-muted: #f8f5ed;
+  --saivie-surface-blush: #f4eef1;
+  --saivie-border: #e9e1d2;
+  --saivie-plum: #242821;
+  --saivie-text: #705364;
+  --saivie-sage: #dce7c7;
+  --saivie-blush: #efb8d5;
+  --saivie-rose: #704660;
+  --saivie-gold: #a17b32;
+  background: var(--saivie-page);
+}
+
+.receptionist-content .attendance-day { background: var(--saivie-ivory); }
+.receptionist-content .attendance-day-today { background: white; }
+.receptionist-content .attendance-total { background: #f5edda; }
+.receptionist-content .attendance-total:nth-child(2) { background: #eef2e8; }
+.receptionist-content .attendance-total:nth-child(3) { background: #f4eef1; }
+.receptionist-content .attendance-total:nth-child(4) { background: #edf2f8; }

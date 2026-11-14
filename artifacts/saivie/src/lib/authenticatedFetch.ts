@@ -1,6 +1,12 @@
 export const STAFF_SESSION_EXPIRED_EVENT = "saivie:staff-session-expired";
 let rejectedStaffToken: string | null = null;
 
+export function hasStaffSession(): boolean {
+  return typeof sessionStorage !== "undefined"
+    && !!sessionStorage.getItem("billing_staff_token")?.trim()
+    && !isStaffSessionExpired();
+}
+
 export function isStaffSessionExpired(): boolean {
   return rejectedStaffToken !== null && typeof sessionStorage !== "undefined"
     && sessionStorage.getItem("billing_staff_token") === rejectedStaffToken;

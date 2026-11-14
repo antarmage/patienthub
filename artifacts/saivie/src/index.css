@@ -3,6 +3,7 @@
 @import "../../../lib/brand/saivie.css";
 @import "./components/portal-navigation.css";
 @import "./components/staff-attendance.css";
+@import "./components/receptionist-content.css";
 
 @custom-variant dark (&:is(.dark *));
 

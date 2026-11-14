@@ -17,11 +17,12 @@ export interface PortalNavigationItem {
   badge?: ReactNode;
 }
 
-export function PortalNavigation({ label, items, footer, hidden = false }: {
+export function PortalNavigation({ label, items, footer, hidden = false, highlight = "default" }: {
   label: string;
   items: PortalNavigationItem[];
   footer: (expanded: boolean) => ReactNode;
   hidden?: boolean;
+  highlight?: "default" | "receptionist";
 }) {
   const [expanded, setExpanded] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -43,7 +44,8 @@ export function PortalNavigation({ label, items, footer, hidden = false }: {
   if (hidden) return null;
   const content = (open: boolean, mobile: boolean) => <>
     <div className="portal-navigation-brand">
-      <BrandLogo fallback="S" className={open ? "h-14 w-32" : "h-10 w-10"} />
+      {open ? <BrandLogo fallback="S" className="h-14 w-32" /> :
+        <img src="/favicon.svg" alt="Saivie" className="h-10 w-10 object-contain" />}
       {!mobile && <Button variant="ghost" size="icon" className="portal-navigation-toggle" onClick={toggle}
         aria-label={open ? "Collapse navigation" : "Expand navigation"} aria-expanded={open} data-testid="btn-toggle-sidebar">
         {open ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
@@ -66,10 +68,10 @@ export function PortalNavigation({ label, items, footer, hidden = false }: {
     {storageError && <p role="alert" className="px-3 pb-3 text-xs text-rose-700">{storageError}</p>}
   </>;
   return <TooltipProvider delayDuration={150}>
-    <aside className="portal-navigation-desktop" data-expanded={expanded}>{content(expanded, false)}</aside>
+    <aside className="portal-navigation-desktop" data-expanded={expanded} data-highlight={highlight}>{content(expanded, false)}</aside>
     <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
       <SheetTrigger asChild><Button variant="ghost" size="icon" className="portal-navigation-mobile-trigger" aria-label={`Open ${label.toLowerCase()}`}><Menu className="h-5 w-5" /></Button></SheetTrigger>
-      <SheetContent side="left" className="portal-navigation-drawer">
+      <SheetContent side="left" className="portal-navigation-drawer" data-highlight={highlight}>
         <SheetTitle className="sr-only">{label}</SheetTitle>
         <SheetDescription className="sr-only">Choose a page. Close the menu to return to the current page.</SheetDescription>
         {content(true, true)}

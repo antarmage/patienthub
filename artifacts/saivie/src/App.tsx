@@ -1,7 +1,7 @@
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Redirect, Router as WouterRouter, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { queryClient } from "./lib/queryClient";
-import { isStaffSessionExpired, STAFF_SESSION_EXPIRED_EVENT } from "./lib/authenticatedFetch";
+import { hasStaffSession, isStaffSessionExpired, STAFF_SESSION_EXPIRED_EVENT } from "./lib/authenticatedFetch";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -69,6 +69,9 @@ function Router() {
       </section>
     </main>
   );
+  if ((location === "/staff" || location.startsWith("/staff/")) && !hasStaffSession()) {
+    return <Redirect to="/" replace />;
+  }
   return (
     <>
     {renewalError && <div role="alert" className="fixed bottom-4 left-4 right-4 z-50 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{renewalError}</div>}

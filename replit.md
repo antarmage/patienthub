@@ -28,6 +28,12 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Portal navigation
 
+All `/staff` routes require a staff session token before their pages mount. Missing sessions redirect to the landing sign-in page; saved usernames alone do not grant access. Rejected tokens retain the existing session-expired sign-in prompt.
+
+Collapsed portal navigation displays the fixed `/favicon.svg` Saivie mark; expanded navigation and the mobile drawer retain the clinic's full uploaded logo.
+
+All receptionist main-content views share the dashboard's warm ivory page, cream/white surfaces, warm borders, teal actions and pastel accents through scoped `receptionist-content` brand-token overrides. Attendance cards use the same palette while retaining the teal check-in hero and semantic status colors. The receptionist navigation's active item and desktop connector match the warm ivory page, including in the collapsed sidebar and mobile drawer. Other sidebar colors, content overlays, other staff roles, owner and clinician palettes are unchanged.
+
 Arrival vitals prefill patient-reported LMP from the saved onboarding survey (`cycle.lastPeriod`) when this appointment has no saved LMP decision. An explicitly saved unknown LMP remains unknown. Height defaults to the patient record, then the latest valid earlier appointment/visit measurement; current-appointment measurements take priority. The minimal vitals endpoint supplies these defaults without exposing full clinical history. Prefilled values remain editable and are not persisted until Save.
 
 Staff My Attendance uses a compact status hero, responsive seven-day cards (four/two columns on smaller screens), and a compact yearly insight layout with summary cards and a labelled monthly late-arrival chart. These styles are scoped to the attendance main content; sidebar styles remain unchanged.

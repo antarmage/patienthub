@@ -1,6 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ApiResponseError, authenticatedFetch, isStaffSessionExpired, readApiResponse, receptionRequest, STAFF_SESSION_EXPIRED_EVENT } from "./authenticatedFetch.ts";
+import { readFileSync } from "node:fs";
+import { ApiResponseError, authenticatedFetch, hasStaffSession, isStaffSessionExpired, readApiResponse, receptionRequest, STAFF_SESSION_EXPIRED_EVENT } from "./authenticatedFetch.ts";
+
+test("staff pages require a session token, not a persisted username", (t) => {
+  const previousStorage = Object.getOwnPropertyDescriptor(globalThis, "sessionStorage");
+  t.after(() => {
+    if (previousStorage) Object.defineProperty(globalThis, "sessionStorage", previousStorage);
+    else Reflect.deleteProperty(globalThis, "sessionStorage");
+  });
+  Reflect.deleteProperty(globalThis, "sessionStorage");
+  assert.equal(hasStaffSession(), false);
+  for (const token of [null, "", "   ", "synthetic-valid-session"]) {
+    Object.defineProperty(globalThis, "sessionStorage", { configurable: true, value: { getItem: () => token } });
+    assert.equal(hasStaffSession(), token === "synthetic-valid-session");
+  }
+  const app = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
+  assert.match(app, /if \(\(location === "\/staff" \|\| location\.startsWith\("\/staff\/"\)\) && !hasStaffSession\(\)\)/);
+  assert.ok(app.indexOf('return <Redirect to="/" replace />') < app.indexOf("<Switch>"));
+});
 
 test("staff token is only attached to same-origin API calls, preserving headers and multipart bodies", async (t) => {
   t.mock.method(globalThis, "fetch", async (_input: RequestInfo | URL, init?: RequestInit) => new Response(JSON.stringify({
@@ -54,11 +72,13 @@ test("staff token is only attached to same-origin API calls, preserving headers 
     ]);
     assert.equal(notifications, 1);
     assert.equal(isStaffSessionExpired(), true);
+    assert.equal(hasStaffSession(), false);
     assert.deepEqual(await responses[0].json(), { error: "Invalid staff token" });
     assert.equal(responses[1].status, 401);
 
     token = "synthetic-new-session";
     assert.equal(isStaffSessionExpired(), false);
+    assert.equal(hasStaffSession(), true);
     await t.test("an in-flight rejection cannot expire a newly signed-in session", async (t) => {
       t.mock.method(globalThis, "fetch", async () => {
         token = "synthetic-newest-session";
