@@ -837,8 +837,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPatientProtocol(patientId: number): Promise<PatientProtocol | undefined> {
-    const results = await db.select().from(patientProtocols).where(eq(patientProtocols.patientId, patientId));
-    return results[results.length - 1];
+    const [latest] = await db.select().from(patientProtocols).where(eq(patientProtocols.patientId, patientId))
+      .orderBy(desc(patientProtocols.id)).limit(1);
+    return latest;
   }
 
   async savePatientProtocol(protocol: InsertPatientProtocol): Promise<PatientProtocol> {

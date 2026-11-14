@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
+import { authenticatedFetch as fetch, readApiResponse } from "@/lib/authenticatedFetch";
+import { openDietChart, savedDietProtocolSchema } from "@/lib/dietChart";
 import { useRoute } from "wouter";
 import { 
   ArrowLeft, 
@@ -177,8 +178,8 @@ export default function StaffPatientProtocol() {
     queryFn: async () => {
       if (!patientId) return null;
       const res = await fetch(`/api/patient-protocols`, { headers: { "X-Patient-Id": String(patientId) } });
-      if (!res.ok) return null;
-      return res.json();
+      const body = await readApiResponse(res);
+      return body === null ? null : savedDietProtocolSchema.parse(body);
     },
     enabled: !!patientId,
   });
@@ -387,7 +388,8 @@ export default function StaffPatientProtocol() {
           savedAt: new Date().toISOString(),
         }),
       });
-      if (!res.ok) throw new Error("Failed to save");
+      savedDietProtocolSchema.parse(await readApiResponse(res));
+      await protocolQuery.refetch();
       toast({ title: "Protocol saved", description: `Protocol for ${patient.name} saved successfully.` });
     } catch {
       toast({ title: "Error", description: "Failed to save protocol. Please try again.", variant: "destructive" });
@@ -403,6 +405,15 @@ export default function StaffPatientProtocol() {
     }, 0);
   }, [weeklyPlan, selectedDay]);
   const targetCalories = (patient?.meta?.tdee || 1800) - 300;
+
+  const handlePrintDietChart = () => {
+    try {
+      if (!patient || !protocolQuery.data) throw new Error("Save a nutrition protocol before printing.");
+      if (!openDietChart(patient, protocolQuery.data)) throw new Error("Allow pop-ups to open the diet chart, then retry.");
+    } catch (error) {
+      toast({ title: "Could not print diet chart", description: error instanceof Error ? error.message : "Unexpected printing error.", variant: "destructive" });
+    }
+  };
 
   if (!patient) {
     return (
@@ -449,8 +460,9 @@ export default function StaffPatientProtocol() {
              <Button variant="outline" size="sm" className="bg-saivie-ivory border-saivie-border">
                 <Share2 className="w-4 h-4 mr-2" /> Share
              </Button>
-             <Button variant="outline" size="sm" className="bg-saivie-ivory border-saivie-border">
-                <Printer className="w-4 h-4 mr-2" /> Print
+             <Button variant="outline" size="sm" className="bg-saivie-ivory border-saivie-border"
+               onClick={handlePrintDietChart} disabled={!protocolQuery.data || protocolQuery.isFetching || protocolQuery.isError || isSaving} data-testid="button-print-diet-chart">
+                <Printer className="w-4 h-4 mr-2" /> Print / PDF
              </Button>
              <Button className="bg-saivie-plum text-white hover:bg-saivie-plum" size="sm" onClick={handleSaveProtocol} disabled={isSaving} data-testid="button-save-protocol">
                 <Save className="w-4 h-4 mr-2" /> {isSaving ? "Saving..." : "Save Protocol"}
@@ -459,6 +471,10 @@ export default function StaffPatientProtocol() {
       </header>
 
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
+        {protocolQuery.isError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+          Could not load the saved nutrition protocol: {protocolQuery.error.message} <button className="underline" onClick={() => void protocolQuery.refetch()}>Retry</button>
+        </p>}
+        <p className="text-xs text-muted-foreground">Print / PDF uses the last saved protocol only. Save your changes before printing; choose Save as PDF in the print dialog to download.</p>
         <Tabs defaultValue="protocol" className="w-full">
             <div className="flex items-center justify-between mb-6">
                  <TabsList className="bg-saivie-ivory border border-saivie-border">
