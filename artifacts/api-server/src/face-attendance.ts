@@ -6,6 +6,8 @@ import { FACE_MODEL, FACE_MATCH_THRESHOLD, faceCheckInSchema, faceDescriptorSche
 import { clinicDate } from "../../../lib/db/src/follow-up";
 import type { AccessActor } from "./clinical-access";
 import { isReceptionReader } from "./reception-access";
+import { readAttendanceTiming } from "./attendance-shifts";
+import { attendanceTiming } from "../../../lib/db/src/attendance-timing";
 
 class FaceAttendanceError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -104,16 +106,19 @@ export function createFaceAttendanceStore(pool: Pool): FaceAttendanceStore {
       throw new FaceAttendanceError(409, record.status === "pending_approval" ? "An attendance request is already awaiting owner approval." : "Set today to a work day before checking in.");
     }
   }
-  async function writeAttendance(tx: PoolClient, employeeId: string, date: string, status: string, clockIn: string | null, notes: string) {
+  async function writeAttendance(tx: PoolClient, employeeId: string, date: string, status: string, clockIn: string | null, notes: string, requestedAt?: string) {
+    const timing = await readAttendanceTiming(tx, employeeId, date, clockIn || requestedAt || null);
+    if (!clockIn) timing.lateMinutes = null;
     const result = await tx.query(`
-      INSERT INTO attendance(employee_id,employee_name,role,date,status,clock_in,notes)
-      SELECT id,coalesce(nullif(display_name,''),username),'Receptionist',$2,$3,$4,$5 FROM users
+      INSERT INTO attendance(employee_id,employee_name,role,date,status,clock_in,notes,shift_start,grace_minutes,late_minutes)
+      SELECT id,coalesce(nullif(display_name,''),username),'Receptionist',$2,$3,$4,$5,$6,$7,$8 FROM users
       WHERE id=$1 AND role IN ('staff','receptionist')
       ON CONFLICT(employee_id,date) DO UPDATE SET
         status=EXCLUDED.status,clock_in=EXCLUDED.clock_in,notes=EXCLUDED.notes,
-        clock_out=NULL,hours_worked=NULL
+        clock_out=NULL,hours_worked=NULL,shift_start=EXCLUDED.shift_start,
+        grace_minutes=EXCLUDED.grace_minutes,late_minutes=EXCLUDED.late_minutes
       RETURNING id
-    `, [employeeId, date, status, clockIn, notes]);
+    `, [employeeId, date, status, clockIn, notes, timing.shiftStart, timing.graceMinutes, timing.lateMinutes]);
     if (!result.rowCount) throw new FaceAttendanceError(409, "Receptionist account is no longer available.");
   }
   return {
@@ -161,7 +166,7 @@ export function createFaceAttendanceStore(pool: Pool): FaceAttendanceStore {
         const date = clinicDate(now);
         await ensureWorkDay(tx, employeeId, date);
         await tx.query("INSERT INTO staff_attendance_reviews(employee_id,date,reason,requested_at) VALUES($1,$2,$3,$4)", [employeeId, date, reason, now.toISOString()]);
-        await writeAttendance(tx, employeeId, date, "pending_approval", null, "Awaiting owner approval; not counted as present.");
+        await writeAttendance(tx, employeeId, date, "pending_approval", null, "Awaiting owner approval; not counted as present.", now.toISOString());
       });
     },
     async reviews(employeeId) {
@@ -181,13 +186,21 @@ export function createFaceAttendanceStore(pool: Pool): FaceAttendanceStore {
           "SELECT employee_id,date::text,requested_at,decision FROM staff_attendance_reviews WHERE id=$1 FOR UPDATE", [id],
         )).rows[0];
         if (row.decision !== "pending") throw new FaceAttendanceError(409, "This request has already been reviewed.");
+        const clockIn = decision === "approved" ? row.requested_at.toISOString() : null;
+        const savedShift = (await tx.query<{ shiftStart: string | null; graceMinutes: number | null }>(
+          'SELECT shift_start AS "shiftStart",grace_minutes AS "graceMinutes" FROM attendance WHERE employee_id=$1 AND date=$2 FOR UPDATE',
+          [row.employee_id, row.date],
+        )).rows[0];
+        const timing = attendanceTiming(row.date, clockIn, savedShift?.shiftStart && savedShift.graceMinutes !== null
+          ? { shiftStart: savedShift.shiftStart, graceMinutes: savedShift.graceMinutes } : null);
         const changed = await tx.query(`
-          UPDATE attendance SET status=$3,clock_in=$4,notes=$5
+          UPDATE attendance SET status=$3,clock_in=$4,notes=$5,shift_start=$6,grace_minutes=$7,late_minutes=$8
           WHERE employee_id=$1 AND date=$2 AND status='pending_approval' AND clock_in IS NULL
           RETURNING id
         `, [row.employee_id, row.date, decision === "approved" ? "present" : "rejected",
-          decision === "approved" ? row.requested_at.toISOString() : null,
-          `Attendance ${decision} by owner ${ownerId}; requested at ${row.requested_at.toISOString()}.`]);
+          clockIn,
+          `Attendance ${decision} by owner ${ownerId}; requested at ${row.requested_at.toISOString()}.`,
+          timing.shiftStart, timing.graceMinutes, timing.lateMinutes]);
         if (!changed.rowCount) throw new FaceAttendanceError(409, "Attendance has changed. Refresh and review the current record.");
         await tx.query("UPDATE staff_attendance_reviews SET decision=$2,reviewed_by=$3,reviewed_at=now() WHERE id=$1", [id, decision, ownerId]);
       });

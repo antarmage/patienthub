@@ -10,6 +10,7 @@ import { ensureMenopauseSchema } from "./menopause";
 import { ensureBookingCatalogSchema } from "./booking-catalog";
 import { ensureFaceAttendanceSchema } from "./face-attendance";
 import { ensureStaffProfileSchema } from "./staff-profile";
+import { ensureAttendanceShiftSchema } from "./attendance-shifts";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set.");
@@ -445,6 +446,7 @@ export async function ensureSchema(): Promise<void> {
     `);
     await ensureFaceAttendanceSchema(client);
     await ensureStaffProfileSchema(client);
+    await ensureAttendanceShiftSchema(client);
   } finally {
     client.release();
   }

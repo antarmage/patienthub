@@ -4,6 +4,8 @@ import { OwnerAuthGate } from "@/components/OwnerAuthGate";
 import { OwnerFaceAttendance } from "@/components/OwnerFaceAttendance";
 import { OwnerStaffProfilePhoto } from "@/components/StaffProfilePhoto";
 import { AttendanceInsights } from "@/components/AttendanceInsights";
+import { OwnerAttendanceShifts } from "@/components/AttendanceShifts";
+import { attendanceTimingLabel } from "../../../../lib/db/src/attendance-timing";
 import { clinicDate } from "../../../../lib/db/src/follow-up";
 import { Expenses } from "@/components/Expenses";
 import { ReferralsManager } from "@/components/ReferralsManager";
@@ -488,7 +490,7 @@ export default function OwnerPortal() {
           </div>
         </header>
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className={`flex-1 ${activeView === "attendance" ? "[&_[data-radix-scroll-area-viewport]>div]:!block" : ""}`}>
           <div className="p-6 max-w-7xl mx-auto">
 
             {activeView === "expenses" && <OwnerAuthGate>{({ token }) => <Expenses owner token={token} />}</OwnerAuthGate>}
@@ -622,11 +624,12 @@ export default function OwnerPortal() {
             {activeView === "attendance" && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-attendance-title">Staff Attendance</h2>
-                <OwnerAuthGate>{({ token }) => <div className="space-y-6"><OwnerFaceAttendance token={token} /><AttendanceInsights token={token} /></div>}</OwnerAuthGate>
+                <OwnerAuthGate>{({ token }) => <div className="space-y-6"><OwnerAttendanceShifts token={token} /><OwnerFaceAttendance token={token} /><AttendanceInsights token={token} /></div>}</OwnerAuthGate>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
                     { label: "Present Today", value: presentCount, icon: UserCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
+                    { label: "Late Today", value: todayAttendance.filter((record) => record.lateMinutes > 0).length, icon: Clock, color: "text-amber-700", bg: "bg-amber-50" },
                     { label: "Absent Today", value: absentCount, icon: UserX, color: "text-rose-600", bg: "bg-rose-50" },
                     { label: "On Leave Today", value: leaveCount, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
                     { label: "Pending Approval Today", value: pendingCount, icon: Clock, color: "text-saivie-teal", bg: "bg-saivie-surface-muted" },
@@ -663,12 +666,13 @@ export default function OwnerPortal() {
                             <TableHead className="text-xs font-bold text-saivie-plum">Clock Out</TableHead>
                             <TableHead className="text-xs font-bold text-saivie-plum">Hours</TableHead>
                             <TableHead className="text-xs font-bold text-saivie-plum">Status</TableHead>
+                            <TableHead className="text-xs font-bold text-saivie-plum">Arrival</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {attendance.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={7} className="text-center py-8 text-saivie-plum">No attendance records found for this period.</TableCell>
+                              <TableCell colSpan={8} className="text-center py-8 text-saivie-plum">No attendance records found for this period.</TableCell>
                             </TableRow>
                           ) : (
                             attendance.map((record: any, idx: number) => (
@@ -680,6 +684,7 @@ export default function OwnerPortal() {
                                 <TableCell className="text-sm text-saivie-plum">{formatAttendanceTime(record.clockOut)}</TableCell>
                                 <TableCell className="text-sm text-saivie-plum">{record.hoursWorked ? `${record.hoursWorked}h` : "—"}</TableCell>
                                 <TableCell>{statusBadge(record.status)}</TableCell>
+                                <TableCell className={`text-xs ${record.lateMinutes > 0 ? "font-semibold text-amber-700" : "text-muted-foreground"}`}>{record.clockIn ? attendanceTimingLabel(record.lateMinutes) : "—"}</TableCell>
                               </TableRow>
                             ))
                           )}

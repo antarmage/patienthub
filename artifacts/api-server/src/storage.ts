@@ -1,6 +1,7 @@
 import { eq, desc, sql, gte, lte, and, inArray } from "drizzle-orm";
 import type { TranscriptionTx } from "./prescription-transcriptions";
 import type { StaffAttendanceStore } from "./staff-attendance";
+import { attendanceTiming } from "../../../lib/db/src/attendance-timing";
 import { assertPreconsult, prepareReceptionVitals, receptionMeasurements, type ReceptionVitalsInput, type ReceptionVitalsRecord } from "./reception-access";
 import { commitReceptionDetailsEdit, type ReceptionDetailsEditInput, type ReceptionDetailsEditActor } from "./reception-details-edit";
 import { db } from "./db";
@@ -34,6 +35,7 @@ import {
   followUpCalls,
   type FollowUpCall, type InsertFollowUpCall,
   attendance,
+  staffAttendanceShifts,
   type Attendance, type InsertAttendance,
   expenses,
   type Expense, type InsertExpense,
@@ -881,7 +883,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAttendance(record: InsertAttendance): Promise<Attendance> {
-    const [created] = await db.insert(attendance).values(record).returning();
+    const [shift] = record.employeeId ? await db.select().from(staffAttendanceShifts).where(eq(staffAttendanceShifts.employeeId, record.employeeId)) : [];
+    const timing = attendanceTiming(record.date, record.clockIn, shift || null);
+    const [created] = await db.insert(attendance).values({ ...record, ...timing }).returning();
     return created;
   }
 
@@ -904,7 +908,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async saveStaffAttendance(record: InsertAttendance, client: Pick<typeof db, "select" | "insert"> = db): Promise<Attendance> {
-    const [saved] = await client.insert(attendance).values(record).onConflictDoUpdate({
+    const [previous] = record.employeeId ? await this.getStaffAttendance(record.employeeId, record.date, record.date, client) : [];
+    const sameClockIn = !!record.clockIn && previous?.clockIn === record.clockIn;
+    const [shift] = !sameClockIn && record.employeeId ? await client.select().from(staffAttendanceShifts).where(eq(staffAttendanceShifts.employeeId, record.employeeId)) : [];
+    const timing = sameClockIn
+      ? { shiftStart: previous.shiftStart, graceMinutes: previous.graceMinutes, lateMinutes: previous.lateMinutes }
+      : attendanceTiming(record.date, record.clockIn, shift || null);
+    const [saved] = await client.insert(attendance).values({ ...record, ...timing }).onConflictDoUpdate({
       target: [attendance.employeeId, attendance.date],
       set: {
         employeeName: record.employeeName,
@@ -914,6 +924,7 @@ export class DatabaseStorage implements IStorage {
         status: record.status,
         hoursWorked: record.hoursWorked,
         notes: record.notes,
+        ...timing,
       },
     }).returning();
     return saved;

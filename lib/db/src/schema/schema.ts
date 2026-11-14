@@ -740,6 +740,9 @@ export const attendance = pgTable("attendance", {
   status: text("status").default("present"),
   hoursWorked: real("hours_worked"),
   notes: text("notes"),
+  shiftStart: text("shift_start"),
+  graceMinutes: integer("grace_minutes"),
+  lateMinutes: integer("late_minutes"),
 }, (table) => ({
   employeeDateUnique: uniqueIndex("attendance_employee_date_idx").on(table.employeeId, table.date),
 }));
@@ -747,6 +750,13 @@ export const attendance = pgTable("attendance", {
 export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: true });
 export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
 export type Attendance = typeof attendance.$inferSelect;
+
+export const staffAttendanceShifts = pgTable("staff_attendance_shifts", {
+  employeeId: varchar("employee_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  shiftStart: text("shift_start"),
+  graceMinutes: integer("grace_minutes").notNull(),
+  updatedBy: varchar("updated_by").notNull().references(() => users.id),
+});
 
 export const expenses = pgTable("expenses", {
   id: serial("id").primaryKey(),

@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AttendanceCamera, useAttendanceFaceState } from "./AttendanceCamera";
 import { AttendanceInsights } from "./AttendanceInsights";
+import { StaffAttendanceShift } from "./AttendanceShifts";
+import { attendanceTimingLabel } from "../../../../lib/db/src/attendance-timing";
 
 type AttendanceRecord = {
   id: number;
@@ -17,6 +19,7 @@ type AttendanceRecord = {
   clockOut: string | null;
   status: string | null;
   hoursWorked: number | null;
+  lateMinutes?: number | null;
 };
 type AttendanceAction = "clock_in" | "clock_out" | "regular_day_off" | "leave" | "work_day";
 const attendanceRecordSchema = z.object({
@@ -26,6 +29,7 @@ const attendanceRecordSchema = z.object({
   clockOut: z.string().nullable(),
   status: z.string().nullable(),
   hoursWorked: z.number().nullable(),
+  lateMinutes: z.number().int().nonnegative().nullable().optional(),
 });
 const dateOnly = (date: Date) => date.toISOString().slice(0, 10);
 const clockTime = (value: string | null) => value
@@ -99,8 +103,10 @@ export function StaffAttendance() {
       <span className="rounded-full bg-saivie-sage/45 px-5 py-3 text-sm text-saivie-plum">{week[0]} to {week[6]}</span>
       <p className="mt-1 text-sm text-muted-foreground">Clock in and out today, and record your regular day off or leave for this week.</p>
     </header>
+    <StaffAttendanceShift />
     <AttendanceCamera status={byDate.get(today)?.status} ready={records.isSuccess}
       clockIn={byDate.get(today)?.clockIn} clockOut={byDate.get(today)?.clockOut}
+      lateMinutes={byDate.get(today)?.lateMinutes}
       onClockOut={() => update.mutate({ date: today, action: "clock_out" })}
       updating={update.isPending} attendanceError={error} />
     <AttendanceInsights today={today} />
@@ -123,6 +129,7 @@ export function StaffAttendance() {
             <div className="min-w-40">
               <p className="text-sm font-semibold text-saivie-plum">{new Date(`${date}T00:00:00Z`).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", timeZone: "UTC" })}{isToday && <span className="ml-2 text-xs font-normal text-saivie-teal">Today</span>}</p>
               <Badge className={`mt-2 ${badgeStyle(record?.status)}`}>{label(record?.status)}</Badge>
+              {record?.clockIn && <p className={`mt-1 text-xs ${record.lateMinutes && record.lateMinutes > 0 ? "font-semibold text-amber-700" : "text-muted-foreground"}`}>{attendanceTimingLabel(record.lateMinutes)}</p>}
             </div>
             {isToday ? <div className="flex flex-wrap items-center gap-2">
               {record?.clockIn && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" /> In {clockTime(record.clockIn)}</span>}

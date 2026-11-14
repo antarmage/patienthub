@@ -6,6 +6,7 @@ import express from "express";
 import pg from "pg";
 import { FACE_MODEL, FACE_MATCH_THRESHOLD, faceCheckInSchema, faceDescriptorSchema, faceDistance, faceEnrollmentSchema } from "../../../lib/db/src/face-attendance";
 import { createFaceAttendanceStore, openFaceTemplate, registerFaceAttendanceRoutes, sealFaceTemplate, type FaceAttendanceStore } from "./face-attendance";
+import { attendanceTiming } from "../../../lib/db/src/attendance-timing";
 
 const descriptor = Array.from({ length: 128 }, () => 0.1);
 
@@ -138,12 +139,16 @@ test("SQL store locks employee transitions, rejects mismatches/pending/off days 
   const requestedAt = new Date("2026-03-01T04:30:00Z");
   let decision = "pending";
   let changed = true;
+  const shift = { shiftStart: "09:45", graceMinutes: 10 };
+  let policy = { ...shift };
   t.mock.method(pool, "connect", async () => tx);
   t.mock.method(pool, "query", async () => ({ rows: [{ employee_id: "staff-1" }], rowCount: 1 }));
   t.mock.method(tx, "query", async (sql: string, args: unknown[] = []) => {
     queries.push({ sql, args });
     if (sql.includes("SELECT clock_in")) return { rows: attendance ? [attendance] : [], rowCount: attendance ? 1 : 0 };
     if (sql.includes("SELECT encrypted_descriptor")) return { rows: enrollment ? [enrollment] : [], rowCount: enrollment ? 1 : 0 };
+    if (sql.includes('FROM staff_attendance_shifts')) return { rows: [policy], rowCount: 1 };
+    if (sql.includes('SELECT shift_start') && sql.includes("FROM attendance")) return { rows: [shift], rowCount: 1 };
     if (sql.includes("SELECT employee_id,date::text")) return { rows: [{ employee_id: "staff-1", date: "2026-03-01", requested_at: requestedAt, decision }], rowCount: 1 };
     if (sql.includes("UPDATE attendance SET")) return { rows: changed ? [{ id: 1 }] : [], rowCount: changed ? 1 : 0 };
     return { rows: [{ id: 1 }], rowCount: 1 };
@@ -158,6 +163,8 @@ test("SQL store locks employee transitions, rejects mismatches/pending/off days 
     assert.ok(present);
     assert.equal(present.args[2], "present");
     assert.ok(Number.isFinite(Date.parse(String(present.args[3]))));
+    const timing = attendanceTiming(String(present.args[1]), String(present.args[3]), shift);
+    assert.deepEqual(present.args.slice(5), [shift.shiftStart, shift.graceMinutes, timing.lateMinutes]);
     assert.equal(queries.at(-1)?.sql, "COMMIT");
     for (const record of [{ status: "pending_approval", clock_in: null }, { status: "leave", clock_in: null }, { status: "regular_day_off", clock_in: null }, { status: "present", clock_in: new Date().toISOString() }]) {
       queries.length = 0; attendance = record;
@@ -174,13 +181,16 @@ test("SQL store locks employee transitions, rejects mismatches/pending/off days 
     const pending = queries.find((entry) => entry.sql.includes("INSERT INTO attendance"));
     assert.equal(pending?.args[2], "pending_approval");
     assert.equal(pending?.args[3], null);
+    assert.deepEqual(pending?.args.slice(5), [shift.shiftStart, shift.graceMinutes, null]);
     assert.equal(queries.at(-1)?.sql, "COMMIT");
     for (const approved of [true, false]) {
       queries.length = 0;
+      policy = { shiftStart: "15:00", graceMinutes: 30 };
       await store.review(1, approved ? "approved" : "rejected", "owner-1");
       const update = queries.find((entry) => entry.sql.includes("UPDATE attendance SET"));
       assert.deepEqual(update?.args.slice(0, 4), ["staff-1", "2026-03-01", approved ? "present" : "rejected", approved ? requestedAt.toISOString() : null]);
       assert.match(update?.sql || "", /status='pending_approval' AND clock_in IS NULL/);
+      assert.deepEqual(update?.args.slice(5), approved ? ["09:45", 10, 15] : [null, null, null]);
       assert.equal(queries.at(-1)?.sql, "COMMIT");
     }
     decision = "approved";

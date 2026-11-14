@@ -3,6 +3,28 @@ import { z } from "zod/v4";
 export const attendanceMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)
   .refine((month) => !month.startsWith("0000"), "Choose a valid month.");
 
+export const attendanceYearSchema = z.string().regex(/^\d{4}$/)
+  .refine((year) => year !== "0000", "Choose a valid year.");
+
+export function attendanceYearDays(value: string) {
+  const year = attendanceYearSchema.parse(value);
+  const months = Array.from({ length: 12 }, (_, index) => attendanceMonthDays(`${year}-${String(index + 1).padStart(2, "0")}`));
+  const dates = months.flatMap((month) => month.dates);
+  const offset = months[0].offset;
+  return {
+    start: months[0].start,
+    end: months[11].end,
+    dates,
+    offset,
+    columns: Math.ceil((offset + dates.length) / 7),
+    months: months.map((month) => ({
+      date: month.start,
+      column: Math.floor((offset + dates.indexOf(month.start)) / 7) + 1,
+      label: new Date(`${month.start}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }),
+    })),
+  };
+}
+
 export function attendanceMonthDays(value: string) {
   const month = attendanceMonthSchema.parse(value);
   const start = `${month}-01`;
@@ -21,6 +43,7 @@ export const attendanceInsightRecordSchema = z.object({
   employeeName: z.string(),
   date: z.string(),
   status: z.string().nullable(),
+  lateMinutes: z.number().int().nonnegative().nullable().optional(),
 });
 
 export type AttendanceInsightRecord = z.infer<typeof attendanceInsightRecordSchema>;

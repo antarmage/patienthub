@@ -9,6 +9,7 @@ import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { StaffProfileAvatar, useStaffProfile } from "./StaffProfilePhoto";
+import { attendanceTimingLabel } from "../../../../lib/db/src/attendance-timing";
 
 const faceStateSchema = z.object({
   enabled: z.boolean(),
@@ -26,11 +27,12 @@ export function useAttendanceFaceState() {
   });
 }
 
-export function AttendanceCamera({ status, ready, clockIn, clockOut, onClockOut, updating = false, attendanceError }: {
+export function AttendanceCamera({ status, ready, clockIn, clockOut, lateMinutes, onClockOut, updating = false, attendanceError }: {
   status?: string | null;
   ready: boolean;
   clockIn?: string | null;
   clockOut?: string | null;
+  lateMinutes?: number | null;
   onClockOut?: () => void;
   updating?: boolean;
   attendanceError?: string;
@@ -144,6 +146,7 @@ export function AttendanceCamera({ status, ready, clockIn, clockOut, onClockOut,
         <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-saivie-plum/70 text-saivie-teal"><Check className="h-8 w-8" strokeWidth={2} /></div>
         <h3 className="mt-4 font-sans text-2xl font-bold tracking-tight text-saivie-plum sm:text-3xl">{finished ? "You are checked out!" : "You are checked in!"}</h3>
         <p className="mt-2 text-sm text-saivie-plum/80 sm:text-base">{finished ? "Your clock-out has been recorded for today." : "Your attendance has been recorded for today."}</p>
+        {clockIn && <p className={`mt-2 text-sm ${lateMinutes && lateMinutes > 0 ? "font-semibold text-amber-700" : "text-muted-foreground"}`}>{attendanceTimingLabel(lateMinutes)}</p>}
         <div className="mt-4 flex max-w-full items-center gap-2 rounded-full bg-[#e2f4ee] px-4 py-2 text-xs text-saivie-plum">
           <ShieldCheck className="h-4 w-4 shrink-0 text-saivie-teal" />
           <span>{finished ? "Shift completed" : "Attendance saved"}{!finished && " · Clock out when your shift ends"}</span>
