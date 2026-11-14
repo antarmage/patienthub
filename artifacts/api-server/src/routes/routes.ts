@@ -5129,7 +5129,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
       const today = clinicDate();
       const todayAttendance = allAttendance.filter(a => a.date === today);
       const presentToday = todayAttendance.filter(a => a.status === "present" || a.status === "half-day").length;
-      const nonAbsentToday = todayAttendance.filter(a => ["leave", "regular_day_off", "pending_approval", "rejected"].includes(a.status || "")).length;
+      const nonAbsentToday = todayAttendance.filter(a => ["leave", "regular_day_off", "clinic_closed", "pending_approval", "rejected"].includes(a.status || "")).length;
       const totalStaff = new Set(allAttendance.map(a => a.employeeName)).size;
 
       const totalRevenue = allInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);

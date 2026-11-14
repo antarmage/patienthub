@@ -13,7 +13,7 @@ const insightsSchema = z.object({
   records: z.array(attendanceInsightRecordSchema),
   employees: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
 });
-const legendStatuses = ["present", "regular_day_off", "leave", "pending_approval", "half-day", "absent", "rejected", null] as const;
+const legendStatuses = ["present", "regular_day_off", "leave", "clinic_closed", "pending_approval", "half-day", "absent", "rejected", null] as const;
 
 export function AttendanceYearGrid({ year, records, today = clinicDate() }: { year: string; records: AttendanceInsightRecord[]; today?: string }) {
   const { dates, offset, columns, months } = attendanceYearDays(year);
@@ -27,7 +27,7 @@ export function AttendanceYearGrid({ year, records, today = clinicDate() }: { ye
     return !byDate.has(date) && date > today ? { ...status, label: "Future day" } : status;
   };
   const lateCount = (days: string[]) => days.filter((date) => (byDate.get(date)?.lateMinutes || 0) > 0).length;
-  const counts = ["present", "regular_day_off", "leave"] as const;
+  const counts = ["present", "regular_day_off", "leave", "clinic_closed"] as const;
   return <div className="space-y-4">
     <div className="flex flex-wrap gap-4 text-sm" aria-label="Yearly attendance totals">
       {counts.map((status) => <span key={status}>{attendanceInsightStatus(status).label}: <strong>{dates.filter((date) => byDate.get(date)?.status === status).length}</strong></span>)}

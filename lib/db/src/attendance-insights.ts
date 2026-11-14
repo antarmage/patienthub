@@ -54,6 +54,7 @@ export function attendanceInsightStatus(status: string | null | undefined) {
     case "half-day": return { label: "Half day", color: "bg-emerald-300" };
     case "regular_day_off": return { label: "Weekly off", color: "bg-orange-400" };
     case "leave": return { label: "Leave", color: "bg-red-500" };
+    case "clinic_closed": return { label: "Clinic closed", color: "bg-sky-400" };
     case "pending_approval": return { label: "Pending approval", color: "bg-violet-400" };
     case "rejected": return { label: "Request rejected", color: "bg-slate-500" };
     case "absent": return { label: "Absent", color: "bg-slate-700" };

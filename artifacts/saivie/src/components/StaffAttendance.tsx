@@ -85,6 +85,7 @@ export function StaffAttendance() {
     present: "Present",
     leave: "Leave",
     regular_day_off: "Regular day off",
+    clinic_closed: "Clinic closed",
     scheduled: "Work day",
     pending_approval: "Pending owner approval",
     rejected: "Attendance request rejected",
@@ -123,7 +124,7 @@ export function StaffAttendance() {
           const record = byDate.get(date);
           const isToday = date === today;
           const isPast = date < today;
-          const canSetStatus = !isPast && !record?.clockIn && record?.status !== "pending_approval";
+          const canSetStatus = !isPast && !record?.clockIn && !["pending_approval", "clinic_closed"].includes(record?.status || "");
           const hasOtherDayOff = (records.data || []).some((item) => item.date !== date && item.status === "regular_day_off");
           return <article key={date} className="flex flex-col gap-3 rounded-xl border border-saivie-border p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-40">
@@ -134,14 +135,14 @@ export function StaffAttendance() {
             {isToday ? <div className="flex flex-wrap items-center gap-2">
               {record?.clockIn && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" /> In {clockTime(record.clockIn)}</span>}
               {record?.clockOut && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" /> Out {clockTime(record.clockOut)}</span>}
-              {face.isSuccess && !face.data.enabled && !record?.clockIn && !["leave", "regular_day_off", "pending_approval"].includes(record?.status || "") && <Button size="sm" disabled={update.isPending || !canSetStatus} onClick={() => update.mutate({ date, action: "clock_in" })}>Clock in</Button>}
+              {face.isSuccess && !face.data.enabled && !record?.clockIn && !["leave", "regular_day_off", "clinic_closed", "pending_approval"].includes(record?.status || "") && <Button size="sm" disabled={update.isPending || !canSetStatus} onClick={() => update.mutate({ date, action: "clock_in" })}>Clock in</Button>}
               {record?.clockIn && !record.clockOut && <Button size="sm" variant="outline" disabled={update.isPending} onClick={() => update.mutate({ date, action: "clock_out" })}>Clock out</Button>}
               {canSetStatus && <><Button size="sm" variant="outline" disabled={update.isPending} onClick={() => update.mutate({ date, action: "regular_day_off" })}>Regular day off</Button><Button size="sm" variant="outline" disabled={update.isPending} onClick={() => update.mutate({ date, action: "leave" })}>Leave</Button></>}
               {["leave", "regular_day_off"].includes(record?.status || "") && <Button size="sm" variant="ghost" disabled={update.isPending} onClick={() => update.mutate({ date, action: "work_day" })}>Set work day</Button>}
             </div> : <div className="flex flex-wrap items-center gap-2">
               {record?.clockIn && <span className="text-xs text-muted-foreground">In {clockTime(record.clockIn)}{record.clockOut ? ` · Out ${clockTime(record.clockOut)}` : ""}</span>}
               {canSetStatus && <><Button size="sm" variant={record?.status === "regular_day_off" ? "secondary" : "outline"} disabled={update.isPending || (record?.status !== "regular_day_off" && hasOtherDayOff)} onClick={() => update.mutate({ date, action: record?.status === "regular_day_off" ? "work_day" : "regular_day_off" })}>Regular day off</Button><Button size="sm" variant={record?.status === "leave" ? "secondary" : "outline"} disabled={update.isPending} onClick={() => update.mutate({ date, action: record?.status === "leave" ? "work_day" : "leave" })}>Leave</Button></>}
-              {!canSetStatus && !record?.clockIn && <span className="text-xs text-muted-foreground">Past day — view only</span>}
+              {!canSetStatus && !record?.clockIn && <span className="text-xs text-muted-foreground">{record?.status === "clinic_closed" ? "Clinic closed — view only" : "Past day — view only"}</span>}
             </div>}
           </article>;
         })}

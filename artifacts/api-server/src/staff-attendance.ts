@@ -93,6 +93,9 @@ export function registerStaffAttendanceRoutes(
 
     const reply = await store.withLock(actor.userId, async (locked) => {
       const existing = (await locked.list(actor.userId, date, date))[0];
+      if (existing?.status === "clinic_closed") {
+        return { status: 409, body: { error: "The clinic is closed on this date. Ask the owner if this record needs correcting." } };
+      }
       if (existing?.status === "pending_approval") {
         return { status: 409, body: { error: "Your attendance request is awaiting owner approval." } };
       }

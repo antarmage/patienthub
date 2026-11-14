@@ -76,6 +76,11 @@ test("receptionists can manage their own weekly attendance and status, but not a
     assert.equal(rows.get(`receptionist-1:${today}`)?.status, "scheduled");
     const scheduled = rows.get(`receptionist-1:${today}`);
     assert.ok(scheduled);
+    rows.set(`receptionist-1:${today}`, { ...scheduled, status: "clinic_closed" });
+    for (const action of ["work_day", "leave", "regular_day_off", "clock_in", "clock_out"]) {
+      assert.equal((await request("/api/staff/attendance", "receptionist", action)).status, 409);
+      assert.equal(rows.get(`receptionist-1:${today}`)?.status, "clinic_closed");
+    }
     rows.set(`receptionist-1:${today}`, { ...scheduled, status: "pending_approval" });
     for (const action of ["work_day", "leave", "regular_day_off", "clock_in", "clock_out"]) {
       assert.equal((await request("/api/staff/attendance", "receptionist", action)).status, 409);

@@ -401,6 +401,7 @@ export default function OwnerPortal() {
     if (s === "absent") return <Badge className="bg-rose-100 text-rose-700 border-rose-200" data-testid={`badge-status-${s}`}>Absent</Badge>;
     if (s === "leave") return <Badge className="bg-amber-100 text-amber-700 border-amber-200" data-testid={`badge-status-${s}`}>Leave</Badge>;
     if (s === "regular_day_off") return <Badge className="bg-blue-100 text-blue-700 border-blue-200" data-testid={`badge-status-${s}`}>Regular day off</Badge>;
+    if (s === "clinic_closed") return <Badge className="bg-sky-100 text-sky-800 border-sky-200">Clinic closed</Badge>;
     if (s === "scheduled") return <Badge variant="outline" data-testid={`badge-status-${s}`}>Work day</Badge>;
     if (s === "pending_approval") return <Badge className="border-amber-200 bg-amber-100 text-amber-800">Pending owner approval</Badge>;
     if (s === "rejected") return <Badge className="border-rose-200 bg-rose-100 text-rose-800">Request rejected</Badge>;
@@ -632,6 +633,7 @@ export default function OwnerPortal() {
                     { label: "Late Today", value: todayAttendance.filter((record) => record.lateMinutes > 0).length, icon: Clock, color: "text-amber-700", bg: "bg-amber-50" },
                     { label: "Absent Today", value: absentCount, icon: UserX, color: "text-rose-600", bg: "bg-rose-50" },
                     { label: "On Leave Today", value: leaveCount, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
+                    { label: "Clinic Closed Today", value: todayAttendance.filter((record) => record.status === "clinic_closed").length, icon: Clock, color: "text-sky-700", bg: "bg-sky-50" },
                     { label: "Pending Approval Today", value: pendingCount, icon: Clock, color: "text-saivie-teal", bg: "bg-saivie-surface-muted" },
                   ].map((stat, i) => (
                     <motion.div key={stat.label} custom={i} variants={cardVariants} initial="hidden" animate="visible">

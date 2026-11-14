@@ -82,6 +82,18 @@ test("main attendance card offers clock-out only after a clock-in and before clo
   assert.ok(saving.includes("disabled="));
 });
 
+test("clinic closure is distinct from leave and cannot offer check-in or status changes", () => {
+  for (const enabled of [true, false]) {
+    const html = render(<StaffAttendance />, enabled, "clinic_closed");
+    assert.ok(html.includes("Clinic closed today"));
+    assert.ok(html.includes("This is not counted as leave or absence"));
+    assert.ok(!html.includes(">Clock in<"));
+    assert.ok(!html.includes(">Check In<"));
+    assert.ok(!html.includes("Request owner approval"));
+    assert.ok(!html.includes(">Set work day<"));
+  }
+});
+
 test("checked-in card displays clinic-local time and truthful status in the reference layout", () => {
   const html = render(<AttendanceCamera ready clockIn="2026-11-14T05:16:00Z" onClockOut={() => {}} />, false);
   for (const text of ["Check-in Time", "10:46 am", "14 Nov", "Attendance saved", "Clock out when your shift ends", ">Clock Out<", "lg:grid-cols-"]) assert.ok(html.includes(text), text);

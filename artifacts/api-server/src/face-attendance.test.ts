@@ -166,11 +166,12 @@ test("SQL store locks employee transitions, rejects mismatches/pending/off days 
     const timing = attendanceTiming(String(present.args[1]), String(present.args[3]), shift);
     assert.deepEqual(present.args.slice(5), [shift.shiftStart, shift.graceMinutes, timing.lateMinutes]);
     assert.equal(queries.at(-1)?.sql, "COMMIT");
-    for (const record of [{ status: "pending_approval", clock_in: null }, { status: "leave", clock_in: null }, { status: "regular_day_off", clock_in: null }, { status: "present", clock_in: new Date().toISOString() }]) {
+    for (const record of [{ status: "clinic_closed", clock_in: null }, { status: "pending_approval", clock_in: null }, { status: "leave", clock_in: null }, { status: "regular_day_off", clock_in: null }, { status: "present", clock_in: new Date().toISOString() }]) {
       queries.length = 0; attendance = record;
       await assert.rejects(() => store.checkIn("staff-1", descriptor));
       assert.equal(queries.at(-1)?.sql, "ROLLBACK");
       assert.ok(!queries.some((entry) => entry.sql.includes("INSERT INTO attendance")));
+      if (record.status === "clinic_closed") await assert.rejects(() => store.requestReview("staff-1", "Test request"), /clinic is closed/);
     }
     attendance = undefined;
     await assert.rejects(() => store.checkIn("staff-1", [0.601, ...descriptor.slice(1)]), /did not match/);

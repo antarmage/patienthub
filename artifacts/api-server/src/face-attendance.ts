@@ -102,6 +102,7 @@ export function createFaceAttendanceStore(pool: Pool): FaceAttendanceStore {
       "SELECT clock_in,status FROM attendance WHERE employee_id=$1 AND date=$2 FOR UPDATE", [employeeId, date],
     )).rows[0];
     if (record?.clock_in) throw new FaceAttendanceError(409, "You have already checked in today.");
+    if (record?.status === "clinic_closed") throw new FaceAttendanceError(409, "The clinic is closed on this date.");
     if (record && ["leave", "regular_day_off", "pending_approval"].includes(record.status || "")) {
       throw new FaceAttendanceError(409, record.status === "pending_approval" ? "An attendance request is already awaiting owner approval." : "Set today to a work day before checking in.");
     }

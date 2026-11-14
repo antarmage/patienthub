@@ -51,7 +51,7 @@ export function AttendanceCamera({ status, ready, clockIn, clockOut, lateMinutes
   const [requestOpen, setRequestOpen] = useState(false);
   const [consent, setConsent] = useState(false);
   const face = useAttendanceFaceState();
-  const canVerify = ready && !clockIn && !!face.data?.enabled && !!face.data.profile && !["present", "pending_approval", "leave", "regular_day_off"].includes(status || "");
+  const canVerify = ready && !clockIn && !!face.data?.enabled && !!face.data.profile && !["present", "pending_approval", "leave", "regular_day_off", "clinic_closed"].includes(status || "");
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["/api/staff/attendance"] }),
@@ -123,7 +123,8 @@ export function AttendanceCamera({ status, ready, clockIn, clockOut, lateMinutes
   const present = !!clockIn || status === "present";
   const finished = !!clockOut;
   const pending = status === "pending_approval";
-  const off = ["leave", "regular_day_off"].includes(status || "");
+  const closed = status === "clinic_closed";
+  const off = closed || ["leave", "regular_day_off"].includes(status || "");
   const enabled = face.data?.enabled;
   const profileError = staffProfile.isError && <p role="alert" className="mt-3 text-sm text-rose-700">Profile photo could not load: {staffProfile.error.message} <Button variant="link" onClick={() => void staffProfile.refetch()}>Retry photo</Button></p>;
   const faceFeedback = <>
@@ -177,9 +178,9 @@ export function AttendanceCamera({ status, ready, clockIn, clockOut, lateMinutes
       </div> : staffProfile.data?.photo ? <StaffProfileAvatar name={staffProfile.data.name} photo={staffProfile.data.photo} className="h-36 w-36 border-4 border-saivie-sage sm:h-44 sm:w-44" /> : <div className="flex h-36 w-36 items-center justify-center rounded-full bg-saivie-sage/45 text-saivie-teal sm:h-44 sm:w-44">
         {present ? <CheckCircle2 className="h-20 w-20" strokeWidth={1.3} /> : <ScanFace className="h-24 w-24" strokeWidth={1.1} />}
       </div>}
-      <h3 className="mt-6 font-serif text-3xl font-bold text-saivie-plum sm:text-4xl">{finished ? "You are checked out!" : present ? "You are checked in!" : pending ? "Awaiting owner approval" : staffProfile.data?.name ? `Welcome, ${staffProfile.data.name}!` : "Welcome!"}</h3>
+      <h3 className="mt-6 font-serif text-3xl font-bold text-saivie-plum sm:text-4xl">{finished ? "You are checked out!" : present ? "You are checked in!" : closed ? "Clinic closed today" : pending ? "Awaiting owner approval" : staffProfile.data?.name ? `Welcome, ${staffProfile.data.name}!` : "Welcome!"}</h3>
       {profileError}
-      <p className="mt-3 text-base text-muted-foreground sm:text-lg">{finished ? "Your clock-out has been recorded for today." : present ? "Your attendance has been recorded for today." : pending ? "Your request is saved. You will be marked present only after the owner approves it." : off ? "Today is marked as leave or a regular day off." : "Look at the camera to check in for today."}</p>
+      <p className="mt-3 text-base text-muted-foreground sm:text-lg">{finished ? "Your clock-out has been recorded for today." : present ? "Your attendance has been recorded for today." : closed ? "No check-in is required. This is not counted as leave or absence." : pending ? "Your request is saved. You will be marked present only after the owner approves it." : off ? "Today is marked as leave or a regular day off." : "Look at the camera to check in for today."}</p>
       {attendanceError && <p role="alert" className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{attendanceError}</p>}
       {faceFeedback}
       {!present && !pending && !off && face.isSuccess && !enabled && <p className="mt-4 text-sm text-amber-800">Face check-in is not enabled yet. Use regular clock-in in the weekly section below.</p>}

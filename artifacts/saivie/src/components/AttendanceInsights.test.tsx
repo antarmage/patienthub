@@ -84,3 +84,14 @@ test("late arrivals keep present color and counts, with a dot, accessible delay 
   assert.ok(html.includes('title="2026-11-02: Present"'));
   assert.ok(html.includes('title="2026-11-03: Present"'));
 });
+
+test("clinic closure has its own color and total without counting as leave, weekly off or present", () => {
+  const html = renderToStaticMarkup(<AttendanceYearGrid year="2026" records={[
+    { ...record, date: "2026-10-19", status: "clinic_closed" },
+    { ...record, date: "2026-10-20", status: "clinic_closed" },
+    { ...record, date: "2026-10-21", status: "clinic_closed" },
+  ]} />);
+  assert.match(html, /title="2026-10-19: Clinic closed"[^>]+bg-sky-400/);
+  assert.ok(html.includes("Clinic closed: <strong>3</strong>"));
+  for (const status of ["Present", "Weekly off", "Leave", "Late arrivals"]) assert.ok(html.includes(`${status}: <strong>0</strong>`));
+});
