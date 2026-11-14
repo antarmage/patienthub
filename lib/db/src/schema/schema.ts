@@ -743,6 +743,7 @@ export const attendance = pgTable("attendance", {
   shiftStart: text("shift_start"),
   graceMinutes: integer("grace_minutes"),
   lateMinutes: integer("late_minutes"),
+  timeOffPeriod: text("time_off_period"),
 }, (table) => ({
   employeeDateUnique: uniqueIndex("attendance_employee_date_idx").on(table.employeeId, table.date),
 }));
@@ -750,6 +751,23 @@ export const attendance = pgTable("attendance", {
 export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: true });
 export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
 export type Attendance = typeof attendance.$inferSelect;
+
+export const staffTimeOffRequests = pgTable("staff_time_off_requests", {
+  id: serial("id").primaryKey(),
+  employeeId: varchar("employee_id").notNull().references(() => users.id),
+  kind: text("kind").notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  period: text("period").notNull(),
+  reason: text("reason").notNull(),
+  decision: text("decision").notNull().default("pending"),
+  requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  reviewNote: text("review_note"),
+}, (table) => ({
+  employeeDates: index("staff_time_off_employee_idx").on(table.employeeId, table.startDate, table.endDate),
+}));
 
 export const staffAttendanceShifts = pgTable("staff_attendance_shifts", {
   employeeId: varchar("employee_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),

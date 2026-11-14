@@ -22,6 +22,7 @@ function render(element: React.ReactNode, enabled: boolean, status?: string, enr
   client.setQueryData(["/api/staff/attendance", null, start.toISOString().slice(0, 10), end.toISOString().slice(0, 10)], status ? [{
     id: 1, date: today, clockIn: null, clockOut: null, status, hoursWorked: null,
   }] : []);
+  client.setQueryData(["/api/staff/time-off", null], { requests: [] });
   client.setQueryData(["/api/owner/face-attendance", "test-token"], {
     enabled, employees: [{ id: "test-staff", name: "Test Receptionist", enrolled }],
     reviews: [{ id: 1, employeeName: "Test Receptionist", date: today, requestedAt: new Date().toISOString(), reason: "Camera unavailable", decision: "pending" }],
@@ -29,6 +30,18 @@ function render(element: React.ReactNode, enabled: boolean, status?: string, enr
   try { return renderToStaticMarkup(<QueryClientProvider client={client}>{element}</QueryClientProvider>); }
   finally { client.clear(); }
 }
+
+test("staff attendance presents today, the week and compact insights in order without removing actions", () => {
+  const html = render(<StaffAttendance />, false);
+  assert.ok(html.includes('class="staff-attendance '));
+  assert.equal((html.match(/class="attendance-day(?: attendance-day-today)?\s*"/g) || []).length, 7);
+  assert.ok(html.indexOf('aria-label="Camera attendance check-in"') < html.indexOf(">This week<"));
+  assert.ok(html.indexOf(">This week<") < html.indexOf('aria-label="Yearly attendance insights"'));
+  assert.ok(html.includes("attendance-insights-compact"));
+  assert.ok(html.includes(">Apply weekly off</button>"));
+  assert.ok(html.includes(">Apply leave</button>"));
+  assert.ok(html.includes(">Clock in</button>"));
+});
 
 test("camera check-in asks for consent and explains local processing and spoofing limits", () => {
   const html = render(<AttendanceCamera ready />, true);
@@ -41,8 +54,8 @@ test("missing enrollment and disabled rollout have explicit next steps", () => {
   const html = render(<StaffAttendance />, false);
   assert.ok(html.includes("Face check-in is not enabled yet"));
   assert.ok(html.includes(">Clock in<"));
-  assert.ok(html.includes("Regular day off"));
-  assert.ok(html.includes(">Leave<"));
+  assert.ok(html.includes("Apply for weekly off"));
+  assert.ok(html.includes(">Apply leave<"));
   assert.ok(!render(<StaffAttendance />, true).includes(">Clock in<"));
 });
 

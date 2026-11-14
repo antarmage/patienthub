@@ -1,0 +1,52 @@
+.staff-attendance { padding-bottom: 8px; }
+.staff-attendance .attendance-start { padding: 24px; }
+.staff-attendance .attendance-start-avatar { height: 64px; width: 64px; }
+.staff-attendance .attendance-start-avatar svg { height: 40px; width: 40px; }
+.staff-attendance .attendance-start-content > h3 { margin-top: 16px; font-size: 24px; }
+.staff-attendance .attendance-start-content > p { font-size: 14px; }
+.attendance-week-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+.attendance-day { display: flex; min-width: 0; flex-direction: column; gap: 12px; border: 1px solid var(--saivie-border); border-radius: 16px; background: #f8faf9; padding: 12px; }
+.attendance-day-today { border-color: var(--saivie-teal); background: white; }
+.attendance-day-actions { display: flex; flex-direction: column; gap: 6px; }
+.attendance-day-actions button { height: auto; min-height: 32px; padding: 6px 8px; white-space: normal; font-size: 11px; }
+.staff-attendance .attendance-recorded { background: linear-gradient(120deg, #246b5b, #184d41); color: white; padding: 24px; border: 0; }
+.staff-attendance .attendance-recorded > [aria-hidden="true"] { opacity: .08; }
+.staff-attendance .attendance-recorded-grid { grid-template-columns: 64px minmax(0, 1fr) auto; gap: 20px; justify-items: stretch; }
+.staff-attendance .attendance-recorded-avatar > span:first-child { height: 64px; width: 64px; border-width: 2px; }
+.staff-attendance .attendance-recorded-avatar > span:last-child { width: 24px; height: 24px; border-width: 2px; bottom: 0; }
+.staff-attendance .attendance-recorded-avatar > span:last-child svg { width: 16px; height: 16px; }
+.staff-attendance .attendance-recorded-message { align-items: flex-start; text-align: left; }
+.staff-attendance .attendance-recorded-check { display: none; }
+.staff-attendance .attendance-recorded-message h3 { margin-top: 0; color: white; font-family: var(--font-serif); font-size: 24px; }
+.staff-attendance .attendance-recorded-message > p { color: #e1efe9; font-size: 13px; }
+.staff-attendance .attendance-recorded-times { flex-direction: row; max-width: none; border: 0; padding: 0; gap: 8px; }
+.staff-attendance .attendance-recorded-time { background: rgb(255 255 255 / 12%); padding: 14px; border-radius: 16px; text-align: left; }
+.staff-attendance .attendance-recorded-time p { color: white; justify-content: flex-start; }
+.staff-attendance .attendance-recorded-time p:first-child,
+.staff-attendance .attendance-recorded-time p:last-child { font-size: 12px; color: #e1efe9; }
+.staff-attendance .attendance-recorded-time svg { color: #e1efe9; }
+.staff-attendance .attendance-recorded-time p:nth-child(2) { font-size: 22px; }
+.staff-attendance .attendance-recorded-message > button { background: white; color: var(--saivie-teal); }
+.staff-attendance .attendance-recorded-message > button:hover { background: #e1efe9; }
+.staff-attendance .attendance-recorded-feedback > [role="alert"] { border-radius: 12px; background: #fff1f2; color: #9f1239; padding: 12px; text-align: left; overflow-wrap: anywhere; }
+.staff-attendance .attendance-recorded-feedback > [role="status"] { color: #e1efe9; }
+.attendance-insights-compact { border-radius: 24px; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
+.attendance-insights-compact h3 { font-family: var(--font-serif); font-size: 18px; }
+.attendance-totals { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.attendance-total { border-radius: 14px; background: #f5f8f6; padding: 12px; }
+.attendance-monthly-late { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 1050px) {
+  .attendance-totals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .staff-attendance .attendance-recorded-grid { grid-template-columns: 64px minmax(0, 1fr); }
+  .staff-attendance .attendance-recorded-times { grid-column: 1 / -1; }
+  .staff-attendance .attendance-recorded-time { flex: 1; }
+  .attendance-week-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .attendance-week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .staff-attendance .attendance-recorded { padding: 20px; }
+  .staff-attendance .attendance-recorded-grid { gap: 16px; }
+  .staff-attendance .attendance-recorded-message h3 { font-size: 21px; }
+  .attendance-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .attendance-monthly-late { grid-template-columns: repeat(6, minmax(0, 1fr)); row-gap: 16px; }
+}

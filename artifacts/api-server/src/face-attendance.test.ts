@@ -139,8 +139,8 @@ test("SQL store locks employee transitions, rejects mismatches/pending/off days 
   const requestedAt = new Date("2026-03-01T04:30:00Z");
   let decision = "pending";
   let changed = true;
-  const shift = { shiftStart: "09:45", graceMinutes: 10 };
-  let policy = { ...shift };
+  const shift: { shiftStart: string; graceMinutes: number; timeOffPeriod: string | null } = { shiftStart: "09:45", graceMinutes: 10, timeOffPeriod: null };
+  let policy = { shiftStart: shift.shiftStart, graceMinutes: shift.graceMinutes };
   t.mock.method(pool, "connect", async () => tx);
   t.mock.method(pool, "query", async () => ({ rows: [{ employee_id: "staff-1" }], rowCount: 1 }));
   t.mock.method(tx, "query", async (sql: string, args: unknown[] = []) => {
@@ -148,6 +148,7 @@ test("SQL store locks employee transitions, rejects mismatches/pending/off days 
     if (sql.includes("SELECT clock_in")) return { rows: attendance ? [attendance] : [], rowCount: attendance ? 1 : 0 };
     if (sql.includes("SELECT encrypted_descriptor")) return { rows: enrollment ? [enrollment] : [], rowCount: enrollment ? 1 : 0 };
     if (sql.includes('FROM staff_attendance_shifts')) return { rows: [policy], rowCount: 1 };
+    if (sql.includes("SELECT time_off_period")) return { rows: [{ time_off_period: shift.timeOffPeriod }], rowCount: 1 };
     if (sql.includes('SELECT shift_start') && sql.includes("FROM attendance")) return { rows: [shift], rowCount: 1 };
     if (sql.includes("SELECT employee_id,date::text")) return { rows: [{ employee_id: "staff-1", date: "2026-03-01", requested_at: requestedAt, decision }], rowCount: 1 };
     if (sql.includes("UPDATE attendance SET")) return { rows: changed ? [{ id: 1 }] : [], rowCount: changed ? 1 : 0 };
@@ -166,6 +167,14 @@ test("SQL store locks employee transitions, rejects mismatches/pending/off days 
     const timing = attendanceTiming(String(present.args[1]), String(present.args[3]), shift);
     assert.deepEqual(present.args.slice(5), [shift.shiftStart, shift.graceMinutes, timing.lateMinutes]);
     assert.equal(queries.at(-1)?.sql, "COMMIT");
+    queries.length = 0;
+    shift.timeOffPeriod = "morning";
+    attendance = { status: "half-day", clock_in: null };
+    await store.checkIn("staff-1", descriptor);
+    const halfDay = queries.find((entry) => entry.sql.includes("INSERT INTO attendance"))!;
+    assert.equal(halfDay.args[7], null);
+    assert.match(halfDay.sql, /attendance.time_off_period IS NOT NULL THEN 'half-day'/);
+    shift.timeOffPeriod = null;
     for (const record of [{ status: "clinic_closed", clock_in: null }, { status: "pending_approval", clock_in: null }, { status: "leave", clock_in: null }, { status: "regular_day_off", clock_in: null }, { status: "present", clock_in: new Date().toISOString() }]) {
       queries.length = 0; attendance = record;
       await assert.rejects(() => store.checkIn("staff-1", descriptor));
@@ -194,6 +203,15 @@ test("SQL store locks employee transitions, rejects mismatches/pending/off days 
       assert.deepEqual(update?.args.slice(5), approved ? ["09:45", 10, 15] : [null, null, null]);
       assert.equal(queries.at(-1)?.sql, "COMMIT");
     }
+    shift.timeOffPeriod = "morning";
+    for (const decision of ["approved", "rejected"] as const) {
+      queries.length = 0;
+      await store.review(1, decision, "owner-1");
+      const update = queries.find((entry) => entry.sql.includes("UPDATE attendance SET"))!;
+      assert.equal(update.args[2], "half-day");
+      assert.equal(update.args[7], null);
+    }
+    shift.timeOffPeriod = null;
     decision = "approved";
     await assert.rejects(() => store.review(1, "approved", "owner-1"), /already been reviewed/);
     assert.equal(queries.at(-1)?.sql, "ROLLBACK");

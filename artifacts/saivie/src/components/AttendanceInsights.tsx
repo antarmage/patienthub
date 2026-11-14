@@ -15,7 +15,7 @@ const insightsSchema = z.object({
 });
 const legendStatuses = ["present", "regular_day_off", "leave", "clinic_closed", "pending_approval", "half-day", "absent", "rejected", null] as const;
 
-export function AttendanceYearGrid({ year, records, today = clinicDate() }: { year: string; records: AttendanceInsightRecord[]; today?: string }) {
+export function AttendanceYearGrid({ year, records, today = clinicDate(), compact = false }: { year: string; records: AttendanceInsightRecord[]; today?: string; compact?: boolean }) {
   const { dates, offset, columns, months } = attendanceYearDays(year);
   const byDate = new Map(records.map((record) => [record.date, record]));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -27,12 +27,20 @@ export function AttendanceYearGrid({ year, records, today = clinicDate() }: { ye
     return !byDate.has(date) && date > today ? { ...status, label: "Future day" } : status;
   };
   const lateCount = (days: string[]) => days.filter((date) => (byDate.get(date)?.lateMinutes || 0) > 0).length;
-  const counts = ["present", "regular_day_off", "leave", "clinic_closed"] as const;
+  const monthlyLate = months.map((month) => ({ ...month, count: lateCount(dates.filter((date) => date.slice(0, 7) === month.date.slice(0, 7))) }));
+  const maximumMonthlyLate = Math.max(1, ...monthlyLate.map((month) => month.count));
+  const counts = ["present", "regular_day_off", "leave", "half-day", "clinic_closed"] as const;
   return <div className="space-y-4">
-    <div className="flex flex-wrap gap-4 text-sm" aria-label="Yearly attendance totals">
+    {compact ? <div className="attendance-totals" aria-label="Yearly attendance totals">
+      {counts.map((status) => <div key={status} className="attendance-total">
+        <p className="flex items-center gap-2 text-xs text-muted-foreground"><span aria-hidden="true" className={`h-2 w-2 rounded-sm ${attendanceInsightStatus(status).color}`} />{attendanceInsightStatus(status).label}</p>
+        <p className="mt-1 font-serif text-2xl font-semibold text-saivie-plum">{dates.filter((date) => byDate.get(date)?.status === status).length}</p>
+      </div>)}
+      <div className="attendance-total"><p className="text-xs text-amber-800">Late arrivals</p><p className="mt-1 font-serif text-2xl font-semibold text-amber-800">{lateCount(dates)}</p></div>
+    </div> : <div className="flex flex-wrap gap-4 text-sm" aria-label="Yearly attendance totals">
       {counts.map((status) => <span key={status}>{attendanceInsightStatus(status).label}: <strong>{dates.filter((date) => byDate.get(date)?.status === status).length}</strong></span>)}
       <span className="text-amber-800">Late arrivals: <strong>{lateCount(dates)}</strong></span>
-    </div>
+    </div>}
     <div className="max-w-full overflow-x-auto rounded-lg border border-saivie-border p-3" role="region" aria-label={`Attendance heatmap for ${year}, scroll horizontally to see all months`} tabIndex={0}>
       <div className="flex w-max gap-2 pb-1">
         <div className="grid grid-rows-7 gap-[3px] pt-7 text-[11px] text-muted-foreground" aria-hidden="true">
@@ -65,15 +73,26 @@ export function AttendanceYearGrid({ year, records, today = clinicDate() }: { ye
       })}
       <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-amber-600" aria-hidden="true" />Late arrival (dot)</span>
     </div>
-    <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label="Monthly late arrival totals">
+    {compact ? <div className="space-y-3">
+      <h4 className="text-sm font-medium text-saivie-plum">Late arrivals by month</h4>
+      <div className="attendance-monthly-late" aria-label="Monthly late arrival totals">
+        {monthlyLate.map((month) => {
+          const count = month.count;
+          return <div key={month.date} aria-label={`${month.label} late: ${count}`} className="text-center text-xs text-muted-foreground">
+            <div className="flex h-16 flex-col items-center justify-end gap-1"><span>{count}</span><span aria-hidden="true" className={`w-full max-w-7 rounded-t ${count ? "bg-orange-400" : "bg-saivie-border"}`} style={{ height: count ? `${Math.max(4, count / maximumMonthlyLate * 40)}px` : "2px" }} /></div>
+            <p className="mt-2">{month.label}</p>
+          </div>;
+        })}
+      </div>
+    </div> : <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label="Monthly late arrival totals">
       {months.map((month) => <span key={month.date}>{month.label} late: <strong>{lateCount(dates.filter((date) => date.slice(0, 7) === month.date.slice(0, 7)))}</strong></span>)}
-    </div>
+    </div>}
     <p className="text-xs text-muted-foreground">Late arrivals remain present. Late totals include only check-ins recorded with a configured shift.</p>
     <p className="text-xs text-muted-foreground">Gray also includes future days and scheduled work days. Missing records are not automatically marked absent.</p>
   </div>;
 }
 
-export function AttendanceInsights({ token, today = clinicDate() }: { token?: string; today?: string }) {
+export function AttendanceInsights({ token, today = clinicDate(), compact = false }: { token?: string; today?: string; compact?: boolean }) {
   const owner = token !== undefined;
   const accountToken = token ?? (typeof sessionStorage === "undefined" ? null : sessionStorage.getItem("billing_staff_token"));
   const [chosenYear, setChosenYear] = useState<string | null>(null);
@@ -97,10 +116,14 @@ export function AttendanceInsights({ token, today = clinicDate() }: { token?: st
   const selected = choices.has(employee) ? employee : choices.keys().next().value || "";
   const records = (data.data?.records || []).filter((record) => !owner ||
     (record.employeeId ? `id:${record.employeeId}` : `legacy:${record.employeeName}`) === selected);
-  return <section className="min-w-0 space-y-4 rounded-2xl border border-saivie-border bg-white p-5" aria-label="Yearly attendance insights">
+  const yearButtons = <nav className={`flex shrink-0 flex-wrap gap-2 ${compact ? "" : "lg:w-24 lg:flex-col"}`} aria-label="Attendance years">
+    {recentYears.map((value) => <Button key={value} variant={value === year ? "default" : "ghost"} aria-pressed={value === year} onClick={() => setChosenYear(value)} className={`justify-start ${compact ? "h-9 rounded-full px-3 text-xs" : "px-5"} ${value === year ? "bg-saivie-teal text-white hover:bg-saivie-teal/90" : ""}`}>{Number(value)}</Button>)}
+  </nav>;
+  return <section className={`min-w-0 space-y-4 rounded-2xl border border-saivie-border bg-white p-5 ${compact ? "attendance-insights-compact" : ""}`} aria-label="Yearly attendance insights">
     <header className="flex flex-wrap items-end justify-between gap-3">
       <div><h3 className="font-semibold text-saivie-plum">Attendance insights</h3><p className="text-sm text-muted-foreground">A year at a glance, one square per day.</p></div>
       <div><Label htmlFor={owner ? "owner-insights-year" : "staff-insights-year"}>Year</Label><Input id={owner ? "owner-insights-year" : "staff-insights-year"} type="number" min="1" max="9999" value={Number(year)} onChange={(event) => { const value = event.target.value.padStart(4, "0"); if (attendanceYearSchema.safeParse(value).success) setChosenYear(value); }} className="w-28" /></div>
+      {compact && yearButtons}
     </header>
     <div className="flex min-w-0 flex-col gap-5 lg:flex-row">
       <div className="min-w-0 flex-1 space-y-4">
@@ -112,12 +135,10 @@ export function AttendanceInsights({ token, today = clinicDate() }: { token?: st
             {[...choices].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
           </select></div>}
           {!records.length && <p className="text-sm text-muted-foreground">No attendance recorded for this year{owner && selected ? ` for ${choices.get(selected)}` : ""}.</p>}
-          <AttendanceYearGrid key={`${year}:${selected}`} year={year} records={records} today={today} />
+          <AttendanceYearGrid key={`${year}:${selected}`} year={year} records={records} today={today} compact={compact} />
         </>}
       </div>
-      <nav className="flex shrink-0 flex-wrap gap-2 lg:w-24 lg:flex-col" aria-label="Attendance years">
-        {recentYears.map((value) => <Button key={value} variant={value === year ? "default" : "ghost"} aria-pressed={value === year} onClick={() => setChosenYear(value)} className={`justify-start px-5 ${value === year ? "bg-saivie-teal text-white hover:bg-saivie-teal/90" : ""}`}>{Number(value)}</Button>)}
-      </nav>
+      {!compact && yearButtons}
     </div>
   </section>;
 }

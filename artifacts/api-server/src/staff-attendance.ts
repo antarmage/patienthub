@@ -5,9 +5,9 @@ import type { Attendance, InsertAttendance } from "../../../lib/db/src/schema/sc
 import type { AccessActor } from "./clinical-access";
 import { isReceptionReader } from "./reception-access";
 import { faceAttendanceEnabled } from "./face-attendance";
+import { planningDateSchema, planningLastDate } from "../../../lib/db/src/attendance-planning";
 
 type Actor = Extract<AccessActor, { userId: string }>;
-type AttendanceAction = "clock_in" | "clock_out" | "regular_day_off" | "leave" | "work_day";
 export interface StaffAttendanceStore {
   list(employeeId: string, startDate: string, endDate: string): Promise<Attendance[]>;
   save(record: InsertAttendance): Promise<Attendance>;
@@ -56,12 +56,14 @@ export function registerStaffAttendanceRoutes(
     const startDate = typeof req.query.startDate === "string" ? req.query.startDate : "";
     const endDate = typeof req.query.endDate === "string" ? req.query.endDate : "";
     const week = attendanceWeek(clinicDate());
-    if (startDate !== week.start || endDate !== week.end) {
-      res.status(400).json({ error: "Attendance can only be viewed for the current week." });
+    if (!planningDateSchema.safeParse(startDate).success || !planningDateSchema.safeParse(endDate).success ||
+      startDate < week.start || endDate > attendanceWeek(planningLastDate(clinicDate())).end ||
+      attendanceWeek(startDate).start !== startDate || attendanceWeek(startDate).end !== endDate) {
+      res.status(400).json({ error: "Choose a complete week within the next three months." });
       return;
     }
     const actor: Actor = res.locals.attendanceActor;
-    res.set("Cache-Control", "no-store").json(await store.list(actor.userId, week.start, week.end));
+    res.set("Cache-Control", "no-store").json(await store.list(actor.userId, startDate, endDate));
   });
 
   app.post("/api/staff/attendance", async (req, res) => {
@@ -74,6 +76,10 @@ export function registerStaffAttendanceRoutes(
     const today = clinicDate();
     const week = attendanceWeek(today);
     const { date, action } = parsed.data;
+    if (action !== "clock_in" && action !== "clock_out") {
+      res.status(409).json({ error: "Apply for leave or a weekly off for owner approval. Only the owner can change approved time off." });
+      return;
+    }
     if (action === "clock_in" && faceAttendanceEnabled()) {
       res.status(409).json({ error: "Use camera check-in or submit an attendance request for owner approval." });
       return;
@@ -86,10 +92,6 @@ export function registerStaffAttendanceRoutes(
       res.status(400).json({ error: "Clock-in and clock-out are only available for today." });
       return;
     }
-    if (action !== "clock_in" && action !== "clock_out" && date < today) {
-      res.status(400).json({ error: "Past attendance cannot be changed." });
-      return;
-    }
 
     const reply = await store.withLock(actor.userId, async (locked) => {
       const existing = (await locked.list(actor.userId, date, date))[0];
@@ -99,13 +101,6 @@ export function registerStaffAttendanceRoutes(
       if (existing?.status === "pending_approval") {
         return { status: 409, body: { error: "Your attendance request is awaiting owner approval." } };
       }
-      if (action === "regular_day_off") {
-        const anotherDayOff = (await locked.list(actor.userId, week.start, week.end))
-          .some((record) => record.date !== date && record.status === "regular_day_off");
-        if (anotherDayOff) {
-          return { status: 409, body: { error: "Only one regular day off can be recorded per week. Change the existing day off first." } };
-        }
-      }
       const now = new Date().toISOString();
       let record: InsertAttendance;
       if (action === "clock_in") {
@@ -113,30 +108,23 @@ export function registerStaffAttendanceRoutes(
           return { status: 409, body: { error: "You have already clocked in today." } };
         }
         if (existing?.status === "leave" || existing?.status === "regular_day_off") {
-          return { status: 409, body: { error: "Change this day to a work day before clocking in." } };
+          return { status: 409, body: { error: "Ask the owner to change approved time off before clocking in." } };
         }
         record = {
           employeeId: actor.userId, employeeName: await staffName(actor.userId), role: "Receptionist",
-          date, clockIn: now, clockOut: null, status: "present", hoursWorked: null,
+          date, clockIn: now, clockOut: null, status: existing?.status === "half-day" ? "half-day" : "present", hoursWorked: null,
+          timeOffPeriod: existing?.timeOffPeriod, notes: existing?.notes,
         };
-      } else if (action === "clock_out") {
+      } else {
         if (!existing?.clockIn || existing.clockOut) {
           return { status: 409, body: { error: "Clock in first; clock out can only be recorded once." } };
         }
         const hoursWorked = Math.max(0, (Date.parse(now) - Date.parse(existing.clockIn)) / 3_600_000);
         record = {
           employeeId: actor.userId, employeeName: existing.employeeName, role: existing.role,
-          date, clockIn: existing.clockIn, clockOut: now, status: "present",
+          date, clockIn: existing.clockIn, clockOut: now, status: existing.status === "half-day" ? "half-day" : "present",
           hoursWorked: Math.round(hoursWorked * 100) / 100, notes: existing.notes,
-        };
-      } else {
-        if (existing?.clockIn) {
-          return { status: 409, body: { error: "A day with a clock-in cannot be changed to leave or a day off." } };
-        }
-        const status = action === "regular_day_off" ? "regular_day_off" : action === "leave" ? "leave" : "scheduled";
-        record = {
-          employeeId: actor.userId, employeeName: await staffName(actor.userId), role: "Receptionist",
-          date, clockIn: null, clockOut: null, status, hoursWorked: null,
+          timeOffPeriod: existing.timeOffPeriod,
         };
       }
       return { status: 200, body: await locked.save(record) };

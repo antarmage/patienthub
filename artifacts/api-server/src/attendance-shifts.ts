@@ -31,7 +31,12 @@ export async function readAttendanceTiming(client: Pick<PoolClient, "query">, em
     'SELECT shift_start AS "shiftStart", grace_minutes AS "graceMinutes" FROM staff_attendance_shifts WHERE employee_id=$1',
     [employeeId],
   )).rows[0];
-  return attendanceTiming(date, clockIn, shift || null);
+  const timing = attendanceTiming(date, clockIn, shift || null);
+  const record = (await client.query<{ time_off_period: string | null }>(
+    "SELECT time_off_period FROM attendance WHERE employee_id=$1 AND date=$2", [employeeId, date],
+  )).rows[0];
+  if (record?.time_off_period === "morning") timing.lateMinutes = null;
+  return timing;
 }
 
 export function createAttendanceShiftStore(pool: Pool): AttendanceShiftStore {

@@ -131,20 +131,20 @@ export function AttendanceCamera({ status, ready, clockIn, clockOut, lateMinutes
     {face.isPending && <p role="status" className="mt-4 text-sm">Loading face check-in settings...</p>}
     {face.isError && <p role="alert" className="mt-4 text-sm text-rose-700">{face.error.message} <Button variant="link" onClick={() => void face.refetch()}>Retry</Button></p>}
   </>;
-  if (present || finished) return <section className="relative isolate overflow-hidden rounded-[28px] border border-saivie-border bg-gradient-to-br from-[#edf8f5] via-white to-[#f1faf8] px-5 py-7 shadow-sm sm:px-8 lg:py-9" aria-label="Camera attendance check-in">
+  if (present || finished) return <section className="attendance-recorded relative isolate overflow-hidden rounded-[28px] border border-saivie-border bg-gradient-to-br from-[#edf8f5] via-white to-[#f1faf8] px-5 py-7 shadow-sm sm:px-8 lg:py-9" aria-label="Camera attendance check-in">
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
       <div className="absolute -left-20 -top-28 h-60 w-96 -rotate-12 rounded-[50%] bg-[#cceee5]/45" />
       <div className="absolute -right-28 -top-40 h-64 w-64 rounded-full bg-[#cceee5]/50" />
       <div className="absolute -bottom-36 -left-20 h-52 w-96 rotate-12 rounded-[50%] bg-[#cceee5]/50" />
       <div className="absolute -bottom-36 -right-20 h-52 w-80 -rotate-12 rounded-[50%] bg-[#cceee5]/50" />
     </div>
-    <div className="grid items-center justify-items-center gap-6 lg:grid-cols-[144px_minmax(0,1fr)_176px] lg:gap-7">
-      <div className="relative">
+    <div className="attendance-recorded-grid grid items-center justify-items-center gap-6 lg:grid-cols-[144px_minmax(0,1fr)_176px] lg:gap-7">
+      <div className="attendance-recorded-avatar relative">
         <StaffProfileAvatar name={staffProfile.data?.name || "Staff"} photo={staffProfile.data?.photo} className="h-36 w-36 border-4 border-white shadow-[0_0_0_2px_#dcece7]" />
         <span className="absolute bottom-1 right-0 flex h-10 w-10 items-center justify-center rounded-full border-[3px] border-white bg-[#50c5aa] text-white shadow-sm" aria-label={finished ? "Checked out" : "Checked in"}><Check className="h-6 w-6" strokeWidth={2.5} /></span>
       </div>
-      <div className="flex min-w-0 flex-col items-center text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-saivie-plum/70 text-saivie-teal"><Check className="h-8 w-8" strokeWidth={2} /></div>
+      <div className="attendance-recorded-message flex min-w-0 flex-col items-center text-center">
+        <div className="attendance-recorded-check flex h-14 w-14 items-center justify-center rounded-full border-2 border-saivie-plum/70 text-saivie-teal"><Check className="h-8 w-8" strokeWidth={2} /></div>
         <h3 className="mt-4 font-sans text-2xl font-bold tracking-tight text-saivie-plum sm:text-3xl">{finished ? "You are checked out!" : "You are checked in!"}</h3>
         <p className="mt-2 text-sm text-saivie-plum/80 sm:text-base">{finished ? "Your clock-out has been recorded for today." : "Your attendance has been recorded for today."}</p>
         {clockIn && <p className={`mt-2 text-sm ${lateMinutes && lateMinutes > 0 ? "font-semibold text-amber-700" : "text-muted-foreground"}`}>{attendanceTimingLabel(lateMinutes)}</p>}
@@ -156,26 +156,26 @@ export function AttendanceCamera({ status, ready, clockIn, clockOut, lateMinutes
           {updating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <LogOut className="mr-2 h-5 w-5" />}{updating ? "Recording clock-out..." : "Clock Out"}
         </Button>}
       </div>
-      <div className="flex w-full max-w-xs flex-col gap-3 lg:max-w-none lg:border-l lg:border-saivie-border lg:pl-5">
-        {[{ label: "Check-in Time", value: clockIn }, { label: "Check-out Time", value: clockOut }].map(({ label, value }) => value && <div key={label} className="rounded-[22px] bg-[#def4ee]/85 px-4 py-4 text-center lg:text-left">
+      <div className="attendance-recorded-times flex w-full max-w-xs flex-col gap-3 lg:max-w-none lg:border-l lg:border-saivie-border lg:pl-5">
+        {[{ label: "Check-in Time", value: clockIn }, { label: "Check-out Time", value: clockOut }].map(({ label, value }) => value && <div key={label} className="attendance-recorded-time rounded-[22px] bg-[#def4ee]/85 px-4 py-4 text-center lg:text-left">
           <p className="flex items-center justify-center gap-2 text-sm text-saivie-plum lg:justify-start"><Clock3 className="h-4 w-4 shrink-0 text-saivie-teal" />{label}</p>
           <p className="mt-2 whitespace-nowrap text-2xl font-bold text-saivie-plum">{new Date(value).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}</p>
           <p className="mt-1 text-sm text-saivie-plum/75">{new Date(value).toLocaleDateString("en-IN", { month: "short", day: "numeric", timeZone: "Asia/Kolkata" })}</p>
         </div>)}
       </div>
     </div>
-    <div className="text-center">
+    <div className="attendance-recorded-feedback text-center">
       {profileError}
       {attendanceError && <p role="alert" className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{attendanceError}</p>}
       {faceFeedback}
     </div>
   </section>;
-  return <section className="rounded-[28px] border border-saivie-border bg-white px-5 py-8 shadow-sm sm:px-8 sm:py-10" aria-label="Camera attendance check-in">
-    <div className="mx-auto flex max-w-xl flex-col items-center text-center">
+  return <section className="attendance-start rounded-[28px] border border-saivie-border bg-white px-5 py-8 shadow-sm sm:px-8 sm:py-10" aria-label="Camera attendance check-in">
+    <div className="attendance-start-content mx-auto flex max-w-xl flex-col items-center text-center">
       {cameraOpen ? <div className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-saivie-plum">
         <video ref={video} autoPlay playsInline muted onLoadedData={() => setVideoReady(true)} onError={() => { stopCamera(); setError("Camera preview failed. Reopen it or request owner approval."); }} className="aspect-[4/3] w-full -scale-x-100 object-cover" aria-label="Live camera preview" />
         <div className="pointer-events-none absolute inset-6 rounded-[40%] border-2 border-white/80" />
-      </div> : staffProfile.data?.photo ? <StaffProfileAvatar name={staffProfile.data.name} photo={staffProfile.data.photo} className="h-36 w-36 border-4 border-saivie-sage sm:h-44 sm:w-44" /> : <div className="flex h-36 w-36 items-center justify-center rounded-full bg-saivie-sage/45 text-saivie-teal sm:h-44 sm:w-44">
+      </div> : staffProfile.data?.photo ? <StaffProfileAvatar name={staffProfile.data.name} photo={staffProfile.data.photo} className="attendance-start-avatar h-36 w-36 border-4 border-saivie-sage sm:h-44 sm:w-44" /> : <div className="attendance-start-avatar flex h-36 w-36 items-center justify-center rounded-full bg-saivie-sage/45 text-saivie-teal sm:h-44 sm:w-44">
         {present ? <CheckCircle2 className="h-20 w-20" strokeWidth={1.3} /> : <ScanFace className="h-24 w-24" strokeWidth={1.1} />}
       </div>}
       <h3 className="mt-6 font-serif text-3xl font-bold text-saivie-plum sm:text-4xl">{finished ? "You are checked out!" : present ? "You are checked in!" : closed ? "Clinic closed today" : pending ? "Awaiting owner approval" : staffProfile.data?.name ? `Welcome, ${staffProfile.data.name}!` : "Welcome!"}</h3>

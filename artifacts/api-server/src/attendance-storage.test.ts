@@ -18,7 +18,7 @@ test("ordinary attendance stores server-computed timing and preserves snapshots 
   t.mock.method(pool, "query", async (query: { text: string }, values: unknown[] = []) => {
     queries.push({ text: query.text, values });
     if (query.text.includes('from "staff_attendance_shifts"')) return { rows: [["staff-1", shiftStart, 10, "owner-1"]], rowCount: 1 };
-    if (query.text.includes('from "attendance"')) return { rows: previous ? [[previous.id, previous.employeeId, previous.employeeName, previous.role, previous.date, previous.clockIn, previous.clockOut, previous.status, previous.hoursWorked, previous.notes, previous.shiftStart, previous.graceMinutes, previous.lateMinutes]] : [], rowCount: previous ? 1 : 0 };
+    if (query.text.includes('from "attendance"')) return { rows: previous ? [[previous.id, previous.employeeId, previous.employeeName, previous.role, previous.date, previous.clockIn, previous.clockOut, previous.status, previous.hoursWorked, previous.notes, previous.shiftStart, previous.graceMinutes, previous.lateMinutes, previous.timeOffPeriod]] : [], rowCount: previous ? 1 : 0 };
     if (query.text.includes('insert into "attendance"')) return { rows: [[1, "staff-1", "Test Staff", "Receptionist", record.date, record.clockIn, record.clockOut, "present", null, null, "10:00", 10, 12]], rowCount: 1 };
     throw new Error(`Unexpected SQL in attendance test: ${query.text}`);
   });
@@ -50,6 +50,12 @@ test("ordinary attendance stores server-computed timing and preserves snapshots 
     assert.ok(queries.at(-1)!.values.includes("15:00"));
     assert.ok(queries.at(-1)!.values.includes(0));
     assert.ok(!queries.at(-1)!.values.includes("12:00"));
+    previous = { ...saved, clockIn: null, status: "half-day", timeOffPeriod: "morning" };
+    shiftStart = "10:00";
+    queries.length = 0;
+    await storage.saveStaffAttendance({ ...record, status: "half-day", timeOffPeriod: "morning" });
+    assert.ok(queries.at(-1)!.values.includes("morning"));
+    assert.ok(!queries.at(-1)!.values.includes(12));
   } finally {
     await pool.end();
     if (previousUrl === undefined) delete process.env.DATABASE_URL;

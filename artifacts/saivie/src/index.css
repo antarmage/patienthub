@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "../../../lib/brand/saivie.css";
 @import "./components/portal-navigation.css";
+@import "./components/staff-attendance.css";
 
 @custom-variant dark (&:is(.dark *));
 

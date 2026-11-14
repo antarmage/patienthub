@@ -104,7 +104,7 @@ export function createFaceAttendanceStore(pool: Pool): FaceAttendanceStore {
     if (record?.clock_in) throw new FaceAttendanceError(409, "You have already checked in today.");
     if (record?.status === "clinic_closed") throw new FaceAttendanceError(409, "The clinic is closed on this date.");
     if (record && ["leave", "regular_day_off", "pending_approval"].includes(record.status || "")) {
-      throw new FaceAttendanceError(409, record.status === "pending_approval" ? "An attendance request is already awaiting owner approval." : "Set today to a work day before checking in.");
+      throw new FaceAttendanceError(409, record.status === "pending_approval" ? "An attendance request is already awaiting owner approval." : "Ask the owner to change approved time off before checking in.");
     }
   }
   async function writeAttendance(tx: PoolClient, employeeId: string, date: string, status: string, clockIn: string | null, notes: string, requestedAt?: string) {
@@ -115,7 +115,8 @@ export function createFaceAttendanceStore(pool: Pool): FaceAttendanceStore {
       SELECT id,coalesce(nullif(display_name,''),username),'Receptionist',$2,$3,$4,$5,$6,$7,$8 FROM users
       WHERE id=$1 AND role IN ('staff','receptionist')
       ON CONFLICT(employee_id,date) DO UPDATE SET
-        status=EXCLUDED.status,clock_in=EXCLUDED.clock_in,notes=EXCLUDED.notes,
+        status=CASE WHEN EXCLUDED.status='present' AND attendance.time_off_period IS NOT NULL THEN 'half-day' ELSE EXCLUDED.status END,
+        clock_in=EXCLUDED.clock_in,notes=EXCLUDED.notes,
         clock_out=NULL,hours_worked=NULL,shift_start=EXCLUDED.shift_start,
         grace_minutes=EXCLUDED.grace_minutes,late_minutes=EXCLUDED.late_minutes
       RETURNING id
@@ -188,17 +189,18 @@ export function createFaceAttendanceStore(pool: Pool): FaceAttendanceStore {
         )).rows[0];
         if (row.decision !== "pending") throw new FaceAttendanceError(409, "This request has already been reviewed.");
         const clockIn = decision === "approved" ? row.requested_at.toISOString() : null;
-        const savedShift = (await tx.query<{ shiftStart: string | null; graceMinutes: number | null }>(
-          'SELECT shift_start AS "shiftStart",grace_minutes AS "graceMinutes" FROM attendance WHERE employee_id=$1 AND date=$2 FOR UPDATE',
+        const savedShift = (await tx.query<{ shiftStart: string | null; graceMinutes: number | null; timeOffPeriod: string | null }>(
+          'SELECT shift_start AS "shiftStart",grace_minutes AS "graceMinutes",time_off_period AS "timeOffPeriod" FROM attendance WHERE employee_id=$1 AND date=$2 FOR UPDATE',
           [row.employee_id, row.date],
         )).rows[0];
         const timing = attendanceTiming(row.date, clockIn, savedShift?.shiftStart && savedShift.graceMinutes !== null
           ? { shiftStart: savedShift.shiftStart, graceMinutes: savedShift.graceMinutes } : null);
+        if (savedShift?.timeOffPeriod === "morning") timing.lateMinutes = null;
         const changed = await tx.query(`
           UPDATE attendance SET status=$3,clock_in=$4,notes=$5,shift_start=$6,grace_minutes=$7,late_minutes=$8
           WHERE employee_id=$1 AND date=$2 AND status='pending_approval' AND clock_in IS NULL
           RETURNING id
-        `, [row.employee_id, row.date, decision === "approved" ? "present" : "rejected",
+        `, [row.employee_id, row.date, savedShift?.timeOffPeriod ? "half-day" : decision === "approved" ? "present" : "rejected",
           clockIn,
           `Attendance ${decision} by owner ${ownerId}; requested at ${row.requested_at.toISOString()}.`,
           timing.shiftStart, timing.graceMinutes, timing.lateMinutes]);

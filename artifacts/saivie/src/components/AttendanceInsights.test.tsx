@@ -8,6 +8,22 @@ import { attendanceInsightStatus } from "../../../../lib/db/src/attendance-insig
 
 const record = { employeeId: "test-staff", employeeName: "Test Staff", date: "2026-11-01", status: "present" };
 
+test("compact staff insights retain daily squares and exact monthly late totals", () => {
+  const html = renderToStaticMarkup(<AttendanceYearGrid compact year="2026" today="2026-11-14" records={[
+    { ...record, lateMinutes: 60 },
+    { ...record, date: "2026-11-02", lateMinutes: 0 },
+    { ...record, date: "2026-10-20", status: "clinic_closed" },
+    { ...record, date: "2026-11-03", status: "half-day", lateMinutes: 0 },
+  ]} />);
+  assert.equal((html.match(/aria-pressed=/g) || []).length, 365);
+  assert.equal((html.match(/class="attendance-total"/g) || []).length, 6);
+  assert.ok(html.includes('aria-label="Nov late: 1"'));
+  assert.ok(html.includes('aria-label="Oct late: 0"'));
+  assert.ok(html.includes("Late arrivals by month"));
+  assert.ok(html.includes("Attendance color legend"));
+  assert.ok(html.includes("2026-11-03: Half day"));
+});
+
 test("year heatmap has one square per day, month labels, exact status colors and totals", () => {
   const html = renderToStaticMarkup(<AttendanceYearGrid year="2026" today="2026-11-14" records={[
     record, { ...record, date: "2026-11-02", status: "regular_day_off" },
@@ -47,17 +63,20 @@ test("owner can select employees including legacy names without mixing their yea
   } finally { client.clear(); }
 });
 
-test("staff insights have year selection without another employee selector", () => {
+test("both staff insight layouts retain one year selector without an employee selector", () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(["/api/staff/attendance-insights", null, "2026"], { records: [] });
   try {
-    const html = renderToStaticMarkup(<QueryClientProvider client={client}><AttendanceInsights today="2026-11-14" /></QueryClientProvider>);
-    assert.ok(html.includes('type="number"'));
-    assert.ok(html.includes('aria-label="Attendance years"'));
-    for (const year of ["2026", "2025", "2024", "2023"]) assert.ok(html.includes(`>${year}</button>`));
-    assert.ok(html.includes("No attendance recorded for this year"));
-    assert.ok(!html.includes("insights-employee"));
-    assert.equal((html.match(/title="\d{4}-\d{2}-\d{2}:/g) || []).length, 365);
+    for (const compact of [false, true]) {
+      const html = renderToStaticMarkup(<QueryClientProvider client={client}><AttendanceInsights today="2026-11-14" compact={compact} /></QueryClientProvider>);
+      assert.ok(html.includes('type="number"'));
+      assert.ok(html.includes('aria-label="Attendance years"'));
+      for (const year of ["2026", "2025", "2024", "2023"]) assert.ok(html.includes(`>${year}</button>`));
+      assert.ok(html.includes("No attendance recorded for this year"));
+      assert.ok(!html.includes("insights-employee"));
+      assert.equal((html.match(/aria-label="Attendance years"/g) || []).length, 1);
+      assert.equal((html.match(/title="\d{4}-\d{2}-\d{2}:/g) || []).length, 365);
+    }
   } finally { client.clear(); }
 });
 

@@ -10,6 +10,7 @@ import { registerBillingTemplateRoutes } from "../billing-templates";
 import { registerExpenseRoutes } from "../expenses";
 import { expenseStore } from "../expense-store";
 import { registerStaffAttendanceRoutes } from "../staff-attendance";
+import { createAttendancePlanningStore, registerAttendancePlanningRoutes } from "../attendance-planning";
 import { createFaceAttendanceStore, registerFaceAttendanceRoutes } from "../face-attendance";
 import { createStaffProfileStore, registerStaffProfileRoutes } from "../staff-profile";
 import { registerAttendanceInsightsRoutes } from "../attendance-insights";
@@ -385,6 +386,7 @@ export async function registerRoutes(
   registerFaceAttendanceRoutes(app, getAccessActor, createFaceAttendanceStore(pool));
   registerStaffProfileRoutes(app, getAccessActor, createStaffProfileStore(pool));
   registerAttendanceShiftRoutes(app, getAccessActor, createAttendanceShiftStore(pool));
+  registerAttendancePlanningRoutes(app, getAccessActor, createAttendancePlanningStore(pool));
   registerAttendanceInsightsRoutes(app, getAccessActor, {
     staff: (employeeId, start, end) => storage.getStaffAttendance(employeeId, start, end),
     all: (start, end) => storage.getAttendance(start, end),
@@ -5104,7 +5106,7 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
 
       const today = clinicDate();
       const todayAttendance = allAttendance.filter(a => a.date === today);
-      const presentToday = todayAttendance.filter(a => a.status === "present" || a.status === "half-day").length;
+      const presentToday = todayAttendance.filter(a => a.status === "present" || (a.status === "half-day" && a.clockIn)).length;
       const nonAbsentToday = todayAttendance.filter(a => ["leave", "regular_day_off", "clinic_closed", "pending_approval", "rejected"].includes(a.status || "")).length;
       const totalStaff = new Set(allAttendance.map(a => a.employeeName)).size;
 

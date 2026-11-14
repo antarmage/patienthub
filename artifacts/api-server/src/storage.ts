@@ -885,6 +885,7 @@ export class DatabaseStorage implements IStorage {
   async createAttendance(record: InsertAttendance): Promise<Attendance> {
     const [shift] = record.employeeId ? await db.select().from(staffAttendanceShifts).where(eq(staffAttendanceShifts.employeeId, record.employeeId)) : [];
     const timing = attendanceTiming(record.date, record.clockIn, shift || null);
+    if (record.timeOffPeriod === "morning") timing.lateMinutes = null;
     const [created] = await db.insert(attendance).values({ ...record, ...timing }).returning();
     return created;
   }
@@ -914,6 +915,7 @@ export class DatabaseStorage implements IStorage {
     const timing = sameClockIn
       ? { shiftStart: previous.shiftStart, graceMinutes: previous.graceMinutes, lateMinutes: previous.lateMinutes }
       : attendanceTiming(record.date, record.clockIn, shift || null);
+    if (record.timeOffPeriod === "morning") timing.lateMinutes = null;
     const [saved] = await client.insert(attendance).values({ ...record, ...timing }).onConflictDoUpdate({
       target: [attendance.employeeId, attendance.date],
       set: {
@@ -924,6 +926,7 @@ export class DatabaseStorage implements IStorage {
         status: record.status,
         hoursWorked: record.hoursWorked,
         notes: record.notes,
+        timeOffPeriod: record.timeOffPeriod,
         ...timing,
       },
     }).returning();

@@ -6,7 +6,7 @@ import { clinicDate } from "../../../lib/db/src/follow-up";
 import type { Attendance, InsertAttendance } from "../../../lib/db/src/schema/schema";
 import { attendanceWeek, registerStaffAttendanceRoutes, type StaffAttendanceStore } from "./staff-attendance";
 
-test("receptionists can manage their own weekly attendance and status, but not another role's records", async (t) => {
+test("receptionists can browse future weeks and clock in/out but cannot bypass time-off approval", async (t) => {
   const previous = process.env.STAFF_FACE_ATTENDANCE_ENABLED;
   process.env.STAFF_FACE_ATTENDANCE_ENABLED = "false";
   t.after(() => {
@@ -57,23 +57,18 @@ test("receptionists can manage their own weekly attendance and status, but not a
     assert.equal(staffResponse.status, 200);
     assert.match(staffResponse.headers.get("content-type") || "", /application\/json/);
     assert.deepEqual(await staffResponse.json(), []);
-    assert.equal((await request("/api/staff/attendance", "staff", "leave", today, "legacy-staff")).status, 200);
-    assert.equal(rows.get(`legacy-staff:${today}`)?.status, "leave");
+    assert.equal((await request("/api/staff/attendance", "staff", "leave", today, "legacy-staff")).status, 409);
+    assert.equal(rows.has(`legacy-staff:${today}`), false);
     assert.equal((await request(`/api/staff/attendance?startDate=${week.start}&endDate=${week.end}`, "owner")).status, 403);
     const anotherReceptionistRows: unknown = await (await request(`/api/staff/attendance?startDate=${week.start}&endDate=${week.end}`, "receptionist", undefined, today, "another-receptionist")).json();
     assert.ok(Array.isArray(anotherReceptionistRows));
     assert.equal(anotherReceptionistRows.length, 0);
-    assert.equal((await request("/api/staff/attendance", "receptionist", "leave")).status, 200);
-    assert.equal(rows.get(`receptionist-1:${today}`)?.status, "leave");
-    assert.equal((await request("/api/staff/attendance", "receptionist", "regular_day_off")).status, 200);
-    assert.equal(rows.get(`receptionist-1:${today}`)?.status, "regular_day_off");
-    if (week.end > today) {
-      const nextDay = new Date(`${today}T00:00:00Z`);
-      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-      assert.equal((await request("/api/staff/attendance", "receptionist", "regular_day_off", nextDay.toISOString().slice(0, 10))).status, 409);
+    for (const action of ["leave", "regular_day_off", "work_day"]) {
+      assert.equal((await request("/api/staff/attendance", "receptionist", action)).status, 409);
+      assert.equal(rows.has(`receptionist-1:${today}`), false);
     }
-    assert.equal((await request("/api/staff/attendance", "receptionist", "work_day")).status, 200);
-    assert.equal(rows.get(`receptionist-1:${today}`)?.status, "scheduled");
+    await store.save({ employeeId: "receptionist-1", employeeName: "Receptionist receptionist-1", date: today,
+      clockIn: null, clockOut: null, hoursWorked: null, status: "scheduled" });
     const scheduled = rows.get(`receptionist-1:${today}`);
     assert.ok(scheduled);
     rows.set(`receptionist-1:${today}`, { ...scheduled, status: "clinic_closed" });
@@ -95,12 +90,24 @@ test("receptionists can manage their own weekly attendance and status, but not a
     assert.equal((await request("/api/staff/attendance", "receptionist", "clock_in")).status, 409);
     assert.equal((await request("/api/staff/attendance", "receptionist", "clock_out")).status, 200);
     assert.equal((await request("/api/staff/attendance", "receptionist", "clock_out")).status, 409);
-    assert.equal((await request("/api/staff/attendance", "receptionist", "leave", week.end < today ? week.end : "2099-01-01")).status, 400);
+    assert.equal((await request("/api/staff/attendance", "receptionist", "clock_in", "2099-01-01")).status, 400);
     assert.equal((await request(`/api/staff/attendance?startDate=${today}&endDate=${today}`, "receptionist")).status, 400);
     assert.equal(rows.get(`receptionist-1:${today}`)?.employeeName, "Receptionist receptionist-1");
     assert.equal(rows.get(`receptionist-1:${today}`)?.status, "present");
     assert.ok(rows.get(`receptionist-1:${today}`)?.clockIn);
     assert.ok(rows.get(`receptionist-1:${today}`)?.clockOut);
+    const next = new Date(`${week.start}T00:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 7);
+    const future = attendanceWeek(next.toISOString().slice(0, 10));
+    assert.equal((await request(`/api/staff/attendance?startDate=${future.start}&endDate=${future.end}`, "receptionist")).status, 200);
+    next.setUTCFullYear(next.getUTCFullYear() + 1);
+    const beyond = attendanceWeek(next.toISOString().slice(0, 10));
+    assert.equal((await request(`/api/staff/attendance?startDate=${beyond.start}&endDate=${beyond.end}`, "receptionist")).status, 400);
+    rows.set(`receptionist-1:${today}`, { ...scheduled, status: "half-day", timeOffPeriod: "morning" });
+    assert.equal((await request("/api/staff/attendance", "receptionist", "clock_in")).status, 200);
+    assert.equal((await request("/api/staff/attendance", "receptionist", "clock_out")).status, 200);
+    assert.equal(rows.get(`receptionist-1:${today}`)?.status, "half-day");
+    assert.equal(rows.get(`receptionist-1:${today}`)?.timeOffPeriod, "morning");
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }

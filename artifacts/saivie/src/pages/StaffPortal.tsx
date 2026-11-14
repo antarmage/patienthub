@@ -2596,7 +2596,7 @@ export default function StaffPortal() {
         </header>}
 
         {/* Dashboard Content */}
-        <div className={`flex-1 overflow-y-auto p-4 md:p-6 ${activeRole === 'receptionist' && ['dashboard', 'patients'].includes(activeView) ? 'bg-[#faf5e6]' : ''}`}>
+        <div className={`flex-1 overflow-y-auto p-4 md:p-6 ${activeRole === 'receptionist' && ['dashboard', 'patients'].includes(activeView) ? 'bg-[#faf5e6]' : receptionist && activeView === 'attendance' ? 'bg-[#f4f7f4]' : ''}`}>
           {activeRole === 'receptionist' && activeView === 'attendance' && <StaffAttendance />}
           {receptionist && ['dashboard', 'patients'].includes(activeView) && <div className="mb-3 rounded-xl border border-[#e9e1d2] bg-white px-4 py-2 text-xs text-[#705364]">
             {receptionAccess.isError ? <p role="alert">Could not load doctor permissions: {receptionAccess.error.message} <button type="button" className="underline" onClick={() => void receptionAccess.refetch()}>Retry</button></p>

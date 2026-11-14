@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { OwnerAuthGate } from "@/components/OwnerAuthGate";
 import { OwnerFaceAttendance } from "@/components/OwnerFaceAttendance";
+import { OwnerTimeOff } from "@/components/AttendanceTimeOff";
 import { OwnerStaffProfilePhoto } from "@/components/StaffProfilePhoto";
 import { AttendanceInsights } from "@/components/AttendanceInsights";
 import { OwnerAttendanceShifts } from "@/components/AttendanceShifts";
@@ -329,7 +330,7 @@ export default function OwnerPortal() {
     return attendance.filter((a: any) => a.date === today);
   }, [attendance, today]);
 
-  const presentCount = todayAttendance.filter((a: any) => a.status === "present").length;
+  const presentCount = todayAttendance.filter((a: any) => a.status === "present" || (a.status === "half-day" && a.clockIn)).length;
   const absentCount = todayAttendance.filter((a: any) => a.status === "absent").length;
   const leaveCount = todayAttendance.filter((a: any) => a.status === "leave").length;
   const pendingCount = todayAttendance.filter((a: any) => a.status === "pending_approval").length;
@@ -598,7 +599,7 @@ export default function OwnerPortal() {
             {activeView === "attendance" && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-attendance-title">Staff Attendance</h2>
-                <OwnerAuthGate>{({ token }) => <div className="space-y-6"><OwnerAttendanceShifts token={token} /><OwnerFaceAttendance token={token} /><AttendanceInsights token={token} /></div>}</OwnerAuthGate>
+                <OwnerAuthGate>{({ token }) => <div className="space-y-6"><OwnerTimeOff token={token} /><OwnerAttendanceShifts token={token} /><OwnerFaceAttendance token={token} /><AttendanceInsights token={token} /></div>}</OwnerAuthGate>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[

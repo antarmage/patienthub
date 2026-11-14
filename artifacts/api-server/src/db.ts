@@ -11,6 +11,7 @@ import { ensureBookingCatalogSchema } from "./booking-catalog";
 import { ensureFaceAttendanceSchema } from "./face-attendance";
 import { ensureStaffProfileSchema } from "./staff-profile";
 import { ensureAttendanceShiftSchema } from "./attendance-shifts";
+import { ensureAttendancePlanningSchema } from "./attendance-planning";
 import { ensureStaffSessionSchema } from "./staff-sessions";
 
 if (!process.env.DATABASE_URL) {
@@ -449,6 +450,7 @@ export async function ensureSchema(): Promise<void> {
     await ensureFaceAttendanceSchema(client);
     await ensureStaffProfileSchema(client);
     await ensureAttendanceShiftSchema(client);
+    await ensureAttendancePlanningSchema(client);
   } finally {
     client.release();
   }
