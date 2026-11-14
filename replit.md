@@ -28,6 +28,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Portal navigation
 
+Doctor dashboard-level tabs (Dashboard, Patients, Schedule, Analytics, Revenue and Profile & Settings) share the receptionist's warm ivory/cream brand tokens and active navigation highlight. The scope is removed in patient-detail views, preserving their existing clinical palette. Semantic status colors and portaled content overlays are unchanged.
+
 All `/staff` routes require a staff session token before their pages mount. Missing sessions redirect to the landing sign-in page; saved usernames alone do not grant access. Rejected tokens retain the existing session-expired sign-in prompt.
 
 Collapsed portal navigation displays the fixed `/favicon.svg` Saivie mark; expanded navigation and the mobile drawer retain the clinic's full uploaded logo.

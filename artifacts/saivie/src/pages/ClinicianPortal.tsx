@@ -2362,7 +2362,7 @@ export default function ClinicianPortal() {
 
   return (
     <div className="portal-shell font-sans">
-      <PortalNavigation label="Clinician navigation" hidden={activeView === 'patient_detail' && isPatientOverview}
+      <PortalNavigation label="Clinician navigation" highlight={activeView === 'patient_detail' ? "default" : "receptionist"} hidden={activeView === 'patient_detail' && isPatientOverview}
         items={[
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { id: 'patient_list', label: 'Patients', icon: Users },
@@ -2395,11 +2395,11 @@ export default function ClinicianPortal() {
           </div>} />
 
       {/* Main Content */}
-      <main className="portal-panel flex flex-col relative bg-saivie-surface-muted">
+      <main className={`portal-panel flex flex-col relative bg-saivie-surface-muted ${activeView !== 'patient_detail' ? "doctor-dashboard-content" : ""}`}>
         
         {/* NEW DASHBOARD VIEW */}
         {activeView === 'dashboard' && (
-           <div className="flex-1 overflow-y-auto bg-[#faf5e6] p-4 md:p-6">
+           <div className="flex-1 overflow-y-auto bg-saivie-page p-4 md:p-6">
              <div className="max-w-[1440px] mx-auto space-y-5">
                <DoctorDashboard
                  doctorName={providerName}
@@ -3140,7 +3140,7 @@ export default function ClinicianPortal() {
 
         {/* SCHEDULE VIEW (NEW) */}
         {activeView === 'schedule' && (
-           <div className="flex-1 overflow-y-auto p-6 flex flex-col h-full">
+           <div className="flex-1 overflow-y-auto bg-saivie-page p-6 flex flex-col h-full">
               <div className="max-w-7xl mx-auto w-full h-full flex flex-col space-y-6">
                  
                  {/* Header & Sync Control */}
@@ -3291,7 +3291,7 @@ export default function ClinicianPortal() {
 
         {/* ANALYTICS VIEW (NEW) */}
         {activeView === 'analytics' && (
-          <div className="flex-1 overflow-y-auto p-6 bg-saivie-surface-muted">
+          <div className="flex-1 overflow-y-auto p-6 bg-saivie-page">
              <div className="max-w-7xl mx-auto space-y-6">
                 
                 {/* Header */}
@@ -3679,7 +3679,7 @@ export default function ClinicianPortal() {
 
         {/* REVENUE VIEW (NEW) */}
         {activeView === 'revenue' && (
-          <div className="flex-1 overflow-y-auto p-6 bg-saivie-surface-muted">
+          <div className="flex-1 overflow-y-auto p-6 bg-saivie-page">
              <div className="max-w-7xl mx-auto space-y-6">
                 
                 {/* Header */}
@@ -3818,7 +3818,7 @@ export default function ClinicianPortal() {
 
         {/* SETTINGS VIEW (NEW) */}
         {activeView === 'settings' && (
-          <div className="flex-1 overflow-y-auto p-6 bg-saivie-surface-muted">
+          <div className="flex-1 overflow-y-auto p-6 bg-saivie-page">
              <div className="max-w-4xl mx-auto space-y-6">
                 
                 {/* Header */}
@@ -4376,7 +4376,7 @@ export default function ClinicianPortal() {
         )}
 
         {activeView === 'patient_list' && (
-          <div className="flex-1 overflow-y-auto bg-[#f5f8f5] p-4 md:p-6">
+          <div className="flex-1 overflow-y-auto bg-saivie-page p-4 md:p-6">
             <div className="max-w-[1440px] mx-auto space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                 <div>

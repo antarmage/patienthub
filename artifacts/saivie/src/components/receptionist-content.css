@@ -1,4 +1,5 @@
-.receptionist-content {
+.receptionist-content,
+.doctor-dashboard-content {
   --saivie-page: #faf5e6;
   --saivie-ivory: #fffaf0;
   --saivie-surface-muted: #f8f5ed;
