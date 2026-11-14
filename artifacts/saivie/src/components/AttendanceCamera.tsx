@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, CheckCircle2, Loader2, ScanFace, ShieldCheck } from "lucide-react";
+import { Camera, CheckCircle2, Clock3, Loader2, ScanFace, ShieldCheck } from "lucide-react";
 import { z } from "zod/v4";
 import { FACE_MODEL, FACE_MATCH_THRESHOLD, faceDescriptorSchema, faceDistance } from "../../../../lib/db/src/face-attendance";
 import { authenticatedFetch, readApiResponse } from "@/lib/authenticatedFetch";
@@ -26,7 +26,15 @@ export function useAttendanceFaceState() {
   });
 }
 
-export function AttendanceCamera({ status, ready }: { status?: string | null; ready: boolean }) {
+export function AttendanceCamera({ status, ready, clockIn, clockOut, onClockOut, updating = false, attendanceError }: {
+  status?: string | null;
+  ready: boolean;
+  clockIn?: string | null;
+  clockOut?: string | null;
+  onClockOut?: () => void;
+  updating?: boolean;
+  attendanceError?: string;
+}) {
   const staffProfile = useStaffProfile();
   const queryClient = useQueryClient();
   const video = useRef<HTMLVideoElement>(null);
@@ -41,7 +49,7 @@ export function AttendanceCamera({ status, ready }: { status?: string | null; re
   const [requestOpen, setRequestOpen] = useState(false);
   const [consent, setConsent] = useState(false);
   const face = useAttendanceFaceState();
-  const canVerify = ready && !!face.data?.enabled && !!face.data.profile && !["present", "pending_approval", "leave", "regular_day_off"].includes(status || "");
+  const canVerify = ready && !clockIn && !!face.data?.enabled && !!face.data.profile && !["present", "pending_approval", "leave", "regular_day_off"].includes(status || "");
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["/api/staff/attendance"] }),
@@ -110,7 +118,8 @@ export function AttendanceCamera({ status, ready }: { status?: string | null; re
     onSuccess: async () => { setReason(""); setRequestOpen(false); setError(""); stopCamera(); await refresh(); },
     onError: (cause) => setError(cause.message),
   });
-  const present = status === "present";
+  const present = !!clockIn || status === "present";
+  const finished = !!clockOut;
   const pending = status === "pending_approval";
   const off = ["leave", "regular_day_off"].includes(status || "");
   const enabled = face.data?.enabled;
@@ -122,9 +131,14 @@ export function AttendanceCamera({ status, ready }: { status?: string | null; re
       </div> : staffProfile.data?.photo ? <StaffProfileAvatar name={staffProfile.data.name} photo={staffProfile.data.photo} className="h-36 w-36 border-4 border-saivie-sage sm:h-44 sm:w-44" /> : <div className="flex h-36 w-36 items-center justify-center rounded-full bg-saivie-sage/45 text-saivie-teal sm:h-44 sm:w-44">
         {present ? <CheckCircle2 className="h-20 w-20" strokeWidth={1.3} /> : <ScanFace className="h-24 w-24" strokeWidth={1.1} />}
       </div>}
-      <h3 className="mt-6 font-serif text-3xl font-bold text-saivie-plum sm:text-4xl">{present ? "You are checked in!" : pending ? "Awaiting owner approval" : staffProfile.data?.name ? `Welcome, ${staffProfile.data.name}!` : "Welcome!"}</h3>
+      <h3 className="mt-6 font-serif text-3xl font-bold text-saivie-plum sm:text-4xl">{finished ? "You are checked out!" : present ? "You are checked in!" : pending ? "Awaiting owner approval" : staffProfile.data?.name ? `Welcome, ${staffProfile.data.name}!` : "Welcome!"}</h3>
       {staffProfile.isError && <p role="alert" className="mt-3 text-sm text-rose-700">Profile photo could not load: {staffProfile.error.message} <Button variant="link" onClick={() => void staffProfile.refetch()}>Retry photo</Button></p>}
-      <p className="mt-3 text-base text-muted-foreground sm:text-lg">{present ? "Your attendance has been recorded for today." : pending ? "Your request is saved. You will be marked present only after the owner approves it." : off ? "Today is marked as leave or a regular day off." : "Look at the camera to check in for today."}</p>
+      <p className="mt-3 text-base text-muted-foreground sm:text-lg">{finished ? "Your clock-out has been recorded for today." : present ? "Your attendance has been recorded for today." : pending ? "Your request is saved. You will be marked present only after the owner approves it." : off ? "Today is marked as leave or a regular day off." : "Look at the camera to check in for today."}</p>
+      {clockIn && <p className="mt-3 text-sm text-muted-foreground">In: {new Date(clockIn).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}{clockOut && ` · Out: ${new Date(clockOut).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`}</p>}
+      {clockIn && !clockOut && onClockOut && <Button className="mt-6 h-14 w-full max-w-sm rounded-full text-lg" disabled={!ready || updating} onClick={onClockOut}>
+        {updating ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Clock3 className="mr-3 h-6 w-6" />}{updating ? "Recording clock-out..." : "Clock Out"}
+      </Button>}
+      {attendanceError && <p role="alert" className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{attendanceError}</p>}
       {face.isPending && <p role="status" className="mt-4 text-sm">Loading face check-in settings...</p>}
       {face.isError && <p role="alert" className="mt-4 text-sm text-rose-700">{face.error.message} <Button variant="link" onClick={() => void face.refetch()}>Retry</Button></p>}
       {!present && !pending && !off && face.isSuccess && !enabled && <p className="mt-4 text-sm text-amber-800">Face check-in is not enabled yet. Use regular clock-in in the weekly section below.</p>}

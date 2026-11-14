@@ -150,6 +150,8 @@ Walk-ins may atomically POST `status: "checked-in"` plus an ISO `checkedInAt`; t
 
 Staff self-service attendance at `/api/staff/attendance` accepts authenticated `staff` and `receptionist` accounts using the shared `isReceptionReader` guard. Records are scoped to the authenticated user and current week; clock-in/out is restricted to today. Missing authentication returns JSON with HTTP 401, including when the authentication helper returns no actor without sending a response.
 
+After today's clock-in, the main attendance card prominently offers **Clock Out**, as does today's weekly row. Both use the same mutation and pending guard; no camera is required for clock-out. Once recorded, the card shows **You are checked out!**, timing details, and no further clock-out action. Pending owner approval alone does not offer clock-out.
+
 ### Optional camera check-in and owner review
 
 - **My Attendance** has a consent-first camera check-in card plus the existing current-week leave, regular-day-off and clock-out controls. Camera access requires HTTPS (localhost is supported for development), browser permission and a same-origin camera policy; the self-hosted nginx example allows `camera=(self)`. Stop/cancel, navigation and unmount release camera tracks, including camera permission granted after cancellation. No camera/photo images are uploaded.

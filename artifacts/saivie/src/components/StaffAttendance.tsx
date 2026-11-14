@@ -99,7 +99,10 @@ export function StaffAttendance() {
       <span className="rounded-full bg-saivie-sage/45 px-5 py-3 text-sm text-saivie-plum">{week[0]} to {week[6]}</span>
       <p className="mt-1 text-sm text-muted-foreground">Clock in and out today, and record your regular day off or leave for this week.</p>
     </header>
-    <AttendanceCamera status={byDate.get(today)?.status} ready={records.isSuccess} />
+    <AttendanceCamera status={byDate.get(today)?.status} ready={records.isSuccess}
+      clockIn={byDate.get(today)?.clockIn} clockOut={byDate.get(today)?.clockOut}
+      onClockOut={() => update.mutate({ date: today, action: "clock_out" })}
+      updating={update.isPending} attendanceError={error} />
     <AttendanceInsights today={today} />
     <Card className="border-saivie-border">
       <CardHeader className="flex flex-row items-center gap-3 space-y-0">

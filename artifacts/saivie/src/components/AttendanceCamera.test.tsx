@@ -63,3 +63,21 @@ test("owner can enroll with consent, remove enrollment and review the actual req
   for (const text of ["Face enrollment", "Test Receptionist", "obtained their consent", "Approve &amp; enroll photo", "Pending attendance approvals", "Camera unavailable", "Approve attendance", ">Reject<", "Approval records this as the clock-in time", "not tamper-proof"]) assert.ok(html.includes(text), text);
   assert.ok(!html.includes("0.1,0.1"));
 });
+
+test("main attendance card offers clock-out only after a clock-in and before clock-out", () => {
+  const clockIn = new Date().toISOString();
+  for (const enabled of [true, false]) {
+    const active = render(<AttendanceCamera ready status="present" clockIn={clockIn} onClockOut={() => {}} />, enabled);
+    assert.ok(active.includes(">Clock Out<"));
+    assert.ok(!active.includes(">Check In<"));
+    const done = render(<AttendanceCamera ready status="present" clockIn={clockIn} clockOut={clockIn} onClockOut={() => {}} />, enabled);
+    assert.ok(done.includes("You are checked out!"));
+    assert.ok(!done.includes(">Clock Out<"));
+    const pending = render(<AttendanceCamera ready status="pending_approval" onClockOut={() => {}} />, enabled);
+    assert.ok(!pending.includes(">Clock Out<"));
+  }
+  const saving = render(<AttendanceCamera ready clockIn={clockIn} onClockOut={() => {}} updating attendanceError="Could not record clock-out" />, true);
+  assert.ok(saving.includes("Recording clock-out..."));
+  assert.ok(saving.includes("Could not record clock-out"));
+  assert.ok(saving.includes("disabled="));
+});
