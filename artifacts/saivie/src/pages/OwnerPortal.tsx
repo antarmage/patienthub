@@ -3,6 +3,7 @@ import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { OwnerAuthGate } from "@/components/OwnerAuthGate";
 import { OwnerFaceAttendance } from "@/components/OwnerFaceAttendance";
 import { OwnerStaffProfilePhoto } from "@/components/StaffProfilePhoto";
+import { AttendanceInsights } from "@/components/AttendanceInsights";
 import { clinicDate } from "../../../../lib/db/src/follow-up";
 import { Expenses } from "@/components/Expenses";
 import { ReferralsManager } from "@/components/ReferralsManager";
@@ -621,7 +622,7 @@ export default function OwnerPortal() {
             {activeView === "attendance" && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-saivie-plum font-serif" data-testid="text-attendance-title">Staff Attendance</h2>
-                <OwnerAuthGate>{({ token }) => <OwnerFaceAttendance token={token} />}</OwnerAuthGate>
+                <OwnerAuthGate>{({ token }) => <div className="space-y-6"><OwnerFaceAttendance token={token} /><AttendanceInsights token={token} /></div>}</OwnerAuthGate>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[

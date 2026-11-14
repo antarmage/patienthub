@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AttendanceCamera, useAttendanceFaceState } from "./AttendanceCamera";
+import { AttendanceInsights } from "./AttendanceInsights";
 
 type AttendanceRecord = {
   id: number;
@@ -71,6 +72,7 @@ export function StaffAttendance() {
       setError("");
       await queryClient.invalidateQueries({ queryKey: ["/api/staff/attendance"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/owner/attendance"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/staff/attendance-insights"] });
     },
     onError: (cause) => setError(cause instanceof Error ? cause.message : "Could not update attendance."),
   });
@@ -98,6 +100,7 @@ export function StaffAttendance() {
       <p className="mt-1 text-sm text-muted-foreground">Clock in and out today, and record your regular day off or leave for this week.</p>
     </header>
     <AttendanceCamera status={byDate.get(today)?.status} ready={records.isSuccess} />
+    <AttendanceInsights today={today} />
     <Card className="border-saivie-border">
       <CardHeader className="flex flex-row items-center gap-3 space-y-0">
         <CalendarCheck className="h-5 w-5 text-saivie-teal" />

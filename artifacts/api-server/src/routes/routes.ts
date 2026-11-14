@@ -12,6 +12,7 @@ import { expenseStore } from "../expense-store";
 import { registerStaffAttendanceRoutes } from "../staff-attendance";
 import { createFaceAttendanceStore, registerFaceAttendanceRoutes } from "../face-attendance";
 import { createStaffProfileStore, registerStaffProfileRoutes } from "../staff-profile";
+import { registerAttendanceInsightsRoutes } from "../attendance-insights";
 import { clinicDate } from "../../../../lib/db/src/follow-up";
 import { readAppointmentRange } from "../appointment-range";
 import { registerReceptionAccessRoutes, withVitalsRecorderNames } from "../reception-access";
@@ -406,6 +407,13 @@ export async function registerRoutes(
 ): Promise<Server> {
   registerFaceAttendanceRoutes(app, getAccessActor, createFaceAttendanceStore(pool));
   registerStaffProfileRoutes(app, getAccessActor, createStaffProfileStore(pool));
+  registerAttendanceInsightsRoutes(app, getAccessActor, {
+    staff: (employeeId, start, end) => storage.getStaffAttendance(employeeId, start, end),
+    all: (start, end) => storage.getAttendance(start, end),
+    employees: async () => (await storage.getUsers()).filter((user) =>
+      ["staff", "receptionist", "nurse", "clinician", "owner", "admin"].includes(user.role || "")
+    ).map((user) => ({ id: user.id, name: user.displayName?.trim() || user.username })),
+  });
   registerExpenseRoutes(app, async (req, res) => {
     const id = getStaffUserId(req, res);
     if (!id) return null;

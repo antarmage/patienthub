@@ -166,6 +166,12 @@ Rollout:
 3. For ECS, add the provisioned key's secret ARN under `secrets` in `aws/ecs-task-definition.json`, grant the execution role access, deploy and enroll consenting staff. Only then add `STAFF_FACE_ATTENDANCE_ENABLED=true` to the API container environment and redeploy. The deploy workflow renders that checked-in task definition; console-only environment changes can be lost on the next deployment. No live secret/infrastructure is created by this change.
 4. Verify same-origin model manifests/binaries load and the camera works on the deployed HTTPS origin. Confirm owner approval/rejection, template removal and clock-out on clinic devices. Roll back to regular clock-in by disabling the flag; pending requests still require owner review. Removing enrollment deletes the current template, not backups; apply the clinic's retention/deletion policy to backups too.
 
+### Monthly attendance insights
+
+Staff **My Attendance** and authenticated **Owner -> Attendance** include a read-only Monday-first monthly square grid with a month selector. Each day has an accessible date/status label, hover title and tap/keyboard details. Green means present, orange weekly off, red leave, purple pending approval; half-day uses lighter green, absent/rejected use distinct slate shades. Gray means unrecorded/future/scheduled, never inferred absence. Monthly present/off/leave counts reflect saved statuses only.
+
+`GET /api/staff/attendance-insights?month=YYYY-MM` accepts `staff`/`receptionist` and returns only their own monthly date/status records, regardless of supplied employee IDs. Owner-only `GET /api/owner/attendance-insights?month=YYYY-MM` returns staff choices and monthly records for the per-employee selector; legacy records without account IDs remain separate by employee name. Neither endpoint returns notes, biometric templates or profile images. Reads are private/no-store, validate real calendar months, and do not expand the existing current-week write permissions. Deploy API/frontend together. Polling every 30 seconds and attendance mutation invalidations refresh the grids.
+
 ### Staff display profile photos
 
 - **Owner -> Staff Accounts -> Profile photo** accepts JPG/PNG up to 5 MB, prepares a center-cropped 384 x 384 JPEG locally, shows a preview and requires separate staff permission to store/display the photo. The saved image is limited to 512 KB. Photos appear in the staff navigation avatar, owner account list and My Attendance welcome card. A display photo does not verify attendance and is not used for matching.

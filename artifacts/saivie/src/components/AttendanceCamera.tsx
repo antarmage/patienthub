@@ -47,6 +47,7 @@ export function AttendanceCamera({ status, ready }: { status?: string | null; re
       queryClient.invalidateQueries({ queryKey: ["/api/staff/attendance"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/staff/face-attendance"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/owner/attendance"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/staff/attendance-insights"] }),
     ]);
   };
   const stopCamera = () => {

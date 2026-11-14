@@ -55,6 +55,7 @@ export function OwnerFaceAttendance({ token }: { token: string }) {
         queryClient.invalidateQueries({ queryKey: ["/api/owner/face-attendance"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/owner/attendance"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/owner/dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/owner/attendance-insights"] }),
       ]);
     },
   });
