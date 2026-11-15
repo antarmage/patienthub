@@ -210,6 +210,10 @@ create_secret_silent "smtp_user"   "REPLACE_ME"
 create_secret_silent "smtp_pass"   "REPLACE_ME"
 create_secret_silent "smtp_from"   "REPLACE_ME"
 
+# FatSecret OAuth credentials — replace placeholders before use.
+create_secret_silent "fatsecret_client_id"     "REPLACE_ME"
+create_secret_silent "fatsecret_client_secret" "REPLACE_ME"
+
 # Google / AI — prompt user (skip = placeholder)
 echo ""
 create_secret_interactive "google_client_email" "GOOGLE_CLIENT_EMAIL (service account, or Enter to skip)"

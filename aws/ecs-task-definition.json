@@ -29,6 +29,14 @@
       ],
       "secrets": [
         {
+          "name": "FATSECRET_CLIENT_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/fatsecret_client_id-E6g43t"
+        },
+        {
+          "name": "FATSECRET_CLIENT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/fatsecret_client_secret-m7CQqr"
+        },
+        {
           "name": "STAFF_FACE_ENCRYPTION_KEY",
           "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/staff_face_encryption_key-QLIL5M"
         },
