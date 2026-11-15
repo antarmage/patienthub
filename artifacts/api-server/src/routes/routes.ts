@@ -26,6 +26,7 @@ import { OnlineConsultationError } from "../google-meet";
 import { buildMedicineSuggestions } from "../medicine-suggestions";
 import { checkInIsToday, receptionCompletion, registerClinicalAccess, registrationFields, rescheduledLogistics, type AccessActor } from "../clinical-access";
 import { createNutritionAccessStore, registerNutritionAccess } from "../nutrition-access";
+import { registerFatSecretRoutes } from "../fatsecret";
 import { dietChartDetailsSchema } from "../../../../lib/db/src/diet-chart";
 import { knownRateCard, parseRateCardText } from "../referral-rate-cards";
 import { synchronizeFollowUpCalls } from "../follow-up-calls";
@@ -386,6 +387,7 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   registerNutritionAccess(app, getAccessActor, createNutritionAccessStore(pool));
+  registerFatSecretRoutes(app, getAccessActor);
   registerFaceAttendanceRoutes(app, getAccessActor, createFaceAttendanceStore(pool));
   registerStaffProfileRoutes(app, getAccessActor, createStaffProfileStore(pool));
   registerAttendanceShiftRoutes(app, getAccessActor, createAttendanceShiftStore(pool));

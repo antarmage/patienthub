@@ -60,6 +60,16 @@ test("patient and saved meal content are escaped and absent clinical guidance is
   assert.ok(missing.includes("BMI (kg/m²):</strong> Not recorded"));
 });
 
+test("FatSecret estimates in printed meal plans include source attribution and review guidance", () => {
+  const html = generateDietChartHTML(patient, { ...protocol, weeklyPlan: {
+    Monday: [{ item: "Rice", macros: "130 kcal (FatSecret estimate, one option)" }],
+  } });
+  assert.ok(html.includes("130 kcal (FatSecret estimate, one option)"));
+  assert.ok(html.includes("powered_by_fatsecret_horizontal_brand.svg"));
+  assert.ok(html.includes("Nutrition values are estimates for one selected option"));
+  assert.ok(!generateDietChartHTML(patient, protocol).includes("powered_by_fatsecret_horizontal_brand.svg"));
+});
+
 test("empty, invalid and cross-patient saved protocols cannot produce a diet chart", () => {
   assert.throws(() => generateDietChartHTML({ ...patient, id: 8 }, protocol), /another patient/);
   assert.throws(() => generateDietChartHTML(patient, { ...protocol, weeklyPlan: { Monday: [{ item: " " }] } }), /no recorded meals/);

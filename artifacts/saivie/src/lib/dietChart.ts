@@ -78,6 +78,7 @@ export function generateDietChartHTML(patient: DietChartPatient, input: unknown,
       th:last-child, td:last-child { background: #faebf6; border: 0.25mm solid #e8b8da; }
       td:first-child { text-align: right; } td { height: 25mm; } tr { break-inside: avoid; } thead { display: table-header-group; }
       .meal-name, .meal-meta { display: block; font-size: 9pt; margin: 1mm 0; }
+      .food-source { display: block; width: 35mm; height: auto; margin: 2mm 0; }
       .guidance h2 { text-transform: uppercase; margin-top: 6mm; } .guidance h2:first-child { margin-top: 0; }
       .guidance .panel { margin-bottom: 6mm; padding: 4mm 3mm; font-size: 11pt; }
       .guidance .panel p { margin: 0; }
@@ -110,7 +111,10 @@ export function generateDietChartHTML(patient: DietChartPatient, input: unknown,
     ${plannedDays.map((day) => `<section class="page${details?.dailySampleMenu ? " daily-menu" : ""}"><h2 class="meal-heading">${details?.dailySampleMenu ? "Daily sample menu" : `${day} · Meal plan`} · ${escape(patient.name)}</h2>
       <table><thead><tr><th>Time</th><th>Recipe</th></tr></thead><tbody>
         ${protocol.weeklyPlan[day].filter((meal) => meal.item?.trim()).map((meal) => `<tr><td>${recorded(meal.time)}${meal.name?.trim() ? `<span class="meal-name">${escape(meal.name)}</span>` : ""}</td><td>${recorded(meal.item)}${meal.qty?.trim() || meal.macros?.trim() ? `<span class="meal-meta">${[meal.qty?.trim() ? `Quantity: ${escape(meal.qty)}` : "", meal.macros?.trim() ? `Nutrition: ${escape(meal.macros)}` : ""].filter(Boolean).join(" · ")}</span>` : ""}</td></tr>`).join("")}
-      </tbody></table></section>`).join("")}
+      </tbody></table>
+      ${protocol.weeklyPlan[day].some((meal) => meal.item?.trim() && meal.macros?.includes("(FatSecret estimate, one option)")) ?
+        `<a href="https://platform.fatsecret.com"><img class="food-source" src="https://platform.fatsecret.com/api/static/images/powered_by_fatsecret_horizontal_brand.svg" alt="Nutrition information provided by FatSecret Platform API" referrerpolicy="no-referrer"></a><p class="note">Nutrition values are estimates for one selected option and require clinical review. They are not a substitute for medical consultation, evaluation or treatment.</p>` : ""}
+      </section>`).join("")}
     ${details?.dailyRequirements.length ? `<section class="page guidance requirements"><h2>Measurement of uncooked weight per day</h2><div class="panel"><ol>
       ${details.dailyRequirements.map((requirement) => `<li>${escape(requirement)}</li>`).join("")}</ol></div></section>` : ""}
     <section class="page guidance">

@@ -37,6 +37,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { FoodCalorieCalculator } from "@/components/FoodCalorieCalculator";
+import { summarizePlannedCalories } from "@/lib/foodCalories";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -218,6 +220,7 @@ export default function StaffPatientProtocol() {
 
   const [selectedDay, setSelectedDay] = useState("Monday");
   const [isCustomMealOpen, setIsCustomMealOpen] = useState(false);
+  const [calorieMealId, setCalorieMealId] = useState<number | null>(null);
   const days = existingProtocol?.chartDetails?.dailySampleMenu ? ["Daily sample menu"] :
     ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -256,7 +259,12 @@ export default function StaffPatientProtocol() {
   const updateMealItem = (day: string, id: number, field: string, value: string) => {
     setWeeklyPlan(prev => ({
         ...prev,
-        [day]: prev[day]?.map(item => item.id === id ? { ...item, [field]: value } : item) || []
+        [day]: prev[day]?.map(item => {
+          if (item.id !== id) return item;
+          const clearEstimate = (field === "item" || field === "qty") && item[field] !== value &&
+            typeof item.macros === "string" && item.macros.includes("(FatSecret estimate, one option)");
+          return { ...item, [field]: value, ...(clearEstimate ? { macros: "" } : {}) };
+        }) || []
     }));
   };
 
@@ -406,12 +414,8 @@ export default function StaffPatientProtocol() {
     setIsSaving(false);
   };
 
-  const totalCalories = useMemo(() => {
-    const dayPlan = weeklyPlan[selectedDay] || [];
-    return dayPlan.reduce((sum: number, item: any) => {
-      const match = (item.macros || "").match(/(\d+)\s*kcal/i);
-      return sum + (match ? parseInt(match[1]) : 0);
-    }, 0);
+  const plannedCalories = useMemo(() => {
+    return summarizePlannedCalories(weeklyPlan[selectedDay] || []);
   }, [weeklyPlan, selectedDay]);
   const targetCalories = existingProtocol?.chartDetails?.nutrients.energyKcal ?? ((patient?.meta?.tdee || 1800) - 300);
 
@@ -702,9 +706,13 @@ export default function StaffPatientProtocol() {
                     <div className="flex items-center gap-4">
                         <div className="text-right">
                             <p className="text-[10px] uppercase font-bold text-saivie-plum">Planned</p>
-                            <p className={`text-sm font-bold ${totalCalories > targetCalories ? 'text-amber-600' : 'text-saivie-plum'}`}>
-                                {existingProtocol?.chartDetails && !totalCalories ? "Not recorded" : totalCalories} / {targetCalories} kcal
+                            <p className={`text-sm font-bold ${plannedCalories.total > targetCalories ? 'text-amber-600' : 'text-saivie-plum'}`}>
+                                {plannedCalories.recorded ? plannedCalories.total : "Not recorded"} / {targetCalories} kcal
                             </p>
+                            {plannedCalories.recorded > 0 && plannedCalories.recorded < plannedCalories.meals &&
+                              <p className="text-xs text-saivie-plum">Partial total · {plannedCalories.recorded} of {plannedCalories.meals} meals</p>}
+                            {currentDayPlan.some((meal) => typeof meal.macros === "string" && meal.macros.includes("(FatSecret estimate, one option)")) &&
+                              <p className="text-xs text-saivie-plum">Estimates use one selected option per meal.</p>}
                         </div>
                         {days.length > 1 && <Button size="sm" variant="outline" className="bg-saivie-ivory text-saivie-plum border-saivie-border" onClick={copyToAllDays}>
                             <Calendar className="w-4 h-4 mr-2" /> Copy {selectedDay} to All
@@ -815,6 +823,12 @@ export default function StaffPatientProtocol() {
                                         className="h-10 bg-saivie-ivory border-saivie-border text-sm text-saivie-plum font-mono"
                                         placeholder="e.g., 300 kcal"
                                     />
+                                    <Button type="button" variant="outline" size="sm" className="mt-2"
+                                        onClick={() => setCalorieMealId(meal.id)}>
+                                        Calculate from foods
+                                    </Button>
+                                    {typeof meal.macros === "string" && meal.macros.includes("(FatSecret estimate, one option)") &&
+                                      <p className="mt-1 text-xs text-saivie-plum">Editing meal text or serving clears this estimate.</p>}
                                 </div>
                                 <div className="flex items-end justify-end gap-1 md:col-span-12 xl:col-span-4">
                                     <Button 
@@ -839,6 +853,13 @@ export default function StaffPatientProtocol() {
                         </div>
                     ))}
                     
+                    {currentDayPlan.some((meal) => typeof meal.macros === "string" && meal.macros.includes("(FatSecret estimate, one option)")) &&
+                      <div className="flex items-center gap-3 px-4 py-2">
+                        <a href="https://platform.fatsecret.com" target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
+                          <img src="https://platform.fatsecret.com/api/static/images/powered_by_fatsecret_horizontal_brand.svg" alt="Nutrition information provided by FatSecret Platform API" referrerPolicy="no-referrer" className="h-6 w-auto" />
+                        </a>
+                        <a href="https://platform.fatsecret.com/terms" target="_blank" rel="noopener noreferrer" className="text-xs underline">FatSecret API terms</a>
+                      </div>}
                     <div className="p-3 bg-saivie-surface-muted/50 text-center flex items-center justify-center gap-2">
                         <Button 
                             variant="ghost" 
@@ -861,6 +882,12 @@ export default function StaffPatientProtocol() {
                  </div>
              </CardContent>
         </Card>
+        {calorieMealId !== null && currentDayPlan.some((meal) => meal.id === calorieMealId) &&
+          <FoodCalorieCalculator
+            currentMacros={currentDayPlan.find((meal) => meal.id === calorieMealId)?.macros || ""}
+            onClose={() => setCalorieMealId(null)}
+            onApply={(value) => { updateMealItem(selectedDay, calorieMealId, "macros", value); setCalorieMealId(null); }}
+          />}
         </TabsContent>
 
         <TabsContent value="progress" className="space-y-6">

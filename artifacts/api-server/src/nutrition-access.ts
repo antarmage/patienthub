@@ -65,6 +65,7 @@ export function registerNutritionAccess(app: Express, authenticate: (req: Reques
       }
       res.setHeader("Cache-Control", "private, no-store");
       const deny = () => res.status(403).json({ error: "Only patients with an active nutrition referral are accessible." });
+      if (req.path === "/api/nutrition/food-lookup" && req.method === "POST") return next();
       if (read && /^\/api\/(?:providers|nutrition-plans|workouts|invoice-template|staff\/profile)\/?$/.test(req.path)) return next();
       const assigned = await store.patients();
       const direct = req.path.match(/^\/api\/patients\/(\d+)(?:\/|$)/);
