@@ -39,6 +39,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FoodCalorieCalculator } from "@/components/FoodCalorieCalculator";
 import { summarizePlannedCalories } from "@/lib/foodCalories";
+import { nutritionPhase, recordedNutritionEnergy } from "@/lib/nutritionContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -417,7 +418,9 @@ export default function StaffPatientProtocol() {
   const plannedCalories = useMemo(() => {
     return summarizePlannedCalories(weeklyPlan[selectedDay] || []);
   }, [weeklyPlan, selectedDay]);
-  const targetCalories = existingProtocol?.chartDetails?.nutrients.energyKcal ?? ((patient?.meta?.tdee || 1800) - 300);
+  const nutritionEnergy = recordedNutritionEnergy(patient || {}, existingProtocol?.chartDetails?.nutrients.energyKcal);
+  const targetCalories = nutritionEnergy.target;
+  const phase = nutritionPhase(patient || {});
 
   const handlePrintDietChart = () => {
     try {
@@ -562,12 +565,12 @@ export default function StaffPatientProtocol() {
             <div className="col-span-8 grid grid-cols-4 gap-4">
                  <Card className="shadow-sm border-saivie-border">
                     <CardContent className="p-4 flex flex-col justify-center h-full">
-                        <p className="text-xs text-saivie-plum font-medium uppercase mb-1">Current Phase</p>
+                        <p className="text-xs text-saivie-plum font-medium uppercase mb-1">{phase.label}</p>
                         <div className="flex items-center gap-2 text-saivie-teal mb-1">
                             <Activity className="w-4 h-4" />
-                            <span className="font-bold text-sm truncate">{(patient?.meta?.phase || 'Follicular').split(' ')[0]}</span>
+                            <span className="font-bold text-sm">{phase.value}</span>
                         </div>
-                        <p className="text-[10px] text-saivie-plum">Day {(patient?.meta?.phase || '').split('Day ')[1]?.replace(')', '') || '-'}</p>
+                        {phase.detail && <p className="text-[10px] text-saivie-plum">{phase.detail}</p>}
                     </CardContent>
                  </Card>
 
@@ -576,10 +579,10 @@ export default function StaffPatientProtocol() {
                         <p className="text-xs text-saivie-plum font-medium uppercase mb-1">Energy Exp (TDEE)</p>
                         <div className="flex items-center gap-2 text-amber-600 mb-1">
                             <Flame className="w-4 h-4" />
-                            <span className="font-bold text-lg">{patient?.meta?.tdee || 1800}</span>
-                            <span className="text-xs font-normal text-saivie-plum">kcal</span>
+                            <span className="font-bold text-lg">{nutritionEnergy.expenditure ?? "Not recorded"}</span>
+                            {nutritionEnergy.expenditure !== null && <span className="text-xs font-normal text-saivie-plum">kcal</span>}
                         </div>
-                        <p className="text-[10px] text-saivie-plum">Activity: {(patient?.meta?.activity || 'Moderate').split(' ')[0]}</p>
+                        <p className="text-[10px] text-saivie-plum">Activity: {nutritionEnergy.activity ?? "Not recorded"}</p>
                     </CardContent>
                  </Card>
 
@@ -588,10 +591,10 @@ export default function StaffPatientProtocol() {
                         <p className="text-xs text-saivie-plum font-medium uppercase mb-1">Target Intake</p>
                         <div className="flex items-center gap-2 text-emerald-600 mb-1">
                             <Apple className="w-4 h-4" />
-                            <span className="font-bold text-lg">{targetCalories}</span>
-                            <span className="text-xs font-normal text-saivie-plum">kcal</span>
+                            <span className="font-bold text-lg">{targetCalories ?? "Not recorded"}</span>
+                            {targetCalories !== null && <span className="text-xs font-normal text-saivie-plum">kcal</span>}
                         </div>
-                        <Badge variant="secondary" className="w-fit text-[9px] h-4 px-1 bg-emerald-50 text-emerald-700">-300 deficit</Badge>
+                        {targetCalories !== null && <p className="text-[10px] text-saivie-plum">Saved nutrition target</p>}
                     </CardContent>
                  </Card>
 
@@ -706,8 +709,8 @@ export default function StaffPatientProtocol() {
                     <div className="flex items-center gap-4">
                         <div className="text-right">
                             <p className="text-[10px] uppercase font-bold text-saivie-plum">Planned</p>
-                            <p className={`text-sm font-bold ${plannedCalories.total > targetCalories ? 'text-amber-600' : 'text-saivie-plum'}`}>
-                                {plannedCalories.recorded ? plannedCalories.total : "Not recorded"} / {targetCalories} kcal
+                            <p className={`text-sm font-bold ${targetCalories !== null && plannedCalories.total > targetCalories ? 'text-amber-600' : 'text-saivie-plum'}`}>
+                                {plannedCalories.recorded ? `${plannedCalories.total} kcal` : "Not recorded"} / {targetCalories !== null ? `${targetCalories} kcal` : "Target not recorded"}
                             </p>
                             {plannedCalories.recorded > 0 && plannedCalories.recorded < plannedCalories.meals &&
                               <p className="text-xs text-saivie-plum">Partial total · {plannedCalories.recorded} of {plannedCalories.meals} meals</p>}
