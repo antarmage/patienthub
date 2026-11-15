@@ -36,6 +36,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -711,22 +712,23 @@ export default function StaffPatientProtocol() {
                     </div>
                 </div>
                 
-                {/* Day Tabs */}
-                <div className="px-4 pt-2 bg-saivie-ivory">
-                    <Tabs value={selectedDay} onValueChange={setSelectedDay} className="w-full">
-                        <TabsList className="w-full justify-start h-auto p-0 bg-transparent gap-6 border-b border-transparent">
-                            {days.map(day => (
-                                <TabsTrigger 
-                                    key={day} 
-                                    value={day}
-                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-saivie-teal data-[state=active]:text-saivie-teal px-2 py-3 text-saivie-plum hover:text-saivie-plum transition-all"
-                                >
-                                    {day}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </Tabs>
-                </div>
+                {days.length > 1 && (
+                    <div className="px-4 pt-2 bg-saivie-ivory">
+                        <Tabs value={selectedDay} onValueChange={setSelectedDay} className="w-full">
+                            <TabsList className="w-full justify-start h-auto p-0 bg-transparent gap-6 border-b border-transparent">
+                                {days.map(day => (
+                                    <TabsTrigger
+                                        key={day}
+                                        value={day}
+                                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-saivie-teal data-[state=active]:text-saivie-teal px-2 py-3 text-saivie-plum hover:text-saivie-plum transition-all"
+                                    >
+                                        {day}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        </Tabs>
+                    </div>
+                )}
              </CardHeader>
              <CardContent className="p-0">
                  <div className="grid grid-cols-1 divide-y divide-slate-100">
@@ -737,31 +739,34 @@ export default function StaffPatientProtocol() {
                     )}
                     {currentDayPlan.map((meal) => (
                         <div key={meal.id} className="p-4 hover:bg-saivie-surface-muted/50 group transition-colors">
-                            {/* Card Header-like Row */}
-                            <div className="flex justify-between items-center mb-2">
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                                 <span className="text-sm font-bold text-saivie-plum">{meal.name}</span>
-                                <div className="inline-flex items-center">
-                                    <Clock className="w-3 h-3 mr-1.5 text-saivie-plum" />
+                                <div className="inline-flex items-center gap-2">
+                                    <Clock className="h-3 w-3 text-saivie-plum" />
+                                    <Label htmlFor={`meal-time-${meal.id}`} className="text-xs text-saivie-plum">Time</Label>
                                     <Input 
+                                        id={`meal-time-${meal.id}`}
                                         value={meal.time}
                                         onChange={(e) => updateMealItem(selectedDay, meal.id, "time", e.target.value)}
-                                        className="h-6 w-16 text-[10px] font-mono bg-saivie-ivory border-saivie-border text-saivie-plum px-1 text-center focus:border-saivie-teal"
+                                        className="h-8 w-24 bg-saivie-ivory border-saivie-border text-sm font-mono text-saivie-plum text-center focus:border-saivie-teal"
                                         placeholder="00:00"
                                     />
                                 </div>
                             </div>
-                            
-                            {/* Inputs Row */}
-                            <div className="grid grid-cols-12 gap-3">
-                                <div className="col-span-6">
-                                    <Input 
+
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+                                <div className="md:col-span-12">
+                                    <Label htmlFor={`meal-description-${meal.id}`} className="mb-1.5 block text-xs text-saivie-plum">Meal and food options</Label>
+                                    <Textarea
+                                        id={`meal-description-${meal.id}`}
                                         value={meal.item}
-                                        onChange={(e) => updateMealItem(selectedDay, meal.id, "item", e.target.value)} 
-                                        className="h-9 bg-saivie-ivory border-saivie-border focus:border-saivie-teal text-sm font-medium"
-                                        placeholder="Enter meal description..."
+                                        onChange={(e) => updateMealItem(selectedDay, meal.id, "item", e.target.value)}
+                                        rows={3}
+                                        className="min-h-[88px] resize-y bg-saivie-ivory border-saivie-border focus:border-saivie-teal text-sm font-medium"
+                                        placeholder={"e.g., Roti + vegetables + egg\nOr: bread + salad + egg"}
                                     />
-                                    
-                                    {/* Components List (If Active) */}
+                                    <p className="mt-1 text-xs text-saivie-plum/80">Put each meal option on its own line. Line breaks are kept in the saved plan and printed chart.</p>
+
                                     {meal.components && meal.components.length > 0 && (
                                         <div className="mt-2 space-y-2 pl-2 border-l-2 border-saivie-border">
                                             {meal.components.map((comp: any) => (
@@ -791,23 +796,27 @@ export default function StaffPatientProtocol() {
                                         </div>
                                     )}
                                 </div>
-                                <div className="col-span-3">
+                                <div className="md:col-span-6 xl:col-span-4">
+                                    <Label htmlFor={`meal-quantity-${meal.id}`} className="mb-1.5 block text-xs text-saivie-plum">Quantity / serving</Label>
                                     <Input 
+                                        id={`meal-quantity-${meal.id}`}
                                         value={meal.qty}
                                         onChange={(e) => updateMealItem(selectedDay, meal.id, "qty", e.target.value)} 
-                                        className="h-9 bg-saivie-ivory border-saivie-border text-xs text-saivie-plum"
+                                        className="h-10 bg-saivie-ivory border-saivie-border text-sm text-saivie-plum"
                                         placeholder="Qty (e.g., 1 bowl)"
                                     />
                                 </div>
-                                <div className="col-span-2">
+                                <div className="md:col-span-6 xl:col-span-4">
+                                    <Label htmlFor={`meal-macros-${meal.id}`} className="mb-1.5 block text-xs text-saivie-plum">Nutrition / macros</Label>
                                     <Input 
+                                        id={`meal-macros-${meal.id}`}
                                         value={meal.macros}
                                         onChange={(e) => updateMealItem(selectedDay, meal.id, "macros", e.target.value)} 
-                                        className="h-9 bg-saivie-ivory border-saivie-border text-xs text-saivie-plum font-mono"
-                                        placeholder="Macros"
+                                        className="h-10 bg-saivie-ivory border-saivie-border text-sm text-saivie-plum font-mono"
+                                        placeholder="e.g., 300 kcal"
                                     />
                                 </div>
-                                <div className="col-span-1 flex justify-end gap-1">
+                                <div className="flex items-end justify-end gap-1 md:col-span-12 xl:col-span-4">
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 

@@ -68,8 +68,8 @@ export function generateDietChartHTML(patient: DietChartPatient, input: unknown,
       .note { color: #444; font-size: 8pt; margin: 2mm 0; }
       .signoff { margin-top: auto; padding: 0 2.5mm 2mm; }
       .signoff > strong { display: block; border-bottom: 0.25mm solid #000; padding-bottom: 3mm; }
-      .signoff-details { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; padding-top: 4mm; }
-      .signoff-details p { margin: 0; font-size: 11pt; } .saved { font-size: 8pt; }
+      .signoff-details { display: grid; grid-template-columns: 1.2fr 1fr 1fr; align-items: center; gap: 8mm; padding-top: 4mm; }
+      .signoff-details p { margin: 0; font-size: 11pt; } .signoff-details p:last-child { text-align: center; } .saved { font-size: 8pt; }
       .meal-heading { font-size: 9pt; font-weight: 400; margin: 0 0 2mm; }
       table { width: 100%; margin: 0; border-collapse: separate; border-spacing: 2mm 3mm; table-layout: fixed; font-size: 11pt; }
       .daily-menu table { height: 225mm; }
@@ -101,9 +101,10 @@ export function generateDietChartHTML(patient: DietChartPatient, input: unknown,
           ["Carbohydrate", details.nutrients.carbohydrateGrams, "g/day"], ["Fat", details.nutrients.fatGrams, "g/day"],
         ].map(([name, value, unit]) => `<li>${name}: <strong>${value} ${unit}</strong></li>`).join("") :
           ["Energy", "Protein", "Carbohydrate", "Fat"].map((name) => `<li>${name}: <strong>Not recorded</strong></li>`).join("")}</ul></div>
-      <div class="signoff"><strong>Lifestyle planned by:</strong><div class="signoff-details">
-        <p>${recorded(details?.consultant.name || protocol.savedBy)}</p>
-        ${details ? `<p>${recorded(details.consultant.qualifications)}<br>${recorded(details.consultant.phone)}</p>` : ""}
+      <div class="signoff"><strong>For Two weeks Lifestyle planned by</strong><div class="signoff-details">
+        <p>Dr. Sai Dibyadarshini Bhuyan<br>Gynecologist</p>
+        <p>Dt. Subhra Roy<br>Nutrition Consultant</p>
+        <p>Lifestyle Coach</p>
       </div></div>
     </section>
     ${plannedDays.map((day) => `<section class="page${details?.dailySampleMenu ? " daily-menu" : ""}"><h2 class="meal-heading">${details?.dailySampleMenu ? "Daily sample menu" : `${day} · Meal plan`} · ${escape(patient.name)}</h2>

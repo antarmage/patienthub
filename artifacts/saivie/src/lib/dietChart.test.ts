@@ -39,7 +39,10 @@ test("A4 preview keeps reference proportions and omits empty meal metadata", () 
   assert.ok(!html.includes("Nutrition: Not recorded"));
   assert.ok(!html.includes('<span class="meal-name">Not recorded'));
   const cover = html.match(/<section class="page cover">([\s\S]*?)<\/section>/)?.[1];
-  assert.ok(cover?.includes('class="signoff-details"'));
+  assert.ok(cover?.includes("For Two weeks Lifestyle planned by"));
+  assert.ok(cover?.includes("Dr. Sai Dibyadarshini Bhuyan<br>Gynecologist"));
+  assert.ok(cover?.includes("Dt. Subhra Roy<br>Nutrition Consultant"));
+  assert.ok(cover?.includes("Lifestyle Coach"));
   assert.ok(!cover?.includes("Saved protocol:"));
   assert.ok(!cover?.includes("Plan duration:"));
 });
@@ -89,7 +92,7 @@ test("print is connected to the saved query rather than the unsaved editor and s
 test("complete authored daily plan prints targets, requirements and snapshot without inventing weekdays", () => {
   const details = {
     source: "Synthetic plan.pdf", patientSnapshot: { name: "Snapshot patient", age: 26, heightCm: 168, weightKg: 65.1 },
-    consultant: { name: "Synthetic consultant", qualifications: "Recorded qualification", phone: "Synthetic contact" },
+    consultant: { name: "Synthetic consultant", qualifications: "Recorded qualification", phone: "555-0101" },
     advice: "Recorded advice", medicalHistory: "", duration: "", dailySampleMenu: true,
     nutrients: { energyKcal: 1800, proteinGrams: 70, carbohydrateGrams: 270, fatGrams: 48 },
     dailyRequirements: Array.from({ length: 13 }, (_, i) => `Recorded requirement ${i + 1} & quantity`),
@@ -101,11 +104,13 @@ test("complete authored daily plan prints targets, requirements and snapshot wit
       item: `Recorded option ${i + 1}\nOr, recorded alternative`, components: [{ id: 10, name: "component", qty: "1" }],
     })) } };
   const html = generateDietChartHTML(patient, saved);
-  for (const text of ["Snapshot patient", "26 years", "168", "65.1", "Synthetic consultant", "Recorded qualification",
-    "Synthetic contact", "Recorded advice", "1800 kcal/day", "70 g/day", "270 g/day", "48 g/day",
+  for (const text of ["Snapshot patient", "26 years", "168", "65.1", "Synthetic consultant",
+    "Recorded advice", "1800 kcal/day", "70 g/day", "270 g/day", "48 g/day",
     "Daily sample menu", "Measurement of uncooked weight per day", "21:30", "Plan duration: Not recorded",
     "Recorded avoidance &lt;food&gt;"])
     assert.ok(html.includes(text), text);
+  assert.ok(html.includes('<div class="signoff"><strong>For Two weeks Lifestyle planned by</strong><div class="signoff-details">\n        <p>Dr. Sai Dibyadarshini Bhuyan<br>Gynecologist</p>'));
+  assert.ok(!html.includes("555-0101"));
   for (const requirement of details.dailyRequirements) assert.ok(html.includes(requirement.replace("&", "&amp;")));
   assert.equal((html.match(/<tr><td>/g) || []).length, 6);
   assert.equal((html.match(/<section class="page(?: [^"]+)?">/g) || []).length, 4);
