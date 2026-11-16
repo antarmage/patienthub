@@ -54,7 +54,15 @@ export function googleAuthorizationUrl(state: string) {
 }
 
 export async function exchangeGoogleCode(code: string): Promise<string> {
-  const { tokens } = await oauthClient().getToken(code);
+  let tokens;
+  try {
+    ({ tokens } = await oauthClient().getToken(code));
+  } catch (error) {
+    // Log only the OAuth error code/description from Google, never tokens or credentials.
+    const response = (error as { response?: { status?: number; data?: { error?: unknown; error_description?: unknown } } }).response;
+    console.error("[online-consultations] Google token exchange failed:", JSON.stringify({ status: response?.status, error: response?.data?.error, description: response?.data?.error_description }));
+    throw new OnlineConsultationError(502, "Google sign-in could not be completed. Retry connecting your account from doctor settings.");
+  }
   if (!tokens.refresh_token || !tokens.scope?.split(" ").includes(scope)) {
     throw new OnlineConsultationError(400, "Google did not grant persistent meeting creation access. Reconnect and approve the requested permission.");
   }
