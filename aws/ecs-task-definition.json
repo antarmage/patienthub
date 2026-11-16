@@ -25,7 +25,8 @@
         { "name": "WHATSAPP_VERSION",  "value": "v21.0" },
         { "name": "SMTP_HOST",         "value": "smtp.gmail.com" },
         { "name": "SMTP_PORT",         "value": "465" },
-        { "name": "SMTP_SECURE",       "value": "true" }
+        { "name": "SMTP_SECURE",       "value": "true" },
+        { "name": "PUBLIC_APP_URL",    "value": "https://d1chvq0z7ognbv.cloudfront.net" }
       ],
       "secrets": [
         {
@@ -99,6 +100,18 @@
         {
           "name": "SMTP_FROM",
           "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/smtp_from"
+        },
+        {
+          "name": "GOOGLE_MEET_CLIENT_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/google_meet_client_id-h6XAG9"
+        },
+        {
+          "name": "GOOGLE_MEET_CLIENT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/google_meet_client_secret-avyaLo"
+        },
+        {
+          "name": "GOOGLE_MEET_TOKEN_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:599526348275:secret:saivie/prod/google_meet_token_key-5QZdsT"
         }
       ],
       "logConfiguration": {
