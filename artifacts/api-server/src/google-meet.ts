@@ -72,13 +72,23 @@ export async function exchangeGoogleCode(code: string): Promise<string> {
 export async function createGoogleMeeting(encryptedRefreshToken: string): Promise<string> {
   const auth = oauthClient();
   auth.setCredentials({ refresh_token: openOnlineSecret(encryptedRefreshToken) });
-  // Only meeting configuration is sent to Google, never patient names or clinical data.
-  const result = await auth.request<{ meetingUri?: string }>({
+  const space = (config: object) => auth.request<{ meetingUri?: string }>({
     url: "https://meet.googleapis.com/v2/spaces",
     method: "POST",
-    data: { config: { accessType: "RESTRICTED", entryPointAccess: "ALL" } },
+    // Only meeting configuration is sent to Google, never patient names or clinical data.
+    data: { config },
     timeout: 20_000,
   });
+  let result;
+  try {
+    result = await space({ accessType: "RESTRICTED", entryPointAccess: "ALL" });
+  } catch (error) {
+    // Personal (non-Workspace) Google accounts cannot set accessType. Their default
+    // meetings still require the host to admit unknown participants.
+    const details = (error as { response?: { data?: { error?: { details?: { reason?: string }[] } } } }).response?.data?.error?.details;
+    if (!details?.some((detail) => detail?.reason === "FEATURE_UNAVAILABLE_TO_USER")) throw error;
+    result = await space({});
+  }
   const uri = result.data.meetingUri;
   if (!uri || !/^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(uri)) {
     throw new OnlineConsultationError(502, "Google did not return a valid meeting link.");
