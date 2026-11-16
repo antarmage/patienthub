@@ -30,7 +30,7 @@ export const onlineStore: OnlineStore = {
   },
   async saveConnection(providerId, userId, token) {
     const result = await pool.query(`INSERT INTO google_meet_connections (provider_id, user_id, encrypted_refresh_token)
-      SELECT $1, $2, $3 WHERE EXISTS (SELECT 1 FROM users WHERE id = $2 AND provider_id = $1 AND role IN ('clinician','owner'))
+      SELECT $1::integer, $2::varchar, $3::text WHERE EXISTS (SELECT 1 FROM users WHERE id = $2::varchar AND provider_id = $1::integer AND role IN ('clinician','owner'))
       ON CONFLICT (provider_id) DO UPDATE SET user_id = EXCLUDED.user_id, encrypted_refresh_token = EXCLUDED.encrypted_refresh_token, updated_at = now()`, [providerId, userId, token]);
     if (!result.rowCount) throw new OnlineConsultationError(403, "The doctor account mapping changed. Start the connection again.");
   },
