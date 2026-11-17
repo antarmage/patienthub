@@ -47,7 +47,7 @@ import BiologyTab from "@/components/BiologyTab";
 import InsightsTab from "@/components/InsightsTab";
 import PregnancyTrackersTab from "@/components/PregnancyTrackersTab";
 import { PatientMenopauseCare } from "@/components/MenopauseCare";
-import { patientGreetingName } from "@/lib/patientGreeting";
+import { patientGreetingName, cycleSubtitle } from "@/lib/patientGreeting";
 
 export default function PatientPortal() {
   const [activeTab, setActiveTab] = useState("home");
@@ -266,7 +266,7 @@ export default function PatientPortal() {
                 const weeks = Math.floor((new Date().getTime() - new Date(lmp).getTime()) / (1000 * 60 * 60 * 24 * 7));
                 const trimester = weeks < 13 ? '1st Trimester' : weeks < 27 ? '2nd Trimester' : '3rd Trimester';
                 return `Week ${weeks} • ${trimester}`;
-              })() : 'Day 14 • Ovulation Phase'}
+              })() : cycleSubtitle(patient?.lmp, mode)}
             </p>
           </motion.div>
           
