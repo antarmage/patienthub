@@ -47,6 +47,7 @@ import BiologyTab from "@/components/BiologyTab";
 import InsightsTab from "@/components/InsightsTab";
 import PregnancyTrackersTab from "@/components/PregnancyTrackersTab";
 import { PatientMenopauseCare } from "@/components/MenopauseCare";
+import { patientGreetingName } from "@/lib/patientGreeting";
 
 export default function PatientPortal() {
   const [activeTab, setActiveTab] = useState("home");
@@ -256,7 +257,7 @@ export default function PatientPortal() {
               {(() => {
                 const h = new Date().getHours();
                 return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
-              })()}{patient?.name ? `, ${patient.name.split(' ')[0]}` : ''}
+              })()}{patient?.name ? `, ${patientGreetingName(patient.name)}` : ''}
             </h1>
             <p className="text-muted-foreground text-sm mt-1 font-medium tracking-wide opacity-80 uppercase">
               {mode === 'pregnancy' ? (() => {
