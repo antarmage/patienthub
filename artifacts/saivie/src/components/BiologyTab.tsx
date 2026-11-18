@@ -363,7 +363,7 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
         </div>
       </div>
 
-      <div className="bg-saivie-rose text-saivie-rose p-4 rounded-xl flex items-center gap-4 shadow-lg">
+      <div className="bg-saivie-blush text-saivie-plum p-4 rounded-xl flex items-center gap-4 shadow-lg">
         <Heart className="w-5 h-5 text-saivie-rose shrink-0" />
         <p className="text-xs font-medium leading-relaxed">
           {trimester === 1

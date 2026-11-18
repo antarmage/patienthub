@@ -278,13 +278,13 @@ function PregnancyInsights({ patient }: { patient: any }) {
         </div>
       </div>
 
-      <div className="bg-saivie-rose text-saivie-rose p-4 rounded-xl flex items-start gap-4 shadow-lg">
+      <div className="bg-saivie-blush text-saivie-plum p-4 rounded-xl flex items-start gap-4 shadow-lg">
         <Brain className="w-5 h-5 text-saivie-rose shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-medium leading-relaxed mb-1">
             {trimester === 1 ? 'First Trimester Reminder' : trimester === 2 ? 'Second Trimester Note' : 'Final Stretch'}
           </p>
-          <p className="text-xs text-saivie-rose">
+          <p className="text-xs text-saivie-plum/80">
             {trimester === 1
               ? "Nausea usually peaks around week 8-10 and improves by week 12-14. Hang in there — it's a sign of strong pregnancy hormones."
               : trimester === 2
