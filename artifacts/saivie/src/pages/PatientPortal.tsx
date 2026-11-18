@@ -37,7 +37,9 @@ import {
   ChevronDown,
   User,
   Apple,
-  Microscope
+  Microscope,
+  Video,
+  ExternalLink
 } from "lucide-react";
 import { CycleWheel } from "@/components/CycleWheel";
 import calmGradient from "../assets/images/calm-gradient.png";
@@ -48,6 +50,9 @@ import InsightsTab from "@/components/InsightsTab";
 import PregnancyTrackersTab from "@/components/PregnancyTrackersTab";
 import { PatientMenopauseCare } from "@/components/MenopauseCare";
 import { patientGreetingName, cycleSubtitle } from "@/lib/patientGreeting";
+import { nextAppointment } from "@/lib/patientAppointments";
+import { bookingVisitModeLabel } from "@/lib/bookingVisit";
+import { validMeetUrl } from "@/lib/onlineConsultation";
 
 export default function PatientPortal() {
   const [activeTab, setActiveTab] = useState("home");
@@ -378,6 +383,74 @@ export default function PatientPortal() {
                   </Card>
                 </motion.div>
 
+                {/* Operational: next visit, join video, active medicines */}
+                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+                  <Card className="glass-panel border-white/60 overflow-hidden" data-testid="card-pregnancy-next-visit">
+                    <CardContent className="relative p-5 z-10 space-y-4">
+                      {(() => {
+                        const next = nextAppointment(Array.isArray(patientAppointments) ? patientAppointments : []);
+                        const provider = next?.providerId && Array.isArray(providers) ? providers.find((p: any) => p.id === next.providerId) : null;
+                        if (next) {
+                          return (
+                            <div className="flex items-start gap-4">
+                              <div className="p-3 bg-saivie-blush rounded-2xl shrink-0"><CalendarDays className="w-5 h-5 text-saivie-rose" /></div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Your next visit</p>
+                                <p className="text-base font-serif text-foreground font-medium mt-0.5">
+                                  {new Date(`${next.date.slice(0, 10)}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'short' })}
+                                  {next.time ? ` • ${next.time}` : ''}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {bookingVisitModeLabel(next.visitMode || 'in-clinic')}{provider?.name ? ` with ${provider.name}` : ''}
+                                </p>
+                                {next.visitMode === 'telemedicine' && validMeetUrl(next.telemedicineLink) && (
+                                  <Button asChild size="sm" className="mt-3 rounded-full bg-saivie-rose hover:bg-saivie-rose/90 text-white" data-testid="btn-join-video-visit">
+                                    <a href={next.telemedicineLink} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
+                                      <Video className="w-3.5 h-3.5 mr-1.5" /> Join video visit <ExternalLink className="w-3 h-3 ml-1.5" />
+                                    </a>
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-saivie-blush rounded-2xl shrink-0"><CalendarDays className="w-5 h-5 text-saivie-rose" /></div>
+                            <div className="flex-1">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Your next visit</p>
+                              <p className="text-sm text-muted-foreground mt-0.5">No upcoming visit booked yet.</p>
+                            </div>
+                            <Button size="sm" variant="outline" className="rounded-full shrink-0" onClick={openBooking} data-testid="btn-book-visit-home">
+                              <CalendarPlus className="w-3.5 h-3.5 mr-1.5" /> Book
+                            </Button>
+                          </div>
+                        );
+                      })()}
+                      {(() => {
+                        const active = Array.isArray(medications) ? medications.filter((m: any) => (m.status || '').toLowerCase() === 'active') : [];
+                        if (!active.length) return null;
+                        return (
+                          <div className="pt-3 border-t border-black/5" data-testid="home-active-medicines">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-1.5"><Pill className="w-3.5 h-3.5 text-blue-600" /> Your medicines</p>
+                              <button className="text-xs font-medium text-saivie-rose" onClick={() => setActiveTab('care')}>View all</button>
+                            </div>
+                            <div className="mt-2 space-y-1">
+                              {active.slice(0, 3).map((med: any) => (
+                                <p key={med.id} className="text-sm text-foreground truncate">
+                                  {med.name}{med.dosage || med.dose ? ` — ${med.dosage || med.dose}` : ''}{med.frequency ? `, ${med.frequency}` : ''}
+                                </p>
+                              ))}
+                              {active.length > 3 && <p className="text-xs text-muted-foreground">+{active.length - 3} more</p>}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
                 {/* Pregnancy Insight Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}>
@@ -672,32 +745,44 @@ export default function PatientPortal() {
             
             {mode === 'pregnancy' && (
               <>
-                {/* Next Appointment */}
-                {patient?.nextReview && (
-                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
-                    <Card className="border-none bg-gradient-to-br from-saivie-surface-blush to-rose-50 shadow-sm overflow-hidden">
-                      <CardContent className="p-5 flex items-center gap-4">
-                        <div className="p-3 bg-saivie-blush rounded-2xl shrink-0">
-                          <CalendarDays className="w-6 h-6 text-saivie-rose" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Next Appointment</p>
-                          <p className="text-lg font-serif text-saivie-plum font-medium mt-0.5">
-                            {new Date(patient.nextReview).toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })}
-                          </p>
-                          {(() => {
-                            const daysUntil = Math.ceil((new Date(patient.nextReview).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                            return daysUntil > 0 
-                              ? <p className="text-xs text-saivie-rose font-medium mt-0.5">{daysUntil} days from now</p>
-                              : daysUntil === 0 
+                {/* Next Appointment — booked appointment first, review date as fallback */}
+                {(() => {
+                  const next = nextAppointment(Array.isArray(patientAppointments) ? patientAppointments : []);
+                  const provider = next?.providerId && Array.isArray(providers) ? providers.find((p: any) => p.id === next.providerId) : null;
+                  const when = next ? new Date(`${next.date.slice(0, 10)}T00:00:00`) : patient?.nextReview ? new Date(patient.nextReview) : null;
+                  if (!when || Number.isNaN(when.getTime())) return null;
+                  const daysUntil = Math.ceil((when.getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000);
+                  return (
+                    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+                      <Card className="border-none bg-gradient-to-br from-saivie-surface-blush to-rose-50 shadow-sm overflow-hidden">
+                        <CardContent className="p-5 flex items-center gap-4">
+                          <div className="p-3 bg-saivie-blush rounded-2xl shrink-0">
+                            <CalendarDays className="w-6 h-6 text-saivie-rose" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{next ? 'Next Appointment' : 'Next Review Due'}</p>
+                            <p className="text-lg font-serif text-saivie-plum font-medium mt-0.5">
+                              {when.toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })}{next?.time ? ` • ${next.time}` : ''}
+                            </p>
+                            {next && <p className="text-xs text-muted-foreground mt-0.5">{bookingVisitModeLabel(next.visitMode || 'in-clinic')}{provider?.name ? ` with ${provider.name}` : ''}</p>}
+                            {daysUntil > 0
+                              ? <p className="text-xs text-saivie-rose font-medium mt-0.5">{daysUntil} day{daysUntil === 1 ? '' : 's'} from now</p>
+                              : daysUntil === 0
                               ? <Badge className="bg-saivie-blush text-saivie-plum border-none text-[10px] mt-1">Today</Badge>
-                              : null;
-                          })()}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                )}
+                              : null}
+                            {next?.visitMode === 'telemedicine' && validMeetUrl(next.telemedicineLink) && (
+                              <Button asChild size="sm" className="mt-2 rounded-full bg-saivie-rose hover:bg-saivie-rose/90 text-white" data-testid="btn-join-video-care">
+                                <a href={next.telemedicineLink} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
+                                  <Video className="w-3.5 h-3.5 mr-1.5" /> Join video visit
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })()}
 
                 {/* Pregnancy Vitals Trend */}
                 {visitHistory && visitHistory.length > 0 && (
