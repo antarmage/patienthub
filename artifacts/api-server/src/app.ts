@@ -39,7 +39,10 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      // CloudFront terminates TLS and reaches the ALB over HTTP, so the proxy chain
+      // reports an insecure protocol. "auto" keeps the cookie working through that
+      // leg while marking it Secure wherever HTTPS is detected directly.
+      secure: "auto",
       sameSite: "lax",
       maxAge: 12 * 60 * 60 * 1000,
     },
