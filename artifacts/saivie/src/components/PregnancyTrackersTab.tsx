@@ -343,9 +343,44 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
     },
   });
 
-  const bpLogs = [...metrics]
+  const { data: dbBpLogs = [] } = useQuery<any[]>({
+    queryKey: [`/api/patients/${patientId}/bp-logs`],
+    queryFn: async () => {
+      const r = await fetch(`/api/patients/${patientId}/bp-logs`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+  });
+
+  const metricBpLogs = [...metrics]
     .filter((m: any) => m.systolic != null && m.diastolic != null)
-    .sort((a: any, b: any) => b.week - a.week);
+    .map((m: any) => ({
+      id: m.id,
+      week: Number(m.week),
+      systolic: Number(m.systolic),
+      diastolic: Number(m.diastolic),
+      date: "",
+      enteredBy: m.enteredBy,
+    }));
+  const dbEntries = [...dbBpLogs]
+    .filter((l: any) => l.systolic != null && l.diastolic != null)
+    .map((l: any) => ({
+      id: l.id,
+      week: 0,
+      systolic: Number(l.systolic),
+      diastolic: Number(l.diastolic),
+      date: l.date || l.loggedAt || "",
+      enteredBy: "patient",
+    }));
+  const uniqueDbEntries = dbEntries.filter((dbEntry) =>
+    !metricBpLogs.some((metricEntry) =>
+      metricEntry.systolic === dbEntry.systolic &&
+      metricEntry.diastolic === dbEntry.diastolic &&
+      (!metricEntry.date || !dbEntry.date || metricEntry.date === dbEntry.date)));
+  const bpLogs = [...metricBpLogs, ...uniqueDbEntries].sort((a, b) => {
+    if (a.date && b.date) return new Date(b.date).getTime() - new Date(a.date).getTime();
+    return b.week - a.week;
+  });
   const latest = bpLogs[0];
 
   const getBPStatus = (sys: number, dia: number) => {
@@ -371,6 +406,7 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [`/api/pregnancy-metrics?patientId=${patientId}`] });
+      qc.invalidateQueries({ queryKey: [`/api/patients/${patientId}/bp-logs`] });
       setShowForm(false);
       setSystolic("");
       setDiastolic("");

@@ -4490,6 +4490,16 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
           loggedAt: new Date().toISOString(),
         });
       }
+      if (systolic != null && diastolic != null &&
+          !isNaN(parseInt(systolic)) && !isNaN(parseInt(diastolic))) {
+        await storage.addBpLog({
+          patientId: parseInt(patientId),
+          systolic: parseInt(systolic),
+          diastolic: parseInt(diastolic),
+          date: new Date().toISOString().slice(0, 10),
+          loggedAt: new Date().toISOString(),
+        });
+      }
       res.status(201).json(metric);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   });
