@@ -1017,7 +1017,9 @@ export default function PatientPortal() {
                 </h3>
               </div>
               {(() => {
-                const latestVisit = visitHistory?.[0];
+                const latestVisit = Array.isArray(visitHistory)
+                  ? [...visitHistory].sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())[0]
+                  : null;
                 const vitals = (latestVisit?.vitals as any) || {};
                 const nextTests: string[] = vitals.nextInvestigationTests || [];
                 const customInv = vitals.nextInvestigationCustom || '';
@@ -1193,11 +1195,51 @@ export default function PatientPortal() {
                   {mode === 'pregnancy' ? 'Prenatal Visit History' : 'Treatment Trail'}
                 </h3>
               </div>
-              {visitHistory && visitHistory.length > 0 ? (
+              {(visitHistory && visitHistory.length > 0) || ((patientAppointments as any[] | undefined)?.some((appointment) =>
+                !['cancelled', 'no-show'].includes(String(appointment.status || '').toLowerCase()) &&
+                (mode !== 'pregnancy' || appointment.completedAt || ['completed', 'complete', 'checked-in', 'seen'].includes(String(appointment.status || '').toLowerCase()))
+              )) ? (
                 <div className="relative">
                   <div className="absolute left-[19px] top-4 bottom-4 w-[2px] bg-gradient-to-b from-rose-200 via-saivie-blush to-transparent rounded-full" />
                   <div className="space-y-3">
-                    {[...visitHistory].sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 10).map((visit: any, idx: number) => {
+                    {(() => {
+                      const savedVisits = Array.isArray(visitHistory) ? visitHistory as any[] : [];
+                      const linkedAppointmentIds = new Set(
+                        savedVisits.filter((visit) => visit.appointmentId != null).map((visit) => String(visit.appointmentId)),
+                      );
+                      const mergedVisits = savedVisits.map((visit) => {
+                        const appointment = (patientAppointments as any[] | undefined)?.find((item) =>
+                          String(item.id) === String(visit.appointmentId));
+                        return {
+                          ...visit,
+                          id: visit.id,
+                          date: visit.date || appointment?.date,
+                          visitType: visit.visitType || appointment?.visitType || appointment?.type,
+                          diagnosis: visit.diagnosis || appointment?.diagnosis,
+                          chiefComplaint: visit.chiefComplaint || visit.subjective || appointment?.chiefComplaint || appointment?.reason,
+                          planNotes: visit.planNotes || appointment?.followUpNotes,
+                          vitals: visit.vitals || appointment?.vitals,
+                        };
+                      });
+                      for (const appointment of (patientAppointments as any[] | undefined) || []) {
+                        if (linkedAppointmentIds.has(String(appointment.id))) continue;
+                        const status = String(appointment.status || '').toLowerCase();
+                        if (status === 'cancelled' || status === 'no-show') continue;
+                        if (mode === 'pregnancy' && !['completed', 'complete', 'checked-in', 'seen'].includes(status) &&
+                            !appointment.completedAt) continue;
+                        mergedVisits.push({
+                          id: `appointment-${appointment.id}`,
+                          appointmentId: appointment.id,
+                          date: appointment.date,
+                          visitType: appointment.visitType || appointment.type,
+                          diagnosis: appointment.diagnosis,
+                          chiefComplaint: appointment.chiefComplaint || appointment.reason,
+                          planNotes: appointment.followUpNotes,
+                          vitals: appointment.vitals,
+                        });
+                      }
+                      return mergedVisits;
+                    })().sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 10).map((visit: any, idx: number) => {
                       const visitVitals = (visit.vitals as any) || {};
                       const visitDate = visit.date ? new Date(visit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unknown date';
                       const weeksAtVisit = patient?.lmp && visit.date && mode === 'pregnancy'
