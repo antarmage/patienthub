@@ -40,7 +40,8 @@ function babySize(weeks: number) {
   if (weeks < 8) return { title: "Poppy seed", emoji: "🌱", detail: "Major organs are beginning to form." };
   if (weeks < 12) return { title: "Lime", emoji: "🍋", detail: "Fingers and toes are developing." };
   if (weeks < 16) return { title: "Avocado", emoji: "🥑", detail: "Baby is becoming more active." };
-  if (weeks < 20) return { title: "Banana", emoji: "🍌", detail: "Hearing and movement continue to develop." };
+  if (weeks < 18) return { title: "Bell pepper", emoji: "🫑", detail: "Baby can yawn and hiccup." };
+  if (weeks < 20) return { title: "Mango", emoji: "🥭", detail: "Baby's hearing and senses are developing." };
   if (weeks < 28) return { title: "Eggplant", emoji: "🍆", detail: "Baby is growing rapidly and gaining fat." };
   if (weeks < 36) return { title: "Honeydew melon", emoji: "🍈", detail: "Baby is gaining weight and preparing for birth." };
   return { title: "Full term", emoji: "🍉", detail: "Baby is nearly ready to meet you." };
@@ -83,6 +84,14 @@ export default function PatientTodayDashboard({
     }
   });
   const [checkInSaved, setCheckInSaved] = useState(false);
+  const [checkInStreak, setCheckInStreak] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("patientDailyCheckIn") || "{}");
+      return typeof stored?.streak === "number" ? stored.streak : 0;
+    } catch {
+      return 0;
+    }
+  });
 
   const toggleSymptom = (symptom: string) => {
     setCheckIn((current) => current.includes(symptom)
@@ -92,10 +101,13 @@ export default function PatientTodayDashboard({
   };
 
   const saveCheckIn = () => {
+    const nextStreak = checkInSaved ? checkInStreak : checkInStreak + 1;
     localStorage.setItem("patientDailyCheckIn", JSON.stringify({
       date: new Date().toISOString().slice(0, 10),
       symptoms: checkIn,
+      streak: nextStreak,
     }));
+    setCheckInStreak(nextStreak);
     setCheckInSaved(true);
   };
 
@@ -139,6 +151,16 @@ export default function PatientTodayDashboard({
 
   return (
     <div className="space-y-6 pb-8">
+      {isPregnancy && (
+        <div className="flex items-center justify-between rounded-xl border border-saivie-border/60 bg-white/90 px-4 py-3 text-xs shadow-sm">
+          <span className="text-saivie-plum">
+            Cycle predictions are paused while you&apos;re pregnant.
+          </span>
+          <button type="button" onClick={onOpenCare} className="font-semibold text-saivie-plum underline decoration-saivie-border underline-offset-4">
+            Update pregnancy status
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,.75fr)]">
         <motion.section
           initial={{ opacity: 0, y: 10 }}
@@ -221,7 +243,14 @@ export default function PatientTodayDashboard({
                     {checkInSaved ? "Saved for today" : "A quick self-check"}
                   </p>
                 </div>
-                {checkInSaved ? <Check className="h-5 w-5 text-emerald-600" /> : <Sparkles className="h-5 w-5 text-saivie-rose" />}
+                <div className="flex items-center gap-2">
+                  {checkInStreak > 0 && (
+                    <Badge variant="outline" className="rounded-full text-[10px]">
+                      🔥 {checkInStreak} day{checkInStreak === 1 ? "" : "s"}
+                    </Badge>
+                  )}
+                  {checkInSaved ? <Check className="h-5 w-5 text-emerald-600" /> : <Sparkles className="h-5 w-5 text-saivie-rose" />}
+                </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {(isPregnancy
@@ -336,7 +365,11 @@ export default function PatientTodayDashboard({
             <div className="rounded-xl bg-saivie-sage p-3"><Stethoscope className="h-5 w-5 text-saivie-teal" /></div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">Book an appointment</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Gynecologist, nutritionist, or lab test</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {upcoming?.date
+                  ? `Next: ${new Date(upcoming.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}${upcoming.time ? ` at ${upcoming.time}` : ""}`
+                  : "Gynecologist, nutritionist, or lab test"}
+              </p>
             </div>
             <Button variant="outline" size="sm" className="rounded-full" onClick={onBook}>Book</Button>
           </CardContent>

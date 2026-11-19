@@ -58,6 +58,8 @@ function PregnancyInsights({ patient }: { patient: any }) {
   const trimester = weeks < 13 ? 1 : weeks < 27 ? 2 : 3;
   const dueDate = patient?.lmp ? new Date(new Date(patient.lmp).getTime() + 280 * 24 * 60 * 60 * 1000) : null;
   const weeksLeft = dueDate ? Math.max(0, Math.ceil((dueDate.getTime() - new Date().getTime()) / (7 * 24 * 60 * 60 * 1000))) : 0;
+  const [selectedWeek, setSelectedWeek] = useState(Math.max(1, weeks));
+  const [completedChecklist, setCompletedChecklist] = useState<number[]>([]);
 
   const milestones = trimester === 1
     ? [
@@ -142,7 +144,7 @@ function PregnancyInsights({ patient }: { patient: any }) {
         <div className="flex items-center justify-between mb-4 px-1">
           <h2 className="text-xl font-serif text-foreground">Pregnancy Timeline</h2>
           <Badge variant="outline" className="bg-saivie-surface-blush/60 border-saivie-blush text-saivie-rose">
-            {weeksLeft} weeks to go
+            Week {selectedWeek} · {weeksLeft} weeks to go
           </Badge>
         </div>
 
@@ -151,6 +153,12 @@ function PregnancyInsights({ patient }: { patient: any }) {
             {weeklyTimeline.map((item, i) => (
               <motion.div
                 key={i}
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedWeek(item.week)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") setSelectedWeek(item.week);
+                }}
                 whileHover={{ y: -4 }}
                 className={`flex flex-col items-center gap-2 p-3 rounded-xl min-w-[70px] cursor-pointer transition-all border ${item.isNow ? 'bg-saivie-ivory border-saivie-blush shadow-md' : item.hasMilestone ? 'bg-saivie-surface-blush border-saivie-blush hover:border-saivie-rose' : 'bg-white/90 border-saivie-border/60 hover:border-saivie-blush hover:bg-saivie-ivory'}`}
               >
@@ -270,10 +278,24 @@ function PregnancyInsights({ patient }: { patient: any }) {
             ? ["Monitor baby movements daily", "Do pelvic floor exercises", "Eat calcium-rich foods", "Stay active with gentle exercise"]
             : ["Practice breathing techniques", "Monitor kick counts", "Prepare hospital bag", "Rest and conserve energy"]
           ).map((item, i) => (
-            <div key={i} className="flex items-center gap-3 bg-white/90 p-3.5 rounded-xl border border-saivie-border/60">
-              <div className="w-5 h-5 rounded-full border-2 border-saivie-blush shrink-0" />
+            <button
+              key={i}
+              type="button"
+              onClick={() => setCompletedChecklist((current) =>
+                current.includes(i) ? current.filter((value) => value !== i) : [...current, i])}
+              className={`flex w-full items-center gap-3 rounded-xl border p-3.5 text-left transition ${
+                completedChecklist.includes(i)
+                  ? "border-emerald-200 bg-emerald-50"
+                  : "border-saivie-border/60 bg-white/90 hover:border-saivie-rose"
+              }`}
+            >
+              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                completedChecklist.includes(i) ? "border-emerald-500 bg-emerald-500" : "border-saivie-blush"
+              }`}>
+                {completedChecklist.includes(i) && <CheckCircle2 className="h-3 w-3 text-white" />}
+              </div>
               <p className="text-sm text-foreground">{item}</p>
-            </div>
+            </button>
           ))}
         </div>
       </div>
