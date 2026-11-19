@@ -138,11 +138,11 @@ export default function PatientTodayDashboard({
 
   return (
     <div className="space-y-6 pb-8">
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.55fr)_minmax(280px,.75fr)] gap-5">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,.75fr)]">
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`relative overflow-hidden rounded-[28px] p-5 md:p-8 ${isPregnancy ? "bg-[#f4aeb8]" : "bg-[#efb43c]"}`}
+          className={`relative min-h-[360px] overflow-hidden rounded-[28px] p-5 md:p-8 lg:min-h-[430px] ${isPregnancy ? "bg-[#f4aeb8]" : "bg-[#efb43c]"}`}
         >
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -158,7 +158,7 @@ export default function PatientTodayDashboard({
             </button>
           </div>
 
-          <h2 className="mt-4 max-w-[680px] font-serif text-[42px] leading-[0.96] tracking-tight text-black md:text-[68px]">
+          <h2 className="mt-4 max-w-[680px] font-serif text-[42px] leading-[0.96] tracking-tight text-black md:text-[68px] lg:text-[84px]">
             {isPregnancy ? <>Your baby can <em>hear</em> you now.</> : <>Your words land <em>harder</em> today.</>}
           </h2>
 

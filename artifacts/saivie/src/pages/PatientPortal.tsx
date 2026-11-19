@@ -278,10 +278,10 @@ export default function PatientPortal() {
       <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
       
       {/* Content Layer */}
-      <div className="relative z-10 max-w-md mx-auto md:max-w-2xl px-5 py-6 flex flex-col min-h-screen">
+      <div className="relative z-10 mx-auto max-w-md px-5 py-6 flex flex-col min-h-screen md:max-w-[1280px] md:px-10 md:py-5">
         
         {/* Header with Mode Switcher - More Spacious */}
-        <header className="flex justify-between items-start mb-6 pt-2">
+        <header className="flex justify-between items-start mb-6 pt-2 md:hidden">
           <motion.div 
              initial={{ opacity: 0, x: -10 }}
              animate={{ opacity: 1, x: 0 }}
@@ -351,6 +351,55 @@ export default function PatientPortal() {
                  </motion.div>
                )}
              </AnimatePresence>
+          </div>
+        </header>
+
+        <header className="hidden md:flex items-center justify-between border-b border-black/5 pb-4 mb-6">
+          <button type="button" onClick={() => setActiveTab("home")} className="font-serif text-xl font-semibold tracking-tight text-saivie-plum">
+            [APP NAME]
+          </button>
+          <nav className="flex items-center gap-1 rounded-full border border-black/10 bg-white/75 p-1 shadow-sm" aria-label="Patient portal navigation">
+            {([
+              ["home", "Today"],
+              ["biology", "Biology"],
+              ["insights", "Insights"],
+              ["care", "My care"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setActiveTab(value)}
+                className={`rounded-full px-5 py-2 text-xs font-semibold transition ${
+                  activeTab === value ? "bg-[#35212f] text-white" : "text-saivie-plum hover:bg-saivie-ivory"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+          <div className="relative z-50" ref={modeDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setModeDropdownOpen((open) => !open)}
+              className="flex items-center gap-2 rounded-full border border-black/10 bg-white/75 px-4 py-2 text-xs font-semibold shadow-sm"
+            >
+              {mode === "pregnancy" ? "Pregnancy" : mode === "ttc" ? "Trying to conceive" : mode === "ivf" ? "IVF" : "Cycle Health"}
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+            {modeDropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-white/60 bg-white p-1.5 shadow-xl">
+                {(["general", "pregnancy", "ttc", "ivf"] as const).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => { setMode(key); setModeDropdownOpen(false); }}
+                    className={`w-full rounded-xl px-3 py-2 text-left text-xs ${mode === key ? "bg-black/5 font-semibold" : "hover:bg-black/5"}`}
+                  >
+                    {key === "general" ? "Cycle Health" : key === "pregnancy" ? "Pregnancy" : key === "ttc" ? "Trying to Conceive" : "IVF Support"}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </header>
 
@@ -1514,7 +1563,7 @@ export default function PatientPortal() {
         </Dialog>
 
         {/* Premium Floating Navigation */}
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 md:hidden">
            <div className="bg-saivie-ivory/80 backdrop-blur-2xl border border-white/50 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] rounded-full px-6 py-4 flex items-center gap-8 transition-all hover:bg-saivie-ivory/90">
              <NavButton 
                active={activeTab === 'home'} 
