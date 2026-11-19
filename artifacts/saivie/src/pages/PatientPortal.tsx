@@ -54,6 +54,7 @@ import { patientMedicationCategory, patientMedicationNeedsReview, patientMedicat
 import { nextAppointment } from "@/lib/patientAppointments";
 import { bookingVisitModeLabel } from "@/lib/bookingVisit";
 import { validMeetUrl } from "@/lib/onlineConsultation";
+import PatientTodayDashboard from "@/components/PatientTodayDashboard";
 
 export default function PatientPortal() {
   const [activeTab, setActiveTab] = useState("home");
@@ -357,8 +358,19 @@ export default function PatientPortal() {
           
           <TabsContent value="home" className="space-y-10 animate-in fade-in duration-700">
             {patient?.id && <PatientMenopauseCare key={patient.id} patientId={patient.id} patientName={patient.name} />}
+            {patient?.id && (
+              <PatientTodayDashboard
+                mode={mode}
+                patient={patient}
+                pregnancyEpisode={currentPregnancyEpisode}
+                appointments={(patientAppointments as any[]) || []}
+                medications={(medications as any[]) || []}
+                onBook={openBooking}
+                onOpenCare={() => setActiveTab("care")}
+              />
+            )}
             
-            {mode === 'pregnancy' ? (
+            {false && (mode === 'pregnancy' ? (
               <>
                 {/* Pregnancy Week Tracker */}
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
@@ -416,9 +428,11 @@ export default function PatientPortal() {
                   <Card className="glass-panel border-white/60 overflow-hidden" data-testid="card-pregnancy-next-visit">
                     <CardContent className="relative p-5 z-10 space-y-4">
                       {(() => {
-                        const next = nextAppointment(Array.isArray(patientAppointments) ? patientAppointments : []);
+                        const next: any = nextAppointment(Array.isArray(patientAppointments) ? patientAppointments : []);
                         const provider = next?.providerId && Array.isArray(providers) ? providers.find((p: any) => p.id === next.providerId) : null;
-                        if (next) {
+                        if (next && typeof next.date === "string") {
+                          const visitMode = next.visitMode || "in-clinic";
+                          const telemedicineLink = typeof next.telemedicineLink === "string" ? next.telemedicineLink : undefined;
                           return (
                             <div className="flex items-start gap-4">
                               <div className="p-3 bg-saivie-blush rounded-2xl shrink-0"><CalendarDays className="w-5 h-5 text-saivie-rose" /></div>
@@ -429,11 +443,11 @@ export default function PatientPortal() {
                                   {next.time ? ` • ${next.time}` : ''}
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                  {bookingVisitModeLabel(next.visitMode || 'in-clinic')}{provider?.name ? ` with ${provider.name}` : ''}
+                                  {bookingVisitModeLabel(visitMode)}{provider?.name ? ` with ${provider.name}` : ''}
                                 </p>
-                                {next.visitMode === 'telemedicine' && validMeetUrl(next.telemedicineLink) && (
+                                {visitMode === 'telemedicine' && validMeetUrl(telemedicineLink) && (
                                   <Button asChild size="sm" className="mt-3 rounded-full bg-saivie-rose hover:bg-saivie-rose/90 text-white" data-testid="btn-join-video-visit">
-                                    <a href={next.telemedicineLink} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
+                                    <a href={telemedicineLink} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
                                       <Video className="w-3.5 h-3.5 mr-1.5" /> Join video visit <ExternalLink className="w-3 h-3 ml-1.5" />
                                     </a>
                                   </Button>
@@ -758,7 +772,7 @@ export default function PatientPortal() {
                    </div>
                 </div>
               </>
-            )}
+            ))}
           </TabsContent>
 
           <TabsContent value="biology" className="animate-in slide-in-from-bottom-4 duration-500">
