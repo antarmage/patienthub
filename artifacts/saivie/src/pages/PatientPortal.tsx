@@ -305,6 +305,7 @@ export default function PatientPortal() {
             </p>
           </motion.div>
           
+          <div className="flex items-center gap-3">
           <div className="relative z-50" ref={modeDropdownRef}>
              <motion.button
                 whileTap={{ scale: 0.97 }}
@@ -353,11 +354,12 @@ export default function PatientPortal() {
                )}
              </AnimatePresence>
           </div>
+          </div>
         </header>
 
         <header className="hidden md:flex items-center justify-between border-b border-black/5 pb-4 mb-6">
           <button type="button" onClick={() => setActiveTab("home")} className="flex items-center gap-2" aria-label="Saivie home">
-            <BrandLogo fallback="S" className="h-14 w-14" />
+            <BrandLogo fallback="S" className="h-20 w-20" />
           </button>
           <nav className="flex items-center gap-1 rounded-full border border-black/10 bg-white/75 p-1 shadow-sm" aria-label="Patient portal navigation">
             {([
@@ -378,29 +380,34 @@ export default function PatientPortal() {
               </button>
             ))}
           </nav>
-          <div className="relative z-50" ref={modeDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setModeDropdownOpen((open) => !open)}
-              className="flex items-center gap-2 rounded-full border border-black/10 bg-white/75 px-4 py-2 text-xs font-semibold shadow-sm"
-            >
-              {mode === "pregnancy" ? "Pregnancy" : mode === "ttc" ? "Trying to conceive" : mode === "ivf" ? "IVF" : "Cycle Health"}
-              <ChevronDown className="h-3.5 w-3.5" />
-            </button>
-            {modeDropdownOpen && (
-              <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-white/60 bg-white p-1.5 shadow-xl">
-                {(["general", "pregnancy", "ttc", "ivf"] as const).map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => { setMode(key); setModeDropdownOpen(false); }}
-                    className={`w-full rounded-xl px-3 py-2 text-left text-xs ${mode === key ? "bg-black/5 font-semibold" : "hover:bg-black/5"}`}
-                  >
-                    {key === "general" ? "Cycle Health" : key === "pregnancy" ? "Pregnancy" : key === "ttc" ? "Trying to Conceive" : "IVF Support"}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="flex items-center gap-3">
+            <div className="relative z-50" ref={modeDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setModeDropdownOpen((open) => !open)}
+                className="flex items-center gap-2 rounded-full border border-black/10 bg-white/75 px-4 py-2 text-xs font-semibold shadow-sm"
+              >
+                {mode === "pregnancy" ? "Pregnancy" : mode === "ttc" ? "Trying to conceive" : mode === "ivf" ? "IVF" : "Cycle Health"}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+              {modeDropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-white/60 bg-white p-1.5 shadow-xl">
+                  {(["general", "pregnancy", "ttc", "ivf"] as const).map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => { setMode(key); setModeDropdownOpen(false); }}
+                      className={`w-full rounded-xl px-3 py-2 text-left text-xs ${mode === key ? "bg-black/5 font-semibold" : "hover:bg-black/5"}`}
+                    >
+                      {key === "general" ? "Cycle Health" : key === "pregnancy" ? "Pregnancy" : key === "ttc" ? "Trying to Conceive" : "IVF Support"}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-saivie-border bg-saivie-blush text-xs font-semibold text-saivie-plum" aria-label={patient?.name || "Patient"}>
+              {patient?.name ? String(patient.name).trim().charAt(0).toUpperCase() : "S"}
+            </div>
           </div>
         </header>
 

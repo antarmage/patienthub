@@ -137,16 +137,16 @@ export default function PatientTodayDashboard({
 
   const plans = isPregnancy
     ? [
-        { time: "Morning", label: "Start gently", text: "Have a protein-rich breakfast and take only clinician-prescribed supplements.", icon: Utensils },
-        { time: "Afternoon", label: "Move gently", text: "A short walk or comfortable stretching may help, as medically appropriate.", icon: Wind },
-        { time: "Evening", label: "Pause & hydrate", text: "Rest if needed and keep water within easy reach.", icon: Moon },
-        { time: "Night", label: "Sleep comfortably", text: "A side-lying position is usually helpful as pregnancy progresses.", icon: Moon },
+        { time: "Morning", label: "Nutrition for two", text: "Your body needs extra iron and folate. Try spinach, lentils, or dates.", icon: Utensils },
+        { time: "Afternoon", label: "A gentle walk or prenatal yoga", text: "Energy is usually steadier in the second trimester.", link: "See prenatal plan", icon: Wind },
+        { time: "Evening", label: "Sip throughout the day", text: "Keep a water bottle within reach and wind down early.", icon: Moon },
+        { time: "Night", label: "Sleep on your side", text: "A pillow between your knees takes pressure off your hips.", icon: Moon },
       ]
     : [
-        { time: "10 AM", label: "Focus", text: "Schedule your clearest thinking work.", icon: Sparkles },
-        { time: "1 PM", label: "Nourish", text: "Pair protein with fiber-rich lunch foods.", icon: Utensils },
-        { time: "6 PM", label: "Move", text: "Choose movement that feels sustainable.", icon: Activity },
-        { time: "10 PM", label: "Wind down", text: "Keep your sleep and wake time consistent.", icon: Moon },
+        { time: "10 AM", label: "Presentations and hard conversations", text: "Your verbal skills and confidence are peaking.", icon: Sparkles },
+        { time: "1 PM", label: "Add protein to lunch", text: "Support your body with protein, fiber, tryptophan, or eggs.", icon: Utensils },
+        { time: "6 PM", label: "Push harder in your workout", text: "Estrogen may help recovery; use how you feel as the guide.", icon: Activity },
+        { time: "10 PM", label: "Keep it cool and dark", text: "Basal temperature is rising slightly.", icon: Moon },
       ];
 
   return (
@@ -170,10 +170,15 @@ export default function PatientTodayDashboard({
           <div className="flex items-start justify-between gap-4">
             <div>
               <Badge className="border-0 bg-black/80 text-white text-[10px]">
-                {isPregnancy ? `WEEK ${week ?? "—"} • ${trimester ? `${trimester.toUpperCase()} TRIMESTER` : "PREGNANCY"}` : "TODAY"}
+                {isPregnancy ? `WEEK ${week ?? "—"} • ${trimester ? `${trimester.toUpperCase()} TRIMESTER` : "PREGNANCY"}` : "DAY 14 • OVULATION"}
               </Badge>
-              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-black/55">
-                {isPregnancy ? "Pregnancy forecast" : "Cycle forecast"}
+              <p className="mt-5 text-sm font-semibold text-black/75">
+                {isPregnancy
+                  ? firstName ? `Good morning, ${firstName}` : "Good morning"
+                  : firstName ? `Good morning, ${firstName}` : "Good morning"}
+                <span className="mt-1 block text-[10px] font-medium text-black/55">
+                  {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long" })}
+                </span>
               </p>
             </div>
             <button onClick={shareEra} className="rounded-full border border-black/15 bg-white/25 p-2 text-black/70" aria-label="Share today">
@@ -214,6 +219,7 @@ export default function PatientTodayDashboard({
                   style={{ height: `${height}%`, opacity: index < 7 || index > 21 ? 0.35 : 1 }}
                 />
               ))}
+              <div className="sr-only">Today is centered in the 28-day cycle energy curve.</div>
             </div>
           )}
 
@@ -255,7 +261,7 @@ export default function PatientTodayDashboard({
               <div className="mt-4 flex flex-wrap gap-2">
                 {(isPregnancy
                   ? ["Energy good", "Kicks felt", "Nausea", "Swelling", "Backache"]
-                  : ["Energy good", "Kinda tired", "Crampy", "Mood low", "Sleeping well"]
+                  : ["Glowing", "Good", "Okay", "Low", "Rough"]
                 ).map((symptom) => (
                   <button
                     key={symptom}
@@ -294,13 +300,30 @@ export default function PatientTodayDashboard({
               </CardContent>
             </Card>
           ) : (
-            <Card className="border-0 bg-[#35212f] text-white shadow-sm">
-              <CardContent className="p-5">
-                <p className="text-[10px] uppercase tracking-widest text-white/60">Coming up</p>
-                <p className="mt-2 font-serif text-2xl">Your next phase starts soon.</p>
-                <p className="mt-2 text-xs leading-relaxed text-white/70">Keep an eye on your logged symptoms and energy.</p>
-              </CardContent>
-            </Card>
+            <>
+              <Card className="border-0 bg-[#35212f] text-white shadow-sm">
+                <CardContent className="p-5">
+                  <p className="text-[10px] uppercase tracking-widest text-white/60">Coming up</p>
+                  <p className="mt-2 font-serif text-2xl">Luteal phase starts Monday</p>
+                  <p className="mt-2 text-xs leading-relaxed text-white/70">Energy eases and cravings can rise. Adjust your plan as needed.</p>
+                </CardContent>
+              </Card>
+              <Card className="border-0 bg-[#f7d98a] shadow-sm">
+                <CardContent className="flex items-center gap-4 p-5">
+                  <div className="flex h-16 w-16 shrink-0 flex-col justify-between rounded-sm bg-[#efb43c] p-2 text-[#35212f] shadow">
+                    <span className="font-serif text-2xl font-bold">14</span>
+                    <span className="text-[7px] font-bold uppercase">Ovulation era</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Post your era</p>
+                    <p className="mt-1 text-xs text-black/60">Share today&apos;s cycle card.</p>
+                    <Button size="sm" className="mt-3 rounded-full bg-[#35212f] text-white" onClick={shareEra}>
+                      Share today
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
           )}
         </div>
       </div>
@@ -334,6 +357,11 @@ export default function PatientTodayDashboard({
                   </div>
                   <p className="text-sm font-semibold text-saivie-plum">{plan.label}</p>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{plan.text}</p>
+                  {plan.link && (
+                    <button type="button" onClick={onOpenCare} className="mt-3 text-xs font-semibold text-saivie-plum underline">
+                      {plan.link}
+                    </button>
+                  )}
                 </CardContent>
               </Card>
             );
