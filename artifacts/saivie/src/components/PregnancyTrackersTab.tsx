@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   Droplets, Scale, Activity, Pill,
   Plus, CheckCircle2, Circle, Trash2, Upload, FileText,
-  Image, X, ShieldCheck, AlertTriangle, Info, TrendingUp
+  Image, X, ShieldCheck, AlertTriangle, Info, TrendingUp,
+  Stethoscope, FlaskConical
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip
@@ -59,7 +60,7 @@ export default function PregnancyTrackersTab({ patient, medications, patientId, 
       </div>
 
       {section === "trackers" && <TrackersSection patient={patient} medications={medications} patientId={patientId} pregnancyEpisode={pregnancyEpisode} />}
-      {section === "records" && <RecordsSection patientId={patientId} patient={patient} />}
+      {section === "records" && <RecordsSection patientId={patientId} patient={patient} pregnancyEpisode={pregnancyEpisode} />}
     </div>
   );
 }
@@ -702,7 +703,7 @@ function MedicineTracker({ patientId, medications }: { patientId: number; medica
   );
 }
 
-function RecordsSection({ patientId, patient }: { patientId: number; patient: any }) {
+function RecordsSection({ patientId, patient, pregnancyEpisode }: { patientId: number; patient: any; pregnancyEpisode?: any }) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [docType, setDocType] = useState<"Diagnostic" | "Prescription">("Diagnostic");
@@ -729,6 +730,24 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
     queryKey: [`/api/patients/${patientId}/documents`],
     queryFn: async () => {
       const r = await fetch(`/api/patients/${patientId}/documents`);
+      if (!r.ok) return [];
+      return r.json();
+    },
+  });
+
+  const { data: visitHistory = [] } = useQuery<any[]>({
+    queryKey: [`/api/patients/${patientId}/visit-history`],
+    queryFn: async () => {
+      const r = await fetch(`/api/patients/${patientId}/visit-history`);
+      if (!r.ok) return [];
+      return r.json();
+    },
+  });
+
+  const { data: labResults = [] } = useQuery<any[]>({
+    queryKey: [`/api/patients/${patientId}/lab-results`],
+    queryFn: async () => {
+      const r = await fetch(`/api/patients/${patientId}/lab-results`);
       if (!r.ok) return [];
       return r.json();
     },
@@ -784,6 +803,17 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
 
   const patientDiag = patientDocs.filter((d: any) => d.docType === "Diagnostic");
   const patientPrx = patientDocs.filter((d: any) => d.docType === "Prescription");
+
+  const recordLinks = Array.isArray(pregnancyEpisode?.records) ? pregnancyEpisode.records : null;
+  const linkedVisitIds = recordLinks ? new Set(recordLinks.filter((link: any) => link.kind === "visit").map((link: any) => String(link.id))) : null;
+  const linkedAppointmentIds = recordLinks ? new Set(recordLinks.filter((link: any) => link.kind === "appointment").map((link: any) => String(link.id))) : null;
+  const linkedLabIds = recordLinks ? new Set(recordLinks.filter((link: any) => link.kind === "lab").map((link: any) => String(link.id))) : null;
+  const episodeVisits = (visitHistory as any[]).filter((visit) =>
+    !recordLinks ||
+    linkedVisitIds?.has(String(visit.id)) ||
+    (visit.appointmentId != null && linkedAppointmentIds?.has(String(visit.appointmentId))));
+  const episodeLabs = (labResults as any[]).filter((lab) =>
+    !recordLinks || linkedLabIds?.has(String(lab.id)));
 
   return (
     <div className="space-y-5 animate-in fade-in duration-500">
@@ -856,6 +886,54 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
         </div>
       )}
 
+      {episodeVisits.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <Stethoscope className="w-4 h-4 text-saivie-plum" />
+            <h4 className="text-sm font-semibold text-saivie-plum">Pregnancy Visits</h4>
+            <Badge variant="outline" className="text-[10px] ml-auto">{episodeVisits.length}</Badge>
+          </div>
+          <div className="space-y-2">
+            {[...episodeVisits].sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).map((visit: any) => (
+              <Card key={visit.id} className="glass-panel border-white/60">
+                <CardContent className="p-3">
+                  <p className="text-sm font-medium text-saivie-plum">{visit.diagnosis || visit.visitType || "Prenatal visit"}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {visit.date ? new Date(visit.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Date unavailable"}
+                  </p>
+                  {(visit.chiefComplaint || visit.subjective) && <p className="text-xs text-saivie-plum mt-2">{visit.chiefComplaint || visit.subjective}</p>}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {episodeLabs.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <FlaskConical className="w-4 h-4 text-saivie-teal" />
+            <h4 className="text-sm font-semibold text-saivie-plum">Lab Results</h4>
+            <Badge variant="outline" className="text-[10px] ml-auto">{episodeLabs.length}</Badge>
+          </div>
+          <div className="space-y-2">
+            {[...episodeLabs].sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).map((lab: any) => (
+              <Card key={lab.id} className="glass-panel border-white/60">
+                <CardContent className="p-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-saivie-plum">{lab.testName || "Lab result"}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {lab.date ? new Date(lab.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : ""}
+                    </p>
+                  </div>
+                  <p className="text-xs font-semibold text-saivie-plum">{lab.value != null ? `${lab.value} ${lab.unit || ""}` : lab.status || "Recorded"}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Patient-uploaded: Diagnostic */}
       <DocList
         title="My Diagnostic Reports"
@@ -874,7 +952,7 @@ function RecordsSection({ patientId, patient }: { patientId: number; patient: an
         patientId={patientId}
       />
 
-      {patientDocs.length === 0 && clinicianDocs.length === 0 && (
+      {patientDocs.length === 0 && clinicianDocs.length === 0 && episodeVisits.length === 0 && episodeLabs.length === 0 && (
         <div className="text-center py-8 text-saivie-plum">
           <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
           <p className="text-sm">No documents yet. Upload your first report above.</p>
