@@ -50,6 +50,7 @@ import InsightsTab from "@/components/InsightsTab";
 import PregnancyTrackersTab from "@/components/PregnancyTrackersTab";
 import { PatientMenopauseCare } from "@/components/MenopauseCare";
 import { patientGreetingName, cycleSubtitle } from "@/lib/patientGreeting";
+import { patientMedicationCategory, patientMedicationNote } from "@/lib/patientMedicationDisplay";
 import { nextAppointment } from "@/lib/patientAppointments";
 import { bookingVisitModeLabel } from "@/lib/bookingVisit";
 import { validMeetUrl } from "@/lib/onlineConsultation";
@@ -916,17 +917,21 @@ export default function PatientPortal() {
                 <div className="space-y-2">
                   {medications.filter((m: any) => (m.status || '').toLowerCase() === 'active').map((med: any) => {
                     const isPrenatal = mode === 'pregnancy';
-                    const medName = (med.name || '').toLowerCase();
-                    const isVitamin = medName.includes('vitamin') || medName.includes('folic') || medName.includes('iron') || medName.includes('calcium') || medName.includes('shelcal') || medName.includes('orofer') || medName.includes('uprise');
-                    const isInjection = (med.route || '').toLowerCase().includes('intramuscular') || (med.route || '').toLowerCase().includes('injection') || medName.includes('injection') || medName.includes('proluton');
+                    const category = patientMedicationCategory(med.name, med.route);
+                    const note = patientMedicationNote(med.notes);
+                    const categoryBadgeClass = category === 'Supplement'
+                      ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                      : category === 'Injection'
+                        ? 'bg-amber-100 text-amber-700 border-amber-200'
+                        : 'bg-blue-100 text-blue-700 border-blue-200';
                     return (
-                      <Card key={med.id} className={`glass-panel ${isPrenatal && isInjection ? 'border-amber-200/60' : 'border-white/60'}`} data-testid={`patient-med-${med.id}`}>
+                      <Card key={med.id} className={`glass-panel ${isPrenatal && category === 'Injection' ? 'border-amber-200/60' : 'border-white/60'}`} data-testid={`patient-med-${med.id}`}>
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between">
                             <div className="flex items-start gap-3">
                               {isPrenatal && (
-                                <div className={`p-1.5 rounded-lg mt-0.5 shrink-0 ${isVitamin ? 'bg-emerald-100' : isInjection ? 'bg-amber-100' : 'bg-blue-100'}`}>
-                                  {isVitamin ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : isInjection ? <Activity className="w-3.5 h-3.5 text-amber-600" /> : <Pill className="w-3.5 h-3.5 text-blue-600" />}
+                                <div className={`p-1.5 rounded-lg mt-0.5 shrink-0 ${category === 'Supplement' ? 'bg-emerald-100' : category === 'Injection' ? 'bg-amber-100' : 'bg-blue-100'}`}>
+                                  {category === 'Supplement' ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : category === 'Injection' ? <Activity className="w-3.5 h-3.5 text-amber-600" /> : <Pill className="w-3.5 h-3.5 text-blue-600" />}
                                 </div>
                               )}
                               <div>
@@ -937,11 +942,11 @@ export default function PatientPortal() {
                                 {med.route && isPrenatal && (
                                   <p className="text-[10px] text-muted-foreground/70 mt-0.5">{med.route}</p>
                                 )}
-                                {med.notes && <p className="text-xs text-muted-foreground/70 mt-1 italic">{med.notes}</p>}
+                                {note && <p className="text-xs text-muted-foreground/70 mt-1 italic">{note}</p>}
                               </div>
                             </div>
-                            <Badge className={`text-[10px] ${isPrenatal && isVitamin ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : isPrenatal && isInjection ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}>
-                              {isPrenatal && isVitamin ? 'Supplement' : isPrenatal && isInjection ? 'Injection' : 'Active'}
+                            <Badge className={`text-[10px] ${isPrenatal ? categoryBadgeClass : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}>
+                              {isPrenatal ? category : 'Active'}
                             </Badge>
                           </div>
                           {med.startDate && (
