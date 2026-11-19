@@ -194,7 +194,25 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
     },
   });
 
-  const sorted = [...metrics].filter((m: any) => m.weight != null).sort((a: any, b: any) => a.week - b.week);
+  const { data: weightLogs = [] } = useQuery<any[]>({
+    queryKey: [`/api/patients/${patientId}/weight-logs`],
+    queryFn: async () => {
+      const r = await fetch(`/api/patients/${patientId}/weight-logs`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+  });
+
+  const metricEntries = [...metrics]
+    .filter((m: any) => m.weight != null)
+    .map((m: any) => ({ week: Number(m.week), weight: Number(m.weight), date: "", source: m.enteredBy === "patient" ? "patient" : "clinic", enteredBy: m.enteredBy }));
+  const dbEntries = [...weightLogs]
+    .filter((l: any) => l.weight != null)
+    .map((l: any) => ({ week: Number(l.week) || 0, weight: Number(l.weight), date: l.date || l.loggedAt || "", source: "database", enteredBy: "patient" }));
+  const uniqueDbEntries = dbEntries.filter((dbEntry) =>
+    !metricEntries.some((metricEntry) => metricEntry.week === dbEntry.week && metricEntry.weight === dbEntry.weight));
+  const sorted = [...metricEntries, ...uniqueDbEntries].sort((a, b) =>
+    (a.week || 0) - (b.week || 0));
   const latest = sorted[sorted.length - 1];
   const chartData = sorted.slice(-8).map((m: any) => ({ week: `W${m.week}`, weight: m.weight }));
 
@@ -219,6 +237,7 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [`/api/pregnancy-metrics?patientId=${patientId}`] });
+      qc.invalidateQueries({ queryKey: [`/api/patients/${patientId}/weight-logs`] });
       setShowForm(false);
       setWeight("");
     },

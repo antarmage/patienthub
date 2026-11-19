@@ -148,6 +148,16 @@ export default function PatientPortal() {
     enabled: !!patient?.id,
   });
 
+  const { data: weightLogs } = useQuery({
+    queryKey: [`/api/patients/${patient?.id}/weight-logs`],
+    queryFn: async () => {
+      const r = await fetch(`/api/patients/${patient?.id}/weight-logs`);
+      if (!r.ok) return [];
+      return r.json();
+    },
+    enabled: !!patient?.id,
+  });
+
   const { data: medications } = useQuery({
     queryKey: [`/api/patients/${patient?.id}/medications`],
     queryFn: async () => { const r = await fetch(`/api/patients/${patient?.id}/medications`); return r.json(); },
@@ -786,7 +796,7 @@ export default function PatientPortal() {
                 })()}
 
                 {/* Pregnancy Vitals Trend */}
-                {visitHistory && visitHistory.length > 0 && (
+                {(visitHistory && visitHistory.length > 0) || (weightLogs && weightLogs.length > 0) ? (
                   <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
                     <div className="flex items-center gap-2 mb-3 px-1">
                       <Activity className="w-4 h-4 text-saivie-rose" />
@@ -794,19 +804,25 @@ export default function PatientPortal() {
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       {(() => {
-                        const sorted = [...visitHistory].sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+                        const sorted = [...(visitHistory || [])].sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
                         const latest = (sorted[0]?.vitals as any) || {};
                         const prev = sorted.length > 1 ? ((sorted[1]?.vitals as any) || {}) : null;
+                        const dbWeightLogs = [...(weightLogs || [])].sort((a: any, b: any) =>
+                          new Date(b.loggedAt || b.date || 0).getTime() - new Date(a.loggedAt || a.date || 0).getTime());
+                        const latestDbWeight = dbWeightLogs[0]?.weight != null ? Number(dbWeightLogs[0].weight) : null;
+                        const previousDbWeight = dbWeightLogs[1]?.weight != null ? Number(dbWeightLogs[1].weight) : null;
+                        const latestWeight = latestDbWeight ?? latest.weight ?? patient?.weight ?? null;
+                        const previousWeight = previousDbWeight ?? prev?.weight ?? null;
                         return (
                           <>
                             <Card className="glass-panel border-white/60">
                               <CardContent className="p-3 text-center">
                                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Weight</p>
-                                <p className="text-lg font-semibold text-foreground">{latest.weight || patient?.weight || '—'}</p>
+                                <p className="text-lg font-semibold text-foreground">{latestWeight ?? '—'}</p>
                                 <p className="text-[10px] text-muted-foreground">kg</p>
-                                {prev?.weight && latest.weight && (
-                                  <p className={`text-[10px] font-medium mt-1 ${(latest.weight - prev.weight) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                    {(latest.weight - prev.weight) > 0 ? '+' : ''}{(latest.weight - prev.weight).toFixed(1)} kg
+                                {previousWeight != null && latestWeight != null && (
+                                  <p className={`text-[10px] font-medium mt-1 ${(latestWeight - previousWeight) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                    {(latestWeight - previousWeight) > 0 ? '+' : ''}{(latestWeight - previousWeight).toFixed(1)} kg
                                   </p>
                                 )}
                               </CardContent>
@@ -830,7 +846,7 @@ export default function PatientPortal() {
                       })()}
                     </div>
                   </motion.div>
-                )}
+                ) : null}
               </>
             )}
 

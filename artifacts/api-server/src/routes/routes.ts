@@ -4480,6 +4480,16 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
         expected: expected != null ? parseFloat(expected) : undefined,
         enteredBy: "patient",
       });
+      if (weight != null && !isNaN(parseFloat(weight))) {
+        await storage.addWeightLog({
+          patientId: parseInt(patientId),
+          weight: parseFloat(weight),
+          unit: "kg",
+          date: new Date().toISOString().slice(0, 10),
+          week: parseInt(week),
+          loggedAt: new Date().toISOString(),
+        });
+      }
       res.status(201).json(metric);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   });
