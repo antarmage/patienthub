@@ -18,6 +18,15 @@ export function patientMedicationNote(note: unknown): string {
   if (typeof note !== "string") return "";
   const trimmedNote = note.trim();
   if (!trimmedNote) return "";
-  if (/active medication history added at explicit user request|saved patient-reported intake for appointment|not a new prescription or visit-specific continuation order/i.test(trimmedNote)) return "";
+  if (patientMedicationNeedsReview(trimmedNote)) {
+    const appointmentMatch = trimmedNote.match(/appointment\s+(\d+)/i);
+    const appointmentText = appointmentMatch ? ` for appointment ${appointmentMatch[1]}` : "";
+    return `Saved from the patient's reported intake survey${appointmentText}. The exact product, strength, dose, frequency and duration are not confirmed; please ask a clinician to review this entry before use or continuation.`;
+  }
   return trimmedNote;
+}
+
+export function patientMedicationNeedsReview(note: unknown): boolean {
+  if (typeof note !== "string") return false;
+  return /active medication history added at explicit user request|saved patient-reported intake for appointment|exact (?:thyroid )?product|not a new prescription or visit-specific continuation order/i.test(note);
 }

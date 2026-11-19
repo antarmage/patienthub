@@ -50,7 +50,7 @@ import InsightsTab from "@/components/InsightsTab";
 import PregnancyTrackersTab from "@/components/PregnancyTrackersTab";
 import { PatientMenopauseCare } from "@/components/MenopauseCare";
 import { patientGreetingName, cycleSubtitle } from "@/lib/patientGreeting";
-import { patientMedicationCategory, patientMedicationNote } from "@/lib/patientMedicationDisplay";
+import { patientMedicationCategory, patientMedicationNeedsReview, patientMedicationNote } from "@/lib/patientMedicationDisplay";
 import { nextAppointment } from "@/lib/patientAppointments";
 import { bookingVisitModeLabel } from "@/lib/bookingVisit";
 import { validMeetUrl } from "@/lib/onlineConsultation";
@@ -919,6 +919,7 @@ export default function PatientPortal() {
                     const isPrenatal = mode === 'pregnancy';
                     const category = patientMedicationCategory(med.name, med.route);
                     const note = patientMedicationNote(med.notes);
+                    const needsReview = patientMedicationNeedsReview(med.notes);
                     const categoryBadgeClass = category === 'Supplement'
                       ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
                       : category === 'Injection'
@@ -946,10 +947,10 @@ export default function PatientPortal() {
                               </div>
                             </div>
                             <Badge className={`text-[10px] ${isPrenatal ? categoryBadgeClass : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}>
-                              {isPrenatal ? category : 'Active'}
+                              {needsReview ? 'Needs review' : isPrenatal ? category : 'Active'}
                             </Badge>
                           </div>
-                          {med.startDate && (
+                          {med.startDate && !needsReview && (
                             <p className="text-[10px] text-muted-foreground mt-2">
                               Started: {new Date(med.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                               {med.endDate && ` — Until: ${new Date(med.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`}
