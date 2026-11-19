@@ -18,6 +18,11 @@ function getGestationalWeek(lmp?: string): number {
   return Math.max(4, Math.min(42, Math.floor((new Date().getTime() - new Date(lmp).getTime()) / (7 * 24 * 60 * 60 * 1000))));
 }
 
+function getGestationalWeekAtDate(lmp: string | undefined, date: string | undefined): number {
+  if (!lmp || !date || !Number.isFinite(new Date(date).getTime()) || !Number.isFinite(new Date(lmp).getTime())) return 0;
+  return Math.max(4, Math.min(42, Math.floor((new Date(date).getTime() - new Date(lmp).getTime()) / (7 * 24 * 60 * 60 * 1000))));
+}
+
 // Recommended total weight gain by pre-pregnancy BMI (IOM guidelines)
 function getWeightGainTarget(bmi?: number) {
   if (!bmi || bmi < 18.5) return { min: 12.5, max: 18, label: "Underweight" };
@@ -32,9 +37,10 @@ interface Props {
   patient: any;
   medications: any[];
   patientId: number;
+  pregnancyEpisode?: any;
 }
 
-export default function PregnancyTrackersTab({ patient, medications, patientId }: Props) {
+export default function PregnancyTrackersTab({ patient, medications, patientId, pregnancyEpisode }: Props) {
   const [section, setSection] = useState<"trackers" | "records">("trackers");
 
   return (
@@ -52,18 +58,23 @@ export default function PregnancyTrackersTab({ patient, medications, patientId }
         ))}
       </div>
 
-      {section === "trackers" && <TrackersSection patient={patient} medications={medications} patientId={patientId} />}
+      {section === "trackers" && <TrackersSection patient={patient} medications={medications} patientId={patientId} pregnancyEpisode={pregnancyEpisode} />}
       {section === "records" && <RecordsSection patientId={patientId} patient={patient} />}
     </div>
   );
 }
 
-function TrackersSection({ patient, medications, patientId }: { patient: any; medications: any[]; patientId: number }) {
+function TrackersSection({ patient, medications, patientId, pregnancyEpisode }: { patient: any; medications: any[]; patientId: number; pregnancyEpisode?: any }) {
+  const episodePatient = pregnancyEpisode ? {
+    ...patient,
+    lmp: pregnancyEpisode.details?.lmp || patient.lmp,
+    weight: pregnancyEpisode.details?.prePregnancyWeightKg ?? patient.weight,
+  } : patient;
   return (
     <div className="space-y-4">
       <WaterTracker patientId={patientId} />
-      <WeightTracker patientId={patientId} patient={patient} />
-      <BPTracker patientId={patientId} patient={patient} />
+      <WeightTracker patientId={patientId} patient={episodePatient} pregnancyEpisode={pregnancyEpisode} />
+      <BPTracker patientId={patientId} patient={episodePatient} pregnancyEpisode={pregnancyEpisode} />
       <MedicineTracker patientId={patientId} medications={medications} />
     </div>
   );
@@ -180,7 +191,7 @@ function WaterTracker({ patientId }: { patientId: number }) {
   );
 }
 
-function WeightTracker({ patientId, patient }: { patientId: number; patient: any }) {
+function WeightTracker({ patientId, patient, pregnancyEpisode }: { patientId: number; patient: any; pregnancyEpisode?: any }) {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [weight, setWeight] = useState("");
@@ -203,22 +214,70 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
     },
   });
 
+  const { data: visitHistory = [] } = useQuery<any[]>({
+    queryKey: [`/api/patients/${patientId}/visit-history`],
+    queryFn: async () => {
+      const r = await fetch(`/api/patients/${patientId}/visit-history`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+  });
+
+  const { data: appointmentHistory = [] } = useQuery<any[]>({
+    queryKey: [`/api/patients/${patientId}/appointment-history`],
+    queryFn: async () => {
+      const r = await fetch(`/api/patients/${patientId}/appointment-history`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+  });
+
   const metricEntries = [...metrics]
     .filter((m: any) => m.weight != null)
     .map((m: any) => ({ week: Number(m.week), weight: Number(m.weight), date: "", source: m.enteredBy === "patient" ? "patient" : "clinic", enteredBy: m.enteredBy }));
   const dbEntries = [...weightLogs]
     .filter((l: any) => l.weight != null)
     .map((l: any) => ({ week: Number(l.week) || 0, weight: Number(l.weight), date: l.date || l.loggedAt || "", source: "database", enteredBy: "patient" }));
-  const uniqueDbEntries = dbEntries.filter((dbEntry) =>
-    !metricEntries.some((metricEntry) => metricEntry.week === dbEntry.week && metricEntry.weight === dbEntry.weight));
-  const sorted = [...metricEntries, ...uniqueDbEntries].sort((a, b) =>
-    (a.week || 0) - (b.week || 0));
+  const recordLinks = Array.isArray(pregnancyEpisode?.records) ? pregnancyEpisode.records : null;
+  const linkedVisitIds = recordLinks ? new Set(recordLinks.filter((link: any) => link.kind === "visit").map((link: any) => String(link.id))) : null;
+  const linkedAppointmentIds = recordLinks ? new Set(recordLinks.filter((link: any) => link.kind === "appointment").map((link: any) => String(link.id))) : null;
+  const clinicalEntries = [
+    ...[...visitHistory].filter((visit: any) => !linkedVisitIds || linkedVisitIds.has(String(visit.id)) ||
+      (visit.appointmentId != null && linkedAppointmentIds?.has(String(visit.appointmentId))))
+      .map((visit: any) => ({
+      week: getGestationalWeekAtDate(patient?.lmp, visit.date),
+      weight: visit.vitals?.weight != null ? Number(visit.vitals.weight) : null,
+      date: visit.date || "",
+      source: "clinic",
+      enteredBy: "clinician",
+    })),
+    ...[...appointmentHistory].filter((appointment: any) => !linkedAppointmentIds || linkedAppointmentIds.has(String(appointment.id)))
+      .map((appointment: any) => ({
+      week: getGestationalWeekAtDate(patient?.lmp, appointment.date),
+      weight: appointment.vitals?.weight != null ? Number(appointment.vitals.weight) : null,
+      date: appointment.date || "",
+      source: "clinic",
+      enteredBy: "clinician",
+    })),
+  ].filter((entry) => entry.weight != null);
+  const allEntries = [...metricEntries, ...dbEntries, ...clinicalEntries];
+  const uniqueEntries = allEntries.filter((entry, index) =>
+    allEntries.findIndex((candidate) =>
+      candidate.weight === entry.weight &&
+      ((candidate.date && entry.date && candidate.date === entry.date) ||
+       (!candidate.date && !entry.date && candidate.week === entry.week))) === index);
+  const sorted = uniqueEntries.sort((a, b) => {
+    if (a.date && b.date) return new Date(a.date).getTime() - new Date(b.date).getTime();
+    return (a.week || 0) - (b.week || 0);
+  });
   const latest = sorted[sorted.length - 1];
   const chartData = sorted.slice(-8).map((m: any) => ({ week: `W${m.week}`, weight: m.weight }));
 
   // Healthy gain indicator: compare latest weight to pre-pregnancy estimate
   const prePregnancyWeight = patient?.weight || patient?.vitals?.weight;
-  const gainKg = latest && prePregnancyWeight ? (latest.weight - parseFloat(prePregnancyWeight)).toFixed(1) : null;
+  const gainKg = latest?.weight != null && prePregnancyWeight
+    ? (latest.weight - parseFloat(prePregnancyWeight)).toFixed(1)
+    : null;
   const gainTarget = patient?.bmi ? getWeightGainTarget(parseFloat(patient.bmi)) : getWeightGainTarget(undefined);
   const currentWeek = getGestationalWeek(patient?.lmp);
   const expectedGainAtWeek = gainTarget.min + ((gainTarget.max - gainTarget.min) / 2) * (currentWeek / 40);
@@ -291,7 +350,9 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
         <div className="bg-amber-50 rounded-xl px-3 py-2 flex items-start gap-2">
           <Info className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
           <p className="text-[11px] text-amber-800">
-            Recommended total gain ({gainTarget.label}): <strong>{gainTarget.min}–{gainTarget.max} kg</strong> over 40 weeks.
+            {patient?.bmi
+              ? <>Recommended total gain ({gainTarget.label}): <strong>{gainTarget.min}–{gainTarget.max} kg</strong> over 40 weeks.</>
+              : "Pre-pregnancy BMI is not recorded, so a recommended gain range cannot be shown yet."}
           </p>
         </div>
 
@@ -328,7 +389,7 @@ function WeightTracker({ patientId, patient }: { patientId: number; patient: any
   );
 }
 
-function BPTracker({ patientId, patient }: { patientId: number; patient: any }) {
+function BPTracker({ patientId, patient, pregnancyEpisode }: { patientId: number; patient: any; pregnancyEpisode?: any }) {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [systolic, setSystolic] = useState("");
@@ -347,6 +408,24 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
     queryKey: [`/api/patients/${patientId}/bp-logs`],
     queryFn: async () => {
       const r = await fetch(`/api/patients/${patientId}/bp-logs`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+  });
+
+  const { data: visitHistory = [] } = useQuery<any[]>({
+    queryKey: [`/api/patients/${patientId}/visit-history`],
+    queryFn: async () => {
+      const r = await fetch(`/api/patients/${patientId}/visit-history`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+  });
+
+  const { data: appointmentHistory = [] } = useQuery<any[]>({
+    queryKey: [`/api/patients/${patientId}/appointment-history`],
+    queryFn: async () => {
+      const r = await fetch(`/api/patients/${patientId}/appointment-history`, { credentials: "include" });
       if (!r.ok) return [];
       return r.json();
     },
@@ -372,12 +451,38 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
       date: l.date || l.loggedAt || "",
       enteredBy: "patient",
     }));
-  const uniqueDbEntries = dbEntries.filter((dbEntry) =>
-    !metricBpLogs.some((metricEntry) =>
-      metricEntry.systolic === dbEntry.systolic &&
-      metricEntry.diastolic === dbEntry.diastolic &&
-      (!metricEntry.date || !dbEntry.date || metricEntry.date === dbEntry.date)));
-  const bpLogs = [...metricBpLogs, ...uniqueDbEntries].sort((a, b) => {
+  const recordLinks = Array.isArray(pregnancyEpisode?.records) ? pregnancyEpisode.records : null;
+  const linkedVisitIds = recordLinks ? new Set(recordLinks.filter((link: any) => link.kind === "visit").map((link: any) => String(link.id))) : null;
+  const linkedAppointmentIds = recordLinks ? new Set(recordLinks.filter((link: any) => link.kind === "appointment").map((link: any) => String(link.id))) : null;
+  const clinicalEntries = [
+    ...[...visitHistory].filter((visit: any) => !linkedVisitIds || linkedVisitIds.has(String(visit.id)) ||
+      (visit.appointmentId != null && linkedAppointmentIds?.has(String(visit.appointmentId))))
+      .map((visit: any) => ({
+      id: `visit-${visit.id}`,
+      week: getGestationalWeekAtDate(patient?.lmp, visit.date),
+      systolic: visit.vitals?.bp ? Number(String(visit.vitals.bp).split("/")[0]) : null,
+      diastolic: visit.vitals?.bp ? Number(String(visit.vitals.bp).split("/")[1]) : null,
+      date: visit.date || "",
+      enteredBy: "clinician",
+    })),
+    ...[...appointmentHistory].filter((appointment: any) => !linkedAppointmentIds || linkedAppointmentIds.has(String(appointment.id)))
+      .map((appointment: any) => ({
+      id: `appointment-${appointment.id}`,
+      week: getGestationalWeekAtDate(patient?.lmp, appointment.date),
+      systolic: appointment.vitals?.bp ? Number(String(appointment.vitals.bp).split("/")[0]) : null,
+      diastolic: appointment.vitals?.bp ? Number(String(appointment.vitals.bp).split("/")[1]) : null,
+      date: appointment.date || "",
+      enteredBy: "clinician",
+    })),
+  ].filter((entry) => Number.isFinite(entry.systolic) && Number.isFinite(entry.diastolic));
+  const allEntries = [...metricBpLogs, ...dbEntries, ...clinicalEntries];
+  const uniqueEntries = allEntries.filter((entry, index) =>
+    allEntries.findIndex((candidate) =>
+      candidate.systolic === entry.systolic &&
+      candidate.diastolic === entry.diastolic &&
+      ((candidate.date && entry.date && candidate.date === entry.date) ||
+       (!candidate.date && !entry.date && candidate.week === entry.week))) === index);
+  const bpLogs = uniqueEntries.sort((a, b) => {
     if (a.date && b.date) return new Date(b.date).getTime() - new Date(a.date).getTime();
     return b.week - a.week;
   });
@@ -390,7 +495,9 @@ function BPTracker({ patientId, patient }: { patientId: number; patient: any }) 
     return { label: "Normal", color: "text-emerald-700 bg-emerald-100 border-emerald-200", icon: <ShieldCheck className="w-3 h-3" /> };
   };
 
-  const status = latest ? getBPStatus(latest.systolic, latest.diastolic) : null;
+  const status = latest && latest.systolic != null && latest.diastolic != null
+    ? getBPStatus(latest.systolic, latest.diastolic)
+    : null;
 
   const addBP = useMutation({
     mutationFn: async () => {

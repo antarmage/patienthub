@@ -85,6 +85,19 @@ export default function PatientPortal() {
   });
   const patient = patientQuery.data;
 
+  const pregnancyEpisodesQuery = useQuery({
+    queryKey: [`/api/patients/${patient?.id}/pregnancy-episodes`],
+    queryFn: async () => {
+      const r = await fetch(`/api/patients/${patient?.id}/pregnancy-episodes`);
+      if (!r.ok) return [];
+      return r.json();
+    },
+    enabled: !!patient?.id,
+  });
+  const pregnancyEpisodes = Array.isArray(pregnancyEpisodesQuery.data) ? pregnancyEpisodesQuery.data : [];
+  const currentPregnancyEpisode = pregnancyEpisodes.find((episode: any) => episode?.details?.status === "current") || null;
+  const pregnancyLmp = currentPregnancyEpisode?.details?.lmp || patient?.lmp || null;
+
   function inferPatientMode(p: any): string {
     if (!p) return "general";
     const dbMode = (p.mode || '').toLowerCase();
@@ -128,6 +141,10 @@ export default function PatientPortal() {
       setModeInitialized(true);
     }
   }, [patient, modeInitialized]);
+
+  useEffect(() => {
+    if (currentPregnancyEpisode) setMode("pregnancy");
+  }, [currentPregnancyEpisode?.id]);
 
   const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
@@ -277,7 +294,7 @@ export default function PatientPortal() {
             </h1>
             <p className="text-muted-foreground text-sm mt-1 font-medium tracking-wide opacity-80 uppercase">
               {mode === 'pregnancy' ? (() => {
-                const lmp = patient?.lmp;
+                const lmp = pregnancyLmp;
                 if (!lmp) return 'Pregnancy Mode';
                 const weeks = Math.floor((new Date().getTime() - new Date(lmp).getTime()) / (1000 * 60 * 60 * 24 * 7));
                 const trimester = weeks < 13 ? '1st Trimester' : weeks < 27 ? '2nd Trimester' : '3rd Trimester';
@@ -353,7 +370,7 @@ export default function PatientPortal() {
                         <h3 className="text-lg font-serif text-foreground">Your Pregnancy Journey</h3>
                       </div>
                       {(() => {
-                        const lmp = patient?.lmp;
+                        const lmp = pregnancyLmp;
                         if (lmp) {
                           const lmpDate = new Date(lmp);
                           const today = new Date();
@@ -475,7 +492,7 @@ export default function PatientPortal() {
                           </div>
                           <p className="text-lg font-serif text-foreground leading-relaxed">
                             {(() => {
-                              const lmp = patient?.lmp;
+                              const lmp = pregnancyLmp;
                               if (!lmp) return "Track your baby's growth milestones as your pregnancy progresses.";
                               const weeks = Math.floor((new Date().getTime() - new Date(lmp).getTime()) / (1000 * 60 * 60 * 24 * 7));
                               if (weeks < 8) return "Your baby's heart is starting to beat. All major organs are beginning to form.";
@@ -506,7 +523,7 @@ export default function PatientPortal() {
                           </div>
                           <p className="text-lg font-serif text-foreground leading-relaxed">
                             {(() => {
-                              const lmp = patient?.lmp;
+                              const lmp = pregnancyLmp;
                               if (!lmp) return "Personalized pregnancy tips will appear based on your trimester.";
                               const weeks = Math.floor((new Date().getTime() - new Date(lmp).getTime()) / (1000 * 60 * 60 * 24 * 7));
                               if (weeks < 13) return "Nausea and fatigue are common now. Small, frequent meals and plenty of rest will help.";
@@ -745,11 +762,11 @@ export default function PatientPortal() {
           </TabsContent>
 
           <TabsContent value="biology" className="animate-in slide-in-from-bottom-4 duration-500">
-             <BiologyTab mode={mode} patient={patient} labResults={labResults} />
+             <BiologyTab mode={mode} patient={{ ...patient, lmp: pregnancyLmp || patient?.lmp }} labResults={labResults} />
           </TabsContent>
 
           <TabsContent value="insights" className="animate-in slide-in-from-bottom-4 duration-500">
-             <InsightsTab mode={mode} patient={patient} />
+             <InsightsTab mode={mode} patient={{ ...patient, lmp: pregnancyLmp || patient?.lmp }} />
           </TabsContent>
 
           <TabsContent value="care" className="animate-in slide-in-from-bottom-4 duration-500 space-y-6 pb-8">
@@ -1242,8 +1259,8 @@ export default function PatientPortal() {
                     })().sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 10).map((visit: any, idx: number) => {
                       const visitVitals = (visit.vitals as any) || {};
                       const visitDate = visit.date ? new Date(visit.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unknown date';
-                      const weeksAtVisit = patient?.lmp && visit.date && mode === 'pregnancy'
-                        ? Math.floor((new Date(visit.date).getTime() - new Date(patient.lmp).getTime()) / (1000 * 60 * 60 * 24 * 7))
+                      const weeksAtVisit = pregnancyLmp && visit.date && mode === 'pregnancy'
+                        ? Math.floor((new Date(visit.date).getTime() - new Date(pregnancyLmp).getTime()) / (1000 * 60 * 60 * 24 * 7))
                         : null;
                       return (
                         <div key={visit.id || idx} className="flex gap-3" data-testid={`patient-visit-${idx}`}>
@@ -1310,6 +1327,7 @@ export default function PatientPortal() {
                 patient={patient}
                 medications={(medications as any[]) || []}
                 patientId={patient.id}
+                pregnancyEpisode={currentPregnancyEpisode}
               />
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">

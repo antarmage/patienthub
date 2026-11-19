@@ -146,13 +146,13 @@ function PregnancyInsights({ patient }: { patient: any }) {
           </Badge>
         </div>
 
-        <ScrollArea className="w-full whitespace-nowrap rounded-2xl border border-white/40 bg-saivie-ivory/30 backdrop-blur-md p-4">
+        <ScrollArea className="w-full whitespace-nowrap rounded-2xl border border-saivie-border/60 bg-white/80 shadow-sm backdrop-blur-md p-4">
           <div className="flex w-max space-x-3">
             {weeklyTimeline.map((item, i) => (
               <motion.div
                 key={i}
                 whileHover={{ y: -4 }}
-                className={`flex flex-col items-center gap-2 p-3 rounded-xl min-w-[70px] cursor-pointer transition-all border ${item.isNow ? 'bg-saivie-ivory border-saivie-blush shadow-md' : item.hasMilestone ? 'bg-saivie-surface-blush/60 border-saivie-blush hover:bg-saivie-surface-blush' : 'bg-saivie-ivory/40 border-white/40 hover:bg-saivie-ivory/60'}`}
+                className={`flex flex-col items-center gap-2 p-3 rounded-xl min-w-[70px] cursor-pointer transition-all border ${item.isNow ? 'bg-saivie-ivory border-saivie-blush shadow-md' : item.hasMilestone ? 'bg-saivie-surface-blush border-saivie-blush hover:border-saivie-rose' : 'bg-white/90 border-saivie-border/60 hover:border-saivie-blush hover:bg-saivie-ivory'}`}
               >
                 <span className="text-[10px] uppercase font-semibold text-muted-foreground">
                   {item.isNow ? 'Now' : `+${i}w`}
@@ -180,7 +180,7 @@ function PregnancyInsights({ patient }: { patient: any }) {
         <h3 className="text-lg font-serif text-foreground px-1">Upcoming Milestones</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {milestones.map((milestone, i) => (
-            <Card key={i} className="glass-panel border-none relative overflow-hidden group">
+            <Card key={i} className="glass-panel border border-white/60 bg-white/95 relative overflow-hidden group">
               <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-saivie-blush to-transparent rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110" />
               <CardContent className="p-5 relative z-10">
                 <div className="flex justify-between items-start mb-3">
@@ -206,15 +206,15 @@ function PregnancyInsights({ patient }: { patient: any }) {
       </div>
 
       <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-saivie-surface-blush to-rose-50 rounded-3xl -z-10 opacity-60" />
-        <div className="p-6 rounded-3xl border border-white/40">
+        <div className="absolute inset-0 bg-gradient-to-r from-saivie-surface-blush to-rose-50 rounded-3xl -z-10 opacity-100" />
+        <div className="p-6 rounded-3xl border border-saivie-border/60 bg-white/35">
           <div className="flex items-center gap-2 mb-6">
             <Sparkles className="w-5 h-5 text-saivie-rose" />
             <h3 className="text-lg font-serif text-foreground">Today's Tips For You</h3>
           </div>
           <div className="space-y-3">
             {todayTips.map((item, i) => (
-              <div key={i} className="flex items-center gap-4 bg-saivie-ivory/60 p-4 rounded-xl border border-white/60">
+              <div key={i} className="flex items-center gap-4 bg-white/90 p-4 rounded-xl border border-saivie-border/60">
                 <div className="p-2.5 bg-saivie-ivory rounded-lg shadow-sm shrink-0">
                   {item.icon}
                 </div>
@@ -230,7 +230,7 @@ function PregnancyInsights({ patient }: { patient: any }) {
 
       <div>
         <h3 className="text-lg font-serif text-foreground px-1 mb-4">Baby's Development</h3>
-        <Card className="glass-panel border-none p-6">
+        <Card className="glass-panel border border-white/60 bg-white/95 p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="p-2 bg-saivie-surface-blush rounded-full">
               <Baby className="w-5 h-5 text-saivie-rose" />
@@ -270,7 +270,7 @@ function PregnancyInsights({ patient }: { patient: any }) {
             ? ["Monitor baby movements daily", "Do pelvic floor exercises", "Eat calcium-rich foods", "Stay active with gentle exercise"]
             : ["Practice breathing techniques", "Monitor kick counts", "Prepare hospital bag", "Rest and conserve energy"]
           ).map((item, i) => (
-            <div key={i} className="flex items-center gap-3 bg-saivie-ivory/50 p-3.5 rounded-xl border border-white/40">
+            <div key={i} className="flex items-center gap-3 bg-white/90 p-3.5 rounded-xl border border-saivie-border/60">
               <div className="w-5 h-5 rounded-full border-2 border-saivie-blush shrink-0" />
               <p className="text-sm text-foreground">{item}</p>
             </div>
