@@ -17,6 +17,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import pregnancyGrowthBg from "@/assets/images/pregnancy-growth-bg.png";
 
 interface Props {
   mode: string;
@@ -36,13 +37,13 @@ function gestationalWeek(lmp?: string | null) {
 }
 
 function babySize(weeks: number) {
-  if (weeks < 8) return { title: "Poppy seed", detail: "Major organs are beginning to form." };
-  if (weeks < 12) return { title: "Lime", detail: "Fingers and toes are developing." };
-  if (weeks < 16) return { title: "Avocado", detail: "Baby is becoming more active." };
-  if (weeks < 20) return { title: "Banana", detail: "Hearing and movement continue to develop." };
-  if (weeks < 28) return { title: "Eggplant", detail: "Baby is growing rapidly and gaining fat." };
-  if (weeks < 36) return { title: "Honeydew melon", detail: "Baby is gaining weight and preparing for birth." };
-  return { title: "Full term", detail: "Baby is nearly ready to meet you." };
+  if (weeks < 8) return { title: "Poppy seed", emoji: "🌱", detail: "Major organs are beginning to form." };
+  if (weeks < 12) return { title: "Lime", emoji: "🍋", detail: "Fingers and toes are developing." };
+  if (weeks < 16) return { title: "Avocado", emoji: "🥑", detail: "Baby is becoming more active." };
+  if (weeks < 20) return { title: "Banana", emoji: "🍌", detail: "Hearing and movement continue to develop." };
+  if (weeks < 28) return { title: "Eggplant", emoji: "🍆", detail: "Baby is growing rapidly and gaining fat." };
+  if (weeks < 36) return { title: "Honeydew melon", emoji: "🍈", detail: "Baby is gaining weight and preparing for birth." };
+  return { title: "Full term", emoji: "🍉", detail: "Baby is nearly ready to meet you." };
 }
 
 export default function PatientTodayDashboard({
@@ -247,11 +248,20 @@ export default function PatientTodayDashboard({
           </Card>
 
           {isPregnancy ? (
-            <Card className="border-0 bg-[#f7d98a] shadow-sm">
-              <CardContent className="p-5">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-black/55">Baby this week</p>
-                <p className="mt-2 font-serif text-2xl text-black">{baby?.title || "Baby growth"}</p>
-                <p className="mt-2 text-xs leading-relaxed text-black/65">{baby?.detail}</p>
+            <Card className="relative min-h-[180px] overflow-hidden border-0 bg-[#f7d98a] shadow-sm">
+              <div
+                className="absolute inset-0 opacity-20"
+                style={{ backgroundImage: `url(${pregnancyGrowthBg})`, backgroundSize: "cover", backgroundPosition: "center" }}
+              />
+              <CardContent className="relative flex h-full items-center gap-4 p-5">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-white/75 text-5xl shadow-sm" aria-label={baby?.title}>
+                  {baby?.emoji || "🌱"}
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-black/55">Baby this week</p>
+                  <p className="mt-1 font-serif text-2xl text-black">{baby?.title || "Baby growth"}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-black/65">{baby?.detail}</p>
+                </div>
               </CardContent>
             </Card>
           ) : (

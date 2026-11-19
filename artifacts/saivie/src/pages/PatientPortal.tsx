@@ -55,6 +55,7 @@ import { nextAppointment } from "@/lib/patientAppointments";
 import { bookingVisitModeLabel } from "@/lib/bookingVisit";
 import { validMeetUrl } from "@/lib/onlineConsultation";
 import PatientTodayDashboard from "@/components/PatientTodayDashboard";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function PatientPortal() {
   const [activeTab, setActiveTab] = useState("home");
@@ -355,8 +356,9 @@ export default function PatientPortal() {
         </header>
 
         <header className="hidden md:flex items-center justify-between border-b border-black/5 pb-4 mb-6">
-          <button type="button" onClick={() => setActiveTab("home")} className="font-serif text-xl font-semibold tracking-tight text-saivie-plum">
-            [APP NAME]
+          <button type="button" onClick={() => setActiveTab("home")} className="flex items-center gap-2" aria-label="Saivie home">
+            <BrandLogo fallback="S" className="h-10 w-10" />
+            <span className="font-serif text-xl font-semibold tracking-tight text-saivie-plum">Saivie</span>
           </button>
           <nav className="flex items-center gap-1 rounded-full border border-black/10 bg-white/75 p-1 shadow-sm" aria-label="Patient portal navigation">
             {([
