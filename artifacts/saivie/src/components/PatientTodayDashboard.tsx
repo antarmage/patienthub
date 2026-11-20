@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import pregnancyGrowthBg from "@/assets/images/pregnancy-growth-bg.png";
 import { patientGreetingName } from "@/lib/patientGreeting";
+import { getWeekData } from "@/components/WeekByWeekTimeline";
 
 interface Props {
   mode: string;
@@ -365,11 +366,11 @@ export default function PatientTodayDashboard({
               >
                 <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "#7A4B00" }}>Baby this week</p>
                 <p className="mt-3 font-serif text-[30px] font-bold leading-[1.1]">
-                  {week === 24 ? "Size of an ear of corn" : baby?.title || "Baby growth"}
+                  {week != null ? `Size of ${getWeekData(week).fruit.toLowerCase()}` : baby?.title || "Baby growth"}
                 </p>
                 <p className="mt-2 text-[15px] leading-[1.5]" style={{ color: "#4A3320" }}>
-                  {week === 24
-                    ? "Hearing is developing. Talking or singing to your baby is a lovely way to start bonding."
+                  {week != null
+                    ? getWeekData(week).development[0] + "."
                     : baby?.detail || "Baby is growing and developing this week."}
                 </p>
               </motion.section>
@@ -492,7 +493,11 @@ export default function PatientTodayDashboard({
           className="mx-5 mt-8 rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)] md:hidden"
         >
           <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.14em]" style={{ color: accent }}>
-            Coming up · In {28 - week} weeks
+            {week === 28
+              ? "Coming up · This week"
+              : week > 28
+                ? "Now"
+                : `Coming up · In ${weeksUntilThirdTrimester} weeks`}
           </p>
           <h2 className="mt-3 font-serif text-[28px] font-bold leading-[1.1]">Third trimester begins at week 28</h2>
           <p className="mt-2 text-[15px] leading-[1.5] text-[var(--on-dark-soft)]">
