@@ -92,8 +92,6 @@ export default function PatientTodayDashboard({
       return 0;
     }
   });
-  const [selectedTimelineValue, setSelectedTimelineValue] = useState<number | null>(null);
-
   const toggleSymptom = (symptom: string) => {
     setCheckIn((current) => current.includes(symptom)
       ? current.filter((item) => item !== symptom)
@@ -150,321 +148,265 @@ export default function PatientTodayDashboard({
         { time: "10 PM", label: "Keep it cool and dark", text: "Basal temperature is rising slightly.", icon: Moon },
       ];
 
+  const accent = isPregnancy ? "#FFA7B6" : "#FFB534";
+  const todayLabel = isPregnancy
+    ? `WEEK ${week ?? "—"} · ${trimester ? `${trimester.toUpperCase()} TRIMESTER` : "PREGNANCY"}`
+    : "DAY 14 · OVULATION";
+
+  const firstRowDots = Array.from({ length: 20 }, (_, i) => i + 1);
+  const secondRowDots = Array.from({ length: 20 }, (_, i) => i + 21);
+
+  const heights = [18,16,16,20,24,28,32,36,40,44,50,56,62,70,64,54,46,44,42,40,38,34,30,26,22,20,18,16];
+  const todayIndex = 13;
+
   return (
-    <div className="space-y-6 pb-8">
+    <div
+      className="pb-32 md:pb-10"
+      style={{ "--accent": accent, background: "var(--paper)", color: "var(--ink)" } as React.CSSProperties}
+      data-mode={isPregnancy ? "pregnancy" : "cycle"}
+    >
       {isPregnancy && (
-        <div className="flex items-center justify-between rounded-xl border border-saivie-border/60 bg-white/90 px-4 py-3 text-xs shadow-sm">
-          <span className="text-saivie-plum">
-            Cycle predictions are paused while you&apos;re pregnant.
-          </span>
-          <button type="button" onClick={onOpenCare} className="font-semibold text-saivie-plum underline decoration-saivie-border underline-offset-4">
+        <div className="mb-6 flex min-h-[52px] items-center justify-between rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-5 text-[13px]">
+          <span>Cycle predictions are paused while you're pregnant.</span>
+          <button type="button" onClick={onOpenCare} className="min-h-[44px] font-bold underline underline-offset-[4px]">
             Update pregnancy status
           </button>
         </div>
       )}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,.75fr)]">
+
+      <div className="flex flex-wrap gap-6">
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`relative min-h-[360px] overflow-hidden rounded-[28px] p-5 md:p-8 lg:min-h-[430px] ${isPregnancy ? "bg-[#f4aeb8]" : "bg-[#efb43c]"}`}
+          className="relative flex min-w-0 flex-1 basis-[640px] flex-col gap-4 overflow-hidden rounded-[40px] px-5 pb-8 pt-6 md:px-12 md:pb-12 md:pt-12"
+          style={{ background: accent }}
         >
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center justify-between">
             <div>
-              <Badge className="border-0 bg-black/80 text-white text-[10px]">
-                {isPregnancy ? `WEEK ${week ?? "—"} • ${trimester ? `${trimester.toUpperCase()} TRIMESTER` : "PREGNANCY"}` : "DAY 14 • OVULATION"}
-              </Badge>
-              <p className="mt-5 text-sm font-semibold text-black/75">
-                {isPregnancy
-                  ? firstName ? `Good morning, ${firstName}` : "Good morning"
-                  : firstName ? `Good morning, ${firstName}` : "Good morning"}
-                <span className="mt-1 block text-[10px] font-medium text-black/55">
-                  {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long" })}
-                </span>
-              </p>
+              <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]">Good morning</p>
+              <p className="mt-1 text-[12px] font-semibold">{firstName} · {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "long" })}</p>
             </div>
-            <button onClick={shareEra} className="rounded-full border border-black/15 bg-white/25 p-2 text-black/70" aria-label="Share today">
-              <Share2 className="h-4 w-4" />
-            </button>
+            <span
+              className="inline-flex h-8 items-center rounded-full px-[14px] text-[12px] font-extrabold tracking-[0.1em]"
+              style={{ background: "var(--ink)", color: accent }}
+            >
+              {todayLabel}
+            </span>
           </div>
 
-          <h2 className="mt-4 max-w-[680px] font-serif text-[42px] leading-[0.96] tracking-tight text-black md:text-[68px] lg:text-[84px]">
-            {isPregnancy ? <>Your baby can <em>hear</em> you now.</> : <>Your words land <em>harder</em> today.</>}
-          </h2>
+          <h1 className="m-0 max-w-[680px] text-[44px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[84px]">
+            {isPregnancy ? <>Your baby can <em className="font-medium">hear</em> you now.</> : <>Your words land <em className="font-medium">harder</em> today.</>}
+          </h1>
 
           {isPregnancy ? (
-            <div className="mt-6">
-              <div className="flex flex-wrap items-center gap-2">
-                {Array.from({ length: weekDotCount }, (_, index) => (
-                  <span
-                    key={index}
-                    className={`h-2.5 w-2.5 rounded-full ${
-                      index + 1 === week ? "ring-2 ring-black ring-offset-2 ring-offset-[#f4aeb8]" :
-                      index + 1 < (week ?? 0) ? "bg-black/75" :
-                      "bg-white/55"
-                    }`}
-                  />
+            <div className="mt-auto">
+              <div className="flex flex-col gap-2">
+                {[firstRowDots, secondRowDots].map((row, rowIndex) => (
+                  <div key={rowIndex} className="flex items-center justify-between gap-[2px]">
+                    {row.map((dotWeek) => {
+                      const done = week != null && dotWeek < week;
+                      const current = week != null && dotWeek === week;
+                      return (
+                        <span
+                          key={dotWeek}
+                          className="relative h-[11px] w-[11px] shrink-0 rounded-full"
+                          style={{
+                            background: current ? "transparent" : done ? "var(--ink)" : "rgba(42,18,32,0.2)",
+                            border: current ? "3px solid var(--ink)" : "0",
+                            boxSizing: "border-box",
+                          }}
+                          aria-label={current ? `Current week ${dotWeek}` : `Week ${dotWeek}`}
+                        />
+                      );
+                    })}
+                  </div>
                 ))}
               </div>
-              <div className="mt-4 flex justify-between text-[10px] font-semibold text-black/65">
+              <div className="mt-4 flex justify-between text-[12px] font-bold">
                 <span>Week 1</span>
                 <span>{week != null ? `Today: week ${week}` : "Today"}</span>
                 <span>Week 40</span>
               </div>
             </div>
           ) : (
-            <div className="mt-7 flex h-28 items-end gap-1.5">
-              {cycleBars.map((height, index) => (
-                <span
-                  key={index}
-                  className={`flex-1 rounded-t-sm ${index === 14 ? "bg-black" : "bg-black/40"}`}
-                  style={{ height: `${height}%`, opacity: index < 7 || index > 21 ? 0.35 : 1 }}
-                />
-              ))}
-              <div className="sr-only">Today is centered in the 28-day cycle energy curve.</div>
-            </div>
+            <svg
+              viewBox="0 0 350 100"
+              role="img"
+              aria-label="Energy across your 28-day cycle. Today, day 14, is the peak."
+              className="mt-auto h-[100px] w-full"
+            >
+              {heights.map((height, index) => {
+                const width = 9;
+                const x = index * 12.5 + 2;
+                const y = 92 - height;
+                const isToday = index === todayIndex;
+                const past = index < todayIndex;
+                const future = index > todayIndex;
+                return (
+                  <g key={index}>
+                    {isToday && <text x={x + width / 2} y={y - 10} textAnchor="middle" fill="var(--ink)" fontSize="11" fontWeight="800">TODAY</text>}
+                    <rect
+                      x={x}
+                      y={y}
+                      width={width}
+                      height={height}
+                      rx="4.5"
+                      fill={isToday ? "var(--ink)" : past ? "rgba(34,18,43,0.38)" : "rgba(34,18,43,0.16)"}
+                    />
+                  </g>
+                );
+              })}
+            </svg>
           )}
 
-          <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
-            <Button onClick={onBook} className="rounded-full bg-black px-5 text-white hover:bg-black/85">
-              <CalendarPlus className="mr-2 h-4 w-4" />
-              {isPregnancy ? "Book a prenatal visit" : "Plan a check-in"}
-            </Button>
-            {dueDate && (
+          <div className="mt-2 flex items-end justify-between gap-4">
+            <button type="button" onClick={onBook} className="h-[52px] rounded-full bg-[var(--ink)] px-6 text-[16px] font-bold text-[var(--paper)]">
+              {isPregnancy ? "View this week" : "View insights"}
+            </button>
+            {isPregnancy && dueDate ? (
               <div className="text-right">
-                <p className="text-[10px] uppercase tracking-wide text-black/55">Estimated due date</p>
-                <p className="font-semibold">{dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                <p className="m-0 text-[11px] font-extrabold uppercase tracking-[0.12em]">Due date</p>
+                <p className="m-0 mt-1 text-[15px] font-bold">{dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p>
+              </div>
+            ) : (
+              <div className="text-right">
+                <p className="m-0 text-[11px] font-extrabold uppercase tracking-[0.12em]">Peak window</p>
+                <p className="m-0 mt-1 text-[15px] font-bold">Today</p>
               </div>
             )}
           </div>
         </motion.section>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-1">
-          <Card className="border-saivie-border/60 bg-white/85 shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {isPregnancy ? "How are you feeling?" : "Daily check-in"}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold">
-                    {checkInSaved ? "Saved for today" : "A quick self-check"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {checkInStreak > 0 && (
-                    <Badge variant="outline" className="rounded-full text-[10px]">
-                      🔥 {checkInStreak} day{checkInStreak === 1 ? "" : "s"}
-                    </Badge>
-                  )}
-                  {checkInSaved ? <Check className="h-5 w-5 text-emerald-600" /> : <Sparkles className="h-5 w-5 text-saivie-rose" />}
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(isPregnancy
-                  ? ["Energy good", "Kicks felt", "Nausea", "Swelling", "Backache"]
-                  : ["Glowing", "Good", "Okay", "Low", "Rough"]
-                ).map((symptom) => (
-                  <button
-                    key={symptom}
-                    onClick={() => toggleSymptom(symptom)}
-                    className={`rounded-full border px-3 py-1.5 text-xs transition ${
-                      checkIn.includes(symptom)
-                        ? "border-saivie-rose bg-saivie-blush text-saivie-plum"
-                        : "border-saivie-border bg-white text-saivie-plum"
-                    }`}
-                  >
-                    {symptom}
-                  </button>
-                ))}
-              </div>
-              <Button variant="outline" size="sm" className="mt-4 rounded-full" onClick={saveCheckIn}>
-                Save check-in
-              </Button>
-            </CardContent>
-          </Card>
+        <aside className="flex min-w-0 basis-[340px] flex-col gap-5 md:max-w-[420px]">
+          <section className="rounded-[28px] border border-[var(--line)] bg-[var(--surface)] p-6">
+            <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]">{isPregnancy ? "How are you feeling?" : "How are you feeling?"}</p>
+            <p className="mt-2 text-[15px] text-[var(--body-soft)]">One tap keeps your guidance current.</p>
+            <div className="mt-4 flex flex-wrap gap-[10px]">
+              {(isPregnancy
+                ? ["Energy good", "Kicks felt", "Nausea", "Swelling", "Backache"]
+                : ["Glowing", "Good", "Okay", "Low", "Rough"]
+              ).map((symptom) => (
+                <button
+                  key={symptom}
+                  type="button"
+                  onClick={() => toggleSymptom(symptom)}
+                  className="h-[46px] rounded-full border-[1.5px] border-[var(--ink)] px-[18px] text-[15px] font-semibold"
+                  style={{ background: checkIn.includes(symptom) ? accent : "var(--surface)" }}
+                  aria-pressed={checkIn.includes(symptom)}
+                >
+                  {symptom}
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={saveCheckIn} className="mt-4 h-[52px] rounded-full border-2 border-[var(--ink)] bg-transparent px-6 text-[15px] font-bold">
+              {checkInSaved ? "Saved today" : "Save check-in"}
+            </button>
+          </section>
 
           {isPregnancy ? (
-            <Card className="relative min-h-[180px] overflow-hidden border-0 bg-[#f7d98a] shadow-sm">
-              <div
-                className="absolute inset-0 opacity-20"
-                style={{ backgroundImage: `url(${pregnancyGrowthBg})`, backgroundSize: "cover", backgroundPosition: "center" }}
-              />
-              <CardContent className="relative flex h-full items-center gap-4 p-5">
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-white/75 text-5xl shadow-sm" aria-label={baby?.title}>
-                  {baby?.emoji || "🌱"}
-                </div>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-black/55">Baby this week</p>
-                  <p className="mt-1 font-serif text-2xl text-black">{baby?.title || "Baby growth"}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-black/65">{baby?.detail}</p>
-                </div>
-              </CardContent>
-            </Card>
+            <>
+              <section className="rounded-[28px] bg-[var(--sun,#FFE7A8)] p-6">
+                <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "#7A4B00" }}>Baby this week</p>
+                <p className="mt-3 font-serif text-[28px] font-bold">{baby?.title || "Baby growth"}</p>
+                <p className="mt-2 text-[15px] leading-[1.5]" style={{ color: "#4A3320" }}>{baby?.detail}</p>
+              </section>
+              {week != null && week >= 24 && (
+                <section className="rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)]">
+                  <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: accent }}>Coming up</p>
+                  <p className="mt-3 font-serif text-[28px] font-bold">
+                    {week >= 28 ? "Third trimester is underway." : `${nextPhaseWeek - week} weeks until third trimester.`}
+                  </p>
+                  <p className="mt-2 text-[15px] leading-[1.5] text-[var(--on-dark-soft)]">
+                    Ask your care team about growth, glucose and routine antenatal checks.
+                  </p>
+                </section>
+              )}
+            </>
           ) : (
             <>
-              <Card className="border-0 bg-[#35212f] text-white shadow-sm">
-                <CardContent className="p-5">
-                  <p className="text-[10px] uppercase tracking-widest text-white/60">Coming up</p>
-                  <p className="mt-2 font-serif text-2xl">Luteal phase starts Monday</p>
-                  <p className="mt-2 text-xs leading-relaxed text-white/70">Energy eases and cravings can rise. Adjust your plan as needed.</p>
-                </CardContent>
-              </Card>
-              <Card className="border-0 bg-[#f7d98a] shadow-sm">
-                <CardContent className="flex items-center gap-4 p-5">
-                  <div className="flex h-16 w-16 shrink-0 flex-col justify-between rounded-sm bg-[#efb43c] p-2 text-[#35212f] shadow">
-                    <span className="font-serif text-2xl font-bold">14</span>
-                    <span className="text-[7px] font-bold uppercase">Ovulation era</span>
+              <section className="rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)]">
+                <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: accent }}>Coming up</p>
+                <p className="mt-3 font-serif text-[28px] font-bold">Luteal phase starts Monday.</p>
+                <p className="mt-2 text-[15px] leading-[1.5] text-[var(--on-dark-soft)]">Energy eases and cravings can rise. Adjust your plan as needed.</p>
+              </section>
+              <section className="rounded-[28px] bg-[#FFE7A8] p-6">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-[80px] w-[80px] shrink-0 flex-col justify-center rounded-[12px] bg-[var(--accent-today)] p-3 text-[var(--ink)]">
+                    <span className="font-serif text-[42px] font-bold leading-none">14</span>
+                    <span className="mt-1 text-[11px] font-extrabold uppercase">Era</span>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold">Post your era</p>
-                    <p className="mt-1 text-xs text-black/60">Share today&apos;s cycle card.</p>
-                    <Button size="sm" className="mt-3 rounded-full bg-[#35212f] text-white" onClick={shareEra}>
-                      Share today
-                    </Button>
+                    <p className="m-0 font-serif text-[22px] font-bold">Post your era</p>
+                    <p className="mt-2 text-[15px]">Share today's cycle card.</p>
+                    <button type="button" onClick={shareEra} className="mt-3 h-[44px] rounded-full bg-[var(--ink)] px-5 text-[15px] font-bold text-[var(--paper)]">Share today</button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </section>
             </>
           )}
-        </div>
+        </aside>
       </div>
 
-      {isPregnancy && week != null && week >= 24 && (
-        <Card className="border-0 bg-[#35212f] text-white shadow-sm">
-          <CardContent className="p-5">
-            <p className="text-[10px] uppercase tracking-widest text-white/60">Coming up</p>
-            <p className="mt-2 font-serif text-2xl">
-              {week >= 28 ? "Your final trimester is underway." : `${nextPhaseWeek - week} weeks until the third trimester.`}
-            </p>
-            {week < 28 && <p className="mt-2 text-xs text-white/70">Ask your care team about upcoming growth, glucose, and routine antenatal checks.</p>}
-          </CardContent>
-        </Card>
-      )}
-
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-serif text-2xl">{isPregnancy ? "Pregnancy timeline" : "Cycle timeline"}</h2>
-          <Badge variant="outline" className="text-[10px]">
-            {isPregnancy ? `Week ${week ?? "—"} now` : "28-day view"}
-          </Badge>
+      <section className="mt-8">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="m-0 font-serif text-[38px] font-bold">Today&apos;s plan</h2>
+          <p className="m-0 hidden text-[14px] text-[var(--muted)] sm:block">
+            {isPregnancy ? `Gentle, built around week ${week ?? "—"}.` : "Built around today's cycle phase."}
+          </p>
         </div>
-        <Card className="border-saivie-border/60 bg-white/90 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex gap-2 overflow-x-auto pb-2" aria-label={isPregnancy ? "Pregnancy week timeline" : "Cycle day timeline"}>
-              {Array.from({ length: isPregnancy ? 40 : 28 }, (_, index) => index + 1).map((value) => {
-                const isNow = isPregnancy ? value === week : value === 14;
-                const isSelected = value === selectedTimelineValue;
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setSelectedTimelineValue(value)}
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition ${
-                      isSelected
-                        ? "border-saivie-rose bg-saivie-rose text-white"
-                        : isNow
-                          ? "border-saivie-blush bg-saivie-blush text-saivie-plum"
-                          : "border-saivie-border/60 bg-white text-saivie-plum hover:border-saivie-rose"
-                    }`}
-                    aria-label={isPregnancy ? `Week ${value}` : `Cycle day ${value}`}
-                  >
-                    {value}
-                  </button>
-                );
-              })}
-            </div>
-            {selectedTimelineValue != null && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                {isPregnancy ? `Selected pregnancy week ${selectedTimelineValue}` : `Selected cycle day ${selectedTimelineValue}`}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      <section>
-        <div className="rounded-[18px] border border-[#4ea7ff] bg-white/95 p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-serif text-3xl text-black">Today&apos;s plan</h2>
-            <p className="hidden text-xs text-black/70 sm:block">
-              {isPregnancy ? `Gentle, built around week ${week ?? "—"}.` : "Built around today's cycle phase."}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan) => {
-            const phase =
-              plan.time === "Morning" || plan.time === "10 AM"
-                ? { text: "text-[#f04b8a]", dot: "bg-[#f04b8a]" }
-                : plan.time === "Afternoon" || plan.time === "1 PM"
-                  ? { text: "text-[#0ba7a1]", dot: "bg-[#0ba7a1]" }
-                  : plan.time === "Evening" || plan.time === "6 PM"
-                    ? { text: "text-[#8b53ef]", dot: "bg-[#8b53ef]" }
-                    : { text: "text-[#2d4cc4]", dot: "bg-[#2d4cc4]" };
+            const category =
+              plan.time === "Morning" ? { dot: "#FF6A4D", label: "FOOD" }
+                : plan.time === "10 AM" ? { dot: "#5B3DF5", label: "FOCUS" }
+                : plan.time === "Afternoon" ? { dot: "#12B5A2", label: "MOVE" }
+                : plan.time === "1 PM" ? { dot: "#FF6A4D", label: "FOOD" }
+                  : plan.time === "Evening" ? { dot: "#5B3DF5", label: "WATER" }
+                  : plan.time === "6 PM" ? { dot: "#12B5A2", label: "MOVE" }
+                    : { dot: "#2E3A8C", label: "SLEEP" };
             return (
-              <Card key={plan.time} className="min-h-[190px] rounded-[18px] border border-[#e4dfdd] bg-white/95 shadow-sm">
-                <CardContent className="p-4">
-                  <div className={`mb-3 flex items-center gap-2 text-xs font-semibold ${phase.text}`}>
-                    <span className={`h-2.5 w-2.5 rounded-full ${phase.dot}`} />
-                    {plan.time}
-                  </div>
-                  <p className="font-serif text-lg font-semibold leading-tight text-black">{plan.label}</p>
-                  <p className="mt-2 text-xs leading-relaxed text-black/65">{plan.text}</p>
+              <div key={plan.time} className="min-w-0">
+                <div className="mb-2 flex items-center gap-3">
+                  <span className="w-[68px] text-right text-[14px] font-extrabold">{plan.time}</span>
+                  <span className="h-[14px] w-[14px] rounded-full" style={{ background: category.dot }} />
+                </div>
+                <article className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] p-5">
+                  <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: category.dot }}>{category.label}</p>
+                  <h3 className="mt-2 font-serif text-[22px] font-bold leading-[1.2]">{plan.label}</h3>
+                  <p className="mt-2 text-[15px] leading-[1.5] text-[var(--body-soft)]">{plan.text}</p>
                   {plan.link && (
-                    <button type="button" onClick={onOpenCare} className="mt-3 text-xs font-semibold text-black underline">
+                    <button type="button" onClick={onOpenCare} className="mt-3 min-h-[44px] text-[15px] font-bold underline underline-offset-[4px]">
                       {plan.link}
                     </button>
                   )}
-                </CardContent>
-              </Card>
+                </article>
+              </div>
             );
           })}
-          </div>
         </div>
       </section>
 
-      {activeMedicines.length > 0 && (
-        <Card className="border-saivie-border/60 bg-white/90 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold">Active medicines</p>
-              <button className="text-xs text-saivie-rose" onClick={onOpenCare}>View my care</button>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {activeMedicines.slice(0, 4).map((medicine) => (
-                <Badge key={medicine.id} variant="outline" className="text-[11px]">
-                  {medicine.name}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr]">
-        <Card className="border-saivie-border/60 bg-white/90 shadow-sm">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-xl bg-saivie-sage p-3"><Stethoscope className="h-5 w-5 text-saivie-teal" /></div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold">Book an appointment</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {upcoming?.date
-                  ? `Next: ${new Date(upcoming.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}${upcoming.time ? ` at ${upcoming.time}` : ""}`
-                  : "Gynecologist, nutritionist, or lab test"}
-              </p>
-            </div>
-            <Button variant="outline" size="sm" className="rounded-full" onClick={onBook}>Book</Button>
-          </CardContent>
-        </Card>
-        <Card className="border-saivie-border/60 bg-[#f7f1f4] shadow-sm">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-xl bg-saivie-blush p-3"><Heart className="h-5 w-5 text-saivie-rose" /></div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold">Ask about your body</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Prepared for general questions only</p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
+      <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="flex min-h-[112px] items-center gap-4 rounded-[28px] border border-[var(--line)] bg-[var(--surface)] p-6">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#CFF1EA]"><CalendarPlus className="h-5 w-5" /></div>
+          <div className="min-w-0 flex-1">
+            <p className="m-0 font-serif text-[22px] font-bold">Book an appointment</p>
+            <p className="mt-1 text-[14px] text-[var(--body-soft)]">
+              {upcoming?.date
+                ? `Next: ${new Date(upcoming.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}${upcoming.time ? ` at ${upcoming.time}` : ""}`
+                : "Gynecologist, nutritionist or lab test"}
+            </p>
+          </div>
+          <button type="button" onClick={onBook} className="h-[52px] rounded-full border-2 border-[var(--ink)] bg-transparent px-6 text-[15px] font-bold">Book</button>
+        </section>
+        <section className="flex min-h-[112px] items-center gap-4 rounded-[28px] border border-[var(--ink)] bg-[var(--surface)] p-6">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#E4DCFF]"><Sparkles className="h-5 w-5" /></div>
+          <div className="min-w-0 flex-1">
+            <p className="m-0 font-serif text-[22px] font-bold">Ask about your body</p>
+            <p className="mt-1 text-[14px] text-[var(--body-soft)]">Get plain-language, phase-aware guidance.</p>
+          </div>
+          <ChevronRight className="h-5 w-5" />
+        </section>
       </div>
     </div>
   );

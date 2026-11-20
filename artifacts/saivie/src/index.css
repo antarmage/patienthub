@@ -8,8 +8,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: 'DM Sans', sans-serif;
-  --font-serif: 'Lora', serif;
+  --font-sans: 'Hanken Grotesk', system-ui, sans-serif;
+  --font-serif: 'Fraunces', Georgia, serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -69,12 +69,41 @@
 }
 
 :root {
+  --ink: #22122B;
+  --paper: #FFF4E6;
+  --surface: #FFFFFF;
+  --line: #F0DCC4;
+  --track: #F3E6D4;
+  --outline: #D9C3AE;
+  --muted: #6A5560;
+  --body-soft: #5A4552;
+  --on-dark-soft: #E9D8DF;
+  --nav-label: #F0E1E8;
+  --accent-today: #FFB534;
+  --accent-body: #FF9B7B;
+  --accent-patterns: #BBAAFF;
+  --accent-programs: #8EC5FF;
+  --accent-nourish: #FFB89C;
+  --accent-care: #84DCCB;
+  --accent-ask: #5B3DF5;
+  --accent: var(--accent-today);
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Hanken Grotesk', system-ui, sans-serif;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
   --radius: 1.5rem;
   --saivie-page: #F7F8F5;
   --saivie-control-border: #7C9085;
   --saivie-placeholder: #655D67;
+}
+
+[data-mode="pregnancy"] {
+ --ink: #2A1220;
+ --paper: #FFF4EE;
+ --line: #F3DAD0;
+ --accent-today: #FFA7B6;
+ --accent: var(--accent-today);
+ --sun: #FFE7A8;
 }
 
 [data-mode="ttc"] {

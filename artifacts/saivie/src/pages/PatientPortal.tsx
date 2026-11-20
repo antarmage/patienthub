@@ -279,7 +279,7 @@ export default function PatientPortal() {
       <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
       
       {/* Content Layer */}
-      <div className="relative z-10 mx-auto max-w-md px-5 py-6 flex flex-col min-h-screen md:max-w-[1280px] md:px-10 md:py-5">
+      <div className="relative z-10 mx-auto max-w-md px-5 py-6 flex flex-col min-h-screen md:max-w-[1160px] md:px-10 md:py-5">
         
         {/* Header with Mode Switcher - More Spacious */}
         <header className="flex justify-between items-start mb-6 pt-2 md:hidden">
@@ -359,7 +359,7 @@ export default function PatientPortal() {
 
         <header className="hidden md:flex items-center justify-between border-b border-black/5 pb-4 mb-6">
           <button type="button" onClick={() => setActiveTab("home")} className="flex items-center gap-2" aria-label="Saivie home">
-            <BrandLogo fallback="S" className="h-20 w-20" />
+            <BrandLogo fallback="S" className="h-16 w-16" />
           </button>
           <nav className="flex items-center gap-1 rounded-full border border-black/10 bg-white/75 p-1 shadow-sm" aria-label="Patient portal navigation">
             {([
