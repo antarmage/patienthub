@@ -94,10 +94,20 @@ export default function PatientTodayDashboard({
   });
   const reducedMotion = useReducedMotion();
   const toggleSymptom = (symptom: string) => {
-    setCheckIn((current) => current.includes(symptom)
-      ? current.filter((item) => item !== symptom)
-      : [...current, symptom]);
-    setCheckInSaved(false);
+    setCheckIn((current) => {
+      const next = current.includes(symptom)
+        ? current.filter((item) => item !== symptom)
+        : [...current, symptom];
+      const nextStreak = checkInSaved ? checkInStreak : checkInStreak + 1;
+      localStorage.setItem("patientDailyCheckIn", JSON.stringify({
+        date: new Date().toISOString().slice(0, 10),
+        symptoms: next,
+        streak: nextStreak,
+      }));
+      setCheckInStreak(nextStreak);
+      setCheckInSaved(true);
+      return next;
+    });
   };
 
   const saveCheckIn = () => {
@@ -184,7 +194,7 @@ export default function PatientTodayDashboard({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: reducedMotion ? 0 : 0.55, delay: reducedMotion ? 0 : 0.08, ease: [0.22, 1, 0.36, 1] }}
           whileHover={reducedMotion ? undefined : { y: -3, transition: { duration: 0.22 } }}
-          className="relative flex min-w-0 flex-1 basis-[640px] flex-col gap-4 overflow-hidden rounded-[40px] px-5 pb-8 pt-6 md:px-12 md:pb-12 md:pt-12"
+          className="relative flex min-w-0 flex-1 basis-[640px] flex-col gap-[22px] overflow-hidden rounded-b-[40px] px-5 pb-7 pt-6 md:rounded-[40px] md:gap-4 md:px-12 md:pb-12 md:pt-12"
           style={{ background: accent }}
         >
           <div className="flex items-center justify-between">
@@ -200,37 +210,33 @@ export default function PatientTodayDashboard({
             </span>
           </div>
 
-          <h1 className="m-0 max-w-[680px] text-[44px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[84px]">
+          <h1 className="m-0 max-w-[680px] text-[56px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[84px]">
             {isPregnancy ? <>Your baby can <em className="font-medium">hear</em> you now.</> : <>Your words land <em className="font-medium">harder</em> today.</>}
           </h1>
 
           {isPregnancy ? (
             <div className="mt-auto">
-              <div className="flex flex-col gap-2">
-                {[firstRowDots, secondRowDots].map((row, rowIndex) => (
-                  <div key={rowIndex} className="flex items-center justify-between gap-[2px]">
-                    {row.map((dotWeek) => {
-                      const done = week != null && dotWeek < week;
-                      const current = week != null && dotWeek === week;
-                      return (
-                        <span
-                          key={dotWeek}
-                          className="relative h-[11px] w-[11px] shrink-0 rounded-full"
-                          style={{
-                            background: current ? "transparent" : done ? "var(--ink)" : "rgba(42,18,32,0.2)",
-                            border: current ? "3px solid var(--ink)" : "0",
-                            boxSizing: "border-box",
-                          }}
-                          aria-label={current ? `Current week ${dotWeek}` : `Week ${dotWeek}`}
-                        />
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 flex justify-between text-[12px] font-bold">
+              <svg viewBox="0 0 350 64" role="img" aria-label={`Pregnancy week ${week ?? "—"} of 40`} className="block h-auto w-full">
+                <path d="M8.75 14 H341.75" stroke="var(--ink)" strokeWidth="12" strokeLinecap="round" strokeDasharray="0.01 17.5" fill="none" />
+                <path d="M8.75 46 H44.25" stroke="var(--ink)" strokeWidth="12" strokeLinecap="round" strokeDasharray="0.01 17.5" fill="none" />
+                <path d="M78.75 46 H341.75" stroke="rgba(42,18,32,0.2)" strokeWidth="12" strokeLinecap="round" strokeDasharray="0.01 17.5" fill="none" />
+                {(() => {
+                  const clampedWeek = week != null ? Math.min(40, Math.max(1, week)) : 24;
+                  const cy = clampedWeek <= 20 ? 14 : 46;
+                  const cx = clampedWeek <= 20
+                    ? 8.75 + (clampedWeek - 1) * 17.5
+                    : 8.75 + (clampedWeek - 21) * 17.5;
+                  return (
+                    <>
+                      <circle cx={cx} cy={cy} r="11" fill="#FFF4EE" stroke="var(--ink)" strokeWidth="3" />
+                      <circle cx={cx} cy={cy} r="4" fill="var(--ink)" />
+                    </>
+                  );
+                })()}
+              </svg>
+              <div className="mt-2 flex justify-between text-[13px] font-semibold">
                 <span>Week 1</span>
-                <span>{week != null ? `Today: week ${week}` : "Today"}</span>
+                <span>{dueDate ? `Due ${dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}` : "Today"}</span>
                 <span>Week 40</span>
               </div>
             </div>
@@ -266,11 +272,11 @@ export default function PatientTodayDashboard({
           )}
 
           <div className="mt-2 flex items-end justify-between gap-4">
-            <motion.button type="button" onClick={onBook} whileHover={reducedMotion ? undefined : { y: -2, scale: 1.015 }} whileTap={reducedMotion ? undefined : { scale: 0.97 }} transition={{ duration: 0.16 }} className="h-[52px] rounded-full bg-[var(--ink)] px-6 text-[16px] font-bold text-[var(--paper)]">
-              {isPregnancy ? "View this week" : "View insights"}
+            <motion.button type="button" onClick={onBook} whileHover={reducedMotion ? undefined : { y: -2, scale: 1.015 }} whileTap={reducedMotion ? undefined : { scale: 0.97 }} transition={{ duration: 0.16 }} className="h-[52px] flex-1 rounded-full bg-[var(--ink)] px-6 text-[16px] font-bold text-[var(--paper)] md:flex-none">
+              {isPregnancy ? "This week" : "View insights"}
             </motion.button>
             {isPregnancy && dueDate ? (
-              <div className="text-right">
+              <div className="hidden text-right md:block">
                 <p className="m-0 text-[11px] font-extrabold uppercase tracking-[0.12em]">Due date</p>
                 <p className="m-0 mt-1 text-[15px] font-bold">{dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p>
               </div>
@@ -280,10 +286,30 @@ export default function PatientTodayDashboard({
                 <p className="m-0 mt-1 text-[15px] font-bold">Today</p>
               </div>
             )}
+            {isPregnancy && (
+              <motion.button
+                type="button"
+                onClick={shareEra}
+                whileTap={reducedMotion ? undefined : { scale: 0.97 }}
+                className="h-[52px] flex-1 rounded-full border-2 border-[var(--ink)] bg-transparent px-5 text-[16px] font-bold md:hidden"
+              >
+                Share bump
+              </motion.button>
+            )}
+            {!isPregnancy && (
+              <motion.button
+                type="button"
+                onClick={shareEra}
+                whileTap={reducedMotion ? undefined : { scale: 0.97 }}
+                className="h-[52px] flex-1 rounded-full border-2 border-[var(--ink)] bg-transparent px-5 text-[16px] font-bold md:hidden"
+              >
+                Share today
+              </motion.button>
+            )}
           </div>
         </motion.section>
 
-        <aside className="flex min-w-0 basis-[340px] flex-col gap-5 md:max-w-[420px]">
+        <aside className="flex min-w-0 basis-[340px] flex-col gap-9 px-5 pb-5 pt-8 md:max-w-[420px] md:gap-5 md:px-0 md:pb-0 md:pt-0">
           <motion.section
             initial={reducedMotion ? false : { opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
@@ -313,9 +339,6 @@ export default function PatientTodayDashboard({
                 </motion.button>
               ))}
             </div>
-            <motion.button type="button" onClick={saveCheckIn} whileTap={reducedMotion ? undefined : { scale: 0.97 }} whileHover={reducedMotion ? undefined : { y: -1 }} transition={{ duration: 0.16 }} className="mt-4 h-[52px] rounded-full border-2 border-[var(--ink)] bg-transparent px-6 text-[15px] font-bold">
-              {checkInSaved ? "Saved today" : "Save check-in"}
-            </motion.button>
           </motion.section>
 
           {isPregnancy ? (
@@ -337,7 +360,7 @@ export default function PatientTodayDashboard({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : 0.28 }}
                   whileHover={reducedMotion ? undefined : { y: -3, transition: { duration: 0.2 } }}
-                  className="rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)]"
+                  className="hidden rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)] md:block"
                 >
                   <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: accent }}>
                     Coming up · {week >= 28 ? "This week" : `In ${nextPhaseWeek - week} weeks`}
@@ -376,10 +399,10 @@ export default function PatientTodayDashboard({
         </aside>
       </div>
 
-      <section className="mt-8">
+      <section className="mt-8 px-5 md:px-0">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="m-0 font-serif text-[38px] font-bold">Today&apos;s plan</h2>
-          <p className="m-0 hidden text-[14px] text-[var(--muted)] sm:block">
+          <h2 className="m-0 font-serif text-[26px] font-bold md:text-[38px]">Today&apos;s plan</h2>
+          <p className="m-0 hidden text-[14px] text-[var(--muted)] md:block">
             {isPregnancy ? `Gentle, built around week ${week ?? "—"}.` : "Built around today's cycle phase."}
           </p>
         </div>
@@ -402,32 +425,58 @@ export default function PatientTodayDashboard({
                 whileHover={reducedMotion ? undefined : { y: -4, transition: { duration: 0.18 } }}
                 className="relative min-w-0"
               >
-                <div className="mb-2 flex items-center gap-3">
-                  <span className="relative z-10 h-[14px] w-[14px] rounded-full" style={{ background: category.dot }} />
-                  <span className="w-[68px] text-left text-[14px] font-extrabold">{plan.time}</span>
-                  {plan.time !== plans[plans.length - 1]?.time && (
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute left-[100px] top-[11px] h-[2px] w-[calc(100%-122px)]"
-                      style={{ background: "#EBD3B6" }}
-                    />
-                  )}
+                <div className="hidden md:block">
+                  <div className="mb-2 flex items-center gap-3">
+                    <span className="w-[68px] text-left text-[14px] font-extrabold">{plan.time}</span>
+                    <span className="relative z-10 h-[14px] w-[14px] rounded-full" style={{ background: category.dot }} />
+                    {plan.time !== plans[plans.length - 1]?.time && (
+                      <span aria-hidden="true" className="pointer-events-none absolute left-[100px] top-[11px] h-[2px] w-[calc(100%-122px)]" style={{ background: "#EBD3B6" }} />
+                    )}
+                  </div>
+                  <article className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] p-5">
+                    <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: category.dot }}>{category.label}</p>
+                    <h3 className="mt-2 font-serif text-[22px] font-bold leading-[1.2]">{plan.label}</h3>
+                    <p className="mt-2 text-[15px] leading-[1.5] text-[var(--body-soft)]">{plan.text}</p>
+                    {plan.link && <button type="button" onClick={onOpenCare} className="mt-3 min-h-[44px] text-[15px] font-bold underline underline-offset-[4px]">{plan.link}</button>}
+                  </article>
                 </div>
-                <article className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] p-5">
-                  <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: category.dot }}>{category.label}</p>
-                  <h3 className="mt-2 font-serif text-[22px] font-bold leading-[1.2]">{plan.label}</h3>
-                  <p className="mt-2 text-[15px] leading-[1.5] text-[var(--body-soft)]">{plan.text}</p>
-                  {plan.link && (
-                    <button type="button" onClick={onOpenCare} className="mt-3 min-h-[44px] text-[15px] font-bold underline underline-offset-[4px]">
-                      {plan.link}
-                    </button>
-                  )}
-                </article>
+                <div className="flex gap-3 md:hidden">
+                  <p className="mt-[14px] w-[68px] shrink-0 text-right text-[14px] font-extrabold">{plan.time}</p>
+                  <div className="flex w-[14px] shrink-0 flex-col items-center pt-[17px]">
+                    <span className="h-[14px] w-[14px] shrink-0 rounded-full" style={{ background: category.dot }} />
+                    {plan.time !== plans[plans.length - 1]?.time && (
+                      <span aria-hidden="true" className="mt-0 h-full min-h-[120px] w-[2px] flex-1" style={{ background: "#F0CFC4" }} />
+                    )}
+                  </div>
+                  <article className="mb-4 min-w-0 flex-1 rounded-[22px] border border-[var(--line)] bg-[var(--surface)] p-4">
+                    <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: category.dot }}>{category.label}</p>
+                    <h3 className="mt-[6px] font-serif text-[20px] font-bold leading-[1.2]">{plan.label}</h3>
+                    <p className="mt-[6px] text-[15px] leading-[1.5] text-[var(--body-soft)]">{plan.text}</p>
+                    {plan.link && <button type="button" onClick={onOpenCare} className="mt-0 min-h-[44px] text-[15px] font-bold underline underline-offset-[4px]">{plan.link}</button>}
+                  </article>
+                </div>
               </motion.div>
             );
           })}
         </div>
       </section>
+
+      {isPregnancy && week != null && week < 28 && (
+        <motion.section
+          initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reducedMotion ? 0 : 0.45 }}
+          className="mx-5 mt-8 rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)] md:hidden"
+        >
+          <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.14em]" style={{ color: accent }}>
+            Coming up · In {28 - week} weeks
+          </p>
+          <h2 className="mt-3 font-serif text-[28px] font-bold leading-[1.1]">Third trimester begins at week 28</h2>
+          <p className="mt-2 text-[15px] leading-[1.5] text-[var(--on-dark-soft)]">
+            We&apos;ll update your plan and checklist when you get there.
+          </p>
+        </motion.section>
+      )}
 
       <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <motion.section

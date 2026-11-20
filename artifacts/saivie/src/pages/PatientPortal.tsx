@@ -275,10 +275,10 @@ export default function PatientPortal() {
       />
       
       {/* Content Layer */}
-      <div className="relative z-10 mx-auto max-w-md px-5 py-6 flex flex-col min-h-screen md:max-w-[1160px] md:px-10 md:py-5">
+      <div className="relative z-10 mx-auto max-w-md flex flex-col min-h-screen px-0 py-0 md:max-w-[1160px] md:px-10 md:py-5">
         
         {/* Header with Mode Switcher - More Spacious */}
-        <header className="flex justify-between items-start mb-6 pt-2 md:hidden">
+        <header className="hidden">
           <motion.div 
              initial={{ opacity: 0, x: -10 }}
              animate={{ opacity: 1, x: 0 }}
@@ -1570,8 +1570,8 @@ export default function PatientPortal() {
         </Dialog>
 
         {/* Premium Floating Navigation */}
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 md:hidden">
-           <div className="bg-saivie-ivory/80 backdrop-blur-2xl border border-white/50 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] rounded-full px-6 py-4 flex items-center gap-8 transition-all hover:bg-saivie-ivory/90">
+        <div className="fixed bottom-3 left-1/2 z-50 w-[calc(100%-24px)] max-w-[390px] -translate-x-1/2 md:hidden">
+           <div className="flex h-[72px] items-center justify-between rounded-full bg-[var(--ink)] px-2 py-2 shadow-[0_12px_32px_rgba(34,18,43,0.3)]">
              <NavButton 
                active={activeTab === 'home'} 
                onClick={() => setActiveTab('home')} 
@@ -1630,19 +1630,16 @@ function NavButton({ active, onClick, icon, label }: any) {
    return (
       <button 
          onClick={onClick}
-         className={`relative flex flex-col items-center gap-1.5 transition-all duration-300 group ${active ? 'text-primary scale-110' : 'text-muted-foreground hover:text-foreground'}`}
+         aria-current={active ? "page" : undefined}
+         className={`relative flex min-h-[54px] min-w-[60px] flex-col items-center justify-center gap-1 rounded-[999px] px-2 transition-all duration-300 group ${
+           active ? "bg-[var(--accent-today)] text-[var(--ink)]" : "text-[var(--nav-label)] hover:text-[var(--paper)]"
+         }`}
       >
          <div className={`transition-transform duration-300 ${active ? '-translate-y-1' : 'group-hover:-translate-y-0.5'}`}>
             {React.cloneElement(icon, { strokeWidth: active ? 2.5 : 2 })}
          </div>
          <span className={`text-[10px] font-medium tracking-wide ${active ? 'font-semibold' : ''}`}>{label}</span>
          
-         {active && (
-            <motion.div 
-               layoutId="nav-dot"
-               className="absolute -bottom-2 w-1 h-1 rounded-full bg-primary"
-            />
-         )}
       </button>
    )
 }
