@@ -314,11 +314,14 @@ export default function PatientTodayDashboard({
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : 0.16 }}
             whileHover={reducedMotion ? undefined : { y: -2, transition: { duration: 0.2 } }}
-            className="rounded-[28px] border border-[var(--line)] bg-[var(--surface)] p-6"
+            className="rounded-[28px] border border-[var(--line)] bg-[var(--surface)] p-5 md:p-4"
           >
             <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]">{isPregnancy ? "How are you feeling?" : "How are you feeling?"}</p>
-            <p className="mt-2 text-[15px] text-[var(--body-soft)]">One tap keeps your guidance current.</p>
-            <div className="mt-4 flex flex-wrap gap-[10px]">
+            <p className="mt-1 text-[15px] text-[var(--body-soft)]">
+              <span className="md:hidden">One tap keeps your guidance current.</span>
+              <span className="hidden md:inline">Tap to update your pattern.</span>
+            </p>
+            <div className="mt-3 flex flex-wrap gap-[8px] md:gap-[6px]">
               {(isPregnancy
                 ? ["Energy good", "Kicks felt", "Nausea", "Swelling", "Backache"]
                 : ["Glowing", "Good", "Okay", "Low", "Rough"]
@@ -330,7 +333,7 @@ export default function PatientTodayDashboard({
                   whileTap={reducedMotion ? undefined : { scale: 0.94 }}
                   whileHover={reducedMotion ? undefined : { y: -1 }}
                   transition={{ duration: 0.14 }}
-                  className="h-[46px] rounded-full border-[1.5px] border-[var(--ink)] px-[18px] text-[15px] font-semibold"
+                  className="h-[46px] rounded-full border-[1.5px] border-[var(--ink)] px-[18px] text-[15px] font-semibold md:h-[40px] md:px-[12px] md:text-[13px]"
                   style={{ background: checkIn.includes(symptom) ? accent : "var(--surface)" }}
                   aria-pressed={checkIn.includes(symptom)}
                 >
@@ -359,10 +362,14 @@ export default function PatientTodayDashboard({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : 0.28 }}
                   whileHover={reducedMotion ? undefined : { y: -3, transition: { duration: 0.2 } }}
-                  className="hidden rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)] md:block"
+                  className="hidden rounded-[28px] bg-[var(--ink)] p-5 text-[var(--paper)] md:block"
                 >
                   <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: accent }}>
-                    Coming up · {week >= 28 ? "This week" : `In ${nextPhaseWeek - week} weeks`}
+                    {week > 28
+                      ? "Now"
+                      : week === 28
+                        ? "Coming up · This week"
+                        : `Coming up · In ${28 - week} weeks`}
                   </p>
                   <p className="mt-3 font-serif text-[28px] font-bold leading-[1.05]">
                     {week >= 28 ? "Third trimester begins now" : "Third trimester begins at week 28"}
