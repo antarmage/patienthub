@@ -355,7 +355,7 @@ export default function PatientPortal() {
 
         <header className="hidden md:flex items-center justify-between border-b border-[var(--line)] pb-4 mb-6">
           <button type="button" onClick={() => setActiveTab("home")} className="flex items-center gap-2" aria-label="Saivie home">
-            <BrandLogo fallback="S" className="h-16 w-16" />
+            <BrandLogo fallback="S" className="h-16" />
           </button>
           <nav className="flex items-center gap-1 rounded-full border border-black/10 bg-white/75 p-1 shadow-sm" aria-label="Patient portal navigation">
             {([
