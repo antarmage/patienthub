@@ -92,6 +92,7 @@ export default function PatientTodayDashboard({
       return 0;
     }
   });
+  const [selectedTimelineValue, setSelectedTimelineValue] = useState<number | null>(null);
 
   const toggleSymptom = (symptom: string) => {
     setCheckIn((current) => current.includes(symptom)
@@ -339,6 +340,47 @@ export default function PatientTodayDashboard({
           </CardContent>
         </Card>
       )}
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-serif text-2xl">{isPregnancy ? "Pregnancy timeline" : "Cycle timeline"}</h2>
+          <Badge variant="outline" className="text-[10px]">
+            {isPregnancy ? `Week ${week ?? "—"} now` : "28-day view"}
+          </Badge>
+        </div>
+        <Card className="border-saivie-border/60 bg-white/90 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex gap-2 overflow-x-auto pb-2" aria-label={isPregnancy ? "Pregnancy week timeline" : "Cycle day timeline"}>
+              {Array.from({ length: isPregnancy ? 40 : 28 }, (_, index) => index + 1).map((value) => {
+                const isNow = isPregnancy ? value === week : value === 14;
+                const isSelected = value === selectedTimelineValue;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setSelectedTimelineValue(value)}
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition ${
+                      isSelected
+                        ? "border-saivie-rose bg-saivie-rose text-white"
+                        : isNow
+                          ? "border-saivie-blush bg-saivie-blush text-saivie-plum"
+                          : "border-saivie-border/60 bg-white text-saivie-plum hover:border-saivie-rose"
+                    }`}
+                    aria-label={isPregnancy ? `Week ${value}` : `Cycle day ${value}`}
+                  >
+                    {value}
+                  </button>
+                );
+              })}
+            </div>
+            {selectedTimelineValue != null && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {isPregnancy ? `Selected pregnancy week ${selectedTimelineValue}` : `Selected cycle day ${selectedTimelineValue}`}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </section>
 
       <section>
         <div className="mb-3 flex items-center justify-between">
