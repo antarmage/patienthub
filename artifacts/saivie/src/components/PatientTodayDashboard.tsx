@@ -383,24 +383,34 @@ export default function PatientTodayDashboard({
       </section>
 
       <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-serif text-2xl">Today's plan</h2>
-          <p className="hidden text-xs text-muted-foreground sm:block">General wellness guidance</p>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-[18px] border border-[#4ea7ff] bg-white/95 p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-serif text-3xl text-black">Today&apos;s plan</h2>
+            <p className="hidden text-xs text-black/70 sm:block">
+              {isPregnancy ? `Gentle, built around week ${week ?? "—"}.` : "Built around today's cycle phase."}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan) => {
-            const Icon = plan.icon;
+            const phase =
+              plan.time === "Morning" || plan.time === "10 AM"
+                ? { text: "text-[#f04b8a]", dot: "bg-[#f04b8a]" }
+                : plan.time === "Afternoon" || plan.time === "1 PM"
+                  ? { text: "text-[#0ba7a1]", dot: "bg-[#0ba7a1]" }
+                  : plan.time === "Evening" || plan.time === "6 PM"
+                    ? { text: "text-[#8b53ef]", dot: "bg-[#8b53ef]" }
+                    : { text: "text-[#2d4cc4]", dot: "bg-[#2d4cc4]" };
             return (
-              <Card key={plan.time} className="border-saivie-border/60 bg-white/90 shadow-sm">
+              <Card key={plan.time} className="min-h-[190px] rounded-[18px] border border-[#e4dfdd] bg-white/95 shadow-sm">
                 <CardContent className="p-4">
-                  <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                    <Icon className="h-3.5 w-3.5 text-saivie-rose" />
+                  <div className={`mb-3 flex items-center gap-2 text-xs font-semibold ${phase.text}`}>
+                    <span className={`h-2.5 w-2.5 rounded-full ${phase.dot}`} />
                     {plan.time}
                   </div>
-                  <p className="text-sm font-semibold text-saivie-plum">{plan.label}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{plan.text}</p>
+                  <p className="font-serif text-lg font-semibold leading-tight text-black">{plan.label}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-black/65">{plan.text}</p>
                   {plan.link && (
-                    <button type="button" onClick={onOpenCare} className="mt-3 text-xs font-semibold text-saivie-plum underline">
+                    <button type="button" onClick={onOpenCare} className="mt-3 text-xs font-semibold text-black underline">
                       {plan.link}
                     </button>
                   )}
@@ -408,6 +418,7 @@ export default function PatientTodayDashboard({
               </Card>
             );
           })}
+          </div>
         </div>
       </section>
 
