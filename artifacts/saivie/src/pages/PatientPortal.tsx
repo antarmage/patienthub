@@ -405,7 +405,10 @@ export default function PatientPortal() {
               )}
             </div>
             <div className="flex h-9 w-9 items-center justify-center rounded-full border border-saivie-border bg-saivie-blush text-xs font-semibold text-saivie-plum" aria-label={patient?.name || "Patient"}>
-              {patient?.name ? String(patient.name).trim().charAt(0).toUpperCase() : "S"}
+              {patientGreetingName(
+                patient?.name ||
+                [patient?.firstName, patient?.lastName].filter((part: unknown) => typeof part === "string" && part.trim()).join(" ")
+              ).charAt(0).toUpperCase() || "S"}
             </div>
           </div>
         </header>
