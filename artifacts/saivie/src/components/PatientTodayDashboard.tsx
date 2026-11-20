@@ -142,6 +142,8 @@ export default function PatientTodayDashboard({
   const baby = week != null ? babySize(week) : null;
   const trimester = week != null ? (week < 13 ? "First" : week < 28 ? "Second" : "Third") : null;
   const nextPhaseWeek = week != null && week < 28 ? 28 : 40;
+  const weeksUntilThirdTrimester = week != null ? Math.max(0, 28 - week) : null;
+  const shouldShowThirdTrimesterCard = isPregnancy && week != null;
   const activeMedicines = medications.filter((medicine) =>
     String(medicine.status || "").toLowerCase() === "active");
 
@@ -368,7 +370,7 @@ export default function PatientTodayDashboard({
                     : baby?.detail || "Baby is growing and developing this week."}
                 </p>
               </motion.section>
-              {week != null && week >= 24 && (
+              {shouldShowThirdTrimesterCard && (
                 <motion.section
                   initial={reducedMotion ? false : { opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -377,11 +379,11 @@ export default function PatientTodayDashboard({
                   className="hidden rounded-[28px] bg-[var(--ink)] p-5 text-[var(--paper)] md:block"
                 >
                   <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: accent }}>
-                    {week > 28
+                    {                    week != null && week > 28
                       ? "Now"
                       : week === 28
                         ? "Coming up · This week"
-                        : `Coming up · In ${28 - week} weeks`}
+                        : `Coming up · In ${weeksUntilThirdTrimester} weeks`}
                   </p>
                   <p className="mt-3 font-serif text-[28px] font-bold leading-[1.05]">
                     {week >= 28 ? "Third trimester begins now" : "Third trimester begins at week 28"}
@@ -479,7 +481,7 @@ export default function PatientTodayDashboard({
         </div>
       </section>
 
-      {isPregnancy && week != null && week < 28 && (
+      {shouldShowThirdTrimesterCard && week != null && week < 28 && (
         <motion.section
           initial={reducedMotion ? false : { opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
