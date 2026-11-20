@@ -180,7 +180,7 @@ export default function PatientTodayDashboard({
       data-mode={isPregnancy ? "pregnancy" : "cycle"}
     >
       {isPregnancy && (
-        <div className="mb-6 flex min-h-[52px] items-center justify-between rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-5 text-[13px]">
+        <div className="mb-6 hidden min-h-[52px] items-center justify-between rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-5 text-[13px] md:flex">
           <span>Cycle predictions are paused while you're pregnant.</span>
           <button type="button" onClick={onOpenCare} className="min-h-[44px] font-bold underline underline-offset-[4px]">
             Update pregnancy status
@@ -199,33 +199,42 @@ export default function PatientTodayDashboard({
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]">Good morning</p>
-              <p className="mt-1 text-[12px] font-semibold">{firstName} · {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "long" })}</p>
+              <p className="m-0 text-[17px] font-extrabold">Good morning, {firstName}</p>
+              <p className="mt-1 text-[13px] font-medium">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long" })}</p>
             </div>
-            <span
-              className="inline-flex h-8 items-center rounded-full px-[14px] text-[12px] font-extrabold tracking-[0.1em]"
-              style={{ background: "var(--ink)", color: accent }}
-            >
-              {todayLabel}
-            </span>
+            {isPregnancy && dueDate ? (
+              <span className="inline-flex h-[36px] items-center rounded-full px-4 text-[13px] font-bold md:h-[38px] md:text-[14px]" style={{ background: "var(--ink)", color: "var(--paper)" }}>
+                Due {dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+              </span>
+            ) : (
+              <span className="inline-flex h-[36px] items-center rounded-full px-4 text-[13px] font-bold md:h-[38px] md:text-[14px]" style={{ background: "var(--ink)", color: accent }}>
+                7-day streak
+              </span>
+            )}
           </div>
+
+          <span
+            className="inline-flex h-8 items-center self-start rounded-full px-[14px] text-[12px] font-extrabold tracking-[0.1em]"
+            style={{ background: "var(--ink)", color: accent }}
+          >
+            {todayLabel}
+          </span>
 
           <h1 className="m-0 max-w-[680px] text-[56px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[84px]">
             {isPregnancy ? <>Your baby can <em className="font-medium">hear</em> you now.</> : <>Your words land <em className="font-medium">harder</em> today.</>}
           </h1>
 
+          <p className="m-0 text-[17px] font-medium leading-[1.4] md:text-[20px]">
+            {isPregnancy
+              ? `About the size of ${baby?.title?.toLowerCase() || "your baby"}. ${week != null ? `${40 - week} weeks to go.` : "Pregnancy guidance."}`
+              : "Peak fertility window. Energy levels are high."}
+          </p>
+
           {isPregnancy ? (
             <div className="mt-auto">
               <svg viewBox="0 0 350 64" role="img" aria-label={`Pregnancy week ${week ?? "—"} of 40`} className="block h-auto w-full">
-                <path d="M8.75 14 H341.75" stroke="var(--ink)" strokeWidth="12" strokeLinecap="round" strokeDasharray="0.01 17.5" fill="none" />
-                <path d="M8.75 46 H44.25" stroke="var(--ink)" strokeWidth="12" strokeLinecap="round" strokeDasharray="0.01 17.5" fill="none" />
-                <path d="M78.75 46 H341.75" stroke="rgba(42,18,32,0.2)" strokeWidth="12" strokeLinecap="round" strokeDasharray="0.01 17.5" fill="none" />
                 {(() => {
                   const clampedWeek = week != null ? Math.min(40, Math.max(1, week)) : 24;
-                  const cy = clampedWeek <= 20 ? 14 : 46;
-                  const cx = clampedWeek <= 20
-                    ? 8.75 + (clampedWeek - 1) * 17.5
-                    : 8.75 + (clampedWeek - 21) * 17.5;
                   return (
                     <>
                       {Array.from({ length: 20 }, (_, index) => index + 1).map((dotWeek) => {
@@ -233,13 +242,7 @@ export default function PatientTodayDashboard({
                         const done = dotWeek < clampedWeek;
                         const cxDone = 8.75 + rowIndex * 17.5;
                         return dotWeek !== clampedWeek ? (
-                          <circle
-                            key={dotWeek}
-                            cx={cxDone}
-                            cy="14"
-                            r="6"
-                            fill={done ? "var(--ink)" : "rgba(42,18,32,0.2)"}
-                          />
+                          <circle key={dotWeek} cx={cxDone} cy="14" r="6" fill={done ? "var(--ink)" : "rgba(42,18,32,0.2)"} />
                         ) : null;
                       })}
                       {Array.from({ length: 20 }, (_, index) => index + 21).map((dotWeek) => {
@@ -247,16 +250,20 @@ export default function PatientTodayDashboard({
                         const done = dotWeek < clampedWeek;
                         const cxDone = 8.75 + rowIndex * 17.5;
                         return dotWeek !== clampedWeek ? (
-                          <circle
-                            key={dotWeek}
-                            cx={cxDone}
-                            cy="46"
-                            r="6"
-                            fill={done ? "var(--ink)" : "rgba(42,18,32,0.2)"}
-                          />
+                          <circle key={dotWeek} cx={cxDone} cy="46" r="6" fill={done ? "var(--ink)" : "rgba(42,18,32,0.2)"} />
                         ) : null;
                       })}
-                      <circle cx={cx} cy={cy} r="11" fill="#FFF4EE" stroke="var(--ink)" strokeWidth="3" />
+                      {(() => {
+                        const cy = clampedWeek <= 20 ? 14 : 46;
+                        const cx = clampedWeek <= 20
+                          ? 8.75 + (clampedWeek - 1) * 17.5
+                          : 8.75 + (clampedWeek - 21) * 17.5;
+                        return (
+                          <>
+                            <circle cx={cx} cy={cy} r="11" fill="#FFF4EE" stroke="var(--ink)" strokeWidth="3" />
+                          </>
+                        );
+                      })()}
                     </>
                   );
                 })()}
@@ -298,41 +305,13 @@ export default function PatientTodayDashboard({
             </svg>
           )}
 
-          <div className="mt-2 flex items-end justify-between gap-4">
+          <div className="mt-2 flex flex-wrap gap-[10px]">
             <motion.button type="button" onClick={onBook} whileHover={reducedMotion ? undefined : { y: -2, scale: 1.015 }} whileTap={reducedMotion ? undefined : { scale: 0.97 }} transition={{ duration: 0.16 }} className="h-[52px] flex-1 rounded-full bg-[var(--ink)] px-6 text-[16px] font-bold text-[var(--paper)] md:flex-none">
               {isPregnancy ? "This week" : "View insights"}
             </motion.button>
-            {isPregnancy && dueDate ? (
-              <div className="hidden text-right md:block">
-                <p className="m-0 text-[11px] font-extrabold uppercase tracking-[0.12em]">Due date</p>
-                <p className="m-0 mt-1 text-[15px] font-bold">{dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p>
-              </div>
-            ) : (
-              <div className="text-right">
-                <p className="m-0 text-[11px] font-extrabold uppercase tracking-[0.12em]">Peak window</p>
-                <p className="m-0 mt-1 text-[15px] font-bold">Today</p>
-              </div>
-            )}
-            {isPregnancy && (
-              <motion.button
-                type="button"
-                onClick={shareEra}
-                whileTap={reducedMotion ? undefined : { scale: 0.97 }}
-                className="h-[52px] flex-1 rounded-full border-2 border-[var(--ink)] bg-transparent px-5 text-[16px] font-bold md:hidden"
-              >
-                Share bump
-              </motion.button>
-            )}
-            {!isPregnancy && (
-              <motion.button
-                type="button"
-                onClick={shareEra}
-                whileTap={reducedMotion ? undefined : { scale: 0.97 }}
-                className="h-[52px] flex-1 rounded-full border-2 border-[var(--ink)] bg-transparent px-5 text-[16px] font-bold md:hidden"
-              >
-                Share today
-              </motion.button>
-            )}
+            <motion.button type="button" onClick={shareEra} whileTap={reducedMotion ? undefined : { scale: 0.97 }} className="h-[52px] flex-1 rounded-full border-2 border-[var(--ink)] bg-transparent px-5 text-[16px] font-bold md:flex-none">
+              {isPregnancy ? "Share bump" : "Share today"}
+            </motion.button>
           </div>
         </motion.section>
 
@@ -344,10 +323,9 @@ export default function PatientTodayDashboard({
             whileHover={reducedMotion ? undefined : { y: -2, transition: { duration: 0.2 } }}
             className="rounded-[28px] border border-[var(--line)] bg-[var(--surface)] p-5 md:p-4"
           >
-            <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]">{isPregnancy ? "How are you feeling?" : "How are you feeling?"}</p>
+            <p className="m-0 font-serif text-[26px] font-bold tracking-[0em]">{isPregnancy ? "What are you noticing?" : "How are you feeling?"}</p>
             <p className="mt-1 text-[15px] text-[var(--body-soft)]">
-              <span className="md:hidden">One tap keeps your guidance current.</span>
-              <span className="hidden md:inline">Tap to update your pattern.</span>
+              {isPregnancy ? "Log in one tap. Your doctor can see the pattern." : "One tap keeps your predictions sharp."}
             </p>
             <div className="mt-3 flex flex-wrap gap-[8px] md:gap-[6px]">
               {(isPregnancy
@@ -378,11 +356,17 @@ export default function PatientTodayDashboard({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : 0.24 }}
                 whileHover={reducedMotion ? undefined : { y: -3, transition: { duration: 0.2 } }}
-                className="rounded-[28px] bg-[var(--sun,#FFE7A8)] p-6"
+                className="rounded-[28px] bg-[var(--sun,#FFE7A8)] p-7"
               >
                 <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "#7A4B00" }}>Baby this week</p>
-                <p className="mt-3 font-serif text-[28px] font-bold">{baby?.title || "Baby growth"}</p>
-                <p className="mt-2 text-[15px] leading-[1.5]" style={{ color: "#4A3320" }}>{baby?.detail}</p>
+                <p className="mt-3 font-serif text-[30px] font-bold leading-[1.1]">
+                  {week === 24 ? "Size of an ear of corn" : baby?.title || "Baby growth"}
+                </p>
+                <p className="mt-2 text-[15px] leading-[1.5]" style={{ color: "#4A3320" }}>
+                  {week === 24
+                    ? "Hearing is developing. Talking or singing to your baby is a lovely way to start bonding."
+                    : baby?.detail || "Baby is growing and developing this week."}
+                </p>
               </motion.section>
               {week != null && week >= 24 && (
                 <motion.section
