@@ -424,13 +424,13 @@ export default function PatientTodayDashboard({
       </div>
 
       <section className="mt-8 px-5 md:px-0">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="m-0 font-serif text-[26px] font-bold md:text-[38px]">Today&apos;s plan</h2>
-          <p className="m-0 hidden text-[14px] text-[var(--muted)] md:block">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="m-0 font-serif text-[26px] font-bold tracking-[0em] md:text-[38px] md:tracking-[-0.02em]">Today&apos;s plan</h2>
+          <p className="m-0 text-[15px] text-[var(--muted)] md:text-[16px]">
             {isPregnancy ? `Gentle, built around week ${week ?? "—"}.` : "Built around today's cycle phase."}
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex flex-col md:flex-row md:flex-wrap md:gap-5">
           {plans.map((plan, index) => {
             const category =
               plan.time === "Morning" ? { dot: "#FF6A4D", label: "FOOD" }
@@ -447,21 +447,21 @@ export default function PatientTodayDashboard({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: reducedMotion ? 0 : 0.38, delay: reducedMotion ? 0 : 0.12 + index * 0.07 }}
                 whileHover={reducedMotion ? undefined : { y: -4, transition: { duration: 0.18 } }}
-                className="relative min-w-0"
+                className="relative min-w-0 md:flex md:min-w-0 md:flex-1 md:basis-[240px] md:flex-col md:gap-[14px]"
               >
-                <div className="hidden md:block">
-                  <div className="mb-2 flex items-center gap-3">
-                    <span className="w-[68px] text-left text-[14px] font-extrabold">{plan.time}</span>
-                    <span className="relative z-10 h-[14px] w-[14px] rounded-full" style={{ background: category.dot }} />
+                <div className="hidden md:flex md:h-full md:flex-col md:gap-[14px]">
+                  <div className="flex items-center gap-[10px]">
+                    <span className="h-[14px] w-[14px] shrink-0 rounded-full" style={{ background: category.dot }} />
+                    <span className="text-[16px] font-extrabold">{plan.time}</span>
                     {plan.time !== plans[plans.length - 1]?.time && (
-                      <span aria-hidden="true" className="pointer-events-none absolute left-[100px] top-[11px] h-[2px] w-[calc(100%-122px)]" style={{ background: "#EBD3B6" }} />
+                      <span aria-hidden="true" className="h-[2px] flex-1 bg-[#F0CFC4]" />
                     )}
                   </div>
-                  <article className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] p-5">
+                  <article className="flex flex-1 flex-col gap-[8px] rounded-[26px] border border-[var(--line)] bg-[var(--surface)] p-[22px]">
                     <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: category.dot }}>{category.label}</p>
-                    <h3 className="mt-2 font-serif text-[22px] font-bold leading-[1.2]">{plan.label}</h3>
-                    <p className="mt-2 text-[15px] leading-[1.5] text-[var(--body-soft)]">{plan.text}</p>
-                    {plan.link && <button type="button" onClick={onOpenCare} className="mt-3 min-h-[44px] text-[15px] font-bold underline underline-offset-[4px]">{plan.link}</button>}
+                    <h3 className="m-0 font-serif text-[22px] font-bold leading-[1.2]">{plan.label}</h3>
+                    <p className="m-0 text-[15px] leading-[1.5] text-[var(--body-soft)]">{plan.text}</p>
+                    {plan.link && <button type="button" onClick={onOpenCare} className="mt-auto min-h-[44px] self-start border-0 bg-transparent p-0 text-[15px] font-bold underline underline-offset-[4px]">{plan.link}</button>}
                   </article>
                 </div>
                 <div className="flex gap-3 md:hidden">
@@ -469,14 +469,14 @@ export default function PatientTodayDashboard({
                   <div className="flex w-[14px] shrink-0 flex-col items-center pt-[17px]">
                     <span className="h-[14px] w-[14px] shrink-0 rounded-full" style={{ background: category.dot }} />
                     {plan.time !== plans[plans.length - 1]?.time && (
-                      <span aria-hidden="true" className="mt-0 h-full min-h-[120px] w-[2px] flex-1" style={{ background: "#F0CFC4" }} />
+                      <span aria-hidden="true" className="h-full min-h-[120px] w-[2px] flex-1 bg-[#F0CFC4]" />
                     )}
                   </div>
-                  <article className="mb-4 min-w-0 flex-1 rounded-[22px] border border-[var(--line)] bg-[var(--surface)] p-4">
+                  <article className="mb-4 min-w-0 flex-1 flex-col gap-[6px] rounded-[22px] border border-[var(--line)] bg-[var(--surface)] p-4">
                     <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: category.dot }}>{category.label}</p>
                     <h3 className="mt-[6px] font-serif text-[20px] font-bold leading-[1.2]">{plan.label}</h3>
                     <p className="mt-[6px] text-[15px] leading-[1.5] text-[var(--body-soft)]">{plan.text}</p>
-                    {plan.link && <button type="button" onClick={onOpenCare} className="mt-0 min-h-[44px] text-[15px] font-bold underline underline-offset-[4px]">{plan.link}</button>}
+                    {plan.link && <button type="button" onClick={onOpenCare} className="mt-0 min-h-[44px] self-start border-0 bg-transparent p-0 text-[15px] font-bold underline underline-offset-[4px]">{plan.link}</button>}
                   </article>
                 </div>
               </motion.div>
