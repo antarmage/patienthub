@@ -365,10 +365,17 @@ export default function PatientTodayDashboard({
                   : plan.time === "6 PM" ? { dot: "#12B5A2", label: "MOVE" }
                     : { dot: "#2E3A8C", label: "SLEEP" };
             return (
-              <div key={plan.time} className="min-w-0">
+              <div key={plan.time} className="relative min-w-0">
                 <div className="mb-2 flex items-center gap-3">
                   <span className="w-[68px] text-right text-[14px] font-extrabold">{plan.time}</span>
-                  <span className="h-[14px] w-[14px] rounded-full" style={{ background: category.dot }} />
+                  <span className="relative z-10 h-[14px] w-[14px] rounded-full" style={{ background: category.dot }} />
+                  {plan.time !== plans[plans.length - 1]?.time && (
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute right-0 top-[7px] h-[2px] w-[calc(100%-82px)]"
+                      style={{ background: "#EBD3B6" }}
+                    />
+                  )}
                 </div>
                 <article className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] p-5">
                   <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: category.dot }}>{category.label}</p>
