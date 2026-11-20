@@ -228,6 +228,34 @@ export default function PatientTodayDashboard({
                     : 8.75 + (clampedWeek - 21) * 17.5;
                   return (
                     <>
+                      {Array.from({ length: 20 }, (_, index) => index + 1).map((dotWeek) => {
+                        const rowIndex = dotWeek - 1;
+                        const done = dotWeek < clampedWeek;
+                        const cxDone = 8.75 + rowIndex * 17.5;
+                        return dotWeek !== clampedWeek ? (
+                          <circle
+                            key={dotWeek}
+                            cx={cxDone}
+                            cy="14"
+                            r="6"
+                            fill={done ? "var(--ink)" : "rgba(42,18,32,0.2)"}
+                          />
+                        ) : null;
+                      })}
+                      {Array.from({ length: 20 }, (_, index) => index + 21).map((dotWeek) => {
+                        const rowIndex = dotWeek - 21;
+                        const done = dotWeek < clampedWeek;
+                        const cxDone = 8.75 + rowIndex * 17.5;
+                        return dotWeek !== clampedWeek ? (
+                          <circle
+                            key={dotWeek}
+                            cx={cxDone}
+                            cy="46"
+                            r="6"
+                            fill={done ? "var(--ink)" : "rgba(42,18,32,0.2)"}
+                          />
+                        ) : null;
+                      })}
                       <circle cx={cx} cy={cy} r="11" fill="#FFF4EE" stroke="var(--ink)" strokeWidth="3" />
                     </>
                   );
