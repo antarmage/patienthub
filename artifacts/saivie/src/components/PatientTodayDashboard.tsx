@@ -229,7 +229,6 @@ export default function PatientTodayDashboard({
                   return (
                     <>
                       <circle cx={cx} cy={cy} r="11" fill="#FFF4EE" stroke="var(--ink)" strokeWidth="3" />
-                      <circle cx={cx} cy={cy} r="4" fill="var(--ink)" />
                     </>
                   );
                 })()}
