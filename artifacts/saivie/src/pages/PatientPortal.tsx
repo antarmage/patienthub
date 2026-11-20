@@ -261,22 +261,18 @@ export default function PatientPortal() {
   }, [mode]);
 
   return (
-    <div className="min-h-screen bg-background pb-32 relative selection:bg-primary/20 overflow-hidden">
+    <div
+      className="min-h-screen pb-32 relative selection:bg-primary/20 overflow-hidden"
+      style={{ background: mode === "pregnancy" ? "#FFF4EE" : "#FFF4E6" }}
+    >
       {(!patientId || patientQuery.isError) && <div role="alert" className="relative z-10 m-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
         {patientQuery.error?.message || "Please sign in to access your patient record."} <a href="/" className="underline">Sign in</a>
       </div>}
       {/* Background Layer - Dynamic based on scroll/mode */}
-      <div 
-        className="fixed inset-0 z-0 opacity-40 pointer-events-none transition-opacity duration-1000"
-        style={{
-          backgroundImage: `url(${calmGradient})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
+      <div
+        className="fixed inset-0 z-0 pointer-events-none"
+        style={{ background: mode === "pregnancy" ? "#FFF4EE" : "#FFF4E6" }}
       />
-      
-      {/* Subtle Noise Texture Overlay */}
-      <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
       
       {/* Content Layer */}
       <div className="relative z-10 mx-auto max-w-md px-5 py-6 flex flex-col min-h-screen md:max-w-[1160px] md:px-10 md:py-5">
@@ -357,7 +353,7 @@ export default function PatientPortal() {
           </div>
         </header>
 
-        <header className="hidden md:flex items-center justify-between border-b border-black/5 pb-4 mb-6">
+        <header className="hidden md:flex items-center justify-between border-b border-[var(--line)] pb-4 mb-6">
           <button type="button" onClick={() => setActiveTab("home")} className="flex items-center gap-2" aria-label="Saivie home">
             <BrandLogo fallback="S" className="h-16 w-16" />
           </button>
@@ -368,16 +364,19 @@ export default function PatientPortal() {
               ["insights", "Insights"],
               ["care", "My care"],
             ] as const).map(([value, label]) => (
-              <button
+              <motion.button
                 key={value}
                 type="button"
                 onClick={() => setActiveTab(value)}
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.96 }}
+                transition={{ duration: 0.16 }}
                 className={`rounded-full px-5 py-2 text-xs font-semibold transition ${
                   activeTab === value ? "bg-[#35212f] text-white" : "text-saivie-plum hover:bg-saivie-ivory"
                 }`}
               >
                 {label}
-              </button>
+              </motion.button>
             ))}
           </nav>
           <div className="flex items-center gap-3">

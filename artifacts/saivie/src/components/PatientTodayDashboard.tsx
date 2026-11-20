@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
   CalendarPlus,
@@ -92,6 +92,7 @@ export default function PatientTodayDashboard({
       return 0;
     }
   });
+  const reducedMotion = useReducedMotion();
   const toggleSymptom = (symptom: string) => {
     setCheckIn((current) => current.includes(symptom)
       ? current.filter((item) => item !== symptom)
@@ -160,7 +161,10 @@ export default function PatientTodayDashboard({
   const todayIndex = 13;
 
   return (
-    <div
+    <motion.div
+      initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reducedMotion ? 0 : 0.45, ease: "easeOut" }}
       className="pb-32 md:pb-10"
       style={{ "--accent": accent, background: "var(--paper)", color: "var(--ink)" } as React.CSSProperties}
       data-mode={isPregnancy ? "pregnancy" : "cycle"}
@@ -176,8 +180,10 @@ export default function PatientTodayDashboard({
 
       <div className="flex flex-wrap gap-6">
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={reducedMotion ? false : { opacity: 0, y: 14, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: reducedMotion ? 0 : 0.55, delay: reducedMotion ? 0 : 0.08, ease: [0.22, 1, 0.36, 1] }}
+          whileHover={reducedMotion ? undefined : { y: -3, transition: { duration: 0.22 } }}
           className="relative flex min-w-0 flex-1 basis-[640px] flex-col gap-4 overflow-hidden rounded-[40px] px-5 pb-8 pt-6 md:px-12 md:pb-12 md:pt-12"
           style={{ background: accent }}
         >
@@ -260,9 +266,9 @@ export default function PatientTodayDashboard({
           )}
 
           <div className="mt-2 flex items-end justify-between gap-4">
-            <button type="button" onClick={onBook} className="h-[52px] rounded-full bg-[var(--ink)] px-6 text-[16px] font-bold text-[var(--paper)]">
+            <motion.button type="button" onClick={onBook} whileHover={reducedMotion ? undefined : { y: -2, scale: 1.015 }} whileTap={reducedMotion ? undefined : { scale: 0.97 }} transition={{ duration: 0.16 }} className="h-[52px] rounded-full bg-[var(--ink)] px-6 text-[16px] font-bold text-[var(--paper)]">
               {isPregnancy ? "View this week" : "View insights"}
-            </button>
+            </motion.button>
             {isPregnancy && dueDate ? (
               <div className="text-right">
                 <p className="m-0 text-[11px] font-extrabold uppercase tracking-[0.12em]">Due date</p>
@@ -278,7 +284,13 @@ export default function PatientTodayDashboard({
         </motion.section>
 
         <aside className="flex min-w-0 basis-[340px] flex-col gap-5 md:max-w-[420px]">
-          <section className="rounded-[28px] border border-[var(--line)] bg-[var(--surface)] p-6">
+          <motion.section
+            initial={reducedMotion ? false : { opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : 0.16 }}
+            whileHover={reducedMotion ? undefined : { y: -2, transition: { duration: 0.2 } }}
+            className="rounded-[28px] border border-[var(--line)] bg-[var(--surface)] p-6"
+          >
             <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]">{isPregnancy ? "How are you feeling?" : "How are you feeling?"}</p>
             <p className="mt-2 text-[15px] text-[var(--body-soft)]">One tap keeps your guidance current.</p>
             <div className="mt-4 flex flex-wrap gap-[10px]">
@@ -286,32 +298,47 @@ export default function PatientTodayDashboard({
                 ? ["Energy good", "Kicks felt", "Nausea", "Swelling", "Backache"]
                 : ["Glowing", "Good", "Okay", "Low", "Rough"]
               ).map((symptom) => (
-                <button
+                <motion.button
                   key={symptom}
                   type="button"
                   onClick={() => toggleSymptom(symptom)}
+                  whileTap={reducedMotion ? undefined : { scale: 0.94 }}
+                  whileHover={reducedMotion ? undefined : { y: -1 }}
+                  transition={{ duration: 0.14 }}
                   className="h-[46px] rounded-full border-[1.5px] border-[var(--ink)] px-[18px] text-[15px] font-semibold"
                   style={{ background: checkIn.includes(symptom) ? accent : "var(--surface)" }}
                   aria-pressed={checkIn.includes(symptom)}
                 >
                   {symptom}
-                </button>
+                </motion.button>
               ))}
             </div>
-            <button type="button" onClick={saveCheckIn} className="mt-4 h-[52px] rounded-full border-2 border-[var(--ink)] bg-transparent px-6 text-[15px] font-bold">
+            <motion.button type="button" onClick={saveCheckIn} whileTap={reducedMotion ? undefined : { scale: 0.97 }} whileHover={reducedMotion ? undefined : { y: -1 }} transition={{ duration: 0.16 }} className="mt-4 h-[52px] rounded-full border-2 border-[var(--ink)] bg-transparent px-6 text-[15px] font-bold">
               {checkInSaved ? "Saved today" : "Save check-in"}
-            </button>
-          </section>
+            </motion.button>
+          </motion.section>
 
           {isPregnancy ? (
             <>
-              <section className="rounded-[28px] bg-[var(--sun,#FFE7A8)] p-6">
+              <motion.section
+                initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : 0.24 }}
+                whileHover={reducedMotion ? undefined : { y: -3, transition: { duration: 0.2 } }}
+                className="rounded-[28px] bg-[var(--sun,#FFE7A8)] p-6"
+              >
                 <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "#7A4B00" }}>Baby this week</p>
                 <p className="mt-3 font-serif text-[28px] font-bold">{baby?.title || "Baby growth"}</p>
                 <p className="mt-2 text-[15px] leading-[1.5]" style={{ color: "#4A3320" }}>{baby?.detail}</p>
-              </section>
+              </motion.section>
               {week != null && week >= 24 && (
-                <section className="rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)]">
+                <motion.section
+                  initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : 0.28 }}
+                  whileHover={reducedMotion ? undefined : { y: -3, transition: { duration: 0.2 } }}
+                  className="rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)]"
+                >
                   <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: accent }}>Coming up</p>
                   <p className="mt-3 font-serif text-[28px] font-bold">
                     {week >= 28 ? "Third trimester is underway." : `${nextPhaseWeek - week} weeks until third trimester.`}
@@ -319,7 +346,7 @@ export default function PatientTodayDashboard({
                   <p className="mt-2 text-[15px] leading-[1.5] text-[var(--on-dark-soft)]">
                     Ask your care team about growth, glucose and routine antenatal checks.
                   </p>
-                </section>
+                </motion.section>
               )}
             </>
           ) : (
@@ -355,7 +382,7 @@ export default function PatientTodayDashboard({
           </p>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {plans.map((plan) => {
+          {plans.map((plan, index) => {
             const category =
               plan.time === "Morning" ? { dot: "#FF6A4D", label: "FOOD" }
                 : plan.time === "10 AM" ? { dot: "#5B3DF5", label: "FOCUS" }
@@ -365,14 +392,21 @@ export default function PatientTodayDashboard({
                   : plan.time === "6 PM" ? { dot: "#12B5A2", label: "MOVE" }
                     : { dot: "#2E3A8C", label: "SLEEP" };
             return (
-              <div key={plan.time} className="relative min-w-0">
+              <motion.div
+                key={plan.time}
+                initial={reducedMotion ? false : { opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: reducedMotion ? 0 : 0.38, delay: reducedMotion ? 0 : 0.12 + index * 0.07 }}
+                whileHover={reducedMotion ? undefined : { y: -4, transition: { duration: 0.18 } }}
+                className="relative min-w-0"
+              >
                 <div className="mb-2 flex items-center gap-3">
-                  <span className="w-[68px] text-right text-[14px] font-extrabold">{plan.time}</span>
+                  <span className="w-[68px] text-left text-[14px] font-extrabold">{plan.time}</span>
                   <span className="relative z-10 h-[14px] w-[14px] rounded-full" style={{ background: category.dot }} />
                   {plan.time !== plans[plans.length - 1]?.time && (
                     <span
                       aria-hidden="true"
-                      className="pointer-events-none absolute right-0 top-[7px] h-[2px] w-[calc(100%-82px)]"
+                      className="pointer-events-none absolute left-[82px] top-[7px] h-[2px] w-[calc(100%-82px)]"
                       style={{ background: "#EBD3B6" }}
                     />
                   )}
@@ -387,14 +421,20 @@ export default function PatientTodayDashboard({
                     </button>
                   )}
                 </article>
-              </div>
+              </motion.div>
             );
           })}
         </div>
       </section>
 
       <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="flex min-h-[112px] items-center gap-4 rounded-[28px] border border-[var(--line)] bg-[var(--surface)] p-6">
+        <motion.section
+          initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reducedMotion ? 0 : 0.4, delay: reducedMotion ? 0 : 0.18 }}
+          whileHover={reducedMotion ? undefined : { y: -3, transition: { duration: 0.2 } }}
+          className="flex min-h-[112px] items-center gap-4 rounded-[28px] border border-[var(--line)] bg-[var(--surface)] p-6"
+        >
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#CFF1EA]"><CalendarPlus className="h-5 w-5" /></div>
           <div className="min-w-0 flex-1">
             <p className="m-0 font-serif text-[22px] font-bold">Book an appointment</p>
@@ -405,16 +445,22 @@ export default function PatientTodayDashboard({
             </p>
           </div>
           <button type="button" onClick={onBook} className="h-[52px] rounded-full border-2 border-[var(--ink)] bg-transparent px-6 text-[15px] font-bold">Book</button>
-        </section>
-        <section className="flex min-h-[112px] items-center gap-4 rounded-[28px] border border-[var(--ink)] bg-[var(--surface)] p-6">
+        </motion.section>
+        <motion.section
+          initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reducedMotion ? 0 : 0.4, delay: reducedMotion ? 0 : 0.24 }}
+          whileHover={reducedMotion ? undefined : { y: -3, transition: { duration: 0.2 } }}
+          className="flex min-h-[112px] items-center gap-4 rounded-[28px] border border-[var(--ink)] bg-[var(--surface)] p-6"
+        >
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#E4DCFF]"><Sparkles className="h-5 w-5" /></div>
           <div className="min-w-0 flex-1">
             <p className="m-0 font-serif text-[22px] font-bold">Ask about your body</p>
             <p className="mt-1 text-[14px] text-[var(--body-soft)]">Get plain-language, phase-aware guidance.</p>
           </div>
           <ChevronRight className="h-5 w-5" />
-        </section>
+        </motion.section>
       </div>
-    </div>
+    </motion.div>
   );
 }
