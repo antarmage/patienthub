@@ -401,8 +401,8 @@ export default function PatientTodayDashboard({
                 className="relative min-w-0"
               >
                 <div className="mb-2 flex items-center gap-3">
-                  <span className="w-[68px] text-left text-[14px] font-extrabold">{plan.time}</span>
                   <span className="relative z-10 h-[14px] w-[14px] rounded-full" style={{ background: category.dot }} />
+                  <span className="w-[68px] text-left text-[14px] font-extrabold">{plan.time}</span>
                   {plan.time !== plans[plans.length - 1]?.time && (
                     <span
                       aria-hidden="true"
