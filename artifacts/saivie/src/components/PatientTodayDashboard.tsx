@@ -339,12 +339,14 @@ export default function PatientTodayDashboard({
                   whileHover={reducedMotion ? undefined : { y: -3, transition: { duration: 0.2 } }}
                   className="rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)]"
                 >
-                  <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: accent }}>Coming up</p>
-                  <p className="mt-3 font-serif text-[28px] font-bold">
-                    {week >= 28 ? "Third trimester is underway." : `${nextPhaseWeek - week} weeks until third trimester.`}
+                  <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: accent }}>
+                    Coming up · {week >= 28 ? "This week" : `In ${nextPhaseWeek - week} weeks`}
+                  </p>
+                  <p className="mt-3 font-serif text-[28px] font-bold leading-[1.05]">
+                    {week >= 28 ? "Third trimester begins now" : "Third trimester begins at week 28"}
                   </p>
                   <p className="mt-2 text-[15px] leading-[1.5] text-[var(--on-dark-soft)]">
-                    Ask your care team about growth, glucose and routine antenatal checks.
+                    We&apos;ll update your plan and checklist when you get there.
                   </p>
                 </motion.section>
               )}
@@ -406,7 +408,7 @@ export default function PatientTodayDashboard({
                   {plan.time !== plans[plans.length - 1]?.time && (
                     <span
                       aria-hidden="true"
-                      className="pointer-events-none absolute left-[82px] top-[7px] h-[2px] w-[calc(100%-82px)]"
+                      className="pointer-events-none absolute left-[100px] top-[11px] h-[2px] w-[calc(100%-122px)]"
                       style={{ background: "#EBD3B6" }}
                     />
                   )}
