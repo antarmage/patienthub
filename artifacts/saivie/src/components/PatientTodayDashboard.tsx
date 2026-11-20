@@ -18,6 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import pregnancyGrowthBg from "@/assets/images/pregnancy-growth-bg.png";
+import { patientGreetingName } from "@/lib/patientGreeting";
 
 interface Props {
   mode: string;
@@ -74,7 +75,9 @@ export default function PatientTodayDashboard({
     })
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
 
-  const firstName = String(patient?.name || "there").trim().split(/\s+/)[0];
+  const patientFullName = patient?.name
+    || [patient?.firstName, patient?.lastName].filter((part: unknown) => typeof part === "string" && part.trim()).join(" ");
+  const firstName = patientGreetingName(patientFullName) || "there";
   const [checkIn, setCheckIn] = useState<string[]>(() => {
     try {
       const stored = JSON.parse(localStorage.getItem("patientDailyCheckIn") || "{}");
