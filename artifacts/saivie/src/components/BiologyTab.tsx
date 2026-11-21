@@ -377,200 +377,151 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
   );
 }
 
+function CycleNowPatterns({ patient }: { patient: any }) {
+  const [view, setView] = useState<"now" | "patterns">("now");
+  const [temperature, setTemperature] = useState("");
+  const [temperatureSaved, setTemperatureSaved] = useState(false);
+  const lmp = patient?.lmp;
+  const cycleDay = lmp && /^\d{4}-\d{2}-\d{2}/.test(lmp)
+    ? Math.floor((Date.now() - new Date(`${lmp.slice(0, 10)}T00:00:00`).getTime()) / 86400000) + 1
+    : 14;
+  const day = cycleDay > 0 && cycleDay <= 28 ? cycleDay : 14;
+
+  return (
+    <div className="space-y-6 pb-24">
+      <div role="tablist" aria-label="Body views" className="flex w-[320px] max-w-full rounded-full bg-[#F3E6D4] p-1">
+        {(["now", "patterns"] as const).map((item) => (
+          <button
+            key={item}
+            type="button"
+            role="tab"
+            aria-selected={view === item}
+            onClick={() => setView(item)}
+            className={`h-11 flex-1 rounded-full text-[15px] transition ${view === item
+              ? "bg-[#22122B] font-bold text-[#FFF4E6]"
+              : "bg-transparent font-semibold text-[#22122B]"}`}
+          >
+            {item === "now" ? "Now" : "Patterns"}
+          </button>
+        ))}
+      </div>
+
+      {view === "patterns" ? (
+        <div className="space-y-6">
+          <section className="rounded-[40px] bg-[#BBAAFF] p-6 md:p-12">
+            <p className="text-[12px] font-extrabold uppercase tracking-[0.14em]">MY BODY</p>
+            <h1 className="mt-3 max-w-[680px] font-serif text-[44px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[76px]">
+              Right on <em className="font-medium">rhythm.</em>
+            </h1>
+            <p className="mt-4 text-[17px] md:text-[20px]">Your recorded cycle pattern over time.</p>
+          </section>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {[["Cycle length", "28 days"], ["Cycle trend", "Regular"], ["Confidence", "Sample"]].map(([label, value]) => (
+              <div key={label} className="rounded-[28px] border border-[#F0DCC4] bg-white p-6">
+                <p className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#6A5560]">{label}</p>
+                <p className="mt-2 font-serif text-[24px] font-bold">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          <motion.section
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-wrap items-center justify-between gap-8 rounded-[40px] bg-[#FF9B7B] p-6 md:p-12"
+          >
+            <div className="min-w-0 basis-[480px] flex-1">
+              <div className="flex items-center gap-3">
+                <span className="text-[12px] font-extrabold uppercase tracking-[0.14em]">MY BODY</span>
+                <span className="rounded-full bg-[#22122B] px-4 py-2 text-[12px] font-extrabold tracking-[0.1em] text-[#FF9B7B]">DAY {day}</span>
+              </div>
+              <h1 className="mt-4 font-serif text-[44px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[76px]">
+                Here&apos;s what's happening <em className="font-medium">inside.</em>
+              </h1>
+              <p className="mt-4 text-[17px] md:text-[20px]">Four signals, explained in plain words.</p>
+            </div>
+            <div className="basis-[340px] rounded-[28px] bg-[#FFF4E6] p-6">
+              <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#6A5560]">TODAY&apos;S READ</p>
+              <p className="mt-3 font-serif text-[24px] font-bold leading-[1.2]">Estrogen is near its peak. LH surges to trigger ovulation.</p>
+            </div>
+          </motion.section>
+
+          <section className="flex flex-wrap items-stretch gap-6">
+            <div className="min-w-0 flex-[1_1_640px] rounded-[32px] border border-[#F0DCC4] bg-white p-6 md:p-8">
+              <h2 className="font-serif text-[30px] font-bold">Hormones across your cycle</h2>
+              <p className="mt-2 text-[16px] text-[#5A4552]">Day {day} of 28. Sample data until your logs add up.</p>
+              <svg viewBox="0 0 350 150" role="img" aria-label={`Hormone chart. Current cycle day ${day}.`} className="mt-4 block h-auto w-full">
+                <line x1="4" y1="130" x2="346" y2="130" stroke="#E6D3BD" strokeWidth="1.5" />
+                <line x1={167} y1="10" x2={167} y2="130" stroke="#22122B" strokeWidth="1.5" strokeDasharray="3 4" />
+                <path d="M4.5 112 C30 112 55 108 79.5 100 S105 84 117 70 S140 24 154.5 22 S160 18 167 20 S180 48 192 60 S215 84 229.5 80 S245 52 254.5 55 S280 78 292 80 S330 112 342 112" fill="none" stroke="#FF6A4D" strokeWidth="3.5" strokeLinecap="round" />
+                <path d="M4.5 122 L140 122 C150 120 156 40 164 32 C172 40 176 118 188 122 L342 122" fill="none" stroke="#5B3DF5" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4.5 124 L170 124 C195 122 215 70 250 42 C270 36 280 50 292 80 C305 108 320 122 342 124" fill="none" stroke="#0B7D70" strokeWidth="3.5" strokeLinecap="round" strokeDasharray="7 6" />
+                <circle cx="167" cy="20" r="7" fill="#FFF4E6" stroke="#22122B" strokeWidth="3" />
+                <text x="167" y="8" textAnchor="middle" fontSize="10" fontWeight="800" fill="#22122B">TODAY</text>
+                <text x="4" y="146" fontSize="11" fontWeight="600" fill="#5A4552">Day 1</text>
+                <text x="167" y="146" textAnchor="middle" fontSize="11" fontWeight="600" fill="#5A4552">Day 14</text>
+                <text x="346" y="146" textAnchor="end" fontSize="11" fontWeight="600" fill="#5A4552">Day 28</text>
+              </svg>
+              <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-[15px] font-semibold">
+                <li className="flex items-center gap-2"><span className="h-1 w-6 rounded-full bg-[#FF6A4D]" />Estrogen</li>
+                <li className="flex items-center gap-2"><span className="h-1 w-6 rounded-full bg-[#5B3DF5]" />LH</li>
+                <li className="flex items-center gap-2"><span className="w-6 border-t-4 border-dashed border-[#0B7D70]" />Progesterone</li>
+              </ul>
+            </div>
+
+            <div className="flex min-w-0 flex-[1_1_340px] flex-col gap-6 md:max-w-[420px]">
+              <section className="flex flex-1 flex-col justify-between gap-5 rounded-[32px] bg-[#22122B] p-8 text-[#FFF4E6]">
+                <div>
+                  <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#FF9B7B]">SHARPEN THE PICTURE</p>
+                  <h2 className="mt-3 font-serif text-[30px] font-bold leading-[1.1]">Log this morning&apos;s temperature</h2>
+                  <p className="mt-3 text-[16px] leading-[1.5] text-[#E9D8DF]">It confirms ovulation and makes your predictions more accurate.</p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={temperature}
+                    onChange={(event) => setTemperature(event.target.value)}
+                    placeholder="Temperature"
+                    aria-label="Morning temperature"
+                    className="h-[50px] min-w-[150px] flex-1 rounded-full border border-[#E9D8DF]/60 bg-transparent px-5 text-[15px] text-[#FFF4E6]"
+                  />
+                  <button type="button" onClick={() => setTemperatureSaved(Boolean(temperature))} className="h-[50px] rounded-full bg-[#FF9B7B] px-6 text-[15px] font-extrabold text-[#22122B]">
+                    {temperatureSaved ? "Saved" : "Log"}
+                  </button>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="font-serif text-[38px] font-bold tracking-[-0.02em]">Your four signals</h2>
+            <div className="flex flex-wrap gap-4">
+              {[
+                ["FOCUS", "Peaking", "Verbal skills and confidence are at their best.", "#E4DCFF", "#3A24B8", "#2E1E48"],
+                ["TEMP", "Rising slightly", "Keep your bedroom cool and dark tonight.", "#FFD9C9", "#A8341A", "#3F211A"],
+                ["METABOLISM", "Efficient", "Your body is using protein well. Add lentils, eggs, or paneer.", "#CFF1EA", "#0B6B5F", "#14332E"],
+                ["HORMONES", "Near peak", "Estrogen is elevated and LH is ready to surge.", "#FFE7A8", "#7A4B00", "#4A3320"],
+              ].map(([label, value, copy, bg, labelColor, bodyColor]) => (
+                <article key={label} className="min-w-0 flex-[1_1_240px] rounded-[28px] p-[26px]" style={{ background: bg }}>
+                  <p className="text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: labelColor }}>{label}</p>
+                  <h3 className="mt-3 font-serif text-[30px] font-bold leading-[1.1]">{value}</h3>
+                  <p className="mt-3 text-[15px] leading-[1.5]" style={{ color: bodyColor }}>{copy}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function BiologyTab({ mode, patient, labResults }: BiologyTabProps) {
   if (mode === 'pregnancy') {
     return <PregnancyBiology patient={patient} labResults={labResults || []} />;
   }
-
-  return (
-    <div className="space-y-8 animate-in fade-in duration-700 pb-24">
-      
-      <motion.div 
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-panel p-5 rounded-2xl flex flex-col gap-3"
-      >
-         <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground/80 mb-1">Today Your Biology Is In</h2>
-         <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-3">
-               <div className="w-1.5 h-1.5 rounded-full bg-saivie-teal shadow-[0_0_8px_rgba(168,85,247,0.6)]"></div>
-               <span className="text-foreground font-medium text-lg">Ovulatory Hormone Rise</span>
-            </div>
-            <div className="flex items-center gap-3">
-               <div className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]"></div>
-               <span className="text-foreground font-medium text-lg">High Metabolic Flexibility</span>
-            </div>
-            <div className="flex items-center gap-3">
-               <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
-               <span className="text-foreground font-medium text-lg">Social & Cognitive Peak</span>
-            </div>
-         </div>
-      </motion.div>
-
-      <div className="relative">
-         <div className="flex items-center justify-between mb-4 px-1">
-            <h3 className="text-xl font-serif text-foreground">Hormone Landscape</h3>
-            <span className="text-xs font-medium text-muted-foreground bg-saivie-ivory/50 px-2 py-1 rounded-full">Day 14</span>
-         </div>
-         
-         <Card className="overflow-hidden border-none shadow-sm relative group cursor-pointer transition-all hover:shadow-md">
-            <div 
-               className="absolute inset-0 opacity-10 pointer-events-none"
-               style={{ backgroundImage: `url(${hormoneWaveBg})`, backgroundSize: 'cover' }}
-            />
-            
-            <CardContent className="p-0 h-[220px] relative">
-               <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={hormoneData} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
-                     <defs>
-                        <linearGradient id="colorEst" x1="0" y1="0" x2="0" y2="1">
-                           <stop offset="5%" stopColor="#d8b4fe" stopOpacity={0.4}/>
-                           <stop offset="95%" stopColor="#d8b4fe" stopOpacity={0}/>
-                        </linearGradient>
-                        <linearGradient id="colorProg" x1="0" y1="0" x2="0" y2="1">
-                           <stop offset="5%" stopColor="#fca5a5" stopOpacity={0.4}/>
-                           <stop offset="95%" stopColor="#fca5a5" stopOpacity={0}/>
-                        </linearGradient>
-                     </defs>
-                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                     <Tooltip 
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', fontSize: '12px' }}
-                        cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '4 4' }}
-                     />
-                     <Area type="monotone" dataKey="est" stroke="#a855f7" strokeWidth={3} fillOpacity={1} fill="url(#colorEst)" />
-                     <Area type="monotone" dataKey="prog" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorProg)" />
-                  </AreaChart>
-               </ResponsiveContainer>
-               
-               <motion.div 
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.5 }}
-                  className="absolute left-[50%] top-[20%] -translate-x-1/2 flex flex-col items-center gap-2"
-               >
-                  <div className="w-4 h-4 rounded-full bg-saivie-ivory border-4 border-primary shadow-[0_0_15px_rgba(236,72,153,0.6)] animate-pulse"></div>
-                  <div className="bg-saivie-ivory/90 backdrop-blur-md px-3 py-2 rounded-xl shadow-lg border border-white/50 text-xs font-medium max-w-[140px] text-center">
-                     Estrogen Surge
-                     <span className="block text-[10px] text-muted-foreground font-normal mt-0.5">Supports confidence & verbal fluency</span>
-                  </div>
-               </motion.div>
-            </CardContent>
-         </Card>
-      </div>
-
-      <div>
-         <h3 className="text-xl font-serif text-foreground mb-4 px-1">Metabolic State</h3>
-         <Card className="border-none bg-gradient-to-br from-orange-50 to-amber-50 shadow-sm relative overflow-hidden">
-            <div className="absolute right-0 top-0 w-32 h-32 bg-orange-200/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
-            <CardContent className="p-6 relative z-10">
-               <div className="flex items-start justify-between mb-4">
-                  <div>
-                     <h4 className="text-lg font-medium text-orange-900 mb-1">Carb Tolerant Phase</h4>
-                     <p className="text-sm text-orange-700/80">Your insulin sensitivity is peaking.</p>
-                  </div>
-                  <div className="bg-saivie-ivory/50 p-2.5 rounded-full text-orange-600">
-                     <Flame className="w-5 h-5" />
-                  </div>
-               </div>
-               
-               <div className="grid grid-cols-2 gap-3 mt-4">
-                  <div className="bg-saivie-ivory/60 rounded-lg p-3">
-                     <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Insulin</div>
-                     <div className="font-semibold text-foreground flex items-center gap-1">
-                        High <TrendingUp className="w-3 h-3 text-emerald-500" />
-                     </div>
-                  </div>
-                  <div className="bg-saivie-ivory/60 rounded-lg p-3">
-                     <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Recovery</div>
-                     <div className="font-semibold text-foreground flex items-center gap-1">
-                        Fast <Zap className="w-3 h-3 text-amber-500" />
-                     </div>
-                  </div>
-               </div>
-            </CardContent>
-         </Card>
-      </div>
-
-      <div className="relative">
-         <div className="flex items-center gap-2 mb-4 px-1">
-            <h3 className="text-xl font-serif text-foreground">Your Biological Blueprint</h3>
-            <Badge variant="outline" className="text-[10px] h-5 bg-blue-50 text-blue-700 border-blue-100">Genomics</Badge>
-         </div>
-
-         <div className="space-y-3">
-            <Accordion type="single" collapsible className="space-y-3">
-               <AccordionItem value="item-1" className="border-none glass-panel rounded-xl px-4 overflow-hidden">
-                  <AccordionTrigger className="hover:no-underline py-4">
-                     <div className="flex items-center gap-4 text-left w-full">
-                        <div className="w-10 h-10 rounded-full bg-saivie-surface-muted flex items-center justify-center shrink-0">
-                           <Dna className="w-5 h-5 text-saivie-teal" />
-                        </div>
-                        <div>
-                           <p className="font-medium text-foreground text-sm">Estrogen Metabolism</p>
-                           <p className="text-xs text-muted-foreground">Genetically slightly slower</p>
-                        </div>
-                     </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4 pl-[3.5rem] pr-2">
-                     <div className="text-sm text-muted-foreground leading-relaxed">
-                        This means estrogen may linger in your system longer. You might experience stronger pre-period symptoms but better skin and bone protection.
-                        <div className="mt-3 bg-saivie-surface-muted/50 p-3 rounded-lg border border-saivie-border/50 text-xs text-saivie-plum font-medium">
-                           Tip: Cruciferous vegetables help clear excess estrogen effectively.
-                        </div>
-                     </div>
-                  </AccordionContent>
-               </AccordionItem>
-               
-               <AccordionItem value="item-2" className="border-none glass-panel rounded-xl px-4 overflow-hidden">
-                  <AccordionTrigger className="hover:no-underline py-4">
-                     <div className="flex items-center gap-4 text-left w-full">
-                        <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
-                           <Zap className="w-5 h-5 text-rose-500" />
-                        </div>
-                        <div>
-                           <p className="font-medium text-foreground text-sm">Inflammation Response</p>
-                           <p className="text-xs text-muted-foreground">Elevated late cycle</p>
-                        </div>
-                     </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4 pl-[3.5rem] pr-2">
-                     <div className="text-sm text-muted-foreground leading-relaxed">
-                        Your genes suggest a stronger inflammatory reaction during the luteal phase, which may cause joint sensitivity or puffiness.
-                     </div>
-                  </AccordionContent>
-               </AccordionItem>
-            </Accordion>
-         </div>
-      </div>
-
-      <div>
-         <h3 className="text-xl font-serif text-foreground mb-4 px-1">Mind & Nervous System</h3>
-         <div className="grid grid-cols-3 gap-3">
-            <div className="glass-panel p-4 rounded-2xl flex flex-col items-center text-center gap-2">
-               <Brain className="w-5 h-5 text-saivie-teal" />
-               <div className="text-xs font-medium text-muted-foreground">Social Confidence</div>
-               <div className="text-sm font-bold text-foreground">High</div>
-            </div>
-            <div className="glass-panel p-4 rounded-2xl flex flex-col items-center text-center gap-2">
-               <Sparkles className="w-5 h-5 text-amber-500" />
-               <div className="text-xs font-medium text-muted-foreground">Verbal Fluency</div>
-               <div className="text-sm font-bold text-foreground">Peak</div>
-            </div>
-            <div className="glass-panel p-4 rounded-2xl flex flex-col items-center text-center gap-2">
-               <Moon className="w-5 h-5 text-blue-500" />
-               <div className="text-xs font-medium text-muted-foreground">Sleep Depth</div>
-               <div className="text-sm font-bold text-foreground">Lighter</div>
-            </div>
-         </div>
-      </div>
-
-      <div className="bg-saivie-plum text-slate-200 p-4 rounded-xl flex items-center gap-4 shadow-lg">
-         <Sparkles className="w-5 h-5 text-yellow-400 shrink-0" />
-         <p className="text-xs font-medium leading-relaxed">
-            Science Nudge: High estrogen can improve pain tolerance. Good day for waxing or deep tissue massage.
-         </p>
-      </div>
-
-    </div>
-  );
+  return <CycleNowPatterns patient={patient} />;
 }
+
