@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
@@ -150,6 +150,27 @@ export default function PatientTodayDashboard({
   const shouldShowThirdTrimesterCard = isPregnancy && week != null;
   const activeMedicines = medications.filter((medicine) =>
     String(medicine.status || "").toLowerCase() === "active");
+  const [contentFeed, setContentFeed] = useState<Array<{
+    id: string;
+    title: string;
+    body: string;
+    category: string;
+    priority: string;
+    sourceLabel: string;
+    assetVersion: string;
+  }>>([]);
+
+  useEffect(() => {
+    if (!isPregnancy || !patient?.id) return;
+    let cancelled = false;
+    fetch(`/api/patients/${patient.id}/content-feed`)
+      .then((response) => response.ok ? response.json() : null)
+      .then((feed) => {
+        if (!cancelled && Array.isArray(feed?.blocks)) setContentFeed(feed.blocks.slice(0, 3));
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [isPregnancy, patient?.id]);
 
   const plans = isPregnancy
     ? [
@@ -484,6 +505,39 @@ export default function PatientTodayDashboard({
           })}
         </div>
       </section>
+
+      {isPregnancy && contentFeed.length > 0 && (
+        <section className="mt-8 px-5 md:px-0" aria-label="For you today">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="m-0 font-serif text-[26px] font-bold tracking-[0em] md:text-[38px] md:tracking-[-0.02em]">
+              For you today
+            </h2>
+            <p className="m-0 text-[15px] text-[var(--muted)]">Personalized from this pregnancy&apos;s context</p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {contentFeed.map((block) => (
+              <motion.article
+                key={block.id}
+                initial={reducedMotion ? false : { opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-[28px] border border-[var(--line)] bg-[var(--surface)] p-6"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "#A8341A" }}>
+                    {block.category}
+                  </p>
+                  {block.priority === "essential" && (
+                    <span className="rounded-full bg-[#2A1220] px-3 py-1 text-[11px] font-bold text-[#FFF4E6]">For you</span>
+                  )}
+                </div>
+                <h3 className="mt-3 font-serif text-[22px] font-bold leading-[1.15]">{block.title}</h3>
+                <p className="mt-2 text-[15px] leading-[1.5] text-[var(--body-soft)]">{block.body}</p>
+                <p className="mt-4 text-[11px] font-medium text-[var(--muted)]">{block.sourceLabel}</p>
+              </motion.article>
+            ))}
+          </div>
+        </section>
+      )}
 
       {shouldShowThirdTrimesterCard && week != null && week < 28 && (
         <motion.section

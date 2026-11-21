@@ -46,6 +46,7 @@ import { antenatalFromBody, registerPrescriptionTranscriptionRoutes } from "../p
 import { getUncachableGoogleSheetClient } from "../google-sheets";
 import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../google-drive";
 import { ai, AI_AVAILABLE } from "../replit_integrations/image/client";
+import { registerPatientContent, buildPregnancyContentFeed } from "../patient-content";
 import { whatsapp } from "../whatsapp";
 import { isSmtpConfigured, maskEmail, sendEmail, sendOtpEmail, type OtpDeliveryMethod } from "../smtp";
 import { checkDeliverableEmail } from "../email-check";
@@ -5870,6 +5871,44 @@ Return a JSON object:
   // Pass it via the X-Patient-Id request header instead.
   registerSurgeryWorkflow(app, createSurgeryStore(pool), getAccessActor);
   registerPregnancyEpisodes(app, createPregnancyEpisodeStore(pool), getAccessActor);
+  registerPatientContent(app, pool, getAccessActor, async (patientId) => {
+    const [patient, medications, episodes] = await Promise.all([
+      storage.getPatient(patientId),
+      storage.getMedications(patientId),
+      createPregnancyEpisodeStore(pool).list(patientId),
+    ]);
+    const currentEpisode = episodes.find((episode) => episode.details.status === "current");
+    const lmp = currentEpisode?.details.lmp || patient?.lmp || null;
+    return buildPregnancyContentFeed({
+      patientId,
+      lmp,
+      medications,
+      riskScore: patient?.riskScore,
+      weekGuide: (week) => {
+        const trimester = week < 13 ? "first" : week < 28 ? "second" : "third";
+        return {
+          fruit: trimester === "first" ? "a small developing baby" : trimester === "second" ? "an increasingly active baby" : "a baby preparing for birth",
+          length: "",
+          weight: "",
+          development: [trimester === "second"
+            ? "Your baby is growing rapidly and may respond to sound."
+            : trimester === "third"
+              ? "Your baby is gaining weight and preparing for birth."
+              : "Your baby's major organs and tissues continue to develop."],
+          symptoms: [week < 13
+            ? "Nausea and fatigue can be common"
+            : week < 28
+              ? "Energy may improve, with possible backache or nasal congestion"
+              : "You may notice pelvic pressure, tiredness and more frequent movements"],
+          dos: ["Attend scheduled antenatal appointments", "Follow your clinician's medicine and nutrition plan"],
+          donts: ["Do not start or stop medicines without clinician advice"],
+          nutrition: trimester === "second"
+            ? "Include iron-rich foods and calcium sources as recommended."
+            : "Follow the nutrition plan from your care team.",
+        };
+      },
+    });
+  });
   registerDeliveries(app, createDeliveryStore(pool), getAccessActor);
   registerPregnancyFollowUps(app, createPregnancyFollowUpStore(pool), getAccessActor);
   registerPregnancyMedicationReconciliation(app, createPregnancyMedicationReconciliationStore(pool), getAccessActor);
