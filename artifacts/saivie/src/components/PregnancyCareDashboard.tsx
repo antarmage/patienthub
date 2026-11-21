@@ -4,12 +4,18 @@ import {
   CalendarDays,
   FlaskConical,
   HeartPulse,
+  Pill,
   Stethoscope,
   Utensils,
   Video,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  patientMedicationCategory,
+  patientMedicationNeedsReview,
+  patientMedicationNote,
+} from "@/lib/patientMedicationDisplay";
 
 interface Props {
   patient: any;
@@ -104,7 +110,10 @@ export default function PregnancyCareDashboard({
   ];
 
   const recentLabs = [...labResults].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 4);
-  const activeMedications = medications.filter((item) => String(item.status || "").toLowerCase() === "active");
+  const activeMedications = medications.filter((item) => {
+    const status = String(item.status || "").trim().toLowerCase();
+    return !status || status === "active";
+  });
   const riskSummary = typeof patient?.riskScore?.patientSummary === "string"
     ? patient.riskScore.patientSummary
     : "";
@@ -212,6 +221,59 @@ export default function PregnancyCareDashboard({
             );
           })}
         </div>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="font-serif text-[38px] font-bold tracking-[-0.02em]">Medicines</h2>
+        {activeMedications.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {activeMedications.map((medicine: any) => {
+              const needsReview = patientMedicationNeedsReview(medicine.notes);
+              const category = patientMedicationCategory(medicine.name, medicine.route);
+              const note = patientMedicationNote(medicine.notes);
+              const doseFrequency = [medicine.dose, medicine.frequency].filter(Boolean).join(" · ");
+
+              return (
+                <article key={medicine.id} className="flex min-w-0 flex-col gap-3 rounded-[32px] border border-[#F0DCC4] bg-white p-7">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#E4DCFF] text-[#3A24B8]">
+                        <Pill className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0">
+                        <h3 className="font-serif text-[24px] font-bold leading-[1.15]">{medicine.name || "Unnamed medicine"}</h3>
+                        {doseFrequency && <p className="mt-1 text-[15px] font-medium text-[#5A4552]">{doseFrequency}</p>}
+                        {medicine.route && <p className="mt-1 text-[13px] text-[#6A5560]">{medicine.route}</p>}
+                      </div>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-3 py-1 text-[12px] font-extrabold ${
+                      needsReview
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}>
+                      {needsReview ? "Needs review" : category}
+                    </span>
+                  </div>
+
+                  {medicine.startDate && (
+                    <p className="text-[13px] text-[#6A5560]">
+                      Started {new Date(medicine.startDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                      {medicine.endDate ? ` · Until ${new Date(medicine.endDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}` : ""}
+                    </p>
+                  )}
+                  {note && <p className="text-[14px] leading-[1.45] text-[#5A4552]">{note}</p>}
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-[32px] border-2 border-dashed border-[#D9C3AE] bg-white p-8">
+            <p className="font-serif text-[24px] font-bold">No active medicines recorded</p>
+            <p className="mt-2 text-[16px] leading-[1.5] text-[#5A4552]">
+              Active medicines from your care team will appear here.
+            </p>
+          </div>
+        )}
       </section>
 
       <div className="flex flex-wrap items-stretch gap-5">
