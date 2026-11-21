@@ -835,7 +835,7 @@ export default function PatientPortal() {
           </TabsContent>
 
           <TabsContent value="biology" className="animate-in slide-in-from-bottom-4 duration-500">
-             <BiologyTab mode={mode} patient={{ ...patient, lmp: pregnancyLmp || patient?.lmp }} labResults={labResults} />
+             <BiologyTab mode={mode} patient={{ ...patient, lmp: pregnancyLmp || patient?.lmp }} labResults={labResults} onOpenTracker={() => setActiveTab('track')} />
           </TabsContent>
 
           <TabsContent value="insights" className="animate-in slide-in-from-bottom-4 duration-500">

@@ -38,6 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import hormoneWaveBg from "../assets/images/hormone-wave-bg.png";
 import dnaAbstract from "../assets/images/dna-abstract.png";
+import { getWeekData } from "@/components/WeekByWeekTimeline";
 
 const hormoneData = [
   { day: 1, est: 20, prog: 5, lh: 5, fsh: 10 },
@@ -55,6 +56,7 @@ interface BiologyTabProps {
   mode?: string;
   patient?: any;
   labResults?: any[];
+  onOpenTracker?: () => void;
 }
 
 function getPregnancyWeek(lmp: string | undefined) {
@@ -518,13 +520,14 @@ function CycleNowPatterns({ patient }: { patient: any }) {
   );
 }
 
-function PregnancyBodyReference({ patient, labResults }: { patient: any; labResults: any[] }) {
+function PregnancyBodyReference({ patient, labResults, onOpenTracker }: { patient: any; labResults: any[]; onOpenTracker?: () => void }) {
   const lmp = patient?.lmp;
   const weeks = lmp
     ? Math.max(1, Math.min(40, Math.floor((Date.now() - new Date(lmp).getTime()) / (7 * 24 * 60 * 60 * 1000))))
     : 24;
   const dueDate = lmp ? new Date(new Date(lmp).getTime() + 280 * 24 * 60 * 60 * 1000) : null;
   const currentSize = getPregnancyBabySize(weeks);
+  const weekGuide = getWeekData(weeks);
   const growthX = 8 + (weeks - 8) * (334 / 32);
   const growthY = 126 - ((weeks - 8) / 32) * 114;
 
@@ -582,8 +585,8 @@ function PregnancyBodyReference({ patient, labResults }: { patient: any; labResu
             <p className="mt-3 text-[16px] leading-[1.5] text-[#E9D8DF]">Your doctor can see the trend between visits.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <button type="button" className="min-h-[44px] rounded-full border border-[#FFA7B6] bg-[#FFA7B6] px-[18px] text-[15px] font-bold text-[#2A1220]">Add weight</button>
-            <button type="button" className="min-h-[44px] rounded-full border border-[#E9D8DF] bg-transparent px-[18px] text-[15px] font-bold text-[#FFF4EE]">Add blood pressure</button>
+            <button type="button" onClick={onOpenTracker} className="min-h-[44px] rounded-full border border-[#FFA7B6] bg-[#FFA7B6] px-[18px] text-[15px] font-bold text-[#2A1220]">Add weight</button>
+            <button type="button" onClick={onOpenTracker} className="min-h-[44px] rounded-full border border-[#E9D8DF] bg-transparent px-[18px] text-[15px] font-bold text-[#FFF4EE]">Add blood pressure</button>
           </div>
         </section>
       </div>
@@ -625,9 +628,9 @@ function trimesterText(weeks: number) {
   return "Final stretch";
 }
 
-export default function BiologyTab({ mode, patient, labResults }: BiologyTabProps) {
+export default function BiologyTab({ mode, patient, labResults, onOpenTracker }: BiologyTabProps) {
   if (mode === 'pregnancy') {
-    return <PregnancyBodyReference patient={patient} labResults={labResults || []} />;
+    return <PregnancyBodyReference patient={patient} labResults={labResults || []} onOpenTracker={onOpenTracker} />;
   }
   return <CycleNowPatterns patient={patient} />;
 }

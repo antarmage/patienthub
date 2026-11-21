@@ -366,12 +366,12 @@ export default function PatientTodayDashboard({
               >
                 <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "#7A4B00" }}>Baby this week</p>
                 <p className="mt-3 font-serif text-[30px] font-bold leading-[1.1]">
-                  {week != null ? `Size of ${getWeekData(week).fruit.toLowerCase()}` : baby?.title || "Baby growth"}
+                  {week != null ? `Size of ${getWeekData(week).fruit.toLowerCase()}` : "Baby growth"}
                 </p>
                 <p className="mt-2 text-[15px] leading-[1.5]" style={{ color: "#4A3320" }}>
                   {week != null
                     ? getWeekData(week).development[0] + "."
-                    : baby?.detail || "Baby is growing and developing this week."}
+                    : "Baby is growing and developing this week."}
                 </p>
               </motion.section>
               {shouldShowThirdTrimesterCard && (
