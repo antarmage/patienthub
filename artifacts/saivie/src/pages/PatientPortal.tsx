@@ -54,7 +54,9 @@ import { patientMedicationCategory, patientMedicationNeedsReview, patientMedicat
 import { nextAppointment } from "@/lib/patientAppointments";
 import { bookingVisitModeLabel } from "@/lib/bookingVisit";
 import { validMeetUrl } from "@/lib/onlineConsultation";
+import PatientPrograms from "@/components/PatientPrograms";
 import PatientTodayDashboard from "@/components/PatientTodayDashboard";
+import PregnancyCareDashboard from "@/components/PregnancyCareDashboard";
 import { BrandLogo } from "@/components/BrandLogo";
 
 export default function PatientPortal() {
@@ -99,6 +101,9 @@ export default function PatientPortal() {
   const pregnancyEpisodes = Array.isArray(pregnancyEpisodesQuery.data) ? pregnancyEpisodesQuery.data : [];
   const currentPregnancyEpisode = pregnancyEpisodes.find((episode: any) => episode?.details?.status === "current") || null;
   const pregnancyLmp = currentPregnancyEpisode?.details?.lmp || patient?.lmp || null;
+  const pregnancyWeek = pregnancyLmp
+    ? Math.max(1, Math.min(40, Math.floor((Date.now() - new Date(pregnancyLmp).getTime()) / (7 * 24 * 60 * 60 * 1000))))
+    : null;
 
   function inferPatientMode(p: any): string {
     if (!p) return "general";
@@ -362,6 +367,7 @@ export default function PatientPortal() {
               ["home", "Today"],
               ["biology", "Biology"],
               ["insights", "Insights"],
+              ["programs", "Programs"],
               ["care", "My care"],
             ] as const).map(([value, label]) => (
               <motion.button
@@ -842,7 +848,25 @@ export default function PatientPortal() {
              <InsightsTab mode={mode} patient={{ ...patient, lmp: pregnancyLmp || patient?.lmp }} />
           </TabsContent>
 
+          <TabsContent value="programs" className="animate-in slide-in-from-bottom-4 duration-500">
+            <PatientPrograms pregnancy={mode === "pregnancy"} week={pregnancyWeek} />
+          </TabsContent>
+
           <TabsContent value="care" className="animate-in slide-in-from-bottom-4 duration-500 space-y-6 pb-8">
+            {mode === 'pregnancy' && patient?.id && (
+              <PregnancyCareDashboard
+                patient={patient}
+                week={pregnancyWeek}
+                appointments={(patientAppointments as any[]) || []}
+                medications={(medications as any[]) || []}
+                labResults={(labResults as any[]) || []}
+                visitHistory={(visitHistory as any[]) || []}
+                weightLogs={(weightLogs as any[]) || []}
+                onBook={openBooking}
+                onOpenTrack={() => setActiveTab('track')}
+                onOpenRecords={() => setActiveTab('track')}
+              />
+            )}
             
             {mode === 'pregnancy' && (
               <>
@@ -1592,6 +1616,12 @@ export default function PatientPortal() {
                onClick={() => setActiveTab('insights')} 
                icon={<Sparkles className="w-5 h-5" />} 
                label="Insights" 
+             />
+             <NavButton
+               active={activeTab === 'programs'}
+               onClick={() => setActiveTab('programs')}
+               icon={<Activity className="w-5 h-5" />}
+               label="Programs"
              />
              {(mode === 'pregnancy' || mode === 'ttc') && (
                <NavButton 
