@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Activity, Apple, Brain } from "lucide-react";
+import { getWeekData } from "@/components/WeekByWeekTimeline";
 
 interface Props {
   pregnancy: boolean;
@@ -11,6 +12,10 @@ export default function PatientPrograms({ pregnancy, week }: Props) {
   const currentWeek = week ?? 24;
   const [activeCategory, setActiveCategory] = useState("All");
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
+  const [completedChecklist, setCompletedChecklist] = useState<number[]>([]);
+  const weekChecklist = pregnancy
+    ? getWeekData(currentWeek).dos.slice(0, 4)
+    : ["Track today's cycle symptoms", "Add protein to lunch", "Plan recovery time"];
   const mindText = pregnancy
     ? "Birth preparation and anxiety support with perinatal psychologists."
     : "Stress support and body literacy with licensed clinicians.";
@@ -166,6 +171,37 @@ export default function PatientPrograms({ pregnancy, week }: Props) {
           ))}
         </div>
       </section>
+
+      {pregnancy && (
+        <section className="space-y-4">
+          <h2 className="font-serif text-[38px] font-bold tracking-[-0.02em]">Weekly checklist</h2>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {weekChecklist.map((item, index) => (
+              <button
+                key={item}
+                type="button"
+                aria-pressed={completedChecklist.includes(index)}
+                onClick={() => setCompletedChecklist((current) =>
+                  current.includes(index)
+                    ? current.filter((value) => value !== index)
+                    : [...current, index])}
+                className={`flex min-h-[64px] items-center gap-3 rounded-[22px] border p-4 text-left ${
+                  completedChecklist.includes(index)
+                    ? "border-emerald-200 bg-emerald-50"
+                    : "border-[#F0DCC4] bg-white"
+                }`}
+              >
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] border-2 ${
+                  completedChecklist.includes(index) ? "border-emerald-600 bg-emerald-600 text-white" : "border-[#2A1220]"
+                }`}>
+                  {completedChecklist.includes(index) ? "✓" : ""}
+                </span>
+                <span className="text-[16px] font-semibold leading-[1.4]">{item}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

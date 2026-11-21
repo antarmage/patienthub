@@ -14,7 +14,6 @@ import {
   Leaf, 
   Baby, 
   TestTube, 
-  Sparkles, 
   ChevronRight, 
   Moon, 
   Sun, 
@@ -46,7 +45,6 @@ import calmGradient from "../assets/images/calm-gradient.png";
 import softCardBg from "../assets/images/soft-card-bg.png";
 
 import BiologyTab from "@/components/BiologyTab";
-import InsightsTab from "@/components/InsightsTab";
 import PregnancyTrackersTab from "@/components/PregnancyTrackersTab";
 import { PatientMenopauseCare } from "@/components/MenopauseCare";
 import { patientGreetingName, cycleSubtitle } from "@/lib/patientGreeting";
@@ -375,8 +373,7 @@ export default function PatientPortal() {
           <nav className="flex items-center gap-1 rounded-full border border-black/10 bg-white/75 p-1 shadow-sm" aria-label="Patient portal navigation">
             {([
               ["home", "Today"],
-              ["biology", "Biology"],
-              ["insights", "Insights"],
+              ["biology", "Body"],
               ["programs", "Programs"],
               ["care", "My care"],
             ] as const).map(([value, label]) => (
@@ -448,10 +445,6 @@ export default function PatientPortal() {
 
           <TabsContent value="biology" className="animate-in slide-in-from-bottom-4 duration-500">
              <BiologyTab mode={mode} patient={{ ...patient, lmp: pregnancyLmp || patient?.lmp }} labResults={labResults} onOpenTracker={() => setActiveTab('track')} />
-          </TabsContent>
-
-          <TabsContent value="insights" className="animate-in slide-in-from-bottom-4 duration-500">
-             <InsightsTab mode={mode} patient={{ ...patient, lmp: pregnancyLmp || patient?.lmp }} />
           </TabsContent>
 
           <TabsContent value="programs" className="animate-in slide-in-from-bottom-4 duration-500">
@@ -668,13 +661,7 @@ export default function PatientPortal() {
                active={activeTab === 'biology'} 
                onClick={() => setActiveTab('biology')} 
                icon={<Activity className="w-5 h-5" />} 
-               label="Biology" 
-             />
-             <NavButton 
-               active={activeTab === 'insights'} 
-               onClick={() => setActiveTab('insights')} 
-               icon={<Sparkles className="w-5 h-5" />} 
-               label="Insights" 
+                 label="Body" 
              />
              <NavButton
                active={activeTab === 'programs'}

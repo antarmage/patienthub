@@ -105,6 +105,12 @@ export default function PregnancyCareDashboard({
 
   const recentLabs = [...labResults].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 4);
   const activeMedications = medications.filter((item) => String(item.status || "").toLowerCase() === "active");
+  const riskSummary = typeof patient?.riskScore?.patientSummary === "string"
+    ? patient.riskScore.patientSummary
+    : "";
+  const riskLevel = typeof patient?.riskScore?.level === "string"
+    ? patient.riskScore.level
+    : "";
 
   return (
     <div className="space-y-8 pb-8">
@@ -155,6 +161,29 @@ export default function PregnancyCareDashboard({
           )}
         </div>
       </motion.section>
+
+      {riskSummary && (
+        <section className="rounded-[32px] border border-[#F0DCC4] bg-white p-7">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 flex-1 basis-[520px]">
+              <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#6A5560]">What to watch this week</p>
+              <p className="mt-3 text-[16px] leading-[1.55] text-[#3A2A44]">{riskSummary}</p>
+            </div>
+            {riskLevel && (
+              <span className={`rounded-full px-4 py-2 text-[12px] font-extrabold ${
+                riskLevel.toLowerCase() === "critical"
+                  ? "bg-red-100 text-red-700"
+                  : riskLevel.toLowerCase() === "high"
+                    ? "bg-orange-100 text-orange-700"
+                    : "bg-emerald-100 text-emerald-700"
+              }`}>
+                {riskLevel} risk
+              </span>
+            )}
+          </div>
+          <p className="mt-3 text-[12px] text-[#6A5560]">Updated by AI · Review with your care team</p>
+        </section>
+      )}
 
       <section className="space-y-4">
         <h2 className="font-serif text-[38px] font-bold tracking-[-0.02em]">Book an appointment</h2>

@@ -68,6 +68,7 @@ function getPregnancyWeek(lmp: string | undefined) {
 function PregnancyBiology({ patient, labResults }: { patient: any; labResults: any[] }) {
   const weeks = getPregnancyWeek(patient?.lmp);
   const trimester = weeks < 13 ? 1 : weeks < 27 ? 2 : 3;
+  const weekGuide = getWeekData(weeks);
 
   const pregnancyHormoneData = [
     { week: 4, hcg: 50, prog: 15, est: 200 },
@@ -514,6 +515,10 @@ function CycleNowPatterns({ patient }: { patient: any }) {
               ))}
             </div>
           </section>
+
+    
+
+
         </>
       )}
     </div>
@@ -528,6 +533,7 @@ function PregnancyBodyReference({ patient, labResults, onOpenTracker }: { patien
   const dueDate = lmp ? new Date(new Date(lmp).getTime() + 280 * 24 * 60 * 60 * 1000) : null;
   const currentSize = getPregnancyBabySize(weeks);
   const weekGuide = getWeekData(weeks);
+  const trimester = weeks < 13 ? 1 : weeks < 28 ? 2 : 3;
   const growthX = 8 + (weeks - 8) * (334 / 32);
   const growthY = 126 - ((weeks - 8) / 32) * 114;
 
@@ -607,6 +613,48 @@ function PregnancyBodyReference({ patient, labResults, onOpenTracker }: { patien
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="flex flex-wrap gap-5">
+        <article className="flex min-w-0 flex-[1_1_420px] flex-col gap-4 rounded-[32px] border border-[#F0DCC4] bg-white p-7">
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#6A5560]">BABY&apos;S DEVELOPMENT</p>
+          <h2 className="font-serif text-[30px] font-bold leading-[1.1]">{trimester === 1 ? "Foundations are being built" : trimester === 2 ? "Growing and exploring" : "Getting ready"}</h2>
+          <div className="space-y-3">
+            {weekGuide.development.slice(0, 4).map((item: string) => (
+              <div key={item} className="flex items-start gap-3">
+                <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#FFA7B6]" />
+                <p className="text-[16px] leading-[1.45] text-[#4A3846]">{item}</p>
+              </div>
+            ))}
+          </div>
+        </article>
+        <article className="flex min-w-0 flex-[1_1_420px] flex-col gap-4 rounded-[32px] bg-[#FFD9C9] p-7">
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#A8341A]">COMMON SYMPTOMS</p>
+          <h2 className="font-serif text-[30px] font-bold leading-[1.1]">What you may notice</h2>
+          <div className="flex flex-wrap gap-2">
+            {weekGuide.symptoms.slice(0, 4).map((item: string) => (
+              <span key={item} className="rounded-full bg-white px-[14px] py-2 text-[14px] font-bold text-[#4A3846]">{item}</span>
+            ))}
+          </div>
+        </article>
+        <article className="flex min-w-0 flex-[1_1_420px] flex-col gap-4 rounded-[32px] bg-[#CFF1EA] p-7">
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#0B6B5F]">DO THIS WEEK</p>
+          {weekGuide.dos.slice(0, 3).map((item: string) => (
+            <p key={item} className="flex gap-3 text-[15px] leading-[1.45]">
+              <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0B6B5F] text-[11px] font-bold text-white">✓</span>
+              {item}
+            </p>
+          ))}
+        </article>
+        <article className="flex min-w-0 flex-[1_1_420px] flex-col gap-4 rounded-[32px] bg-[#E4DCFF] p-7">
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#3A24B8]">AVOID THIS WEEK</p>
+          {weekGuide.donts.slice(0, 3).map((item: string) => (
+            <p key={item} className="flex gap-3 text-[15px] leading-[1.45]">
+              <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#3A24B8] text-[11px] font-bold text-white">×</span>
+              {item}
+            </p>
+          ))}
+        </article>
       </section>
     </div>
   );
