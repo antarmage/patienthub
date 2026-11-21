@@ -518,9 +518,116 @@ function CycleNowPatterns({ patient }: { patient: any }) {
   );
 }
 
+function PregnancyBodyReference({ patient, labResults }: { patient: any; labResults: any[] }) {
+  const lmp = patient?.lmp;
+  const weeks = lmp
+    ? Math.max(1, Math.min(40, Math.floor((Date.now() - new Date(lmp).getTime()) / (7 * 24 * 60 * 60 * 1000))))
+    : 24;
+  const dueDate = lmp ? new Date(new Date(lmp).getTime() + 280 * 24 * 60 * 60 * 1000) : null;
+  const currentSize = getPregnancyBabySize(weeks);
+  const growthX = 8 + (weeks - 8) * (334 / 32);
+  const growthY = 126 - ((weeks - 8) / 32) * 114;
+
+  return (
+    <div className="space-y-6 pb-24">
+      <motion.section
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-wrap items-stretch justify-between gap-8 rounded-[40px] bg-[#FFA7B6] p-6 md:p-12"
+      >
+        <div className="min-w-0 basis-[480px] flex-1">
+          <span className="inline-flex h-8 items-center rounded-full bg-[#2A1220] px-4 text-[12px] font-extrabold tracking-[0.1em] text-[#FFA7B6]">
+            WEEK {weeks}
+          </span>
+          <h1 className="mt-4 font-serif text-[44px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[72px]">
+            Your body is making a <em className="font-medium">person.</em>
+          </h1>
+          <p className="mt-4 max-w-[36ch] text-[17px] font-medium leading-[1.4] md:text-[20px]">
+            Here is what is changing, and what is normal.
+          </p>
+        </div>
+        <div className="min-w-0 basis-[420px] flex-[0_1_420px] rounded-[32px] bg-white p-7">
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#6A5560]">TODAY&apos;S READ</p>
+          <p className="mt-3 font-serif text-[24px] font-bold leading-[1.2]">
+            {weeks <= 12
+              ? "Your baby's major organs are beginning to form."
+              : weeks <= 27
+                ? `Your baby is about the size of ${currentSize.label}. Your body is making more blood.`
+                : "Your baby is preparing for birth. Rest and routine antenatal checks matter."}
+          </p>
+        </div>
+      </motion.section>
+
+      <div className="flex flex-wrap items-stretch gap-5">
+        <section className="min-w-0 flex-[1_1_640px] rounded-[32px] border border-[#F0DCC4] bg-white p-6 md:p-8">
+          <h2 className="font-serif text-[30px] font-bold leading-[1.1]">Baby&apos;s growth</h2>
+          <p className="mt-2 text-[16px] leading-[1.45] text-[#5A4552]">
+            Average length by week. Sample data. Your scans may differ.
+          </p>
+          <svg viewBox="0 0 350 150" role="img" aria-label={`Baby growth at week ${weeks}.`} className="mt-4 block h-auto w-full">
+            <line x1="4" y1="130" x2="346" y2="130" stroke="#E6D3BD" strokeWidth="1.5" />
+            <path d="M8 126 C60 124 110 112 150 92 S220 46 260 30 S320 14 342 12" fill="none" stroke="#2A1220" strokeWidth="3.5" strokeLinecap="round" />
+            <line x1={growthX} y1="10" x2={growthX} y2="130" stroke="#2A1220" strokeWidth="1.5" strokeDasharray="3 4" />
+            <circle cx={growthX} cy={growthY} r="7" fill="#FFF4EE" stroke="#2A1220" strokeWidth="3" />
+            <text x={growthX} y="8" textAnchor="middle" fontSize="10" fontWeight="800" fill="#2A1220">WEEK {weeks}</text>
+            <text x="4" y="146" fontSize="11" fontWeight="600" fill="#5A4552">Wk 8</text>
+            <text x="346" y="146" textAnchor="end" fontSize="11" fontWeight="600" fill="#5A4552">Wk 40</text>
+          </svg>
+        </section>
+
+        <section className="flex min-w-0 flex-[1_1_340px] flex-col justify-between gap-5 rounded-[32px] bg-[#2A1220] p-6 text-[#FFF4EE] md:max-w-[420px] md:p-8">
+          <div>
+            <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#FFA7B6]">SHARPEN THE PICTURE</p>
+            <h2 className="mt-3 font-serif text-[30px] font-bold leading-[1.1]">Log your weight and blood pressure</h2>
+            <p className="mt-3 text-[16px] leading-[1.5] text-[#E9D8DF]">Your doctor can see the trend between visits.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" className="min-h-[44px] rounded-full border border-[#FFA7B6] bg-[#FFA7B6] px-[18px] text-[15px] font-bold text-[#2A1220]">Add weight</button>
+            <button type="button" className="min-h-[44px] rounded-full border border-[#E9D8DF] bg-transparent px-[18px] text-[15px] font-bold text-[#FFF4EE]">Add blood pressure</button>
+          </div>
+        </section>
+      </div>
+
+      <section className="space-y-4">
+        <h2 className="font-serif text-[38px] font-bold tracking-[-0.02em]">Your four signals</h2>
+        <div className="flex flex-wrap gap-4">
+          {[
+            ["BABY", "Kicks starting", "You may feel flutters. A pattern matters more from week 28.", "#FFD9C9", "#7A1F38", "#3A2A44"],
+            ["BLOOD", "Volume up", "Your body makes more blood. You may feel warmer.", "#CFF1EA", "#0B6B5F", "#3A2A44"],
+            ["JOINTS", "Looser", "Relaxin softens ligaments. Back and hip aches are common.", "#E4DCFF", "#3A24B8", "#3A2A44"],
+            ["ENERGY", trimesterText(weeks), "Often more steady in the second trimester.", "#FFE7A8", "#7A4B00", "#3A2A44"],
+          ].map(([label, value, copy, bg, labelColor, bodyColor]) => (
+            <article key={label} className="flex min-w-0 flex-[1_1_240px] flex-col gap-[14px] rounded-[32px] p-[26px]" style={{ background: bg }}>
+              <p className="text-[12px] font-extrabold uppercase tracking-[0.14em]" style={{ color: labelColor }}>{label}</p>
+              <h3 className="font-serif text-[30px] font-bold leading-[1.1]">{value}</h3>
+              <p className="text-[15px] leading-[1.5]" style={{ color: bodyColor }}>{copy}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function getPregnancyBabySize(weeks: number) {
+  if (weeks < 8) return { label: "a poppy seed", length: "1 mm" };
+  if (weeks < 12) return { label: "a lime", length: "5 cm" };
+  if (weeks < 16) return { label: "an avocado", length: "12 cm" };
+  if (weeks < 20) return { label: "a banana", length: "25 cm" };
+  if (weeks < 28) return { label: "an ear of corn", length: "30 cm" };
+  if (weeks < 36) return { label: "an eggplant", length: "37 cm" };
+  return { label: "a watermelon", length: "50 cm" };
+}
+
+function trimesterText(weeks: number) {
+  if (weeks < 13) return "First trimester";
+  if (weeks < 28) return "Steadier";
+  return "Final stretch";
+}
+
 export default function BiologyTab({ mode, patient, labResults }: BiologyTabProps) {
   if (mode === 'pregnancy') {
-    return <PregnancyBiology patient={patient} labResults={labResults || []} />;
+    return <PregnancyBodyReference patient={patient} labResults={labResults || []} />;
   }
   return <CycleNowPatterns patient={patient} />;
 }
