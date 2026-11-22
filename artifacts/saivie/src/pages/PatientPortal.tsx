@@ -546,11 +546,11 @@ export default function PatientPortal() {
           </div>
         </header>
 
-        <header className="hidden md:flex items-center justify-between border-b border-[var(--line)] pb-4 mb-6">
+        <header className={`hidden md:flex items-center justify-between pb-4 mb-6 ${activeTab === "stage" ? "" : "border-b border-[var(--line)]"}`}>
           <button type="button" onClick={() => setActiveTab("home")} className="flex items-center gap-2" aria-label="Saivie home">
             <BrandLogo fallback="S" className="h-16" />
           </button>
-          <nav className="flex items-center gap-1 rounded-full border border-black/10 bg-white/75 p-1 shadow-sm" aria-label="Patient portal navigation">
+          <nav className={`flex items-center gap-1 rounded-full p-1 ${activeTab === "stage" ? "bg-[#23122d]" : "border border-black/10 bg-white/75 shadow-sm"}`} aria-label="Patient portal navigation">
             {([
               ["home", "Today"],
               ["biology", "Body"],
@@ -565,7 +565,9 @@ export default function PatientPortal() {
                 whileTap={{ scale: 0.96 }}
                 transition={{ duration: 0.16 }}
                 className={`rounded-full px-5 py-2 text-xs font-semibold transition ${
-                  (activeTab === value || (value === "care" && activeTab === "record") || (value === "home" && (activeTab === "stage" || activeTab === "pregnancy-update"))) ? "bg-[#35212f] text-white" : "text-saivie-plum hover:bg-saivie-ivory"
+                  activeTab === "stage"
+                    ? value === "home" ? "bg-[#FFB32C] text-[#23122d]" : "text-white hover:bg-white/10"
+                    : (activeTab === value || (value === "care" && activeTab === "record") || (value === "home" && activeTab === "pregnancy-update")) ? "bg-[#35212f] text-white" : "text-saivie-plum hover:bg-saivie-ivory"
                 }`}
               >
                 {label}
@@ -573,7 +575,7 @@ export default function PatientPortal() {
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            <div className="relative z-50">
+            <div className={`relative z-50 ${activeTab === "stage" ? "hidden" : ""}`}>
               <button
                 type="button"
                 onClick={() => setActiveTab("stage")}
@@ -587,7 +589,7 @@ export default function PatientPortal() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button type="button" className="flex h-9 w-9 items-center justify-center rounded-full border border-saivie-border bg-saivie-blush text-xs font-semibold text-saivie-plum" aria-label="Open profile menu">
+                <button type="button" className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold text-saivie-plum ${activeTab === "stage" ? "bg-[#FFB32C]" : "border border-saivie-border bg-saivie-blush"}`} aria-label="Open profile menu">
                   {patientGreetingName(
                     patient?.name ||
                     [patient?.firstName, patient?.lastName].filter((part: unknown) => typeof part === "string" && part.trim()).join(" ")

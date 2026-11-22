@@ -1,4 +1,3 @@
-import { ChevronRight } from "lucide-react";
 import type { FertilitySupportMode, PatientStage, PatientStageMode } from "@/lib/patientStage";
 
 interface Props {
@@ -19,51 +18,51 @@ const stages: Array<{
     id: "periods",
     mode: "general",
     title: "I have periods",
-    description: "Cycle patterns, energy and everyday wellbeing.",
+    description: "Track your phase, energy and daily plan.",
     detail: "Cycle insights · phase by phase",
-    background: "#FFB534",
+    background: "#FFB32C",
   },
   {
     id: "pregnancy",
     mode: "pregnancy",
     title: "I'm pregnant",
-    description: "Pregnancy guidance that follows your week.",
+    description: "Follow your weeks, your baby and your prenatal plan.",
     detail: "Your pregnancy · week by week",
-    background: "#FFA7B6",
+    background: "#F9A1B2",
   },
   {
     id: "postpartum",
     mode: "postpartum",
     title: "I recently had a baby",
-    description: "A gentle space for your recovery and wellbeing.",
+    description: "Recovery, rest, feeding and your wellbeing, week by week.",
     detail: "Your recovery · at your pace",
-    background: "#C9E889",
+    background: "#C9E98F",
   },
   {
     id: "menopause",
     mode: "menopause",
     title: "Perimenopause or menopause",
-    description: "Understand symptoms and notice patterns over time.",
+    description: "Track symptoms, spot patterns and prepare for doctor visits.",
     detail: "Your symptoms · your story",
-    background: "#7ED3E1",
+    background: "#7FD1DF",
   },
 ];
 
 export default function PatientStageSwitcher({ currentStage, onSelectStage, onSelectFertilityMode }: Props) {
   return (
-    <main className="mx-auto w-full max-w-[980px] px-5 pb-28 pt-8 md:px-8 md:pb-12 md:pt-12" data-testid="patient-stage-switcher">
-      <header className="mx-auto max-w-[680px] text-center">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#775B63]">Your care, your stage</p>
-        <h1 className="mt-3 font-serif text-4xl font-semibold leading-tight text-[#35212f] md:text-6xl">
-          Where are you right now?
+    <main className="w-full px-5 pb-28 pt-8 text-[#23122d] md:px-0 md:pb-12 md:pt-4" data-testid="patient-stage-switcher">
+      <header>
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]">Switch stage</p>
+        <h1 className="mt-3 font-serif text-[40px] font-bold leading-[1.05] tracking-[-0.04em] sm:text-[52px] md:text-[58px]">
+          Where are you <span className="italic">right now?</span>
         </h1>
-        <p className="mx-auto mt-4 max-w-[520px] text-base leading-relaxed text-[#6A5963] md:text-lg">
-          Choose what feels right for you today. Your care changes with you.
+        <p className="mt-3 max-w-[440px] text-[15px] leading-[1.5] text-[#5A4552]">
+          Pick the stage that fits today. Your whole app, from the plan to the programs, changes to match.
         </p>
       </header>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 md:mt-10 md:gap-5">
-        {stages.map((stage, index) => {
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 min-[900px]:grid-cols-4">
+        {stages.map((stage) => {
           const selected = stage.id === currentStage;
           return (
             <button
@@ -71,51 +70,46 @@ export default function PatientStageSwitcher({ currentStage, onSelectStage, onSe
               type="button"
               onClick={() => onSelectStage(stage.mode)}
               aria-pressed={selected}
-              className={`group flex min-h-[220px] flex-col rounded-[28px] border-2 p-5 text-left text-[#35212f] shadow-sm transition hover:-translate-y-1 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#35212f]/20 md:min-h-[248px] md:p-7 ${
-                selected ? "border-[#35212f]" : "border-transparent"
-              }`}
+              className="flex min-h-[220px] flex-col rounded-[25px] p-[22px] text-left transition hover:-translate-y-1 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#23122d]/30 min-[900px]:min-h-[234px]"
               style={{ backgroundColor: stage.background }}
               data-testid={`patient-stage-${stage.id}`}
             >
-              <span className="flex w-full items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-[0.14em] opacity-70">0{index + 1}</span>
-                {selected && (
-                  <span className="rounded-full bg-[#35212f] px-3 py-1 text-[11px] font-bold text-white">
-                    Your stage
+              {selected && (
+                <span className="mb-3 flex w-full items-center justify-between gap-2">
+                  <span className="text-[9px] font-extrabold uppercase tracking-[0.14em]">Current</span>
+                  <span className="rounded-full bg-[#23122d] px-3 py-1.5 text-[9px] font-bold text-[#FFB32C]">
+                    Selected
                   </span>
-                )}
-              </span>
-              <span className="mt-6 font-serif text-2xl font-semibold leading-tight md:text-[28px]">{stage.title}</span>
-              <span className="mt-2 text-sm leading-relaxed">{stage.description}</span>
-              <span className="mt-auto inline-flex items-center gap-2 self-start rounded-full bg-white/65 px-3.5 py-2 text-xs font-bold">
+                </span>
+              )}
+              <span className="font-serif text-[25px] font-bold leading-[1.05] tracking-[-0.025em]">{stage.title}</span>
+              <span className="mt-3 text-[13px] leading-[1.45]">{stage.description}</span>
+              <span className="mt-auto block w-full rounded-full bg-white/70 px-3 py-1.5 text-[10px] font-bold leading-[1.3]">
                 {stage.detail}
-                <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
               </span>
             </button>
           );
         })}
       </div>
 
-      <p className="mt-7 text-center text-sm text-[#6A5963]">
-        You can switch any time. Your health record and history stay with you.
-      </p>
-      <div className="mt-4 text-center">
-        <button
-          type="button"
-          onClick={() => onSelectFertilityMode("ttc")}
-          className="inline-flex min-h-11 items-center gap-1 rounded-full px-4 text-sm font-semibold text-[#35212f] underline decoration-[#A78A94] underline-offset-4 hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#35212f]"
-        >
-          Trying to conceive? Explore that goal
-          <ChevronRight className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onSelectFertilityMode("ivf")}
-          className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-full px-4 text-sm font-semibold text-[#35212f] hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#35212f]"
-        >
-          IVF support
-          <ChevronRight className="h-4 w-4" />
-        </button>
+      <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+        <p className="pt-3 text-xs text-[#5A4552]">You can switch any time. Your history stays with you.</p>
+        <div className="flex flex-wrap gap-x-4 sm:justify-end">
+          <button
+            type="button"
+            onClick={() => onSelectFertilityMode("ttc")}
+            className="min-h-11 text-left text-xs font-bold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#23122d]"
+          >
+            Trying to conceive? Set a goal
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectFertilityMode("ivf")}
+            className="min-h-11 text-left text-xs font-bold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#23122d]"
+          >
+            IVF support
+          </button>
+        </div>
       </div>
     </main>
   );
