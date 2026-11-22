@@ -288,11 +288,8 @@ export default function PatientTodayDashboard({
       data-mode={mode}
     >
       {pregnancyEpisode?.details?.status === "current" && (
-        <div className="mb-6 hidden min-h-[52px] items-center justify-between rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-5 text-[13px] md:flex">
+        <div className="mb-6 hidden min-h-[52px] items-center rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-5 text-[13px] md:flex">
           <span>Cycle predictions are paused while you're pregnant.</span>
-          <button type="button" onClick={onOpenCare} className="min-h-[44px] font-bold underline underline-offset-[4px]">
-            Update pregnancy status
-          </button>
         </div>
       )}
 
@@ -421,45 +418,24 @@ export default function PatientTodayDashboard({
 
           {isPregnancy ? (
             <div className="mt-auto">
-              <svg viewBox="0 0 350 64" role="img" aria-label={`Pregnancy week ${week ?? "—"} of 40`} className="block h-auto w-full">
-                {(() => {
-                  const clampedWeek = week != null ? Math.min(40, Math.max(1, week)) : 24;
-                  return (
-                    <>
-                      {Array.from({ length: 20 }, (_, index) => index + 1).map((dotWeek) => {
-                        const rowIndex = dotWeek - 1;
-                        const done = dotWeek < clampedWeek;
-                        const cxDone = 8.75 + rowIndex * 17.5;
-                        return dotWeek !== clampedWeek ? (
-                          <circle key={dotWeek} cx={cxDone} cy="14" r="6" fill={done ? "var(--ink)" : "rgba(42,18,32,0.2)"} />
-                        ) : null;
-                      })}
-                      {Array.from({ length: 20 }, (_, index) => index + 21).map((dotWeek) => {
-                        const rowIndex = dotWeek - 21;
-                        const done = dotWeek < clampedWeek;
-                        const cxDone = 8.75 + rowIndex * 17.5;
-                        return dotWeek !== clampedWeek ? (
-                          <circle key={dotWeek} cx={cxDone} cy="46" r="6" fill={done ? "var(--ink)" : "rgba(42,18,32,0.2)"} />
-                        ) : null;
-                      })}
-                      {(() => {
-                        const cy = clampedWeek <= 20 ? 14 : 46;
-                        const cx = clampedWeek <= 20
-                          ? 8.75 + (clampedWeek - 1) * 17.5
-                          : 8.75 + (clampedWeek - 21) * 17.5;
-                        return (
-                          <>
-                            <circle cx={cx} cy={cy} r="11" fill="#FFF4EE" stroke="var(--ink)" strokeWidth="3" />
-                          </>
-                        );
-                      })()}
-                    </>
+              <svg viewBox="0 0 358 64" role="img" aria-label={week != null ? `Pregnancy week ${week} of 40` : "Pregnancy week not available"} className="block h-auto w-full">
+                {Array.from({ length: 40 }, (_, index) => {
+                  const dotWeek = index + 1;
+                  const cx = 12.5 + (index % 20) * 17.5;
+                  const cy = index < 20 ? 14 : 46;
+                  return dotWeek === week ? (
+                    <g key={dotWeek}>
+                      <circle cx={cx} cy={cy} r="11" fill="#FFF4EE" stroke="var(--ink)" strokeWidth="3" />
+                      <circle cx={cx} cy={cy} r="4.5" fill="var(--ink)" />
+                    </g>
+                  ) : (
+                    <circle key={dotWeek} cx={cx} cy={cy} r="6" fill={week != null && dotWeek < week ? "var(--ink)" : "rgba(42,18,32,0.2)"} />
                   );
-                })()}
+                })}
               </svg>
               <div className="mt-2 flex justify-between text-[13px] font-semibold">
                 <span>Week 1</span>
-                <span>{dueDate ? `Due ${dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}` : "Today"}</span>
+                <span>{week != null ? `Today is week ${week}` : "Week not available"}</span>
                 <span>Week 40</span>
               </div>
             </div>
@@ -506,10 +482,12 @@ export default function PatientTodayDashboard({
           )}
 
           <div className="mt-2 flex flex-wrap gap-[10px]">
-            <motion.button type="button" onClick={onBook} whileHover={reducedMotion ? undefined : { y: -2, scale: 1.015 }} whileTap={reducedMotion ? undefined : { scale: 0.97 }} transition={{ duration: 0.16 }} className="h-[52px] flex-1 rounded-full bg-[var(--ink)] px-6 text-[16px] font-bold text-[var(--paper)] md:flex-none">
+            <motion.button type="button" onClick={onBook} whileHover={reducedMotion ? undefined : { y: -2, scale: 1.015 }} whileTap={reducedMotion ? undefined : { scale: 0.97 }} transition={{ duration: 0.16 }} className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-full bg-[var(--ink)] px-6 text-[16px] font-bold text-[var(--paper)] md:flex-none">
               {isPregnancy ? "This week" : "View insights"}
+              {isPregnancy && <ChevronRight className="h-4 w-4" aria-hidden="true" />}
             </motion.button>
-            <motion.button type="button" onClick={shareEra} whileTap={reducedMotion ? undefined : { scale: 0.97 }} className="h-[52px] flex-1 rounded-full border-2 border-[var(--ink)] bg-transparent px-5 text-[16px] font-bold md:flex-none">
+            <motion.button type="button" onClick={shareEra} whileTap={reducedMotion ? undefined : { scale: 0.97 }} className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-full border-2 border-[var(--ink)] bg-transparent px-5 text-[16px] font-bold md:flex-none">
+              {isPregnancy && <Share2 className="h-4 w-4" aria-hidden="true" />}
               {isPregnancy ? "Share bump" : "Share today"}
             </motion.button>
           </div>
