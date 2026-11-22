@@ -39,6 +39,8 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import hormoneWaveBg from "../assets/images/hormone-wave-bg.png";
 import dnaAbstract from "../assets/images/dna-abstract.png";
 import { getWeekData } from "@/components/WeekByWeekTimeline";
+import type { PregnancyTrackerTarget } from "@/components/PregnancyTrackersTab";
+import PregnancyGrowthChart from "@/components/PregnancyGrowthChart";
 
 const hormoneData = [
   { day: 1, est: 20, prog: 5, lh: 5, fsh: 10 },
@@ -56,7 +58,7 @@ interface BiologyTabProps {
   mode?: string;
   patient?: any;
   labResults?: any[];
-  onOpenTracker?: () => void;
+  onOpenTracker?: (tracker: PregnancyTrackerTarget) => void;
 }
 
 function getPregnancyWeek(lmp: string | undefined) {
@@ -525,7 +527,7 @@ function CycleNowPatterns({ patient }: { patient: any }) {
   );
 }
 
-function PregnancyBodyReference({ patient, labResults, onOpenTracker }: { patient: any; labResults: any[]; onOpenTracker?: () => void }) {
+function PregnancyBodyReference({ patient, labResults, onOpenTracker }: { patient: any; labResults: any[]; onOpenTracker?: (tracker: PregnancyTrackerTarget) => void }) {
   const lmp = patient?.lmp;
   const weeks = lmp
     ? Math.max(1, Math.min(40, Math.floor((Date.now() - new Date(lmp).getTime()) / (7 * 24 * 60 * 60 * 1000))))
@@ -534,8 +536,8 @@ function PregnancyBodyReference({ patient, labResults, onOpenTracker }: { patien
   const currentSize = getPregnancyBabySize(weeks);
   const weekGuide = getWeekData(weeks);
   const trimester = weeks < 13 ? 1 : weeks < 28 ? 2 : 3;
-  const growthX = 8 + (weeks - 8) * (334 / 32);
-  const growthY = 126 - ((weeks - 8) / 32) * 114;
+  const lmpTime = lmp ? new Date(lmp).getTime() : NaN;
+  const growthWeek = Number.isFinite(lmpTime) ? Math.floor((Date.now() - lmpTime) / (7 * 24 * 60 * 60 * 1000)) : null;
 
   return (
     <div className="space-y-6 pb-24">
@@ -568,21 +570,7 @@ function PregnancyBodyReference({ patient, labResults, onOpenTracker }: { patien
       </motion.section>
 
       <div className="flex flex-wrap items-stretch gap-5">
-        <section className="min-w-0 flex-[1_1_640px] rounded-[32px] border border-[#F0DCC4] bg-white p-6 md:p-8">
-          <h2 className="font-serif text-[30px] font-bold leading-[1.1]">Baby&apos;s growth</h2>
-          <p className="mt-2 text-[16px] leading-[1.45] text-[#5A4552]">
-            Average length by week. Sample data. Your scans may differ.
-          </p>
-          <svg viewBox="0 0 350 150" role="img" aria-label={`Baby growth at week ${weeks}.`} className="mt-4 block h-auto w-full">
-            <line x1="4" y1="130" x2="346" y2="130" stroke="#E6D3BD" strokeWidth="1.5" />
-            <path d="M8 126 C60 124 110 112 150 92 S220 46 260 30 S320 14 342 12" fill="none" stroke="#2A1220" strokeWidth="3.5" strokeLinecap="round" />
-            <line x1={growthX} y1="10" x2={growthX} y2="130" stroke="#2A1220" strokeWidth="1.5" strokeDasharray="3 4" />
-            <circle cx={growthX} cy={growthY} r="7" fill="#FFF4EE" stroke="#2A1220" strokeWidth="3" />
-            <text x={growthX} y="8" textAnchor="middle" fontSize="10" fontWeight="800" fill="#2A1220">WEEK {weeks}</text>
-            <text x="4" y="146" fontSize="11" fontWeight="600" fill="#5A4552">Wk 8</text>
-            <text x="346" y="146" textAnchor="end" fontSize="11" fontWeight="600" fill="#5A4552">Wk 40</text>
-          </svg>
-        </section>
+        <PregnancyGrowthChart currentWeek={growthWeek} />
 
         <section className="flex min-w-0 flex-[1_1_340px] flex-col justify-between gap-5 rounded-[32px] bg-[#2A1220] p-6 text-[#FFF4EE] md:max-w-[420px] md:p-8">
           <div>
@@ -591,8 +579,8 @@ function PregnancyBodyReference({ patient, labResults, onOpenTracker }: { patien
             <p className="mt-3 text-[16px] leading-[1.5] text-[#E9D8DF]">Your doctor can see the trend between visits.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <button type="button" onClick={onOpenTracker} className="min-h-[44px] rounded-full border border-[#FFA7B6] bg-[#FFA7B6] px-[18px] text-[15px] font-bold text-[#2A1220]">Add weight</button>
-            <button type="button" onClick={onOpenTracker} className="min-h-[44px] rounded-full border border-[#E9D8DF] bg-transparent px-[18px] text-[15px] font-bold text-[#FFF4EE]">Add blood pressure</button>
+            <button type="button" onClick={() => onOpenTracker?.("weight")} className="min-h-[44px] rounded-full border border-[#FFA7B6] bg-[#FFA7B6] px-[18px] text-[15px] font-bold text-[#2A1220]">Add weight</button>
+            <button type="button" onClick={() => onOpenTracker?.("blood-pressure")} className="min-h-[44px] rounded-full border border-[#E9D8DF] bg-transparent px-[18px] text-[15px] font-bold text-[#FFF4EE]">Add blood pressure</button>
           </div>
         </section>
       </div>
@@ -601,7 +589,7 @@ function PregnancyBodyReference({ patient, labResults, onOpenTracker }: { patien
         <h2 className="font-serif text-[38px] font-bold tracking-[-0.02em]">Your four signals</h2>
         <div className="flex flex-wrap gap-4">
           {[
-            ["BABY", "Kicks starting", "You may feel flutters. A pattern matters more from week 28.", "#FFD9C9", "#7A1F38", "#3A2A44"],
+            ["BABY", "Movements", "If movements change or reduce, contact your maternity team immediately.", "#FFD9C9", "#7A1F38", "#3A2A44"],
             ["BLOOD", "Volume up", "Your body makes more blood. You may feel warmer.", "#CFF1EA", "#0B6B5F", "#3A2A44"],
             ["JOINTS", "Looser", "Relaxin softens ligaments. Back and hip aches are common.", "#E4DCFF", "#3A24B8", "#3A2A44"],
             ["ENERGY", trimesterText(weeks), "Often more steady in the second trimester.", "#FFE7A8", "#7A4B00", "#3A2A44"],
@@ -655,6 +643,62 @@ function PregnancyBodyReference({ patient, labResults, onOpenTracker }: { patien
             </p>
           ))}
         </article>
+      </section>
+
+      <section className="space-y-5" aria-labelledby="pregnancy-symptoms-heading">
+        <h2 id="pregnancy-symptoms-heading" className="font-serif text-[38px] font-bold tracking-[-0.02em]">Normal, or ask?</h2>
+        <div className="grid gap-5 lg:grid-cols-[1.28fr_1fr]">
+          <div className="rounded-[32px] border border-[#F0DCC4] bg-white p-6 md:p-7">
+            <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#0B6B5F]">Common symptoms</p>
+            <p className="mt-4 text-[16px] leading-[1.55]">
+              Backache, heartburn and some swelling can happen in pregnancy. If anything worries you or changes, ask your care team.
+            </p>
+            <div className="mt-4 border-t border-[#F0DCC4] pt-4">
+              <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#A8341A]">Contact your maternity team immediately</p>
+              <p className="mt-4 text-[16px] leading-[1.55]">
+                Call about bleeding, severe or regular pain, fluid leaking, a severe headache or vision changes, sudden swelling of your face or hands, or a change in your baby&apos;s usual movements. Do not wait until the next day.
+              </p>
+              <p className="mt-3 text-sm text-[#5A4552]">If you cannot reach your maternity team or need emergency help, seek urgent medical care.</p>
+            </div>
+          </div>
+
+          <div className="rounded-[32px] border border-[#F0DCC4] bg-white p-6 md:p-7">
+            <h3 className="font-serif text-[30px] font-bold leading-[1.1]">Log in one tap</h3>
+            <div className="mt-4">
+              {([
+                ["Weight", "weight"],
+                ["Blood pressure", "blood-pressure"],
+                ["Baby movements", "baby-movements"],
+              ] as const).map(([label, tracker]) => (
+                <div key={tracker} className="flex min-h-[68px] items-center justify-between gap-4 border-t border-[#F0DCC4]">
+                  <span className="text-[16px] font-bold">{label}</span>
+                  <button type="button" onClick={() => onOpenTracker?.(tracker)} aria-label={`Add ${label.toLowerCase()}`} className="min-h-11 rounded-full border border-[#D9C3AE] px-5 text-sm font-bold text-[#2A1220] hover:bg-[#FFF4EE]">
+                    Add
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-5" aria-labelledby="pregnancy-reading-heading">
+        <h2 id="pregnancy-reading-heading" className="font-serif text-[38px] font-bold tracking-[-0.02em]">Read biology</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          {[
+            ["Back pain in pregnancy", "https://www.nhs.uk/pregnancy/common-symptoms/back-pain/"],
+            ["Tiredness and sleep in pregnancy", "https://www.nhs.uk/pregnancy/common-symptoms/tiredness/"],
+            ["Your baby’s movements", "https://www.nhs.uk/pregnancy/keeping-well/your-babys-movements/"],
+          ].map(([title, href]) => (
+            <a key={href} href={href} target="_blank" rel="noopener noreferrer" className="flex min-h-[130px] flex-col justify-between rounded-[28px] border border-[#F0DCC4] bg-white p-6 text-[#2A1220] transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2A1220]">
+              <span className="text-xs font-semibold text-[#6A5560]">NHS · Opens in a new tab</span>
+              <span className="mt-3 flex items-end justify-between gap-3 font-serif text-[23px] font-bold leading-[1.15]">
+                {title}<ChevronRight aria-hidden="true" className="h-5 w-5 shrink-0" />
+              </span>
+            </a>
+          ))}
+        </div>
+        <p className="text-sm leading-relaxed text-[#5A4552]">Educational information, not medical advice. Contact your care team about your individual symptoms.</p>
       </section>
     </div>
   );

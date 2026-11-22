@@ -55,6 +55,7 @@ import { registerSurgeryWorkflow } from "../surgery-workflow";
 import { createSurgeryStore } from "../surgery-store";
 import { registerPregnancyEpisodes } from "../pregnancy-episodes";
 import { createDeliveryStore, registerDeliveries } from "../deliveries";
+import { createPregnancyMovementStore, registerPregnancyMovements } from "../pregnancy-movements";
 import { createPaperWorkStore, registerPaperWork } from "../paper-prescription-work";
 import { createPregnancyEpisodeStore } from "../pregnancy-episode-store";
 import { createPregnancyFollowUpStore as createPregnancyVisitContextStore, registerPregnancyFollowUpContext } from "../pregnancy-followup-context";
@@ -5978,6 +5979,7 @@ Return a JSON object:
     });
   });
   registerDeliveries(app, createDeliveryStore(pool), getAccessActor);
+  registerPregnancyMovements(app, createPregnancyMovementStore(pool), getAccessActor);
   registerPregnancyFollowUps(app, createPregnancyFollowUpStore(pool), getAccessActor);
   registerPregnancyMedicationReconciliation(app, createPregnancyMedicationReconciliationStore(pool), getAccessActor);
   registerMenopauseCare(app, createMenopauseStore(pool), getAccessActor);

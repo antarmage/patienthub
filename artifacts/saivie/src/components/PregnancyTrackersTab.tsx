@@ -13,6 +13,7 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip
 } from "recharts";
+import PregnancyMovementTracker from "@/components/PregnancyMovementTracker";
 
 function getGestationalWeek(lmp?: string): number {
   if (!lmp) return 20;
@@ -34,14 +35,17 @@ function getWeightGainTarget(bmi?: number) {
 
 const JSON_HEADERS: HeadersInit = { "Content-Type": "application/json" };
 
+export type PregnancyTrackerTarget = "weight" | "blood-pressure" | "baby-movements";
+
 interface Props {
   patient: any;
   medications: any[];
   patientId: number;
   pregnancyEpisode?: any;
+  initialTracker?: PregnancyTrackerTarget | null;
 }
 
-export default function PregnancyTrackersTab({ patient, medications, patientId, pregnancyEpisode }: Props) {
+export default function PregnancyTrackersTab({ patient, medications, patientId, pregnancyEpisode, initialTracker = null }: Props) {
   const [section, setSection] = useState<"trackers" | "records">("trackers");
 
   return (
@@ -59,23 +63,29 @@ export default function PregnancyTrackersTab({ patient, medications, patientId, 
         ))}
       </div>
 
-      {section === "trackers" && <TrackersSection patient={patient} medications={medications} patientId={patientId} pregnancyEpisode={pregnancyEpisode} />}
+      {section === "trackers" && <TrackersSection patient={patient} medications={medications} patientId={patientId} pregnancyEpisode={pregnancyEpisode} initialTracker={initialTracker} />}
       {section === "records" && <RecordsSection patientId={patientId} patient={patient} pregnancyEpisode={pregnancyEpisode} />}
     </div>
   );
 }
 
-function TrackersSection({ patient, medications, patientId, pregnancyEpisode }: { patient: any; medications: any[]; patientId: number; pregnancyEpisode?: any }) {
+function TrackersSection({ patient, medications, patientId, pregnancyEpisode, initialTracker }: { patient: any; medications: any[]; patientId: number; pregnancyEpisode?: any; initialTracker: PregnancyTrackerTarget | null }) {
   const episodePatient = pregnancyEpisode ? {
     ...patient,
     lmp: pregnancyEpisode.details?.lmp || patient.lmp,
     weight: pregnancyEpisode.details?.prePregnancyWeightKg ?? patient.weight,
   } : patient;
+  const movementEpisodeId = pregnancyEpisode?.details?.status === "current" && Number.isSafeInteger(pregnancyEpisode.id) && pregnancyEpisode.id > 0
+    ? pregnancyEpisode.id : null;
   return (
     <div className="space-y-4">
+      {initialTracker === "weight" && <WeightTracker patientId={patientId} patient={episodePatient} pregnancyEpisode={pregnancyEpisode} initiallyOpen />}
+      {initialTracker === "blood-pressure" && <BPTracker patientId={patientId} patient={episodePatient} pregnancyEpisode={pregnancyEpisode} initiallyOpen />}
+      {initialTracker === "baby-movements" && <PregnancyMovementTracker patientId={patientId} episodeId={movementEpisodeId} initiallyOpen />}
       <WaterTracker patientId={patientId} />
-      <WeightTracker patientId={patientId} patient={episodePatient} pregnancyEpisode={pregnancyEpisode} />
-      <BPTracker patientId={patientId} patient={episodePatient} pregnancyEpisode={pregnancyEpisode} />
+      {initialTracker !== "weight" && <WeightTracker patientId={patientId} patient={episodePatient} pregnancyEpisode={pregnancyEpisode} />}
+      {initialTracker !== "blood-pressure" && <BPTracker patientId={patientId} patient={episodePatient} pregnancyEpisode={pregnancyEpisode} />}
+      {initialTracker !== "baby-movements" && movementEpisodeId !== null && <PregnancyMovementTracker patientId={patientId} episodeId={movementEpisodeId} />}
       <MedicineTracker patientId={patientId} medications={medications} />
     </div>
   );
@@ -192,9 +202,9 @@ function WaterTracker({ patientId }: { patientId: number }) {
   );
 }
 
-function WeightTracker({ patientId, patient, pregnancyEpisode }: { patientId: number; patient: any; pregnancyEpisode?: any }) {
+function WeightTracker({ patientId, patient, pregnancyEpisode, initiallyOpen = false }: { patientId: number; patient: any; pregnancyEpisode?: any; initiallyOpen?: boolean }) {
   const qc = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(initiallyOpen);
   const [weight, setWeight] = useState("");
 
   const { data: metrics = [] } = useQuery<any[]>({
@@ -390,9 +400,9 @@ function WeightTracker({ patientId, patient, pregnancyEpisode }: { patientId: nu
   );
 }
 
-function BPTracker({ patientId, patient, pregnancyEpisode }: { patientId: number; patient: any; pregnancyEpisode?: any }) {
+function BPTracker({ patientId, patient, pregnancyEpisode, initiallyOpen = false }: { patientId: number; patient: any; pregnancyEpisode?: any; initiallyOpen?: boolean }) {
   const qc = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(initiallyOpen);
   const [systolic, setSystolic] = useState("");
   const [diastolic, setDiastolic] = useState("");
 

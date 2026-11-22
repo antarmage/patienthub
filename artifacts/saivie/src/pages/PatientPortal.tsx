@@ -52,7 +52,7 @@ import calmGradient from "../assets/images/calm-gradient.png";
 import softCardBg from "../assets/images/soft-card-bg.png";
 
 import BiologyTab from "@/components/BiologyTab";
-import PregnancyTrackersTab from "@/components/PregnancyTrackersTab";
+import PregnancyTrackersTab, { type PregnancyTrackerTarget } from "@/components/PregnancyTrackersTab";
 import { PatientMenopauseCare } from "@/components/MenopauseCare";
 import { patientGreetingName, cycleSubtitle } from "@/lib/patientGreeting";
 import { patientMedicationCategory, patientMedicationNeedsReview, patientMedicationNote } from "@/lib/patientMedicationDisplay";
@@ -95,6 +95,7 @@ export default function PatientPortal() {
     return section === "medications" || section === "lab-reports" || section === "history" ? section : "overview";
   });
   const [mode, setMode] = useState<PatientPortalMode>("general");
+  const [initialTracker, setInitialTracker] = useState<PregnancyTrackerTarget | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingStep, setBookingStep] = useState<'type'|'date'|'confirm'|'done'>('type');
   const [bookingType, setBookingType] = useState<'doctor'|'nutritionist'|'blood_test'|null>(null);
@@ -683,7 +684,7 @@ export default function PatientPortal() {
                 </button>
               </main>
             ) : (
-              <BiologyTab mode={mode} patient={{ ...patient, lmp: pregnancyLmp || patient?.lmp }} labResults={labResults} onOpenTracker={() => setActiveTab('track')} />
+              <BiologyTab mode={mode} patient={{ ...patient, lmp: pregnancyLmp || patient?.lmp }} labResults={labResults} onOpenTracker={(tracker) => { setInitialTracker(tracker); setActiveTab("track"); }} />
             )}
           </TabsContent>
 
@@ -703,7 +704,7 @@ export default function PatientPortal() {
                 weightLogs={(weightLogs as any[]) || []}
                 bpLogs={(bpLogs as any[]) || []}
                 onBook={openBooking}
-                onOpenTrack={() => setActiveTab('track')}
+                onOpenTrack={() => { setInitialTracker(null); setActiveTab("track"); }}
                 onOpenRecords={() => openHealthRecord("overview")}
               />
             )}
@@ -733,6 +734,7 @@ export default function PatientPortal() {
                 medications={(medications as any[]) || []}
                 patientId={patient.id}
                 pregnancyEpisode={currentPregnancyEpisode}
+                initialTracker={initialTracker}
               />
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
@@ -943,7 +945,7 @@ export default function PatientPortal() {
              {(mode === 'pregnancy' || mode === 'ttc') && (
                <NavButton 
                  active={activeTab === 'track'} 
-                 onClick={() => setActiveTab('track')} 
+                 onClick={() => { setInitialTracker(null); setActiveTab('track'); }}
                  icon={<Pill className="w-5 h-5" />} 
                  label="Track" 
                />

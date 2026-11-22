@@ -5,6 +5,7 @@ import { ensureSurgerySchema } from "./surgery-store";
 import { ensurePregnancyEpisodeSchema } from "./pregnancy-episode-store";
 import { ensurePregnancyFollowUpSchema } from "./pregnancy-follow-ups";
 import { ensureDeliverySchema } from "./deliveries";
+import { ensurePregnancyMovementSchema } from "./pregnancy-movements";
 import { ensurePaperWorkSchema } from "./paper-prescription-work";
 import { ensureMenopauseSchema } from "./menopause";
 import { ensureBookingCatalogSchema } from "./booking-catalog";
@@ -38,6 +39,7 @@ export async function ensureSchema(): Promise<void> {
     await ensurePregnancyEpisodeSchema(client);
     await ensurePregnancyFollowUpSchema(client);
     await ensureDeliverySchema(client);
+    await ensurePregnancyMovementSchema(client);
     await ensurePaperWorkSchema(client);
     await ensureMenopauseSchema(client);
     await ensureBookingCatalogSchema(client);
