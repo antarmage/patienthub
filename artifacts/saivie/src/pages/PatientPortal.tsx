@@ -613,7 +613,7 @@ export default function PatientPortal() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8 flex-1">
           
           <TabsContent value="home" className="space-y-10 animate-in fade-in duration-700">
-            {patient?.id && <PatientMenopauseCare key={patient.id} patientId={patient.id} patientName={patient.name} />}
+            {mode === "menopause" && patient?.id && <PatientMenopauseCare key={patient.id} patientId={patient.id} patientName={patient.name} />}
             {patient?.id && (
               <PatientTodayDashboard
                 mode={mode}
