@@ -2,7 +2,17 @@ import type { Express, Request, Response, NextFunction } from "express";
 import type { Pool, PoolClient } from "pg";
 import type { AccessActor } from "./clinical-access";
 import type { PregnancyEpisode } from "../../../lib/db/src/pregnancy-episodes";
-import { babyUpdateSchema, deliveryInputSchema, deliveryOutcome, pregnancyEndInputSchema, type PregnancyEndInput, type DeliveryInput, type DeliveryRecord } from "../../../lib/db/src/delivery";
+import {
+  babyUpdateSchema,
+  deliveryInputSchema,
+  deliveryOutcome,
+  pregnancyEndInputSchema,
+  patientPregnancyUpdateSchema,
+  type PregnancyEndInput,
+  type PatientPregnancyUpdate,
+  type DeliveryInput,
+  type DeliveryRecord,
+} from "../../../lib/db/src/delivery";
 import { workflowError } from "./surgery-workflow";
 import { episodeDetailsSchema } from "./pregnancy-episodes";
 
@@ -132,6 +142,63 @@ export function createDeliveryStore(pool: Pool) {
       }
       return { episodeId: episode.id, version: episode.version + 1 };
     }),
+    updatePatientPregnancyStatus: (patientId: number, episodeId: number, input: PatientPregnancyUpdate) =>
+      transaction(pool, patientId, async (client) => {
+        const episode = (await client.query<PregnancyEpisode>(
+          "SELECT id,patient_id AS \"patientId\",details,version,updated_at AS \"updatedAt\" FROM pregnancy_episodes WHERE id=$1 AND patient_id=$2 FOR UPDATE",
+          [episodeId, patientId],
+        )).rows[0];
+        if (!episode) throw workflowError(404, "Pregnancy episode not found for this patient");
+        if (episode.version !== input.version) throw workflowError(409, "Pregnancy changed elsewhere. Refresh before saving.");
+        if (episode.details.status !== "current") throw workflowError(409, "Only a current pregnancy can be updated here.");
+        if (input.action !== "baby-arrived" && input.birthDate !== undefined) {
+          throw workflowError(400, "Birth date is only used when a baby has arrived.");
+        }
+        if ((await client.query("SELECT id FROM deliveries WHERE episode_id=$1", [episodeId])).rowCount) {
+          throw workflowError(409, "A delivery is already recorded for this pregnancy.");
+        }
+        if (input.birthDate && [episode.details.startDate, episode.details.lmp].some((date) => date && input.birthDate! < date)) {
+          throw workflowError(400, "Birth date cannot be before the pregnancy start/LMP.");
+        }
+
+        const arrived = input.action === "baby-arrived";
+        const note = arrived
+          ? "Patient reported baby arrival; birth details may be added later."
+          : input.action === "pregnancy-loss"
+            ? "Patient reported pregnancy loss; clinical outcome details were not supplied."
+            : "Patient reported pregnancy has ended; no further details were supplied.";
+        const parsed = episodeDetailsSchema.safeParse({
+          ...episode.details,
+          status: "past",
+          endDate: arrived ? input.birthDate ?? null : null,
+          outcome: "Not recorded",
+          deliveryMode: "Not recorded",
+          notes: [episode.details.notes, note].filter(Boolean).join("\n"),
+        });
+        if (!parsed.success) throw workflowError(400, parsed.error.issues.map((issue) => issue.message).join("; "));
+
+        const now = new Date().toISOString();
+        await client.query(
+          "UPDATE pregnancy_episodes SET details=$2::jsonb,version=version+1,updated_at=$3 WHERE id=$1",
+          [episodeId, JSON.stringify(parsed.data), now],
+        );
+        await client.query(
+          `UPDATE patients SET type=$2,mode=$3,pregnancy_status=$4,next_review=NULL WHERE id=$1`,
+          [
+            patientId,
+            arrived ? "Postpartum" : "Gynecology",
+            arrived ? "postpartum" : "general",
+            arrived ? "Postpartum" : "Not pregnant",
+          ],
+        );
+        await client.query(
+          `UPDATE pregnancy_follow_up_plans SET plan=NULL,updated_at=now(),
+            audit=audit || jsonb_build_array(jsonb_build_object('at',now(),'by','patient','previous',plan,'after',NULL,'reason',$2::text))
+            WHERE patient_id=$1 AND plan IS NOT NULL`,
+          [patientId, arrived ? "Patient reported baby arrival" : input.action === "pregnancy-loss" ? "Patient reported pregnancy loss" : "Patient reported pregnancy ended"],
+        );
+        return { episodeId, version: episode.version + 1, action: input.action };
+      }),
     update: (patientId: number, id: number, input: ReturnType<typeof babyUpdateSchema.parse>, userId: string) =>
       transaction(pool, patientId, async (client) => {
         const current = (await client.query<DeliveryRecord>(`${select} WHERE id=$1 AND patient_id=$2 FOR UPDATE`, [id, patientId])).rows[0];
@@ -158,18 +225,31 @@ export function createDeliveryStore(pool: Pool) {
 }
 
 export function registerDeliveries(app: Express, store: ReturnType<typeof createDeliveryStore>, authenticate: (req: Request, res: Response) => Promise<AccessActor | null>) {
-  const handler = (action: "list" | "create" | "update" | "outcome") => async (req: Request, res: Response, next: NextFunction) => {
+  const handler = (action: "list" | "create" | "update" | "outcome" | "patient-status") => async (req: Request, res: Response, next: NextFunction) => {
     res.setHeader("Cache-Control", "private, no-store");
     try {
       const actor = await authenticate(req, res);
       if (!actor) { if (!res.headersSent) res.status(401).json({ error: "Authentication required" }); return; }
-      if (!("role" in actor) || !["clinician", "owner"].includes(actor.role)) { res.status(403).json({ error: "Doctor or owner access required" }); return; }
-      const patientId = Number(req.params.id), deliveryId = Number(req.params.deliveryId);
+      const patientId = Number(req.params.id), deliveryId = Number(req.params.deliveryId), episodeId = Number(req.params.episodeId);
       if (!/^[1-9]\d*$/.test(String(req.params.id)) || !Number.isSafeInteger(patientId) || patientId > 2147483647 ||
-          (action === "update" && (!/^[1-9]\d*$/.test(String(req.params.deliveryId)) || !Number.isSafeInteger(deliveryId) || deliveryId > 2147483647))) {
-        res.status(400).json({ error: "Invalid patient or delivery ID" }); return;
+          (action === "update" && (!/^[1-9]\d*$/.test(String(req.params.deliveryId)) || !Number.isSafeInteger(deliveryId) || deliveryId > 2147483647)) ||
+          (action === "patient-status" && (!/^[1-9]\d*$/.test(String(req.params.episodeId)) || !Number.isSafeInteger(episodeId) || episodeId > 2147483647))) {
+        res.status(400).json({ error: "Invalid patient, pregnancy episode or delivery ID" }); return;
+      }
+      const isClinician = "role" in actor && ["clinician", "owner"].includes(actor.role);
+      const isOwnPatient = "patientId" in actor && actor.patientId === patientId;
+      if (action === "patient-status" ? !isOwnPatient : !isClinician) {
+        res.status(403).json({ error: action === "patient-status" ? "Patient account required" : "Doctor or owner access required" });
+        return;
       }
       if (action === "list") { res.json(await store.list(patientId)); return; }
+      if (action === "patient-status") {
+        const input = patientPregnancyUpdateSchema.safeParse(req.body);
+        if (!input.success) { res.status(400).json({ error: input.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ") }); return; }
+        res.json(await store.updatePatientPregnancyStatus(patientId, episodeId, input.data));
+        return;
+      }
+      if (!("userId" in actor)) { res.status(403).json({ error: "Doctor or owner access required" }); return; }
       if (action === "outcome") {
         const input = pregnancyEndInputSchema.safeParse(req.body);
         if (!input.success) { res.status(400).json({ error: input.error.issues.map((issue) => issue.message).join("; ") }); return; }
@@ -193,4 +273,5 @@ export function registerDeliveries(app: Express, store: ReturnType<typeof create
   app.post("/api/patients/:id/deliveries", handler("create"));
   app.put("/api/patients/:id/deliveries/:deliveryId", handler("update"));
   app.post("/api/patients/:id/pregnancy-outcome", handler("outcome"));
+  app.post("/api/patients/:id/pregnancy-episodes/:episodeId/patient-update", handler("patient-status"));
 }

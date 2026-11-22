@@ -7,6 +7,7 @@ import pg from "pg";
 import { z } from "zod/v4";
 import {
   babyAge, babyUpdateSchema, deliveryInputSchema, deliveryOutcome, isCaesareanProcedure, pregnancyEndInputSchema,
+  patientPregnancyUpdateSchema,
   type Baby, type DeliveryInput, type DeliveryRecord,
 } from "../../../lib/db/src/delivery";
 import { createDeliveryStore, ensureDeliverySchema, registerDeliveries } from "./deliveries";
@@ -51,6 +52,12 @@ test("delivery validation requires actual per-baby outcomes and dates without as
   }
   assert.ok(pregnancyEndInputSchema.safeParse({ episodeId: 1, episodeVersion: 1, outcome: "Not recorded", endDate: null, notes: "" }).success);
   assert.equal(pregnancyEndInputSchema.safeParse({ episodeId: 1, episodeVersion: 1, outcome: "Miscarriage", endDate: null, notes: "" }).success, false);
+  assert.ok(patientPregnancyUpdateSchema.safeParse({ version: 1, action: "baby-arrived" }).success);
+  assert.ok(patientPregnancyUpdateSchema.safeParse({ version: 1, action: "baby-arrived", birthDate: "2020-10-01" }).success);
+  assert.ok(patientPregnancyUpdateSchema.safeParse({ version: 1, action: "pregnancy-loss" }).success);
+  assert.ok(patientPregnancyUpdateSchema.safeParse({ version: 1, action: "no-longer-pregnant" }).success);
+  assert.equal(patientPregnancyUpdateSchema.safeParse({ version: 1, action: "pregnancy-loss", birthDate: "2020-10-01" }).success, false);
+  assert.equal(patientPregnancyUpdateSchema.safeParse({ version: 1, action: "baby-arrived", birthDate: "2099-10-01" }).success, false);
   assert.equal(transitionSchema.safeParse({ status: "completed", completedDate: "2020-10-02", delivery: input }).success, false);
   assert.ok(transitionSchema.safeParse({ status: "completed", completedDate: "2020-10-01", delivery: input }).success);
   for (const name of ["Planned caesarean", "Cesarean", "LSCS", "C-section", "ceaseran"]) assert.ok(isCaesareanProcedure(name));
@@ -77,10 +84,15 @@ test("delivery and baby APIs reject non-clinicians, invalid input and stale writ
     list: async () => { calls++; return [record]; },
     create: async () => { calls++; return record; },
     endPregnancy: async () => { calls++; return { episodeId: 1, version: 2 }; },
+    updatePatientPregnancyStatus: async (_patientId, episodeId, data) => {
+      calls++;
+      return { episodeId, version: data.version + 1, action: data.action };
+    },
     update: async () => { calls++; throw Object.assign(new Error("Baby records changed elsewhere"), { status: 409 }); },
   };
   registerDeliveries(app, store, async (req): Promise<AccessActor | null> =>
     req.headers.authorization === "patient" ? { patientId: 1 } :
+      req.headers.authorization === "other-patient" ? { patientId: 2 } :
       req.headers.authorization ? { userId: "doctor", role: String(req.headers.authorization) } : null);
   const server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -115,6 +127,18 @@ test("delivery and baby APIs reject non-clinicians, invalid input and stale writ
     for (const role of ["patient", "receptionist", "staff", "admin"]) assert.equal((await outcomeRequest(role)).status, 403);
     assert.equal((await outcomeRequest("clinician", { outcome: "Other" })).status, 400);
     assert.equal((await outcomeRequest("clinician")).status, 200);
+    const patientStatusRequest = (role?: string, body: unknown = { version: 1, action: "baby-arrived" }, patient = 1, episode = 1) =>
+      fetch(`http://127.0.0.1:${address.port}/api/patients/${patient}/pregnancy-episodes/${episode}/patient-update`, {
+        method: "POST", headers: { "Content-Type": "application/json", ...(role ? { Authorization: role } : {}) }, body: JSON.stringify(body),
+      });
+    assert.equal((await patientStatusRequest()).status, 401);
+    for (const role of ["clinician", "owner", "receptionist", "staff", "admin", "other-patient"]) {
+      assert.equal((await patientStatusRequest(role)).status, 403);
+    }
+    assert.equal((await patientStatusRequest("patient", { version: 1, action: "not-an-action" })).status, 400);
+    const statusCallsBefore = calls;
+    assert.equal((await patientStatusRequest("patient", { version: 1, action: "pregnancy-loss" })).status, 200);
+    assert.equal(calls, statusCallsBefore + 1);
   } finally { await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())); }
 });
 
@@ -129,22 +153,50 @@ test("Postgres delivery atomically closes pregnancy, preserves history, enrolls 
   try {
     await pool.query(`CREATE TABLE users(id varchar PRIMARY KEY);
       CREATE TABLE providers(id integer PRIMARY KEY,name text);
-      CREATE TABLE patients(id integer PRIMARY KEY,name text,phone text,age integer,type text,pregnancy_status text,lmp text,next_review text);
+      CREATE TABLE patients(id integer PRIMARY KEY,name text,phone text,age integer,type text,mode text,pregnancy_status text,lmp text,next_review text);
       CREATE TABLE appointments(id integer PRIMARY KEY,patient_id integer REFERENCES patients(id));
       CREATE TABLE visit_history(id integer PRIMARY KEY,patient_id integer REFERENCES patients(id));
       CREATE TABLE lab_results(id integer PRIMARY KEY,patient_id integer REFERENCES patients(id));
       CREATE TABLE postop_observations(id serial PRIMARY KEY,patient_id integer REFERENCES patients(id));
       INSERT INTO users VALUES ('doctor'); INSERT INTO providers VALUES (1,'Synthetic doctor');
       INSERT INTO patients(id,name,type,pregnancy_status,lmp,next_review)
-        SELECT n,'Synthetic patient ' || n,'Pregnant','pregnant','2020-01-01','2020-09-25' FROM generate_series(1,8) n;`);
+        SELECT n,'Synthetic patient ' || n,'Pregnant','pregnant','2020-01-01','2020-09-25' FROM generate_series(1,10) n;`);
     await ensureSurgerySchema(pool); await ensurePregnancyEpisodeSchema(pool); await ensurePregnancyFollowUpSchema(pool);
     await ensureDeliverySchema(pool); await ensureDeliverySchema(pool);
     const pregnancies = createPregnancyEpisodeStore(pool);
     const deliveries = createDeliveryStore(pool), surgery = createSurgeryStore(pool);
     const episodes = [];
-    for (let id = 1; id <= 8; id++) episodes.push(await pregnancies.save(id, null, { details: { ...episodeDetails, fetusCount: id === 1 ? 2 : 1 }, records: [] }, "doctor"));
+    for (let id = 1; id <= 10; id++) episodes.push(await pregnancies.save(id, null, { details: { ...episodeDetails, fetusCount: id === 1 ? 2 : 1 }, records: [] }, "doctor"));
     await pool.query(`INSERT INTO pregnancy_follow_up_plans(patient_id,plan,updated_by)
       VALUES(1,$1::jsonb,'doctor')`, [JSON.stringify({ episodeId: episodes[0].id, dueDate: "2020-09-25" })]);
+    await pool.query(`INSERT INTO pregnancy_follow_up_plans(patient_id,plan,updated_by)
+      VALUES(9,$1::jsonb,'doctor'),(10,$1::jsonb,'doctor')`, [JSON.stringify({ episodeId: 9, dueDate: "2020-09-25" })]);
+    const postpartumResult = await deliveries.updatePatientPregnancyStatus(9, episodes[8].id, {
+      version: episodes[8].version, action: "baby-arrived", birthDate: "2020-10-01",
+    });
+    assert.deepEqual(postpartumResult, { episodeId: episodes[8].id, version: 2, action: "baby-arrived" });
+    const postpartumEpisode = (await pregnancies.list(9))[0];
+    assert.equal(postpartumEpisode.details.status, "past");
+    assert.equal(postpartumEpisode.details.outcome, "Not recorded");
+    assert.equal(postpartumEpisode.details.endDate, "2020-10-01");
+    assert.equal(postpartumEpisode.details.lmp, "2020-01-01");
+    assert.deepEqual((await pool.query("SELECT type,mode,pregnancy_status,next_review FROM patients WHERE id=9")).rows[0],
+      { type: "Postpartum", mode: "postpartum", pregnancy_status: "Postpartum", next_review: null });
+    assert.equal((await pool.query("SELECT plan FROM pregnancy_follow_up_plans WHERE patient_id=9")).rows[0].plan, null);
+    await assert.rejects(deliveries.updatePatientPregnancyStatus(9, episodes[8].id, {
+      version: episodes[8].version, action: "no-longer-pregnant",
+    }), /changed elsewhere/);
+    const lossResult = await deliveries.updatePatientPregnancyStatus(10, episodes[9].id, {
+      version: episodes[9].version, action: "pregnancy-loss",
+    });
+    assert.equal(lossResult.action, "pregnancy-loss");
+    const lossEpisode = (await pregnancies.list(10))[0];
+    assert.equal(lossEpisode.details.status, "past");
+    assert.equal(lossEpisode.details.outcome, "Not recorded");
+    assert.match(lossEpisode.details.notes, /Patient reported pregnancy loss/);
+    assert.deepEqual((await pool.query("SELECT type,mode,pregnancy_status,next_review FROM patients WHERE id=10")).rows[0],
+      { type: "Gynecology", mode: "general", pregnancy_status: "Not pregnant", next_review: null });
+    assert.equal((await pool.query("SELECT plan FROM pregnancy_follow_up_plans WHERE patient_id=10")).rows[0].plan, null);
     const plan = await surgery.create(1, { procedureName: "Planned caesarean", plannedDate: "2020-10-01", surgeonId: 1, notes: "" }, "doctor");
     const twins: DeliveryInput = { ...input, episodeId: episodes[0].id, babies: [baby, { ...baby, outcome: "Stillbirth" }] };
     await assert.rejects(surgery.transition(1, plan.id, { status: "completed", completedDate: input.deliveryDate }, "doctor"), /Confirm delivery/);

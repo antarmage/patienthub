@@ -1,0 +1,551 @@
+import React, { useRef, useState } from "react";
+import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Check, ChevronRight, FileText, FlaskConical, Pill, Upload } from "lucide-react";
+import { DateInput } from "@/components/ui/date-input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { exactLabNumber } from "@/lib/labReading";
+import { patientMedicationCategory, patientMedicationNeedsReview, patientMedicationNote } from "@/lib/patientMedicationDisplay";
+import { patientHealthRecordProgress } from "@/lib/patientHealthRecord";
+
+type Section = "overview" | "medications" | "lab-reports" | "history";
+
+interface LabValue {
+  testName: string;
+  value: string;
+  unit: string;
+  referenceRange: string;
+  status: string;
+  flag: string;
+}
+
+interface LabReading {
+  date: string;
+  provider: string;
+  rawText: string;
+  warnings: string[];
+  results: LabValue[];
+}
+
+interface Props {
+  patient: Record<string, any>;
+  patientId: number;
+  medications: Record<string, any>[];
+  labResults: Record<string, any>[];
+  visitHistory: Record<string, any>[];
+  initialSection: Section;
+  pregnancyEpisode?: Record<string, any> | null;
+  onUpdatePregnancy?: () => void;
+  onBack: () => void;
+  onScheduleMedicationReminder: () => void;
+}
+
+const JSON_HEADERS: HeadersInit = { "Content-Type": "application/json" };
+
+export default function PatientHealthRecord({
+  patient,
+  patientId,
+  medications,
+  labResults,
+  visitHistory,
+  initialSection,
+  pregnancyEpisode = null,
+  onUpdatePregnancy,
+  onBack,
+  onScheduleMedicationReminder,
+}: Props) {
+  const queryClient = useQueryClient();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [section, setSection] = useState<Section>(initialSection);
+  const [file, setFile] = useState<{ fileName: string; mimeType: string; fileData: string } | null>(null);
+  const [reading, setReading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [readingError, setReadingError] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [saveMessage, setSaveMessage] = useState("");
+  const [readingResult, setReadingResult] = useState<LabReading | null>(null);
+  const [reviewed, setReviewed] = useState(false);
+  const [reportDate, setReportDate] = useState("");
+  const [healthValues, setHealthValues] = useState<LabValue[]>([]);
+
+  const progress = patientHealthRecordProgress(patient, medications, labResults);
+  const pregnancyDueDate = typeof pregnancyEpisode?.details?.dueDate === "string"
+    ? pregnancyEpisode.details.dueDate
+    : typeof pregnancyEpisode?.details?.lmp === "string"
+      ? (() => {
+          const date = new Date(pregnancyEpisode.details.lmp);
+          if (Number.isNaN(date.getTime())) return "";
+          date.setDate(date.getDate() + 280);
+          return date.toISOString().slice(0, 10);
+        })()
+      : "";
+  const pregnancyDueDateLabel = pregnancyDueDate
+    ? new Date(`${pregnancyDueDate}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })
+    : "Not recorded";
+
+  const selectFile = async (selected: File | undefined) => {
+    setReadingError("");
+    setSaveError("");
+    setSaveMessage("");
+    setReadingResult(null);
+    setHealthValues([]);
+    setReviewed(false);
+    if (!selected) return;
+    if (selected.size > 5 * 1024 * 1024) {
+      setReadingError("Choose a file smaller than 5 MB.");
+      return;
+    }
+    const supportedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
+    if (!supportedTypes.includes(selected.type)) {
+      setReadingError("Choose a JPG, PNG, WebP, GIF or PDF report.");
+      return;
+    }
+
+    try {
+      const fileDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Could not read the selected file."));
+        reader.onerror = () => reject(new Error("Could not read the selected file."));
+        reader.readAsDataURL(selected);
+      });
+      const fileData = fileDataUrl.split(",")[1];
+      if (!fileData) throw new Error("The selected file is empty.");
+      const uploaded = { fileName: selected.name, mimeType: selected.type, fileData };
+      setFile(uploaded);
+      setReading(true);
+      const response = await fetch("/api/patient-lab-reports/read", {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ patientId, ...uploaded }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not read the lab report.");
+      if (!Array.isArray(body.results)) throw new Error("The report could not be read. You can try another photo.");
+      const result: LabReading = {
+        date: typeof body.date === "string" ? body.date : "",
+        provider: typeof body.provider === "string" ? body.provider : "",
+        rawText: typeof body.rawText === "string" ? body.rawText : "",
+        warnings: Array.isArray(body.warnings) ? body.warnings.filter((warning: unknown) => typeof warning === "string") : [],
+        results: body.results.map((value: Partial<LabValue>) => ({
+          testName: value.testName || "",
+          value: value.value || "",
+          unit: value.unit || "",
+          referenceRange: value.referenceRange || "",
+          status: value.status || "",
+          flag: value.flag || "",
+        })),
+      };
+      setReadingResult(result);
+      setReportDate(/^\d{4}-\d{2}-\d{2}$/.test(result.date) ? result.date : "");
+      setHealthValues(result.results);
+      if (result.results.length === 0) setReadingError("No test values were readable. Try a clearer photo or ask your clinic to add the report.");
+    } catch (error) {
+      setFile(null);
+      setReadingError(error instanceof Error ? error.message : "Could not read the lab report.");
+    } finally {
+      setReading(false);
+    }
+  };
+
+  const updateValue = (index: number, field: keyof LabValue, value: string) => {
+    setReviewed(false);
+    setHealthValues((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row));
+  };
+
+  const saveReport = async () => {
+    if (!file || !readingResult || !reviewed || !/^\d{4}-\d{2}-\d{2}$/.test(reportDate) ||
+      healthValues.length === 0 || healthValues.some((row) => !row.testName.trim() || !row.value.trim())) return;
+    setSaving(true);
+    setSaveError("");
+    setSaveMessage("");
+    let savedCount = 0;
+    try {
+      const existingResponse = await fetch(`/api/patients/${patientId}/lab-results`);
+      if (!existingResponse.ok) throw new Error("Could not check your saved results. Nothing was saved.");
+      const existingResults: Record<string, any>[] = await existingResponse.json();
+      const resultKey = (name: string, value: string, unit: string) =>
+        JSON.stringify([name.trim().toLowerCase(), reportDate, value.trim(), unit.trim()]);
+      const savedKeys = new Set(existingResults.map((result) => {
+        const details = result.results && typeof result.results === "object" ? result.results as Record<string, unknown> : {};
+        return resultKey(
+          String(result.testName || ""),
+          String(details.rawValue ?? result.value ?? ""),
+          String(result.unit || ""),
+        );
+      }));
+
+      const uploadResponse = await fetch("/api/patient-documents", {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          patientId,
+          fileName: file.fileName,
+          fileData: file.fileData,
+          mimeType: file.mimeType,
+          docType: "Diagnostic",
+          label: "Lab report",
+          uploadedAt: new Date().toISOString(),
+        }),
+      });
+      const uploadBody = await uploadResponse.json();
+      if (!uploadResponse.ok) throw new Error(uploadBody.error || "Could not save the report image.");
+
+      for (const result of healthValues) {
+        const key = resultKey(result.testName, result.value, result.unit);
+        if (savedKeys.has(key)) continue;
+        const resultResponse = await fetch("/api/patient-lab-results", {
+          method: "POST",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({
+            patientId,
+            testName: result.testName.trim(),
+            date: reportDate,
+            value: exactLabNumber(result.value),
+            unit: result.unit.trim(),
+            status: result.status.trim(),
+            results: {
+              rawValue: result.value.trim(),
+              referenceRange: result.referenceRange.trim(),
+              flag: result.flag.trim(),
+              provider: readingResult.provider,
+              reviewedByPatient: true,
+              source: "Patient-uploaded lab report",
+              sourceDocumentId: uploadBody.id,
+            },
+          }),
+        });
+        const body = await resultResponse.json();
+        if (!resultResponse.ok) {
+          throw new Error(savedCount
+            ? `${savedCount} value(s) were saved, but the rest could not be saved: ${body.error || "Please retry."}`
+            : body.error || "Could not save the reviewed values.");
+        }
+        savedKeys.add(key);
+        savedCount++;
+      }
+
+      await queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}/lab-results`] });
+      setSaveMessage(savedCount
+        ? `${savedCount} reviewed value${savedCount === 1 ? "" : "s"} added to Lab reports.`
+        : "Report saved. These values were already in your Lab reports.");
+      setReadingResult(null);
+      setHealthValues([]);
+      setFile(null);
+      setReviewed(false);
+      setSection("lab-reports");
+      onScheduleMedicationReminder();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not save the lab report.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const activeMedications = medications.filter((medication) =>
+    String(medication.status || "").toLowerCase() === "active");
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-5 px-4 pb-32 pt-5 md:px-0 md:pb-10">
+      <button type="button" onClick={onBack} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-saivie-plum">
+        <ArrowLeft className="h-4 w-4" /> Today
+      </button>
+      <header>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-saivie-rose">Your health, in one place</p>
+        <h1 className="mt-1 font-serif text-3xl font-semibold text-saivie-plum">Health record</h1>
+      </header>
+
+      {pregnancyEpisode && (
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E8D8C8] bg-white/80 px-4 py-3" aria-label="Pregnancy profile">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#775B63]">My pregnancy</p>
+            <p className="mt-1 text-sm font-semibold text-saivie-plum">Due date · {pregnancyDueDateLabel}</p>
+          </div>
+          <button type="button" onClick={onUpdatePregnancy} className="min-h-11 rounded-full px-3 text-sm font-semibold text-saivie-plum underline underline-offset-4">
+            Update status
+          </button>
+        </section>
+      )}
+
+      <div className="flex gap-2 rounded-2xl bg-white/70 p-1.5" aria-label="Health record sections">
+        {([
+          ["overview", "Overview"],
+          ["medications", "Medications"],
+          ["lab-reports", "Lab reports"],
+          ["history", "History"],
+        ] as [Section, string][]).map(([id, label]) => (
+          <button key={id} type="button" onClick={() => setSection(id)}
+            aria-pressed={section === id}
+            className={`min-h-11 flex-1 rounded-xl px-2 text-xs font-semibold transition-colors ${section === id ? "bg-[#35212f] text-white" : "text-saivie-plum hover:bg-saivie-ivory"}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {section === "overview" && (
+        <section className="space-y-4" aria-label="Health record overview">
+          <Card className="overflow-hidden rounded-[28px] border-0 bg-[#FFA7B6] text-[#2A1220]">
+            <CardContent className="space-y-4 p-6 md:p-8">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold">Your health record</p>
+                  <p className="mt-1 font-serif text-4xl font-semibold">{progress.progress}%</p>
+                </div>
+                <p className="text-right text-sm font-medium">{progress.missingItems.length} {progress.missingItems.length === 1 ? "item" : "items"} to add</p>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-white/55" role="progressbar" aria-label="Health record progress" aria-valuenow={progress.progress} aria-valuemin={0} aria-valuemax={100}>
+                <div className="h-full rounded-full bg-[#2A1220] transition-all" style={{ width: `${progress.progress}%` }} />
+              </div>
+              <p className="text-sm">A little more information helps keep everything your care team needs together.</p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[24px] border-[var(--line)] bg-white/80">
+            <CardContent className="space-y-1 p-4">
+              <h2 className="mb-2 font-serif text-xl font-semibold text-saivie-plum">Your health record checklist</h2>
+              {progress.items.map((item) => {
+                const actionable = item.id === "medications" || item.id === "lab-report";
+                const content = (
+                  <>
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${item.complete ? "bg-emerald-100 text-emerald-700" : "bg-[#FFF0E8] text-saivie-rose"}`}>
+                    {item.complete ? <Check className="h-4 w-4" /> : actionable ? <ChevronRight className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-current" />}
+                  </span>
+                  <span className="flex-1 text-sm font-medium text-saivie-plum">{item.label}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {item.complete ? "Added" : actionable ? "Add" : "Discuss at your next visit"}
+                  </span>
+                  </>
+                );
+                return actionable ? (
+                  <button key={item.id} type="button" onClick={() => setSection(item.id === "medications" ? "medications" : "lab-reports")}
+                    className="flex min-h-[54px] w-full items-center gap-3 rounded-xl px-2 text-left hover:bg-saivie-ivory/70">
+                    {content}
+                  </button>
+                ) : (
+                  <div key={item.id} className="flex min-h-[54px] items-center gap-3 rounded-xl px-2">
+                    {content}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button type="button" onClick={() => setSection("medications")} className="rounded-[22px] border border-[var(--line)] bg-white/80 p-5 text-left">
+              <Pill className="h-5 w-5 text-saivie-rose" />
+              <h2 className="mt-3 font-serif text-xl font-semibold text-saivie-plum">Medications</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{activeMedications.length} current {activeMedications.length === 1 ? "medicine" : "medicines"}</p>
+            </button>
+            <button type="button" onClick={() => setSection("lab-reports")} className="rounded-[22px] border border-[var(--line)] bg-white/80 p-5 text-left">
+              <FlaskConical className="h-5 w-5 text-saivie-teal" />
+              <h2 className="mt-3 font-serif text-xl font-semibold text-saivie-plum">Lab reports</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{labResults.length} saved {labResults.length === 1 ? "result" : "results"}</p>
+            </button>
+          </div>
+        </section>
+      )}
+
+      {section === "medications" && (
+        <section className="space-y-3" aria-label="Medications">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-saivie-rose">Medications</p>
+            <h2 className="mt-1 font-serif text-2xl font-semibold text-saivie-plum">Your medications, simply.</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Your medicines, as recorded by you or your care team.</p>
+          </div>
+          {activeMedications.length ? activeMedications.map((medication) => (
+            <Card key={medication.id} className={`rounded-2xl border-[var(--line)] bg-white/80 ${patientMedicationNeedsReview(medication.notes) ? "border-amber-300" : ""}`}>
+              <CardContent className="flex items-start justify-between gap-3 p-4">
+                <div>
+                  <p className="font-semibold text-saivie-plum">{medication.name}</p>
+                  {(medication.dose || medication.frequency) && <p className="mt-1 text-sm text-muted-foreground">{[medication.dose, medication.frequency].filter(Boolean).join(" · ")}</p>}
+                  {medication.instructions && <p className="mt-2 text-sm text-saivie-plum">{medication.instructions}</p>}
+                  {medication.startDate && <p className="mt-2 text-xs text-muted-foreground">Started {new Date(`${medication.startDate}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p>}
+                  {patientMedicationNote(medication.notes) && <p className="mt-2 text-xs text-muted-foreground">{patientMedicationNote(medication.notes)}</p>}
+                </div>
+                <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${patientMedicationNeedsReview(medication.notes) ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-800"}`}>
+                  {patientMedicationNeedsReview(medication.notes) ? "Review with care team" : patientMedicationCategory(medication.name, medication.route)}
+                </span>
+              </CardContent>
+            </Card>
+          )) : (
+            <Card className="rounded-2xl border-dashed border-[var(--line)] bg-white/70">
+              <CardContent className="p-6 text-center">
+                <Pill className="mx-auto h-7 w-7 text-saivie-rose" />
+                <p className="mt-2 text-sm font-semibold text-saivie-plum">No current medicines added yet</p>
+                <p className="mt-1 text-xs text-muted-foreground">Ask your care team to review or update your list.</p>
+              </CardContent>
+            </Card>
+          )}
+          {medications.some((medication) => String(medication.status || "").toLowerCase() !== "active") && (
+            <details className="rounded-2xl border border-[var(--line)] bg-white/70 p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-saivie-plum">Past medications</summary>
+              <div className="mt-3 space-y-2">
+                {medications.filter((medication) => String(medication.status || "").toLowerCase() !== "active").map((medication) => (
+                  <div key={medication.id} className="rounded-xl bg-saivie-ivory/70 p-3">
+                    <p className="text-sm font-medium text-saivie-plum">{medication.name}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{[medication.dose, medication.frequency].filter(Boolean).join(" · ") || "Details not recorded"}</p>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </section>
+      )}
+
+      {section === "lab-reports" && (
+        <section className="space-y-4" aria-label="Lab reports">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-saivie-rose">Lab reports</p>
+            <h2 className="mt-1 font-serif text-2xl font-semibold text-saivie-plum">Your lab reports, in plain words.</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">Upload a report, check what was read, then confirm the values to save them.</p>
+          <Card className="rounded-[24px] border-[var(--line)] bg-white/80">
+            <CardContent className="space-y-3 p-5">
+              <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" className="hidden"
+                onChange={(event) => { void selectFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+              <Button type="button" variant="outline" className="min-h-12 w-full gap-2 rounded-xl" disabled={reading || saving} onClick={() => fileInput.current?.click()}>
+                <Upload className="h-4 w-4" /> {reading ? "Reading your report…" : file ? "Choose a different report" : "Add a lab report"}
+              </Button>
+              {readingError && <p role="alert" className="text-sm text-rose-700">{readingError}</p>}
+              {saveError && <p role="alert" className="text-sm text-rose-700">{saveError}</p>}
+              {saveMessage && <p role="status" className="text-sm font-medium text-emerald-800">{saveMessage}</p>}
+            </CardContent>
+          </Card>
+
+          {readingResult && healthValues.length > 0 && (
+            <Card className="rounded-[24px] border-[var(--line)] bg-white/90">
+              <CardContent className="space-y-4 p-5">
+                <div>
+                  <h3 className="font-serif text-xl font-semibold text-saivie-plum">Check the values</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Compare each value with the original report. Nothing is saved until you confirm.</p>
+                </div>
+                {readingResult.warnings.map((warning, index) => <p key={index} role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{warning}</p>)}
+                {file && (
+                  <details className="rounded-xl border border-[var(--line)] p-3">
+                    <summary className="cursor-pointer text-sm font-semibold text-saivie-plum">View original report</summary>
+                    {file.mimeType.startsWith("image/") ? (
+                      <img src={`data:${file.mimeType};base64,${file.fileData}`} alt="Original uploaded lab report" className="mt-3 max-h-[60vh] w-full rounded-lg object-contain" />
+                    ) : (
+                      <iframe src={`data:${file.mimeType};base64,${file.fileData}`} title="Original uploaded lab report" className="mt-3 h-[60vh] w-full rounded-lg border" />
+                    )}
+                  </details>
+                )}
+                <label className="block space-y-1 text-sm font-medium text-saivie-plum">
+                  Report date
+                  <DateInput value={reportDate} disabled={saving} onValueChange={(value) => { setReviewed(false); setReportDate(value); }} />
+                </label>
+                <div className="space-y-3">
+                  {healthValues.map((result, index) => (
+                    <div key={index} className="grid gap-2 rounded-xl border border-[var(--line)] p-3 sm:grid-cols-2">
+                      {([
+                        ["testName", "Test"],
+                        ["value", "Value"],
+                        ["unit", "Unit"],
+                        ["referenceRange", "Reference range"],
+                      ] as [keyof LabValue, string][]).map(([field, label]) => (
+                        <label key={field} className="space-y-1 text-xs font-medium text-saivie-plum">
+                          {label}
+                          <Input value={result[field]} disabled={saving} onChange={(event) => updateValue(index, field, event.target.value)} />
+                        </label>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <label className="flex items-start gap-2 text-sm text-saivie-plum">
+                  <input type="checkbox" checked={reviewed} disabled={saving} onChange={(event) => setReviewed(event.target.checked)} className="mt-1" />
+                  <span>I checked the test names, values, units and date against the original report.</span>
+                </label>
+                <Button type="button" className="min-h-12 w-full rounded-xl" disabled={saving || !reviewed || !/^\d{4}-\d{2}-\d{2}$/.test(reportDate) || healthValues.some((row) => !row.testName.trim() || !row.value.trim())} onClick={() => void saveReport()}>
+                  {saving ? "Saving reviewed values…" : "Confirm and save"}
+                </Button>
+                {readingResult.rawText && (
+                  <details className="text-xs text-muted-foreground">
+                    <summary className="cursor-pointer">Show text read from the report</summary>
+                    <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-saivie-ivory p-3">{readingResult.rawText}</pre>
+                  </details>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="space-y-2">
+            {labResults.map((result) => {
+              const details = result.results && typeof result.results === "object" ? result.results as Record<string, unknown> : {};
+              return (
+                <Card key={result.id} className="rounded-2xl border-[var(--line)] bg-white/80">
+                  <CardContent className="flex items-start gap-3 p-4">
+                    <div className="rounded-xl bg-saivie-sage p-2"><FileText className="h-4 w-4 text-saivie-teal" /></div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-saivie-plum">{result.testName || "Lab result"}</p>
+                      <p className="mt-1 text-sm text-saivie-plum">{String(details.rawValue ?? (result.value == null ? result.status || "Recorded" : result.value))} {result.unit || ""}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {result.date ? new Date(`${result.date}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Date not recorded"}
+                        {details.referenceRange ? ` · Reference range: ${String(details.referenceRange)}` : ""}
+                      </p>
+                    </div>
+                    {details.reviewedByPatient === true && <span className="shrink-0 rounded-full bg-[#FFF0E8] px-2 py-1 text-[10px] font-semibold text-saivie-rose">Your report</span>}
+                  </CardContent>
+                </Card>
+              );
+            })}
+            {!labResults.length && !readingResult && (
+              <div className="rounded-2xl border border-dashed border-[var(--line)] p-6 text-center">
+                <FlaskConical className="mx-auto h-7 w-7 text-saivie-teal" />
+                <p className="mt-2 text-sm font-semibold text-saivie-plum">Your lab reports will appear here</p>
+                <p className="mt-1 text-xs text-muted-foreground">Upload a report to get started.</p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {section === "history" && (
+        <section className="space-y-4" aria-label="Visit history">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-saivie-rose">History</p>
+            <h2 className="mt-1 font-serif text-3xl font-semibold text-saivie-plum">Your visits, in order.</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Every check-up, scan and note from your team.</p>
+          </div>
+          {visitHistory.length ? [...visitHistory]
+            .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
+            .map((visit) => {
+              const vitals = visit.vitals && typeof visit.vitals === "object" ? visit.vitals as Record<string, unknown> : {};
+              const values: { label: string; value: unknown }[] = [
+                { label: "BP", value: vitals.bp || vitals.bloodPressure },
+                { label: "Weight", value: vitals.weight ? `${vitals.weight} kg` : null },
+                { label: "Baby heart", value: vitals.fetalHeartRate || vitals.fetalHeart },
+              ].filter(({ value }) => value != null && value !== "");
+              return (
+                <Card key={visit.id} className="rounded-[24px] border-[var(--line)] bg-white/85">
+                  <CardContent className="space-y-3 p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {visit.date ? new Date(`${visit.date}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Date not recorded"}
+                    </p>
+                    <h3 className="font-serif text-xl font-semibold text-saivie-plum">{visit.visitType || visit.diagnosis || "Care visit"}</h3>
+                    {values.length > 0 && <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {values.map(({ label, value }) => (
+                        <div key={label} className="rounded-xl bg-saivie-ivory/70 p-3">
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+                          <p className="mt-1 text-sm font-semibold text-saivie-plum">{String(value)}</p>
+                        </div>
+                      ))}
+                    </div>}
+                    {(visit.chiefComplaint || visit.subjective || visit.diagnosis) && (
+                      <p className="text-sm leading-relaxed text-saivie-plum">{visit.chiefComplaint || visit.subjective || visit.diagnosis}</p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            }) : (
+            <div className="rounded-2xl border border-dashed border-[var(--line)] p-6 text-center">
+              <FileText className="mx-auto h-7 w-7 text-saivie-teal" />
+              <p className="mt-2 text-sm font-semibold text-saivie-plum">Your visit history will appear here</p>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">Visits come from your clinic or from you. Anything you add is marked as yours.</p>
+        </section>
+      )}
+    </div>
+  );
+}

@@ -19,6 +19,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import pregnancyGrowthBg from "@/assets/images/pregnancy-growth-bg.png";
 import { patientGreetingName } from "@/lib/patientGreeting";
+import { localDateKey, patientHealthRecordProgress } from "@/lib/patientHealthRecord";
+import { shouldShowPregnancyCheckin } from "@/lib/patientPregnancyUpdate";
 import { getWeekData } from "@/components/WeekByWeekTimeline";
 
 interface Props {
@@ -27,8 +29,17 @@ interface Props {
   pregnancyEpisode: any;
   appointments: any[];
   medications: any[];
+  labResults: any[];
+  medicationReminderDue: boolean;
   onBook: () => void;
   onOpenCare: () => void;
+  onOpenRecord: () => void;
+  onOpenMedicationReminder: () => void;
+  onOpenStageSwitcher: () => void;
+  onUpdatePregnancy: () => void;
+  showPregnancyLossSupport: boolean;
+  onDismissPregnancyLossSupport: () => void;
+  postpartumWeek: number | null;
 }
 
 function gestationalWeek(lmp?: string | null) {
@@ -55,10 +66,22 @@ export default function PatientTodayDashboard({
   pregnancyEpisode,
   appointments,
   medications,
+  labResults,
+  medicationReminderDue,
   onBook,
   onOpenCare,
+  onOpenRecord,
+  onOpenMedicationReminder,
+  onOpenStageSwitcher,
+  onUpdatePregnancy,
+  showPregnancyLossSupport,
+  onDismissPregnancyLossSupport,
+  postpartumWeek,
 }: Props) {
   const isPregnancy = mode === "pregnancy";
+  const isPostpartum = mode === "postpartum";
+  const isMenopause = mode === "menopause";
+  const isCycleMode = !isPregnancy && !isPostpartum && !isMenopause;
   const lmp = pregnancyEpisode?.details?.lmp || patient?.lmp || null;
   const week = gestationalWeek(lmp);
   const dueDate = useMemo(() => {
@@ -88,6 +111,7 @@ export default function PatientTodayDashboard({
     }
   });
   const [checkInSaved, setCheckInSaved] = useState(false);
+  const [showPregnancyCheckin, setShowPregnancyCheckin] = useState(false);
   const [checkInStreak, setCheckInStreak] = useState(() => {
     try {
       const stored = JSON.parse(localStorage.getItem("patientDailyCheckIn") || "{}");
@@ -97,6 +121,44 @@ export default function PatientTodayDashboard({
     }
   });
   const reducedMotion = useReducedMotion();
+  useEffect(() => {
+    if (!isPregnancy || !patient?.id || !pregnancyEpisode?.id) {
+      setShowPregnancyCheckin(false);
+      return;
+    }
+    const dismissalKey = `saiviePregnancyCheckinDismissed:${patient.id}:${pregnancyEpisode.id}`;
+    try {
+      if (sessionStorage.getItem(dismissalKey)) {
+        setShowPregnancyCheckin(false);
+        return;
+      }
+    } catch (error) {
+      console.warn("Could not read pregnancy check-in dismissal", error);
+    }
+    let lastLoggedDate: string | null = null;
+    try {
+      const log = JSON.parse(localStorage.getItem("patientDailyCheckIn") || "null");
+      if (typeof log?.date === "string") lastLoggedDate = log.date;
+    } catch (error) {
+      console.warn("Could not read the last patient check-in date", error);
+    }
+    const episodeDueDate = typeof pregnancyEpisode.details?.dueDate === "string"
+      ? pregnancyEpisode.details.dueDate
+      : dueDate ? localDateKey(dueDate) : null;
+    setShowPregnancyCheckin(shouldShowPregnancyCheckin(episodeDueDate, lastLoggedDate));
+  }, [isPregnancy, patient?.id, pregnancyEpisode?.id, pregnancyEpisode?.details?.dueDate, dueDate, checkInSaved]);
+
+  const dismissPregnancyCheckin = () => {
+    if (patient?.id && pregnancyEpisode?.id) {
+      try {
+        sessionStorage.setItem(`saiviePregnancyCheckinDismissed:${patient.id}:${pregnancyEpisode.id}`, "true");
+      } catch (error) {
+        console.warn("Could not save pregnancy check-in dismissal", error);
+      }
+    }
+    setShowPregnancyCheckin(false);
+  };
+
   const toggleSymptom = (symptom: string) => {
     setCheckIn((current) => {
       const next = current.includes(symptom)
@@ -104,7 +166,7 @@ export default function PatientTodayDashboard({
         : [...current, symptom];
       const nextStreak = checkInSaved ? checkInStreak : checkInStreak + 1;
       localStorage.setItem("patientDailyCheckIn", JSON.stringify({
-        date: new Date().toISOString().slice(0, 10),
+        date: localDateKey(new Date()),
         symptoms: next,
         streak: nextStreak,
       }));
@@ -117,7 +179,7 @@ export default function PatientTodayDashboard({
   const saveCheckIn = () => {
     const nextStreak = checkInSaved ? checkInStreak : checkInStreak + 1;
     localStorage.setItem("patientDailyCheckIn", JSON.stringify({
-      date: new Date().toISOString().slice(0, 10),
+      date: localDateKey(new Date()),
       symptoms: checkIn,
       streak: nextStreak,
     }));
@@ -150,6 +212,7 @@ export default function PatientTodayDashboard({
   const shouldShowThirdTrimesterCard = isPregnancy && week != null;
   const activeMedicines = medications.filter((medicine) =>
     String(medicine.status || "").toLowerCase() === "active");
+  const recordProgress = patientHealthRecordProgress(patient, medications, labResults);
   const [contentFeed, setContentFeed] = useState<Array<{
     id: string;
     title: string;
@@ -179,6 +242,20 @@ export default function PatientTodayDashboard({
         { time: "Evening", label: "Sip throughout the day", text: "Keep a water bottle within reach and wind down early.", icon: Moon },
         { time: "Night", label: "Sleep on your side", text: "A pillow between your knees takes pressure off your hips.", icon: Moon },
       ]
+    : isPostpartum
+    ? [
+        { time: "Morning", label: "Start with what feels manageable", text: "There is no single right pace for recovery.", icon: Heart },
+        { time: "Afternoon", label: "Accept a helping hand", text: "Make room for rest and the support that works for you.", icon: Wind },
+        { time: "Evening", label: "Check in with yourself", text: "Note anything you would like to discuss with your care team.", icon: Activity },
+        { time: "Night", label: "Keep care within reach", text: "Your own follow-up and wellbeing matter, too.", icon: Moon },
+      ]
+    : isMenopause
+    ? [
+        { time: "Morning", label: "Notice how you feel", text: "A simple note can help you spot patterns over time.", icon: Sparkles },
+        { time: "Afternoon", label: "Make space for a pause", text: "Choose a small reset that feels comfortable today.", icon: Wind },
+        { time: "Evening", label: "Support your routine", text: "Keep track of changes you may want to mention at a visit.", icon: Activity },
+        { time: "Night", label: "Settle in your own way", text: "Comfort and sleep needs can vary from day to day.", icon: Moon },
+      ]
     : [
         { time: "10 AM", label: "Presentations and hard conversations", text: "Your verbal skills and confidence are peaking.", icon: Sparkles },
         { time: "1 PM", label: "Add protein to lunch", text: "Support your body with protein, fiber, tryptophan, or eggs.", icon: Utensils },
@@ -186,9 +263,13 @@ export default function PatientTodayDashboard({
         { time: "10 PM", label: "Keep it cool and dark", text: "Basal temperature is rising slightly.", icon: Moon },
       ];
 
-  const accent = isPregnancy ? "#FFA7B6" : "#FFB534";
+  const accent = isPregnancy ? "#FFA7B6" : isPostpartum ? "#C9E889" : isMenopause ? "#7ED3E1" : "#FFB534";
   const todayLabel = isPregnancy
     ? `WEEK ${week ?? "—"} · ${trimester ? `${trimester.toUpperCase()} TRIMESTER` : "PREGNANCY"}`
+    : isPostpartum
+    ? postpartumWeek ? `POSTPARTUM · WEEK ${postpartumWeek}` : "POSTPARTUM · YOUR RECOVERY"
+    : isMenopause
+    ? "PERIMENOPAUSE · YOUR PATTERNS"
     : "DAY 14 · OVULATION";
 
   const firstRowDots = Array.from({ length: 20 }, (_, i) => i + 1);
@@ -204,9 +285,9 @@ export default function PatientTodayDashboard({
       transition={{ duration: reducedMotion ? 0 : 0.45, ease: "easeOut" }}
       className="pb-32 md:pb-10"
       style={{ "--accent": accent, background: "var(--paper)", color: "var(--ink)" } as React.CSSProperties}
-      data-mode={isPregnancy ? "pregnancy" : "cycle"}
+      data-mode={mode}
     >
-      {isPregnancy && (
+      {pregnancyEpisode?.details?.status === "current" && (
         <div className="mb-6 hidden min-h-[52px] items-center justify-between rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-5 text-[13px] md:flex">
           <span>Cycle predictions are paused while you're pregnant.</span>
           <button type="button" onClick={onOpenCare} className="min-h-[44px] font-bold underline underline-offset-[4px]">
@@ -214,6 +295,77 @@ export default function PatientTodayDashboard({
           </button>
         </div>
       )}
+
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
+        <button
+          type="button"
+          onClick={onOpenStageSwitcher}
+          className="min-h-11 rounded-full border border-[var(--line)] bg-white/80 px-4 text-xs font-bold text-[var(--ink)] md:hidden"
+        >Switch stage</button>
+        {isPregnancy && (
+          <button type="button" onClick={onUpdatePregnancy} className="min-h-11 text-xs font-semibold text-[var(--body-soft)] underline underline-offset-4 hover:text-[var(--ink)]">
+            Update my pregnancy
+          </button>
+        )}
+      </div>
+
+      {showPregnancyCheckin && (
+        <section className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-[#E8D8C8] bg-white/90 p-5 text-[#35212f]" role="status" aria-label="Pregnancy check-in">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#775B63]">A gentle check-in</p>
+            <h2 className="mt-1 font-serif text-xl font-semibold">Checking in on your pregnancy. Has anything changed?</h2>
+          </div>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={dismissPregnancyCheckin} className="min-h-11 px-3 text-sm text-[#6A5963] underline underline-offset-4">Not now</button>
+            <button type="button" onClick={onUpdatePregnancy} className="min-h-11 rounded-full bg-[#35212f] px-5 text-sm font-bold text-white">Update</button>
+          </div>
+        </section>
+      )}
+
+      {showPregnancyLossSupport && (
+        <section className="mb-5 rounded-[24px] border border-[#E8D8C8] bg-white/90 p-5 text-[#35212f]" aria-label="Support options">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#775B63]">Your care, at your pace</p>
+          <h2 className="mt-1 font-serif text-xl font-semibold">Pregnancy reminders are paused.</h2>
+          <p className="mt-1 text-sm text-[#6A5963]">Your history stays in your health record. Speak with your care team or review your records whenever you want.</p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <button type="button" onClick={onBook} className="min-h-11 text-sm font-bold underline underline-offset-4">Talk with my care team</button>
+            <button type="button" onClick={onOpenRecord} className="min-h-11 text-sm font-bold underline underline-offset-4">View health record</button>
+            <button type="button" onClick={onDismissPregnancyLossSupport} className="min-h-11 text-sm text-[#6A5963]">Dismiss</button>
+          </div>
+        </section>
+      )}
+      {medicationReminderDue && (
+        <section className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-[#F2C2AE] bg-[#FFF0E8] p-5 text-[#2A1220]" aria-label="Medicine reminder">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#A8341A]">A gentle reminder</p>
+            <h2 className="mt-1 font-serif text-xl font-bold">Review your medicines</h2>
+            <p className="mt-1 text-sm">Check that your current medicine list is up to date.</p>
+          </div>
+          <button type="button" onClick={onOpenMedicationReminder} className="min-h-11 rounded-full bg-[#2A1220] px-5 text-sm font-bold text-white">
+            Go to Medications
+          </button>
+        </section>
+      )}
+
+      <button type="button" onClick={onOpenRecord} className="mb-6 flex w-full items-center gap-4 rounded-[24px] border border-[var(--line)] bg-white/85 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-serif text-xl font-bold">Complete your profile</h2>
+            <span className="text-sm font-extrabold">{recordProgress.progress}%</span>
+          </div>
+          <p className="mt-1 text-sm text-[var(--body-soft)]">
+            {recordProgress.missingItems.length
+              ? `${recordProgress.missingItems.length} ${recordProgress.missingItems.length === 1 ? "item" : "items"} still to add to your health record.`
+              : "Your health record is up to date."}
+          </p>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#F0CFC4]" role="progressbar" aria-label="Health record progress" aria-valuenow={recordProgress.progress} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-full rounded-full bg-[#2A1220]" style={{ width: `${recordProgress.progress}%` }} />
+          </div>
+        </div>
+        <span className="shrink-0 rounded-full bg-[#2A1220] px-4 py-2 text-xs font-bold text-white">
+          {recordProgress.missingItems.length ? "Continue" : "View record"}
+        </span>
+      </button>
 
       <div className="flex flex-wrap gap-6">
         <motion.section
@@ -235,7 +387,7 @@ export default function PatientTodayDashboard({
               </span>
             ) : (
               <span className="inline-flex h-[36px] items-center rounded-full px-4 text-[13px] font-bold md:h-[38px] md:text-[14px]" style={{ background: "var(--ink)", color: accent }}>
-                7-day streak
+                {isPostpartum || isMenopause ? "Your pace" : "7-day streak"}
               </span>
             )}
           </div>
@@ -248,12 +400,22 @@ export default function PatientTodayDashboard({
           </span>
 
           <h1 className="m-0 max-w-[680px] text-[56px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[84px]">
-            {isPregnancy ? <>Your baby can <em className="font-medium">hear</em> you now.</> : <>Your words land <em className="font-medium">harder</em> today.</>}
+            {isPregnancy
+              ? <>Your baby can <em className="font-medium">hear</em> you now.</>
+              : isPostpartum
+              ? <>Your recovery, at <em className="font-medium">your pace</em>.</>
+              : isMenopause
+              ? <>Make space for how <em className="font-medium">you feel</em>.</>
+              : <>Your words land <em className="font-medium">harder</em> today.</>}
           </h1>
 
           <p className="m-0 text-[17px] font-medium leading-[1.4] md:text-[20px]">
             {isPregnancy
               ? `About the size of ${baby?.title?.toLowerCase() || "your baby"}. ${week != null ? `${40 - week} weeks to go.` : "Pregnancy guidance."}`
+              : isPostpartum
+              ? "Your wellbeing matters as you adjust to life with a new baby."
+              : isMenopause
+              ? "Notice changes over time and bring questions to your care team."
               : "Peak fertility window. Energy levels are high."}
           </p>
 
@@ -301,7 +463,7 @@ export default function PatientTodayDashboard({
                 <span>Week 40</span>
               </div>
             </div>
-          ) : (
+          ) : isCycleMode ? (
             <svg
               viewBox="0 0 350 100"
               role="img"
@@ -330,6 +492,17 @@ export default function PatientTodayDashboard({
                 );
               })}
             </svg>
+          ) : (
+            <div className="mt-auto rounded-[24px] bg-white/45 p-5">
+              <p className="m-0 text-xs font-extrabold uppercase tracking-[0.12em]">
+                {isPostpartum ? "A gentle check-in" : "Patterns take time"}
+              </p>
+              <p className="mb-0 mt-2 text-sm leading-relaxed">
+                {isPostpartum
+                  ? "There is no timeline you need to follow here. Use your check-in to note what support would help today."
+                  : "Your experience is personal. A few notes over time can help you prepare for a conversation with your clinician."}
+              </p>
+            </div>
           )}
 
           <div className="mt-2 flex flex-wrap gap-[10px]">
@@ -350,13 +523,21 @@ export default function PatientTodayDashboard({
             whileHover={reducedMotion ? undefined : { y: -2, transition: { duration: 0.2 } }}
             className="rounded-[28px] border border-[var(--line)] bg-[var(--surface)] p-5 md:p-4"
           >
-            <p className="m-0 font-serif text-[26px] font-bold tracking-[0em]">{isPregnancy ? "What are you noticing?" : "How are you feeling?"}</p>
+            <p className="m-0 font-serif text-[26px] font-bold tracking-[0em]">
+              {isPregnancy || isPostpartum || isMenopause ? "What are you noticing?" : "How are you feeling?"}
+            </p>
             <p className="mt-1 text-[15px] text-[var(--body-soft)]">
-              {isPregnancy ? "Log in one tap. Your doctor can see the pattern." : "One tap keeps your predictions sharp."}
+              {isPregnancy || isPostpartum || isMenopause
+                ? "A simple note can help you remember what to discuss with your care team."
+                : "One tap keeps your predictions sharp."}
             </p>
             <div className="mt-3 flex flex-wrap gap-[8px] md:gap-[6px]">
               {(isPregnancy
                 ? ["Energy good", "Kicks felt", "Nausea", "Swelling", "Backache"]
+                : isPostpartum
+                ? ["Recovery", "Rest", "Mood", "Feeding", "Support"]
+                : isMenopause
+                ? ["Hot flashes", "Sleep", "Mood", "Energy", "Other"]
                 : ["Glowing", "Good", "Okay", "Low", "Rough"]
               ).map((symptom) => (
                 <motion.button
@@ -419,7 +600,7 @@ export default function PatientTodayDashboard({
                 </motion.section>
               )}
             </>
-          ) : (
+          ) : isCycleMode ? (
             <>
               <section className="rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)]">
                 <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: accent }}>Coming up</p>
@@ -440,6 +621,23 @@ export default function PatientTodayDashboard({
                 </div>
               </section>
             </>
+          ) : (
+            <section className="rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)]">
+              <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: accent }}>
+                {isPostpartum ? "Your wellbeing matters" : "Your experience is individual"}
+              </p>
+              <p className="mt-3 font-serif text-[28px] font-bold">
+                {isPostpartum ? "Care for you, too." : "Keep track, if it helps."}
+              </p>
+              <p className="mt-2 text-[15px] leading-[1.5] text-[var(--on-dark-soft)]">
+                {isPostpartum
+                  ? "Use your health record to keep visits, medicines and notes together."
+                  : "Your notes can help you see changes and prepare questions for your next visit."}
+              </p>
+              <button type="button" onClick={onOpenRecord} className="mt-4 min-h-11 rounded-full bg-[var(--paper)] px-5 text-sm font-bold text-[var(--ink)]">
+                Open health record
+              </button>
+            </section>
           )}
         </aside>
       </div>
@@ -448,7 +646,11 @@ export default function PatientTodayDashboard({
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="m-0 font-serif text-[26px] font-bold tracking-[0em] md:text-[38px] md:tracking-[-0.02em]">Today&apos;s plan</h2>
           <p className="m-0 text-[15px] text-[var(--muted)] md:text-[16px]">
-            {isPregnancy ? `Gentle, built around week ${week ?? "—"}.` : "Built around today's cycle phase."}
+            {isPregnancy
+              ? `Gentle, built around week ${week ?? "—"}.`
+              : isPostpartum || isMenopause
+              ? "Ideas to adapt to what feels right for you."
+              : "Built around today's cycle phase."}
           </p>
         </div>
         <div className="flex flex-col md:flex-row md:flex-wrap md:gap-5">

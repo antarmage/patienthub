@@ -6,12 +6,53 @@ import { getWeekData } from "@/components/WeekByWeekTimeline";
 interface Props {
   pregnancy: boolean;
   week: number | null;
+  mode?: string;
 }
 
-export default function PatientPrograms({ pregnancy, week }: Props) {
+export default function PatientPrograms({ pregnancy, week, mode }: Props) {
   const currentWeek = week ?? 24;
   const [activeCategory, setActiveCategory] = useState<"Mind" | "Move" | "Nourish" | null>(null);
   const weekGuide = getWeekData(currentWeek);
+
+  if (mode === "postpartum" || mode === "menopause") {
+    const postpartum = mode === "postpartum";
+    const stagePrograms = postpartum
+      ? [
+          ["MIND", "Rest and emotional wellbeing", "Small check-ins and support at your pace. No streaks or pressure.", Brain],
+          ["MOVE", "Recovery, at your pace", "Ask your care team when it is right to return to movement.", Activity],
+          ["NOURISH", "Everyday nourishment", "Simple meal ideas to adapt to your preferences and needs.", Apple],
+        ] as const
+      : [
+          ["MIND", "Sleep and mood support", "Gentle practices to explore what helps you feel more settled.", Brain],
+          ["MOVE", "Comfortable movement", "Choose activity that feels right for you; ask your clinician about concerns.", Activity],
+          ["NOURISH", "Balanced everyday meals", "Flexible food ideas without a prescribed target or plan.", Apple],
+        ] as const;
+    return (
+      <div className="space-y-6 px-5 pb-28 pt-8 md:px-0 md:pb-10 md:pt-4" data-stage-programs={mode}>
+        <header className="max-w-3xl">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#775B63]">{postpartum ? "Postpartum programs" : "Perimenopause programs"}</p>
+          <h1 className="mt-2 font-serif text-4xl font-semibold text-[#35212f] md:text-5xl">Support that meets you here.</h1>
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-[#6A5963]">
+            These are gentle starting points, not medical advice. Your history stays available in My care.
+          </p>
+        </header>
+        <div className="grid gap-4 md:grid-cols-3">
+          {stagePrograms.map(([eyebrow, title, description, Icon], index) => (
+            <article key={eyebrow} className="min-h-[230px] rounded-[26px] border border-[#E8D8C8] bg-white/85 p-6">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold tracking-[0.12em] text-[#775B63]">{eyebrow}</span>
+                <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: index === 0 ? "#F6DCE5" : index === 1 ? "#DFF1C4" : "#D9EFF0" }}>
+                  <Icon className="h-5 w-5 text-[#35212f]" />
+                </span>
+              </div>
+              <h2 className="mt-6 font-serif text-2xl font-semibold text-[#35212f]">{title}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-[#6A5963]">{description}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const categoryPages = {
     Mind: {

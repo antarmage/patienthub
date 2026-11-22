@@ -10,6 +10,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   Leaf, 
   Baby, 
@@ -55,11 +62,39 @@ import { validMeetUrl } from "@/lib/onlineConsultation";
 import PatientPrograms from "@/components/PatientPrograms";
 import PatientTodayDashboard from "@/components/PatientTodayDashboard";
 import PregnancyCareDashboard from "@/components/PregnancyCareDashboard";
+import PatientHealthRecord from "@/components/PatientHealthRecord";
+import PatientStageSwitcher from "@/components/PatientStageSwitcher";
+import PatientPregnancyUpdate from "@/components/PatientPregnancyUpdate";
 import { BrandLogo } from "@/components/BrandLogo";
+import { localDateKey, nextLocalDateKey } from "@/lib/patientHealthRecord";
+import {
+  getPostpartumStartDate,
+  postpartumStartStorageKey,
+  postpartumWeek as postpartumWeekFromStart,
+  savePostpartumStartDate,
+  type PatientPregnancyUpdateAction,
+} from "@/lib/patientPregnancyUpdate";
+import {
+  getSavedPatientMode,
+  patientStageForMode,
+  savePatientMode,
+  type PatientPortalMode,
+  type PatientStageMode,
+} from "@/lib/patientStage";
 
 export default function PatientPortal() {
-  const [activeTab, setActiveTab] = useState("home");
-  const [mode, setMode] = useState("general"); // general, ttc, ivf, pregnancy
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tab") === "stage") return "stage";
+    if (params.get("tab") === "pregnancy-update") return "pregnancy-update";
+    return params.get("tab") === "record" || ["medications", "lab-reports", "history"].includes(params.get("section") || "")
+      ? "record" : "home";
+  });
+  const [healthRecordSection, setHealthRecordSection] = useState<"overview" | "medications" | "lab-reports" | "history">(() => {
+    const section = new URLSearchParams(window.location.search).get("section");
+    return section === "medications" || section === "lab-reports" || section === "history" ? section : "overview";
+  });
+  const [mode, setMode] = useState<PatientPortalMode>("general");
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingStep, setBookingStep] = useState<'type'|'date'|'confirm'|'done'>('type');
   const [bookingType, setBookingType] = useState<'doctor'|'nutritionist'|'blood_test'|null>(null);
@@ -74,6 +109,63 @@ export default function PatientPortal() {
     } catch { return null; }
   })();
   const patientId = storedPatient?.id?.toString() || new URLSearchParams(window.location.search).get('patientId');
+  const reminderStorageKey = patientId ? `saiviePatientHealthReminder:${patientId}` : null;
+  const [medicationReminderDue, setMedicationReminderDue] = useState(false);
+  const [pregnancyLossSupport, setPregnancyLossSupport] = useState(false);
+  const [postpartumStartDate, setPostpartumStartDate] = useState<string | null>(null);
+  const [completedPregnancyEpisode, setCompletedPregnancyEpisode] = useState<any>(null);
+
+  useEffect(() => {
+    if (!patientId) {
+      setPregnancyLossSupport(false);
+      setPostpartumStartDate(null);
+      return;
+    }
+    try {
+      setPregnancyLossSupport(localStorage.getItem(`saiviePregnancyLossSupport:${patientId}`) === "true");
+      setPostpartumStartDate(getPostpartumStartDate(localStorage, patientId));
+    } catch (error) {
+      console.warn("Could not load saved pregnancy transition preferences", error);
+    }
+  }, [patientId]);
+
+  useEffect(() => {
+    if (!reminderStorageKey) {
+      setMedicationReminderDue(false);
+      return;
+    }
+    const refreshReminder = () => {
+      try {
+        const reminder = JSON.parse(localStorage.getItem(reminderStorageKey) || "null");
+        setMedicationReminderDue(Boolean(reminder?.dueDate && reminder.dueDate <= localDateKey(new Date())));
+      } catch {
+        setMedicationReminderDue(false);
+      }
+    };
+    refreshReminder();
+    const timer = window.setInterval(refreshReminder, 60_000);
+    return () => window.clearInterval(timer);
+  }, [reminderStorageKey]);
+
+  const scheduleMedicationReminder = () => {
+    if (!reminderStorageKey) return;
+    localStorage.setItem(reminderStorageKey, JSON.stringify({
+      dueDate: nextLocalDateKey(new Date()),
+      section: "medications",
+    }));
+    setMedicationReminderDue(false);
+  };
+
+  const openHealthRecord = (section: "overview" | "medications" | "lab-reports" | "history" = "overview") => {
+    setHealthRecordSection(section);
+    setActiveTab("record");
+  };
+
+  const openMedicationReminder = () => {
+    if (reminderStorageKey) localStorage.removeItem(reminderStorageKey);
+    setMedicationReminderDue(false);
+    openHealthRecord("medications");
+  };
 
   const patientQuery = useQuery({
     queryKey: ['/api/patients', patientId],
@@ -103,7 +195,7 @@ export default function PatientPortal() {
     ? Math.max(1, Math.min(40, Math.floor((Date.now() - new Date(pregnancyLmp).getTime()) / (7 * 24 * 60 * 60 * 1000))))
     : null;
 
-  function inferPatientMode(p: any): string {
+  function inferPatientMode(p: any): PatientPortalMode {
     if (!p) return "general";
     const dbMode = (p.mode || '').toLowerCase();
     const type = (p.type || '').toLowerCase();
@@ -115,9 +207,13 @@ export default function PatientPortal() {
     if (dbMode === 'pregnancy') return 'pregnancy';
     if (dbMode === 'ivf') return 'ivf';
     if (dbMode === 'iui' || dbMode === 'natural_conception') return 'ttc';
+    if (dbMode === 'postpartum') return 'postpartum';
+    if (dbMode === 'menopause' || dbMode === 'perimenopause') return 'menopause';
 
     // Patient type
     if (type === 'pregnant') return 'pregnancy';
+    if (type.includes('postpartum')) return 'postpartum';
+    if (type.includes('menopause') || type.includes('perimenopause')) return 'menopause';
     if (type === 'fertility') {
       if (focus.includes('ivf')) return 'ivf';
       return 'ttc';
@@ -125,6 +221,8 @@ export default function PatientPortal() {
 
     // Condition keywords
     if (cond.includes('pregnan') || cond.includes('antenatal') || cond.includes('trimester') || cond.includes('gestational')) return 'pregnancy';
+    if (cond.includes('postpartum')) return 'postpartum';
+    if (cond.includes('menopause') || cond.includes('perimenopause')) return 'menopause';
     if (cond.includes('ivf')) return 'ivf';
     if (cond.includes('iui') || cond.includes('natural conception') || cond.includes('ttc') || cond.includes('trying')) return 'ttc';
 
@@ -135,24 +233,106 @@ export default function PatientPortal() {
 
     // Pregnancy status
     if (ps.includes('pregnant') || ps.includes('active') || ps.includes('antenatal')) return 'pregnancy';
+    if (ps.includes('postpartum')) return 'postpartum';
+    if (ps.includes('menopause') || ps.includes('perimenopause')) return 'menopause';
 
     return 'general';
   }
 
   const [modeInitialized, setModeInitialized] = useState(false);
   useEffect(() => {
-    if (patient && !modeInitialized) {
-      setMode(inferPatientMode(patient));
+    if (patient?.id && !modeInitialized && (pregnancyEpisodesQuery.isSuccess || pregnancyEpisodesQuery.isError)) {
+      const savedMode = getSavedPatientMode(window.localStorage, patient.id);
+      setMode(savedMode ?? (currentPregnancyEpisode ? "pregnancy" : inferPatientMode(patient)));
       setModeInitialized(true);
     }
-  }, [patient, modeInitialized]);
-
-  useEffect(() => {
-    if (currentPregnancyEpisode) setMode("pregnancy");
-  }, [currentPregnancyEpisode?.id]);
+  }, [patient, modeInitialized, pregnancyEpisodesQuery.isSuccess, pregnancyEpisodesQuery.isError, currentPregnancyEpisode]);
 
   const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
+  const selectMode = (nextMode: PatientPortalMode, nextTab = "home") => {
+    setMode(nextMode);
+    setModeDropdownOpen(false);
+    if (patient?.id) {
+      try {
+        savePatientMode(window.localStorage, patient.id, nextMode);
+      } catch (error) {
+        console.warn("Could not save the selected patient stage", error);
+      }
+    }
+    setActiveTab(nextTab);
+  };
+  const selectStage = (nextMode: PatientStageMode) => {
+    if (currentPregnancyEpisode && nextMode !== "pregnancy") {
+      setActiveTab("pregnancy-update");
+      return;
+    }
+    selectMode(nextMode);
+  };
+  const selectFertilityMode = (nextMode: "ttc" | "ivf") => {
+    if (currentPregnancyEpisode) {
+      setActiveTab("pregnancy-update");
+      return;
+    }
+    selectMode(nextMode);
+  };
+  const handlePregnancyStatusUpdated = (action: PatientPregnancyUpdateAction, birthDate?: string) => {
+    if (!patient?.id || !currentPregnancyEpisode) return;
+    void queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId] });
+    void queryClient.invalidateQueries({ queryKey: [`/api/patients/${patient.id}/pregnancy-episodes`] });
+
+    if (action === "baby-arrived") {
+      const startDate = birthDate || localDateKey(new Date());
+      setPostpartumStartDate(startDate);
+      try {
+        savePostpartumStartDate(window.localStorage, patient.id, startDate);
+        localStorage.removeItem(`saiviePregnancyLossSupport:${patient.id}`);
+      } catch (error) {
+        console.warn("Could not save postpartum stage preferences", error);
+      }
+      setPregnancyLossSupport(false);
+      selectMode("postpartum", "home");
+      return;
+    }
+
+    try {
+      localStorage.removeItem(postpartumStartStorageKey(patient.id));
+    } catch (error) {
+      console.warn("Could not clear the previous postpartum date", error);
+    }
+    setPostpartumStartDate(null);
+
+    if (action === "pregnancy-loss") {
+      setCompletedPregnancyEpisode(currentPregnancyEpisode);
+      setPregnancyLossSupport(true);
+      try {
+        localStorage.setItem(`saiviePregnancyLossSupport:${patient.id}`, "true");
+      } catch (error) {
+        console.warn("Could not save pregnancy support preference", error);
+      }
+      selectMode("general", "pregnancy-update");
+      return;
+    }
+
+    setPregnancyLossSupport(false);
+    try {
+      localStorage.removeItem(`saiviePregnancyLossSupport:${patient.id}`);
+    } catch (error) {
+      console.warn("Could not clear pregnancy support preference", error);
+    }
+    selectMode("general", "stage");
+  };
+
+  const dismissPregnancyLossSupport = () => {
+    if (patient?.id) {
+      try {
+        localStorage.removeItem(`saiviePregnancyLossSupport:${patient.id}`);
+      } catch (error) {
+        console.warn("Could not dismiss saved pregnancy support preference", error);
+      }
+    }
+    setPregnancyLossSupport(false);
+  };
   useEffect(() => {
     if (!modeDropdownOpen) return;
     function handleClickOutside(e: MouseEvent) {
@@ -276,7 +456,7 @@ export default function PatientPortal() {
   return (
     <div
       className="min-h-screen pb-32 relative selection:bg-primary/20 overflow-hidden"
-      style={{ background: mode === "pregnancy" ? "#FFF4EE" : "#FFF4E6" }}
+      style={{ background: mode === "pregnancy" ? "#FFF4EE" : mode === "postpartum" ? "#F5F8E9" : mode === "menopause" ? "#EAF8F8" : "#FFF4E6" }}
     >
       {(!patientId || patientQuery.isError) && <div role="alert" className="relative z-10 m-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
         {patientQuery.error?.message || "Please sign in to access your patient record."} <a href="/" className="underline">Sign in</a>
@@ -351,7 +531,7 @@ export default function PatientPortal() {
                    ] as const).map(({ key, icon, bg, label }) => (
                      <button
                        key={key}
-                       onClick={() => { setMode(key); setModeDropdownOpen(false); }}
+                       onClick={() => selectMode(key)}
                        className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 text-sm transition-colors ${mode === key ? "bg-black/5 font-semibold" : "hover:bg-black/5"}`}
                      >
                        <div className={`p-1.5 ${bg} rounded-full shrink-0`}>{icon}</div>
@@ -385,7 +565,7 @@ export default function PatientPortal() {
                 whileTap={{ scale: 0.96 }}
                 transition={{ duration: 0.16 }}
                 className={`rounded-full px-5 py-2 text-xs font-semibold transition ${
-                  activeTab === value ? "bg-[#35212f] text-white" : "text-saivie-plum hover:bg-saivie-ivory"
+                  (activeTab === value || (value === "care" && activeTab === "record") || (value === "home" && (activeTab === "stage" || activeTab === "pregnancy-update"))) ? "bg-[#35212f] text-white" : "text-saivie-plum hover:bg-saivie-ivory"
                 }`}
               >
                 {label}
@@ -393,36 +573,38 @@ export default function PatientPortal() {
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            <div className="relative z-50" ref={modeDropdownRef}>
+            <div className="relative z-50">
               <button
                 type="button"
-                onClick={() => setModeDropdownOpen((open) => !open)}
+                onClick={() => setActiveTab("stage")}
+                aria-label="Switch your health stage"
                 className="flex items-center gap-2 rounded-full border border-black/10 bg-white/75 px-4 py-2 text-xs font-semibold shadow-sm"
               >
-                {mode === "pregnancy" ? "Pregnancy" : mode === "ttc" ? "Trying to conceive" : mode === "ivf" ? "IVF" : "Cycle Health"}
-                <ChevronDown className="h-3.5 w-3.5" />
+                {mode === "pregnancy" ? "Pregnancy" : mode === "postpartum" ? "Postpartum" : mode === "menopause" ? "Perimenopause" : mode === "ttc" ? "Trying to conceive" : mode === "ivf" ? "IVF" : "I have periods"}
+                <span className="text-[#775B63]">Switch stage</span>
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
-              {modeDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-white/60 bg-white p-1.5 shadow-xl">
-                  {(["general", "pregnancy", "ttc", "ivf"] as const).map((key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => { setMode(key); setModeDropdownOpen(false); }}
-                      className={`w-full rounded-xl px-3 py-2 text-left text-xs ${mode === key ? "bg-black/5 font-semibold" : "hover:bg-black/5"}`}
-                    >
-                      {key === "general" ? "Cycle Health" : key === "pregnancy" ? "Pregnancy" : key === "ttc" ? "Trying to Conceive" : "IVF Support"}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-saivie-border bg-saivie-blush text-xs font-semibold text-saivie-plum" aria-label={patient?.name || "Patient"}>
-              {patientGreetingName(
-                patient?.name ||
-                [patient?.firstName, patient?.lastName].filter((part: unknown) => typeof part === "string" && part.trim()).join(" ")
-              ).charAt(0).toUpperCase() || "S"}
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="flex h-9 w-9 items-center justify-center rounded-full border border-saivie-border bg-saivie-blush text-xs font-semibold text-saivie-plum" aria-label="Open profile menu">
+                  {patientGreetingName(
+                    patient?.name ||
+                    [patient?.firstName, patient?.lastName].filter((part: unknown) => typeof part === "string" && part.trim()).join(" ")
+                  ).charAt(0).toUpperCase() || "S"}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 rounded-2xl bg-white">
+                {currentPregnancyEpisode ? (
+                  <>
+                    <DropdownMenuLabel>My pregnancy</DropdownMenuLabel>
+                    <DropdownMenuItem onSelect={() => setActiveTab("pregnancy-update")}>Update</DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem onSelect={() => setActiveTab("stage")}>Switch stage</DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -437,18 +619,74 @@ export default function PatientPortal() {
                 pregnancyEpisode={currentPregnancyEpisode}
                 appointments={(patientAppointments as any[]) || []}
                 medications={(medications as any[]) || []}
+                labResults={(labResults as any[]) || []}
+                medicationReminderDue={medicationReminderDue}
                 onBook={openBooking}
                 onOpenCare={() => setActiveTab("care")}
+                onOpenRecord={() => openHealthRecord("overview")}
+                onOpenMedicationReminder={openMedicationReminder}
+                onOpenStageSwitcher={() => setActiveTab("stage")}
+                onUpdatePregnancy={() => setActiveTab("pregnancy-update")}
+                showPregnancyLossSupport={pregnancyLossSupport}
+                onDismissPregnancyLossSupport={dismissPregnancyLossSupport}
+                postpartumWeek={mode === "postpartum" ? postpartumWeekFromStart(postpartumStartDate) : null}
               />
             )}
           </TabsContent>
 
+          <TabsContent value="pregnancy-update" className="animate-in fade-in duration-500">
+            {patient?.id && (currentPregnancyEpisode || completedPregnancyEpisode) ? (
+              <PatientPregnancyUpdate
+                patientId={Number(patient.id)}
+                episode={currentPregnancyEpisode || completedPregnancyEpisode}
+                onClose={() => setActiveTab("home")}
+                onOpenRecord={() => openHealthRecord("overview")}
+                onBook={openBooking}
+                onStatusUpdated={handlePregnancyStatusUpdated}
+              />
+            ) : (
+              <p role="status" className="px-5 py-16 text-center text-sm text-saivie-plum">There is no current pregnancy to update.</p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="stage" className="animate-in fade-in duration-500">
+            {patient?.id && modeInitialized ? (
+              <PatientStageSwitcher
+                currentStage={patientStageForMode(mode)}
+                onSelectStage={selectStage}
+                onSelectFertilityMode={selectFertilityMode}
+              />
+            ) : (
+              <p role="status" className="px-5 py-16 text-center text-sm text-saivie-plum">Loading your stage options…</p>
+            )}
+          </TabsContent>
+
           <TabsContent value="biology" className="animate-in slide-in-from-bottom-4 duration-500">
-             <BiologyTab mode={mode} patient={{ ...patient, lmp: pregnancyLmp || patient?.lmp }} labResults={labResults} onOpenTracker={() => setActiveTab('track')} />
+            {mode === "postpartum" || mode === "menopause" ? (
+              <main className="mx-auto max-w-4xl space-y-5 px-5 pb-28 pt-8 md:px-0 md:pb-10" data-stage-body={mode}>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#775B63]">{mode === "postpartum" ? "Postpartum · Body" : "Perimenopause · Body"}</p>
+                <h1 className="font-serif text-4xl font-semibold text-[#35212f] md:text-5xl">
+                  {mode === "postpartum" ? "Your recovery, at your pace." : "Notice what changes for you."}
+                </h1>
+                <p className="max-w-2xl text-base leading-relaxed text-[#6A5963]">
+                  {mode === "postpartum"
+                    ? "Cycle predictions are paused. Your pregnancy history and current health notes remain in your record."
+                    : "Cycle predictions are off for this stage. You can keep symptom notes and review them with your care team."}
+                </p>
+                {mode === "menopause" && patient?.id && (
+                  <PatientMenopauseCare patientId={patient.id} patientName={patient.name} />
+                )}
+                <button type="button" onClick={() => openHealthRecord("overview")} className="min-h-11 rounded-full bg-[#35212f] px-5 text-sm font-bold text-white">
+                  Open health record
+                </button>
+              </main>
+            ) : (
+              <BiologyTab mode={mode} patient={{ ...patient, lmp: pregnancyLmp || patient?.lmp }} labResults={labResults} onOpenTracker={() => setActiveTab('track')} />
+            )}
           </TabsContent>
 
           <TabsContent value="programs" className="animate-in slide-in-from-bottom-4 duration-500">
-            <PatientPrograms pregnancy={mode === "pregnancy"} week={pregnancyWeek} />
+            <PatientPrograms pregnancy={mode === "pregnancy"} week={pregnancyWeek} mode={mode} />
           </TabsContent>
 
           <TabsContent value="care" className="animate-in slide-in-from-bottom-4 duration-500 space-y-6 pb-8">
@@ -464,8 +702,24 @@ export default function PatientPortal() {
                 bpLogs={(bpLogs as any[]) || []}
                 onBook={openBooking}
                 onOpenTrack={() => setActiveTab('track')}
-                onOpenRecords={() => setActiveTab('track')}
+                onOpenRecords={() => openHealthRecord("overview")}
               />
+            )}
+            {mode !== "pregnancy" && patient?.id && (
+              <section className="rounded-[28px] border border-[#E8D8C8] bg-white/90 p-6 md:p-8" data-stage-care={mode}>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#775B63]">{mode === "postpartum" ? "Postpartum care" : mode === "menopause" ? "Perimenopause care" : "My care"}</p>
+                <h1 className="mt-2 font-serif text-3xl font-semibold text-[#35212f]">
+                  {mode === "postpartum" ? "Your recovery and health record." : mode === "menopause" ? "Care and notes, together." : "Your health record, in one place."}
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#6A5963]">
+                  Visits, lab reports and medicines stay with you when your stage changes.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <button type="button" onClick={() => openHealthRecord("overview")} className="min-h-11 rounded-full bg-[#35212f] px-5 text-sm font-bold text-white">Open health record</button>
+                  <button type="button" onClick={openBooking} className="min-h-11 rounded-full border border-[#D9C3AE] px-5 text-sm font-bold text-[#35212f]">Book an appointment</button>
+                </div>
+                {mode === "menopause" && <div className="mt-6"><PatientMenopauseCare patientId={patient.id} patientName={patient.name} /></div>}
+              </section>
             )}
           </TabsContent>
 
@@ -483,6 +737,21 @@ export default function PatientPortal() {
                 <p className="text-sm text-saivie-plum">Switch to Pregnancy or TTC mode to access trackers.</p>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="record" className="animate-in fade-in duration-500">
+            {patient?.id && <PatientHealthRecord
+              patient={patient}
+              patientId={Number(patient.id)}
+              medications={(medications as any[]) || []}
+              labResults={(labResults as any[]) || []}
+              visitHistory={(visitHistory as any[]) || []}
+              initialSection={healthRecordSection}
+              pregnancyEpisode={currentPregnancyEpisode}
+              onUpdatePregnancy={() => setActiveTab("pregnancy-update")}
+              onBack={() => setActiveTab("home")}
+              onScheduleMedicationReminder={scheduleMedicationReminder}
+            />}
           </TabsContent>
 
         </Tabs>
@@ -652,7 +921,7 @@ export default function PatientPortal() {
         <div className="fixed bottom-3 left-1/2 z-50 w-[calc(100%-24px)] max-w-[390px] -translate-x-1/2 md:hidden">
            <div className="flex h-[72px] items-center justify-between rounded-full bg-[var(--ink)] px-2 py-2 shadow-[0_12px_32px_rgba(34,18,43,0.3)]">
              <NavButton 
-               active={activeTab === 'home'} 
+               active={activeTab === 'home' || activeTab === 'stage' || activeTab === 'pregnancy-update'}
                onClick={() => setActiveTab('home')} 
                icon={<Sun className="w-5 h-5" />} 
                label="Today" 
@@ -678,7 +947,7 @@ export default function PatientPortal() {
                />
              )}
              <NavButton 
-               active={activeTab === 'care'} 
+               active={activeTab === 'care' || activeTab === 'record'}
                onClick={() => setActiveTab('care')} 
                icon={<Heart className="w-5 h-5" />} 
                label="My Care" 

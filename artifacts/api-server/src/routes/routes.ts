@@ -4459,6 +4459,74 @@ Return JSON: { "type": "...", "urgent": false, "requestedDate": null, "appointme
     return true;
   }
 
+  app.post("/api/patient-lab-reports/read", async (req, res) => {
+    const patientId = parseId(String(req.body?.patientId ?? ""));
+    if (!patientId) return res.status(400).json({ error: "Invalid patient ID" });
+    if (!assertPatientSession(req, res, patientId)) return;
+    try {
+      const report = await scanClinicalDocument(req.body?.fileData, req.body?.mimeType, "blood");
+      res.json({ ...report, requiresReview: true });
+    } catch (error) {
+      const status = error instanceof OcrError ? error.statusCode : 500;
+      console.error("Patient lab report reading failed:", { status });
+      res.status(status).json({
+        error: error instanceof OcrError ? error.message : "Could not read the lab report.",
+      });
+    }
+  });
+
+  app.post("/api/patient-lab-results", async (req, res) => {
+    const patientId = parseId(String(req.body?.patientId ?? ""));
+    if (!patientId) return res.status(400).json({ error: "Invalid patient ID" });
+    if (!assertPatientSession(req, res, patientId)) return;
+
+    const { testName, date, value, unit, status, results } = req.body ?? {};
+    if (typeof testName !== "string" || !testName.trim() || testName.length > 200) {
+      return res.status(400).json({ error: "A valid test name is required" });
+    }
+    if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !Number.isFinite(Date.parse(`${date}T00:00:00.000Z`)) ||
+      new Date(`${date}T00:00:00.000Z`).toISOString().slice(0, 10) !== date) {
+      return res.status(400).json({ error: "A valid report date is required" });
+    }
+    if (!results || typeof results !== "object" || Array.isArray(results) ||
+      results.reviewedByPatient !== true || typeof results.rawValue !== "string" || !results.rawValue.trim()) {
+      return res.status(400).json({ error: "Review and confirm the exact lab value before saving" });
+    }
+    const sourceDocumentId = parseId(String(results.sourceDocumentId ?? ""));
+    if (!sourceDocumentId) return res.status(400).json({ error: "The uploaded source report is required" });
+    const sourceDocument = await storage.getPatientDocument(sourceDocumentId);
+    if (!sourceDocument || sourceDocument.patientId !== patientId) {
+      return res.status(403).json({ error: "The uploaded source report does not belong to this patient" });
+    }
+    if (value !== null && (typeof value !== "number" || !Number.isFinite(value))) {
+      return res.status(400).json({ error: "Invalid numeric lab value" });
+    }
+    const shortText = (input: unknown, limit: number) =>
+      typeof input === "string" ? input.trim().slice(0, limit) : "";
+
+    const result = await storage.createLabResult({
+      patientId,
+      testName: testName.trim(),
+      date,
+      value: value ?? null,
+      unit: shortText(unit, 100) || null,
+      status: shortText(status, 100) || "Patient-reported",
+      category: "Patient-uploaded",
+      results: {
+        rawValue: shortText(results.rawValue, 200),
+        referenceRange: shortText(results.referenceRange, 200),
+        flag: shortText(results.flag, 100),
+        provider: shortText(results.provider, 200),
+        reviewedByPatient: true,
+        source: "Patient-uploaded lab report",
+        sourceDocumentId,
+      },
+      notes: "Patient-reviewed against uploaded report; not clinically verified.",
+    });
+    res.status(201).json(result);
+  });
+
   app.get("/api/pregnancy-metrics", async (req, res) => {
     const patientId = sessionPatientId(req);
     if (!patientId) return res.status(403).json({ error: "Forbidden" });

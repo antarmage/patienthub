@@ -73,6 +73,17 @@ export const pregnancyEndInputSchema = z.object({
   "Record the date for a known pregnancy outcome");
 export type PregnancyEndInput = z.infer<typeof pregnancyEndInputSchema>;
 
+export const patientPregnancyUpdateSchema = z.object({
+  version: z.number().int().positive(),
+  action: z.enum(["baby-arrived", "pregnancy-loss", "no-longer-pregnant"]),
+  birthDate: pastDate.optional(),
+}).strict().superRefine((value, ctx) => {
+  if (value.action !== "baby-arrived" && value.birthDate !== undefined) {
+    ctx.addIssue({ code: "custom", path: ["birthDate"], message: "Birth date is only used when a baby has arrived" });
+  }
+});
+export type PatientPregnancyUpdate = z.infer<typeof patientPregnancyUpdateSchema>;
+
 export function deliveryOutcome(babies: Baby[]): "Live birth" | "Stillbirth" | "Other" {
   return babies.every((baby) => baby.outcome === "Live birth") ? "Live birth" :
     babies.every((baby) => baby.outcome === "Stillbirth") ? "Stillbirth" : "Other";
