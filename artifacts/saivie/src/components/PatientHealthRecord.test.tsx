@@ -102,6 +102,39 @@ test("medication design explains empty records and unavailable schedules", () =>
   assert.match(html, /Check before you take anything new/);
 });
 
+test("lab reports show recorded values and report ranges without invented interpretations", () => {
+  const html = renderRecord({
+    initialSection: "lab-reports",
+    labResults: [
+      { id: 1, date: "2025-01-02", testName: "TSH", unit: "mIU/L", results: { rawValue: "<0.01", referenceRange: "0.5–4", reviewedByPatient: true } },
+      { id: 2, date: "2025-02-02", testName: "Glucose", value: 0, unit: "mg/dL", referenceMin: 70, referenceMax: 92 },
+      { id: 3, date: "2025-03-02", testName: "Blood group", results: { rawValue: "O positive" } },
+    ],
+  });
+  assert.match(html, /Your lab reports,.*in plain words/);
+  assert.match(html, /3<\/p><p[^>]*>saved results/);
+  assert.ok(html.indexOf("Blood group") < html.indexOf("Glucose"));
+  assert.match(html, /&lt;0\.01 mIU\/L/);
+  assert.match(html, /0 mg\/dL/);
+  assert.match(html, /Report reference range: 0\.5–4/);
+  assert.match(html, /Report reference range: 70–92 mg\/dL/);
+  assert.match(html, /Confirmed by you/);
+  assert.match(html, /Upload report/);
+  assert.doesNotMatch(html, /in range|to discuss|due now|10\.8 g\/dL/i);
+});
+
+test("lab results distinguish empty, loading and failed records", () => {
+  const empty = renderRecord({ initialSection: "lab-reports" });
+  assert.match(empty, /Your lab reports will appear here/);
+  const loading = renderRecord({ initialSection: "lab-reports", labResultsLoading: true });
+  assert.match(loading, /Loading results/);
+  assert.doesNotMatch(loading, /saved results|Your lab reports will appear here/);
+  const failed = renderRecord({ initialSection: "lab-reports", labResultsError: true, onRetryLabResults: () => {} });
+  assert.match(failed, /Unable to load your lab results/);
+  assert.match(failed, />Retry<\/button>/);
+  assert.doesNotMatch(failed, /saved results|Your lab reports will appear here/);
+});
+
 test("visit page presents saved history and the next open appointment", () => {
   const html = renderRecord({
     initialSection: "history",

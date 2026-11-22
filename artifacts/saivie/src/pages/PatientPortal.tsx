@@ -392,11 +392,18 @@ export default function PatientPortal() {
     enabled: !!patient?.id && mode === 'pregnancy',
   });
 
-  const { data: labResults } = useQuery({
+  const labResultsQuery = useQuery({
     queryKey: [`/api/patients/${patient?.id}/lab-results`],
-    queryFn: async () => { const r = await fetch(`/api/patients/${patient?.id}/lab-results`); return r.json(); },
+    queryFn: async () => {
+      const r = await fetch(`/api/patients/${patient?.id}/lab-results`);
+      if (!r.ok) throw new Error("Unable to load lab results.");
+      const data = await r.json();
+      if (!Array.isArray(data)) throw new Error("Unable to load lab results.");
+      return data;
+    },
     enabled: !!patient?.id,
   });
+  const labResults = labResultsQuery.data;
 
   const { data: providers } = useQuery({
     queryKey: ['/api/providers'],
@@ -628,6 +635,9 @@ export default function PatientPortal() {
           </div>
         </header>
 
+        {labResultsQuery.isError && (activeTab === "home" || activeTab === "biology" || activeTab === "care-team") && (
+          <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-900">Unable to load lab results. <button type="button" onClick={() => { void labResultsQuery.refetch(); }} className="font-bold underline">Retry</button></p>
+        )}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8 flex-1">
           
           <TabsContent value="home" className="space-y-10 animate-in fade-in duration-700">
@@ -718,6 +728,9 @@ export default function PatientPortal() {
                 patientId={Number(patient.id)}
                 medications={(medications as any[]) || []}
                 labResults={(labResults as any[]) || []}
+                labResultsLoading={labResultsQuery.isLoading}
+                labResultsError={labResultsQuery.isError}
+                onRetryLabResults={() => { void labResultsQuery.refetch(); }}
                 visitHistory={(visitHistory as any[]) || []}
                 visitHistoryLoading={visitHistoryQuery.isLoading}
                 visitHistoryError={visitHistoryQuery.isError}
@@ -798,6 +811,9 @@ export default function PatientPortal() {
               patientId={Number(patient.id)}
               medications={(medications as any[]) || []}
               labResults={(labResults as any[]) || []}
+              labResultsLoading={labResultsQuery.isLoading}
+              labResultsError={labResultsQuery.isError}
+              onRetryLabResults={() => { void labResultsQuery.refetch(); }}
               visitHistory={(visitHistory as any[]) || []}
               visitHistoryLoading={visitHistoryQuery.isLoading}
               visitHistoryError={visitHistoryQuery.isError}

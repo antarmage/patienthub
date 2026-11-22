@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { useQueryClient } from "@tanstack/react-query";
 import { Activity, Apple, ArrowLeft, CalendarDays, Check, ChevronRight, FileText, FlaskConical, Pill, Upload } from "lucide-react";
@@ -6,7 +6,7 @@ import { DateInput } from "@/components/ui/date-input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { exactLabNumber } from "@/lib/labReading";
+import { exactLabNumber, recordedLabValue } from "@/lib/labReading";
 import { patientMedicationCategory, patientMedicationNeedsReview, patientMedicationNote } from "@/lib/patientMedicationDisplay";
 import { patientHealthRecordProgress } from "@/lib/patientHealthRecord";
 import { nextAppointment, type PortalAppointment } from "@/lib/patientAppointments";
@@ -36,6 +36,9 @@ interface Props {
   patientId: number;
   medications: Record<string, any>[];
   labResults: Record<string, any>[];
+  labResultsLoading?: boolean;
+  labResultsError?: boolean;
+  onRetryLabResults?: () => void;
   visitHistory: Record<string, any>[];
   visitHistoryLoading?: boolean;
   visitHistoryError?: boolean;
@@ -68,6 +71,9 @@ export default function PatientHealthRecord({
   patientId,
   medications,
   labResults,
+  labResultsLoading = false,
+  labResultsError = false,
+  onRetryLabResults,
   visitHistory,
   visitHistoryLoading = false,
   visitHistoryError = false,
@@ -88,6 +94,7 @@ export default function PatientHealthRecord({
 }: Props) {
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
+  const reviewHeading = useRef<HTMLHeadingElement>(null);
   const [section, setSection] = useState<Section>(initialSection);
   const [file, setFile] = useState<{ fileName: string; mimeType: string; fileData: string } | null>(null);
   const [reading, setReading] = useState(false);
@@ -100,6 +107,12 @@ export default function PatientHealthRecord({
   const [reportDate, setReportDate] = useState("");
   const [healthValues, setHealthValues] = useState<LabValue[]>([]);
   const [showChecklist, setShowChecklist] = useState(false);
+
+  useEffect(() => {
+    if (section === "lab-reports" && readingResult && healthValues.length > 0) {
+      reviewHeading.current?.focus();
+    }
+  }, [readingResult, section, healthValues.length]);
 
   const progress = patientHealthRecordProgress(patient, medications, labResults);
   const pregnancyDueDate = typeof pregnancyEpisode?.details?.dueDate === "string"
@@ -123,6 +136,7 @@ export default function PatientHealthRecord({
     setReadingResult(null);
     setHealthValues([]);
     setReviewed(false);
+    setFile(null);
     if (!selected) return;
     if (selected.size > 5 * 1024 * 1024) {
       setReadingError("Choose a file smaller than 5 MB.");
@@ -322,7 +336,8 @@ export default function PatientHealthRecord({
               <p className="mt-4 max-w-[420px] text-base leading-relaxed">Visits, labs, medications, food and exercise, together.</p>
             </div>
             <div className="min-w-0 flex-[1_1_300px] rounded-[26px] bg-white p-6 md:max-w-[390px]">
-              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#6A5560]">Profile · {progress.progress}% complete</p>
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#6A5560]">{labResultsLoading ? "Loading profile progress" : labResultsError ? "Profile progress unavailable" : `Profile · ${progress.progress}% complete`}</p>
+              {!labResultsLoading && !labResultsError && <>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#F0DCC4]" role="progressbar" aria-label="Health record progress" aria-valuenow={progress.progress} aria-valuemin={0} aria-valuemax={100}>
                 <div className="h-full rounded-full bg-[#2A1220]" style={{ width: `${progress.progress}%` }} />
               </div>
@@ -333,11 +348,12 @@ export default function PatientHealthRecord({
               <button type="button" onClick={() => setShowChecklist((current) => !current)} aria-expanded={showChecklist} className="mt-4 min-h-11 rounded-full bg-[#2A1220] px-5 text-sm font-bold text-white">
                 {showChecklist ? "Hide checklist" : "Review my profile"}
               </button>
+              </>}
             </div>
           </div>
           {onOpenCareTeam && <button type="button" onClick={onOpenCareTeam} className="min-h-11 rounded-full border border-[#D9C3AE] bg-white px-5 text-sm font-bold">Appointments and care team</button>}
 
-          {showChecklist && <Card className="rounded-[24px] border-[var(--line)] bg-white/80">
+          {showChecklist && !labResultsLoading && !labResultsError && <Card className="rounded-[24px] border-[var(--line)] bg-white/80">
             <CardContent className="space-y-1 p-4">
               <h2 className="mb-2 font-serif text-xl font-semibold text-saivie-plum">Your health record checklist</h2>
               {progress.items.map((item) => {
@@ -382,14 +398,14 @@ export default function PatientHealthRecord({
             <article className="flex min-h-[245px] flex-col rounded-[28px] border border-[#F0DCC4] bg-white p-6">
               <div className="flex items-center gap-3">
                 <span className="rounded-full bg-[#FFD9C9] p-3 text-[#A8341A]"><FlaskConical className="h-5 w-5" /></span>
-                <div><h3 className="font-serif text-2xl font-bold">Lab reports</h3><p className="text-xs text-[#6A5560]">{labResults.length} saved {labResults.length === 1 ? "result" : "results"}</p></div>
+                <div><h3 className="font-serif text-2xl font-bold">Lab reports</h3><p className="text-xs text-[#6A5560]">{labResultsLoading ? "Loading results" : labResultsError ? "Unable to load results" : `${labResults.length} saved ${labResults.length === 1 ? "result" : "results"}`}</p></div>
               </div>
               <div className="mt-4 flex-1 text-sm">
-                {latestLabs.length ? latestLabs.map((lab) => {
+                {!labResultsLoading && !labResultsError && (latestLabs.length ? latestLabs.map((lab) => {
                   const rawValue = lab.results && typeof lab.results === "object" ? lab.results.rawValue : null;
                   const value = rawValue ?? lab.value;
                   return <p key={lab.id} className="flex justify-between gap-3 border-t border-[#F0DCC4] py-3"><span>{lab.testName || "Lab result"}</span><span className="text-right text-[#6A5560]">{value != null ? `${value} ${lab.unit || ""}` : "Recorded"}</span></p>;
-                }) : <p className="border-t border-[#F0DCC4] pt-3 text-[#6A5560]">Your lab reports will appear here.</p>}
+                }) : <p className="border-t border-[#F0DCC4] pt-3 text-[#6A5560]">Your lab reports will appear here.</p>)}
               </div>
               <button type="button" onClick={() => setSection("lab-reports")} className="min-h-11 w-fit rounded-full border border-[#D9C3AE] px-5 text-sm font-bold">Open lab reports</button>
             </article>
@@ -518,33 +534,38 @@ export default function PatientHealthRecord({
       )}
 
       {section === "lab-reports" && (
-        <section className="space-y-4" aria-label="Lab reports">
+        <section className="space-y-6 text-[#2A1220]" aria-label="Lab reports">
           <button type="button" onClick={() => setSection("overview")} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-saivie-plum">
             <ArrowLeft className="h-4 w-4" /> Health record
           </button>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-saivie-rose">Lab reports</p>
-            <h2 className="mt-1 font-serif text-2xl font-semibold text-saivie-plum">Your lab reports, in plain words.</h2>
+          <div className="flex flex-wrap items-center gap-8 rounded-[36px] bg-[#FFA7B6] p-6 md:p-10">
+            <div className="min-w-0 flex-[1_1_390px]">
+              <span className="inline-flex rounded-full bg-[#2A1220] px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#FFA7B6]">
+                {week !== null && week >= 0 ? `Week ${week} · ` : ""}Lab reports
+              </span>
+              <h1 className="mt-4 max-w-[550px] font-serif text-[42px] font-bold leading-[1.02] tracking-[-0.03em] md:text-[62px]">
+                Your lab reports, <em className="font-medium">in plain words.</em>
+              </h1>
+              <p className="mt-4 max-w-[420px] text-base leading-relaxed">Results to review and discuss with your care team.</p>
+            </div>
+            <div className="min-w-0 flex-[1_1_250px] rounded-[26px] bg-white p-6 md:max-w-[300px]">
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#6A5560]">At a glance</p>
+              {labResultsLoading ? <p className="mt-3 text-sm">Loading results…</p> : labResultsError ? <p className="mt-3 text-sm">Results unavailable</p> : <>
+                <p className="mt-3 font-serif text-3xl font-bold">{labResults.length}</p>
+                <p className="mt-1 text-sm text-[#5A4552]">saved {labResults.length === 1 ? "result" : "results"}</p>
+              </>}
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">Upload a report, check what was read, then confirm the values to save them.</p>
-          <Card className="rounded-[24px] border-[var(--line)] bg-white/80">
-            <CardContent className="space-y-3 p-5">
-              <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" className="hidden"
-                onChange={(event) => { void selectFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
-              <Button type="button" variant="outline" className="min-h-12 w-full gap-2 rounded-xl" disabled={reading || saving} onClick={() => fileInput.current?.click()}>
-                <Upload className="h-4 w-4" /> {reading ? "Reading your report…" : file ? "Choose a different report" : "Add a lab report"}
-              </Button>
-              {readingError && <p role="alert" className="text-sm text-rose-700">{readingError}</p>}
-              {saveError && <p role="alert" className="text-sm text-rose-700">{saveError}</p>}
-              {saveMessage && <p role="status" className="text-sm font-medium text-emerald-800">{saveMessage}</p>}
-            </CardContent>
-          </Card>
+
+          {readingError && <p role="alert" className="rounded-xl bg-rose-50 p-4 text-sm text-rose-900">{readingError}</p>}
+          {saveError && <p role="alert" className="rounded-xl bg-rose-50 p-4 text-sm text-rose-900">{saveError}</p>}
+          {saveMessage && <p role="status" className="rounded-xl bg-emerald-50 p-4 text-sm font-medium text-emerald-900">{saveMessage}</p>}
 
           {readingResult && healthValues.length > 0 && (
             <Card className="rounded-[24px] border-[var(--line)] bg-white/90">
               <CardContent className="space-y-4 p-5">
                 <div>
-                  <h3 className="font-serif text-xl font-semibold text-saivie-plum">Check the values</h3>
+                  <h2 ref={reviewHeading} tabIndex={-1} className="font-serif text-xl font-semibold text-saivie-plum">Check the values</h2>
                   <p className="mt-1 text-sm text-muted-foreground">Compare each value with the original report. Nothing is saved until you confirm.</p>
                 </div>
                 {readingResult.warnings.map((warning, index) => <p key={index} role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{warning}</p>)}
@@ -596,33 +617,63 @@ export default function PatientHealthRecord({
             </Card>
           )}
 
-          <div className="space-y-2">
-            {labResults.map((result) => {
-              const details = result.results && typeof result.results === "object" ? result.results as Record<string, unknown> : {};
-              return (
-                <Card key={result.id} className="rounded-2xl border-[var(--line)] bg-white/80">
-                  <CardContent className="flex items-start gap-3 p-4">
-                    <div className="rounded-xl bg-saivie-sage p-2"><FileText className="h-4 w-4 text-saivie-teal" /></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-saivie-plum">{result.testName || "Lab result"}</p>
-                      <p className="mt-1 text-sm text-saivie-plum">{String(details.rawValue ?? (result.value == null ? result.status || "Recorded" : result.value))} {result.unit || ""}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {result.date ? new Date(`${result.date}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Date not recorded"}
-                        {details.referenceRange ? ` · Reference range: ${String(details.referenceRange)}` : ""}
-                      </p>
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
+            <div className="space-y-4">
+              <h2 className="font-serif text-3xl font-bold">Results</h2>
+              {labResultsLoading ? <p role="status" className="text-sm">Loading results…</p> : labResultsError ? (
+                <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+                  Unable to load your lab results. {onRetryLabResults && <button type="button" onClick={onRetryLabResults} className="font-bold underline">Retry</button>}
+                </div>
+              ) : labResults.length ? [...labResults].sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).map((result) => {
+                const details = result.results && typeof result.results === "object" ? result.results as Record<string, unknown> : {};
+                const value = recordedLabValue(result);
+                const reference = typeof details.referenceRange === "string" && details.referenceRange.trim()
+                  ? details.referenceRange.trim()
+                  : typeof result.referenceMin === "number" && typeof result.referenceMax === "number"
+                    ? `${result.referenceMin}–${result.referenceMax}${result.unit ? ` ${result.unit}` : ""}`
+                    : "";
+                return (
+                  <article key={result.id} className="rounded-[24px] border border-[#F0DCC4] bg-white p-5 md:p-6">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-serif text-2xl font-bold">{result.testName || "Lab result"}</h3>
+                        <p className="mt-1 text-xs text-[#6A5560]">{visitDateLabel(result.date)}{details.reviewedByPatient === true ? " · Confirmed by you" : ""}</p>
+                      </div>
+                      {details.reviewedByPatient === true && <span className="rounded-full bg-[#CFF1EA] px-3 py-1 text-xs font-semibold text-[#0B6B5F]">Your report</span>}
                     </div>
-                    {details.reviewedByPatient === true && <span className="shrink-0 rounded-full bg-[#FFF0E8] px-2 py-1 text-[10px] font-semibold text-saivie-rose">Your report</span>}
-                  </CardContent>
-                </Card>
-              );
-            })}
-            {!labResults.length && !readingResult && (
-              <div className="rounded-2xl border border-dashed border-[var(--line)] p-6 text-center">
-                <FlaskConical className="mx-auto h-7 w-7 text-saivie-teal" />
-                <p className="mt-2 text-sm font-semibold text-saivie-plum">Your lab reports will appear here</p>
-                <p className="mt-1 text-xs text-muted-foreground">Upload a report to get started.</p>
-              </div>
-            )}
+                    <p className="mt-4 break-words font-serif text-3xl font-bold">{value ?? "Value not recorded"}</p>
+                    {reference && <p className="mt-3 text-sm text-[#5A4552]">Report reference range: {reference}</p>}
+                    {typeof result.notes === "string" && result.notes.trim() && <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{result.notes}</p>}
+                  </article>
+                );
+              }) : (
+                <div className="rounded-[24px] border border-dashed border-[#D9C3AE] bg-white p-6 text-center">
+                  <FlaskConical className="mx-auto h-7 w-7 text-saivie-teal" />
+                  <p className="mt-2 text-sm font-semibold">Your lab reports will appear here</p>
+                  <p className="mt-1 text-xs text-[#6A5560]">Upload a report to get started.</p>
+                </div>
+              )}
+            </div>
+            <aside className="space-y-5">
+              <section className="rounded-[28px] bg-[#2A1220] p-6 text-white md:p-7">
+                <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#FFA7B6]">Add a report</p>
+                <h2 className="mt-3 font-serif text-2xl font-bold">Upload it. Check it. Done.</h2>
+                <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm leading-relaxed">
+                  <li>Take a photo or upload a PDF.</li>
+                  <li>AI reads the values from your report.</li>
+                  <li>Check each value before you save.</li>
+                </ol>
+                <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" className="hidden"
+                  onChange={(event) => { void selectFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+                <button type="button" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#FFA7B6] px-5 text-sm font-bold text-[#2A1220] disabled:opacity-60" disabled={reading || saving} onClick={() => fileInput.current?.click()}>
+                  <Upload className="h-4 w-4" /> {reading ? "Reading your report…" : file ? "Choose a different report" : "Upload report"}
+                </button>
+              </section>
+              <section className="rounded-[28px] bg-[#FFE7A8] p-6 md:p-7">
+                <p className="text-xs font-extrabold uppercase tracking-[0.12em]">Good to know</p>
+                <p className="mt-3 text-sm leading-relaxed">A reference range on a report is not a diagnosis. Your doctor can interpret your results for you.</p>
+              </section>
+            </aside>
           </div>
         </section>
       )}
