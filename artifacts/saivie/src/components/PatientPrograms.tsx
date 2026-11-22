@@ -4,6 +4,7 @@ import { Activity, Apple, ArrowLeft, Brain } from "lucide-react";
 import { getWeekData } from "@/components/WeekByWeekTimeline";
 import PatientPregnancyNutrition from "@/components/PatientPregnancyNutrition";
 import PatientPregnancyExercise from "@/components/PatientPregnancyExercise";
+import PatientSessionBooking from "@/components/PatientSessionBooking";
 
 interface Props {
   pregnancy: boolean;
@@ -18,7 +19,17 @@ interface Props {
 export default function PatientPrograms({ pregnancy, week, mode, initialCategory = null, onOpenLabReports, onBookNutrition, onBookAppointment }: Props) {
   const currentWeek = week ?? 24;
   const [activeCategory, setActiveCategory] = useState<"Mind" | "Move" | "Nourish" | null>(initialCategory);
+  const [showSessionBooking, setShowSessionBooking] = useState(false);
   const weekGuide = getWeekData(currentWeek);
+
+  const requestAppointment = activeCategory === "Nourish" ? onBookNutrition : onBookAppointment;
+  if (pregnancy && showSessionBooking && requestAppointment) {
+    return (
+      <div className="pb-24">
+        <PatientSessionBooking week={week} backLabel={activeCategory === "Nourish" ? "Nutrition" : "Exercise"} onBack={() => { setShowSessionBooking(false); window.scrollTo(0, 0); }} onRequestAppointment={requestAppointment} />
+      </div>
+    );
+  }
 
   if (mode === "postpartum" || mode === "menopause") {
     const postpartum = mode === "postpartum";
@@ -170,9 +181,9 @@ export default function PatientPrograms({ pregnancy, week, mode, initialCategory
       {!activeCategory ? (
         <CategoryOverview pregnancy={pregnancy} week={currentWeek} onSelect={setActiveCategory} />
       ) : pregnancy && activeCategory === "Nourish" ? (
-        <PatientPregnancyNutrition week={week} onBack={() => setActiveCategory(null)} onOpenLabReports={onOpenLabReports} onBookSession={onBookNutrition} />
+        <PatientPregnancyNutrition week={week} onBack={() => setActiveCategory(null)} onOpenLabReports={onOpenLabReports} onBookSession={onBookNutrition ? () => setShowSessionBooking(true) : undefined} />
       ) : pregnancy && activeCategory === "Move" ? (
-        <PatientPregnancyExercise week={week} onBack={() => setActiveCategory(null)} onBookAppointment={onBookAppointment} />
+        <PatientPregnancyExercise week={week} onBack={() => setActiveCategory(null)} onBookAppointment={onBookAppointment} onBookSession={onBookAppointment ? () => setShowSessionBooking(true) : undefined} />
       ) : (
         <CategoryDetail
           pregnancy={pregnancy}

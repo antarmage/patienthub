@@ -7,6 +7,8 @@ import PatientHealthRecord from "./PatientHealthRecord";
 import PatientPrograms from "./PatientPrograms";
 import PatientNutritionPlusPreview from "./PatientNutritionPlusPreview";
 import PatientExercisePlusPreview from "./PatientExercisePlusPreview";
+import PatientSessionBooking from "./PatientSessionBooking";
+import { patientAppointmentRequest } from "@/lib/patientAppointmentRequest";
 import PregnancyCareDashboard from "./PregnancyCareDashboard";
 
 function renderRecord(overrides: Partial<React.ComponentProps<typeof PatientHealthRecord>> = {}) {
@@ -270,6 +272,35 @@ test("pregnancy exercise uses the free design without invented sessions or purch
   assert.doesNotMatch(unknownWeek, /Week 24/);
   const nonPregnancy = renderToStaticMarkup(<PatientPrograms pregnancy={false} week={null} initialCategory="Move" />);
   assert.match(nonPregnancy, /Strong, steady, and/);
+});
+
+test("session booking describes an appointment request without invented availability or sharing controls", () => {
+  const html = renderToStaticMarkup(<PatientSessionBooking week={14} backLabel="Exercise" onBack={() => {}} onRequestAppointment={() => {}} />);
+  for (const text of ["Week 14", "Book a", "Nutritionist", "Prenatal coach", "Women&#x27;s health physio", "Live availability", "Your health information", "Request an appointment", "not a confirmed session"]) {
+    assert.ok(html.includes(text), text);
+  }
+  assert.match(html, /Booking not available here yet/);
+  assert.doesNotMatch(html, /\[PRICE\]|10:30|Confirm booking|Included in your plan|type="checkbox"/);
+  const unknownWeek = renderToStaticMarkup(<PatientSessionBooking week={null} backLabel="Nutrition" onBack={() => {}} onRequestAppointment={() => {}} />);
+  assert.doesNotMatch(unknownWeek, /Week 14|Week 24/);
+});
+
+test("appointment requests preserve the preferred time and do not assign an unrelated nutritionist", () => {
+  const input = {
+    patientId: 1,
+    type: "nutritionist" as const,
+    date: "2026-12-01",
+    time: "15:30",
+    note: "",
+    providers: [{ id: 2, role: "clinician", specialty: "Obstetrics" }],
+  };
+  const request = patientAppointmentRequest(input);
+  assert.equal(request.time, "15:30");
+  assert.equal(request.providerId, null);
+  assert.equal(request.status, "Pending");
+  assert.equal(request.suppressNotification, true);
+  assert.equal(patientAppointmentRequest({ ...input, providers: [...input.providers, { id: 3, role: "nutritionist", specialty: "" }] }).providerId, 3);
+  assert.equal(patientAppointmentRequest({ ...input, providers: [{ id: 4, role: "clinician", specialty: "Dietician" }] }).providerId, 4);
 });
 
 test("purchased exercise design is explicitly a sample preview with unavailable actions", () => {

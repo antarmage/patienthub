@@ -67,6 +67,7 @@ import PatientStageSwitcher from "@/components/PatientStageSwitcher";
 import PatientPregnancyUpdate from "@/components/PatientPregnancyUpdate";
 import { BrandLogo } from "@/components/BrandLogo";
 import { localDateKey, nextLocalDateKey } from "@/lib/patientHealthRecord";
+import { patientAppointmentRequest, type PatientAppointmentType } from "@/lib/patientAppointmentRequest";
 import {
   getPostpartumStartDate,
   postpartumStartStorageKey,
@@ -100,9 +101,11 @@ export default function PatientPortal() {
   const [careOverviewKey, setCareOverviewKey] = useState(0);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingStep, setBookingStep] = useState<'type'|'date'|'confirm'|'done'>('type');
-  const [bookingType, setBookingType] = useState<'doctor'|'nutritionist'|'blood_test'|null>(null);
+  const [bookingType, setBookingType] = useState<PatientAppointmentType | null>(null);
   const [bookingDate, setBookingDate] = useState('');
+  const [bookingTime, setBookingTime] = useState('');
   const [bookingNote, setBookingNote] = useState('');
+  const bookingDateInput = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
   const storedPatient = (() => {
@@ -439,6 +442,7 @@ export default function PatientPortal() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
+      if (!r.ok) throw new Error("Unable to send your appointment request. Please try again.");
       return r.json();
     },
     onSuccess: () => {
@@ -447,34 +451,25 @@ export default function PatientPortal() {
   });
 
   const openBooking = () => {
+    bookingMutation.reset();
     setBookingStep('type');
     setBookingType(null);
     setBookingDate('');
+    setBookingTime('');
     setBookingNote('');
     setBookingOpen(true);
   };
 
-  const handleBookingConfirm = async () => {
-    if (!patient?.id || !bookingDate || !bookingType) return;
-    const typeMap: Record<string, string> = {
-      doctor: 'Consultation',
-      nutritionist: 'Nutrition Consultation',
-      blood_test: 'Blood Test / Lab Work',
-    };
-    const doctor = providers?.find((p: any) => {
-      if (bookingType === 'nutritionist') return (p.specialization || '').toLowerCase().includes('nutri');
-      return true;
-    });
-    await bookingMutation.mutateAsync({
-      patientId: patient.id,
-      providerId: doctor?.id || providers?.[0]?.id || null,
+  const handleBookingConfirm = () => {
+    if (!patient?.id || !bookingDate || !bookingTime || !bookingType) return;
+    bookingMutation.mutate(patientAppointmentRequest({
+      patientId: Number(patient.id),
+      providers: Array.isArray(providers) ? providers : [],
       date: bookingDate,
-      time: '10:00',
-      type: typeMap[bookingType],
-      status: 'Pending',
-      notes: bookingNote || undefined,
-    });
-    setBookingStep('done');
+      time: bookingTime,
+      type: bookingType,
+      note: bookingNote,
+    }), { onSuccess: () => setBookingStep('done') });
   };
 
   useEffect(() => {
@@ -858,7 +853,7 @@ export default function PatientPortal() {
 
         {/* Book Appointment Dialog */}
         <Dialog open={bookingOpen} onOpenChange={(o) => { if (!o) setBookingOpen(false); }}>
-          <DialogContent className="max-w-sm mx-auto rounded-3xl border-white/60 bg-saivie-ivory/95 backdrop-blur-2xl shadow-2xl p-0 overflow-hidden">
+          <DialogContent aria-describedby={undefined} className="max-w-sm mx-auto rounded-3xl border-white/60 bg-saivie-ivory/95 backdrop-blur-2xl shadow-2xl p-0 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-white/80 to-saivie-surface-muted/30 pointer-events-none" />
             <div className="relative z-10">
               {/* Header */}
@@ -872,7 +867,7 @@ export default function PatientPortal() {
                   <CalendarPlus className="w-4 h-4 text-primary" />
                   <DialogTitle className="text-base font-serif text-foreground font-medium">Book Appointment</DialogTitle>
                 </div>
-                <button onClick={() => setBookingOpen(false)} className="p-1.5 rounded-full hover:bg-black/5 transition-colors">
+                <button type="button" aria-label="Close appointment dialog" onClick={() => setBookingOpen(false)} className="p-1.5 rounded-full hover:bg-black/5 transition-colors">
                   <X className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
@@ -916,14 +911,28 @@ export default function PatientPortal() {
                         {bookingType === 'blood_test' && <><Microscope className="w-4 h-4 text-saivie-teal" /><p className="text-sm font-medium">Blood Test / Lab Work</p></>}
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Preferred Date</label>
+                        <label htmlFor="booking-date" className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Preferred Date</label>
                         <DateInput
+                          id="booking-date"
+                          ref={bookingDateInput}
                           value={bookingDate}
                           min={new Date().toISOString().split('T')[0]}
                           onValueChange={(value) => setBookingDate(value)}
                           className="w-full rounded-xl border border-black/10 bg-saivie-ivory/70 px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
                           data-testid="booking-date-input"
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <label htmlFor="booking-time" className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Preferred time</label>
+                        <input
+                          id="booking-time"
+                          type="time"
+                          value={bookingTime}
+                          onChange={(e) => setBookingTime(e.target.value)}
+                          className="w-full rounded-xl border border-black/10 bg-saivie-ivory/70 px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+                          data-testid="booking-time-input"
+                        />
+                        <p className="text-xs text-muted-foreground">This is a preferred time, not an available slot. The clinic must confirm it.</p>
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Any notes for the doctor? (optional)</label>
@@ -937,8 +946,8 @@ export default function PatientPortal() {
                         />
                       </div>
                       <Button
-                        disabled={!bookingDate}
-                        onClick={() => setBookingStep('confirm')}
+                        disabled={!bookingDate || !bookingTime}
+                        onClick={() => { if (bookingDateInput.current?.reportValidity()) setBookingStep('confirm'); }}
                         className="w-full rounded-xl font-medium"
                         data-testid="booking-next-btn"
                       >
@@ -967,6 +976,10 @@ export default function PatientPortal() {
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground uppercase tracking-wider">Preferred time</span>
+                          <span className="text-sm font-medium text-foreground">{bookingTime}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
                           <span className="text-xs text-muted-foreground uppercase tracking-wider">Patient</span>
                           <span className="text-sm font-medium text-foreground">{patient?.name || 'You'}</span>
                         </div>
@@ -976,7 +989,8 @@ export default function PatientPortal() {
                           </div>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground text-center">The clinic will confirm your appointment time and send you a WhatsApp message.</p>
+                      <p className="text-xs text-muted-foreground text-center">This is a request, not a confirmed appointment. Contact the clinic to confirm availability.</p>
+                      {bookingMutation.isError && <p role="alert" className="text-sm text-red-700">{bookingMutation.error.message}</p>}
                       <div className="flex gap-3">
                         <Button variant="outline" onClick={() => setBookingStep('date')} className="flex-1 rounded-xl">Edit</Button>
                         <Button
@@ -1004,7 +1018,7 @@ export default function PatientPortal() {
                         <p className="text-sm text-muted-foreground mt-1">
                           Your appointment request for <strong>{bookingDate ? new Date(bookingDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}</strong> has been sent to the clinic.
                         </p>
-                        <p className="text-xs text-muted-foreground mt-2">You'll receive a WhatsApp confirmation once it's approved.</p>
+                        <p className="text-xs text-muted-foreground mt-2">Contact the clinic to confirm availability and your appointment time.</p>
                       </div>
                       <Button onClick={() => { setBookingOpen(false); setActiveTab('care'); }} className="w-full rounded-xl" data-testid="booking-done-btn">
                         View My Appointments

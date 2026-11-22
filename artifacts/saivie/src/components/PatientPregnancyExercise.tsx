@@ -7,9 +7,10 @@ interface Props {
   week: number | null;
   onBack: () => void;
   onBookAppointment?: () => void;
+  onBookSession?: () => void;
 }
 
-export default function PatientPregnancyExercise({ week, onBack, onBookAppointment }: Props) {
+export default function PatientPregnancyExercise({ week, onBack, onBookAppointment, onBookSession }: Props) {
   const [showPlusPreview, setShowPlusPreview] = useState(false);
 
   if (showPlusPreview) {
@@ -75,7 +76,7 @@ export default function PatientPregnancyExercise({ week, onBack, onBookAppointme
               <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#6A5560]">Your care team</p>
               <h3 className="font-serif text-[22px] font-bold leading-tight">Talk about movement that feels right for you.</h3>
               <p className="text-sm leading-relaxed text-[#5A4552]">Coach and physiotherapy booking options are not available here yet. Your care team can help with questions about exercise or discomfort.</p>
-              {onBookAppointment && <button type="button" onClick={onBookAppointment} className="min-h-11 rounded-full border border-[#D9C3AE] px-5 text-sm font-bold">Book an appointment</button>}
+              {onBookSession && <button type="button" onClick={onBookSession} className="min-h-11 rounded-full border border-[#D9C3AE] px-5 text-sm font-bold">Explore session booking</button>}
             </article>
           </section>
 
