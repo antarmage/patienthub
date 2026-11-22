@@ -258,40 +258,44 @@ export default function PatientHealthRecord({
 
   return (
     <div className="mx-auto max-w-[1160px] space-y-5 px-4 pb-32 pt-5 md:px-0 md:pb-10">
-      <button type="button" onClick={onBack} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-saivie-plum">
-        <ArrowLeft className="h-4 w-4" /> Today
-      </button>
-      <header>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-saivie-rose">Your health, in one place</p>
-        <h1 className="mt-1 font-serif text-3xl font-semibold text-saivie-plum">Health record</h1>
-      </header>
+      {section !== "medications" && (
+        <>
+          <button type="button" onClick={onBack} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-saivie-plum">
+            <ArrowLeft className="h-4 w-4" /> Today
+          </button>
+          <header>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-saivie-rose">Your health, in one place</p>
+            <h1 className="mt-1 font-serif text-3xl font-semibold text-saivie-plum">Health record</h1>
+          </header>
 
-      {pregnancyEpisode && (
-        <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E8D8C8] bg-white/80 px-4 py-3" aria-label="Pregnancy profile">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#775B63]">My pregnancy</p>
-            <p className="mt-1 text-sm font-semibold text-saivie-plum">Due date · {pregnancyDueDateLabel}</p>
+          {pregnancyEpisode && (
+            <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E8D8C8] bg-white/80 px-4 py-3" aria-label="Pregnancy profile">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#775B63]">My pregnancy</p>
+                <p className="mt-1 text-sm font-semibold text-saivie-plum">Due date · {pregnancyDueDateLabel}</p>
+              </div>
+              <button type="button" onClick={onUpdatePregnancy} className="min-h-11 rounded-full px-3 text-sm font-semibold text-saivie-plum underline underline-offset-4">
+                Update status
+              </button>
+            </section>
+          )}
+
+          <div className="flex gap-2 rounded-2xl bg-white/70 p-1.5" aria-label="Health record sections">
+            {([
+              ["overview", "Overview"],
+              ["medications", "Medications"],
+              ["lab-reports", "Lab reports"],
+              ["history", "History"],
+            ] as [Section, string][]).map(([id, label]) => (
+              <button key={id} type="button" onClick={() => setSection(id)}
+                aria-pressed={section === id}
+                className={`min-h-11 flex-1 rounded-xl px-2 text-xs font-semibold transition-colors ${section === id ? "bg-[#35212f] text-white" : "text-saivie-plum hover:bg-saivie-ivory"}`}>
+                {label}
+              </button>
+            ))}
           </div>
-          <button type="button" onClick={onUpdatePregnancy} className="min-h-11 rounded-full px-3 text-sm font-semibold text-saivie-plum underline underline-offset-4">
-            Update status
-          </button>
-        </section>
+        </>
       )}
-
-      <div className="flex gap-2 rounded-2xl bg-white/70 p-1.5" aria-label="Health record sections">
-        {([
-          ["overview", "Overview"],
-          ["medications", "Medications"],
-          ["lab-reports", "Lab reports"],
-          ["history", "History"],
-        ] as [Section, string][]).map(([id, label]) => (
-          <button key={id} type="button" onClick={() => setSection(id)}
-            aria-pressed={section === id}
-            className={`min-h-11 flex-1 rounded-xl px-2 text-xs font-semibold transition-colors ${section === id ? "bg-[#35212f] text-white" : "text-saivie-plum hover:bg-saivie-ivory"}`}>
-            {label}
-          </button>
-        ))}
-      </div>
 
       {section === "overview" && (
         <section className="space-y-6 text-[#2A1220]" aria-label="Health record overview">
@@ -409,49 +413,95 @@ export default function PatientHealthRecord({
       )}
 
       {section === "medications" && (
-        <section className="space-y-3" aria-label="Medications">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-saivie-rose">Medications</p>
-            <h2 className="mt-1 font-serif text-2xl font-semibold text-saivie-plum">Your medications, simply.</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Your medicines, as recorded by you or your care team.</p>
+        <section className="space-y-6 text-[#2A1220]" aria-label="Medications">
+          <button type="button" onClick={() => setSection("overview")} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold">
+            <ArrowLeft className="h-4 w-4" /> Health record
+          </button>
+          <div className="flex flex-wrap items-center gap-8 rounded-[36px] bg-[#FFA7B6] p-6 md:p-10">
+            <div className="min-w-0 flex-[1_1_390px]">
+              <span className="inline-flex rounded-full bg-[#2A1220] px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#FFA7B6]">
+                {week !== null && week >= 0 ? `Week ${week} · ` : ""}Medications
+              </span>
+              <h1 className="mt-4 max-w-[550px] font-serif text-[42px] font-bold leading-[1.02] tracking-[-0.03em] md:text-[62px]">
+                Your medications, <em className="font-medium">simply.</em>
+              </h1>
+              <p className="mt-4 max-w-[420px] text-base leading-relaxed">Your medicines, as recorded by you or your care team.</p>
+            </div>
+            <div className="min-w-0 flex-[1_1_250px] rounded-[26px] bg-white p-6 md:max-w-[300px]">
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#6A5560]">Your list</p>
+              <p className="mt-3 font-serif text-5xl font-bold">{activeMedications.length}</p>
+              <p className="mt-1 text-sm text-[#5A4552]">current {activeMedications.length === 1 ? "medicine" : "medicines"} recorded</p>
+            </div>
           </div>
-          {activeMedications.length ? activeMedications.map((medication) => (
-            <Card key={medication.id} className={`rounded-2xl border-[var(--line)] bg-white/80 ${patientMedicationNeedsReview(medication.notes) ? "border-amber-300" : ""}`}>
-              <CardContent className="flex items-start justify-between gap-3 p-4">
-                <div>
-                  <p className="font-semibold text-saivie-plum">{medication.name}</p>
-                  {(medication.dose || medication.frequency) && <p className="mt-1 text-sm text-muted-foreground">{[medication.dose, medication.frequency].filter(Boolean).join(" · ")}</p>}
-                  {medication.instructions && <p className="mt-2 text-sm text-saivie-plum">{medication.instructions}</p>}
-                  {medication.startDate && <p className="mt-2 text-xs text-muted-foreground">Started {new Date(`${medication.startDate}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p>}
-                  {patientMedicationNote(medication.notes) && <p className="mt-2 text-xs text-muted-foreground">{patientMedicationNote(medication.notes)}</p>}
-                </div>
-                <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${patientMedicationNeedsReview(medication.notes) ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-800"}`}>
-                  {patientMedicationNeedsReview(medication.notes) ? "Review with care team" : patientMedicationCategory(medication.name, medication.route)}
-                </span>
-              </CardContent>
-            </Card>
-          )) : (
-            <Card className="rounded-2xl border-dashed border-[var(--line)] bg-white/70">
-              <CardContent className="p-6 text-center">
-                <Pill className="mx-auto h-7 w-7 text-saivie-rose" />
-                <p className="mt-2 text-sm font-semibold text-saivie-plum">No current medicines added yet</p>
-                <p className="mt-1 text-xs text-muted-foreground">Ask your care team to review or update your list.</p>
-              </CardContent>
-            </Card>
-          )}
-          {medications.some((medication) => String(medication.status || "").toLowerCase() !== "active") && (
-            <details className="rounded-2xl border border-[var(--line)] bg-white/70 p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-saivie-plum">Past medications</summary>
-              <div className="mt-3 space-y-2">
-                {medications.filter((medication) => String(medication.status || "").toLowerCase() !== "active").map((medication) => (
-                  <div key={medication.id} className="rounded-xl bg-saivie-ivory/70 p-3">
-                    <p className="text-sm font-medium text-saivie-plum">{medication.name}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{[medication.dose, medication.frequency].filter(Boolean).join(" · ") || "Details not recorded"}</p>
+
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
+            <div className="space-y-5">
+              <section className="rounded-[28px] border border-[#F0DCC4] bg-white p-6 md:p-7">
+                <h2 className="font-serif text-3xl font-bold">Today</h2>
+                <p className="mt-3 text-sm leading-relaxed text-[#5A4552]">Scheduled dose tracking is not available here yet. Check the directions in your medicine list and ask your care team if you have questions.</p>
+              </section>
+
+              <section className="rounded-[28px] border border-[#F0DCC4] bg-white p-6 md:p-7">
+                <h2 className="font-serif text-3xl font-bold">All medications</h2>
+                {activeMedications.length ? (
+                  <div className="mt-4">
+                    {activeMedications.map((medication) => {
+                      const needsReview = patientMedicationNeedsReview(medication.notes);
+                      const note = needsReview
+                        ? "Product, dose, schedule and duration are not confirmed. Ask your care team before taking or continuing this medicine."
+                        : patientMedicationNote(medication.notes);
+                      return (
+                        <div key={medication.id} className="flex flex-wrap items-start justify-between gap-3 border-t border-[#F0DCC4] py-4">
+                          <div className="min-w-0 flex-1 basis-[220px]">
+                            <p className="text-base font-bold">{medication.name}</p>
+                            {(medication.dose || medication.frequency) && <p className="mt-1 text-sm text-[#5A4552]">{[medication.dose, medication.frequency].filter(Boolean).join(" · ")}</p>}
+                            {medication.instructions && <p className="mt-2 text-sm">{medication.instructions}</p>}
+                            {medication.startDate && <p className="mt-2 text-xs text-[#6A5560]">Started {new Date(`${medication.startDate}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p>}
+                            {medication.endDate && <p className="mt-1 text-xs text-[#6A5560]">End date {new Date(`${medication.endDate}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p>}
+                            {note && <p className="mt-2 text-xs leading-relaxed text-[#6A5560]">{note}</p>}
+                          </div>
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${needsReview ? "bg-amber-100 text-amber-900" : "bg-[#CFF1EA] text-[#0B6B5F]"}`}>
+                            {needsReview ? "Review with care team" : patientMedicationCategory(medication.name, medication.route)}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            </details>
-          )}
+                ) : (
+                  <div className="mt-4 rounded-2xl bg-[#FAF5EF] p-6 text-center">
+                    <Pill className="mx-auto h-7 w-7 text-saivie-rose" />
+                    <p className="mt-2 text-sm font-semibold">No current medicines added yet</p>
+                    <p className="mt-1 text-xs text-[#6A5560]">Ask your care team to review or update your list.</p>
+                  </div>
+                )}
+                {medications.some((medication) => String(medication.status || "").toLowerCase() !== "active") && (
+                  <details className="mt-4 border-t border-[#F0DCC4] pt-4">
+                    <summary className="cursor-pointer text-sm font-semibold">Past medications</summary>
+                    <div className="mt-3 space-y-2">
+                      {medications.filter((medication) => String(medication.status || "").toLowerCase() !== "active").map((medication) => (
+                        <div key={medication.id} className="rounded-xl bg-saivie-ivory/70 p-3">
+                          <p className="text-sm font-medium">{medication.name}</p>
+                          <p className="mt-1 text-xs text-[#6A5560]">{[medication.dose, medication.frequency].filter(Boolean).join(" · ") || "Details not recorded"}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </section>
+            </div>
+            <aside className="space-y-5">
+              <section className="rounded-[28px] bg-[#FFD9C9] p-6 md:p-7">
+                <p className="text-xs font-extrabold uppercase tracking-[0.12em]">Ask first</p>
+                <h2 className="mt-3 font-serif text-2xl font-bold">Check before you take anything new.</h2>
+                <p className="mt-3 text-sm leading-relaxed">Your doctor or pharmacist can help you check medicines, supplements and herbal products.</p>
+                {onOpenCareTeam && <button type="button" onClick={onOpenCareTeam} className="mt-5 min-h-11 rounded-full bg-[#2A1220] px-5 text-sm font-bold text-white">Appointments and care team</button>}
+              </section>
+              <section className="rounded-[28px] bg-[#E4DCFF] p-6 md:p-7">
+                <p className="text-xs font-extrabold uppercase tracking-[0.12em]">Your medicine list</p>
+                <p className="mt-3 text-sm leading-relaxed">This list is not a new prescription. Ask your care team to confirm any details that are missing or need review.</p>
+              </section>
+            </aside>
+          </div>
         </section>
       )}
 

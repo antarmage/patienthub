@@ -61,9 +61,36 @@ test("medication reminder opens the medication section directly", () => {
     initialSection: "medications",
     medications: [{ id: 1, name: "Folic acid", status: "active" }],
   });
-  assert.match(html, /Your medications, simply/);
+  assert.match(html, /Your medications,.*simply/);
   assert.match(html, /Folic acid/);
   assert.doesNotMatch(html, /Health record overview/);
+});
+
+test("medication design shows recorded details and flags unconfirmed patient-reported medicines", () => {
+  const html = renderRecord({
+    initialSection: "medications",
+    medications: [
+      { id: 1, name: "Folic acid", status: "active", dose: "400 mcg", frequency: "Once daily", endDate: "2026-12-01" },
+      { id: 2, name: "Thyroid tablet", status: "active", notes: "Exact thyroid product requires clinician reconciliation." },
+      { id: 3, name: "Past medicine", status: "stopped" },
+    ],
+  });
+  assert.match(html, /All medications/);
+  assert.match(html, /2<\/p><p[^>]*>current medicines recorded/);
+  assert.match(html, /400 mcg · Once daily/);
+  assert.match(html, /End date 01 Dec 2026/);
+  assert.match(html, /Thyroid tablet/);
+  assert.match(html, /Review with care team/);
+  assert.match(html, /not confirmed/);
+  assert.match(html, /Past medications/);
+  assert.doesNotMatch(html, /Refill in|doses taken|>Taken<|>Skip<|>Later</);
+});
+
+test("medication design explains empty records and unavailable schedules", () => {
+  const html = renderRecord({ initialSection: "medications" });
+  assert.match(html, /No current medicines added yet/);
+  assert.match(html, /Scheduled dose tracking is not available here yet/);
+  assert.match(html, /Check before you take anything new/);
 });
 
 test("program shortcuts open their requested pregnancy category", () => {
