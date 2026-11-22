@@ -38,7 +38,16 @@ test("health record overview uses real empty states and offers the five record s
   for (const label of ["Open visits", "Open lab reports", "Open medications", "Open nutrition", "Open exercise"]) {
     assert.ok(html.includes(label), label);
   }
+  assert.doesNotMatch(html, /Health record sections|aria-pressed=/);
   assert.match(html, /Sharing and export options are not available/);
+});
+
+test("each record detail has a way back to the health record without section tabs", () => {
+  for (const section of ["medications", "lab-reports", "history"] as const) {
+    const html = renderRecord({ initialSection: section });
+    assert.match(html, /<\/svg> Health record<\/button>/, section);
+    assert.doesNotMatch(html, /Health record sections|aria-pressed=/, section);
+  }
 });
 
 test("health record overview reflects saved values without inventing clinical status", () => {
@@ -91,6 +100,50 @@ test("medication design explains empty records and unavailable schedules", () =>
   assert.match(html, /No current medicines added yet/);
   assert.match(html, /Scheduled dose tracking is not available here yet/);
   assert.match(html, /Check before you take anything new/);
+});
+
+test("visit page presents saved history and the next open appointment", () => {
+  const html = renderRecord({
+    initialSection: "history",
+    visitHistory: [
+      { id: 1, date: "2025-01-02", visitType: "First visit" },
+      { id: 2, date: "2025-02-03", visitType: "Check-up", providerId: 7, vitals: { bp: "112/70", weight: 58.4, fundalHeight: 24, pog: "14 weeks", followUpDate: "2025-03-03" }, planNotes: "Review next month." },
+    ],
+    providers: [{ id: 7, name: "Dr Example" }],
+    appointments: [
+      { id: 1, date: "2001-01-01", type: "Past appointment" },
+      { id: 2, date: "2099-01-01", type: "Cancelled appointment", status: "cancelled" },
+      { id: 3, date: "2099-01-02", time: "10:00", type: "Follow-up", providerId: 7, visitMode: "telemedicine", status: "scheduled" },
+    ],
+    onBookAppointment: () => {},
+  });
+  assert.match(html, /2 visits recorded/);
+  assert.ok(html.indexOf("Check-up") < html.indexOf("First visit"));
+  for (const value of ["Dr Example", "112/70", "58.4 kg", "24 cm", "14 weeks", "Review next month.", "Follow-up: 03 Mar 2025", "02 Jan 2099", "10:00", "Video call", "Book an appointment"]) {
+    assert.ok(html.includes(value), value);
+  }
+  assert.doesNotMatch(html, /Past appointment|Cancelled appointment|112\/68|Add a past visit|Add to calendar/);
+});
+
+test("visit page distinguishes empty, loading and failed records", () => {
+  const empty = renderRecord({ initialSection: "history" });
+  assert.match(empty, /0 visits recorded/);
+  assert.match(empty, /Your visit history will appear here/);
+  assert.match(empty, /No upcoming appointment/);
+  const loading = renderRecord({ initialSection: "history", visitHistoryLoading: true, appointmentsLoading: true });
+  assert.match(loading, /Loading visits/);
+  assert.doesNotMatch(loading, /0 visits recorded|No upcoming appointment/);
+  const failed = renderRecord({
+    initialSection: "history",
+    visitHistoryError: true,
+    appointmentsError: true,
+    onRetryVisits: () => {},
+    onRetryAppointments: () => {},
+  });
+  assert.match(failed, /Unable to load your visits/);
+  assert.match(failed, /Unable to load appointments/);
+  assert.equal((failed.match(/>Retry<\/button>/g) || []).length, 2);
+  assert.doesNotMatch(failed, /0 visits recorded|No upcoming appointment/);
 });
 
 test("program shortcuts open their requested pregnancy category", () => {

@@ -347,11 +347,18 @@ export default function PatientPortal() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [modeDropdownOpen]);
 
-  const { data: visitHistory } = useQuery({
+  const visitHistoryQuery = useQuery({
     queryKey: [`/api/patients/${patient?.id}/visit-history`],
-    queryFn: async () => { const r = await fetch(`/api/patients/${patient?.id}/visit-history`); return r.json(); },
+    queryFn: async () => {
+      const r = await fetch(`/api/patients/${patient?.id}/visit-history`);
+      if (!r.ok) throw new Error("Unable to load visits.");
+      const data = await r.json();
+      if (!Array.isArray(data)) throw new Error("Unable to load visits.");
+      return data;
+    },
     enabled: !!patient?.id,
   });
+  const visitHistory = visitHistoryQuery.data;
 
   const { data: weightLogs } = useQuery({
     queryKey: [`/api/patients/${patient?.id}/weight-logs`],
@@ -396,16 +403,20 @@ export default function PatientPortal() {
     queryFn: async () => { const r = await fetch('/api/providers'); return r.json(); },
   });
 
-  const { data: patientAppointments } = useQuery({
+  const appointmentsQuery = useQuery({
     queryKey: [`/api/appointments/patient/${patient?.id}`],
     queryFn: async () => {
       const r = await fetch(`/api/appointments`, {
         headers: { "X-Patient-Id": String(patient?.id ?? "") },
       });
-      return r.json();
+      if (!r.ok) throw new Error("Unable to load appointments.");
+      const data = await r.json();
+      if (!Array.isArray(data)) throw new Error("Unable to load appointments.");
+      return data;
     },
     enabled: !!patient?.id,
   });
+  const patientAppointments = appointmentsQuery.data;
 
   const bookingMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -621,6 +632,7 @@ export default function PatientPortal() {
           
           <TabsContent value="home" className="space-y-10 animate-in fade-in duration-700">
             {mode === "menopause" && patient?.id && <PatientMenopauseCare key={patient.id} patientId={patient.id} patientName={patient.name} />}
+            {appointmentsQuery.isError && <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-900">Unable to load appointments. <button type="button" onClick={() => { void appointmentsQuery.refetch(); }} className="font-bold underline">Retry</button></p>}
             {patient?.id && (
               <PatientTodayDashboard
                 mode={mode}
@@ -707,6 +719,15 @@ export default function PatientPortal() {
                 medications={(medications as any[]) || []}
                 labResults={(labResults as any[]) || []}
                 visitHistory={(visitHistory as any[]) || []}
+                visitHistoryLoading={visitHistoryQuery.isLoading}
+                visitHistoryError={visitHistoryQuery.isError}
+                onRetryVisits={() => { void visitHistoryQuery.refetch(); }}
+                appointments={(patientAppointments as any[]) || []}
+                appointmentsLoading={appointmentsQuery.isLoading}
+                appointmentsError={appointmentsQuery.isError}
+                onRetryAppointments={() => { void appointmentsQuery.refetch(); }}
+                providers={Array.isArray(providers) ? providers : []}
+                onBookAppointment={openBooking}
                 initialSection="overview"
                 pregnancyEpisode={currentPregnancyEpisode}
                 onUpdatePregnancy={() => setActiveTab("pregnancy-update")}
@@ -735,6 +756,8 @@ export default function PatientPortal() {
           </TabsContent>
 
           <TabsContent value="care-team" className="animate-in slide-in-from-bottom-4 duration-500 space-y-6 pb-8">
+            {appointmentsQuery.isError && <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-900">Unable to load appointments. <button type="button" onClick={() => { void appointmentsQuery.refetch(); }} className="font-bold underline">Retry</button></p>}
+            {visitHistoryQuery.isError && <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-900">Unable to load visits. <button type="button" onClick={() => { void visitHistoryQuery.refetch(); }} className="font-bold underline">Retry</button></p>}
             {mode === 'pregnancy' && patient?.id && (
               <PregnancyCareDashboard
                 patient={patient}
@@ -776,6 +799,15 @@ export default function PatientPortal() {
               medications={(medications as any[]) || []}
               labResults={(labResults as any[]) || []}
               visitHistory={(visitHistory as any[]) || []}
+              visitHistoryLoading={visitHistoryQuery.isLoading}
+              visitHistoryError={visitHistoryQuery.isError}
+              onRetryVisits={() => { void visitHistoryQuery.refetch(); }}
+              appointments={(patientAppointments as any[]) || []}
+              appointmentsLoading={appointmentsQuery.isLoading}
+              appointmentsError={appointmentsQuery.isError}
+              onRetryAppointments={() => { void appointmentsQuery.refetch(); }}
+              providers={Array.isArray(providers) ? providers : []}
+              onBookAppointment={openBooking}
               initialSection={healthRecordSection}
               pregnancyEpisode={currentPregnancyEpisode}
               onUpdatePregnancy={() => setActiveTab("pregnancy-update")}

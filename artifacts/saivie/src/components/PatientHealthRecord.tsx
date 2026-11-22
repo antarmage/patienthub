@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { exactLabNumber } from "@/lib/labReading";
 import { patientMedicationCategory, patientMedicationNeedsReview, patientMedicationNote } from "@/lib/patientMedicationDisplay";
 import { patientHealthRecordProgress } from "@/lib/patientHealthRecord";
+import { nextAppointment, type PortalAppointment } from "@/lib/patientAppointments";
+import { bookingVisitModeLabel } from "@/lib/bookingVisit";
 
 type Section = "overview" | "medications" | "lab-reports" | "history";
 
@@ -35,6 +37,15 @@ interface Props {
   medications: Record<string, any>[];
   labResults: Record<string, any>[];
   visitHistory: Record<string, any>[];
+  visitHistoryLoading?: boolean;
+  visitHistoryError?: boolean;
+  onRetryVisits?: () => void;
+  appointments?: PortalAppointment[];
+  appointmentsLoading?: boolean;
+  appointmentsError?: boolean;
+  onRetryAppointments?: () => void;
+  providers?: { id: number; name: string }[];
+  onBookAppointment?: () => void;
   initialSection: Section;
   pregnancyEpisode?: Record<string, any> | null;
   onUpdatePregnancy?: () => void;
@@ -46,12 +57,27 @@ interface Props {
 
 const JSON_HEADERS: HeadersInit = { "Content-Type": "application/json" };
 
+function visitDateLabel(value: unknown): string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(value)) return "Date not recorded";
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? "Date not recorded" : date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 export default function PatientHealthRecord({
   patient,
   patientId,
   medications,
   labResults,
   visitHistory,
+  visitHistoryLoading = false,
+  visitHistoryError = false,
+  onRetryVisits,
+  appointments = [],
+  appointmentsLoading = false,
+  appointmentsError = false,
+  onRetryAppointments,
+  providers = [],
+  onBookAppointment,
   initialSection,
   pregnancyEpisode = null,
   onUpdatePregnancy,
@@ -255,10 +281,11 @@ export default function PatientHealthRecord({
   const lmp = pregnancyEpisode?.details?.lmp;
   const lmpTime = typeof lmp === "string" ? new Date(lmp).getTime() : NaN;
   const week = Number.isFinite(lmpTime) ? Math.floor((Date.now() - lmpTime) / (7 * 86400000)) : null;
+  const nextVisit = nextAppointment(appointments);
 
   return (
     <div className="mx-auto max-w-[1160px] space-y-5 px-4 pb-32 pt-5 md:px-0 md:pb-10">
-      {section !== "medications" && (
+      {section === "overview" && (
         <>
           <button type="button" onClick={onBack} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-saivie-plum">
             <ArrowLeft className="h-4 w-4" /> Today
@@ -279,21 +306,6 @@ export default function PatientHealthRecord({
               </button>
             </section>
           )}
-
-          <div className="flex gap-2 rounded-2xl bg-white/70 p-1.5" aria-label="Health record sections">
-            {([
-              ["overview", "Overview"],
-              ["medications", "Medications"],
-              ["lab-reports", "Lab reports"],
-              ["history", "History"],
-            ] as [Section, string][]).map(([id, label]) => (
-              <button key={id} type="button" onClick={() => setSection(id)}
-                aria-pressed={section === id}
-                className={`min-h-11 flex-1 rounded-xl px-2 text-xs font-semibold transition-colors ${section === id ? "bg-[#35212f] text-white" : "text-saivie-plum hover:bg-saivie-ivory"}`}>
-                {label}
-              </button>
-            ))}
-          </div>
         </>
       )}
 
@@ -360,10 +372,10 @@ export default function PatientHealthRecord({
             <article className="flex min-h-[245px] flex-col rounded-[28px] border border-[#F0DCC4] bg-white p-6">
               <div className="flex items-center gap-3">
                 <span className="rounded-full bg-[#E4DCFF] p-3 text-[#3A24B8]"><CalendarDays className="h-5 w-5" /></span>
-                <div><h3 className="font-serif text-2xl font-bold">Visits</h3><p className="text-xs text-[#6A5560]">{visitHistory.length} recorded</p></div>
+                <div><h3 className="font-serif text-2xl font-bold">Visits</h3><p className="text-xs text-[#6A5560]">{visitHistoryLoading ? "Loading visits" : visitHistoryError ? "Unable to load visits" : `${visitHistory.length} recorded`}</p></div>
               </div>
               <div className="mt-4 flex-1 text-sm">
-                {latestVisits.length ? latestVisits.map((visit) => <p key={visit.id} className="flex justify-between gap-3 border-t border-[#F0DCC4] py-3"><span>{visit.visitType || visit.diagnosis || "Care visit"}</span><span className="shrink-0 text-[#6A5560]">{visit.date || ""}</span></p>) : <p className="border-t border-[#F0DCC4] pt-3 text-[#6A5560]">Your visits will appear here.</p>}
+                {!visitHistoryLoading && !visitHistoryError && (latestVisits.length ? latestVisits.map((visit) => <p key={visit.id} className="flex justify-between gap-3 border-t border-[#F0DCC4] py-3"><span>{visit.visitType || visit.diagnosis || "Care visit"}</span><span className="shrink-0 text-[#6A5560]">{visit.date || ""}</span></p>) : <p className="border-t border-[#F0DCC4] pt-3 text-[#6A5560]">Your visits will appear here.</p>)}
               </div>
               <button type="button" onClick={() => setSection("history")} className="min-h-11 w-fit rounded-full border border-[#D9C3AE] px-5 text-sm font-bold">Open visits</button>
             </article>
@@ -507,6 +519,9 @@ export default function PatientHealthRecord({
 
       {section === "lab-reports" && (
         <section className="space-y-4" aria-label="Lab reports">
+          <button type="button" onClick={() => setSection("overview")} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-saivie-plum">
+            <ArrowLeft className="h-4 w-4" /> Health record
+          </button>
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-saivie-rose">Lab reports</p>
             <h2 className="mt-1 font-serif text-2xl font-semibold text-saivie-plum">Your lab reports, in plain words.</h2>
@@ -613,49 +628,109 @@ export default function PatientHealthRecord({
       )}
 
       {section === "history" && (
-        <section className="space-y-4" aria-label="Visit history">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-saivie-rose">History</p>
-            <h2 className="mt-1 font-serif text-3xl font-semibold text-saivie-plum">Your visits, in order.</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Every check-up, scan and note from your team.</p>
-          </div>
-          {visitHistory.length ? [...visitHistory]
-            .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
-            .map((visit) => {
-              const vitals = visit.vitals && typeof visit.vitals === "object" ? visit.vitals as Record<string, unknown> : {};
-              const values: { label: string; value: unknown }[] = [
-                { label: "BP", value: vitals.bp || vitals.bloodPressure },
-                { label: "Weight", value: vitals.weight ? `${vitals.weight} kg` : null },
-                { label: "Baby heart", value: vitals.fetalHeartRate || vitals.fetalHeart },
-              ].filter(({ value }) => value != null && value !== "");
-              return (
-                <Card key={visit.id} className="rounded-[24px] border-[var(--line)] bg-white/85">
-                  <CardContent className="space-y-3 p-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      {visit.date ? new Date(`${visit.date}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Date not recorded"}
-                    </p>
-                    <h3 className="font-serif text-xl font-semibold text-saivie-plum">{visit.visitType || visit.diagnosis || "Care visit"}</h3>
-                    {values.length > 0 && <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {values.map(({ label, value }) => (
-                        <div key={label} className="rounded-xl bg-saivie-ivory/70 p-3">
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-                          <p className="mt-1 text-sm font-semibold text-saivie-plum">{String(value)}</p>
-                        </div>
-                      ))}
-                    </div>}
-                    {(visit.chiefComplaint || visit.subjective || visit.diagnosis) && (
-                      <p className="text-sm leading-relaxed text-saivie-plum">{visit.chiefComplaint || visit.subjective || visit.diagnosis}</p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            }) : (
-            <div className="rounded-2xl border border-dashed border-[var(--line)] p-6 text-center">
-              <FileText className="mx-auto h-7 w-7 text-saivie-teal" />
-              <p className="mt-2 text-sm font-semibold text-saivie-plum">Your visit history will appear here</p>
+        <section className="space-y-6 text-[#2A1220]" aria-label="Visit history">
+          <button type="button" onClick={() => setSection("overview")} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold">
+            <ArrowLeft className="h-4 w-4" /> Health record
+          </button>
+          <div className="flex flex-wrap items-center gap-8 rounded-[36px] bg-[#FFA7B6] p-6 md:p-10">
+            <div className="min-w-0 flex-[1_1_390px]">
+              <span className="inline-flex rounded-full bg-[#2A1220] px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#FFA7B6]">
+                {week !== null && week >= 0 ? `Week ${week} · ` : ""}Visits
+              </span>
+              <h1 className="mt-4 max-w-[550px] font-serif text-[42px] font-bold leading-[1.02] tracking-[-0.03em] md:text-[62px]">
+                Your visits, <em className="font-medium">in order.</em>
+              </h1>
+              <p className="mt-4 max-w-[420px] text-base leading-relaxed">Check-ups and notes recorded by your care team.</p>
             </div>
-          )}
-          <p className="text-xs text-muted-foreground">Visits come from your clinic or from you. Anything you add is marked as yours.</p>
+            <div className="min-w-0 flex-[1_1_250px] rounded-[26px] bg-white p-6 md:max-w-[300px]">
+              <p className="font-serif text-2xl font-bold">
+                {visitHistoryLoading ? "Loading visits…" : visitHistoryError ? "Visits unavailable" : `${visitHistory.length} ${visitHistory.length === 1 ? "visit" : "visits"} recorded`}
+              </p>
+              <p className="mt-2 text-sm text-[#5A4552]">
+                {appointmentsLoading ? "Loading next visit…" : appointmentsError ? "Next visit unavailable" : nextVisit ? `Next: ${visitDateLabel(nextVisit.date)}` : "No upcoming appointment"}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
+            <div>
+              <h2 className="font-serif text-3xl font-bold">History</h2>
+              {visitHistoryLoading ? (
+                <p role="status" className="mt-4 text-sm">Loading visits…</p>
+              ) : visitHistoryError ? (
+                <div role="alert" className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+                  Unable to load your visits. {onRetryVisits && <button type="button" onClick={onRetryVisits} className="font-bold underline">Retry</button>}
+                </div>
+              ) : visitHistory.length ? (
+                <ol className="mt-4 space-y-5 border-l-2 border-[#E8D8C8] pl-5">
+                  {[...visitHistory].sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).map((visit) => {
+                    const vitals = visit.vitals && typeof visit.vitals === "object" ? visit.vitals as Record<string, unknown> : {};
+                    const values: { label: string; value: unknown }[] = [
+                      { label: "BP", value: vitals.bp || vitals.bloodPressure },
+                      { label: "Weight", value: vitals.weight ? `${vitals.weight} kg` : null },
+                      { label: "Fundal height", value: vitals.fundalHeight ? `${vitals.fundalHeight} cm` : null },
+                      { label: "Baby heart", value: vitals.fetalHeartRate || vitals.fetalHeart },
+                    ].filter(({ value }) => value != null && value !== "");
+                    const provider = providers.find((item) => item.id === visit.providerId);
+                    return (
+                      <li key={visit.id} className="relative">
+                        <span aria-hidden="true" className="absolute -left-[27px] top-6 h-3 w-3 rounded-full border-2 border-[#2A1220] bg-[#FFA7B6]" />
+                        <article className="rounded-[24px] border border-[#F0DCC4] bg-white p-5 md:p-6">
+                          <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#6A5560]">
+                            {visitDateLabel(visit.date)}{vitals.pog ? ` · ${String(vitals.pog)}` : ""}
+                          </p>
+                          <h3 className="mt-3 font-serif text-2xl font-bold">{visit.visitType || visit.diagnosis || "Care visit"}</h3>
+                          {provider?.name && <p className="mt-1 text-sm text-[#6A5560]">{provider.name}</p>}
+                          {values.length > 0 && <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                            {values.map(({ label, value }) => (
+                              <div key={label} className="rounded-xl bg-[#FAF5EF] p-3">
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-[#6A5560]">{label}</p>
+                                <p className="mt-1 text-sm font-bold">{String(value)}</p>
+                              </div>
+                            ))}
+                          </div>}
+                          {(visit.chiefComplaint || visit.subjective || visit.diagnosis) && <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed">{visit.chiefComplaint || visit.subjective || visit.diagnosis}</p>}
+                          {typeof visit.planNotes === "string" && visit.planNotes.trim() && <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{visit.planNotes}</p>}
+                          {typeof vitals.followUpDate === "string" && vitals.followUpDate && <p className="mt-3 text-xs text-[#6A5560]">Follow-up: {visitDateLabel(vitals.followUpDate)}</p>}
+                          {typeof visit.followUpPlan === "string" && visit.followUpPlan.trim() && <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{visit.followUpPlan}</p>}
+                        </article>
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : (
+                <div className="mt-4 rounded-[24px] border border-dashed border-[#D9C3AE] bg-white p-6 text-center">
+                  <FileText className="mx-auto h-7 w-7 text-saivie-teal" />
+                  <p className="mt-2 text-sm font-semibold">Your visit history will appear here</p>
+                  <p className="mt-1 text-xs text-[#6A5560]">Ask your care team about adding your visit notes.</p>
+                </div>
+              )}
+            </div>
+            <aside className="space-y-5">
+              <section className="rounded-[28px] bg-[#2A1220] p-6 text-white md:p-7">
+                <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#FFA7B6]">Next visit</p>
+                {appointmentsLoading ? <p role="status" className="mt-3 text-sm">Loading appointment…</p> : appointmentsError ? (
+                  <p role="alert" className="mt-3 text-sm">Unable to load appointments. {onRetryAppointments && <button type="button" onClick={onRetryAppointments} className="font-bold underline">Retry</button>}</p>
+                ) : nextVisit ? (
+                  <>
+                    <h2 className="mt-3 font-serif text-2xl font-bold">{nextVisit.type || "Upcoming appointment"}</h2>
+                    <p className="mt-2 text-sm">{[visitDateLabel(nextVisit.date), nextVisit.time, nextVisit.visitMode ? bookingVisitModeLabel(nextVisit.visitMode) : null].filter(Boolean).join(" · ")}</p>
+                    {providers.find((item) => item.id === nextVisit.providerId)?.name && <p className="mt-2 text-sm">{providers.find((item) => item.id === nextVisit.providerId)?.name}</p>}
+                  </>
+                ) : (
+                  <>
+                    <h2 className="mt-3 font-serif text-2xl font-bold">No upcoming appointment</h2>
+                    <p className="mt-2 text-sm">Your next appointment will appear here.</p>
+                  </>
+                )}
+                {onBookAppointment && <button type="button" onClick={onBookAppointment} className="mt-5 min-h-11 rounded-full bg-[#FFA7B6] px-5 text-sm font-bold text-[#2A1220]">Book an appointment</button>}
+              </section>
+              <section className="rounded-[28px] bg-[#FFE7A8] p-6 md:p-7">
+                <p className="text-xs font-extrabold uppercase tracking-[0.12em]">Preparing for your visit</p>
+                <p className="mt-3 text-sm leading-relaxed">Bring any questions or records you would like to discuss with your care team.</p>
+              </section>
+            </aside>
+          </div>
         </section>
       )}
     </div>
