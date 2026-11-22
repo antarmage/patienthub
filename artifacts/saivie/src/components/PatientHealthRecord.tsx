@@ -5,6 +5,7 @@ import { Activity, Apple, ArrowLeft, CalendarDays, Check, ChevronRight, FileText
 import { DateInput } from "@/components/ui/date-input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { NoRecordsIllustration } from "@/components/NoRecordsIllustration";
 import { Input } from "@/components/ui/input";
 import { exactLabNumber, recordedLabValue } from "@/lib/labReading";
 import { patientMedicationCategory, patientMedicationNeedsReview, patientMedicationNote } from "@/lib/patientMedicationDisplay";
@@ -35,6 +36,9 @@ interface Props {
   patient: Record<string, any>;
   patientId: number;
   medications: Record<string, any>[];
+  medicationsLoading?: boolean;
+  medicationsError?: boolean;
+  onRetryMedications?: () => void;
   labResults: Record<string, any>[];
   labResultsLoading?: boolean;
   labResultsError?: boolean;
@@ -50,12 +54,14 @@ interface Props {
   providers?: { id: number; name: string }[];
   onBookAppointment?: () => void;
   initialSection: Section;
+  pregnancy?: boolean;
   pregnancyEpisode?: Record<string, any> | null;
   onUpdatePregnancy?: () => void;
   onBack: () => void;
   onScheduleMedicationReminder: () => void;
   onOpenPrograms: (category: "Move" | "Nourish") => void;
   onOpenCareTeam?: () => void;
+  onOpenTrack?: () => void;
 }
 
 const JSON_HEADERS: HeadersInit = { "Content-Type": "application/json" };
@@ -70,6 +76,9 @@ export default function PatientHealthRecord({
   patient,
   patientId,
   medications,
+  medicationsLoading = false,
+  medicationsError = false,
+  onRetryMedications,
   labResults,
   labResultsLoading = false,
   labResultsError = false,
@@ -85,12 +94,14 @@ export default function PatientHealthRecord({
   providers = [],
   onBookAppointment,
   initialSection,
+  pregnancy = false,
   pregnancyEpisode = null,
   onUpdatePregnancy,
   onBack,
   onScheduleMedicationReminder,
   onOpenPrograms,
   onOpenCareTeam,
+  onOpenTrack,
 }: Props) {
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -296,6 +307,12 @@ export default function PatientHealthRecord({
   const lmpTime = typeof lmp === "string" ? new Date(lmp).getTime() : NaN;
   const week = Number.isFinite(lmpTime) ? Math.floor((Date.now() - lmpTime) / (7 * 86400000)) : null;
   const nextVisit = nextAppointment(appointments);
+  const recordSourcesLoading = medicationsLoading || labResultsLoading || visitHistoryLoading;
+  const recordSourcesError = medicationsError || labResultsError || visitHistoryError;
+  const emptyCoreRecord = pregnancy && !recordSourcesLoading && !recordSourcesError &&
+    medications.length === 0 && labResults.length === 0 && visitHistory.length === 0;
+  const profileLoading = medicationsLoading || labResultsLoading;
+  const profileError = medicationsError || labResultsError;
 
   return (
     <div className="mx-auto max-w-[1160px] space-y-5 px-4 pb-32 pt-5 md:px-0 md:pb-10">
@@ -331,17 +348,17 @@ export default function PatientHealthRecord({
                 {week !== null && week >= 0 ? `Week ${week} · ` : ""}Health record
               </span>
               <h2 className="mt-4 max-w-[550px] font-serif text-[42px] font-bold leading-[1.02] tracking-[-0.03em] md:text-[62px]">
-                Your health record, <em className="font-medium">in one place.</em>
+                Your health record, <em className="font-medium">{emptyCoreRecord ? "ready when you are." : "in one place."}</em>
               </h2>
-              <p className="mt-4 max-w-[420px] text-base leading-relaxed">Visits, labs, medications, food and exercise, together.</p>
+              <p className="mt-4 max-w-[420px] text-base leading-relaxed">{emptyCoreRecord ? "Start with what feels useful. You can add information at your own pace." : "Visits, labs, medications, food and exercise, together."}</p>
             </div>
             <div className="min-w-0 flex-[1_1_300px] rounded-[26px] bg-white p-6 md:max-w-[390px]">
-              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#6A5560]">{labResultsLoading ? "Loading profile progress" : labResultsError ? "Profile progress unavailable" : `Profile · ${progress.progress}% complete`}</p>
-              {!labResultsLoading && !labResultsError && <>
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#6A5560]">{profileLoading ? "Loading profile progress" : profileError ? "Profile progress unavailable" : `Profile · ${progress.progress}% complete`}</p>
+              {!profileLoading && !profileError && <>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#F0DCC4]" role="progressbar" aria-label="Health record progress" aria-valuenow={progress.progress} aria-valuemin={0} aria-valuemax={100}>
                 <div className="h-full rounded-full bg-[#2A1220]" style={{ width: `${progress.progress}%` }} />
               </div>
-              <h3 className="mt-4 font-serif text-2xl font-bold leading-tight">{progress.missingItems.length ? "A few details would help your care team." : "Your checklist is complete."}</h3>
+              <h3 className="mt-4 font-serif text-2xl font-bold leading-tight">{emptyCoreRecord ? "Start with the basics." : progress.missingItems.length ? "A few details would help your care team." : "Your checklist is complete."}</h3>
               <p className="mt-2 text-sm leading-relaxed text-[#5A4552]">
                 {progress.missingItems.length ? `Still to review: ${progress.missingItems.map((item) => item.label.toLowerCase()).join(", ")}.` : "You can review your information anytime."}
               </p>
@@ -353,7 +370,7 @@ export default function PatientHealthRecord({
           </div>
           {onOpenCareTeam && <button type="button" onClick={onOpenCareTeam} className="min-h-11 rounded-full border border-[#D9C3AE] bg-white px-5 text-sm font-bold">Appointments and care team</button>}
 
-          {showChecklist && !labResultsLoading && !labResultsError && <Card className="rounded-[24px] border-[var(--line)] bg-white/80">
+          {showChecklist && !profileLoading && !profileError && <Card className="rounded-[24px] border-[var(--line)] bg-white/80">
             <CardContent className="space-y-1 p-4">
               <h2 className="mb-2 font-serif text-xl font-semibold text-saivie-plum">Your health record checklist</h2>
               {progress.items.map((item) => {
@@ -382,6 +399,36 @@ export default function PatientHealthRecord({
               })}
             </CardContent>
           </Card>}
+
+          {emptyCoreRecord && (
+            <section className="flex flex-wrap items-center gap-6 rounded-[28px] border border-dashed border-[#D9C3AE] bg-white p-6 md:p-8" aria-label="Getting started">
+              <div className="mx-auto w-full max-w-[220px] shrink-0">
+                <NoRecordsIllustration decorative />
+              </div>
+              <div className="min-w-0 flex-[1_1_380px]">
+                <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#6A5560]">Your health record</p>
+                <h2 className="mt-3 font-serif text-3xl font-bold">Start wherever you like.</h2>
+                <p className="mt-2 text-sm leading-relaxed text-[#5A4552]">No visits, lab results or medicines have been recorded here yet. Your care team can help you add visits and medicines.</p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {([
+                    ["View visits", "Check-ups and notes", "history"],
+                    ["Open lab reports", "Upload and review a report", "lab-reports"],
+                    ["View medications", "Review your medicine list", "medications"],
+                  ] as const).map(([label, description, target], index) => (
+                    <button key={target} type="button" onClick={() => setSection(target)} className="flex min-h-16 items-center gap-3 rounded-xl border border-dashed border-[#D9C3AE] px-3 py-2 text-left hover:bg-[#FAF5EF]">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-dashed border-[#2A1220] text-xs font-bold">{index + 1}</span>
+                      <span><span className="block text-sm font-bold">{label}</span><span className="block text-xs text-[#6A5560]">{description}</span></span>
+                    </button>
+                  ))}
+                  {onOpenTrack && <button type="button" onClick={onOpenTrack} className="flex min-h-16 items-center gap-3 rounded-xl border border-dashed border-[#D9C3AE] px-3 py-2 text-left hover:bg-[#FAF5EF]">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-dashed border-[#2A1220] text-xs font-bold">4</span>
+                    <span><span className="block text-sm font-bold">Track measurements</span><span className="block text-xs text-[#6A5560]">Blood pressure and weight</span></span>
+                  </button>}
+                </div>
+                <button type="button" onClick={() => setSection("lab-reports")} className="mt-4 min-h-11 rounded-full bg-[#2A1220] px-5 text-sm font-bold text-white">Open lab reports</button>
+              </div>
+            </section>
+          )}
 
           <h2 className="font-serif text-[36px] font-bold">Your record</h2>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -412,10 +459,10 @@ export default function PatientHealthRecord({
             <article className="flex min-h-[245px] flex-col rounded-[28px] border border-[#F0DCC4] bg-white p-6">
               <div className="flex items-center gap-3">
                 <span className="rounded-full bg-[#CFF1EA] p-3 text-[#0B6B5F]"><Pill className="h-5 w-5" /></span>
-                <div><h3 className="font-serif text-2xl font-bold">Medications</h3><p className="text-xs text-[#6A5560]">{activeMedications.length} current {activeMedications.length === 1 ? "medicine" : "medicines"}</p></div>
+                <div><h3 className="font-serif text-2xl font-bold">Medications</h3><p className="text-xs text-[#6A5560]">{medicationsLoading ? "Loading medicines" : medicationsError ? "Unable to load medicines" : `${activeMedications.length} current ${activeMedications.length === 1 ? "medicine" : "medicines"}`}</p></div>
               </div>
               <div className="mt-4 flex-1 text-sm">
-                {activeMedications.length ? activeMedications.slice(0, 3).map((medicine) => <p key={medicine.id} className="flex justify-between gap-3 border-t border-[#F0DCC4] py-3"><span>{medicine.name || "Medicine"}</span><span className="text-right text-[#6A5560]">{patientMedicationNeedsReview(medicine.notes) ? "Review with care team" : medicine.dose || ""}</span></p>) : <p className="border-t border-[#F0DCC4] pt-3 text-[#6A5560]">No current medicines recorded.</p>}
+                {!medicationsLoading && !medicationsError && (activeMedications.length ? activeMedications.slice(0, 3).map((medicine) => <p key={medicine.id} className="flex justify-between gap-3 border-t border-[#F0DCC4] py-3"><span>{medicine.name || "Medicine"}</span><span className="text-right text-[#6A5560]">{patientMedicationNeedsReview(medicine.notes) ? "Review with care team" : medicine.dose || ""}</span></p>) : <p className="border-t border-[#F0DCC4] pt-3 text-[#6A5560]">No current medicines recorded.</p>)}
               </div>
               <button type="button" onClick={() => setSection("medications")} className="min-h-11 w-fit rounded-full border border-[#D9C3AE] px-5 text-sm font-bold">Open medications</button>
             </article>
@@ -457,8 +504,10 @@ export default function PatientHealthRecord({
             </div>
             <div className="min-w-0 flex-[1_1_250px] rounded-[26px] bg-white p-6 md:max-w-[300px]">
               <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#6A5560]">Your list</p>
+              {medicationsLoading ? <p className="mt-3 text-sm">Loading medicines…</p> : medicationsError ? <p className="mt-3 text-sm">Medicines unavailable</p> : <>
               <p className="mt-3 font-serif text-5xl font-bold">{activeMedications.length}</p>
               <p className="mt-1 text-sm text-[#5A4552]">current {activeMedications.length === 1 ? "medicine" : "medicines"} recorded</p>
+              </>}
             </div>
           </div>
 
@@ -471,7 +520,9 @@ export default function PatientHealthRecord({
 
               <section className="rounded-[28px] border border-[#F0DCC4] bg-white p-6 md:p-7">
                 <h2 className="font-serif text-3xl font-bold">All medications</h2>
-                {activeMedications.length ? (
+                {medicationsLoading ? <p role="status" className="mt-4 text-sm">Loading medicines…</p> : medicationsError ? (
+                  <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-4 text-sm text-rose-900">Unable to load your medicines. {onRetryMedications && <button type="button" onClick={onRetryMedications} className="font-bold underline">Retry</button>}</p>
+                ) : activeMedications.length ? (
                   <div className="mt-4">
                     {activeMedications.map((medication) => {
                       const needsReview = patientMedicationNeedsReview(medication.notes);
@@ -502,7 +553,7 @@ export default function PatientHealthRecord({
                     <p className="mt-1 text-xs text-[#6A5560]">Ask your care team to review or update your list.</p>
                   </div>
                 )}
-                {medications.some((medication) => String(medication.status || "").toLowerCase() !== "active") && (
+                {!medicationsLoading && !medicationsError && medications.some((medication) => String(medication.status || "").toLowerCase() !== "active") && (
                   <details className="mt-4 border-t border-[#F0DCC4] pt-4">
                     <summary className="cursor-pointer text-sm font-semibold">Past medications</summary>
                     <div className="mt-3 space-y-2">

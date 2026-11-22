@@ -380,11 +380,18 @@ export default function PatientPortal() {
     enabled: !!patient?.id,
   });
 
-  const { data: medications } = useQuery({
+  const medicationsQuery = useQuery({
     queryKey: [`/api/patients/${patient?.id}/medications`],
-    queryFn: async () => { const r = await fetch(`/api/patients/${patient?.id}/medications`); return r.json(); },
+    queryFn: async () => {
+      const r = await fetch(`/api/patients/${patient?.id}/medications`);
+      if (!r.ok) throw new Error("Unable to load medicines.");
+      const data = await r.json();
+      if (!Array.isArray(data)) throw new Error("Unable to load medicines.");
+      return data;
+    },
     enabled: !!patient?.id,
   });
+  const medications = medicationsQuery.data;
 
   const { data: pregnancyData } = useQuery({
     queryKey: [`/api/pregnancy-metrics?patientId=${patient?.id}`],
@@ -638,6 +645,9 @@ export default function PatientPortal() {
         {labResultsQuery.isError && (activeTab === "home" || activeTab === "biology" || activeTab === "care-team") && (
           <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-900">Unable to load lab results. <button type="button" onClick={() => { void labResultsQuery.refetch(); }} className="font-bold underline">Retry</button></p>
         )}
+        {medicationsQuery.isError && (activeTab === "home" || activeTab === "track" || activeTab === "care-team") && (
+          <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-900">Unable to load medicines. <button type="button" onClick={() => { void medicationsQuery.refetch(); }} className="font-bold underline">Retry</button></p>
+        )}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8 flex-1">
           
           <TabsContent value="home" className="space-y-10 animate-in fade-in duration-700">
@@ -717,7 +727,7 @@ export default function PatientPortal() {
           </TabsContent>
 
           <TabsContent value="programs" className="animate-in slide-in-from-bottom-4 duration-500">
-            <PatientPrograms key={initialProgramCategory ?? "overview"} pregnancy={mode === "pregnancy"} week={pregnancyWeek} mode={mode} initialCategory={initialProgramCategory} />
+            <PatientPrograms key={initialProgramCategory ?? "overview"} pregnancy={mode === "pregnancy"} week={pregnancyWeek} mode={mode} initialCategory={initialProgramCategory} onOpenLabReports={() => openHealthRecord("lab-reports")} onBookNutrition={openBooking} />
           </TabsContent>
 
           <TabsContent value="care" className="animate-in slide-in-from-bottom-4 duration-500 space-y-6 pb-8">
@@ -727,6 +737,9 @@ export default function PatientPortal() {
                 patient={patient}
                 patientId={Number(patient.id)}
                 medications={(medications as any[]) || []}
+                medicationsLoading={medicationsQuery.isLoading}
+                medicationsError={medicationsQuery.isError}
+                onRetryMedications={() => { void medicationsQuery.refetch(); }}
                 labResults={(labResults as any[]) || []}
                 labResultsLoading={labResultsQuery.isLoading}
                 labResultsError={labResultsQuery.isError}
@@ -742,12 +755,14 @@ export default function PatientPortal() {
                 providers={Array.isArray(providers) ? providers : []}
                 onBookAppointment={openBooking}
                 initialSection="overview"
+                pregnancy
                 pregnancyEpisode={currentPregnancyEpisode}
                 onUpdatePregnancy={() => setActiveTab("pregnancy-update")}
                 onBack={() => setActiveTab("home")}
                 onScheduleMedicationReminder={scheduleMedicationReminder}
                 onOpenPrograms={(category) => { setInitialProgramCategory(category); setActiveTab("programs"); }}
                 onOpenCareTeam={() => setActiveTab("care-team")}
+                onOpenTrack={() => { setInitialTracker(null); setActiveTab("track"); }}
               />
             )}
             {mode !== "pregnancy" && patient?.id && (
@@ -810,6 +825,9 @@ export default function PatientPortal() {
               patient={patient}
               patientId={Number(patient.id)}
               medications={(medications as any[]) || []}
+              medicationsLoading={medicationsQuery.isLoading}
+              medicationsError={medicationsQuery.isError}
+              onRetryMedications={() => { void medicationsQuery.refetch(); }}
               labResults={(labResults as any[]) || []}
               labResultsLoading={labResultsQuery.isLoading}
               labResultsError={labResultsQuery.isError}
@@ -825,12 +843,14 @@ export default function PatientPortal() {
               providers={Array.isArray(providers) ? providers : []}
               onBookAppointment={openBooking}
               initialSection={healthRecordSection}
+              pregnancy={mode === "pregnancy"}
               pregnancyEpisode={currentPregnancyEpisode}
               onUpdatePregnancy={() => setActiveTab("pregnancy-update")}
               onBack={() => setActiveTab("home")}
               onScheduleMedicationReminder={scheduleMedicationReminder}
               onOpenPrograms={(category) => { setInitialProgramCategory(category); setActiveTab("programs"); }}
               onOpenCareTeam={mode === "pregnancy" ? () => setActiveTab("care-team") : undefined}
+              onOpenTrack={mode === "pregnancy" ? () => { setInitialTracker(null); setActiveTab("track"); } : undefined}
             />}
           </TabsContent>
 

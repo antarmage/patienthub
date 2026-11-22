@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import PatientHealthRecord from "./PatientHealthRecord";
 import PatientPrograms from "./PatientPrograms";
+import PatientNutritionPlusPreview from "./PatientNutritionPlusPreview";
 import PregnancyCareDashboard from "./PregnancyCareDashboard";
 
 function renderRecord(overrides: Partial<React.ComponentProps<typeof PatientHealthRecord>> = {}) {
@@ -40,6 +41,46 @@ test("health record overview uses real empty states and offers the five record s
   }
   assert.doesNotMatch(html, /Health record sections|aria-pressed=/);
   assert.match(html, /Sharing and export options are not available/);
+});
+
+test("pregnancy record without visits, lab results or medicines shows the getting-started design", () => {
+  const html = renderRecord({ pregnancy: true, onOpenTrack: () => {} });
+  assert.match(html, /ready when you are/);
+  assert.match(html, /Start wherever you like/);
+  assert.match(html, /No visits, lab results or medicines have been recorded here yet/);
+  assert.match(html, /Profile · 40% complete/);
+  for (const action of ["View visits", "Open lab reports", "View medications", "Track measurements"]) {
+    assert.ok(html.includes(action), action);
+  }
+  assert.doesNotMatch(html, /Nothing is saved yet|Profile · 0% complete|Ask my clinic to share/);
+});
+
+test("getting-started design is hidden when records exist or a source is unavailable", () => {
+  for (const overrides of [
+    { visitHistory: [{ id: 1 }] },
+    { labResults: [{ id: 2 }] },
+    { medications: [{ id: 3, status: "stopped" }] },
+    { medicationsLoading: true },
+    { medicationsError: true },
+    { labResultsLoading: true },
+    { labResultsError: true },
+    { visitHistoryLoading: true },
+    { visitHistoryError: true },
+    { pregnancy: false },
+  ]) {
+    const html = renderRecord({ pregnancy: true, ...overrides });
+    assert.doesNotMatch(html, /Start wherever you like/, JSON.stringify(overrides));
+  }
+});
+
+test("medicine loading and errors are not shown as an empty list", () => {
+  const loading = renderRecord({ initialSection: "medications", medicationsLoading: true });
+  assert.match(loading, /Loading medicines/);
+  assert.doesNotMatch(loading, /No current medicines added yet/);
+  const failed = renderRecord({ initialSection: "medications", medicationsError: true, onRetryMedications: () => {} });
+  assert.match(failed, /Unable to load your medicines/);
+  assert.match(failed, />Retry<\/button>/);
+  assert.doesNotMatch(failed, /No current medicines added yet/);
 });
 
 test("each record detail has a way back to the health record without section tabs", () => {
@@ -180,12 +221,36 @@ test("visit page distinguishes empty, loading and failed records", () => {
 });
 
 test("program shortcuts open their requested pregnancy category", () => {
-  for (const [category, expected] of [["Move", "Prenatal strength"], ["Nourish", "Pregnancy balanced plates"]] as const) {
+  for (const [category, expected] of [["Move", "Prenatal strength"], ["Nourish", "Iron-rich foods"]] as const) {
     const html = renderToStaticMarkup(<PatientPrograms pregnancy week={14} mode="pregnancy" initialCategory={category} />);
     assert.ok(html.includes(expected), category);
   }
   const overview = renderToStaticMarkup(<PatientPrograms pregnancy week={14} mode="pregnancy" />);
-  assert.doesNotMatch(overview, /Pregnancy balanced plates/);
+  assert.doesNotMatch(overview, /Iron-rich foods/);
+});
+
+test("pregnancy nutrition uses the supplied design without invented results or pricing", () => {
+  const html = renderToStaticMarkup(<PatientPrograms pregnancy week={14} mode="pregnancy" initialCategory="Nourish" onOpenLabReports={() => {}} onBookNutrition={() => {}} />);
+  for (const content of ["Week 14", "Iron-rich foods", "Today&#x27;s basics", "Go gently with", "Your meal plan", "From your record", "Pick what you need", "Good to know", "See my results", "Book a session"]) {
+    assert.ok(html.includes(content), content);
+  }
+  assert.match(html, /not available here yet/);
+  assert.doesNotMatch(html, /haemoglobin is worth a chat|\[PRICE\]|Unlock Plus/);
+  const unknownWeek = renderToStaticMarkup(<PatientPrograms pregnancy week={null} mode="pregnancy" initialCategory="Nourish" />);
+  assert.doesNotMatch(unknownWeek, /Week 24/);
+  const nonPregnancy = renderToStaticMarkup(<PatientPrograms pregnancy={false} week={null} initialCategory="Nourish" />);
+  assert.match(nonPregnancy, /Food that works/);
+});
+
+test("purchased nutrition design is explicitly a sample preview, not an active purchase", () => {
+  const html = renderToStaticMarkup(<PatientNutritionPlusPreview onBack={() => {}} />);
+  for (const content of ["Plus preview", "Example only", "Today&#x27;s plan", "This week&#x27;s shopping list", "Your food choices", "Your nutritionist", "No lab results were used"]) {
+    assert.ok(html.includes(content), content);
+  }
+  assert.doesNotMatch(html, /Plus active|haemoglobin was flagged/i);
+  for (const action of ["Swap", "Open list", "Edit choices", "Message"]) {
+    assert.match(html, new RegExp(`<button[^>]*disabled=""[^>]*>${action}</button>`));
+  }
 });
 
 test("care team page does not display an unreviewed AI risk label", () => {

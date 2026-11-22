@@ -2,15 +2,18 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Activity, Apple, ArrowLeft, Brain } from "lucide-react";
 import { getWeekData } from "@/components/WeekByWeekTimeline";
+import PatientPregnancyNutrition from "@/components/PatientPregnancyNutrition";
 
 interface Props {
   pregnancy: boolean;
   week: number | null;
   mode?: string;
   initialCategory?: "Mind" | "Move" | "Nourish" | null;
+  onOpenLabReports?: () => void;
+  onBookNutrition?: () => void;
 }
 
-export default function PatientPrograms({ pregnancy, week, mode, initialCategory = null }: Props) {
+export default function PatientPrograms({ pregnancy, week, mode, initialCategory = null, onOpenLabReports, onBookNutrition }: Props) {
   const currentWeek = week ?? 24;
   const [activeCategory, setActiveCategory] = useState<"Mind" | "Move" | "Nourish" | null>(initialCategory);
   const weekGuide = getWeekData(currentWeek);
@@ -164,6 +167,8 @@ export default function PatientPrograms({ pregnancy, week, mode, initialCategory
     <div className="pb-24">
       {!activeCategory ? (
         <CategoryOverview pregnancy={pregnancy} week={currentWeek} onSelect={setActiveCategory} />
+      ) : pregnancy && activeCategory === "Nourish" ? (
+        <PatientPregnancyNutrition week={week} onBack={() => setActiveCategory(null)} onOpenLabReports={onOpenLabReports} onBookSession={onBookNutrition} />
       ) : (
         <CategoryDetail
           pregnancy={pregnancy}
