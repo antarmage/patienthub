@@ -727,7 +727,7 @@ export default function PatientPortal() {
           </TabsContent>
 
           <TabsContent value="programs" className="animate-in slide-in-from-bottom-4 duration-500">
-            <PatientPrograms key={initialProgramCategory ?? "overview"} pregnancy={mode === "pregnancy"} week={pregnancyWeek} mode={mode} initialCategory={initialProgramCategory} onOpenLabReports={() => openHealthRecord("lab-reports")} onBookNutrition={openBooking} />
+            <PatientPrograms key={initialProgramCategory ?? "overview"} pregnancy={mode === "pregnancy"} week={pregnancyWeek} mode={mode} initialCategory={initialProgramCategory} onOpenLabReports={() => openHealthRecord("lab-reports")} onBookNutrition={openBooking} onBookAppointment={openBooking} />
           </TabsContent>
 
           <TabsContent value="care" className="animate-in slide-in-from-bottom-4 duration-500 space-y-6 pb-8">

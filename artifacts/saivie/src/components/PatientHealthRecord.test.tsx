@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import PatientHealthRecord from "./PatientHealthRecord";
 import PatientPrograms from "./PatientPrograms";
 import PatientNutritionPlusPreview from "./PatientNutritionPlusPreview";
+import PatientExercisePlusPreview from "./PatientExercisePlusPreview";
 import PregnancyCareDashboard from "./PregnancyCareDashboard";
 
 function renderRecord(overrides: Partial<React.ComponentProps<typeof PatientHealthRecord>> = {}) {
@@ -89,6 +90,35 @@ test("each record detail has a way back to the health record without section tab
     assert.match(html, /<\/svg> Health record<\/button>/, section);
     assert.doesNotMatch(html, /Health record sections|aria-pressed=/, section);
   }
+});
+
+test("pregnancy nutrition record shows recorded allergies without inventing advice or logs", () => {
+  const html = renderRecord({
+    pregnancy: true,
+    initialSection: "nutrition",
+    patient: { history: { allergies: ["Peanuts", "Penicillin"] } },
+    onBookAppointment: () => {},
+    onOpenTrack: () => {},
+  });
+  for (const text of ["Your nutrition", "Your food choices", "Peanuts, Penicillin", "This week", "History", "See lab reports", "Track water", "Explore nutrition"]) {
+    assert.ok(html.includes(text), text);
+  }
+  assert.match(html, /not only food allergies/);
+  assert.match(html, /Meal and supplement logging are not available/);
+  assert.doesNotMatch(html, /10\.8|4 of 7|ADDED BY CLINIC|Vegetarian/);
+  const empty = renderRecord({ pregnancy: true, initialSection: "nutrition" });
+  assert.match(empty, /Not recorded/);
+  assert.doesNotMatch(empty, /None recorded/);
+});
+
+test("pregnancy exercise record does not invent clearance or activity", () => {
+  const html = renderRecord({ pregnancy: true, initialSection: "exercise", onBookAppointment: () => {} });
+  for (const text of ["Your exercise", "Doctor clearance", "Your movement", "Activity log", "Anything unusual?", "Notes and limits", "Explore exercise", "Book an appointment", "Stop and seek help"]) {
+    assert.ok(html.includes(text), text);
+  }
+  assert.match(html, /Exercise clearance is not available on this screen/);
+  assert.match(html, /Exercise logging is not available here yet/);
+  assert.doesNotMatch(html, /Gentle exercise is fine for you|2 of 3|23 min|ADDED BY CLINIC/);
 });
 
 test("health record overview reflects saved values without inventing clinical status", () => {
@@ -221,12 +251,36 @@ test("visit page distinguishes empty, loading and failed records", () => {
 });
 
 test("program shortcuts open their requested pregnancy category", () => {
-  for (const [category, expected] of [["Move", "Prenatal strength"], ["Nourish", "Iron-rich foods"]] as const) {
+  for (const [category, expected] of [["Move", "Your free starter set"], ["Nourish", "Iron-rich foods"]] as const) {
     const html = renderToStaticMarkup(<PatientPrograms pregnancy week={14} mode="pregnancy" initialCategory={category} />);
     assert.ok(html.includes(expected), category);
   }
   const overview = renderToStaticMarkup(<PatientPrograms pregnancy week={14} mode="pregnancy" />);
   assert.doesNotMatch(overview, /Iron-rich foods/);
+});
+
+test("pregnancy exercise uses the free design without invented sessions or purchase actions", () => {
+  const html = renderToStaticMarkup(<PatientPrograms pregnancy week={14} mode="pregnancy" initialCategory="Move" onBookAppointment={() => {}} />);
+  for (const text of ["Week 14", "Before you start", "Your free starter set", "Gentle walk", "Go further with Plus", "Need a person?", "Pick what you need", "Stop and seek help", "Book an appointment"]) {
+    assert.ok(html.includes(text), text);
+  }
+  assert.match(html, /Guided sessions and videos are not available/);
+  assert.doesNotMatch(html, /\[PRICE\]|Unlock Plus|15 min|My doctor has said/);
+  const unknownWeek = renderToStaticMarkup(<PatientPrograms pregnancy week={null} mode="pregnancy" initialCategory="Move" />);
+  assert.doesNotMatch(unknownWeek, /Week 24/);
+  const nonPregnancy = renderToStaticMarkup(<PatientPrograms pregnancy={false} week={null} initialCategory="Move" />);
+  assert.match(nonPregnancy, /Strong, steady, and/);
+});
+
+test("purchased exercise design is explicitly a sample preview with unavailable actions", () => {
+  const html = renderToStaticMarkup(<PatientExercisePlusPreview onBack={() => {}} />);
+  for (const text of ["Plus preview", "Example only", "Example program progress", "This week", "Your programs", "Your coach and physio", "Stop and seek help"]) {
+    assert.ok(html.includes(text), text);
+  }
+  for (const action of ["Start session", "Too easy", "Message", "Book a session"]) {
+    assert.match(html, new RegExp(`<button[^>]*disabled=""[^>]*>${action}</button>`));
+  }
+  assert.doesNotMatch(html, /Plus active|Next week adjusts to your answer/i);
 });
 
 test("pregnancy nutrition uses the supplied design without invented results or pricing", () => {

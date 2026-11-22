@@ -6,6 +6,8 @@ import { DateInput } from "@/components/ui/date-input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { NoRecordsIllustration } from "@/components/NoRecordsIllustration";
+import PatientNutritionRecord from "@/components/PatientNutritionRecord";
+import PatientExerciseRecord from "@/components/PatientExerciseRecord";
 import { Input } from "@/components/ui/input";
 import { exactLabNumber, recordedLabValue } from "@/lib/labReading";
 import { patientMedicationCategory, patientMedicationNeedsReview, patientMedicationNote } from "@/lib/patientMedicationDisplay";
@@ -13,7 +15,7 @@ import { patientHealthRecordProgress } from "@/lib/patientHealthRecord";
 import { nextAppointment, type PortalAppointment } from "@/lib/patientAppointments";
 import { bookingVisitModeLabel } from "@/lib/bookingVisit";
 
-type Section = "overview" | "medications" | "lab-reports" | "history";
+type Section = "overview" | "medications" | "lab-reports" | "history" | "nutrition" | "exercise";
 
 interface LabValue {
   testName: string;
@@ -467,13 +469,13 @@ export default function PatientHealthRecord({
               <button type="button" onClick={() => setSection("medications")} className="min-h-11 w-fit rounded-full border border-[#D9C3AE] px-5 text-sm font-bold">Open medications</button>
             </article>
             {([
-              ["Nutrition", "Explore nourishment programs.", "Nourish", Apple, "#FFE7A8"],
-              ["Exercise", "Explore movement programs at your own pace.", "Move", Activity, "#E4DCFF"],
+              ["Nutrition", pregnancy ? "Your nutrition record and food choices." : "Explore nourishment programs.", "Nourish", Apple, "#FFE7A8"],
+              ["Exercise", pregnancy ? "Your exercise record and movement support." : "Explore movement programs at your own pace.", "Move", Activity, "#E4DCFF"],
             ] as const).map(([title, description, category, Icon, color]) => (
               <article key={title} className="flex min-h-[210px] flex-col rounded-[28px] border border-[#F0DCC4] bg-white p-6">
                 <div className="flex items-center gap-3"><span className="rounded-full p-3" style={{ backgroundColor: color }}><Icon className="h-5 w-5" /></span><h3 className="font-serif text-2xl font-bold">{title}</h3></div>
                 <p className="mt-4 flex-1 text-sm text-[#5A4552]">{description}</p>
-                <button type="button" onClick={() => onOpenPrograms(category)} className="min-h-11 w-fit rounded-full border border-[#D9C3AE] px-5 text-sm font-bold">Open {title.toLowerCase()}</button>
+                <button type="button" onClick={() => pregnancy ? setSection(category === "Nourish" ? "nutrition" : "exercise") : onOpenPrograms(category)} className="min-h-11 w-fit rounded-full border border-[#D9C3AE] px-5 text-sm font-bold">Open {title.toLowerCase()}</button>
               </article>
             ))}
             <article className="flex min-h-[210px] flex-col rounded-[28px] bg-[#FFE7A8] p-6">
@@ -485,6 +487,27 @@ export default function PatientHealthRecord({
           </div>
           <p className="text-sm text-[#5A4552]">Sharing and export options are not available here yet. Contact your care team if you have questions about your records.</p>
         </section>
+      )}
+
+      {section === "nutrition" && pregnancy && (
+        <PatientNutritionRecord
+          patient={patient}
+          week={week}
+          onBack={() => setSection("overview")}
+          onOpenLabReports={() => setSection("lab-reports")}
+          onOpenPrograms={() => onOpenPrograms("Nourish")}
+          onBookAppointment={onBookAppointment}
+          onOpenTrack={onOpenTrack}
+        />
+      )}
+
+      {section === "exercise" && pregnancy && (
+        <PatientExerciseRecord
+          week={week}
+          onBack={() => setSection("overview")}
+          onOpenPrograms={() => onOpenPrograms("Move")}
+          onBookAppointment={onBookAppointment}
+        />
       )}
 
       {section === "medications" && (
