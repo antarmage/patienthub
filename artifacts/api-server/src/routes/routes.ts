@@ -66,6 +66,7 @@ import { createPregnancyFollowUpStore, registerPregnancyFollowUps } from "../pre
 import { createPregnancyMedicationReconciliationStore, registerPregnancyMedicationReconciliation } from "../pregnancy-medication-reconciliation";
 import { createMenopauseStore, registerMenopauseCare } from "../menopause";
 import { createBookingCatalogStore, registerBookingCatalog } from "../booking-catalog";
+import { createPatientProgramsStore, registerPatientPrograms } from "../patient-programs";
 import { canManageVaccinationSchedules, canUseVaccinationWorkflow } from "../vaccination-access";
 import { readLabPrescription, sanitizeLabSurvey, surveyKindFor } from "../survey-kind";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
@@ -388,6 +389,7 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  registerPatientPrograms(app, createPatientProgramsStore(pool), getAccessActor);
   registerNutritionAccess(app, getAccessActor, createNutritionAccessStore(pool));
   registerFatSecretRoutes(app, getAccessActor);
   registerFaceAttendanceRoutes(app, getAccessActor, createFaceAttendanceStore(pool));

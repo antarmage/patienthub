@@ -15,6 +15,7 @@ import { UnlockCostsButton, formatCost, useOwnerCosts } from "@/components/Owner
 import { CatalogImportButton } from "@/components/CatalogImport";
 import { BookingCatalogManager } from "@/components/BookingCatalogManager";
 import { PortalNavigation } from "@/components/PortalNavigation";
+import ProgramManager from "@/components/ProgramManager";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
@@ -384,6 +385,7 @@ export default function OwnerPortal() {
     { id: "alerts", label: "Alerts", icon: AlertTriangle },
     { id: "performance", label: "Performance", icon: BarChart3 },
     { id: "catalog", label: "Service Catalog", icon: Package },
+    { id: "programs", label: "Programs", icon: Activity },
     { id: "packages", label: "Packages", icon: Layers },
     { id: "inventory", label: "Inventory", icon: Package },
     { id: "referrals", label: "Referral Commission", icon: IndianRupee },
@@ -468,6 +470,7 @@ export default function OwnerPortal() {
         <ScrollArea className={`flex-1 ${activeView === "attendance" ? "[&_[data-radix-scroll-area-viewport]>div]:!block" : ""}`}>
           <div className="p-6 max-w-7xl mx-auto">
 
+            {activeView === "programs" && <ProgramManager />}
             {activeView === "expenses" && <OwnerAuthGate>{({ token }) => <Expenses owner token={token} />}</OwnerAuthGate>}
             {activeView === "overview" && (
               <div className="space-y-6">

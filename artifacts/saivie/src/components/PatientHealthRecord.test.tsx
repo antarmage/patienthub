@@ -9,6 +9,8 @@ import PatientNutritionPlusPreview from "./PatientNutritionPlusPreview";
 import PatientExercisePlusPreview from "./PatientExercisePlusPreview";
 import PatientSessionBooking from "./PatientSessionBooking";
 import { patientAppointmentRequest } from "@/lib/patientAppointmentRequest";
+import PatientPublishedPrograms from "./PatientPublishedPrograms";
+import type { Program } from "../../../../lib/db/src/patient-programs";
 import PregnancyCareDashboard from "./PregnancyCareDashboard";
 
 function renderRecord(overrides: Partial<React.ComponentProps<typeof PatientHealthRecord>> = {}) {
@@ -259,6 +261,18 @@ test("program shortcuts open their requested pregnancy category", () => {
   }
   const overview = renderToStaticMarkup(<PatientPrograms pregnancy week={14} mode="pregnancy" />);
   assert.doesNotMatch(overview, /Iron-rich foods/);
+});
+
+test("patients see only published free programs in the matching category", () => {
+  const base: Program = { id: 1, title: "Reviewed free", description: "Details", category: "nutrition", tier: "free", status: "published", version: 1, sessions: [{ title: "First session", content: "Session text" }] };
+  const state = { programs: [base, { ...base, id: 2, title: "Plus secret", tier: "plus" as const }, { ...base, id: 3, title: "Draft secret", status: "draft" as const }, { ...base, id: 4, title: "Other category", category: "exercise" as const }], loading: false, error: false, retry: () => {} };
+  const html = renderToStaticMarkup(<PatientPublishedPrograms category="nutrition" state={state} />);
+  assert.match(html, /Reviewed free/);
+  assert.match(html, /First session/);
+  assert.doesNotMatch(html, /Plus secret|Draft secret|Other category/);
+  const error = renderToStaticMarkup(<PatientPublishedPrograms category="nutrition" state={{ ...state, error: true }} />);
+  assert.match(error, /Unable to load programs/);
+  assert.doesNotMatch(error, /Reviewed free/);
 });
 
 test("pregnancy exercise uses the free design without invented sessions or purchase actions", () => {

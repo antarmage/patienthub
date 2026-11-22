@@ -68,6 +68,8 @@ import PatientPregnancyUpdate from "@/components/PatientPregnancyUpdate";
 import { BrandLogo } from "@/components/BrandLogo";
 import { localDateKey, nextLocalDateKey } from "@/lib/patientHealthRecord";
 import { patientAppointmentRequest, type PatientAppointmentType } from "@/lib/patientAppointmentRequest";
+import { programSchema } from "../../../../lib/db/src/patient-programs";
+import { z } from "zod/v4";
 import {
   getPostpartumStartDate,
   postpartumStartStorageKey,
@@ -434,6 +436,17 @@ export default function PatientPortal() {
     enabled: !!patient?.id,
   });
   const patientAppointments = appointmentsQuery.data;
+  const programsQuery = useQuery({
+    queryKey: ["/api/patient-programs", patient?.id],
+    queryFn: async () => {
+      const response = await fetch("/api/patient-programs");
+      if (!response.ok) throw new Error("Unable to load programs.");
+      return z.array(programSchema).parse(await response.json());
+    },
+    enabled: !!patient?.id && mode === "pregnancy" && activeTab === "programs",
+    retry: false,
+    refetchInterval: 30000,
+  });
 
   const bookingMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -722,7 +735,7 @@ export default function PatientPortal() {
           </TabsContent>
 
           <TabsContent value="programs" className="animate-in slide-in-from-bottom-4 duration-500">
-            <PatientPrograms key={initialProgramCategory ?? "overview"} pregnancy={mode === "pregnancy"} week={pregnancyWeek} mode={mode} initialCategory={initialProgramCategory} onOpenLabReports={() => openHealthRecord("lab-reports")} onBookNutrition={openBooking} onBookAppointment={openBooking} />
+            <PatientPrograms key={initialProgramCategory ?? "overview"} pregnancy={mode === "pregnancy"} week={pregnancyWeek} mode={mode} initialCategory={initialProgramCategory} onOpenLabReports={() => openHealthRecord("lab-reports")} onBookNutrition={openBooking} onBookAppointment={openBooking} programs={{ programs: programsQuery.data, loading: programsQuery.isPending, error: programsQuery.isError, retry: () => { void programsQuery.refetch(); } }} />
           </TabsContent>
 
           <TabsContent value="care" className="animate-in slide-in-from-bottom-4 duration-500 space-y-6 pb-8">

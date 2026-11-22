@@ -1,15 +1,17 @@
 import React, { useState } from "react";
 import { ArrowLeft, Check, Lock } from "lucide-react";
 import PatientNutritionPlusPreview from "@/components/PatientNutritionPlusPreview";
+import PatientPublishedPrograms, { type PatientProgramsState } from "@/components/PatientPublishedPrograms";
 
 interface Props {
   week: number | null;
   onBack: () => void;
   onOpenLabReports?: () => void;
   onBookSession?: () => void;
+  programs?: PatientProgramsState;
 }
 
-export default function PatientPregnancyNutrition({ week, onBack, onOpenLabReports, onBookSession }: Props) {
+export default function PatientPregnancyNutrition({ week, onBack, onOpenLabReports, onBookSession, programs }: Props) {
   const [showPlusPreview, setShowPlusPreview] = useState(false);
 
   if (showPlusPreview) {
@@ -35,6 +37,7 @@ export default function PatientPregnancyNutrition({ week, onBack, onOpenLabRepor
 
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[1_1_480px] flex-col gap-5">
+          <PatientPublishedPrograms category="nutrition" state={programs} />
           <section className="space-y-3 rounded-[28px] bg-[#FFE7A8] p-[22px]">
             <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#7A4B00]">Food focus</p>
             <h2 className="font-serif text-[28px] font-bold leading-tight">Iron-rich foods</h2>

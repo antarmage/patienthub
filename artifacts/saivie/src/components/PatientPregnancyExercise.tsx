@@ -2,15 +2,17 @@ import React, { useState } from "react";
 import { Activity, ArrowLeft, Check, Lock } from "lucide-react";
 import PatientExercisePlusPreview from "@/components/PatientExercisePlusPreview";
 import PregnancyExerciseSafety from "@/components/PregnancyExerciseSafety";
+import PatientPublishedPrograms, { type PatientProgramsState } from "@/components/PatientPublishedPrograms";
 
 interface Props {
   week: number | null;
   onBack: () => void;
   onBookAppointment?: () => void;
   onBookSession?: () => void;
+  programs?: PatientProgramsState;
 }
 
-export default function PatientPregnancyExercise({ week, onBack, onBookAppointment, onBookSession }: Props) {
+export default function PatientPregnancyExercise({ week, onBack, onBookAppointment, onBookSession, programs }: Props) {
   const [showPlusPreview, setShowPlusPreview] = useState(false);
 
   if (showPlusPreview) {
@@ -36,6 +38,7 @@ export default function PatientPregnancyExercise({ week, onBack, onBookAppointme
 
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[1_1_480px] flex-col gap-5">
+          <PatientPublishedPrograms category="exercise" state={programs} />
           <section className="space-y-3 rounded-[28px] bg-white p-[22px]">
             <p className="text-xs font-extrabold uppercase tracking-[0.12em]">Before you start</p>
             <h2 className="font-serif text-[26px] font-bold leading-tight">Check with your doctor or midwife first.</h2>

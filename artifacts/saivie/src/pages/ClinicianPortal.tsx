@@ -20,6 +20,7 @@ import { VaccinationScheduleSettings } from "@/components/VaccinationScheduleSet
 import { ReceptionAccessSettings } from "@/components/ReceptionAccessSettings";
 import { GoogleMeetSettings } from "@/components/GoogleMeetSettings";
 import { PortalNavigation } from "@/components/PortalNavigation";
+import ProgramManager from "@/components/ProgramManager";
 import { OnlineConsultationActions } from "@/components/OnlineConsultationActions";
 import { IntakeSummaryActions } from "@/components/IntakeSummary";
 import { HpvBadge } from "@/components/HpvBadge";
@@ -2366,6 +2367,7 @@ export default function ClinicianPortal() {
         items={[
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { id: 'patient_list', label: 'Patients', icon: Users },
+            { id: 'programs', label: 'Programs', icon: Activity },
             { id: 'schedule', label: 'Schedule', icon: CalendarIcon },
             { id: 'analytics', label: 'Analytics', icon: Activity },
             { id: 'revenue', label: 'Revenue', icon: Briefcase },
@@ -2396,6 +2398,7 @@ export default function ClinicianPortal() {
 
       {/* Main Content */}
       <main className={`portal-panel flex flex-col relative bg-saivie-surface-muted ${activeView !== 'patient_detail' ? "doctor-dashboard-content" : ""}`}>
+        {activeView === "programs" && <div className="flex-1 overflow-y-auto p-4 md:p-6"><ProgramManager /></div>}
         
         {/* NEW DASHBOARD VIEW */}
         {activeView === 'dashboard' && (

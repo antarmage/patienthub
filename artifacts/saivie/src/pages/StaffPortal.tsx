@@ -4,6 +4,7 @@ import { AppointmentCalendar, type CalendarAppointment } from "@/components/Appo
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { PortalNavigation } from "@/components/PortalNavigation";
+import ProgramManager from "@/components/ProgramManager";
 import { AllInvoices } from "@/components/AllInvoices";
 import { BillingTemplates } from "@/components/BillingTemplates";
 import { Expenses } from "@/components/Expenses";
@@ -2433,6 +2434,7 @@ export default function StaffPortal() {
         { id: "dashboard", label: "Dashboard", icon: Activity },
         ...(receptionist ? [{ id: "attendance", label: "My Attendance", icon: CalendarCheck, testId: "nav-my-attendance" }] : []),
         { id: "patients", label: "My Patients", icon: Users },
+        { id: "programs", label: "Programs", icon: Activity },
         ...(receptionist ? [{ id: "paper-prescriptions", label: "Paper prescriptions", icon: FileText, testId: "tab-paper-prescriptions" }] : []),
         { id: "schedule", label: "Schedule", icon: CalendarCheck },
         ...(!receptionist ? [{ id: "reports", label: "Notes & Reports", icon: FileText }] : []),
@@ -2561,10 +2563,11 @@ export default function StaffPortal() {
 
         {/* Dashboard Content */}
         <div className={`flex-1 overflow-y-auto p-4 md:p-6 ${receptionist ? "bg-saivie-page" : ""}`}>
+          {activeView === "programs" && <ProgramManager />}
           {patientsQuery.isError && <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
             Could not load accessible patients. {patientsQuery.error.message} <button type="button" className="underline" onClick={() => void patientsQuery.refetch()}>Retry</button>
           </p>}
-          {activeRole === "nutritionist" && patientsQuery.isSuccess && patients.length === 0 && <p role="status" className="mb-4 rounded-xl border border-saivie-border bg-saivie-ivory p-3 text-sm">
+          {activeView !== "programs" && activeRole === "nutritionist" && patientsQuery.isSuccess && patients.length === 0 && <p role="status" className="mb-4 rounded-xl border border-saivie-border bg-saivie-ivory p-3 text-sm">
             No active nutrition referrals. A doctor, owner or receptionist can refer a patient to Nutrition.
           </p>}
           {activeRole === 'receptionist' && activeView === 'attendance' && <StaffAttendance />}
@@ -3582,7 +3585,7 @@ export default function StaffPortal() {
             )}
 
             {/* 3. PHYSICAL TRAINER VIEW */}
-            {activeRole === 'trainer' && (
+            {activeRole === 'trainer' && activeView !== 'programs' && (
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="grid grid-cols-2 gap-6">
                          <Card className="shadow-sm border-saivie-border">
@@ -3644,7 +3647,7 @@ export default function StaffPortal() {
             )}
 
             {/* 4. DERMATOLOGIST VIEW */}
-            {activeRole === 'dermatologist' && (
+            {activeRole === 'dermatologist' && activeView !== 'programs' && (
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="grid grid-cols-3 gap-6">
                          {patients.filter((p: any) => p.type === 'PCOS' || p.type === 'Pregnant' || p.type === 'Pregnancy').map((p: any) => (
