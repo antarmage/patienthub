@@ -16,6 +16,7 @@ import {
   patientMedicationNeedsReview,
   patientMedicationNote,
 } from "@/lib/patientMedicationDisplay";
+import { patientHealthRecordProgress } from "@/lib/patientHealthRecord";
 
 interface Props {
   patient: any;
@@ -114,12 +115,7 @@ export default function PregnancyCareDashboard({
     const status = String(item.status || "").trim().toLowerCase();
     return !status || status === "active";
   });
-  const riskSummary = typeof patient?.riskScore?.patientSummary === "string"
-    ? patient.riskScore.patientSummary
-    : "";
-  const riskLevel = typeof patient?.riskScore?.level === "string"
-    ? patient.riskScore.level
-    : "";
+  const recordProgress = patientHealthRecordProgress(patient, medications, labResults);
 
   return (
     <div className="space-y-8 pb-8">
@@ -171,29 +167,6 @@ export default function PregnancyCareDashboard({
         </div>
       </motion.section>
 
-      {riskSummary && (
-        <section className="rounded-[32px] border border-[#F0DCC4] bg-white p-7">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0 flex-1 basis-[520px]">
-              <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#6A5560]">What to watch this week</p>
-              <p className="mt-3 text-[16px] leading-[1.55] text-[#3A2A44]">{riskSummary}</p>
-            </div>
-            {riskLevel && (
-              <span className={`rounded-full px-4 py-2 text-[12px] font-extrabold ${
-                riskLevel.toLowerCase() === "critical"
-                  ? "bg-red-100 text-red-700"
-                  : riskLevel.toLowerCase() === "high"
-                    ? "bg-orange-100 text-orange-700"
-                    : "bg-emerald-100 text-emerald-700"
-              }`}>
-                {riskLevel} risk
-              </span>
-            )}
-          </div>
-          <p className="mt-3 text-[12px] text-[#6A5560]">Updated by AI · Review with your care team</p>
-        </section>
-      )}
-
       <section className="space-y-4">
         <h2 className="font-serif text-[38px] font-bold tracking-[-0.02em]">Book an appointment</h2>
         <div className="flex flex-wrap gap-5">
@@ -220,6 +193,20 @@ export default function PregnancyCareDashboard({
               </button>
             );
           })}
+        </div>
+      </section>
+
+      <section className="rounded-[32px] border border-[#F0DCC4] bg-white p-6 md:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-5">
+          <div className="max-w-xl">
+            <h2 className="font-serif text-[30px] font-bold">Health record</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#5A4552]">Visits, lab reports, medications and more in one place.</p>
+            <p className="mt-3 text-xs font-bold">{recordProgress.progress}% complete</p>
+            <div className="mt-2 h-2 w-56 max-w-full overflow-hidden rounded-full bg-[#F0DCC4]" role="progressbar" aria-label="Health record progress" aria-valuenow={recordProgress.progress} aria-valuemin={0} aria-valuemax={100}>
+              <div className="h-full rounded-full bg-[#2A1220]" style={{ width: `${recordProgress.progress}%` }} />
+            </div>
+          </div>
+          <button type="button" onClick={onOpenRecords} className="min-h-11 rounded-full bg-[#2A1220] px-5 text-sm font-bold text-white">Open health record</button>
         </div>
       </section>
 
@@ -294,12 +281,12 @@ export default function PregnancyCareDashboard({
         </section>
 
         <section className="flex min-w-0 flex-[1_1_420px] flex-col gap-4 rounded-[32px] bg-[#FFE7A8] p-8">
-          <h2 className="font-serif text-[30px] font-bold leading-[1.1]">Report for your doctor</h2>
+          <h2 className="font-serif text-[30px] font-bold leading-[1.1]">Your health record</h2>
           <p className="text-[16px] leading-[1.5] text-[#5A4552]">
-            Your weight, blood pressure and baby-movement logs in one clean summary.
+            Review your visits, lab reports and medicines in one place.
           </p>
           <button type="button" onClick={onOpenRecords} className="mt-auto h-[52px] w-fit rounded-full bg-[#2A1220] px-6 text-[16px] font-bold text-[#FFF4E6]">
-            Export as PDF
+            Open health record
           </button>
         </section>
       </div>

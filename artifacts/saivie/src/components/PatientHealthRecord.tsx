@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { authenticatedFetch as fetch } from "@/lib/authenticatedFetch";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, ChevronRight, FileText, FlaskConical, Pill, Upload } from "lucide-react";
+import { Activity, Apple, ArrowLeft, CalendarDays, Check, ChevronRight, FileText, FlaskConical, Pill, Upload } from "lucide-react";
 import { DateInput } from "@/components/ui/date-input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,6 +40,8 @@ interface Props {
   onUpdatePregnancy?: () => void;
   onBack: () => void;
   onScheduleMedicationReminder: () => void;
+  onOpenPrograms: (category: "Move" | "Nourish") => void;
+  onOpenCareTeam?: () => void;
 }
 
 const JSON_HEADERS: HeadersInit = { "Content-Type": "application/json" };
@@ -55,6 +57,8 @@ export default function PatientHealthRecord({
   onUpdatePregnancy,
   onBack,
   onScheduleMedicationReminder,
+  onOpenPrograms,
+  onOpenCareTeam,
 }: Props) {
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -69,6 +73,7 @@ export default function PatientHealthRecord({
   const [reviewed, setReviewed] = useState(false);
   const [reportDate, setReportDate] = useState("");
   const [healthValues, setHealthValues] = useState<LabValue[]>([]);
+  const [showChecklist, setShowChecklist] = useState(false);
 
   const progress = patientHealthRecordProgress(patient, medications, labResults);
   const pregnancyDueDate = typeof pregnancyEpisode?.details?.dueDate === "string"
@@ -245,9 +250,14 @@ export default function PatientHealthRecord({
 
   const activeMedications = medications.filter((medication) =>
     String(medication.status || "").toLowerCase() === "active");
+  const latestVisits = [...visitHistory].sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).slice(0, 2);
+  const latestLabs = [...labResults].sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).slice(0, 3);
+  const lmp = pregnancyEpisode?.details?.lmp;
+  const lmpTime = typeof lmp === "string" ? new Date(lmp).getTime() : NaN;
+  const week = Number.isFinite(lmpTime) ? Math.floor((Date.now() - lmpTime) / (7 * 86400000)) : null;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5 px-4 pb-32 pt-5 md:px-0 md:pb-10">
+    <div className="mx-auto max-w-[1160px] space-y-5 px-4 pb-32 pt-5 md:px-0 md:pb-10">
       <button type="button" onClick={onBack} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-saivie-plum">
         <ArrowLeft className="h-4 w-4" /> Today
       </button>
@@ -284,24 +294,34 @@ export default function PatientHealthRecord({
       </div>
 
       {section === "overview" && (
-        <section className="space-y-4" aria-label="Health record overview">
-          <Card className="overflow-hidden rounded-[28px] border-0 bg-[#FFA7B6] text-[#2A1220]">
-            <CardContent className="space-y-4 p-6 md:p-8">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold">Your health record</p>
-                  <p className="mt-1 font-serif text-4xl font-semibold">{progress.progress}%</p>
-                </div>
-                <p className="text-right text-sm font-medium">{progress.missingItems.length} {progress.missingItems.length === 1 ? "item" : "items"} to add</p>
+        <section className="space-y-6 text-[#2A1220]" aria-label="Health record overview">
+          <div className="flex flex-wrap items-center gap-8 rounded-[36px] bg-[#FFA7B6] p-6 md:p-10">
+            <div className="min-w-0 flex-[1_1_390px]">
+              <span className="inline-flex rounded-full bg-[#2A1220] px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#FFA7B6]">
+                {week !== null && week >= 0 ? `Week ${week} · ` : ""}Health record
+              </span>
+              <h2 className="mt-4 max-w-[550px] font-serif text-[42px] font-bold leading-[1.02] tracking-[-0.03em] md:text-[62px]">
+                Your health record, <em className="font-medium">in one place.</em>
+              </h2>
+              <p className="mt-4 max-w-[420px] text-base leading-relaxed">Visits, labs, medications, food and exercise, together.</p>
+            </div>
+            <div className="min-w-0 flex-[1_1_300px] rounded-[26px] bg-white p-6 md:max-w-[390px]">
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#6A5560]">Profile · {progress.progress}% complete</p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#F0DCC4]" role="progressbar" aria-label="Health record progress" aria-valuenow={progress.progress} aria-valuemin={0} aria-valuemax={100}>
+                <div className="h-full rounded-full bg-[#2A1220]" style={{ width: `${progress.progress}%` }} />
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-white/55" role="progressbar" aria-label="Health record progress" aria-valuenow={progress.progress} aria-valuemin={0} aria-valuemax={100}>
-                <div className="h-full rounded-full bg-[#2A1220] transition-all" style={{ width: `${progress.progress}%` }} />
-              </div>
-              <p className="text-sm">A little more information helps keep everything your care team needs together.</p>
-            </CardContent>
-          </Card>
+              <h3 className="mt-4 font-serif text-2xl font-bold leading-tight">{progress.missingItems.length ? "A few details would help your care team." : "Your checklist is complete."}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-[#5A4552]">
+                {progress.missingItems.length ? `Still to review: ${progress.missingItems.map((item) => item.label.toLowerCase()).join(", ")}.` : "You can review your information anytime."}
+              </p>
+              <button type="button" onClick={() => setShowChecklist((current) => !current)} aria-expanded={showChecklist} className="mt-4 min-h-11 rounded-full bg-[#2A1220] px-5 text-sm font-bold text-white">
+                {showChecklist ? "Hide checklist" : "Review my profile"}
+              </button>
+            </div>
+          </div>
+          {onOpenCareTeam && <button type="button" onClick={onOpenCareTeam} className="min-h-11 rounded-full border border-[#D9C3AE] bg-white px-5 text-sm font-bold">Appointments and care team</button>}
 
-          <Card className="rounded-[24px] border-[var(--line)] bg-white/80">
+          {showChecklist && <Card className="rounded-[24px] border-[var(--line)] bg-white/80">
             <CardContent className="space-y-1 p-4">
               <h2 className="mb-2 font-serif text-xl font-semibold text-saivie-plum">Your health record checklist</h2>
               {progress.items.map((item) => {
@@ -329,20 +349,62 @@ export default function PatientHealthRecord({
                 );
               })}
             </CardContent>
-          </Card>
+          </Card>}
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button type="button" onClick={() => setSection("medications")} className="rounded-[22px] border border-[var(--line)] bg-white/80 p-5 text-left">
-              <Pill className="h-5 w-5 text-saivie-rose" />
-              <h2 className="mt-3 font-serif text-xl font-semibold text-saivie-plum">Medications</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{activeMedications.length} current {activeMedications.length === 1 ? "medicine" : "medicines"}</p>
-            </button>
-            <button type="button" onClick={() => setSection("lab-reports")} className="rounded-[22px] border border-[var(--line)] bg-white/80 p-5 text-left">
-              <FlaskConical className="h-5 w-5 text-saivie-teal" />
-              <h2 className="mt-3 font-serif text-xl font-semibold text-saivie-plum">Lab reports</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{labResults.length} saved {labResults.length === 1 ? "result" : "results"}</p>
-            </button>
+          <h2 className="font-serif text-[36px] font-bold">Your record</h2>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <article className="flex min-h-[245px] flex-col rounded-[28px] border border-[#F0DCC4] bg-white p-6">
+              <div className="flex items-center gap-3">
+                <span className="rounded-full bg-[#E4DCFF] p-3 text-[#3A24B8]"><CalendarDays className="h-5 w-5" /></span>
+                <div><h3 className="font-serif text-2xl font-bold">Visits</h3><p className="text-xs text-[#6A5560]">{visitHistory.length} recorded</p></div>
+              </div>
+              <div className="mt-4 flex-1 text-sm">
+                {latestVisits.length ? latestVisits.map((visit) => <p key={visit.id} className="flex justify-between gap-3 border-t border-[#F0DCC4] py-3"><span>{visit.visitType || visit.diagnosis || "Care visit"}</span><span className="shrink-0 text-[#6A5560]">{visit.date || ""}</span></p>) : <p className="border-t border-[#F0DCC4] pt-3 text-[#6A5560]">Your visits will appear here.</p>}
+              </div>
+              <button type="button" onClick={() => setSection("history")} className="min-h-11 w-fit rounded-full border border-[#D9C3AE] px-5 text-sm font-bold">Open visits</button>
+            </article>
+            <article className="flex min-h-[245px] flex-col rounded-[28px] border border-[#F0DCC4] bg-white p-6">
+              <div className="flex items-center gap-3">
+                <span className="rounded-full bg-[#FFD9C9] p-3 text-[#A8341A]"><FlaskConical className="h-5 w-5" /></span>
+                <div><h3 className="font-serif text-2xl font-bold">Lab reports</h3><p className="text-xs text-[#6A5560]">{labResults.length} saved {labResults.length === 1 ? "result" : "results"}</p></div>
+              </div>
+              <div className="mt-4 flex-1 text-sm">
+                {latestLabs.length ? latestLabs.map((lab) => {
+                  const rawValue = lab.results && typeof lab.results === "object" ? lab.results.rawValue : null;
+                  const value = rawValue ?? lab.value;
+                  return <p key={lab.id} className="flex justify-between gap-3 border-t border-[#F0DCC4] py-3"><span>{lab.testName || "Lab result"}</span><span className="text-right text-[#6A5560]">{value != null ? `${value} ${lab.unit || ""}` : "Recorded"}</span></p>;
+                }) : <p className="border-t border-[#F0DCC4] pt-3 text-[#6A5560]">Your lab reports will appear here.</p>}
+              </div>
+              <button type="button" onClick={() => setSection("lab-reports")} className="min-h-11 w-fit rounded-full border border-[#D9C3AE] px-5 text-sm font-bold">Open lab reports</button>
+            </article>
+            <article className="flex min-h-[245px] flex-col rounded-[28px] border border-[#F0DCC4] bg-white p-6">
+              <div className="flex items-center gap-3">
+                <span className="rounded-full bg-[#CFF1EA] p-3 text-[#0B6B5F]"><Pill className="h-5 w-5" /></span>
+                <div><h3 className="font-serif text-2xl font-bold">Medications</h3><p className="text-xs text-[#6A5560]">{activeMedications.length} current {activeMedications.length === 1 ? "medicine" : "medicines"}</p></div>
+              </div>
+              <div className="mt-4 flex-1 text-sm">
+                {activeMedications.length ? activeMedications.slice(0, 3).map((medicine) => <p key={medicine.id} className="flex justify-between gap-3 border-t border-[#F0DCC4] py-3"><span>{medicine.name || "Medicine"}</span><span className="text-right text-[#6A5560]">{patientMedicationNeedsReview(medicine.notes) ? "Review with care team" : medicine.dose || ""}</span></p>) : <p className="border-t border-[#F0DCC4] pt-3 text-[#6A5560]">No current medicines recorded.</p>}
+              </div>
+              <button type="button" onClick={() => setSection("medications")} className="min-h-11 w-fit rounded-full border border-[#D9C3AE] px-5 text-sm font-bold">Open medications</button>
+            </article>
+            {([
+              ["Nutrition", "Explore nourishment programs.", "Nourish", Apple, "#FFE7A8"],
+              ["Exercise", "Explore movement programs at your own pace.", "Move", Activity, "#E4DCFF"],
+            ] as const).map(([title, description, category, Icon, color]) => (
+              <article key={title} className="flex min-h-[210px] flex-col rounded-[28px] border border-[#F0DCC4] bg-white p-6">
+                <div className="flex items-center gap-3"><span className="rounded-full p-3" style={{ backgroundColor: color }}><Icon className="h-5 w-5" /></span><h3 className="font-serif text-2xl font-bold">{title}</h3></div>
+                <p className="mt-4 flex-1 text-sm text-[#5A4552]">{description}</p>
+                <button type="button" onClick={() => onOpenPrograms(category)} className="min-h-11 w-fit rounded-full border border-[#D9C3AE] px-5 text-sm font-bold">Open {title.toLowerCase()}</button>
+              </article>
+            ))}
+            <article className="flex min-h-[210px] flex-col rounded-[28px] bg-[#FFE7A8] p-6">
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em]">Add to your record</p>
+              <h3 className="mt-3 font-serif text-2xl font-bold">Upload, review and confirm.</h3>
+              <p className="mt-2 flex-1 text-sm leading-relaxed">Add a lab report, check the extracted values and confirm before saving.</p>
+              <button type="button" onClick={() => setSection("lab-reports")} className="min-h-11 w-fit rounded-full bg-[#2A1220] px-5 text-sm font-bold text-white">Open lab reports</button>
+            </article>
           </div>
+          <p className="text-sm text-[#5A4552]">Sharing and export options are not available here yet. Contact your care team if you have questions about your records.</p>
         </section>
       )}
 

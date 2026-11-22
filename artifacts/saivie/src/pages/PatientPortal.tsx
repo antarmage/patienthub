@@ -96,6 +96,8 @@ export default function PatientPortal() {
   });
   const [mode, setMode] = useState<PatientPortalMode>("general");
   const [initialTracker, setInitialTracker] = useState<PregnancyTrackerTarget | null>(null);
+  const [initialProgramCategory, setInitialProgramCategory] = useState<"Move" | "Nourish" | null>(null);
+  const [careOverviewKey, setCareOverviewKey] = useState(0);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingStep, setBookingStep] = useState<'type'|'date'|'confirm'|'done'>('type');
   const [bookingType, setBookingType] = useState<'doctor'|'nutritionist'|'blood_test'|null>(null);
@@ -561,14 +563,18 @@ export default function PatientPortal() {
               <motion.button
                 key={value}
                 type="button"
-                onClick={() => setActiveTab(value)}
+                onClick={() => {
+                  if (value === "programs") setInitialProgramCategory(null);
+                  if (value === "care") setCareOverviewKey((key) => key + 1);
+                  setActiveTab(value);
+                }}
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.96 }}
                 transition={{ duration: 0.16 }}
                 className={`rounded-full px-5 py-2 text-xs font-semibold transition ${
                   activeTab === "stage"
                     ? value === "home" ? "bg-[#FFB32C] text-[#23122d]" : "text-white hover:bg-white/10"
-                    : (activeTab === value || (value === "care" && activeTab === "record") || (value === "home" && activeTab === "pregnancy-update")) ? "bg-[#35212f] text-white" : "text-saivie-plum hover:bg-saivie-ivory"
+                    : (activeTab === value || (value === "care" && (activeTab === "record" || activeTab === "care-team")) || (value === "home" && activeTab === "pregnancy-update")) ? "bg-[#35212f] text-white" : "text-saivie-plum hover:bg-saivie-ivory"
                 }`}
               >
                 {label}
@@ -689,23 +695,25 @@ export default function PatientPortal() {
           </TabsContent>
 
           <TabsContent value="programs" className="animate-in slide-in-from-bottom-4 duration-500">
-            <PatientPrograms pregnancy={mode === "pregnancy"} week={pregnancyWeek} mode={mode} />
+            <PatientPrograms key={initialProgramCategory ?? "overview"} pregnancy={mode === "pregnancy"} week={pregnancyWeek} mode={mode} initialCategory={initialProgramCategory} />
           </TabsContent>
 
           <TabsContent value="care" className="animate-in slide-in-from-bottom-4 duration-500 space-y-6 pb-8">
             {mode === 'pregnancy' && patient?.id && (
-              <PregnancyCareDashboard
+              <PatientHealthRecord
+                key={careOverviewKey}
                 patient={patient}
-                week={pregnancyWeek}
-                appointments={(patientAppointments as any[]) || []}
+                patientId={Number(patient.id)}
                 medications={(medications as any[]) || []}
                 labResults={(labResults as any[]) || []}
                 visitHistory={(visitHistory as any[]) || []}
-                weightLogs={(weightLogs as any[]) || []}
-                bpLogs={(bpLogs as any[]) || []}
-                onBook={openBooking}
-                onOpenTrack={() => { setInitialTracker(null); setActiveTab("track"); }}
-                onOpenRecords={() => openHealthRecord("overview")}
+                initialSection="overview"
+                pregnancyEpisode={currentPregnancyEpisode}
+                onUpdatePregnancy={() => setActiveTab("pregnancy-update")}
+                onBack={() => setActiveTab("home")}
+                onScheduleMedicationReminder={scheduleMedicationReminder}
+                onOpenPrograms={(category) => { setInitialProgramCategory(category); setActiveTab("programs"); }}
+                onOpenCareTeam={() => setActiveTab("care-team")}
               />
             )}
             {mode !== "pregnancy" && patient?.id && (
@@ -723,6 +731,24 @@ export default function PatientPortal() {
                 </div>
                 {mode === "menopause" && <div className="mt-6"><PatientMenopauseCare patientId={patient.id} patientName={patient.name} /></div>}
               </section>
+            )}
+          </TabsContent>
+
+          <TabsContent value="care-team" className="animate-in slide-in-from-bottom-4 duration-500 space-y-6 pb-8">
+            {mode === 'pregnancy' && patient?.id && (
+              <PregnancyCareDashboard
+                patient={patient}
+                week={pregnancyWeek}
+                appointments={(patientAppointments as any[]) || []}
+                medications={(medications as any[]) || []}
+                labResults={(labResults as any[]) || []}
+                visitHistory={(visitHistory as any[]) || []}
+                weightLogs={(weightLogs as any[]) || []}
+                bpLogs={(bpLogs as any[]) || []}
+                onBook={openBooking}
+                onOpenTrack={() => { setInitialTracker(null); setActiveTab("track"); }}
+                onOpenRecords={() => setActiveTab("care")}
+              />
             )}
           </TabsContent>
 
@@ -755,6 +781,8 @@ export default function PatientPortal() {
               onUpdatePregnancy={() => setActiveTab("pregnancy-update")}
               onBack={() => setActiveTab("home")}
               onScheduleMedicationReminder={scheduleMedicationReminder}
+              onOpenPrograms={(category) => { setInitialProgramCategory(category); setActiveTab("programs"); }}
+              onOpenCareTeam={mode === "pregnancy" ? () => setActiveTab("care-team") : undefined}
             />}
           </TabsContent>
 
@@ -938,7 +966,7 @@ export default function PatientPortal() {
              />
              <NavButton
                active={activeTab === 'programs'}
-               onClick={() => setActiveTab('programs')}
+               onClick={() => { setInitialProgramCategory(null); setActiveTab('programs'); }}
                icon={<Activity className="w-5 h-5" />}
                label="Programs"
              />
@@ -951,8 +979,8 @@ export default function PatientPortal() {
                />
              )}
              <NavButton 
-               active={activeTab === 'care' || activeTab === 'record'}
-               onClick={() => setActiveTab('care')} 
+               active={activeTab === 'care' || activeTab === 'record' || activeTab === 'care-team'}
+               onClick={() => { setCareOverviewKey((key) => key + 1); setActiveTab('care'); }}
                icon={<Heart className="w-5 h-5" />} 
                label="My Care" 
              />

@@ -7,11 +7,12 @@ interface Props {
   pregnancy: boolean;
   week: number | null;
   mode?: string;
+  initialCategory?: "Mind" | "Move" | "Nourish" | null;
 }
 
-export default function PatientPrograms({ pregnancy, week, mode }: Props) {
+export default function PatientPrograms({ pregnancy, week, mode, initialCategory = null }: Props) {
   const currentWeek = week ?? 24;
-  const [activeCategory, setActiveCategory] = useState<"Mind" | "Move" | "Nourish" | null>(null);
+  const [activeCategory, setActiveCategory] = useState<"Mind" | "Move" | "Nourish" | null>(initialCategory);
   const weekGuide = getWeekData(currentWeek);
 
   if (mode === "postpartum" || mode === "menopause") {
