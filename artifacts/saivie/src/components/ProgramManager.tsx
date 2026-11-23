@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 import { receptionRequest } from "@/lib/authenticatedFetch";
 import { programInputSchema, programSchema, type Program, type ProgramInput } from "../../../../lib/db/src/patient-programs";
 
-const responseSchema = z.object({ programs: z.array(programSchema), canPublish: z.boolean() });
+const responseSchema = z.object({ programs: z.array(programSchema), canCreate: z.boolean(), canPublish: z.boolean() });
 const fieldClass = "w-full rounded-lg border border-saivie-border bg-white px-3 py-2 text-sm";
 const buttonClass = "min-h-11 rounded-full bg-saivie-plum px-5 text-sm font-bold text-white disabled:opacity-50";
 const secondaryClass = "min-h-11 rounded-full border border-saivie-border bg-white px-5 text-sm font-bold disabled:opacity-50";
@@ -44,13 +44,13 @@ export default function ProgramManager() {
     <section className="mx-auto max-w-5xl space-y-5 text-saivie-plum">
       <header className="space-y-2">
         <h1 className="font-serif text-3xl font-bold">Programs</h1>
-        <p className="text-sm">Create Mind, Nutrition, and Exercise programs. A clinician or owner reviews and publishes each version. Published programs appear in the patient portal.</p>
+        <p className="text-sm">Owners create Mind, Nutrition, and Exercise programs. A clinician or owner reviews and publishes each version. Published programs appear in the patient portal.</p>
         <p className="text-sm">To change a published program, a clinician or owner must unpublish it first. It will be hidden from patients until reviewed and published again.</p>
       </header>
       {query.isError && <p role="alert">Refresh failed: {query.error.message}. Reload before making changes.</p>}
       {mutation.isError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{mutation.error.message}</p>}
-      <button type="button" className={buttonClass} disabled={!!editing || !!reviewing || mutation.isPending || query.isError} onClick={() => { mutation.reset(); setEditing("new"); }}>Create program</button>
-      {editing && <ProgramForm key={editing === "new" ? "new" : editing.id} program={editing} busy={mutation.isPending}
+      {query.data.canCreate && <button type="button" className={buttonClass} disabled={!!editing || !!reviewing || mutation.isPending || query.isError} onClick={() => { mutation.reset(); setEditing("new"); }}>Create program</button>}
+      {editing && (editing !== "new" || query.data.canCreate) && <ProgramForm key={editing === "new" ? "new" : editing.id} program={editing} busy={mutation.isPending}
         onCancel={() => { setEditing(null); mutation.reset(); }}
         onSave={(input) => mutation.mutate(editing === "new"
           ? { path: "", method: "POST", body: input }

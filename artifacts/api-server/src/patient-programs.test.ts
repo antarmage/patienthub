@@ -36,8 +36,12 @@ test("program routes require staff and restrict publishing to reviewers", async 
     assert.equal((await request("/api/program-management", "patient")).status, 403);
     assert.equal((await request("/api/patient-programs", "staff")).status, 403);
     assert.deepEqual(await (await request("/api/patient-programs", "patient")).json(), []);
-    assert.equal((await request("/api/program-management", "staff", "POST", { ...input, status: "published" })).status, 400);
-    const created = await request("/api/program-management", "staff", "POST", { ...input, category: "mind", price: 1250 });
+    for (const role of ["staff", "receptionist", "admin", "nutritionist", "trainer", "clinician", "patient"]) {
+      assert.equal((await request("/api/program-management", role, "POST", input)).status, 403, role);
+    }
+    assert.deepEqual(actions, []);
+    assert.equal((await request("/api/program-management", "owner", "POST", { ...input, status: "published" })).status, 400);
+    const created = await request("/api/program-management", "owner", "POST", { ...input, category: "mind", price: 1250 });
     assert.equal(created.status, 201);
     const createdBody: unknown = await created.json();
     assert.ok(createdBody && typeof createdBody === "object" && "price" in createdBody);
@@ -48,7 +52,9 @@ test("program routes require staff and restrict publishing to reviewers", async 
     assert.equal((await request("/api/program-management/1/publish", "owner", "POST", { expectedVersion: 1, reviewed: true })).status, 200);
     assert.deepEqual(actions, ["create", "publish"]);
     assert.equal((await request("/api/program-management", "clinician")).headers.get("cache-control"), "private, no-store");
-    assert.deepEqual(await (await request("/api/program-management", "staff")).json(), { programs: [draft], canPublish: false });
+    assert.deepEqual(await (await request("/api/program-management", "staff")).json(), { programs: [draft], canCreate: false, canPublish: false });
+    assert.deepEqual(await (await request("/api/program-management", "receptionist")).json(), { programs: [draft], canCreate: false, canPublish: false });
+    assert.deepEqual(await (await request("/api/program-management", "owner")).json(), { programs: [draft], canCreate: true, canPublish: true });
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 

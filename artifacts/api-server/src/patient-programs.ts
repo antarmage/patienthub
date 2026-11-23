@@ -99,8 +99,9 @@ export function registerPatientPrograms(app: Express, store: ReturnType<typeof c
         if ((action === "publish" || action === "unpublish") && !["clinician", "owner"].includes(actor.role)) {
           res.status(403).json({ error: "A clinician or owner must review and publish programs." }); return;
         }
-        if (action === "list") { res.json({ programs: await store.listStaff(), canPublish: ["clinician", "owner"].includes(actor.role) }); return; }
+        if (action === "list") { res.json({ programs: await store.listStaff(), canCreate: actor.role === "owner", canPublish: ["clinician", "owner"].includes(actor.role) }); return; }
         if (action === "create") {
+          if (actor.role !== "owner") { res.status(403).json({ error: "Only an owner can create programs." }); return; }
           const parsed = programInputSchema.safeParse(req.body);
           if (!parsed.success) { res.status(400).json({ error: parsed.error.issues.map((issue) => issue.message).join("; ") }); return; }
           res.status(201).json(await store.create(parsed.data, actor.userId)); return;
