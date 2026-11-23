@@ -5,7 +5,24 @@ import { getWeekData } from "@/components/WeekByWeekTimeline";
 import PatientPregnancyNutrition from "@/components/PatientPregnancyNutrition";
 import PatientPregnancyExercise from "@/components/PatientPregnancyExercise";
 import PatientSessionBooking from "@/components/PatientSessionBooking";
-import type { PatientProgramsState } from "@/components/PatientPublishedPrograms";
+import PatientPublishedPrograms, { type PatientProgramsState } from "@/components/PatientPublishedPrograms";
+
+export interface PatientClinician {
+  id: number;
+  name: string;
+  role?: string | null;
+  specialty?: string | null;
+  qualification?: string | null;
+  additionalQualifications?: string | null;
+  photoUrl?: string | null;
+}
+
+export interface PatientCliniciansState {
+  providers: PatientClinician[] | undefined;
+  loading: boolean;
+  error: boolean;
+  retry: () => void;
+}
 
 interface Props {
   pregnancy: boolean;
@@ -16,9 +33,10 @@ interface Props {
   onBookNutrition?: () => void;
   onBookAppointment?: () => void;
   programs?: PatientProgramsState;
+  clinicians?: PatientCliniciansState;
 }
 
-export default function PatientPrograms({ pregnancy, week, mode, initialCategory = null, onOpenLabReports, onBookNutrition, onBookAppointment, programs }: Props) {
+export default function PatientPrograms({ pregnancy, week, mode, initialCategory = null, onOpenLabReports, onBookNutrition, onBookAppointment, programs, clinicians }: Props) {
   const currentWeek = week ?? 24;
   const [activeCategory, setActiveCategory] = useState<"Mind" | "Move" | "Nourish" | null>(initialCategory);
   const [showSessionBooking, setShowSessionBooking] = useState(false);
@@ -28,7 +46,7 @@ export default function PatientPrograms({ pregnancy, week, mode, initialCategory
   if (pregnancy && showSessionBooking && requestAppointment) {
     return (
       <div className="pb-24">
-        <PatientSessionBooking week={week} backLabel={activeCategory === "Nourish" ? "Nutrition" : "Exercise"} onBack={() => { setShowSessionBooking(false); window.scrollTo(0, 0); }} onRequestAppointment={requestAppointment} />
+        <PatientSessionBooking week={week} backLabel={activeCategory === "Nourish" ? "Nutrition" : activeCategory === "Move" ? "Exercise" : "Programs"} onBack={() => { setShowSessionBooking(false); window.scrollTo(0, 0); }} onRequestAppointment={requestAppointment} />
       </div>
     );
   }
@@ -86,17 +104,6 @@ export default function PatientPrograms({ pregnancy, week, mode, initialCategory
         ? "Gentle mind practices can help with birth preparation, sleep and anxious thoughts. Choose support that feels manageable."
         : "Estrogen is high, and focus and confidence often peak. A good week for communication and goal-setting work.",
       ledBy: "Led by clinical psychologists.",
-      programs: pregnancy
-        ? [
-            ["Birth preparation", "6 weeks · weekly sessions", "Practices for confidence and birth planning."] as const,
-            ["Pregnancy sleep reset", "4 weeks · 15 min a day", "Habits for deeper, more supported rest."] as const,
-            ["Calm and mood", "8 weeks · weekly sessions", "Understand and plan around mood shifts."] as const,
-          ]
-        : [
-            ["Stress and focus", "4 weeks · 10 min a day", "Breathing, grounding and focus skills."] as const,
-            ["Sleep reset", "6 weeks · 15 min a day", "Habits and techniques for deeper sleep."] as const,
-            ["Cycle and mood", "8 weeks · weekly sessions", "Understand and plan around mood shifts."] as const,
-          ],
       sessionTitle: "Breathing reset",
       sessionDuration: "8 min",
       sessionSteps: [
@@ -118,17 +125,6 @@ export default function PatientPrograms({ pregnancy, week, mode, initialCategory
         ? "Choose low-impact movement that is comfortable for your body and consistent with your clinician's advice."
         : "Estrogen is high, so many women recover faster and can push harder. A good week to progress a lift.",
       ledBy: pregnancy ? "Led by women's health physiotherapists." : "Led by physiotherapists and coaches.",
-      programs: pregnancy
-        ? [
-            ["Prenatal strength", "12 weeks · 3 sessions a week", "Low-impact strength matched to your trimester."] as const,
-            ["Pregnancy mobility", "4 weeks · 15 min a day", "Gentle stretches for hips, ribs and lower back."] as const,
-            ["Pelvic floor basics", "6 weeks · 10 min a day", "Foundations for core and pelvic-floor control."] as const,
-          ]
-        : [
-            ["Cycle-synced strength", "8 weeks · 3 sessions a week", "Progressive strength that adapts by phase."] as const,
-            ["Gentle mobility", "4 weeks · 15 min a day", "Stretch and release for tight hips and back."] as const,
-            ["Pelvic floor basics", "6 weeks · 10 min a day", "Foundations for core and pelvic-floor control."] as const,
-          ],
       sessionTitle: pregnancy ? "Prenatal lower-body strength" : "Lower-body strength",
       sessionDuration: pregnancy ? "25 min" : "35 min",
       sessionSteps: pregnancy
@@ -156,17 +152,6 @@ export default function PatientPrograms({ pregnancy, week, mode, initialCategory
         ? weekGuide.nutrition
         : "Your body is using protein well this week. Lentils, eggs or paneer at lunch keep energy steady.",
       ledBy: "Led by registered dietitians.",
-      programs: pregnancy
-        ? [
-            ["Pregnancy balanced plates", "6 weeks · weekly plan", "Simple meals for iron, protein and calcium."] as const,
-            ["Iron and energy", "4 weeks · weekly plan", "Foods and habits to support steady energy."] as const,
-            ["Everyday pregnancy meals", "6 weeks · weekly plan", "Quick recipes you can repeat."] as const,
-          ]
-        : [
-            ["Eat for your phase", "4 weeks · weekly plan", "Simple meals matched to each phase."] as const,
-            ["Iron and energy", "4 weeks · weekly plan", "Foods and habits to support steady energy."] as const,
-            ["Everyday balanced plates", "6 weeks · weekly plan", "Quick recipes you can repeat."] as const,
-          ],
       sessionTitle: "Protein-forward lunch plan",
       sessionDuration: "Weekly",
       sessionSteps: [
@@ -192,6 +177,12 @@ export default function PatientPrograms({ pregnancy, week, mode, initialCategory
           category={activeCategory}
           page={categoryPages[activeCategory]}
           onBack={() => setActiveCategory(null)}
+          programs={programs}
+          clinicians={clinicians}
+          onBookAppointment={() => {
+            if (pregnancy && requestAppointment) setShowSessionBooking(true);
+            else onBookAppointment?.();
+          }}
         />
       )}
     </div>
@@ -282,6 +273,9 @@ function CategoryDetail({
   category,
   page,
   onBack,
+  programs,
+  clinicians,
+  onBookAppointment,
 }: {
   pregnancy: boolean;
   category: "Mind" | "Move" | "Nourish";
@@ -293,13 +287,15 @@ function CategoryDetail({
     whyLabel: string;
     whyText: string;
     ledBy: string;
-    programs: readonly (readonly [string, string, string])[];
     sessionTitle: string;
     sessionDuration: string;
     sessionSteps: readonly string[];
     disclaimer: string;
   };
   onBack: () => void;
+  programs?: PatientProgramsState;
+  clinicians?: PatientCliniciansState;
+  onBookAppointment?: () => void;
 }) {
   const heroTints = {
     Mind: "#E4DCFF",
@@ -341,21 +337,8 @@ function CategoryDetail({
       </motion.section>
 
       <section className="space-y-4">
-        <h2 className="font-serif text-[38px] font-bold tracking-[-0.02em]">Programs</h2>
         <p className="text-[16px] text-[#6A5560]">{page.ledBy}</p>
-        <div className="flex flex-wrap gap-5">
-          {page.programs.map(([title, meta, copy]) => (
-            <article key={title} className="flex min-w-0 flex-[1_1_300px] flex-col gap-3 rounded-[32px] border border-[#F0DCC4] bg-white p-7">
-              <h3 className="font-serif text-[26px] font-bold leading-[1.15]">{title}</h3>
-              <p className="text-[14px] font-bold text-[#6A5560]">{meta}</p>
-              <p className="text-[16px] leading-[1.5] text-[#5A4552]">{copy}</p>
-              <div className="mt-auto flex items-center justify-between gap-3">
-                <span className="text-[14px] font-bold text-[#6A5560]">[PRICE]</span>
-                <button type="button" className="min-h-[44px] rounded-full bg-[#2A1220] px-5 text-[15px] font-bold text-white">Start</button>
-              </div>
-            </article>
-          ))}
-        </div>
+        <PatientPublishedPrograms category={category === "Mind" ? "mind" : category === "Move" ? "exercise" : "nutrition"} state={programs} />
       </section>
 
       <section className="flex flex-wrap gap-5">
@@ -376,15 +359,27 @@ function CategoryDetail({
 
         <article className="flex min-w-0 flex-[1_1_500px] flex-col gap-4 rounded-[32px] bg-[#FFF8EF] p-7">
           <h2 className="font-serif text-[30px] font-bold">Meet the clinicians</h2>
-          <div className="grid grid-cols-3 gap-3">
-            {[1, 2, 3].map((clinician) => (
-              <div key={clinician} className="text-center">
-                <div className="flex aspect-[4/5] items-center justify-center rounded-[20px] bg-[#E8D7C1] text-[12px] font-bold text-[#6A5560]">[PHOTO]</div>
-                <p className="mt-2 text-[14px] font-bold">[Dr. Name]</p>
-                <p className="text-[12px] text-[#6A5560]">[Credentials]</p>
-              </div>
-            ))}
-          </div>
+          {clinicians?.loading ? <p role="status" className="text-sm">Loading clinician profiles...</p>
+            : clinicians?.error ? <p role="alert" className="text-sm">Unable to load clinician profiles. <button type="button" className="font-bold underline" onClick={clinicians.retry}>Retry</button></p>
+            : (clinicians?.providers || []).length === 0 ? <p className="text-sm text-[#6A5560]">No clinician profiles are available yet.</p>
+            : <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {(clinicians?.providers || []).slice(0, 3).map((clinician) => {
+                const clinicianName = clinician.name.trim() || "Clinician";
+                const credentials = [clinician.qualification, clinician.additionalQualifications, clinician.specialty]
+                  .filter((value): value is string => !!value?.trim())
+                  .join(" · ") || clinician.role || "Care team";
+                const initials = clinicianName.split(/\s+/).slice(0, 2).map((name) => name[0]).join("").toUpperCase();
+                return (
+                  <article key={clinician.id} className="text-center">
+                    {clinician.photoUrl
+                      ? <img src={clinician.photoUrl} alt={clinicianName} className="aspect-[4/5] w-full rounded-[20px] object-cover" />
+                      : <div role="img" aria-label={`Profile photo unavailable for ${clinicianName}`} className="flex aspect-[4/5] items-center justify-center rounded-[20px] bg-[#E8D7C1] font-serif text-3xl font-bold text-[#6A5560]">{initials}</div>}
+                    <p className="mt-2 text-[14px] font-bold">{clinicianName}</p>
+                    <p className="text-[12px] text-[#6A5560]">{credentials}</p>
+                  </article>
+                );
+              })}
+            </div>}
         </article>
       </section>
 
@@ -410,10 +405,10 @@ function CategoryDetail({
           <h2 className="font-serif text-[30px] font-bold">Not sure which program fits?</h2>
           <p className="mt-2 max-w-[48ch] text-[16px] leading-[1.5]">Talk to a clinician and get a plan matched to your stage.</p>
         </div>
-        <button type="button" className="min-h-[52px] rounded-full bg-[#FFA7B6] px-6 text-[16px] font-bold text-[#2A1220]">Book a consult</button>
+        <button type="button" onClick={onBookAppointment} className="min-h-[52px] rounded-full bg-[#FFA7B6] px-6 text-[16px] font-bold text-[#2A1220]">Book a consult</button>
       </section>
 
-      <p className="text-[12px] leading-[1.5] text-[#6A5560]">{page.disclaimer} Content shown is sample and needs clinical review before launch.</p>
+      <p className="text-[12px] leading-[1.5] text-[#6A5560]">{page.disclaimer} Program details are maintained by your care team.</p>
     </div>
   );
 }

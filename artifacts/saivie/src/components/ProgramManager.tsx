@@ -8,6 +8,9 @@ const responseSchema = z.object({ programs: z.array(programSchema), canPublish: 
 const fieldClass = "w-full rounded-lg border border-saivie-border bg-white px-3 py-2 text-sm";
 const buttonClass = "min-h-11 rounded-full bg-saivie-plum px-5 text-sm font-bold text-white disabled:opacity-50";
 const secondaryClass = "min-h-11 rounded-full border border-saivie-border bg-white px-5 text-sm font-bold disabled:opacity-50";
+const formatPrice = (price: number | null, tier: "free" | "plus") => price === null
+  ? tier === "free" ? "Free" : "Price not set"
+  : new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(price);
 
 export default function ProgramManager() {
   const cache = useQueryClient();
@@ -41,7 +44,7 @@ export default function ProgramManager() {
     <section className="mx-auto max-w-5xl space-y-5 text-saivie-plum">
       <header className="space-y-2">
         <h1 className="font-serif text-3xl font-bold">Programs</h1>
-        <p className="text-sm">Create pregnancy nutrition and exercise programs. A clinician or owner reviews and publishes each version. Published Free programs appear in the patient portal; Plus remains staff-only.</p>
+        <p className="text-sm">Create Mind, Nutrition, and Exercise programs. A clinician or owner reviews and publishes each version. Published programs appear in the patient portal.</p>
         <p className="text-sm">To change a published program, a clinician or owner must unpublish it first. It will be hidden from patients until reviewed and published again.</p>
       </header>
       {query.isError && <p role="alert">Refresh failed: {query.error.message}. Reload before making changes.</p>}
@@ -56,7 +59,7 @@ export default function ProgramManager() {
       <div className="space-y-4">
         {query.data.programs.map((program) => (
           <article key={program.id} className="space-y-3 rounded-2xl border border-saivie-border bg-white p-5">
-            <p className="text-xs font-bold uppercase tracking-wide">{program.category} · {program.tier} · {program.status} · version {program.version}</p>
+            <p className="text-xs font-bold uppercase tracking-wide">{program.category} · {program.tier} · {formatPrice(program.price, program.tier)} · {program.status} · version {program.version}</p>
             <h2 className="font-serif text-2xl font-bold">{program.title}</h2>
             {program.description && <p className="whitespace-pre-wrap text-sm">{program.description}</p>}
             <ol className="list-decimal space-y-3 pl-5">
@@ -76,7 +79,7 @@ export default function ProgramManager() {
                 {program.status === "draft" && <button type="button" className={secondaryClass} disabled={!!editing || !!reviewing || mutation.isPending || query.isError} onClick={() => { mutation.reset(); setEditing(program); }}>Edit draft</button>}
                 {program.status === "draft" && query.data.canPublish && <button type="button" className={secondaryClass} disabled={!!editing || !!reviewing || mutation.isPending || query.isError} onClick={() => { mutation.reset(); setReviewing(program); setReviewed(false); }}>Review for publishing</button>}
                 {program.status === "published" && query.data.canPublish && <button type="button" className={secondaryClass} disabled={!!editing || !!reviewing || mutation.isPending || query.isError} onClick={() => {
-                  if (window.confirm("Unpublish this program? Free programs will no longer be shown to patients.")) mutation.mutate({ path: `/${program.id}/unpublish`, method: "POST", body: { expectedVersion: program.version } });
+                  if (window.confirm("Unpublish this program? It will no longer be shown to patients.")) mutation.mutate({ path: `/${program.id}/unpublish`, method: "POST", body: { expectedVersion: program.version } });
                 }}>Unpublish</button>}
               </div>
             )}
@@ -91,8 +94,8 @@ function ProgramForm({ program, busy, onCancel, onSave }: {
   program: Program | "new"; busy: boolean; onCancel: () => void; onSave: (input: ProgramInput) => void;
 }) {
   const [input, setInput] = useState<ProgramInput>(program === "new"
-    ? { title: "", description: "", category: "nutrition", tier: "free", sessions: [] }
-    : { title: program.title, description: program.description, category: program.category, tier: program.tier, sessions: program.sessions });
+    ? { title: "", description: "", category: "nutrition", tier: "free", price: null, sessions: [] }
+    : { title: program.title, description: program.description, category: program.category, tier: program.tier, price: program.price, sessions: program.sessions });
   const [error, setError] = useState("");
   return (
     <form className="space-y-4 rounded-2xl border border-saivie-border bg-white p-5" onSubmit={(event) => {
@@ -106,9 +109,10 @@ function ProgramForm({ program, busy, onCancel, onSave }: {
         <label className="block space-y-1 text-sm font-semibold">Title<input className={fieldClass} required maxLength={120} value={input.title} onChange={(event) => setInput({ ...input, title: event.target.value })} /></label>
         <label className="block space-y-1 text-sm font-semibold">Description<textarea className={fieldClass} maxLength={2000} value={input.description} onChange={(event) => setInput({ ...input, description: event.target.value })} /></label>
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block space-y-1 text-sm font-semibold">Category<select className={fieldClass} value={input.category} onChange={(event) => setInput({ ...input, category: programInputSchema.shape.category.parse(event.target.value) })}><option value="nutrition">Nutrition</option><option value="exercise">Exercise</option></select></label>
-          <label className="block space-y-1 text-sm font-semibold">Access<select className={fieldClass} value={input.tier} onChange={(event) => setInput({ ...input, tier: programInputSchema.shape.tier.parse(event.target.value) })}><option value="free">Free</option><option value="plus">Plus (staff-only)</option></select></label>
+          <label className="block space-y-1 text-sm font-semibold">Category<select className={fieldClass} value={input.category} onChange={(event) => setInput({ ...input, category: programInputSchema.shape.category.parse(event.target.value) })}><option value="mind">Mind</option><option value="nutrition">Nourish</option><option value="exercise">Move</option></select></label>
+          <label className="block space-y-1 text-sm font-semibold">Access<select className={fieldClass} value={input.tier} onChange={(event) => setInput({ ...input, tier: programInputSchema.shape.tier.parse(event.target.value) })}><option value="free">Free</option><option value="plus">Plus</option></select></label>
         </div>
+        <label className="block space-y-1 text-sm font-semibold">Price (INR)<input className={fieldClass} type="number" min={0} max={2147483647} step={1} value={input.price ?? ""} onChange={(event) => setInput({ ...input, price: event.target.value === "" ? null : Number(event.target.value) })} /><span className="block text-xs font-normal text-saivie-plum">Leave blank to show Free or Price available from your care team.</span></label>
         <h3 className="font-bold">Sessions</h3>
         {input.sessions.map((session, index) => <div key={index} className="space-y-3 rounded-xl border border-saivie-border p-3">
           <h4 className="font-semibold">Session {index + 1}</h4>

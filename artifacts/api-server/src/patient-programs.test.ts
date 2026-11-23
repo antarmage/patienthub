@@ -8,7 +8,7 @@ import { createPatientProgramsStore, ensurePatientProgramsSchema, registerPatien
 import type { Program, ProgramInput } from "../../../lib/db/src/patient-programs";
 
 const input: ProgramInput = {
-  title: "Gentle movement", description: "A reviewed program", category: "exercise", tier: "free",
+  title: "Gentle movement", description: "A reviewed program", category: "exercise", tier: "free", price: null,
   sessions: [{ title: "First session", content: "Session instructions" }],
 };
 
@@ -37,7 +37,11 @@ test("program routes require staff and restrict publishing to reviewers", async 
     assert.equal((await request("/api/patient-programs", "staff")).status, 403);
     assert.deepEqual(await (await request("/api/patient-programs", "patient")).json(), []);
     assert.equal((await request("/api/program-management", "staff", "POST", { ...input, status: "published" })).status, 400);
-    assert.equal((await request("/api/program-management", "staff", "POST", input)).status, 201);
+    const created = await request("/api/program-management", "staff", "POST", { ...input, category: "mind", price: 1250 });
+    assert.equal(created.status, 201);
+    const createdBody: unknown = await created.json();
+    assert.ok(createdBody && typeof createdBody === "object" && "price" in createdBody);
+    assert.equal(createdBody.price, 1250);
     assert.equal((await request("/api/program-management/1/publish", "staff", "POST", { expectedVersion: 1, reviewed: true })).status, 403);
     assert.equal((await request("/api/program-management/1/unpublish", "staff", "POST", { expectedVersion: 1 })).status, 403);
     assert.equal((await request("/api/program-management/1/publish", "clinician", "POST", { expectedVersion: 1 })).status, 400);
@@ -48,7 +52,7 @@ test("program routes require staff and restrict publishing to reviewers", async 
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
-test("program storage only exposes reviewed Free versions and locks published content",
+test("program storage exposes published tiers, persists prices, and locks published content",
   { skip: !process.env.TEST_PROGRAMS_DATABASE_URL }, async () => {
     const schema = `program_test_${randomUUID().replaceAll("-", "")}`;
     const admin = new pg.Pool({ connectionString: process.env.TEST_PROGRAMS_DATABASE_URL });
@@ -58,15 +62,16 @@ test("program storage only exposes reviewed Free versions and locks published co
       await ensurePatientProgramsSchema(pool); await ensurePatientProgramsSchema(pool);
       const store = createPatientProgramsStore(pool);
       const free = await store.create(input, "staff");
-      const plus = await store.create({ ...input, title: "Plus", tier: "plus" }, "staff");
+      const plus = await store.create({ ...input, title: "Plus", category: "mind", tier: "plus", price: 1800 }, "staff");
       assert.deepEqual(await store.listPatient(), []);
       const published = await store.change(free.id, free.version, "doctor", "publish");
       await store.change(plus.id, plus.version, "doctor", "publish");
-      assert.deepEqual((await store.listPatient()).map((program) => program.id), [free.id]);
+      assert.deepEqual((await store.listPatient()).map((program) => program.id), [free.id, plus.id]);
+      assert.equal((await store.listPatient()).find((program) => program.id === plus.id)?.price, 1800);
       await assert.rejects(store.change(free.id, published.version, "staff", "edit", input), { status: 409 });
       await assert.rejects(store.change(free.id, free.version, "doctor", "unpublish"), { status: 409 });
       const unpublished = await store.change(free.id, published.version, "doctor", "unpublish");
-      assert.deepEqual(await store.listPatient(), []);
+      assert.deepEqual((await store.listPatient()).map((program) => program.id), [plus.id]);
       const updated = await store.change(free.id, unpublished.version, "staff", "edit", { ...input, title: "Changed" });
       await assert.rejects(store.change(free.id, updated.version - 1, "doctor", "publish"), { status: 409 });
       const empty = await store.create({ ...input, sessions: [] }, "staff");
@@ -80,7 +85,7 @@ test("program storage only exposes reviewed Free versions and locks published co
       const backToDraft = await store.change(free.id, reviewed.version, "doctor", "unpublish");
       const changedTier = await store.change(free.id, backToDraft.version, "staff", "edit", { ...input, tier: "plus" });
       await store.change(free.id, changedTier.version, "doctor", "publish");
-      assert.deepEqual(await store.listPatient(), []);
+      assert.deepEqual((await store.listPatient()).map((program) => program.id), [free.id, plus.id]);
       assert.equal((await pool.query("SELECT count(*)::int AS count FROM patient_program_audit")).rows[0].count, 11);
     } finally { await pool.end(); await admin.query(`DROP SCHEMA ${schema} CASCADE`); await admin.end(); }
   });

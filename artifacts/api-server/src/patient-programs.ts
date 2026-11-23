@@ -7,8 +7,9 @@ export async function ensurePatientProgramsSchema(client: Pick<PoolClient, "quer
   await client.query(`
     CREATE TABLE IF NOT EXISTS patient_program_catalog (
       id serial PRIMARY KEY, title text NOT NULL, description text NOT NULL,
-      category text NOT NULL CHECK (category IN ('nutrition', 'exercise')),
+      category text NOT NULL,
       tier text NOT NULL CHECK (tier IN ('free', 'plus')),
+      price integer,
       sessions jsonb NOT NULL DEFAULT '[]',
       status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
       version integer NOT NULL DEFAULT 1,
@@ -19,10 +20,15 @@ export async function ensurePatientProgramsSchema(client: Pick<PoolClient, "quer
       actor_id text NOT NULL, action text NOT NULL, version integer NOT NULL,
       content jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
     );
+    ALTER TABLE patient_program_catalog ADD COLUMN IF NOT EXISTS price integer;
+    ALTER TABLE patient_program_catalog DROP CONSTRAINT IF EXISTS patient_program_catalog_category_check;
+    ALTER TABLE patient_program_catalog ADD CONSTRAINT patient_program_catalog_category_check CHECK (category IN ('mind', 'nutrition', 'exercise'));
+    ALTER TABLE patient_program_catalog DROP CONSTRAINT IF EXISTS patient_program_catalog_price_check;
+    ALTER TABLE patient_program_catalog ADD CONSTRAINT patient_program_catalog_price_check CHECK (price IS NULL OR price >= 0);
   `);
 }
 
-const columns = "id,title,description,category,tier,sessions,status,version";
+const columns = "id,title,description,category,tier,price,sessions,status,version";
 function fail(status: number, message: string): never {
   throw Object.assign(new Error(message), { status });
 }
@@ -40,8 +46,8 @@ export function createPatientProgramsStore(pool: Pool) {
       if (action === "unpublish" && current.status !== "published") fail(409, "This program is not published.");
       if (action === "publish" && current.sessions.length === 0) fail(400, "Add at least one session before publishing.");
       const result = action === "edit" && input
-        ? await client.query<Program>(`UPDATE patient_program_catalog SET title=$2,description=$3,category=$4,tier=$5,sessions=$6::jsonb,version=version+1,updated_at=now() WHERE id=$1 RETURNING ${columns}`,
-            [id, input.title, input.description, input.category, input.tier, JSON.stringify(input.sessions)])
+        ? await client.query<Program>(`UPDATE patient_program_catalog SET title=$2,description=$3,category=$4,tier=$5,price=$6,sessions=$7::jsonb,version=version+1,updated_at=now() WHERE id=$1 RETURNING ${columns}`,
+            [id, input.title, input.description, input.category, input.tier, input.price, JSON.stringify(input.sessions)])
         : await client.query<Program>(`UPDATE patient_program_catalog SET status=$2,version=version+1,updated_at=now() WHERE id=$1 RETURNING ${columns}`,
             [id, action === "publish" ? "published" : "draft"]);
       const saved = result.rows[0];
@@ -58,14 +64,14 @@ export function createPatientProgramsStore(pool: Pool) {
       return (await pool.query<Program>(`SELECT ${columns} FROM patient_program_catalog ORDER BY updated_at DESC,id DESC`)).rows;
     },
     async listPatient(): Promise<Program[]> {
-      return (await pool.query<Program>(`SELECT ${columns} FROM patient_program_catalog WHERE status='published' AND tier='free' ORDER BY title,id`)).rows;
+      return (await pool.query<Program>(`SELECT ${columns} FROM patient_program_catalog WHERE status='published' ORDER BY category,title,id`)).rows;
     },
     async create(input: ProgramInput, actorId: string): Promise<Program> {
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
-        const saved = (await client.query<Program>(`INSERT INTO patient_program_catalog(title,description,category,tier,sessions) VALUES($1,$2,$3,$4,$5::jsonb) RETURNING ${columns}`,
-          [input.title, input.description, input.category, input.tier, JSON.stringify(input.sessions)])).rows[0];
+        const saved = (await client.query<Program>(`INSERT INTO patient_program_catalog(title,description,category,tier,price,sessions) VALUES($1,$2,$3,$4,$5,$6::jsonb) RETURNING ${columns}`,
+          [input.title, input.description, input.category, input.tier, input.price, JSON.stringify(input.sessions)])).rows[0];
         await client.query("INSERT INTO patient_program_audit(program_id,actor_id,action,version,content) VALUES($1,$2,'create',$3,$4::jsonb)", [saved.id, actorId, saved.version, JSON.stringify(saved)]);
         await client.query("COMMIT");
         return saved;

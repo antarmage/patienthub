@@ -263,16 +263,29 @@ test("program shortcuts open their requested pregnancy category", () => {
   assert.doesNotMatch(overview, /Iron-rich foods/);
 });
 
-test("patients see only published free programs in the matching category", () => {
-  const base: Program = { id: 1, title: "Reviewed free", description: "Details", category: "nutrition", tier: "free", status: "published", version: 1, sessions: [{ title: "First session", content: "Session text" }] };
-  const state = { programs: [base, { ...base, id: 2, title: "Plus secret", tier: "plus" as const }, { ...base, id: 3, title: "Draft secret", status: "draft" as const }, { ...base, id: 4, title: "Other category", category: "exercise" as const }], loading: false, error: false, retry: () => {} };
+test("patients see published programs and prices in the matching category", () => {
+  const base: Program = { id: 1, title: "Reviewed free", description: "Details", category: "nutrition", tier: "free", price: null, status: "published", version: 1, sessions: [{ title: "First session", content: "Session text" }] };
+  const state = { programs: [base, { ...base, id: 2, title: "Plus program", tier: "plus" as const, price: 1800 }, { ...base, id: 3, title: "Draft secret", status: "draft" as const }, { ...base, id: 4, title: "Other category", category: "exercise" as const }], loading: false, error: false, retry: () => {} };
   const html = renderToStaticMarkup(<PatientPublishedPrograms category="nutrition" state={state} />);
   assert.match(html, /Reviewed free/);
   assert.match(html, /First session/);
-  assert.doesNotMatch(html, /Plus secret|Draft secret|Other category/);
+  assert.match(html, /Plus program/);
+  assert.match(html, /₹1,800/);
+  assert.doesNotMatch(html, /Draft secret|Other category/);
   const error = renderToStaticMarkup(<PatientPublishedPrograms category="nutrition" state={{ ...state, error: true }} />);
   assert.match(error, /Unable to load programs/);
   assert.doesNotMatch(error, /Reviewed free/);
+});
+
+test("patient program detail uses backend program prices and clinician profiles", () => {
+  const program: Program = { id: 1, title: "Mindful pregnancy", description: "A clinician-reviewed plan", category: "mind", tier: "plus", price: 2300, status: "published", version: 1, sessions: [] };
+  const html = renderToStaticMarkup(<PatientPrograms pregnancy={false} week={14} initialCategory="Mind"
+    programs={{ programs: [program], loading: false, error: false, retry: () => {} }}
+    clinicians={{ providers: [{ id: 7, name: "Dr. Example", specialty: "Psychologist", qualification: "PhD" }], loading: false, error: false, retry: () => {} }} />);
+  assert.match(html, /Mindful pregnancy/);
+  assert.match(html, /₹2,300/);
+  assert.match(html, /Dr\. Example/);
+  assert.match(html, /PhD · Psychologist/);
 });
 
 test("pregnancy exercise uses the free design without invented sessions or purchase actions", () => {

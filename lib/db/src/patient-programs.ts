@@ -8,8 +8,9 @@ export const programSessionSchema = z.object({
 export const programInputSchema = z.object({
   title: z.string().trim().min(1).max(120),
   description: z.string().trim().max(2000),
-  category: z.enum(["nutrition", "exercise"]),
+  category: z.enum(["mind", "nutrition", "exercise"]),
   tier: z.enum(["free", "plus"]),
+  price: z.number().int().nonnegative().max(2147483647).nullable().default(null),
   sessions: z.array(programSessionSchema).max(50),
 }).strict();
 

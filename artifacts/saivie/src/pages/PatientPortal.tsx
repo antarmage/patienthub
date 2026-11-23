@@ -59,7 +59,7 @@ import { patientMedicationCategory, patientMedicationNeedsReview, patientMedicat
 import { nextAppointment } from "@/lib/patientAppointments";
 import { bookingVisitModeLabel } from "@/lib/bookingVisit";
 import { validMeetUrl } from "@/lib/onlineConsultation";
-import PatientPrograms from "@/components/PatientPrograms";
+import PatientPrograms, { type PatientClinician } from "@/components/PatientPrograms";
 import PatientTodayDashboard from "@/components/PatientTodayDashboard";
 import PregnancyCareDashboard from "@/components/PregnancyCareDashboard";
 import PatientHealthRecord from "@/components/PatientHealthRecord";
@@ -417,10 +417,23 @@ export default function PatientPortal() {
   });
   const labResults = labResultsQuery.data;
 
-  const { data: providers } = useQuery({
+  const providersQuery = useQuery({
     queryKey: ['/api/providers'],
-    queryFn: async () => { const r = await fetch('/api/providers'); return r.json(); },
+    queryFn: async (): Promise<PatientClinician[]> => {
+      const response = await fetch('/api/providers');
+      if (!response.ok) throw new Error("Unable to load clinician profiles.");
+      return z.array(z.object({
+        id: z.number().int(),
+        name: z.string(),
+        role: z.string().nullable().optional(),
+        specialty: z.string().nullable().optional(),
+        qualification: z.string().nullable().optional(),
+        additionalQualifications: z.string().nullable().optional(),
+        photoUrl: z.string().nullable().optional(),
+      })).parse(await response.json());
+    },
   });
+  const providers = providersQuery.data;
 
   const appointmentsQuery = useQuery({
     queryKey: [`/api/appointments/patient/${patient?.id}`],
@@ -443,7 +456,7 @@ export default function PatientPortal() {
       if (!response.ok) throw new Error("Unable to load programs.");
       return z.array(programSchema).parse(await response.json());
     },
-    enabled: !!patient?.id && mode === "pregnancy" && activeTab === "programs",
+    enabled: !!patient?.id && activeTab === "programs",
     retry: false,
     refetchInterval: 30000,
   });
@@ -477,7 +490,7 @@ export default function PatientPortal() {
     if (!patient?.id || !bookingDate || !bookingTime || !bookingType) return;
     bookingMutation.mutate(patientAppointmentRequest({
       patientId: Number(patient.id),
-      providers: Array.isArray(providers) ? providers : [],
+      providers: providers ?? [],
       date: bookingDate,
       time: bookingTime,
       type: bookingType,
@@ -735,7 +748,7 @@ export default function PatientPortal() {
           </TabsContent>
 
           <TabsContent value="programs" className="animate-in slide-in-from-bottom-4 duration-500">
-            <PatientPrograms key={initialProgramCategory ?? "overview"} pregnancy={mode === "pregnancy"} week={pregnancyWeek} mode={mode} initialCategory={initialProgramCategory} onOpenLabReports={() => openHealthRecord("lab-reports")} onBookNutrition={openBooking} onBookAppointment={openBooking} programs={{ programs: programsQuery.data, loading: programsQuery.isPending, error: programsQuery.isError, retry: () => { void programsQuery.refetch(); } }} />
+            <PatientPrograms key={initialProgramCategory ?? "overview"} pregnancy={mode === "pregnancy"} week={pregnancyWeek} mode={mode} initialCategory={initialProgramCategory} onOpenLabReports={() => openHealthRecord("lab-reports")} onBookNutrition={openBooking} onBookAppointment={openBooking} programs={{ programs: programsQuery.data, loading: programsQuery.isPending, error: programsQuery.isError, retry: () => { void programsQuery.refetch(); } }} clinicians={{ providers, loading: providersQuery.isPending, error: providersQuery.isError, retry: () => { void providersQuery.refetch(); } }} />
           </TabsContent>
 
           <TabsContent value="care" className="animate-in slide-in-from-bottom-4 duration-500 space-y-6 pb-8">
@@ -760,7 +773,7 @@ export default function PatientPortal() {
                 appointmentsLoading={appointmentsQuery.isLoading}
                 appointmentsError={appointmentsQuery.isError}
                 onRetryAppointments={() => { void appointmentsQuery.refetch(); }}
-                providers={Array.isArray(providers) ? providers : []}
+                providers={providers ?? []}
                 onBookAppointment={openBooking}
                 initialSection="overview"
                 pregnancy
@@ -848,7 +861,7 @@ export default function PatientPortal() {
               appointmentsLoading={appointmentsQuery.isLoading}
               appointmentsError={appointmentsQuery.isError}
               onRetryAppointments={() => { void appointmentsQuery.refetch(); }}
-              providers={Array.isArray(providers) ? providers : []}
+              providers={providers ?? []}
               onBookAppointment={openBooking}
               initialSection={healthRecordSection}
               pregnancy={mode === "pregnancy"}
