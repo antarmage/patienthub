@@ -38,7 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import hormoneWaveBg from "../assets/images/hormone-wave-bg.png";
 import dnaAbstract from "../assets/images/dna-abstract.png";
-import { getWeekData } from "@/components/WeekByWeekTimeline";
+import { getWeekData, getWeekSizeLabel } from "@/components/WeekByWeekTimeline";
 import type { PregnancyTrackerTarget } from "@/components/PregnancyTrackersTab";
 import PregnancyGrowthChart from "@/components/PregnancyGrowthChart";
 
@@ -533,8 +533,8 @@ function PregnancyBodyReference({ patient, labResults, onOpenTracker }: { patien
     ? Math.max(1, Math.min(40, Math.floor((Date.now() - new Date(lmp).getTime()) / (7 * 24 * 60 * 60 * 1000))))
     : 24;
   const dueDate = lmp ? new Date(new Date(lmp).getTime() + 280 * 24 * 60 * 60 * 1000) : null;
-  const currentSize = getPregnancyBabySize(weeks);
   const weekGuide = getWeekData(weeks);
+  const currentSize = getWeekSizeLabel(weeks);
   const trimester = weeks < 13 ? 1 : weeks < 28 ? 2 : 3;
   const lmpTime = lmp ? new Date(lmp).getTime() : NaN;
   const growthWeek = Number.isFinite(lmpTime) ? Math.floor((Date.now() - lmpTime) / (7 * 24 * 60 * 60 * 1000)) : null;
@@ -563,7 +563,7 @@ function PregnancyBodyReference({ patient, labResults, onOpenTracker }: { patien
             {weeks <= 12
               ? "Your baby's major organs are beginning to form."
               : weeks <= 27
-                ? `Your baby is about the size of ${currentSize.label}. Your body is making more blood.`
+                ? `Your baby is about the size of ${currentSize}. Your body is making more blood.`
                 : "Your baby is preparing for birth. Rest and routine antenatal checks matter."}
           </p>
         </div>
@@ -702,16 +702,6 @@ function PregnancyBodyReference({ patient, labResults, onOpenTracker }: { patien
       </section>
     </div>
   );
-}
-
-function getPregnancyBabySize(weeks: number) {
-  if (weeks < 8) return { label: "a poppy seed", length: "1 mm" };
-  if (weeks < 12) return { label: "a lime", length: "5 cm" };
-  if (weeks < 16) return { label: "an avocado", length: "12 cm" };
-  if (weeks < 20) return { label: "a banana", length: "25 cm" };
-  if (weeks < 28) return { label: "an ear of corn", length: "30 cm" };
-  if (weeks < 36) return { label: "an eggplant", length: "37 cm" };
-  return { label: "a watermelon", length: "50 cm" };
 }
 
 function trimesterText(weeks: number) {

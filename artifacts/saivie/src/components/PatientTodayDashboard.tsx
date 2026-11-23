@@ -21,7 +21,7 @@ import pregnancyGrowthBg from "@/assets/images/pregnancy-growth-bg.png";
 import { patientGreetingName } from "@/lib/patientGreeting";
 import { localDateKey, patientHealthRecordProgress } from "@/lib/patientHealthRecord";
 import { shouldShowPregnancyCheckin } from "@/lib/patientPregnancyUpdate";
-import { getWeekData } from "@/components/WeekByWeekTimeline";
+import { getWeekData, getWeekSizeLabel } from "@/components/WeekByWeekTimeline";
 
 interface Props {
   mode: string;
@@ -47,17 +47,6 @@ function gestationalWeek(lmp?: string | null) {
   const start = new Date(lmp);
   if (Number.isNaN(start.getTime())) return null;
   return Math.max(0, Math.min(42, Math.floor((Date.now() - start.getTime()) / (7 * 86400000))));
-}
-
-function babySize(weeks: number) {
-  if (weeks < 8) return { title: "Poppy seed", emoji: "🌱", detail: "Major organs are beginning to form." };
-  if (weeks < 12) return { title: "Lime", emoji: "🍋", detail: "Fingers and toes are developing." };
-  if (weeks < 16) return { title: "Avocado", emoji: "🥑", detail: "Baby is becoming more active." };
-  if (weeks < 18) return { title: "Bell pepper", emoji: "🫑", detail: "Baby can yawn and hiccup." };
-  if (weeks < 20) return { title: "Mango", emoji: "🥭", detail: "Baby's hearing and senses are developing." };
-  if (weeks < 28) return { title: "Eggplant", emoji: "🍆", detail: "Baby is growing rapidly and gaining fat." };
-  if (weeks < 36) return { title: "Honeydew melon", emoji: "🍈", detail: "Baby is gaining weight and preparing for birth." };
-  return { title: "Full term", emoji: "🍉", detail: "Baby is nearly ready to meet you." };
 }
 
 export default function PatientTodayDashboard({
@@ -205,7 +194,6 @@ export default function PatientTodayDashboard({
     return Math.max(18, 92 - distance * 7 - (index % 3) * 4);
   });
 
-  const baby = week != null ? babySize(week) : null;
   const trimester = week != null ? (week < 13 ? "First" : week < 28 ? "Second" : "Third") : null;
   const nextPhaseWeek = week != null && week < 28 ? 28 : 40;
   const weeksUntilThirdTrimester = week != null ? Math.max(0, 28 - week) : null;
@@ -413,7 +401,7 @@ export default function PatientTodayDashboard({
 
           <p className="m-0 text-[17px] font-medium leading-[1.4] md:text-[20px]">
             {isPregnancy
-              ? `About the size of ${baby?.title?.toLowerCase() || "your baby"}. ${week != null ? `${40 - week} weeks to go.` : "Pregnancy guidance."}`
+              ? `About the size of ${week != null ? getWeekSizeLabel(week) : "your baby"}. ${week != null ? `${40 - week} weeks to go.` : "Pregnancy guidance."}`
               : isPostpartum
               ? "Your wellbeing matters as you adjust to life with a new baby."
               : isMenopause
@@ -551,7 +539,7 @@ export default function PatientTodayDashboard({
               >
                 <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "#7A4B00" }}>Baby this week</p>
                 <p className="mt-3 font-serif text-[30px] font-bold leading-[1.1]">
-                  {week != null ? `Size of ${getWeekData(week).fruit.toLowerCase()}` : "Baby growth"}
+                  {week != null ? `Size of ${getWeekSizeLabel(week)}` : "Baby growth"}
                 </p>
                 <p className="mt-2 text-[15px] leading-[1.5]" style={{ color: "#4A3320" }}>
                   {week != null

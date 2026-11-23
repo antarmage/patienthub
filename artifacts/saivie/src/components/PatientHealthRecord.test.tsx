@@ -12,6 +12,7 @@ import { patientAppointmentRequest } from "@/lib/patientAppointmentRequest";
 import PatientPublishedPrograms from "./PatientPublishedPrograms";
 import type { Program } from "../../../../lib/db/src/patient-programs";
 import PregnancyCareDashboard from "./PregnancyCareDashboard";
+import { getWeekSizeLabel } from "./WeekByWeekTimeline";
 
 function renderRecord(overrides: Partial<React.ComponentProps<typeof PatientHealthRecord>> = {}) {
   const client = new QueryClient();
@@ -275,6 +276,11 @@ test("patients see published programs and prices in the matching category", () =
   const error = renderToStaticMarkup(<PatientPublishedPrograms category="nutrition" state={{ ...state, error: true }} />);
   assert.match(error, /Unable to load programs/);
   assert.doesNotMatch(error, /Reviewed free/);
+});
+
+test("dashboard and Body tab use the same week-specific baby size", () => {
+  assert.equal(getWeekSizeLabel(15), "an apple");
+  assert.equal(getWeekSizeLabel(16), "an avocado");
 });
 
 test("patient program detail uses backend program prices and clinician profiles", () => {
