@@ -288,16 +288,21 @@ export default function PatientTodayDashboard({
       data-mode={mode}
     >
       {pregnancyEpisode?.details?.status === "current" && (
-        <div className="mb-6 hidden min-h-[52px] items-center rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-5 text-[13px] md:flex">
+        <div className="mb-6 hidden min-h-[52px] items-center justify-between gap-4 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-5 py-2 text-[13px] md:flex">
           <span>Cycle predictions are paused while you're pregnant.</span>
+          {isPregnancy && (
+            <button type="button" onClick={onUpdatePregnancy} className="min-h-11 shrink-0 text-xs font-semibold text-[var(--body-soft)] underline underline-offset-4 hover:text-[var(--ink)]">
+              Update my pregnancy
+            </button>
+          )}
         </div>
       )}
 
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 md:hidden">
         <button
           type="button"
           onClick={onOpenStageSwitcher}
-          className="min-h-11 rounded-full border border-[var(--line)] bg-white/80 px-4 text-xs font-bold text-[var(--ink)] md:hidden"
+          className="min-h-11 rounded-full border border-[var(--line)] bg-white/80 px-4 text-xs font-bold text-[var(--ink)]"
         >Switch stage</button>
         {isPregnancy && (
           <button type="button" onClick={onUpdatePregnancy} className="min-h-11 text-xs font-semibold text-[var(--body-soft)] underline underline-offset-4 hover:text-[var(--ink)]">
