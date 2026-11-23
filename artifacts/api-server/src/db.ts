@@ -15,6 +15,7 @@ import { ensureAttendanceShiftSchema } from "./attendance-shifts";
 import { ensureAttendancePlanningSchema } from "./attendance-planning";
 import { ensureStaffSessionSchema } from "./staff-sessions";
 import { ensurePatientProgramsSchema } from "./patient-programs";
+import { ensureRecommendationTestingSchema } from "./recommendation-testing";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set.");
@@ -45,6 +46,9 @@ export async function ensureSchema(): Promise<void> {
     await ensureMenopauseSchema(client);
     await ensureBookingCatalogSchema(client);
     await ensurePatientProgramsSchema(client);
+    if (process.env.SAIVIE_RECOMMENDATION_STAFF_TESTING === "true") {
+      await ensureRecommendationTestingSchema(client);
+    }
     await client.query(`
       CREATE TABLE IF NOT EXISTS local_report_imports (
         import_id uuid PRIMARY KEY,
