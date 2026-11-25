@@ -4,11 +4,11 @@ import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import PatientTodayDashboard from "./PatientTodayDashboard";
 
-function renderDashboard(lmp: string | null) {
+function renderDashboard(lmp: string | null, mode = "pregnancy") {
   const noop = () => {};
   return renderToStaticMarkup(
     <PatientTodayDashboard
-      mode="pregnancy"
+      mode={mode}
       patient={{ id: 1, name: "Test", lmp }}
       pregnancyEpisode={null}
       appointments={[]}
@@ -27,6 +27,14 @@ function renderDashboard(lmp: string | null) {
     />,
   );
 }
+
+test("cycle dashboard does not present invented forecasts or activity plans", () => {
+  const html = renderDashboard(null, "general");
+  assert.match(html, /Cycle recommendations are not available yet/);
+  assert.match(html, /Cycle phase and fertility are not predicted here/);
+  assert.doesNotMatch(html, /DAY 14|OVULATION|7-day streak|Luteal phase starts|phase-aware guidance|Presentations and hard conversations/);
+  assert.match(html, /Book an appointment/);
+});
 
 test("pregnancy week indicator shows the current week with a dark centre", () => {
   const lmp = new Date(Date.now() - 24 * 7 * 86400000).toISOString().slice(0, 10);

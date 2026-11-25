@@ -64,3 +64,47 @@ approval, real-patient consent and retention policy, feedback-driven learning,
 sleep and preference inputs, and integration with the existing check-in are
 prerequisites for any later production release. The prototype does not use
 chronotype or deadlines and does not provide weekly planning.
+
+## User-reported cycle context
+
+Test check-ins may optionally include `periodContext`, for example:
+
+```json
+{
+  "phase": "menstrual",
+  "flow": "light",
+  "symptoms": ["cramps", "fatigue"]
+}
+```
+
+Allowed phases are `menstrual`, `follicular`, `ovulation`, `luteal` and
+`unsure`. They are user reports, not phase or fertility predictions. Flow is
+optional and can be `none`, `light`, `moderate`, `heavy` or `unsure`.
+Symptoms can include `cramps`, `fatigue`, `headache`, `mood_changes` and
+`severe_pain`. Heavy flow or severe pain also withholds experimental outputs,
+even if no safety flag was supplied. Withholding is not symptom triage or a
+substitute for clinical care.
+
+The separate `/api/recommendations/patients/:id` prototype is disabled unless
+`SAIVIE_RECOMMENDATION_PATIENT_TESTING=true`; it is for controlled testing with
+synthetic records only. Its mobile test controls additionally require
+`EXPO_PUBLIC_RECOMMENDATION_TESTING=true`. The mobile journal does not submit
+recommendation check-ins: its mood and symptoms do not supply the required
+readiness dimensions or availability.
+
+For the web Today screen, set `VITE_SAIVIE_RECOMMENDATION_TESTING=true` at
+frontend build time and enable the patient-testing API flag in the same
+isolated test environment. Sign in with an authorized synthetic patient record
+and open Today in cycle mode. Record period starts and enter the six explicit
+readiness ratings, stage, regularity, reported phase and optional free slots;
+save the check-in to refresh the experimental output. Use `24:00` for a slot
+ending at midnight. Reported phase is not used to rank activity suggestions.
+Heavy flow, severe pain or a safety flag withholds suggestions; this is not
+clinical triage. If either flag is off, the feature is not available. Never
+enable these test flags for real patient data or in the production deployment.
+
+No period-care content has been approved. The prototype returns
+`periodCare.status: "awaiting_clinical_review"` with no blocks. The existing
+content feed only assembles pregnancy content; a reviewed menstrual-content
+catalogue and its integration must be completed before period-care advice can
+be released. No external AI service is used for this context.

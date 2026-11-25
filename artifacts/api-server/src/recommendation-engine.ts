@@ -39,6 +39,12 @@ export const checkInSchema = z.object({
   regularity: z.enum(["regular", "irregular", "unknown"]),
   flags: z.array(z.enum(["heavy_bleeding", "severe_pain", "red_flag"])).max(3)
     .refine((flags) => new Set(flags).size === flags.length, "Duplicate safety flag"),
+  periodContext: z.object({
+    phase: z.enum(["menstrual", "follicular", "ovulation", "luteal", "unsure"]),
+    flow: z.enum(["none", "light", "moderate", "heavy", "unsure"]).optional(),
+    symptoms: z.array(z.enum(["cramps", "fatigue", "headache", "mood_changes", "severe_pain"]))
+      .max(5).refine((items) => new Set(items).size === items.length, "Duplicate symptom"),
+  }).strict().optional(),
   nowHour: z.number().min(0).max(24),
   freeSlots: z.array(z.object({
     start: z.number().min(0).max(24),
@@ -61,9 +67,12 @@ export type Feedback = z.infer<typeof feedbackSchema>;
 const dayMs = 86_400_000;
 const dayNumber = (date: string) => Date.parse(`${date}T00:00:00.000Z`) / dayMs;
 const dateFromDay = (day: number) => new Date(day * dayMs).toISOString().slice(0, 10);
+const hasSafetyConcern = (checkIn: CheckIn) =>
+  checkIn.flags.length > 0 || checkIn.periodContext?.flow === "heavy" ||
+  checkIn.periodContext?.symptoms.includes("severe_pain") === true;
 
 export function estimatePeriod(asOf: string, starts: string[], checkIn: CheckIn | null) {
-  if (!checkIn || checkIn.stage !== "cycle" || checkIn.regularity !== "regular" || checkIn.flags.length) {
+  if (!checkIn || checkIn.stage !== "cycle" || checkIn.regularity !== "regular" || hasSafetyConcern(checkIn)) {
     return { status: "withheld" as const, reason: "A regular cycle and an eligible check-in are required for testing." };
   }
   const dates = [...new Set(starts.filter((date) => date <= asOf))].sort().slice(-4);
@@ -92,7 +101,7 @@ const weights = { energy: 1, focus: 1, mood: 0.7, confidence: 1, social_battery:
 
 export function recommend(checkIn: CheckIn | null) {
   if (!checkIn) return { status: "insufficient_data" as const, cards: [], reason: "A check-in is required." };
-  if (checkIn.stage !== "cycle" || checkIn.flags.length) {
+  if (checkIn.stage !== "cycle" || hasSafetyConcern(checkIn)) {
     return { status: "withheld" as const, cards: [], reason: "Staff review is required for this stage or reported flag." };
   }
   const totalWeight = dimensions.reduce((sum, dimension) => sum + weights[dimension], 0);

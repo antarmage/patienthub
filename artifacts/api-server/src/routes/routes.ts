@@ -67,7 +67,12 @@ import { createPregnancyMedicationReconciliationStore, registerPregnancyMedicati
 import { createMenopauseStore, registerMenopauseCare } from "../menopause";
 import { createBookingCatalogStore, registerBookingCatalog } from "../booking-catalog";
 import { createPatientProgramsStore, registerPatientPrograms } from "../patient-programs";
-import { createRecommendationTestingStore, registerRecommendationTesting } from "../recommendation-testing";
+import {
+  createRecommendationProductionStore,
+  createRecommendationTestingStore,
+  registerRecommendationProduction,
+  registerRecommendationTesting,
+} from "../recommendation-testing";
 import { canManageVaccinationSchedules, canUseVaccinationWorkflow } from "../vaccination-access";
 import { readLabPrescription, sanitizeLabSurvey, surveyKindFor } from "../survey-kind";
 import { scorePatient, generateTrimesterChecklist, batchScorePatients } from "../risk-engine";
@@ -392,6 +397,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   registerPatientPrograms(app, createPatientProgramsStore(pool), getAccessActor);
   registerRecommendationTesting(app, createRecommendationTestingStore(pool), getAccessActor);
+  registerRecommendationProduction(app, createRecommendationProductionStore(pool), getAccessActor);
   registerNutritionAccess(app, getAccessActor, createNutritionAccessStore(pool));
   registerFatSecretRoutes(app, getAccessActor);
   registerFaceAttendanceRoutes(app, getAccessActor, createFaceAttendanceStore(pool));

@@ -5,7 +5,10 @@ import { createServer } from "node:http";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { activities, checkInSchema, estimatePeriod, recommend, type CheckIn, type Feedback } from "./recommendation-engine";
-import { createRecommendationTestingStore, ensureRecommendationTestingSchema, registerRecommendationTesting } from "./recommendation-testing";
+import {
+  createRecommendationTestingStore, ensureRecommendationTestingSchema,
+  registerRecommendationProduction, registerRecommendationTesting,
+} from "./recommendation-testing";
 
 const checkIn: CheckIn = {
   readiness: { energy: 4, focus: 4, mood: 3, confidence: 4, social_battery: 3, physical_capacity: 4 },
@@ -42,6 +45,90 @@ test("experimental recommendations are deterministic and conservative", () => {
   assert.equal(recommend({ ...checkIn, flags: ["severe_pain"] }).status, "withheld");
   assert.equal(checkInSchema.safeParse({ ...checkIn, readiness: { ...checkIn.readiness, energy: 0 } }).success, false);
   assert.equal(checkInSchema.safeParse({ ...checkIn, freeSlots: [{ start: 12, end: 9 }] }).success, false);
+});
+
+test("user-reported period context is validated and safety concerns withhold output", () => {
+  const context = { phase: "unsure", flow: "heavy", symptoms: ["cramps"] };
+  const result = checkInSchema.safeParse({ ...checkIn, periodContext: context });
+  assert.ok(result.success);
+  assert.equal(recommend(result.data).status, "withheld");
+  assert.equal(estimatePeriod("2026-10-10", [], result.data).status, "withheld");
+  const severe = checkInSchema.parse({
+    ...checkIn, periodContext: { phase: "menstrual", symptoms: ["severe_pain"] },
+  });
+  assert.equal(recommend(severe).status, "withheld");
+  assert.equal(checkInSchema.safeParse({
+    ...checkIn, periodContext: { phase: "menstrual", symptoms: ["cramps", "cramps"] },
+  }).success, false);
+  assert.equal(checkInSchema.safeParse({
+    ...checkIn, periodContext: { phase: "predicted", symptoms: [] },
+  }).success, false);
+});
+
+test("patient testing routes are disabled by default and isolate patient records", async () => {
+  let enabled = false;
+  const records = new Map<number, CheckIn>();
+  const starts = new Map<number, string[]>();
+  const app = express(); app.use(express.json());
+  registerRecommendationProduction(app, {
+    patientExists: async (id) => id === 1 || id === 2,
+    listPeriods: async (id, asOf) => (starts.get(id) ?? []).filter((date) => date <= asOf),
+    savePeriod: async (id, date) => { starts.set(id, [...new Set([...(starts.get(id) ?? []), date])]); },
+    deletePeriod: async (id, date) => {
+      const current = starts.get(id) ?? [];
+      starts.set(id, current.filter((value) => value !== date));
+      return current.includes(date);
+    },
+    getCheckIn: async (id) => records.get(id) ?? null,
+    saveCheckIn: async (id, _date, value) => { records.set(id, value); },
+    saveFeedback: async () => false,
+  }, async (req) => req.headers.authorization === "patient" ? { patientId: 1 }
+    : req.headers.authorization ? { userId: "test", role: String(req.headers.authorization) } : null,
+  () => enabled);
+  const server = createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address(); assert.ok(address && typeof address !== "string");
+  const request = (path: string, role?: string, method = "GET", body?: unknown) =>
+    fetch(`http://127.0.0.1:${address.port}${path}`, {
+      method, headers: { "Content-Type": "application/json", ...(role ? { Authorization: role } : {}) },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+  const base = "/api/recommendations/patients/1";
+  try {
+    assert.equal((await request(`${base}/insights?date=2026-10-10`, "patient")).status, 404);
+    enabled = true;
+    assert.equal((await request(`${base}/insights?date=2026-10-10`)).status, 401);
+    assert.equal((await request("/api/recommendations/patients/2/insights?date=2026-10-10", "patient")).status, 403);
+    assert.equal((await request(`${base}/insights?date=2026-10-10`, "staff")).status, 403);
+    assert.equal((await request(`${base}/period-starts/2026-10-04`, "patient", "PUT", {})).status, 200);
+    const periodList = await request(`${base}/period-starts?asOf=2026-10-10`, "patient");
+    assert.deepEqual(await periodList.json(), { periodStarts: ["2026-10-04"] });
+    assert.equal((await request(`${base}/period-starts/2026-10-04`, "patient", "DELETE")).status, 204);
+    assert.deepEqual(await (await request(`${base}/period-starts?asOf=2026-10-10`, "patient")).json(), { periodStarts: [] });
+    const withContext = {
+      ...checkIn, freeSlots: [{ start: 23, end: 24 }],
+      periodContext: { phase: "luteal", flow: "heavy", symptoms: ["fatigue"] },
+    };
+    assert.equal((await request(`${base}/check-ins/2026-10-10`, "patient", "PUT", withContext)).status, 200);
+    assert.deepEqual(records.get(1)?.periodContext, withContext.periodContext);
+    const response = await request(`${base}/insights?date=2026-10-10`, "clinician");
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
+    const result = await response.json() as {
+      notForClinicalUse: boolean;
+      checkIn: CheckIn;
+      forecast: { status: string };
+      recommendations: { status: string; cards: unknown[] };
+      periodCare: { status: string; blocks: unknown[] };
+    };
+    assert.equal(result.notForClinicalUse, true);
+    assert.deepEqual(result.checkIn.periodContext, withContext.periodContext);
+    assert.deepEqual(result.checkIn.freeSlots, [{ start: 23, end: 24 }]);
+    assert.equal(result.forecast.status, "withheld");
+    assert.equal(result.recommendations.status, "withheld");
+    assert.deepEqual(result.recommendations.cards, []);
+    assert.deepEqual(result.periodCare, { status: "awaiting_clinical_review", blocks: [] });
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
 test("testing routes are gated, staff-only, patient-scoped and validate input", async () => {

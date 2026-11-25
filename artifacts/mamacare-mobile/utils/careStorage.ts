@@ -910,3 +910,87 @@ export async function getTodayJournalEntry(): Promise<JournalEntry | null> {
   const list = await getMoodJournal();
   return list.find((e) => e.date === t) || null;
 }
+
+// ─── Period & wellbeing recommendations ─────────────────────────────────────
+
+export type RecommendationCheckIn = {
+  readiness: {
+    energy: number;
+    focus: number;
+    mood: number;
+    confidence: number;
+    social_battery: number;
+    physical_capacity: number;
+  };
+  stage: "cycle" | "pregnancy" | "postpartum" | "perimenopause" | "hormonal_contraception" | "unknown";
+  regularity: "regular" | "irregular" | "unknown";
+  flags: Array<"heavy_bleeding" | "severe_pain" | "red_flag">;
+  periodContext?: {
+    phase: "menstrual" | "follicular" | "ovulation" | "luteal" | "unsure";
+    flow?: "none" | "light" | "moderate" | "heavy" | "unsure";
+    symptoms: Array<"cramps" | "fatigue" | "headache" | "mood_changes" | "severe_pain">;
+  };
+  nowHour: number;
+  freeSlots: Array<{ start: number; end: number }>;
+  goals: Record<string, number>;
+};
+
+export type RecommendationInsights = {
+  date: string;
+  algorithmVersion: string;
+  forecast:
+    | { status: "estimated"; nextPeriodDate: string; daysUntil: number }
+    | { status: "insufficient_data" | "withheld" | "stale"; reason: string };
+  recommendations: {
+    status: "experimental" | "insufficient_data" | "withheld" | "no_matches";
+    cards: Array<{
+      activityId: string;
+      name: string;
+      category: string;
+      durationMinutes: number;
+      score: number;
+      reasons: string[];
+    }>;
+    reason?: string;
+  };
+  educationalNotice: string;
+};
+
+async function recommendationPut(path: string, body: object): Promise<void> {
+  if (!_patientId || !_mobileToken) throw new Error("Please sign in again.");
+  const res = await fetch(`${_apiBase}${path}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) _onAuthError?.();
+  if (!res.ok) throw new Error("Unable to save. Please try again.");
+}
+
+export async function savePeriodRecommendationCheckIn(
+  date: string,
+  checkIn: RecommendationCheckIn
+): Promise<void> {
+  await recommendationPut(
+    `/api/recommendations/patients/${_patientId}/check-ins/${date}`,
+    checkIn
+  );
+}
+
+export async function savePeriodStart(date: string): Promise<void> {
+  await recommendationPut(
+    `/api/recommendations/patients/${_patientId}/period-starts/${date}`,
+    {}
+  );
+}
+
+export async function getRecommendationInsights(date: string): Promise<RecommendationInsights | null> {
+  if (!_patientId || !_mobileToken) throw new Error("Please sign in again.");
+  const res = await fetch(
+    `${_apiBase}/api/recommendations/patients/${_patientId}/insights?date=${encodeURIComponent(date)}`,
+    { headers: authHeaders() },
+  );
+  if (res.status === 401) _onAuthError?.();
+  if (!res.ok) throw new Error("Unable to load testing insights.");
+  return (await res.json()) as RecommendationInsights;
+}

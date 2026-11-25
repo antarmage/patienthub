@@ -17,6 +17,9 @@ import {
   addJournalEntry,
   getTodayJournalEntry,
   JournalEntry,
+  getRecommendationInsights,
+  savePeriodStart,
+  RecommendationInsights,
 } from "@/utils/careStorage";
 import { COLORS, Spacing, BorderRadius } from "@/constants/theme";
 
@@ -101,6 +104,10 @@ export default function JournalScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [todayEntry, setTodayEntry] = useState<JournalEntry | null>(null);
   const [dayGroups, setDayGroups] = useState<DayGroup[]>([]);
+  const [recommendations, setRecommendations] = useState<RecommendationInsights | null>(null);
+  const [periodStart, setPeriodStart] = useState("");
+  const [showPeriodStart, setShowPeriodStart] = useState(false);
+  const recommendationTesting = process.env.EXPO_PUBLIC_RECOMMENDATION_TESTING === "true";
 
   useFocusEffect(
     useCallback(() => {
@@ -112,6 +119,14 @@ export default function JournalScreen() {
     const [te, all] = await Promise.all([getTodayJournalEntry(), getMoodJournal()]);
     setTodayEntry(te);
     setDayGroups(groupByDay(all));
+    if (recommendationTesting) {
+      try {
+        setRecommendations(await getRecommendationInsights(todayDateStr()));
+      } catch {
+        setRecommendations(null);
+        Alert.alert("Unable to load testing insights", "Please try again later.");
+      }
+    }
     if (te) {
       setSelectedMood(te.mood);
       setSelectedSymptoms(te.symptoms);
@@ -150,6 +165,28 @@ export default function JournalScreen() {
   };
 
   const alreadyLoggedToday = todayEntry !== null;
+
+  const handlePeriodStart = async () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart)) {
+      Alert.alert("Use a date", "Enter the period start as YYYY-MM-DD.");
+      return;
+    }
+    try {
+      await savePeriodStart(periodStart);
+    } catch {
+      Alert.alert("Unable to save", "Please try again.");
+      return;
+    }
+    setShowPeriodStart(false);
+    setPeriodStart("");
+    try {
+      setRecommendations(await getRecommendationInsights(todayDateStr()));
+      Alert.alert("Saved", "Period start recorded.");
+    } catch {
+      setRecommendations(null);
+      Alert.alert("Saved", "Period start recorded, but testing insights could not be refreshed.");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -197,6 +234,61 @@ export default function JournalScreen() {
                   Edit below to update or add a new entry for today
                 </ThemedText>
               </View>
+            </View>
+          )}
+
+          {recommendationTesting && <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Period support (testing only)</ThemedText>
+            <Pressable
+              style={[styles.saveButton, { marginTop: 0 }]}
+              onPress={() => setShowPeriodStart((visible) => !visible)}
+            >
+              <Feather name="calendar" size={18} color="#FFFFFF" />
+              <ThemedText style={styles.saveButtonText}>Record period start</ThemedText>
+            </Pressable>
+            {showPeriodStart && (
+              <View style={{ marginTop: 12 }}>
+                <TextInput
+                  style={styles.notesInput}
+                  value={periodStart}
+                  onChangeText={setPeriodStart}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={COLORS.textMuted}
+                  autoCapitalize="none"
+                />
+                <Pressable style={[styles.saveButton, { marginTop: 12 }]} onPress={handlePeriodStart}>
+                  <ThemedText style={styles.saveButtonText}>Save period start</ThemedText>
+                </Pressable>
+              </View>
+            )}
+          </View>}
+
+          {recommendationTesting && recommendations && (
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionTitle}>Today's wellbeing suggestions</ThemedText>
+              {recommendations.recommendations.cards.map((card) => (
+                <View key={card.activityId} style={styles.historyCard}>
+                  <View style={styles.historyCardRight}>
+                    <ThemedText style={styles.historyTime}>{card.name}</ThemedText>
+                    <ThemedText style={styles.historyTime}>
+                      {card.durationMinutes} min · {card.category}
+                    </ThemedText>
+                    {card.reasons.map((reason) => (
+                      <ThemedText key={reason} style={styles.historyChipText}>
+                        {reason}
+                      </ThemedText>
+                    ))}
+                  </View>
+                </View>
+              ))}
+              {recommendations.recommendations.cards.length === 0 && (
+                <ThemedText style={styles.alreadyLoggedSub}>
+                  {recommendations.recommendations.reason ?? "No suggestions are available for this check-in."}
+                </ThemedText>
+              )}
+              <ThemedText style={styles.alreadyLoggedSub}>
+                {recommendations.educationalNotice}
+              </ThemedText>
             </View>
           )}
 
