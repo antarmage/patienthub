@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import type { Pool } from "pg";
+import { ThinkingLevel } from "@google/genai";
 import { z } from "zod/v4";
 import type { AccessActor } from "./clinical-access";
 import { ai, AI_AVAILABLE } from "./replit_integrations/image/client";
@@ -62,7 +63,12 @@ No diagnoses, prescriptions, supplements, medical treatment, contraception guida
 Temperature text must say logging is not available here and a single reading cannot confirm ovulation.
 Patterns text must describe reported information, not claim a regular pattern or longitudinal evidence.
 Do not invent sources or cite sources you have not retrieved. No links, HTML or Markdown.`,
-    config: { responseMimeType: "application/json", temperature: 0.2, httpOptions: { timeout: 60000 } },
+    config: {
+      responseMimeType: "application/json",
+      temperature: 0.2,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      httpOptions: { timeout: 180000 },
+    },
   });
   if (!response.text) throw new Error("Cycle content generation returned no text.");
   return cycleBodyCatalogueSchema.parse(JSON.parse(response.text));

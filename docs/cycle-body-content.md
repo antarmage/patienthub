@@ -6,7 +6,8 @@ response or onboarding date, typical cycle length and reported regularity.
 Missing, future, stale or irregular cycle data and pregnancy/postpartum/
 menopause stages withhold cycle education rather than invent a day.
 
-The content engine uses the configured Gemini client to generate a generic
+The content engine uses the configured Gemini client (`gemini-3.8-flash`,
+low thinking level) to generate a generic
 four-phase education catalogue. **No patient identifiers, dates, symptoms or
 records are sent to the model.** The generated catalogue is schema-validated
 and persisted in `cycle_body_content_catalogue` by asset version. Generation
@@ -19,7 +20,11 @@ not measurements. The UI labels generated content as not clinically reviewed
 and not medical advice. This does not enable reviewed period-care content in
 the recommendation engine.
 
-Generation requires the existing server-side Gemini configuration. Failures
+Generation requires the existing server-side Gemini configuration. The initial
+catalogue generation has a three-minute deadline; subsequent reads use the
+persisted catalogue. A retired/unavailable model cannot generate a cold cache;
+update the cycle generator's model rather than substituting frontend copy.
+Failures
 are returned through the API error handler and shown with a retry action; no
 frontend educational fallback is substituted. Bump the catalogue asset
 version when deliberately regenerating generic content. API and frontend
