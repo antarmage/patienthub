@@ -19,7 +19,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import pregnancyGrowthBg from "@/assets/images/pregnancy-growth-bg.png";
-import { estimateCyclePhase, patientGreetingName } from "@/lib/patientGreeting";
+import { estimateCyclePhase, localDemoCycleSample, patientGreetingName } from "@/lib/patientGreeting";
 import { localDateKey, patientHealthRecordProgress } from "@/lib/patientHealthRecord";
 import { shouldShowPregnancyCheckin } from "@/lib/patientPregnancyUpdate";
 import { getWeekData, getWeekSizeLabel } from "@/components/WeekByWeekTimeline";
@@ -81,12 +81,21 @@ export default function PatientTodayDashboard({
   });
   const onboardingCycle = patient?.history?.onboarding?.cycle;
   const reportedRegularity = typeof onboardingCycle?.regularity === "string" ? onboardingCycle.regularity : "";
-  const cycleLmp = patient?.lmp
+  const recordedCycleLmp = patient?.lmp
     || periodQuery.data?.value?.date
     || onboardingCycle?.lastPeriod
     || patient?.history?.patientReportedLmp?.value
     || null;
-  const cycleLength = patient?.cycleLength ?? onboardingCycle?.cycleLength;
+  const recordedCycleLength = patient?.cycleLength ?? onboardingCycle?.cycleLength;
+  const hasRecordedCycleLength = recordedCycleLength !== null && recordedCycleLength !== undefined &&
+    String(recordedCycleLength).trim() !== "";
+  const demoSample = periodQuery.isFetched && !/irregular|unpredictable/i.test(reportedRegularity) &&
+    (!recordedCycleLmp || !hasRecordedCycleLength)
+    ? localDemoCycleSample(patient?.name, typeof window === "undefined" ? "" : window.location.hostname)
+    : null;
+  const cycleLmp = recordedCycleLmp || demoSample?.lmp || null;
+  const cycleLength = hasRecordedCycleLength ? recordedCycleLength : demoSample?.cycleLength;
+  const usingDemoCycleSample = Boolean(demoSample);
   const cyclePhase = isCycleMode && !/irregular|unpredictable/i.test(reportedRegularity)
     ? estimateCyclePhase(cycleLmp, cycleLength)
     : null;
@@ -419,7 +428,9 @@ export default function PatientTodayDashboard({
               ? <>
                   Peak fertility window. Energy levels are high.
                   <span className="mt-1 block text-xs font-normal leading-relaxed">
-                    Estimated from your recorded period and typical cycle length. Timing and energy vary; this is not a guarantee of ovulation or pregnancy.
+                    {usingDemoCycleSample
+                      ? "Local demo preview only; these sample values are not patient data."
+                      : "Estimated from your recorded period and typical cycle length. Timing and energy vary; this is not a guarantee of ovulation or pregnancy."}
                   </span>
                 </>
               : "Your experience is individual. Cycle information will appear here when it is available."}

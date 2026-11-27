@@ -6,6 +6,13 @@ export function patientGreetingName(name: string | null | undefined): string {
   return first || parts[0] || "";
 }
 
+export function localDemoCycleSample(name: string | null | undefined, hostname: string, now = new Date()) {
+  if (patientGreetingName(name).toLowerCase() !== "demo" || !["localhost", "127.0.0.1"].includes(hostname)) return null;
+  const lmp = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 13);
+  const date = `${lmp.getFullYear()}-${String(lmp.getMonth() + 1).padStart(2, "0")}-${String(lmp.getDate()).padStart(2, "0")}`;
+  return { lmp: date, cycleLength: 28 };
+}
+
 const modeLabels: Record<string, string> = { general: "Cycle Health", ttc: "Trying to Conceive", ivf: "IVF Support" };
 
 // Shows a cycle day only when a valid recent LMP is recorded; otherwise the honest mode label.

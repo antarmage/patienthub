@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { patientGreetingName, cycleSubtitle, estimateCyclePhase } from "./patientGreeting";
+import { patientGreetingName, cycleSubtitle, estimateCyclePhase, localDemoCycleSample } from "./patientGreeting";
 
 test("greeting uses the given name, not a title prefix", () => {
   assert.equal(patientGreetingName("Mrs. Surbhi Sukla"), "Surbhi");
@@ -50,4 +50,13 @@ test("cycle phase estimates require a current LMP and a typical recorded cycle l
   assert.equal(estimateCyclePhase("2026-11-06", 40, now), null);
   assert.equal(estimateCyclePhase("2026-10-01", 28, now), null);
   assert.equal(estimateCyclePhase("2026-11-20", 28, now), null);
+});
+
+test("demo cycle sample is local-only and keeps the preview on day 14", () => {
+  const now = new Date("2026-11-27T12:00:00");
+  const sample = localDemoCycleSample("Demo Patient", "localhost", now);
+  assert.deepEqual(sample, { lmp: "2026-11-14", cycleLength: 28 });
+  assert.equal(estimateCyclePhase(sample?.lmp, sample?.cycleLength, now)?.cycleDay, 14);
+  assert.equal(localDemoCycleSample("Demo", "patienthub.example", now), null);
+  assert.equal(localDemoCycleSample("Surbhi", "localhost", now), null);
 });
