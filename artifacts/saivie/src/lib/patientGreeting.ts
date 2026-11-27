@@ -58,3 +58,22 @@ export function estimateCyclePhase(
     isPeakFertilityWindow: cycleDay >= estimatedOvulationDay - 2 && cycleDay <= estimatedOvulationDay,
   };
 }
+
+export function forecastCycleEnergy(cycleLength: unknown): number[] {
+  const parsedLength = typeof cycleLength === "number"
+    ? cycleLength
+    : typeof cycleLength === "string" && /^\d+$/.test(cycleLength.trim())
+      ? Number(cycleLength)
+      : NaN;
+  if (!Number.isInteger(parsedLength) || parsedLength < 21 || parsedLength > 35) return [];
+
+  const ovulationDay = parsedLength - 14;
+  return Array.from({ length: parsedLength }, (_, index) => {
+    const day = index + 1;
+    if (day <= 5) return 35 + day * 2;
+    if (day < ovulationDay - 2) return Math.round(43 + ((day - 5) / Math.max(1, ovulationDay - 7)) * 32);
+    if (day <= ovulationDay) return day === ovulationDay ? 82 : 72 + (day - (ovulationDay - 2)) * 5;
+    if (day <= ovulationDay + 5) return Math.max(62, 78 - (day - ovulationDay) * 4);
+    return Math.max(38, 62 - ((day - ovulationDay - 5) / Math.max(1, parsedLength - ovulationDay - 5)) * 24);
+  });
+}

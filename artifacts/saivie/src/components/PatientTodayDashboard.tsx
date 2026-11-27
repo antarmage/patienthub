@@ -19,7 +19,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import pregnancyGrowthBg from "@/assets/images/pregnancy-growth-bg.png";
-import { estimateCyclePhase, localDemoCycleSample, patientGreetingName } from "@/lib/patientGreeting";
+import { estimateCyclePhase, forecastCycleEnergy, localDemoCycleSample, patientGreetingName } from "@/lib/patientGreeting";
 import { localDateKey, patientHealthRecordProgress } from "@/lib/patientHealthRecord";
 import { shouldShowPregnancyCheckin } from "@/lib/patientPregnancyUpdate";
 import { getWeekData, getWeekSizeLabel } from "@/components/WeekByWeekTimeline";
@@ -99,6 +99,7 @@ export default function PatientTodayDashboard({
   const cyclePhase = isCycleMode && !/irregular|unpredictable/i.test(reportedRegularity)
     ? estimateCyclePhase(cycleLmp, cycleLength)
     : null;
+  const cycleEnergyForecast = isCycleMode ? forecastCycleEnergy(cycleLength) : [];
   const lmp = pregnancyEpisode?.details?.lmp || patient?.lmp || null;
   const week = gestationalWeek(lmp);
   const dueDate = useMemo(() => {
@@ -461,13 +462,53 @@ export default function PatientTodayDashboard({
             </div>
           ) : isCycleMode ? (
             <div className="mt-auto rounded-[24px] bg-white/45 p-5">
-              <svg viewBox="0 0 350 72" aria-hidden="true" className="block h-auto w-full opacity-60">
-                <path d="M0 18H350 M0 38H350 M0 58H350" fill="none" stroke="rgba(34,18,43,0.2)" strokeDasharray="3 7" strokeWidth="2" />
-                <path d="M0 64H350" fill="none" stroke="rgba(34,18,43,0.35)" strokeWidth="2" />
-              </svg>
+              {cycleEnergyForecast.length > 0 && cyclePhase ? (
+                <svg
+                  viewBox="0 0 350 72"
+                  role="img"
+                  aria-label={`Calculated and forecasted energy levels for cycle day ${cyclePhase.cycleDay}`}
+                  className="block h-auto w-full"
+                >
+                  <path d="M0 18H350 M0 38H350 M0 58H350" fill="none" stroke="rgba(34,18,43,0.16)" strokeDasharray="3 7" strokeWidth="2" />
+                  <path d="M0 64H350" fill="none" stroke="rgba(34,18,43,0.35)" strokeWidth="2" />
+                  {cycleEnergyForecast.map((level, index) => {
+                    const day = index + 1;
+                    const gap = cycleEnergyForecast.length > 28 ? 2 : 3;
+                    const slotWidth = 350 / cycleEnergyForecast.length;
+                    const barWidth = Math.max(3, slotWidth - gap);
+                    const barHeight = 16 + level * 0.42;
+                    const x = index * slotWidth + (slotWidth - barWidth) / 2;
+                    const y = 64 - barHeight;
+                    const isToday = day === cyclePhase.cycleDay;
+                    return (
+                      <rect
+                        key={day}
+                        x={x}
+                        y={y}
+                        width={barWidth}
+                        height={barHeight}
+                        rx={Math.min(4, barWidth / 2)}
+                        fill={isToday ? "#2A1220" : "rgba(255,181,52,0.9)"}
+                        opacity={day > cyclePhase.cycleDay ? 0.55 : 1}
+                      >
+                        <title>{`Day ${day}: estimated energy ${level}%`}</title>
+                      </rect>
+                    );
+                  })}
+                </svg>
+              ) : (
+                <svg viewBox="0 0 350 72" aria-hidden="true" className="block h-auto w-full opacity-60">
+                  <path d="M0 18H350 M0 38H350 M0 58H350" fill="none" stroke="rgba(34,18,43,0.2)" strokeDasharray="3 7" strokeWidth="2" />
+                  <path d="M0 64H350" fill="none" stroke="rgba(34,18,43,0.35)" strokeWidth="2" />
+                </svg>
+              )}
               <div className="mt-2 flex justify-between gap-3 text-[13px] font-semibold">
-                <span>Cycle history</span>
-                <span className="text-right">Not available yet</span>
+                <span>{cycleEnergyForecast.length > 0 && cyclePhase ? "Calculated / forecasted energy" : "Cycle history"}</span>
+                <span className="text-right">
+                  {cycleEnergyForecast.length > 0 && cyclePhase
+                    ? `Day ${cyclePhase.cycleDay} · Estimated`
+                    : "Not available yet"}
+                </span>
               </div>
             </div>
           ) : (

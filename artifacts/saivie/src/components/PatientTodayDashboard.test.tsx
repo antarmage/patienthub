@@ -59,6 +59,8 @@ test("cycle dashboard shows the estimated peak window only with LMP and cycle le
   assert.match(estimated, /DAY 14 · ESTIMATED OVULATION/);
   assert.match(estimated, /Peak fertility window\. Energy levels are high\./);
   assert.match(estimated, /Timing and energy vary/);
+  assert.match(estimated, /Calculated and forecasted energy levels/);
+  assert.match(estimated, /Calculated \/ forecasted energy/);
 
   const missingCycleLength = renderDashboard(null, "general", undefined, lmp);
   assert.doesNotMatch(missingCycleLength, /Peak fertility window|ESTIMATED OVULATION/);
