@@ -67,6 +67,7 @@ import { createPregnancyMedicationReconciliationStore, registerPregnancyMedicati
 import { createMenopauseStore, registerMenopauseCare } from "../menopause";
 import { createBookingCatalogStore, registerBookingCatalog } from "../booking-catalog";
 import { createPatientProgramsStore, registerPatientPrograms } from "../patient-programs";
+import { createPatientPeriodStore, registerPatientPeriod } from "../patient-period";
 import {
   createRecommendationProductionStore,
   createRecommendationTestingStore,
@@ -5950,6 +5951,7 @@ Return a JSON object:
   // Pass it via the X-Patient-Id request header instead.
   registerSurgeryWorkflow(app, createSurgeryStore(pool), getAccessActor);
   registerPregnancyEpisodes(app, createPregnancyEpisodeStore(pool), getAccessActor);
+  registerPatientPeriod(app, createPatientPeriodStore(pool), getAccessActor);
   registerPatientContent(app, pool, getAccessActor, async (patientId) => {
     const [patient, medications, episodes] = await Promise.all([
       storage.getPatient(patientId),

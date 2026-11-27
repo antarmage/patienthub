@@ -238,6 +238,7 @@ export default function Landing() {
       queryClient.clear();
       sessionStorage.removeItem("billing_staff_token");
       localStorage.setItem("patientUser", JSON.stringify(data.patient));
+      sessionStorage.removeItem(`saiviePeriodPromptSeen:${data.patient.id}`);
       setLocation("/patient");
     } catch {
       setPatientError("Connection error. Please try again.");

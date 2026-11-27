@@ -61,6 +61,7 @@ import { bookingVisitModeLabel } from "@/lib/bookingVisit";
 import { validMeetUrl } from "@/lib/onlineConsultation";
 import PatientPrograms, { type PatientClinician } from "@/components/PatientPrograms";
 import PatientTodayDashboard from "@/components/PatientTodayDashboard";
+import PatientPeriodPrompt from "@/components/PatientPeriodPrompt";
 import PregnancyCareDashboard from "@/components/PregnancyCareDashboard";
 import PatientHealthRecord from "@/components/PatientHealthRecord";
 import PatientStageSwitcher from "@/components/PatientStageSwitcher";
@@ -191,7 +192,7 @@ export default function PatientPortal() {
     queryKey: [`/api/patients/${patient?.id}/pregnancy-episodes`],
     queryFn: async () => {
       const r = await fetch(`/api/patients/${patient?.id}/pregnancy-episodes`);
-      if (!r.ok) return [];
+      if (!r.ok) throw new Error("Unable to load pregnancy history.");
       return r.json();
     },
     enabled: !!patient?.id,
@@ -674,6 +675,15 @@ export default function PatientPortal() {
           <TabsContent value="home" className="space-y-10 animate-in fade-in duration-700">
             {mode === "menopause" && patient?.id && <PatientMenopauseCare key={patient.id} patientId={patient.id} patientName={patient.name} />}
             {appointmentsQuery.isError && <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-900">Unable to load appointments. <button type="button" onClick={() => { void appointmentsQuery.refetch(); }} className="font-bold underline">Retry</button></p>}
+            {pregnancyEpisodesQuery.isError && <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-900">Unable to load pregnancy history. <button type="button" onClick={() => void pregnancyEpisodesQuery.refetch()} className="font-bold underline">Retry</button></p>}
+            {patient?.id && <PatientPeriodPrompt
+              key={patient.id}
+              patientId={Number(patient.id)}
+              enabled={modeInitialized && pregnancyEpisodesQuery.isSuccess && !pregnancyLossSupport && (mode === "pregnancy" || patientStageForMode(mode) === "periods")}
+              pregnancy={mode === "pregnancy"}
+              bookingOpen={bookingOpen}
+              onBook={openBooking}
+            />}
             {patient?.id && (
               <PatientTodayDashboard
                 mode={mode}

@@ -181,6 +181,8 @@ export default function PatientTodayDashboard({
   const shareEra = async () => {
     const text = isPregnancy
       ? `${firstName} is at week ${week ?? "—"} of pregnancy · Saivie`
+      : isCycleMode
+      ? `${firstName}'s check-in · Saivie`
       : `${firstName}'s health era · Saivie`;
     if (navigator.share) {
       await navigator.share({ title: "Saivie", text }).catch(() => undefined);
@@ -222,7 +224,7 @@ export default function PatientTodayDashboard({
   const plans = isPregnancy
     ? [
         { time: "Morning", label: "Nutrition for two", text: "Your body needs extra iron and folate. Try spinach, lentils, or dates.", icon: Utensils },
-        { time: "Afternoon", label: "A gentle walk or prenatal yoga", text: "Energy is usually steadier in the second trimester.", link: "See prenatal plan", icon: Wind },
+        { time: "Afternoon", label: "A gentle walk or prenatal yoga", text: week == null ? "Choose movement that feels comfortable for you." : "Energy is usually steadier in the second trimester.", link: "See prenatal plan", icon: Wind },
         { time: "Evening", label: "Sip throughout the day", text: "Keep a water bottle within reach and wind down early.", icon: Moon },
         { time: "Night", label: "Sleep on your side", text: "A pillow between your knees takes pressure off your hips.", icon: Moon },
       ]
@@ -249,7 +251,7 @@ export default function PatientTodayDashboard({
     ? postpartumWeek ? `POSTPARTUM · WEEK ${postpartumWeek}` : "POSTPARTUM · YOUR RECOVERY"
     : isMenopause
     ? "PERIMENOPAUSE · YOUR PATTERNS"
-    : "YOUR CYCLE";
+    : "CYCLE HEALTH";
 
   const firstRowDots = Array.from({ length: 20 }, (_, i) => i + 1);
   const secondRowDots = Array.from({ length: 20 }, (_, i) => i + 21);
@@ -325,7 +327,7 @@ export default function PatientTodayDashboard({
         </section>
       )}
 
-      <button type="button" onClick={onOpenRecord} className="mb-6 flex w-full items-center gap-4 rounded-[24px] border border-[var(--line)] bg-white/85 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      {!isCycleMode && <button type="button" onClick={onOpenRecord} className="mb-6 flex w-full items-center gap-4 rounded-[24px] border border-[var(--line)] bg-white/85 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-serif text-xl font-bold">Complete your profile</h2>
@@ -343,7 +345,7 @@ export default function PatientTodayDashboard({
         <span className="shrink-0 rounded-full bg-[#2A1220] px-4 py-2 text-xs font-bold text-white">
           {recordProgress.missingItems.length ? "Continue" : "View record"}
         </span>
-      </button>
+      </button>}
 
       <div className="flex flex-wrap gap-6">
         <motion.section
@@ -379,7 +381,7 @@ export default function PatientTodayDashboard({
 
           <h1 className="m-0 max-w-[680px] text-[56px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[84px]">
             {isPregnancy
-              ? <>Your baby can <em className="font-medium">hear</em> you now.</>
+              ? week == null ? <>Your pregnancy, at <em className="font-medium">your pace</em>.</> : <>Your baby can <em className="font-medium">hear</em> you now.</>
               : isPostpartum
               ? <>Your recovery, at <em className="font-medium">your pace</em>.</>
               : isMenopause
@@ -389,12 +391,12 @@ export default function PatientTodayDashboard({
 
           <p className="m-0 text-[17px] font-medium leading-[1.4] md:text-[20px]">
             {isPregnancy
-              ? `About the size of ${week != null ? getWeekSizeLabel(week) : "your baby"}. ${week != null ? `${40 - week} weeks to go.` : "Pregnancy guidance."}`
+              ? week != null ? `About the size of ${getWeekSizeLabel(week)}. ${40 - week} weeks to go.` : "Your care team can help confirm your pregnancy dates."
               : isPostpartum
               ? "Your wellbeing matters as you adjust to life with a new baby."
               : isMenopause
               ? "Notice changes over time and bring questions to your care team."
-              : "Your experience is individual. Talk with your care team about any concerns."}
+              : "Your experience is individual. Cycle information will appear here when it is available."}
           </p>
 
           {isPregnancy ? (
@@ -421,8 +423,15 @@ export default function PatientTodayDashboard({
               </div>
             </div>
           ) : isCycleMode ? (
-            <div className="mt-auto rounded-[24px] bg-white/45 p-5 text-sm">
-              Cycle phase and fertility are not predicted here.
+            <div className="mt-auto rounded-[24px] bg-white/45 p-5">
+              <svg viewBox="0 0 350 72" aria-hidden="true" className="block h-auto w-full opacity-60">
+                <path d="M0 18H350 M0 38H350 M0 58H350" fill="none" stroke="rgba(34,18,43,0.2)" strokeDasharray="3 7" strokeWidth="2" />
+                <path d="M0 64H350" fill="none" stroke="rgba(34,18,43,0.35)" strokeWidth="2" />
+              </svg>
+              <div className="mt-2 flex justify-between gap-3 text-[13px] font-semibold">
+                <span>Cycle history</span>
+                <span className="text-right">Not available yet</span>
+              </div>
             </div>
           ) : (
             <div className="mt-auto rounded-[24px] bg-white/45 p-5">
@@ -439,18 +448,18 @@ export default function PatientTodayDashboard({
 
           <div className="mt-2 flex flex-wrap gap-[10px]">
             <motion.button type="button" onClick={isCycleMode ? () => document.getElementById("cycle-insights")?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" }) : onBook} whileHover={reducedMotion ? undefined : { y: -2, scale: 1.015 }} whileTap={reducedMotion ? undefined : { scale: 0.97 }} transition={{ duration: 0.16 }} className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-full bg-[var(--ink)] px-6 text-[16px] font-bold text-[var(--paper)] md:flex-none">
-              {isPregnancy ? "This week" : isCycleMode ? "Cycle information" : "View insights"}
+              {isPregnancy ? "This week" : isCycleMode ? "View cycle information" : "View insights"}
               {isPregnancy && <ChevronRight className="h-4 w-4" aria-hidden="true" />}
             </motion.button>
-            {!isCycleMode && <motion.button type="button" onClick={shareEra} whileTap={reducedMotion ? undefined : { scale: 0.97 }} className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-full border-2 border-[var(--ink)] bg-transparent px-5 text-[16px] font-bold md:flex-none">
-              {isPregnancy && <Share2 className="h-4 w-4" aria-hidden="true" />}
+            <motion.button type="button" onClick={shareEra} whileTap={reducedMotion ? undefined : { scale: 0.97 }} className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-full border-2 border-[var(--ink)] bg-transparent px-5 text-[16px] font-bold md:flex-none">
+              <Share2 className="h-4 w-4" aria-hidden="true" />
               {isPregnancy ? "Share bump" : "Share today"}
-            </motion.button>}
+            </motion.button>
           </div>
         </motion.section>
 
         <aside className="flex min-w-0 basis-[340px] flex-col gap-9 px-5 pb-5 pt-8 md:max-w-[420px] md:gap-5 md:px-0 md:pb-0 md:pt-0">
-          {!isCycleMode && <motion.section
+          <motion.section
             initial={reducedMotion ? false : { opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : 0.16 }}
@@ -463,6 +472,8 @@ export default function PatientTodayDashboard({
             <p className="mt-1 text-[15px] text-[var(--body-soft)]">
               {isPregnancy || isPostpartum || isMenopause
                 ? "A simple note can help you remember what to discuss with your care team."
+                : isCycleMode
+                ? "Take a moment to notice how you feel today."
                 : "One tap keeps your predictions sharp."}
             </p>
             <div className="mt-3 flex flex-wrap gap-[8px] md:gap-[6px]">
@@ -489,7 +500,7 @@ export default function PatientTodayDashboard({
                 </motion.button>
               ))}
             </div>
-          </motion.section>}
+          </motion.section>
 
           {isPregnancy ? (
             <>
@@ -535,10 +546,26 @@ export default function PatientTodayDashboard({
               )}
             </>
           ) : isCycleMode ? (
-            <section className="rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)]">
-              <p className="m-0 font-serif text-[28px] font-bold">Care at your pace.</p>
-              <p className="mt-2 text-[15px] leading-[1.5] text-[var(--on-dark-soft)]">Cycle-specific guidance is not available yet.</p>
-            </section>
+            <>
+              <section aria-label="Cycle information" className="rounded-[28px] bg-[var(--ink)] p-7 text-[var(--paper)]">
+                <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.14em]" style={{ color: accent }}>YOUR CYCLE, YOUR PACE</p>
+                <h2 className="mt-3 font-serif text-[30px] font-bold leading-[1.1]">Your experience is individual.</h2>
+                <p className="mt-2 text-[15px] leading-[1.5] text-[var(--on-dark-soft)]">
+                  Cycle dates and patterns aren&apos;t available here yet. Keep noting changes that matter to you.
+                </p>
+              </section>
+              <section aria-label="Share today" className="flex items-center gap-5 rounded-[28px] bg-[#FFE3B0] p-5 md:p-6">
+                <div aria-hidden="true" className="flex h-[132px] w-[84px] shrink-0 -rotate-3 flex-col justify-between rounded-2xl bg-[#FFB534] p-3 shadow-[0_8px_20px_rgba(34,18,43,0.18)]">
+                  <span className="font-serif text-[32px] font-bold leading-none">S</span>
+                  <span className="text-[10px] font-extrabold uppercase leading-tight tracking-wide">A CHECK-IN FOR YOU</span>
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
+                  <h2 className="m-0 font-serif text-[24px] font-bold leading-[1.1]">Share your check-in</h2>
+                  <p className="m-0 text-[14px] leading-[1.4] text-[var(--body-soft)]">Share a simple note about today, if you&apos;d like.</p>
+                  <button type="button" onClick={shareEra} className="mt-1 min-h-11 rounded-full bg-[var(--ink)] px-5 text-sm font-bold text-[var(--paper)]">Share today</button>
+                </div>
+              </section>
+            </>
           ) : (
             <section className="rounded-[28px] bg-[var(--ink)] p-6 text-[var(--paper)]">
               <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: accent }}>
@@ -561,12 +588,53 @@ export default function PatientTodayDashboard({
       </div>
 
       {isCycleMode ? (
-        <section className="mt-8 px-5 md:px-0" id={cycleTestingEnabled ? undefined : "cycle-insights"}>
-          <h2 className="mb-4 font-serif text-[26px] font-bold md:text-[38px]">Cycle information</h2>
-          {cycleTestingEnabled
-            ? <PatientCycleTesting key={patient.id} patientId={patient.id} />
-            : <p className="text-sm">Cycle recommendations are not available yet.</p>}
-        </section>
+        <>
+          <section className="mt-8 px-5 md:px-0" aria-label="Today's plan">
+            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="m-0 font-serif text-[26px] font-bold md:text-[38px]">Today&apos;s plan</h2>
+              <p className="m-0 text-[15px] text-[var(--muted)] md:text-[16px]">A few optional ways to care for yourself today.</p>
+            </div>
+            <div className="flex flex-col md:flex-row md:flex-wrap md:gap-5">
+              {[
+                { label: "Check in with yourself", category: "NOTICE", color: "#5B3DF5", text: "Take a moment to notice how you feel today." },
+                { label: "Review your health record", category: "TRACK", color: "#FF6A4D", text: "Keep your care details together and prepare for your next visit.", link: "Open health record", action: onOpenRecord },
+                { label: "Prepare a question", category: "REFLECT", color: "#12B5A2", text: "Write down anything you would like to discuss at a visit." },
+                { label: "Connect with your care team", category: "SUPPORT", color: "#2E3A8C", text: "Reach out whenever you have a question or concern.", link: "Book an appointment", action: onBook },
+              ].map((item) => (
+                <article key={item.category} className="mb-4 min-w-0 flex-1 basis-[220px] md:mb-0">
+                  <div className="mb-[14px] flex items-center gap-[10px]">
+                    <span className="h-[14px] w-[14px] shrink-0 rounded-full" style={{ background: item.color }} />
+                    <span className="text-[13px] font-extrabold tracking-[0.08em]">{item.category}</span>
+                    <span aria-hidden="true" className="h-[2px] flex-1 bg-[#EBD3B6]" />
+                  </div>
+                  <div className="flex min-h-[180px] flex-col gap-2 rounded-[26px] border border-[var(--line)] bg-[var(--surface)] p-5 md:p-[22px]">
+                    <h3 className="m-0 font-serif text-[21px] font-bold leading-[1.2]">{item.label}</h3>
+                    <p className="m-0 text-[15px] leading-[1.5] text-[var(--body-soft)]">{item.text}</p>
+                    {item.link && <button type="button" onClick={item.action} className="mt-auto min-h-11 self-start border-0 bg-transparent p-0 text-[15px] font-bold underline underline-offset-4">{item.link}</button>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-8 px-5 md:px-0" aria-label="Programs and support">
+            <div className="flex flex-wrap items-center justify-between gap-5 rounded-[32px] bg-[#8EC5FF] p-7 md:px-10 md:py-8">
+              <div className="min-w-0 flex-1 basis-[420px]">
+                <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.14em]">CARE THAT FITS YOUR GOALS</p>
+                <h2 className="mt-2 font-serif text-[28px] font-bold leading-[1.1] md:text-[32px]">Explore programs and support.</h2>
+                <p className="mt-2 text-[15px] leading-[1.5] text-[#1E2A3A]">Browse care options or speak with your team about what feels right for you.</p>
+              </div>
+              <button type="button" onClick={onOpenCare} className="min-h-[52px] rounded-full bg-[var(--ink)] px-6 text-[15px] font-bold text-[var(--paper)]">Explore care</button>
+            </div>
+          </section>
+
+          <section className="mt-8 px-5 md:px-0" id="cycle-insights">
+            <h2 className="mb-4 font-serif text-[26px] font-bold md:text-[38px]">Cycle information</h2>
+            {cycleTestingEnabled
+              ? <PatientCycleTesting key={patient.id} patientId={patient.id} />
+              : <p className="text-sm">Cycle recommendations are not available yet.</p>}
+          </section>
+        </>
       ) : <section className="mt-8 px-5 md:px-0">
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="m-0 font-serif text-[26px] font-bold tracking-[0em] md:text-[38px] md:tracking-[-0.02em]">Today&apos;s plan</h2>
@@ -706,7 +774,7 @@ export default function PatientTodayDashboard({
           </div>
           <button type="button" onClick={onBook} className="h-[52px] rounded-full border-2 border-[var(--ink)] bg-transparent px-6 text-[15px] font-bold">Book</button>
         </motion.section>
-        {!isCycleMode && <motion.section
+        <motion.section
           initial={reducedMotion ? false : { opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: reducedMotion ? 0 : 0.4, delay: reducedMotion ? 0 : 0.24 }}
@@ -716,10 +784,14 @@ export default function PatientTodayDashboard({
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#E4DCFF]"><Sparkles className="h-5 w-5" /></div>
           <div className="min-w-0 flex-1">
             <p className="m-0 font-serif text-[22px] font-bold">Ask about your body</p>
-            <p className="mt-1 text-[14px] text-[var(--body-soft)]">Get plain-language, phase-aware guidance.</p>
+            <p className="mt-1 text-[14px] text-[var(--body-soft)]">
+              {isCycleMode ? "Ask your care team about anything on your mind." : "Get plain-language, phase-aware guidance."}
+            </p>
           </div>
-          <ChevronRight className="h-5 w-5" />
-        </motion.section>}
+          {isCycleMode
+            ? <button type="button" onClick={onBook} className="flex min-h-11 items-center gap-2 rounded-full bg-[var(--ink)] px-4 text-sm font-bold text-[var(--paper)]">Ask <ChevronRight className="h-4 w-4" /></button>
+            : <ChevronRight className="h-5 w-5" />}
+        </motion.section>
       </div>
     </motion.div>
   );

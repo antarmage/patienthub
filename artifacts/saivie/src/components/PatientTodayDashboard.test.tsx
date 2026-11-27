@@ -28,11 +28,14 @@ function renderDashboard(lmp: string | null, mode = "pregnancy") {
   );
 }
 
-test("cycle dashboard does not present invented forecasts or activity plans", () => {
+test("cycle dashboard matches the new layout without inventing predictions or plans", () => {
   const html = renderDashboard(null, "general");
+  assert.match(html, /Today&#x27;s plan/);
+  assert.match(html, /Share your check-in/);
+  assert.match(html, /Cycle history/);
+  assert.match(html, /Cycle dates and patterns aren&#x27;t available here yet/);
   assert.match(html, /Cycle recommendations are not available yet/);
-  assert.match(html, /Cycle phase and fertility are not predicted here/);
-  assert.doesNotMatch(html, /DAY 14|OVULATION|7-day streak|Luteal phase starts|phase-aware guidance|Presentations and hard conversations/);
+  assert.doesNotMatch(html, /DAY 14|OVULATION|7-day streak|Luteal phase starts|phase-aware guidance|Presentations and hard conversations|Estimated next period/);
   assert.match(html, /Book an appointment/);
 });
 
@@ -48,6 +51,7 @@ test("pregnancy week indicator does not invent a current week when the date is m
   assert.match(html, /Pregnancy week not available/);
   assert.match(html, /Week not available/);
   assert.doesNotMatch(html, /r="11"/);
+  assert.doesNotMatch(html, /Your baby can|second trimester/);
 });
 
 test("first and last week markers fit inside the ribbon", () => {
