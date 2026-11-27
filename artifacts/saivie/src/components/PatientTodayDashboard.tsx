@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   CalendarPlus,
@@ -18,7 +19,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import pregnancyGrowthBg from "@/assets/images/pregnancy-growth-bg.png";
-import { patientGreetingName } from "@/lib/patientGreeting";
+import { estimateCyclePhase, patientGreetingName } from "@/lib/patientGreeting";
 import { localDateKey, patientHealthRecordProgress } from "@/lib/patientHealthRecord";
 import { shouldShowPregnancyCheckin } from "@/lib/patientPregnancyUpdate";
 import { getWeekData, getWeekSizeLabel } from "@/components/WeekByWeekTimeline";
@@ -73,6 +74,22 @@ export default function PatientTodayDashboard({
   const isMenopause = mode === "menopause";
   const isCycleMode = !isPregnancy && !isPostpartum && !isMenopause;
   const cycleTestingEnabled = import.meta.env?.VITE_SAIVIE_RECOMMENDATION_TESTING === "true";
+  const numericPatientId = Number(patient?.id);
+  const periodQuery = useQuery<{ value?: { date?: string | null } | null }>({
+    queryKey: ["/api/patients", numericPatientId, "period-prompt"],
+    enabled: isCycleMode && Number.isSafeInteger(numericPatientId) && numericPatientId > 0,
+  });
+  const onboardingCycle = patient?.history?.onboarding?.cycle;
+  const reportedRegularity = typeof onboardingCycle?.regularity === "string" ? onboardingCycle.regularity : "";
+  const cycleLmp = patient?.lmp
+    || periodQuery.data?.value?.date
+    || onboardingCycle?.lastPeriod
+    || patient?.history?.patientReportedLmp?.value
+    || null;
+  const cycleLength = patient?.cycleLength ?? onboardingCycle?.cycleLength;
+  const cyclePhase = isCycleMode && !/irregular|unpredictable/i.test(reportedRegularity)
+    ? estimateCyclePhase(cycleLmp, cycleLength)
+    : null;
   const lmp = pregnancyEpisode?.details?.lmp || patient?.lmp || null;
   const week = gestationalWeek(lmp);
   const dueDate = useMemo(() => {
@@ -251,6 +268,8 @@ export default function PatientTodayDashboard({
     ? postpartumWeek ? `POSTPARTUM · WEEK ${postpartumWeek}` : "POSTPARTUM · YOUR RECOVERY"
     : isMenopause
     ? "PERIMENOPAUSE · YOUR PATTERNS"
+    : cyclePhase
+    ? `DAY ${cyclePhase.cycleDay} · ${cyclePhase.isEstimatedOvulationDay ? "ESTIMATED OVULATION" : "ESTIMATED FERTILITY WINDOW"}`
     : "CYCLE HEALTH";
 
   const firstRowDots = Array.from({ length: 20 }, (_, i) => i + 1);
@@ -396,6 +415,13 @@ export default function PatientTodayDashboard({
               ? "Your wellbeing matters as you adjust to life with a new baby."
               : isMenopause
               ? "Notice changes over time and bring questions to your care team."
+              : cyclePhase?.isPeakFertilityWindow
+              ? <>
+                  Peak fertility window. Energy levels are high.
+                  <span className="mt-1 block text-xs font-normal leading-relaxed">
+                    Estimated from your recorded period and typical cycle length. Timing and energy vary; this is not a guarantee of ovulation or pregnancy.
+                  </span>
+                </>
               : "Your experience is individual. Cycle information will appear here when it is available."}
           </p>
 

@@ -50,6 +50,8 @@ export default function PatientPeriodPrompt({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
+  const opening = useRef(false);
+  const seenThisMount = useRef(false);
   const touchStart = useRef<number | null>(null);
 
   const query = useQuery({
@@ -67,13 +69,16 @@ export default function PatientPeriodPrompt({
     if (!enabled || bookingOpen || !query.data) return;
     const seenKey = `saiviePeriodPromptSeen:${patientId}`;
     let active = true;
+    let seen = seenThisMount.current;
     try {
-      if (!shouldShowPeriodPrompt(query.data, Boolean(sessionStorage.getItem(seenKey)))) return;
-      sessionStorage.setItem(seenKey, "true");
+      seen ||= Boolean(sessionStorage.getItem(seenKey));
     } catch (failure) {
-      console.warn("Could not check the period prompt session", failure);
+      console.warn("Could not check the period prompt session storage", failure);
+    }
+    if (opening.current || !shouldShowPeriodPrompt(query.data, seen)) {
       return;
     }
+    opening.current = true;
     void (async () => {
       try {
         const response = await authenticatedFetch(`${base}/show`, { method: "POST" });
@@ -84,12 +89,20 @@ export default function PatientPeriodPrompt({
         if (!response.ok) throw new Error("Unable to open the period reminder. You can use the card below.");
         const state: PeriodState = await response.json();
         if (active) {
+          seenThisMount.current = true;
+          try {
+            sessionStorage.setItem(seenKey, "true");
+          } catch (failure) {
+            console.warn("Could not save the period prompt session state", failure);
+          }
           setStep("date");
           setOpen(true);
           queryClient.setQueryData(key, state);
         }
       } catch (failure) {
         if (active) setError(failure instanceof Error ? failure.message : "Unable to open the period reminder.");
+      } finally {
+        opening.current = false;
       }
     })();
     return () => { active = false; };
