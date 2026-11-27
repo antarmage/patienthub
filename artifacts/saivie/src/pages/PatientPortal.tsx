@@ -753,7 +753,7 @@ export default function PatientPortal() {
                 </button>
               </main>
             ) : (
-              <BiologyTab mode={mode} patient={{ ...patient, lmp: pregnancyLmp || patient?.lmp }} labResults={labResults} onOpenTracker={(tracker) => { setInitialTracker(tracker); setActiveTab("track"); }} />
+              <BiologyTab mode={mode} patient={mode === "pregnancy" ? { ...patient, lmp: pregnancyLmp } : patient} labResults={labResults} onOpenTracker={(tracker) => { setInitialTracker(tracker); setActiveTab("track"); }} />
             )}
           </TabsContent>
 

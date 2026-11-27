@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   CalendarPlus,
@@ -19,7 +18,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import pregnancyGrowthBg from "@/assets/images/pregnancy-growth-bg.png";
-import { estimateCyclePhase, forecastCycleEnergy, localDemoCycleSample, patientGreetingName } from "@/lib/patientGreeting";
+import { forecastCycleEnergy, patientGreetingName } from "@/lib/patientGreeting";
+import { usePatientCycle } from "@/lib/usePatientCycle";
 import { localDateKey, patientHealthRecordProgress } from "@/lib/patientHealthRecord";
 import { shouldShowPregnancyCheckin } from "@/lib/patientPregnancyUpdate";
 import { getWeekData, getWeekSizeLabel } from "@/components/WeekByWeekTimeline";
@@ -74,31 +74,7 @@ export default function PatientTodayDashboard({
   const isMenopause = mode === "menopause";
   const isCycleMode = !isPregnancy && !isPostpartum && !isMenopause;
   const cycleTestingEnabled = import.meta.env?.VITE_SAIVIE_RECOMMENDATION_TESTING === "true";
-  const numericPatientId = Number(patient?.id);
-  const periodQuery = useQuery<{ value?: { date?: string | null } | null }>({
-    queryKey: ["/api/patients", numericPatientId, "period-prompt"],
-    enabled: isCycleMode && Number.isSafeInteger(numericPatientId) && numericPatientId > 0,
-  });
-  const onboardingCycle = patient?.history?.onboarding?.cycle;
-  const reportedRegularity = typeof onboardingCycle?.regularity === "string" ? onboardingCycle.regularity : "";
-  const recordedCycleLmp = patient?.lmp
-    || periodQuery.data?.value?.date
-    || onboardingCycle?.lastPeriod
-    || patient?.history?.patientReportedLmp?.value
-    || null;
-  const recordedCycleLength = patient?.cycleLength ?? onboardingCycle?.cycleLength;
-  const hasRecordedCycleLength = recordedCycleLength !== null && recordedCycleLength !== undefined &&
-    String(recordedCycleLength).trim() !== "";
-  const demoSample = periodQuery.isFetched && !/irregular|unpredictable/i.test(reportedRegularity) &&
-    (!recordedCycleLmp || !hasRecordedCycleLength)
-    ? localDemoCycleSample(patient?.name, typeof window === "undefined" ? "" : window.location.hostname)
-    : null;
-  const cycleLmp = recordedCycleLmp || demoSample?.lmp || null;
-  const cycleLength = hasRecordedCycleLength ? recordedCycleLength : demoSample?.cycleLength;
-  const usingDemoCycleSample = Boolean(demoSample);
-  const cyclePhase = isCycleMode && !/irregular|unpredictable/i.test(reportedRegularity)
-    ? estimateCyclePhase(cycleLmp, cycleLength)
-    : null;
+  const { cycleLength, phase: cyclePhase, usingDemoSample: usingDemoCycleSample } = usePatientCycle(patient, isCycleMode);
   const cycleEnergyForecast = isCycleMode ? forecastCycleEnergy(cycleLength) : [];
   const lmp = pregnancyEpisode?.details?.lmp || patient?.lmp || null;
   const week = gestationalWeek(lmp);

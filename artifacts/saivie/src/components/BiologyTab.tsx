@@ -41,6 +41,7 @@ import dnaAbstract from "../assets/images/dna-abstract.png";
 import { getWeekData, getWeekSizeLabel } from "@/components/WeekByWeekTimeline";
 import type { PregnancyTrackerTarget } from "@/components/PregnancyTrackersTab";
 import PregnancyGrowthChart from "@/components/PregnancyGrowthChart";
+import { usePatientCycle } from "@/lib/usePatientCycle";
 
 const hormoneData = [
   { day: 1, est: 20, prog: 5, lh: 5, fsh: 10 },
@@ -384,16 +385,25 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
 
 function CycleNowPatterns({ patient }: { patient: any }) {
   const [view, setView] = useState<"now" | "patterns">("now");
-  const [temperature, setTemperature] = useState("");
-  const [temperatureSaved, setTemperatureSaved] = useState(false);
-  const lmp = patient?.lmp;
-  const cycleDay = lmp && /^\d{4}-\d{2}-\d{2}/.test(lmp)
-    ? Math.floor((Date.now() - new Date(`${lmp.slice(0, 10)}T00:00:00`).getTime()) / 86400000) + 1
-    : 14;
-  const day = cycleDay > 0 && cycleDay <= 28 ? cycleDay : 14;
+  const { lmp, cycleLength, regularity, phase, usingDemoSample, periodQuery } = usePatientCycle(patient, true);
+  const day = phase?.cycleDay;
+  const length = phase ? Number(cycleLength) : null;
+  const markerX = day && length ? 4 + ((day - 1) / (length - 1)) * 342 : null;
+  const todayRead = !phase
+    ? "A current period date and typical cycle length are needed for a cycle estimate."
+    : phase.cycleDay <= 5
+      ? "Early in a cycle, estrogen and progesterone are typically low. Experiences vary."
+      : phase.cycleDay < phase.estimatedOvulationDay
+        ? "Estrogen typically rises before ovulation. Your timing may differ."
+        : phase.cycleDay === phase.estimatedOvulationDay
+          ? "Ovulation may occur around this time. The date is an estimate, not a confirmation."
+          : "If ovulation has occurred, progesterone typically rises. Timing and symptoms vary.";
 
   return (
     <div className="space-y-6 pb-24">
+      {periodQuery.isError && <p role="alert" className="text-sm text-red-800">
+        Unable to load your period information. <button type="button" className="font-bold underline" onClick={() => void periodQuery.refetch()}>Retry</button>
+      </p>}
       <div role="tablist" aria-label="Body views" className="flex w-[320px] max-w-full rounded-full bg-[#F3E6D4] p-1">
         {(["now", "patterns"] as const).map((item) => (
           <button
@@ -418,10 +428,15 @@ function CycleNowPatterns({ patient }: { patient: any }) {
             <h1 className="mt-3 max-w-[680px] font-serif text-[44px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[76px]">
               Right on <em className="font-medium">rhythm.</em>
             </h1>
-            <p className="mt-4 text-[17px] md:text-[20px]">Your recorded cycle pattern over time.</p>
+            <p className="mt-4 text-[17px] md:text-[20px]">Your reported cycle information.</p>
+            {usingDemoSample && <p className="mt-2 text-sm">Local demo preview only; sample values are not patient data.</p>}
           </section>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {[["Cycle length", "28 days"], ["Cycle trend", "Regular"], ["Confidence", "Sample"]].map(([label, value]) => (
+            {[
+              ["Cycle length", cycleLength != null && String(cycleLength).trim() ? `${cycleLength} days` : "Not recorded"],
+              ["Cycle regularity", regularity || "Not recorded"],
+              ["Last period", lmp || "Not recorded"],
+            ].map(([label, value]) => (
               <div key={label} className="rounded-[28px] border border-[#F0DCC4] bg-white p-6">
                 <p className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#6A5560]">{label}</p>
                 <p className="mt-2 font-serif text-[24px] font-bold">{value}</p>
@@ -439,34 +454,34 @@ function CycleNowPatterns({ patient }: { patient: any }) {
             <div className="min-w-0 basis-[480px] flex-1">
               <div className="flex items-center gap-3">
                 <span className="text-[12px] font-extrabold uppercase tracking-[0.14em]">MY BODY</span>
-                <span className="rounded-full bg-[#22122B] px-4 py-2 text-[12px] font-extrabold tracking-[0.1em] text-[#FF9B7B]">DAY {day}</span>
+                <span className="rounded-full bg-[#22122B] px-4 py-2 text-[12px] font-extrabold tracking-[0.1em] text-[#FF9B7B]">{day ? `DAY ${day} · ESTIMATED` : "CYCLE DAY UNAVAILABLE"}</span>
               </div>
               <h1 className="mt-4 font-serif text-[44px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[76px]">
-                Here&apos;s what's happening <em className="font-medium">inside.</em>
+                Explore what may happen <em className="font-medium">inside.</em>
               </h1>
-              <p className="mt-4 text-[17px] md:text-[20px]">Four signals, explained in plain words.</p>
+              <p className="mt-4 text-[17px] md:text-[20px]">Cycle information, explained in plain words.</p>
             </div>
             <div className="basis-[340px] rounded-[28px] bg-[#FFF4E6] p-6">
               <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#6A5560]">TODAY&apos;S READ</p>
-              <p className="mt-3 font-serif text-[24px] font-bold leading-[1.2]">Estrogen is near its peak. LH surges to trigger ovulation.</p>
+              <p className="mt-3 font-serif text-[24px] font-bold leading-[1.2]">{todayRead}</p>
+              {phase && <p className="mt-2 text-sm">{usingDemoSample ? "Local demo preview only; not patient data." : "Estimated from your period date and typical cycle length, not hormone measurements."}</p>}
             </div>
           </motion.section>
 
           <section className="flex flex-wrap items-stretch gap-6">
             <div className="min-w-0 flex-[1_1_640px] rounded-[32px] border border-[#F0DCC4] bg-white p-6 md:p-8">
               <h2 className="font-serif text-[30px] font-bold">Hormones across your cycle</h2>
-              <p className="mt-2 text-[16px] text-[#5A4552]">Day {day} of 28. Sample data until your logs add up.</p>
-              <svg viewBox="0 0 350 150" role="img" aria-label={`Hormone chart. Current cycle day ${day}.`} className="mt-4 block h-auto w-full">
+              <p className="mt-2 text-[16px] text-[#5A4552]">{day && length ? `Estimated day ${day} of ${length}. ` : "Cycle day unavailable. "}Illustrative hormone patterns, not your measurements or a prediction of their timing; actual timing and levels vary.</p>
+              <svg viewBox="0 0 350 150" role="img" aria-label={day ? `Illustrative hormone chart. Estimated cycle day ${day}.` : "Illustrative hormone chart. Current cycle day unavailable."} className="mt-4 block h-auto w-full">
                 <line x1="4" y1="130" x2="346" y2="130" stroke="#E6D3BD" strokeWidth="1.5" />
-                <line x1={167} y1="10" x2={167} y2="130" stroke="#22122B" strokeWidth="1.5" strokeDasharray="3 4" />
+                {markerX !== null && <line x1={markerX} y1="10" x2={markerX} y2="130" stroke="#22122B" strokeWidth="1.5" strokeDasharray="3 4" data-testid="cycle-today-marker" />}
                 <path d="M4.5 112 C30 112 55 108 79.5 100 S105 84 117 70 S140 24 154.5 22 S160 18 167 20 S180 48 192 60 S215 84 229.5 80 S245 52 254.5 55 S280 78 292 80 S330 112 342 112" fill="none" stroke="#FF6A4D" strokeWidth="3.5" strokeLinecap="round" />
                 <path d="M4.5 122 L140 122 C150 120 156 40 164 32 C172 40 176 118 188 122 L342 122" fill="none" stroke="#5B3DF5" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M4.5 124 L170 124 C195 122 215 70 250 42 C270 36 280 50 292 80 C305 108 320 122 342 124" fill="none" stroke="#0B7D70" strokeWidth="3.5" strokeLinecap="round" strokeDasharray="7 6" />
-                <circle cx="167" cy="20" r="7" fill="#FFF4E6" stroke="#22122B" strokeWidth="3" />
-                <text x="167" y="8" textAnchor="middle" fontSize="10" fontWeight="800" fill="#22122B">TODAY</text>
+                {markerX !== null && <text x={Math.max(20, Math.min(330, markerX))} y="8" textAnchor="middle" fontSize="10" fontWeight="800" fill="#22122B">TODAY</text>}
                 <text x="4" y="146" fontSize="11" fontWeight="600" fill="#5A4552">Day 1</text>
-                <text x="167" y="146" textAnchor="middle" fontSize="11" fontWeight="600" fill="#5A4552">Day 14</text>
-                <text x="346" y="146" textAnchor="end" fontSize="11" fontWeight="600" fill="#5A4552">Day 28</text>
+                <text x="167" y="146" textAnchor="middle" fontSize="11" fontWeight="600" fill="#5A4552">Example pattern</text>
+                <text x="346" y="146" textAnchor="end" fontSize="11" fontWeight="600" fill="#5A4552">{length ? `Day ${length}` : "Cycle end"}</text>
               </svg>
               <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-[15px] font-semibold">
                 <li className="flex items-center gap-2"><span className="h-1 w-6 rounded-full bg-[#FF6A4D]" />Estrogen</li>
@@ -479,35 +494,21 @@ function CycleNowPatterns({ patient }: { patient: any }) {
               <section className="flex flex-1 flex-col justify-between gap-5 rounded-[32px] bg-[#22122B] p-8 text-[#FFF4E6]">
                 <div>
                   <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#FF9B7B]">SHARPEN THE PICTURE</p>
-                  <h2 className="mt-3 font-serif text-[30px] font-bold leading-[1.1]">Log this morning&apos;s temperature</h2>
-                  <p className="mt-3 text-[16px] leading-[1.5] text-[#E9D8DF]">It confirms ovulation and makes your predictions more accurate.</p>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={temperature}
-                    onChange={(event) => setTemperature(event.target.value)}
-                    placeholder="Temperature"
-                    aria-label="Morning temperature"
-                    className="h-[50px] min-w-[150px] flex-1 rounded-full border border-[#E9D8DF]/60 bg-transparent px-5 text-[15px] text-[#FFF4E6]"
-                  />
-                  <button type="button" onClick={() => setTemperatureSaved(Boolean(temperature))} className="h-[50px] rounded-full bg-[#FF9B7B] px-6 text-[15px] font-extrabold text-[#22122B]">
-                    {temperatureSaved ? "Saved" : "Log"}
-                  </button>
+                  <h2 className="mt-3 font-serif text-[30px] font-bold leading-[1.1]">Understanding temperature</h2>
+                  <p className="mt-3 text-[16px] leading-[1.5] text-[#E9D8DF]">Temperature patterns can offer clues about your cycle, but do not confirm ovulation on their own. Temperature logging is not available here yet.</p>
                 </div>
               </section>
             </div>
           </section>
 
           <section className="space-y-4">
-            <h2 className="font-serif text-[38px] font-bold tracking-[-0.02em]">Your four signals</h2>
+            <h2 className="font-serif text-[38px] font-bold tracking-[-0.02em]">Understanding your signals</h2>
             <div className="flex flex-wrap gap-4">
               {[
-                ["FOCUS", "Peaking", "Verbal skills and confidence are at their best.", "#E4DCFF", "#3A24B8", "#2E1E48"],
-                ["TEMP", "Rising slightly", "Keep your bedroom cool and dark tonight.", "#FFD9C9", "#A8341A", "#3F211A"],
-                ["METABOLISM", "Efficient", "Your body is using protein well. Add lentils, eggs, or paneer.", "#CFF1EA", "#0B6B5F", "#14332E"],
-                ["HORMONES", "Near peak", "Estrogen is elevated and LH is ready to surge.", "#FFE7A8", "#7A4B00", "#4A3320"],
+                ["FOCUS", "Individual", "Focus and energy can vary from day to day.", "#E4DCFF", "#3A24B8", "#2E1E48"],
+                ["TEMP", "Not measured", "Temperature can vary for many reasons.", "#FFD9C9", "#A8341A", "#3F211A"],
+                ["METABOLISM", "Individual", "A balanced diet can support your everyday wellbeing.", "#CFF1EA", "#0B6B5F", "#14332E"],
+                ["HORMONES", "Not measured", "Hormone levels and timing vary between cycles.", "#FFE7A8", "#7A4B00", "#4A3320"],
               ].map(([label, value, copy, bg, labelColor, bodyColor]) => (
                 <article key={label} className="min-w-0 flex-[1_1_240px] rounded-[28px] p-[26px]" style={{ background: bg }}>
                   <p className="text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: labelColor }}>{label}</p>

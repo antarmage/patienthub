@@ -6,6 +6,25 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import BiologyTab from "./BiologyTab";
 import PregnancyTrackersTab from "./PregnancyTrackersTab";
 import PregnancyMovementTracker from "./PregnancyMovementTracker";
+import { localDateKey } from "@/lib/patientHealthRecord";
+
+function renderCycleBody(patient: object, periodDate: string | null = null) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, queryFn: async () => ({ value: null }) } } });
+  client.setQueryData(["/api/patients", 1, "period-prompt"], { value: periodDate ? { date: periodDate } : null });
+  try {
+    return renderToStaticMarkup(
+      <QueryClientProvider client={client}><BiologyTab mode="general" patient={{ id: 1, ...patient }} /></QueryClientProvider>,
+    );
+  } finally {
+    client.clear();
+  }
+}
+
+function periodDaysAgo(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return localDateKey(date);
+}
 
 test("pregnancy Body shows symptom guidance, available trackers and reading links", () => {
   const html = renderToStaticMarkup(<BiologyTab mode="pregnancy" patient={{}} onOpenTracker={() => {}} />);
@@ -15,7 +34,41 @@ test("pregnancy Body shows symptom guidance, available trackers and reading link
   assert.match(html, /aria-label="Add blood pressure"/);
   assert.match(html, /aria-label="Add baby movements"/);
   assert.match(html, /https:\/\/www\.nhs\.uk\/pregnancy\/keeping-well\/your-babys-movements\//);
-  assert.doesNotMatch(renderToStaticMarkup(<BiologyTab mode="general" patient={{}} />), /Normal, or ask\?/);
+  assert.doesNotMatch(renderCycleBody({}), /Normal, or ask\?/);
+});
+
+test("cycle Body uses saved period date and cycle length for its estimated day and marker", () => {
+  const html = renderCycleBody({ history: { onboarding: { cycle: { cycleLength: 32, regularity: "Regular" } } } }, periodDaysAgo(9));
+  assert.match(html, /DAY 10 · ESTIMATED/);
+  assert.match(html, /Estimated day 10 of 32/);
+  assert.match(html, /Estrogen typically rises before ovulation/);
+  assert.match(html, /Day 32/);
+  const marker = html.match(/<line x1="([^"]+)"[^>]*data-testid="cycle-today-marker"/);
+  assert.ok(marker);
+  assert.ok(Math.abs(Number(marker[1]) - (4 + 9 * 342 / 31)) < 0.001);
+  assert.match(html, /Illustrative hormone patterns, not your measurements/);
+  assert.doesNotMatch(html, /Estrogen is near its peak|confirms ovulation/);
+});
+
+test("cycle Body does not invent a day or hormone phase for missing, stale or irregular data", () => {
+  for (const [patient, date] of [
+    [{}, null],
+    [{ cycleLength: 28 }, periodDaysAgo(30)],
+    [{ history: { onboarding: { cycle: { cycleLength: 28, regularity: "Irregular" } } } }, periodDaysAgo(13)],
+  ] as const) {
+    const html = renderCycleBody(patient, date);
+    assert.match(html, /CYCLE DAY UNAVAILABLE/);
+    assert.doesNotMatch(html, /data-testid="cycle-today-marker"|DAY 14 · ESTIMATED/);
+    assert.match(html, /not your measurements/);
+  }
+});
+
+test("cycle Body moves the marker and description as the cycle advances", () => {
+  const html = renderCycleBody({ cycleLength: 28 }, periodDaysAgo(20));
+  assert.match(html, /DAY 21 · ESTIMATED/);
+  assert.match(html, /If ovulation has occurred, progesterone typically rises/);
+  const marker = html.match(/<line x1="([^"]+)"[^>]*data-testid="cycle-today-marker"/);
+  assert.ok(marker && Number(marker[1]) > 167 && Number(marker[1]) < 346);
 });
 
 test("movement log opens from the shortcut and warns that changes need immediate care", () => {
