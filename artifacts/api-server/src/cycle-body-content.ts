@@ -45,10 +45,10 @@ export function assembleCycleBodyFeed(context: ReturnType<typeof cycleBodyContex
   };
 }
 
-async function generateCatalogue(): Promise<CycleBodyCatalogue> {
+export async function generateCatalogue(): Promise<CycleBodyCatalogue> {
   if (!AI_AVAILABLE) throw Object.assign(new Error("Cycle content generation is not configured."), { status: 503 });
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-3.8-flash",
     contents: `Write a generic menstrual-cycle education catalogue for a healthcare app.
 This is not a patient consultation. No patient information is provided.
 Return JSON with four keys: menstrual, follicular, ovulation, luteal.
