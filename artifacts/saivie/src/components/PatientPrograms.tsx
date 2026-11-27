@@ -233,9 +233,9 @@ function CategoryOverview({
       <motion.section
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-[40px] bg-[#FFA7B6] p-6 md:p-12"
+        className={`rounded-[40px] p-6 md:p-12 ${pregnancy ? "bg-[#FFA7B6]" : "bg-[#FFB534]"}`}
       >
-        <span className="inline-flex h-8 items-center rounded-full bg-[#2A1220] px-4 text-[12px] font-extrabold tracking-[0.1em] text-[#FFA7B6]">
+        <span className={`inline-flex h-8 items-center rounded-full bg-[#2A1220] px-4 text-[12px] font-extrabold tracking-[0.1em] ${pregnancy ? "text-[#FFA7B6]" : "text-[#FFB534]"}`}>
           {pregnancy ? `WEEK ${week} PROGRAMS` : "CYCLE HEALTH PROGRAMS"}
         </span>
         <h1 className="mt-4 max-w-[800px] font-serif text-[44px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[72px]">

@@ -797,7 +797,7 @@ export default function PatientPortal() {
               />
             )}
             {mode !== "pregnancy" && patient?.id && (
-              <section className="rounded-[28px] border border-[#E8D8C8] bg-white/90 p-6 md:p-8" data-stage-care={mode}>
+              <section className={`rounded-[28px] border p-6 md:p-8 ${mode === "general" ? "border-[#FFB534] bg-[#FFB534]" : "border-[#E8D8C8] bg-white/90"}`} data-stage-care={mode}>
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#775B63]">{mode === "postpartum" ? "Postpartum care" : mode === "menopause" ? "Perimenopause care" : "My care"}</p>
                 <h1 className="mt-2 font-serif text-3xl font-semibold text-[#35212f]">
                   {mode === "postpartum" ? "Your recovery and health record." : mode === "menopause" ? "Care and notes, together." : "Your health record, in one place."}
