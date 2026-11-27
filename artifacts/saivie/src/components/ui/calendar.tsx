@@ -11,11 +11,12 @@ interface CalendarProps {
   defaultMonth?: Date;
   onSelect?: (date: Date) => void;
   disabled?: Matcher | Matcher[];
+  selectedColor?: string;
   className?: string;
   "aria-label"?: string;
 }
 
-function Calendar({ selected, defaultMonth, onSelect, disabled, className, "aria-label": label = "Choose date" }: CalendarProps) {
+function Calendar({ selected, defaultMonth, onSelect, disabled, selectedColor, className, "aria-label": label = "Choose date" }: CalendarProps) {
   const [start, setStart] = React.useState(() => calendarWeekStart(selected || defaultMonth || new Date()));
   const selectedValue = selected ? calendarDateValue(selected) : "";
   const stripRef = React.useRef<HTMLDivElement>(null);
@@ -68,7 +69,8 @@ function Calendar({ selected, defaultMonth, onSelect, disabled, className, "aria
                 const index = buttons.indexOf(event.currentTarget);
                 buttons[index + (event.key === "ArrowRight" ? 1 : -1)]?.focus();
               }}
-              className={cn("flex min-w-12 shrink-0 flex-col items-center gap-2 rounded-full bg-[#f2f3f5] px-1.5 py-2 text-xs text-[#42464c] transition-colors hover:bg-[#e7eaf0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3478f6] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35", active && "bg-[#3478f6] text-white hover:bg-[#2866d4]")}>
+              className={cn("flex min-w-12 shrink-0 flex-col items-center gap-2 rounded-full bg-[#f2f3f5] px-1.5 py-2 text-xs text-[#42464c] transition-colors hover:bg-[#e7eaf0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3478f6] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35", selectedColor && "focus-visible:ring-[#FFB534]", active && !selectedColor && "bg-[#3478f6] text-white hover:bg-[#2866d4]")}
+              style={active && selectedColor ? { backgroundColor: selectedColor, color: "#22122B" } : undefined}>
               <span>{date.toLocaleDateString("en-IN", { weekday: "short" })}</span>
               <span className={cn("flex h-8 w-8 items-center justify-center rounded-full font-semibold", active && "bg-white text-[#242821]")}>{String(date.getDate()).padStart(2, "0")}</span>
             </button>

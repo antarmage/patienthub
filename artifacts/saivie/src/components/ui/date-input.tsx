@@ -10,11 +10,12 @@ type DateInputProps = Omit<React.ComponentProps<"input">, "type" | "onChange" | 
   defaultValue?: string;
   min?: string;
   max?: string;
+  calendarSelectedColor?: string;
   onValueChange?: (value: string) => void;
 };
 
 const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
-  ({ value, defaultValue = "", onValueChange, min, max, className, disabled, readOnly, onBlur, ...props }, forwardedRef) => {
+  ({ value, defaultValue = "", onValueChange, min, max, calendarSelectedColor, className, disabled, readOnly, onBlur, ...props }, forwardedRef) => {
     const [currentValue, setCurrentValue] = React.useState(value ?? defaultValue);
     const [touched, setTouched] = React.useState(false);
     const [open, setOpen] = React.useState(false);
@@ -43,14 +44,14 @@ const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
             inputRef.current = node;
             if (typeof forwardedRef === "function") forwardedRef(node);
             else if (forwardedRef) forwardedRef.current = node;
-          }} type="text" value={currentValue} disabled={disabled} readOnly={readOnly} placeholder={props.placeholder || "YYYY-MM-DD"} pattern="\d{4}-\d{2}-\d{2}" maxLength={10} className={`pr-10 ${className || ""}`} aria-invalid={touched && Boolean(error)} onChange={(event) => change(event.target.value)} onBlur={(event) => { setTouched(true); onBlur?.(event); }} />
+          }} type="text" value={currentValue} disabled={disabled} readOnly={readOnly} placeholder={props.placeholder || "YYYY-MM-DD"} pattern="\d{4}-\d{2}-\d{2}" maxLength={10} className={`pr-10 ${calendarSelectedColor ? "focus-visible:border-[#FFB534] focus-visible:ring-[#FFB534]" : ""} ${className || ""}`} aria-invalid={touched && Boolean(error)} onChange={(event) => change(event.target.value)} onBlur={(event) => { setTouched(true); onBlur?.(event); }} />
           <PopoverTrigger asChild>
             <button type="button" disabled={disabled || readOnly} aria-label={`Open calendar${props["aria-label"] ? `: ${props["aria-label"]}` : ""}`} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-[#705364] hover:bg-[#f2f3f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"><CalendarDays className="h-4 w-4" /></button>
           </PopoverTrigger>
         </div>
         {touched && error && <p role="alert" className="mt-1 text-xs text-rose-700">{error}</p>}
         <PopoverContent align="start" className="z-[80] w-[min(420px,calc(100vw-2rem))] p-0">
-          <Calendar selected={selected} defaultMonth={minimum && minimum > new Date() ? minimum : maximum && maximum < new Date() ? maximum : undefined} disabled={(date) => Boolean((minimum && date < minimum) || (maximum && date > maximum))} onSelect={(date) => { change(calendarDateValue(date)); setOpen(false); }} />
+          <Calendar selected={selected} selectedColor={calendarSelectedColor} defaultMonth={minimum && minimum > new Date() ? minimum : maximum && maximum < new Date() ? maximum : undefined} disabled={(date) => Boolean((minimum && date < minimum) || (maximum && date > maximum))} onSelect={(date) => { change(calendarDateValue(date)); setOpen(false); }} />
           {!props.required && currentValue && <button type="button" className="mx-3 mb-3 text-xs text-[#705364] hover:underline" onClick={() => { change(""); setOpen(false); }}>Clear date</button>}
         </PopoverContent>
       </Popover>

@@ -153,7 +153,7 @@ export default function PatientPeriodPrompt({
   const dating = pregnancy ? patientPeriodPregnancyDating(value, localDateKey(new Date())) : null;
   return (
     <>
-      <section className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[26px] border border-[#E8D8C8] bg-white p-5 text-[#2A1220]" aria-label="Last period">
+      <section className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[26px] border border-[#FFB534] bg-white p-5 text-[#2A1220]" aria-label="Last period">
         <div>
           <h2 className="font-serif text-xl font-bold">{value ? "Your last period" : "Add your last period"}</h2>
           <p className="mt-1 text-sm text-[#705364]">
@@ -167,13 +167,13 @@ export default function PatientPeriodPrompt({
           {pregnancy && value && !dating && <p className="mt-2 text-xs text-[#594856]">Pregnancy age and due date are unavailable. Your care team can help confirm dates.</p>}
           {!open && error && <p role="alert" className="mt-2 text-sm text-rose-800">{error}</p>}
         </div>
-        <button type="button" onClick={() => { setError(""); setDate(""); setStep("date"); setOpen(true); }} className="min-h-11 rounded-full border border-[#D9C3AE] px-5 text-sm font-bold">
+        <button type="button" onClick={() => { setError(""); setDate(""); setStep("date"); setOpen(true); }} className="min-h-11 rounded-full border border-[#FFB534] px-5 text-sm font-bold hover:bg-[#FFB534]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFB534]">
           {value ? "Update" : "Add date"}
         </button>
       </section>
       <Dialog open={open && enabled && !bookingOpen} onOpenChange={(next) => { if (!next) void dismiss(); }}>
         <DialogContent
-          className="max-h-[90dvh] max-w-[520px] overflow-y-auto rounded-[32px] border-0 bg-white p-7 text-[#2A1220] sm:p-8"
+          className="max-h-[90dvh] max-w-[520px] overflow-y-auto rounded-[32px] border-0 bg-white p-7 text-[#2A1220] focus-visible:ring-[#FFB534] sm:p-8"
           onTouchStart={(event) => { touchStart.current = event.touches[0]?.clientY ?? null; }}
           onTouchEnd={(event) => {
             const end = event.changedTouches[0]?.clientY;
@@ -190,12 +190,12 @@ export default function PatientPeriodPrompt({
             </DialogDescription>
             <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); if (date) void save({ kind: "date", date }); }}>
               <label htmlFor="last-period-date" className="block text-xs font-bold uppercase tracking-[0.1em] text-[#705364]">First day of last period</label>
-              <DateInput id="last-period-date" aria-label="First day of last period" value={date} max={localDateKey(new Date())} onValueChange={setDate} required disabled={busy} className="h-12 rounded-xl border-[#D9C3AE]" />
+              <DateInput id="last-period-date" aria-label="First day of last period" value={date} max={localDateKey(new Date())} onValueChange={setDate} required disabled={busy} calendarSelectedColor="#FFB534" className="h-12 rounded-xl border-[#FFB534]" />
               <button type="submit" disabled={busy || !date} className="min-h-12 w-full rounded-full bg-[#2A1220] px-5 text-sm font-bold text-white disabled:opacity-50">Save date</button>
             </form>
             <div className="flex flex-wrap gap-2">
-              <button type="button" disabled={busy} onClick={() => setStep("estimate")} className="min-h-11 rounded-full border border-[#D9C3AE] px-4 text-sm font-bold">I am not sure</button>
-              {pregnancy && <button type="button" disabled={busy} onClick={() => setStep("dating")} className="min-h-11 rounded-full border border-[#D9C3AE] px-4 text-sm font-bold">I know my due date or had a scan</button>}
+              <button type="button" disabled={busy} onClick={() => setStep("estimate")} className="min-h-11 rounded-full border border-[#FFB534] px-4 text-sm font-bold hover:bg-[#FFB534]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFB534]">I am not sure</button>
+              {pregnancy && <button type="button" disabled={busy} onClick={() => setStep("dating")} className="min-h-11 rounded-full border border-[#FFB534] px-4 text-sm font-bold hover:bg-[#FFB534]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFB534]">I know my due date or had a scan</button>}
             </div>
             <div className="flex items-end justify-between gap-4">
               <p className="text-xs leading-relaxed text-[#705364]">Your response is private. You can update it later.</p>
@@ -207,10 +207,10 @@ export default function PatientPeriodPrompt({
             <DialogDescription className="text-sm leading-relaxed text-[#594856]">No problem. We will mark it as an estimate and you can fix it any time. {pregnancy ? "Any pregnancy dates shown are estimates for your reference, not clinical dating." : "This estimate is not used to predict your cycle."}</DialogDescription>
             <fieldset className="space-y-2">
               <legend className="sr-only">Estimated last period</legend>
-              {choices.map((item) => <label key={item.value} className={`flex cursor-pointer items-center gap-3 rounded-[22px] border p-4 ${choice === item.value ? "border-2 border-[#2A1220]" : "border-[#E8D8C8]"}`}>
-                <input type="radio" name="last-period-estimate" value={item.value} checked={choice === item.value} onChange={() => setChoice(item.value)} className="h-5 w-5 accent-[#2A1220]" />
+              {choices.map((item) =>               <label key={item.value} className={`flex cursor-pointer items-center gap-3 rounded-[22px] border p-4 ${choice === item.value ? "border-2 border-[#FFB534]" : "border-[#E8D8C8]"}`}>
+                <input type="radio" name="last-period-estimate" value={item.value} checked={choice === item.value} onChange={() => setChoice(item.value)} className="h-5 w-5 accent-[#FFB534]" />
                 <span className="min-w-0 flex-1"><strong className="block text-sm">{item.title}</strong><span className="text-xs text-[#594856]">{item.detail}</span></span>
-                <span className="rounded-full bg-[#FFE3A0] px-2 py-1 text-[10px] font-extrabold">ESTIMATE</span>
+                <span className="rounded-full bg-[#FFB534] px-2 py-1 text-[10px] font-extrabold text-[#22122B]">ESTIMATE</span>
               </label>)}
             </fieldset>
             <button type="button" disabled={busy} onClick={() => void save({ kind: "estimate", choice })} className="min-h-12 w-full rounded-full bg-[#2A1220] text-sm font-bold text-white disabled:opacity-50">Save estimate</button>

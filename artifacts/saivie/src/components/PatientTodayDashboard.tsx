@@ -554,7 +554,7 @@ export default function PatientTodayDashboard({
                   Cycle dates and patterns aren&apos;t available here yet. Keep noting changes that matter to you.
                 </p>
               </section>
-              <section aria-label="Share today" className="flex items-center gap-5 rounded-[28px] bg-[#FFE3B0] p-5 md:p-6">
+              <section aria-label="Share today" className="flex items-center gap-5 rounded-[28px] bg-[#FFB534] p-5 md:p-6">
                 <div aria-hidden="true" className="flex h-[132px] w-[84px] shrink-0 -rotate-3 flex-col justify-between rounded-2xl bg-[#FFB534] p-3 shadow-[0_8px_20px_rgba(34,18,43,0.18)]">
                   <span className="font-serif text-[32px] font-bold leading-none">S</span>
                   <span className="text-[10px] font-extrabold uppercase leading-tight tracking-wide">A CHECK-IN FOR YOU</span>
@@ -596,16 +596,16 @@ export default function PatientTodayDashboard({
             </div>
             <div className="flex flex-col md:flex-row md:flex-wrap md:gap-5">
               {[
-                { label: "Check in with yourself", category: "NOTICE", color: "#5B3DF5", text: "Take a moment to notice how you feel today." },
-                { label: "Review your health record", category: "TRACK", color: "#FF6A4D", text: "Keep your care details together and prepare for your next visit.", link: "Open health record", action: onOpenRecord },
-                { label: "Prepare a question", category: "REFLECT", color: "#12B5A2", text: "Write down anything you would like to discuss at a visit." },
-                { label: "Connect with your care team", category: "SUPPORT", color: "#2E3A8C", text: "Reach out whenever you have a question or concern.", link: "Book an appointment", action: onBook },
+                { label: "Check in with yourself", category: "NOTICE", color: "#FFB534", text: "Take a moment to notice how you feel today." },
+                { label: "Review your health record", category: "TRACK", color: "#FFB534", text: "Keep your care details together and prepare for your next visit.", link: "Open health record", action: onOpenRecord },
+                { label: "Prepare a question", category: "REFLECT", color: "#FFB534", text: "Write down anything you would like to discuss at a visit." },
+                { label: "Connect with your care team", category: "SUPPORT", color: "#FFB534", text: "Reach out whenever you have a question or concern.", link: "Book an appointment", action: onBook },
               ].map((item) => (
                 <article key={item.category} className="mb-4 min-w-0 flex-1 basis-[220px] md:mb-0">
                   <div className="mb-[14px] flex items-center gap-[10px]">
                     <span className="h-[14px] w-[14px] shrink-0 rounded-full" style={{ background: item.color }} />
                     <span className="text-[13px] font-extrabold tracking-[0.08em]">{item.category}</span>
-                    <span aria-hidden="true" className="h-[2px] flex-1 bg-[#EBD3B6]" />
+                    <span aria-hidden="true" className="h-[2px] flex-1 bg-[#FFB534]" />
                   </div>
                   <div className="flex min-h-[180px] flex-col gap-2 rounded-[26px] border border-[var(--line)] bg-[var(--surface)] p-5 md:p-[22px]">
                     <h3 className="m-0 font-serif text-[21px] font-bold leading-[1.2]">{item.label}</h3>
@@ -618,7 +618,7 @@ export default function PatientTodayDashboard({
           </section>
 
           <section className="mt-8 px-5 md:px-0" aria-label="Programs and support">
-            <div className="flex flex-wrap items-center justify-between gap-5 rounded-[32px] bg-[#8EC5FF] p-7 md:px-10 md:py-8">
+            <div className="flex flex-wrap items-center justify-between gap-5 rounded-[32px] bg-[#FFB534] p-7 md:px-10 md:py-8">
               <div className="min-w-0 flex-1 basis-[420px]">
                 <p className="m-0 text-[12px] font-extrabold uppercase tracking-[0.14em]">CARE THAT FITS YOUR GOALS</p>
                 <h2 className="mt-2 font-serif text-[28px] font-bold leading-[1.1] md:text-[32px]">Explore programs and support.</h2>

@@ -20,7 +20,7 @@ const stages: Array<{
     title: "I have periods",
     description: "Track your phase, energy and daily plan.",
     detail: "Cycle insights · phase by phase",
-    background: "#FFB32C",
+    background: "#FFB534",
   },
   {
     id: "pregnancy",
@@ -77,7 +77,7 @@ export default function PatientStageSwitcher({ currentStage, onSelectStage, onSe
               {selected && (
                 <span className="mb-3 flex w-full items-center justify-between gap-2">
                   <span className="text-[9px] font-extrabold uppercase tracking-[0.14em]">Current</span>
-                  <span className="rounded-full bg-[#23122d] px-3 py-1.5 text-[9px] font-bold text-[#FFB32C]">
+                  <span className="rounded-full bg-[#23122d] px-3 py-1.5 text-[9px] font-bold text-[#FFB534]">
                     Selected
                   </span>
                 </span>

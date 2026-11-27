@@ -620,7 +620,7 @@ export default function PatientPortal() {
                 transition={{ duration: 0.16 }}
                 className={`rounded-full px-5 py-2 text-xs font-semibold transition ${
                   activeTab === "stage"
-                    ? value === "home" ? "bg-[#FFB32C] text-[#23122d]" : "text-white hover:bg-white/10"
+                    ? value === "home" ? "bg-[#FFB534] text-[#23122d]" : "text-white hover:bg-white/10"
                     : (activeTab === value || (value === "care" && (activeTab === "record" || activeTab === "care-team")) || (value === "home" && activeTab === "pregnancy-update")) ? "bg-[#35212f] text-white" : "text-saivie-plum hover:bg-saivie-ivory"
                 }`}
               >
@@ -643,7 +643,7 @@ export default function PatientPortal() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button type="button" className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold text-saivie-plum ${activeTab === "stage" ? "bg-[#FFB32C]" : "border border-saivie-border bg-saivie-blush"}`} aria-label="Open profile menu">
+                <button type="button" className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold text-saivie-plum ${activeTab === "stage" ? "bg-[#FFB534]" : "border border-saivie-border bg-saivie-blush"}`} aria-label="Open profile menu">
                   {patientGreetingName(
                     patient?.name ||
                     [patient?.firstName, patient?.lastName].filter((part: unknown) => typeof part === "string" && part.trim()).join(" ")

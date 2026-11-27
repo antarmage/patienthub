@@ -35,6 +35,8 @@ test("cycle dashboard matches the new layout without inventing predictions or pl
   assert.match(html, /Cycle history/);
   assert.match(html, /Cycle dates and patterns aren&#x27;t available here yet/);
   assert.match(html, /Cycle recommendations are not available yet/);
+  assert.match(html, /bg-\[#FFB534\]/);
+  assert.doesNotMatch(html, /bg-\[#8EC5FF\]/);
   assert.doesNotMatch(html, /DAY 14|OVULATION|7-day streak|Luteal phase starts|phase-aware guidance|Presentations and hard conversations|Estimated next period/);
   assert.match(html, /Book an appointment/);
 });
