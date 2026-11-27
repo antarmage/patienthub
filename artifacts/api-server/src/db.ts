@@ -16,6 +16,7 @@ import { ensureAttendancePlanningSchema } from "./attendance-planning";
 import { ensureStaffSessionSchema } from "./staff-sessions";
 import { ensurePatientProgramsSchema } from "./patient-programs";
 import { ensurePatientPeriodSchema } from "./patient-period";
+import { ensureCycleBodyContentSchema } from "./cycle-body-content";
 import {
   ensureRecommendationProductionSchema,
   ensureRecommendationTestingSchema,
@@ -51,6 +52,7 @@ export async function ensureSchema(): Promise<void> {
     await ensureBookingCatalogSchema(client);
     await ensurePatientProgramsSchema(client);
     await ensurePatientPeriodSchema(client);
+    await ensureCycleBodyContentSchema(client);
     await ensureRecommendationProductionSchema(client);
     if (process.env.SAIVIE_RECOMMENDATION_STAFF_TESTING === "true") {
       await ensureRecommendationTestingSchema(client);

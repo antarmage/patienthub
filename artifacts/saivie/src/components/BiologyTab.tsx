@@ -42,6 +42,9 @@ import { getWeekData, getWeekSizeLabel } from "@/components/WeekByWeekTimeline";
 import type { PregnancyTrackerTarget } from "@/components/PregnancyTrackersTab";
 import PregnancyGrowthChart from "@/components/PregnancyGrowthChart";
 import { usePatientCycle } from "@/lib/usePatientCycle";
+import { useQuery } from "@tanstack/react-query";
+import { authenticatedFetch } from "@/lib/authenticatedFetch";
+import { cycleBodyFeedSchema } from "../../../../lib/db/src/cycle-body-content";
 
 const hormoneData = [
   { day: 1, est: 20, prog: 5, lh: 5, fsh: 10 },
@@ -385,25 +388,36 @@ function PregnancyBiology({ patient, labResults }: { patient: any; labResults: a
 
 function CycleNowPatterns({ patient }: { patient: any }) {
   const [view, setView] = useState<"now" | "patterns">("now");
-  const { lmp, cycleLength, regularity, phase, usingDemoSample, periodQuery } = usePatientCycle(patient, true);
-  const day = phase?.cycleDay;
-  const length = phase ? Number(cycleLength) : null;
+  const { lmp, cycleLength, regularity, periodQuery } = usePatientCycle(patient, true);
+  const patientId = Number(patient?.id);
+  const contentQuery = useQuery({
+    queryKey: ["/api/patients", patientId, "cycle-body-content", lmp, cycleLength, regularity],
+    enabled: Number.isSafeInteger(patientId) && patientId > 0 && periodQuery.isFetched,
+    queryFn: async ({ signal }) => {
+      const response = await authenticatedFetch(`/api/patients/${patientId}/cycle-body-content`, { signal });
+      if (!response.ok) throw new Error("Unable to load cycle content from the content engine.");
+      return cycleBodyFeedSchema.parse(await response.json());
+    },
+    retry: false,
+  });
+  const feed = contentQuery.data?.status === "available" ? contentQuery.data : null;
+  const copy = feed?.content;
+  const day = feed?.cycleDay;
+  const length = feed?.cycleLength;
   const markerX = day && length ? 4 + ((day - 1) / (length - 1)) * 342 : null;
-  const todayRead = !phase
-    ? "A current period date and typical cycle length are needed for a cycle estimate."
-    : phase.cycleDay <= 5
-      ? "Early in a cycle, estrogen and progesterone are typically low. Experiences vary."
-      : phase.cycleDay < phase.estimatedOvulationDay
-        ? "Estrogen typically rises before ovulation. Your timing may differ."
-        : phase.cycleDay === phase.estimatedOvulationDay
-          ? "Ovulation may occur around this time. The date is an estimate, not a confirmation."
-          : "If ovulation has occurred, progesterone typically rises. Timing and symptoms vary.";
 
   return (
     <div className="space-y-6 pb-24">
       {periodQuery.isError && <p role="alert" className="text-sm text-red-800">
         Unable to load your period information. <button type="button" className="font-bold underline" onClick={() => void periodQuery.refetch()}>Retry</button>
       </p>}
+      {contentQuery.isError && <p role="alert" className="text-sm text-red-800">
+        Unable to load cycle content from the content engine. <button type="button" className="font-bold underline" onClick={() => void contentQuery.refetch()}>Retry</button>
+      </p>}
+      {!copy && !contentQuery.isError && <p role="status" className="text-sm">
+        {contentQuery.data?.status === "unavailable" ? contentQuery.data.reason : "Loading cycle content…"}
+      </p>}
+      {copy && <p className="text-xs">AI-generated cycle education · Not clinically reviewed · Not medical advice. Timing and experiences vary.</p>}
       <div role="tablist" aria-label="Body views" className="flex w-[320px] max-w-full rounded-full bg-[#F3E6D4] p-1">
         {(["now", "patterns"] as const).map((item) => (
           <button
@@ -426,10 +440,9 @@ function CycleNowPatterns({ patient }: { patient: any }) {
           <section className="rounded-[40px] bg-[#BBAAFF] p-6 md:p-12">
             <p className="text-[12px] font-extrabold uppercase tracking-[0.14em]">MY BODY</p>
             <h1 className="mt-3 max-w-[680px] font-serif text-[44px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[76px]">
-              Right on <em className="font-medium">rhythm.</em>
+              {copy?.patternsTitle}
             </h1>
-            <p className="mt-4 text-[17px] md:text-[20px]">Your reported cycle information.</p>
-            {usingDemoSample && <p className="mt-2 text-sm">Local demo preview only; sample values are not patient data.</p>}
+            <p className="mt-4 text-[17px] md:text-[20px]">{copy?.patternsIntroduction}</p>
           </section>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {[
@@ -457,21 +470,21 @@ function CycleNowPatterns({ patient }: { patient: any }) {
                 <span className="rounded-full bg-[#22122B] px-4 py-2 text-[12px] font-extrabold tracking-[0.1em] text-[#FF9B7B]">{day ? `DAY ${day} · ESTIMATED` : "CYCLE DAY UNAVAILABLE"}</span>
               </div>
               <h1 className="mt-4 font-serif text-[44px] font-bold leading-[0.98] tracking-[-0.035em] md:text-[76px]">
-                Explore what may happen <em className="font-medium">inside.</em>
+                {copy?.title}
               </h1>
-              <p className="mt-4 text-[17px] md:text-[20px]">Cycle information, explained in plain words.</p>
+              <p className="mt-4 text-[17px] md:text-[20px]">{copy?.introduction}</p>
             </div>
             <div className="basis-[340px] rounded-[28px] bg-[#FFF4E6] p-6">
               <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#6A5560]">TODAY&apos;S READ</p>
-              <p className="mt-3 font-serif text-[24px] font-bold leading-[1.2]">{todayRead}</p>
-              {phase && <p className="mt-2 text-sm">{usingDemoSample ? "Local demo preview only; not patient data." : "Estimated from your period date and typical cycle length, not hormone measurements."}</p>}
+              <p className="mt-3 font-serif text-[24px] font-bold leading-[1.2]">{copy?.todayRead}</p>
             </div>
           </motion.section>
 
-          <section className="flex flex-wrap items-stretch gap-6">
+          {copy && <section className="flex flex-wrap items-stretch gap-6">
             <div className="min-w-0 flex-[1_1_640px] rounded-[32px] border border-[#F0DCC4] bg-white p-6 md:p-8">
-              <h2 className="font-serif text-[30px] font-bold">Hormones across your cycle</h2>
-              <p className="mt-2 text-[16px] text-[#5A4552]">{day && length ? `Estimated day ${day} of ${length}. ` : "Cycle day unavailable. "}Illustrative hormone patterns, not your measurements or a prediction of their timing; actual timing and levels vary.</p>
+              <h2 className="font-serif text-[30px] font-bold">{copy.hormoneTitle}</h2>
+              <p className="mt-2 text-[16px] text-[#5A4552]">Estimated day {day} of {length}. {copy.hormoneDescription}</p>
+              <p className="mt-2 text-xs">Illustrative reference only, not measured hormone levels or confirmed ovulation.</p>
               <svg viewBox="0 0 350 150" role="img" aria-label={day ? `Illustrative hormone chart. Estimated cycle day ${day}.` : "Illustrative hormone chart. Current cycle day unavailable."} className="mt-4 block h-auto w-full">
                 <line x1="4" y1="130" x2="346" y2="130" stroke="#E6D3BD" strokeWidth="1.5" />
                 {markerX !== null && <line x1={markerX} y1="10" x2={markerX} y2="130" stroke="#22122B" strokeWidth="1.5" strokeDasharray="3 4" data-testid="cycle-today-marker" />}
@@ -494,21 +507,21 @@ function CycleNowPatterns({ patient }: { patient: any }) {
               <section className="flex flex-1 flex-col justify-between gap-5 rounded-[32px] bg-[#22122B] p-8 text-[#FFF4E6]">
                 <div>
                   <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#FF9B7B]">SHARPEN THE PICTURE</p>
-                  <h2 className="mt-3 font-serif text-[30px] font-bold leading-[1.1]">Understanding temperature</h2>
-                  <p className="mt-3 text-[16px] leading-[1.5] text-[#E9D8DF]">Temperature patterns can offer clues about your cycle, but do not confirm ovulation on their own. Temperature logging is not available here yet.</p>
+                  <h2 className="mt-3 font-serif text-[30px] font-bold leading-[1.1]">{copy.temperatureTitle}</h2>
+                  <p className="mt-3 text-[16px] leading-[1.5] text-[#E9D8DF]">{copy.temperatureBody}</p>
                 </div>
               </section>
             </div>
-          </section>
+          </section>}
 
-          <section className="space-y-4">
-            <h2 className="font-serif text-[38px] font-bold tracking-[-0.02em]">Understanding your signals</h2>
+          {copy && <section className="space-y-4">
+            <h2 className="font-serif text-[38px] font-bold tracking-[-0.02em]">{copy.signalsTitle}</h2>
             <div className="flex flex-wrap gap-4">
               {[
-                ["FOCUS", "Individual", "Focus and energy can vary from day to day.", "#E4DCFF", "#3A24B8", "#2E1E48"],
-                ["TEMP", "Not measured", "Temperature can vary for many reasons.", "#FFD9C9", "#A8341A", "#3F211A"],
-                ["METABOLISM", "Individual", "A balanced diet can support your everyday wellbeing.", "#CFF1EA", "#0B6B5F", "#14332E"],
-                ["HORMONES", "Not measured", "Hormone levels and timing vary between cycles.", "#FFE7A8", "#7A4B00", "#4A3320"],
+                ["FOCUS", copy.signals.focus.title, copy.signals.focus.body, "#E4DCFF", "#3A24B8", "#2E1E48"],
+                ["TEMP", copy.signals.temperature.title, copy.signals.temperature.body, "#FFD9C9", "#A8341A", "#3F211A"],
+                ["METABOLISM", copy.signals.metabolism.title, copy.signals.metabolism.body, "#CFF1EA", "#0B6B5F", "#14332E"],
+                ["HORMONES", copy.signals.hormones.title, copy.signals.hormones.body, "#FFE7A8", "#7A4B00", "#4A3320"],
               ].map(([label, value, copy, bg, labelColor, bodyColor]) => (
                 <article key={label} className="min-w-0 flex-[1_1_240px] rounded-[28px] p-[26px]" style={{ background: bg }}>
                   <p className="text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: labelColor }}>{label}</p>
@@ -517,7 +530,7 @@ function CycleNowPatterns({ patient }: { patient: any }) {
                 </article>
               ))}
             </div>
-          </section>
+          </section>}
 
     
 

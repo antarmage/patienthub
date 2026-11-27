@@ -7,10 +7,37 @@ import BiologyTab from "./BiologyTab";
 import PregnancyTrackersTab from "./PregnancyTrackersTab";
 import PregnancyMovementTracker from "./PregnancyMovementTracker";
 import { localDateKey } from "@/lib/patientHealthRecord";
+import { estimateCyclePhase, type CycleBodyFeed } from "../../../../lib/db/src/cycle-body-content";
 
-function renderCycleBody(patient: object, periodDate: string | null = null) {
+const engineCopy = {
+  title: "Engine body headline",
+  introduction: "Engine introduction",
+  todayRead: "Engine daily education",
+  hormoneTitle: "Engine hormone heading",
+  hormoneDescription: "Illustrative hormone patterns, not your measurements",
+  temperatureTitle: "Engine temperature heading",
+  temperatureBody: "Engine temperature education",
+  signalsTitle: "Engine signals heading",
+  signals: {
+    focus: { title: "Engine focus", body: "Engine focus education" },
+    temperature: { title: "Engine temperature", body: "Engine temperature education" },
+    metabolism: { title: "Engine metabolism", body: "Engine metabolism education" },
+    hormones: { title: "Engine hormones", body: "Engine hormones education" },
+  },
+  patternsTitle: "Engine patterns heading",
+  patternsIntroduction: "Engine patterns education",
+};
+
+function renderCycleBody(patient: { cycleLength?: number; history?: { onboarding?: { cycle?: { cycleLength?: number; regularity?: string } } } }, periodDate: string | null = null, feed?: CycleBodyFeed) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, queryFn: async () => ({ value: null }) } } });
   client.setQueryData(["/api/patients", 1, "period-prompt"], { value: periodDate ? { date: periodDate } : null });
+  const length = patient.cycleLength ?? patient.history?.onboarding?.cycle?.cycleLength;
+  const regularity = patient.history?.onboarding?.cycle?.regularity || "";
+  const phase = /irregular/i.test(regularity) ? null : estimateCyclePhase(periodDate, length);
+  client.setQueryData(["/api/patients", 1, "cycle-body-content", periodDate, length, regularity], feed ?? (phase ? {
+    status: "available", cycleDay: phase.cycleDay, cycleLength: Number(length), phase: "follicular",
+    content: engineCopy, source: "ai_generated", reviewStatus: "not_clinically_reviewed", assetVersion: "test",
+  } : { status: "unavailable", reason: "Cycle education unavailable." }));
   try {
     return renderToStaticMarkup(
       <QueryClientProvider client={client}><BiologyTab mode="general" patient={{ id: 1, ...patient }} /></QueryClientProvider>,
@@ -41,7 +68,9 @@ test("cycle Body uses saved period date and cycle length for its estimated day a
   const html = renderCycleBody({ history: { onboarding: { cycle: { cycleLength: 32, regularity: "Regular" } } } }, periodDaysAgo(9));
   assert.match(html, /DAY 10 · ESTIMATED/);
   assert.match(html, /Estimated day 10 of 32/);
-  assert.match(html, /Estrogen typically rises before ovulation/);
+  assert.match(html, /Engine daily education/);
+  assert.match(html, /Engine focus education/);
+  assert.match(html, /Engine body headline/);
   assert.match(html, /Day 32/);
   const marker = html.match(/<line x1="([^"]+)"[^>]*data-testid="cycle-today-marker"/);
   assert.ok(marker);
@@ -59,16 +88,23 @@ test("cycle Body does not invent a day or hormone phase for missing, stale or ir
     const html = renderCycleBody(patient, date);
     assert.match(html, /CYCLE DAY UNAVAILABLE/);
     assert.doesNotMatch(html, /data-testid="cycle-today-marker"|DAY 14 · ESTIMATED/);
-    assert.match(html, /not your measurements/);
   }
 });
 
 test("cycle Body moves the marker and description as the cycle advances", () => {
   const html = renderCycleBody({ cycleLength: 28 }, periodDaysAgo(20));
   assert.match(html, /DAY 21 · ESTIMATED/);
-  assert.match(html, /If ovulation has occurred, progesterone typically rises/);
+  assert.match(html, /Engine daily education/);
   const marker = html.match(/<line x1="([^"]+)"[^>]*data-testid="cycle-today-marker"/);
   assert.ok(marker && Number(marker[1]) > 167 && Number(marker[1]) < 346);
+});
+
+test("unavailable engine content shows its reason without frontend educational substitutes", () => {
+  const html = renderCycleBody({ cycleLength: 28 }, periodDaysAgo(13), {
+    status: "unavailable", reason: "Cycle education is paused for this stage.",
+  });
+  assert.match(html, /Cycle education is paused for this stage/);
+  assert.doesNotMatch(html, /Engine daily education|Estrogen typically rises|data-testid="cycle-today-marker"/);
 });
 
 test("movement log opens from the shortcut and warns that changes need immediate care", () => {
