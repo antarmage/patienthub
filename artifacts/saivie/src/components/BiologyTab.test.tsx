@@ -71,6 +71,7 @@ test("cycle Body uses saved period date and cycle length for its estimated day a
   assert.match(html, /Engine daily education/);
   assert.match(html, /Engine focus education/);
   assert.match(html, /Engine body headline/);
+  assert.match(html, /Log temperature/);
   assert.match(html, /Day 32/);
   const marker = html.match(/<line x1="([^"]+)"[^>]*data-testid="cycle-today-marker"/);
   assert.ok(marker);

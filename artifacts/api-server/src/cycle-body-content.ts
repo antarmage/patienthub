@@ -6,7 +6,7 @@ import type { AccessActor } from "./clinical-access";
 import { ai, AI_AVAILABLE } from "./replit_integrations/image/client";
 import { cycleBodyCatalogueSchema, estimateCyclePhase, type CycleBodyCatalogue, type CycleBodyFeed } from "../../../lib/db/src/cycle-body-content";
 
-const version = "cycle-body-education-v1";
+const version = "cycle-body-education-v2";
 const historySchema = z.object({
   onboarding: z.object({ cycle: z.object({
     lastPeriod: z.string().nullable().optional(),
@@ -60,7 +60,8 @@ Use short, warm plain-language text (titles under 60 characters, body under 350)
 Describe typical possibilities, never assert an individual's hormone levels, focus, energy or metabolism.
 State that cycle timing varies, calendar estimates cannot confirm ovulation and curves are illustrative, not measurements.
 No diagnoses, prescriptions, supplements, medical treatment, contraception guidance or claims of clinical review.
-Temperature text must say logging is not available here and a single reading cannot confirm ovulation.
+Temperature text must explain basal temperature logging is available through the Log temperature button.
+Advise recording a resting morning reading before getting up; a single reading cannot confirm ovulation.
 Patterns text must describe reported information, not claim a regular pattern or longitudinal evidence.
 Do not invent sources or cite sources you have not retrieved. No links, HTML or Markdown.`,
     config: {

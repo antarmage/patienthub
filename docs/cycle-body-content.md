@@ -29,3 +29,16 @@ are returned through the API error handler and shown with a retry action; no
 frontend educational fallback is substituted. Bump the catalogue asset
 version when deliberately regenerating generic content. API and frontend
 changes both need deployment.
+
+## Basal temperature logging
+
+The temperature card's **Log temperature** button opens a recording dialog
+for a Celsius or Fahrenheit reading, measurement time and optional notes.
+`GET` and `POST /api/patients/:id/basal-temperature-logs` are restricted to the
+owning patient. Records persist in `basal_temperature_logs`; the recent list
+returns the latest 30 measurements. Units are stored as entered, future
+measurement times are rejected and save failures leave the dialog open.
+One reading does not confirm ovulation. These records are not sent to Gemini.
+
+Catalogue version `cycle-body-education-v2` describes the logging feature;
+the old version's "logging unavailable" text is not reused.

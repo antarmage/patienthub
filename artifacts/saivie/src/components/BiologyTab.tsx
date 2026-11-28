@@ -45,6 +45,7 @@ import { usePatientCycle } from "@/lib/usePatientCycle";
 import { useQuery } from "@tanstack/react-query";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { cycleBodyFeedSchema } from "../../../../lib/db/src/cycle-body-content";
+import BasalTemperatureLog from "@/components/BasalTemperatureLog";
 
 const hormoneData = [
   { day: 1, est: 20, prog: 5, lh: 5, fsh: 10 },
@@ -510,6 +511,7 @@ function CycleNowPatterns({ patient }: { patient: any }) {
                   <h2 className="mt-3 font-serif text-[30px] font-bold leading-[1.1]">{copy.temperatureTitle}</h2>
                   <p className="mt-3 text-[16px] leading-[1.5] text-[#E9D8DF]">{copy.temperatureBody}</p>
                 </div>
+                <BasalTemperatureLog patientId={patientId} />
               </section>
             </div>
           </section>}

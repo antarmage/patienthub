@@ -48,6 +48,7 @@ import { importLabReports, listLabReportFiles, downloadFileAsBuffer } from "../g
 import { ai, AI_AVAILABLE } from "../replit_integrations/image/client";
 import { registerPatientContent, buildPregnancyContentFeed } from "../patient-content";
 import { registerCycleBodyContent } from "../cycle-body-content";
+import { createBasalTemperatureStore, registerBasalTemperature } from "../basal-temperature";
 import { whatsapp } from "../whatsapp";
 import { isSmtpConfigured, maskEmail, sendEmail, sendOtpEmail, type OtpDeliveryMethod } from "../smtp";
 import { checkDeliverableEmail } from "../email-check";
@@ -5954,6 +5955,7 @@ Return a JSON object:
   registerPregnancyEpisodes(app, createPregnancyEpisodeStore(pool), getAccessActor);
   registerPatientPeriod(app, createPatientPeriodStore(pool), getAccessActor);
   registerCycleBodyContent(app, pool, getAccessActor);
+  registerBasalTemperature(app, createBasalTemperatureStore(pool), getAccessActor);
   registerPatientContent(app, pool, getAccessActor, async (patientId) => {
     const [patient, medications, episodes] = await Promise.all([
       storage.getPatient(patientId),
