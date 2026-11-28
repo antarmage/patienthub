@@ -6,7 +6,18 @@ import type { AccessActor } from "./clinical-access";
 import { ai, AI_AVAILABLE } from "./replit_integrations/image/client";
 import { cycleBodyCatalogueSchema, estimateCyclePhase, type CycleBodyCatalogue, type CycleBodyFeed } from "../../../lib/db/src/cycle-body-content";
 
-const version = "cycle-body-education-v2";
+export const cycleBodyVersion = "cycle-body-daily-v3";
+const version = cycleBodyVersion;
+export const cycleEditionDate = (now = new Date()) => new Date(now.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
+export type CyclePatient = { id: number; lmp: string | null; history: unknown; periodDate: string | null; pregnant: boolean };
+
+export async function loadCyclePatients(pool: Pick<Pool, "query">, patientId: number | null = null) {
+  return (await pool.query<CyclePatient>(`SELECT p.id,p.lmp,p.history,pp.value->>'date' AS "periodDate",
+    (p.pregnancy_status IN ('pregnant','active','delivered') OR p.mode IN ('pregnancy','postpartum','menopause')
+      OR EXISTS(SELECT 1 FROM pregnancy_episodes e WHERE e.patient_id=p.id AND e.details->>'status'='current')) IS TRUE AS pregnant
+    FROM patients p LEFT JOIN patient_period_prompt pp ON pp.patient_id=p.id AND pp.episode_id IS NULL
+    WHERE ($1::integer IS NULL OR p.id=$1) ORDER BY p.id`, [patientId])).rows;
+}
 const historySchema = z.object({
   onboarding: z.object({ cycle: z.object({
     lastPeriod: z.string().nullable().optional(),
@@ -79,6 +90,20 @@ export async function ensureCycleBodyContentSchema(client: Pick<Pool, "query">) 
   await client.query(`CREATE TABLE IF NOT EXISTS cycle_body_content_catalogue (
     asset_version text PRIMARY KEY, content jsonb NOT NULL, generated_at timestamptz NOT NULL DEFAULT now()
   )`);
+  await client.query(`CREATE TABLE IF NOT EXISTS cycle_body_daily_editions (
+    patient_id integer NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    edition_date date NOT NULL,
+    asset_version text NOT NULL,
+    cycle_day integer NOT NULL,
+    cycle_length integer NOT NULL,
+    phase text NOT NULL,
+    content jsonb,
+    state text NOT NULL DEFAULT 'pending',
+    attempts integer NOT NULL DEFAULT 0,
+    last_attempt_at timestamptz,
+    generated_at timestamptz,
+    PRIMARY KEY(patient_id,edition_date,asset_version)
+  )`);
 }
 
 export function registerCycleBodyContent(app: Express, pool: Pool, authenticate: (req: Request, res: Response) => Promise<AccessActor | null>) {
@@ -94,34 +119,28 @@ export function registerCycleBodyContent(app: Express, pool: Pool, authenticate:
         res.status(403).json({ error: "Patient account required." }); return;
       }
       res.setHeader("Cache-Control", "private, no-store");
-      const patient = (await pool.query<{
-        lmp: string | null; history: unknown; periodDate: string | null; pregnant: boolean;
-      }>(`SELECT p.lmp,p.history,pp.value->>'date' AS "periodDate",
-        (p.pregnancy_status IN ('pregnant','active','delivered') OR p.mode IN ('pregnancy','postpartum','menopause')
-          OR EXISTS(SELECT 1 FROM pregnancy_episodes e WHERE e.patient_id=p.id AND e.details->>'status'='current')) IS TRUE AS pregnant
-        FROM patients p LEFT JOIN patient_period_prompt pp ON pp.patient_id=p.id AND pp.episode_id IS NULL
-        WHERE p.id=$1`, [id])).rows[0];
+      const patient = (await loadCyclePatients(pool, id))[0];
       if (!patient) { res.status(404).json({ error: "Patient not found." }); return; }
-      const indiaDate = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
+      const indiaDate = cycleEditionDate();
       const context = cycleBodyContext(patient, new Date(`${indiaDate}T12:00:00`));
       if (!context) {
         res.json({ status: "unavailable", reason: "A current period date and typical regular cycle length are needed. Cycle education is paused for other stages." });
         return;
       }
-      const client = await pool.connect();
-      try {
-        await client.query("BEGIN");
-        await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [version]);
-        const saved = (await client.query<{ content: unknown }>("SELECT content FROM cycle_body_content_catalogue WHERE asset_version=$1", [version])).rows[0];
-        const catalogue = saved ? cycleBodyCatalogueSchema.parse(saved.content) : await generateCatalogue();
-        if (!saved) await client.query("INSERT INTO cycle_body_content_catalogue(asset_version,content) VALUES($1,$2::jsonb)", [version, JSON.stringify(catalogue)]);
-        await client.query("COMMIT");
-        res.json(assembleCycleBodyFeed(context, catalogue));
-      } catch (error) {
-        await client.query("ROLLBACK"); throw error;
-      } finally {
-        client.release();
+      const edition = (await pool.query<{ content: unknown; attempts: number; state: string }>(
+        `SELECT content,attempts,state FROM cycle_body_daily_editions WHERE patient_id=$1 AND edition_date=$2
+         AND asset_version=$3 AND cycle_day=$4 AND cycle_length=$5 AND phase=$6`,
+        [id, indiaDate, version, context.cycleDay, context.cycleLength, context.phase],
+      )).rows[0];
+      if (!edition?.content) {
+        if (edition?.state === "failed" && edition.attempts >= 3) {
+          res.status(503).json({ error: "Today's cycle edition could not be generated. Please contact your clinic." });
+        } else {
+          res.status(202).json({ status: "pending", reason: "Today's cycle edition is being prepared by the background content worker." });
+        }
+        return;
       }
+      res.json({ ...assembleCycleBodyFeed(context, cycleBodyCatalogueSchema.parse(edition.content)), editionDate: indiaDate });
     } catch (error) { next(error); }
   });
 }

@@ -2,7 +2,8 @@ import { createServer } from "http";
 import app, { registerApiErrorHandler } from "./app";
 import { registerRoutes, registerDeskRoutes, registerGenomeRoutes } from "./routes/routes";
 import { logger } from "./lib/logger";
-import { ensureSchema } from "./db";
+import { ensureSchema, pool } from "./db";
+import { startDailyCycleContentWorker } from "./cycle-content-worker";
 import { synchronizeFollowUpCalls } from "./follow-up-calls";
 
 const rawPort = process.env["PORT"];
@@ -34,6 +35,8 @@ ensureSchema().then(async () => {
   httpServer.on("close", () => clearInterval(followUpTimer));
   httpServer.listen(port, () => {
     logger.info({ port }, "Server listening");
+    const stopCycleWorker = startDailyCycleContentWorker(pool);
+    httpServer.on("close", stopCycleWorker);
   });
 }).catch((err) => {
   logger.error({ err }, "Error starting server");

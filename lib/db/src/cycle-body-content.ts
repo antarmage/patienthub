@@ -34,8 +34,10 @@ export const cycleBodyFeedSchema = z.discriminatedUnion("status", [
     source: z.literal("ai_generated"),
     reviewStatus: z.literal("not_clinically_reviewed"),
     assetVersion: z.string(),
+    editionDate: z.iso.date().optional(),
   }).strict(),
   z.object({ status: z.literal("unavailable"), reason: z.string() }).strict(),
+  z.object({ status: z.literal("pending"), reason: z.string() }).strict(),
 ]);
 export type CycleBodyFeed = z.infer<typeof cycleBodyFeedSchema>;
 

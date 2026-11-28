@@ -400,6 +400,7 @@ function CycleNowPatterns({ patient }: { patient: any }) {
       return cycleBodyFeedSchema.parse(await response.json());
     },
     retry: false,
+    refetchInterval: (query) => query.state.error ? false : query.state.data?.status === "pending" ? 5000 : 60000,
   });
   const feed = contentQuery.data?.status === "available" ? contentQuery.data : null;
   const copy = feed?.content;
@@ -416,9 +417,10 @@ function CycleNowPatterns({ patient }: { patient: any }) {
         Unable to load cycle content from the content engine. <button type="button" className="font-bold underline" onClick={() => void contentQuery.refetch()}>Retry</button>
       </p>}
       {!copy && !contentQuery.isError && <p role="status" className="text-sm">
-        {contentQuery.data?.status === "unavailable" ? contentQuery.data.reason : "Loading cycle content…"}
+        {contentQuery.data && contentQuery.data.status !== "available" ? contentQuery.data.reason : "Loading cycle content…"}
       </p>}
       {copy && <p className="text-xs">AI-generated cycle education · Not clinically reviewed · Not medical advice. Timing and experiences vary.</p>}
+      {feed?.editionDate && <p className="text-xs">Your daily edition · {feed.editionDate} (India time)</p>}
       <div role="tablist" aria-label="Body views" className="flex w-[320px] max-w-full rounded-full bg-[#F3E6D4] p-1">
         {(["now", "patterns"] as const).map((item) => (
           <button

@@ -104,8 +104,17 @@ test("unavailable engine content shows its reason without frontend educational s
   const html = renderCycleBody({ cycleLength: 28 }, periodDaysAgo(13), {
     status: "unavailable", reason: "Cycle education is paused for this stage.",
   });
+
   assert.match(html, /Cycle education is paused for this stage/);
   assert.doesNotMatch(html, /Engine daily education|Estrogen typically rises|data-testid="cycle-today-marker"/);
+});
+
+test("Body displays background preparation instead of a perpetual loading placeholder", () => {
+  const html = renderCycleBody({ cycleLength: 28 }, periodDaysAgo(13), {
+    status: "pending", reason: "Today's cycle edition is being prepared by the background content worker.",
+  });
+  assert.match(html, /background content worker/);
+  assert.doesNotMatch(html, /Loading cycle content/);
 });
 
 test("movement log opens from the shortcut and warns that changes need immediate care", () => {
